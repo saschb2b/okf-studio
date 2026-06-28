@@ -19,13 +19,20 @@ import { useApp } from "../store.tsx";
 import { buildEdges, isVisible, matchesQuery } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import type { Concept } from "../types.ts";
-import { DEFAULT_PARAMS, step, type SimEdge, type SimNode } from "../graph/forceSim.ts";
+import {
+  ALPHA_DECAY,
+  ALPHA_MIN,
+  DEFAULT_PARAMS,
+  REHEAT_ALPHA,
+  step,
+  type SimEdge,
+  type SimNode,
+} from "../graph/forceSim.ts";
 import "./GraphView.css";
 
 const MIN_RADIUS = 5;
 const MAX_RADIUS = 22;
-const SETTLE_ENERGY = 0.05; // total kinetic energy below which the loop stops
-const STATIC_ITERATIONS = 320; // synchronous steps when reduceMotion is on
+const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on
 const LABEL_MIN_SCALE = 0.7; // hide free-floating labels below this zoom
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
@@ -75,6 +82,7 @@ export function GraphView() {
   const viewRef = useRef<View>({ scale: 1, tx: 0, ty: 0 });
   const sizeRef = useRef<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 });
   const rafRef = useRef<number | null>(null);
+  const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
 
   // Latest selection for the imperative draw, without re-binding the whole
@@ -199,12 +207,14 @@ export function GraphView() {
 
   function runLoop() {
     if (state.settings.reduceMotion) {
-      // Synchronous settle, no animation.
+      // Synchronous settle, no animation: cool a fresh alpha all the way down.
       const data = renderRef.current;
-      for (let i = 0; i < STATIC_ITERATIONS; i++) {
-        const energy = step(data.nodes, data.edges, DEFAULT_PARAMS);
-        if (energy < SETTLE_ENERGY) break;
+      let alpha = Math.max(alphaRef.current, 1);
+      for (let i = 0; i < STATIC_ITERATIONS && alpha > ALPHA_MIN; i++) {
+        step(data.nodes, data.edges, DEFAULT_PARAMS, alpha);
+        alpha += (0 - alpha) * ALPHA_DECAY;
       }
+      alphaRef.current = 0;
       syncPositions();
       draw();
       return;
@@ -212,10 +222,13 @@ export function GraphView() {
     stopLoop();
     const tick = () => {
       const data = renderRef.current;
-      const energy = step(data.nodes, data.edges, DEFAULT_PARAMS);
+      const alpha = alphaRef.current;
+      step(data.nodes, data.edges, DEFAULT_PARAMS, alpha);
+      // Cool toward zero; once cold, stop the loop and rest.
+      alphaRef.current = alpha + (0 - alpha) * ALPHA_DECAY;
       syncPositions();
       draw();
-      if (energy < SETTLE_ENERGY) {
+      if (alphaRef.current < ALPHA_MIN) {
         rafRef.current = null; // settled — idle until the next interaction/data change
         return;
       }
@@ -242,9 +255,11 @@ export function GraphView() {
   /** Kick the loop awake (e.g. after a drag) so it can re-settle. */
   function reheat() {
     if (state.settings.reduceMotion) {
+      // No animation; just redraw the new position.
       draw();
       return;
     }
+    alphaRef.current = Math.max(alphaRef.current, REHEAT_ALPHA);
     if (rafRef.current == null) runLoop();
   }
 
@@ -273,6 +288,7 @@ export function GraphView() {
     const meta: RenderData["meta"] = [];
     const indexById = new Map<string, number>();
     const radius = 220; // spawn ring for brand-new nodes
+    let spawnedNew = false;
 
     visible.forEach((c: Concept, i) => {
       const existing = store.get(c.id);
@@ -287,6 +303,7 @@ export function GraphView() {
         x = Math.cos(angle) * radius * (0.4 + Math.random() * 0.6);
         y = Math.sin(angle) * radius * (0.4 + Math.random() * 0.6);
         store.set(c.id, { x, y });
+        spawnedNew = true;
       }
       indexById.set(c.id, nodes.length);
       nodes.push({
@@ -326,6 +343,9 @@ export function GraphView() {
     }
 
     renderRef.current = { nodes, edges, meta, indexById, neighbors };
+    // Warm up fully for a brand-new layout; a live reload with cached positions
+    // only needs a gentle nudge so it does not visibly jump.
+    alphaRef.current = spawnedNew ? 1 : 0.4;
     runLoop();
     // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
     // intentionally not in the dep list; this effect rebuilds only on data/filter

@@ -4,6 +4,12 @@
 // requestAnimationFrame loop (or runs a fixed number of steps synchronously when
 // reduce-motion is on), keeping layout work out of React's render path.
 //
+// Stability (this is what keeps the graph from exploding and makes it settle):
+//  - `alpha` is a cooling factor in [0, 1] the caller decays toward 0 each tick;
+//    every force is scaled by it, so the system loses energy and comes to rest.
+//  - velocities are damped each step and hard-capped, so a close-range repulsion
+//    spike can never blow a node off to infinity.
+//
 // For a few hundred nodes the naive O(n^2) repulsion is fine; a Barnes-Hut
 // quad-tree is the documented next step for larger bundles (see
 // docs/architecture/performance.md).
@@ -36,35 +42,47 @@ export interface SimParams {
   springLength: number;
   /** Pull toward the origin so the graph does not drift off-screen. */
   centering: number;
-  /** Per-step velocity damping (0..1). */
+  /** Per-step velocity multiplier (0..1); lower = more damping. */
   damping: number;
   /** Max distance considered for repulsion (perf guard). */
   maxRepulsionDist: number;
+  /** Hard cap on per-step speed — the safety net against close-range spikes. */
+  maxSpeed: number;
 }
 
 export const DEFAULT_PARAMS: SimParams = {
-  repulsion: 9000,
-  springK: 0.02,
+  repulsion: 5200,
+  springK: 0.08,
   springLength: 90,
-  centering: 0.012,
-  damping: 0.86,
-  maxRepulsionDist: 600,
+  centering: 0.045,
+  damping: 0.6,
+  maxRepulsionDist: 700,
+  maxSpeed: 45,
 };
+
+// Cooling schedule (mirrors d3-force's defaults). The renderer owns the current
+// alpha; these describe how it decays and when the layout is considered at rest.
+export const ALPHA_DECAY = 0.0228;
+export const ALPHA_MIN = 0.001;
+/** Alpha to warm back up to on an interaction (e.g. a drag). */
+export const REHEAT_ALPHA = 0.3;
 
 /**
  * Advance the system one step, mutating node positions/velocities in place.
- * Returns the total kinetic energy so callers can detect when the layout has
- * settled and stop the animation loop.
+ * All forces are scaled by `alpha` (the cooling factor), so as the caller decays
+ * alpha toward zero the graph settles and stops moving. Returns total kinetic
+ * energy (useful for diagnostics; the caller stops on alpha, not energy).
  */
 export function step(
   nodes: SimNode[],
   edges: SimEdge[],
   params: SimParams = DEFAULT_PARAMS,
+  alpha = 1,
 ): number {
   const n = nodes.length;
   if (n === 0) return 0;
 
-  // Pairwise repulsion (O(n^2)).
+  // Pairwise repulsion (O(n^2)), scaled by alpha.
   const maxD2 = params.maxRepulsionDist * params.maxRepulsionDist;
   for (let i = 0; i < n; i++) {
     const a = nodes[i];
@@ -81,7 +99,7 @@ export function step(
         d2 = dx * dx + dy * dy;
       }
       const dist = Math.sqrt(d2);
-      const force = params.repulsion / d2;
+      const force = (params.repulsion * alpha) / d2;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
       a.vx += fx;
@@ -91,7 +109,7 @@ export function step(
     }
   }
 
-  // Spring attraction along edges.
+  // Spring attraction along edges, scaled by alpha.
   for (const e of edges) {
     const a = nodes[e.a];
     const b = nodes[e.b];
@@ -100,7 +118,7 @@ export function step(
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1e-4;
     const disp = dist - params.springLength;
-    const force = params.springK * disp;
+    const force = params.springK * disp * alpha;
     const fx = (dx / dist) * force;
     const fy = (dy / dist) * force;
     a.vx += fx;
@@ -109,7 +127,8 @@ export function step(
     b.vy -= fy;
   }
 
-  // Mild centering + integrate, accumulating kinetic energy.
+  // Mild centering (scaled by alpha so it too fades), damp, cap, integrate.
+  const maxSpeed = params.maxSpeed;
   let energy = 0;
   for (let i = 0; i < n; i++) {
     const node = nodes[i];
@@ -121,10 +140,17 @@ export function step(
       node.vy = 0;
       continue;
     }
-    node.vx -= node.x * params.centering;
-    node.vy -= node.y * params.centering;
+    node.vx -= node.x * params.centering * alpha;
+    node.vy -= node.y * params.centering * alpha;
     node.vx *= params.damping;
     node.vy *= params.damping;
+    // Hard speed cap: no single step can fling a node away.
+    const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy);
+    if (speed > maxSpeed) {
+      const s = maxSpeed / speed;
+      node.vx *= s;
+      node.vy *= s;
+    }
     node.x += node.vx;
     node.y += node.vy;
     energy += node.vx * node.vx + node.vy * node.vy;

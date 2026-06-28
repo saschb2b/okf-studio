@@ -1,0 +1,43 @@
+---
+type: Architecture Decision
+title: Performance & Scale
+description: How the "Fast" principle is achieved end to end, from the bounded directory walk to interactive graph rendering.
+tags: [architecture, decision, performance, scale]
+timestamp: 2026-06-28T12:00:00Z
+---
+
+# Decision
+
+The [Fast principle](../product/principles.md) is a budget, not an aspiration: a bundle of a few hundred concepts must render an interactive graph in **well under a second**, and switching bundles must feel instant. Performance is engineered at every stage — scan, parse, compute, render — rather than retrofitted.
+
+# Bounded scan
+
+[Bundle detection](bundle-detection.md) walks the chosen folder depth-first, bounded by a maximum depth and an ignore list (`.git`, `node_modules`, `target`, `dist`, `build`, `.venv`). Pointing the app at a large monorepo therefore costs a shallow, pruned traversal — not a full tree crawl. Detection only re-runs on structural changes, not on every keystroke in an editor.
+
+# Heavy work in the core, off the UI thread
+
+All filesystem and CPU work — directory walking, [OKF parsing](okf-parsing.md), graph construction, and backlink inversion — runs in the [Rust core](tech-stack.md), never in the webview. Commands resolve on a worker, so the UI thread is free to stay responsive while a bundle is read. The frontend only ever receives ready-to-render JSON ([data model](data-model.md)); it does no filesystem or parsing work.
+
+# Lazy parsing with per-bundle caching
+
+A folder may contain many bundles, but only the active one needs to be parsed. The core parses a bundle the first time it is opened and **caches the result keyed by root**. Re-selecting a bundle in the [Bundle Browser](../features/bundle-browser.md) serves the cached `Bundle` immediately — switching is instant, with no re-parse. Detection lists roots cheaply (it only needs to find one typed concept per candidate); the expensive full parse is deferred until a root is actually opened.
+
+# Incremental updates on live reload
+
+[Live Reload](../features/live-reload.md) never re-parses a whole bundle for a single edit. A changed concept file re-parses **only that concept**; backlinks recompute **incrementally** by diffing that concept's outbound links against the previous edge set, so only affected `citedBy` lists change. Watch events are **debounced** so a burst of writes — a bulk edit, a `git checkout` — collapses into one coherent update rather than a storm of re-renders.
+
+# Graph rendering strategy
+
+The renderer scales with bundle size:
+
+- **Small bundles:** SVG plus a simple force simulation — easy to style, accessible, and fast enough for hundreds of nodes.
+- **Large bundles:** a **canvas/WebGL** renderer with a **Barnes–Hut (quad-tree) force approximation**, reducing the force step from O(n²) toward O(n log n).
+- **Label culling at zoom:** labels fade and drop out at distance and reappear on zoom-in, hover, and selection, so text rendering never dominates the frame (see [Graph View](../features/graph-view.md)).
+
+# Client-side filtering and virtualized lists
+
+[Search and filter](../features/search-and-filter.md) operate **purely on the client** over the already-parsed [data model](data-model.md) — no round-trip to the core. Type toggles, text matching, and tag filters are in-memory operations over `concepts`, so results are instant. Sidebar lists (concepts, indexes, search results) are **virtualized**: only visible rows are realized in the DOM, keeping a large bundle's lists scrollable without layout cost.
+
+# Budget
+
+Taken together: a few-hundred-concept bundle scans, parses once, and renders interactively in well under a second; subsequent bundle switches and filter operations are effectively instantaneous. Larger bundles degrade gracefully into the canvas/Barnes–Hut path rather than stalling. Performance is exercised by fixtures described in [Testing & Dogfooding](testing.md).

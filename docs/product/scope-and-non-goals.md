@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What ships in v1, what is deferred, and what OKF Viewer deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-06-28T00:00:00Z
+timestamp: 2026-06-28T13:00:00Z
 ---
 
 # v1 scope (the MVP)
@@ -17,7 +17,7 @@ The first release must deliver the full read loop end to end:
 - [Search & Filter](../features/search-and-filter.md) and [Navigation](../features/navigation.md).
 - [Validation](../features/validation.md) surfaced non-blockingly.
 - [Live Reload](../features/live-reload.md) on file changes.
-- Packaged installers for **Windows** (`.msi`/`.exe`) and **Ubuntu** (`.deb`/AppImage).
+- Packaged installers for **Windows** (`.msi`/`.exe`) and **Ubuntu** (`.deb`/AppImage) — see [Build & Release](../architecture/build-and-release.md).
 
 # Later (post-v1)
 

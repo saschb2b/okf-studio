@@ -177,3 +177,130 @@
 .ui-numberfield-btn:hover {
   background: var(--border);
 }
+
+/* --- Tooltip --- */
+.ui-tooltip-positioner { z-index: 70; }
+.ui-tooltip {
+  background: var(--text);
+  color: var(--bg);
+  font-size: var(--fs-xs);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  transition: opacity var(--dur) ease;
+}
+.ui-tooltip[data-starting-style],
+.ui-tooltip[data-ending-style] { opacity: 0; }
+
+/* --- Popover --- */
+.ui-popover-positioner { z-index: 60; }
+.ui-popover {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-12);
+  transition: opacity var(--dur) ease, transform var(--dur) ease;
+}
+.ui-popover[data-starting-style],
+.ui-popover[data-ending-style] { opacity: 0; transform: scale(0.98); }
+
+/* --- Slider --- */
+.ui-slider-control {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 16px;
+  touch-action: none;
+}
+.ui-slider-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+}
+.ui-slider-indicator {
+  position: absolute;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.ui-slider-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-elev);
+}
+.ui-slider-thumb:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Toggle (filter chips, pressed = active) --- */
+.ui-toggle {
+  font: inherit;
+  font-size: var(--fs-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.ui-toggle:hover { background: var(--bg-sunken); }
+.ui-toggle[data-pressed] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+.ui-toggle:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* --- Scroll area (themed, native-feeling scrollbars) --- */
+.ui-scrollarea { position: relative; height: 100%; }
+.ui-scrollarea-viewport { height: 100%; overscroll-behavior: contain; }
+.ui-scrollarea-scrollbar {
+  display: flex;
+  width: 8px;
+  padding: 2px;
+  touch-action: none;
+  opacity: 0;
+  transition: opacity var(--dur) ease;
+}
+.ui-scrollarea-scrollbar[data-hovering],
+.ui-scrollarea-scrollbar[data-scrolling] { opacity: 1; }
+.ui-scrollarea-thumb {
+  flex: 1;
+  border-radius: 999px;
+  background: var(--border);
+}
+.ui-scrollarea-thumb:hover { background: var(--text-dim); }
+
+/* --- Collapsible (sidebar sections) --- */
+.ui-collapsible-trigger {
+  font: inherit;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.ui-collapsible-trigger:hover { color: var(--text); }
+.ui-collapsible-chevron { transition: transform var(--dur) ease; font-size: var(--fs-xs); }
+.ui-collapsible-trigger[data-panel-open] .ui-collapsible-chevron { transform: rotate(90deg); }
+.ui-collapsible-panel { overflow: hidden; }

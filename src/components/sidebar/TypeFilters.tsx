@@ -4,6 +4,7 @@
 // any are hidden. The type list is derived from the bundle — never hard-coded.
 // See docs/features/search-and-filter.md.
 
+import { Toggle } from "@base-ui/react/toggle";
 import { useApp } from "../../store.tsx";
 import { distinctTypes } from "../../selectors.ts";
 import { buildTypePalette, resolveDark } from "../../theme.ts";
@@ -28,10 +29,9 @@ export function TypeFilters() {
   const anyHidden = state.hiddenTypes.length > 0;
 
   return (
-    <section className="sb-section" aria-label="Type filters">
-      <div className="sb-section-head">
-        <h2 className="sb-section-title">Types</h2>
-        {anyHidden && (
+    <div className="sb-section" aria-label="Type filters">
+      {anyHidden && (
+        <div className="sb-section-head sb-section-head--end">
           <button
             type="button"
             className="sb-link-btn"
@@ -39,19 +39,19 @@ export function TypeFilters() {
           >
             Show all
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <ul className="sb-legend">
         {types.map((t) => {
-          const hidden = state.hiddenTypes.includes(t);
+          const visible = !state.hiddenTypes.includes(t);
           return (
             <li key={t}>
-              <button
-                type="button"
-                className={`sb-legend-item${hidden ? " is-hidden" : ""}`}
-                aria-pressed={!hidden}
-                onClick={() => actions.toggleType(t)}
-                title={hidden ? `Show ${t}` : `Hide ${t}`}
+              <Toggle
+                className={`ui-toggle sb-legend-item${visible ? "" : " is-hidden"}`}
+                pressed={visible}
+                onPressedChange={() => actions.toggleType(t)}
+                aria-label={visible ? `Hide ${t}` : `Show ${t}`}
+                title={visible ? `Hide ${t}` : `Show ${t}`}
               >
                 <span
                   className="sb-swatch"
@@ -60,11 +60,11 @@ export function TypeFilters() {
                 />
                 <span className="sb-legend-label">{t}</span>
                 <span className="sb-legend-count">{counts.get(t) ?? 0}</span>
-              </button>
+              </Toggle>
             </li>
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }

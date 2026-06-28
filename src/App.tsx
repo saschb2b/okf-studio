@@ -37,10 +37,17 @@ export function App() {
         <EmptyState />
       )}
 
-      {state.panels.log && <LogView />}
-      {state.panels.validation && <ValidationPanel />}
-      {state.palette && <CommandPalette />}
-      {/* Settings renders always; its Base UI Dialog controls visibility via open state. */}
+      {/* Base UI Dialogs: mounted whenever a bundle is open; their `open` prop
+          (from store state) drives visibility, so they manage their own
+          focus/Escape/transitions. */}
+      {state.bundle && (
+        <>
+          <LogView />
+          <ValidationPanel />
+          <CommandPalette />
+        </>
+      )}
+      {/* Settings works without a bundle (theme on first run); always mounted. */}
       <Settings />
     </div>
   );

@@ -1,16 +1,14 @@
-/* Command Palette: a centered modal navigator/launcher. Scrim is .chrome-overlay. */
+/* Command Palette: a centered modal navigator/launcher built on a Base UI
+   Dialog. The overlay/shell come from .ui-backdrop / .ui-dialog (baseui.css);
+   .palette-dialog only sizes the dialog and lays out the inner column. */
 
-.palette {
-  margin-top: 12vh;
+.palette-dialog {
   width: 560px;
-  max-width: 92vw;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  /* override .ui-dialog's scroll: the list scrolls on its own */
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 0;
 }
 
 .palette-input {
@@ -46,8 +44,10 @@
   padding: var(--space-8) var(--space-10);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  outline: none;
 }
-.palette-item.active {
+/* Base UI marks the active row via [data-highlighted] (keyboard + hover). */
+.palette-item[data-highlighted] {
   background: var(--accent);
   color: var(--accent-contrast);
 }
@@ -71,7 +71,7 @@
   font-size: var(--fs-xs);
   color: var(--text-dim);
 }
-.palette-item.active .palette-meta {
+.palette-item[data-highlighted] .palette-meta {
   color: var(--accent-contrast);
   opacity: 0.85;
 }
@@ -82,7 +82,7 @@
   background: var(--bg-sunken);
   color: var(--text-dim);
 }
-.palette-item.active .palette-type {
+.palette-item[data-highlighted] .palette-type {
   background: color-mix(in srgb, var(--accent-contrast) 22%, transparent);
   color: var(--accent-contrast);
 }

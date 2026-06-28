@@ -103,19 +103,15 @@
 }
 
 .graph-panel-toggle:focus-visible,
-.graph-slider input:focus-visible,
 .graph-panel-reset:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
 }
 
+/* Appearance (bg/border/shadow/padding) comes from .ui-popover; this only
+   sizes and lays out the controls. */
 .graph-panel-body {
   width: 240px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: var(--space-10) var(--space-12);
   display: flex;
   flex-direction: column;
   gap: var(--space-10);
@@ -151,11 +147,6 @@
 
 .graph-slider-label {
   color: var(--text-dim);
-}
-
-.graph-slider input[type="range"] {
-  width: 100%;
-  accent-color: var(--accent);
 }
 
 .graph-panel-reset {

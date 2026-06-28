@@ -2,8 +2,11 @@
 // name, and the right-side cluster (Log toggle, validation badge, Settings).
 // See docs/ux/browsing-layout.md.
 
+import { Toolbar } from "@base-ui/react/toolbar";
+import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "../store.tsx";
 import "./chrome.css";
+import "./baseui.css";
 import "./TopBar.css";
 
 export function TopBar() {
@@ -29,69 +32,161 @@ export function TopBar() {
   const canForward = state.fwd.length > 0;
 
   return (
-    <header className="topbar">
-      <button
-        className="btn"
-        aria-label="Open folder"
-        onClick={() => void actions.openFolder()}
-      >
-        Open Folder…
-      </button>
+    <Tooltip.Provider delay={400}>
+      <Toolbar.Root render={<header className="topbar" />}>
+        <Tooltip.Root>
+          <Tooltip.Trigger
+            render={
+              <Toolbar.Button
+                className="btn"
+                aria-label="Open folder"
+                onClick={() => void actions.openFolder()}
+              >
+                Open Folder…
+              </Toolbar.Button>
+            }
+          />
+          <Tooltip.Portal>
+            <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+              <Tooltip.Popup className="ui-tooltip">
+                Open folder (Ctrl/Cmd+O)
+              </Tooltip.Popup>
+            </Tooltip.Positioner>
+          </Tooltip.Portal>
+        </Tooltip.Root>
 
-      <div className="topbar-nav">
-        <button
-          className="btn ghost icon"
-          aria-label="Go back"
-          disabled={!canBack}
-          onClick={() => actions.back()}
-        >
-          ←
-        </button>
-        <button
-          className="btn ghost icon"
-          aria-label="Go forward"
-          disabled={!canForward}
-          onClick={() => actions.forward()}
-        >
-          →
-        </button>
-      </div>
+        <Toolbar.Group className="topbar-nav">
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              render={
+                <Toolbar.Button
+                  className="btn ghost icon"
+                  aria-label="Go back"
+                  disabled={!canBack}
+                  onClick={() => actions.back()}
+                >
+                  ←
+                </Toolbar.Button>
+              }
+            />
+            <Tooltip.Portal>
+              <Tooltip.Positioner
+                className="ui-tooltip-positioner"
+                sideOffset={6}
+              >
+                <Tooltip.Popup className="ui-tooltip">Back</Tooltip.Popup>
+              </Tooltip.Positioner>
+            </Tooltip.Portal>
+          </Tooltip.Root>
 
-      <span className="topbar-title" title={state.bundle?.name ?? "OKF Viewer"}>
-        {state.bundle?.name ?? "OKF Viewer"}
-      </span>
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              render={
+                <Toolbar.Button
+                  className="btn ghost icon"
+                  aria-label="Go forward"
+                  disabled={!canForward}
+                  onClick={() => actions.forward()}
+                >
+                  →
+                </Toolbar.Button>
+              }
+            />
+            <Tooltip.Portal>
+              <Tooltip.Positioner
+                className="ui-tooltip-positioner"
+                sideOffset={6}
+              >
+                <Tooltip.Popup className="ui-tooltip">Forward</Tooltip.Popup>
+              </Tooltip.Positioner>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        </Toolbar.Group>
 
-      <div className="topbar-spacer" />
+        <span className="topbar-title" title={state.bundle?.name ?? "OKF Viewer"}>
+          {state.bundle?.name ?? "OKF Viewer"}
+        </span>
 
-      {state.bundle && (
-        <div className="topbar-actions">
-          <button
-            className={`btn ghost ${state.panels.log ? "active" : ""}`}
-            aria-label="Toggle log panel"
-            aria-pressed={state.panels.log}
-            onClick={() => actions.togglePanel("log")}
-          >
-            Log
-          </button>
+        <div className="topbar-spacer" />
 
-          <button
-            className={`badge ${badgeKind}`}
-            aria-label={badgeAria}
-            aria-pressed={state.panels.validation}
-            onClick={() => actions.togglePanel("validation")}
-          >
-            {badgeLabel}
-          </button>
+        {state.bundle && (
+          <Toolbar.Group className="topbar-actions">
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <Toolbar.Button
+                    className={`btn ghost ${state.panels.log ? "active" : ""}`}
+                    aria-label="Toggle log panel"
+                    aria-pressed={state.panels.log}
+                    onClick={() => actions.togglePanel("log")}
+                  >
+                    Log
+                  </Toolbar.Button>
+                }
+              />
+              <Tooltip.Portal>
+                <Tooltip.Positioner
+                  className="ui-tooltip-positioner"
+                  sideOffset={6}
+                >
+                  <Tooltip.Popup className="ui-tooltip">Log</Tooltip.Popup>
+                </Tooltip.Positioner>
+              </Tooltip.Portal>
+            </Tooltip.Root>
 
-          <button
-            className="btn ghost icon"
-            aria-label="Open settings"
-            onClick={() => actions.setSettingsOpen(true)}
-          >
-            <span aria-hidden="true">⚙</span>
-          </button>
-        </div>
-      )}
-    </header>
+            <Toolbar.Separator />
+
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <Toolbar.Button
+                    className={`badge ${badgeKind}`}
+                    aria-label={badgeAria}
+                    aria-pressed={state.panels.validation}
+                    onClick={() => actions.togglePanel("validation")}
+                  >
+                    {badgeLabel}
+                  </Toolbar.Button>
+                }
+              />
+              <Tooltip.Portal>
+                <Tooltip.Positioner
+                  className="ui-tooltip-positioner"
+                  sideOffset={6}
+                >
+                  <Tooltip.Popup className="ui-tooltip">{badgeAria}</Tooltip.Popup>
+                </Tooltip.Positioner>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+
+            <Toolbar.Separator />
+
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <Toolbar.Button
+                    className="btn ghost icon"
+                    aria-label="Open settings"
+                    onClick={() => actions.setSettingsOpen(true)}
+                  >
+                    <span aria-hidden="true">⚙</span>
+                  </Toolbar.Button>
+                }
+              />
+              <Tooltip.Portal>
+                <Tooltip.Positioner
+                  className="ui-tooltip-positioner"
+                  sideOffset={6}
+                >
+                  <Tooltip.Popup className="ui-tooltip">
+                    Settings (Ctrl/Cmd+,)
+                  </Tooltip.Popup>
+                </Tooltip.Positioner>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </Toolbar.Group>
+        )}
+      </Toolbar.Root>
+    </Tooltip.Provider>
   );
 }

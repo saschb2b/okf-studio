@@ -5,9 +5,53 @@
 .sb {
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-10);
   padding: var(--space-10);
   min-height: 0;
+  height: 100%;
+}
+
+/* Scrollable body: fills the nav below the search box and owns the only scroll. */
+.sb-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.sb-scroll-viewport {
+  /* Padding so content (and focus rings) clear the themed scrollbar. */
+  padding-right: var(--space-4);
+}
+.sb-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+/* Collapsible top-level sections. */
+.sb-collapsible {
+  display: flex;
+  flex-direction: column;
+}
+.sb-collapsible .ui-collapsible-panel {
+  /* Body content spacing lives on the inner .sb-section wrappers. */
+  padding-top: var(--space-2);
+}
+/* The Index tree section should be able to grow when expanded. */
+.sb-collapsible-tree {
+  min-height: 0;
+}
+
+/* The inner components keep their own <section><h2> markup; the collapsible
+   trigger now provides the visible heading, so suppress the redundant title. */
+.sb-collapsible .ui-collapsible-panel .sb-section-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .sb-section {
@@ -21,6 +65,9 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-8);
+}
+.sb-section-head--end {
+  justify-content: flex-end;
 }
 
 .sb-section-title {
@@ -186,6 +233,10 @@
   flex-direction: column;
   gap: 1px;
 }
+/* Legend rows are full-width Toggles; they reuse the .ui-toggle focus/press
+   semantics but keep the borderless, non-chip row look. The compound selector
+   (.sb-legend-item.ui-toggle) outranks the single-class .ui-toggle rules. */
+.sb-legend-item.ui-toggle,
 .sb-legend-item {
   width: 100%;
   font: inherit;
@@ -199,7 +250,17 @@
   color: var(--text);
   cursor: pointer;
 }
+.sb-legend-item.ui-toggle:hover,
 .sb-legend-item:hover {
+  background: var(--bg-sunken);
+}
+/* A visible (pressed) type is the default state — don't fill the row with the
+   accent the way a chip would; the dimmed/struck state marks hidden types. */
+.sb-legend-item.ui-toggle[data-pressed] {
+  background: transparent;
+  color: var(--text);
+}
+.sb-legend-item.ui-toggle[data-pressed]:hover {
   background: var(--bg-sunken);
 }
 .sb-legend-item.is-hidden {
@@ -240,6 +301,9 @@
   flex-wrap: wrap;
   gap: var(--space-4);
 }
+/* Tag chips are Toggles; keep the pill radius/layout, let .ui-toggle drive the
+   pressed (active) styling. Compound selector outranks single-class .ui-toggle. */
+.sb-tag.ui-toggle,
 .sb-tag {
   font: inherit;
   font-size: var(--fs-xs);
@@ -253,9 +317,11 @@
   color: var(--text);
   cursor: pointer;
 }
+.sb-tag.ui-toggle:hover,
 .sb-tag:hover {
   background: var(--bg-sunken);
 }
+.sb-tag.ui-toggle[data-pressed],
 .sb-tag.is-active {
   background: var(--accent);
   color: var(--accent-contrast);

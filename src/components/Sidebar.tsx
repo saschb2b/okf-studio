@@ -1,7 +1,11 @@
 // Left pane of the Browsing Layout. Composes the bundle switcher, the search box,
 // the type-filter legend, the tag browser, and the index tree. Renders nothing
-// until a bundle is loaded. See docs/ux/browsing-layout.md.
+// until a bundle is loaded. Sections are collapsible and the scrollable body is a
+// themed Base UI ScrollArea. See docs/ux/browsing-layout.md.
 
+import { Collapsible } from "@base-ui/react/collapsible";
+import { ScrollArea } from "@base-ui/react/scroll-area";
+import type { ReactNode } from "react";
 import "./Sidebar.css";
 import { useApp } from "../store.tsx";
 import { BundleBrowser } from "./sidebar/BundleBrowser.tsx";
@@ -9,14 +13,42 @@ import { TypeFilters } from "./sidebar/TypeFilters.tsx";
 import { TagBrowser } from "./sidebar/TagBrowser.tsx";
 import { IndexTree } from "./sidebar/IndexTree.tsx";
 
+/** A collapsible top-level sidebar section with a chevron + title trigger. */
+function Section({
+  title,
+  className,
+  children,
+}: {
+  title: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Collapsible.Root
+      defaultOpen
+      className={`sb-collapsible${className ? ` ${className}` : ""}`}
+    >
+      <Collapsible.Trigger className="ui-collapsible-trigger">
+        <span className="ui-collapsible-chevron" aria-hidden="true">
+          ▸
+        </span>
+        {title}
+      </Collapsible.Trigger>
+      <Collapsible.Panel className="ui-collapsible-panel">
+        {children}
+      </Collapsible.Panel>
+    </Collapsible.Root>
+  );
+}
+
 export function Sidebar() {
   const { state, actions } = useApp();
   if (!state.bundle) return null;
 
+  const multipleBundles = state.bundles.length > 1;
+
   return (
     <nav className="sb" aria-label="Bundle navigation">
-      <BundleBrowser />
-
       <div className="sb-search-wrap">
         <input
           data-search
@@ -39,9 +71,30 @@ export function Sidebar() {
         )}
       </div>
 
-      <TypeFilters />
-      <TagBrowser />
-      <IndexTree />
+      <ScrollArea.Root className="ui-scrollarea sb-scroll">
+        <ScrollArea.Viewport className="ui-scrollarea-viewport sb-scroll-viewport">
+          <div className="sb-sections">
+            {multipleBundles && (
+              <Section title="Bundles" className="sb-collapsible-bundles">
+                <BundleBrowser />
+              </Section>
+            )}
+            <Section title="Types">
+              <TypeFilters />
+            </Section>
+            <Section title="Tags">
+              <TagBrowser />
+            </Section>
+            <Section title="Index" className="sb-collapsible-tree">
+              <IndexTree />
+            </Section>
+          </div>
+        </ScrollArea.Viewport>
+        <ScrollArea.Scrollbar className="ui-scrollarea-scrollbar">
+          <ScrollArea.Thumb className="ui-scrollarea-thumb" />
+        </ScrollArea.Scrollbar>
+        <ScrollArea.Corner />
+      </ScrollArea.Root>
     </nav>
   );
 }

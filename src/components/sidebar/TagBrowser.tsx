@@ -3,6 +3,7 @@
 // counts; clicking a tag filters to it (actions.setTag), and clicking the active
 // tag again clears the filter (setTag(null)). See docs/features/search-and-filter.md.
 
+import { Toggle } from "@base-ui/react/toggle";
 import { useApp } from "../../store.tsx";
 import { buildTagIndex } from "../../selectors.ts";
 
@@ -20,26 +21,24 @@ export function TagBrowser() {
   );
 
   return (
-    <section className="sb-section" aria-label="Tags">
-      <h2 className="sb-section-title">Tags</h2>
+    <div className="sb-section" aria-label="Tags">
       <ul className="sb-tags">
         {tags.map(([tag, ids]) => {
           const active = state.activeTag === tag;
           return (
             <li key={tag}>
-              <button
-                type="button"
-                className={`sb-tag${active ? " is-active" : ""}`}
-                aria-pressed={active}
-                onClick={() => actions.setTag(active ? null : tag)}
+              <Toggle
+                className={`ui-toggle sb-tag${active ? " is-active" : ""}`}
+                pressed={active}
+                onPressedChange={(p) => actions.setTag(p ? tag : null)}
               >
                 <span className="sb-tag-label">#{tag}</span>
                 <span className="sb-tag-count">{ids.length}</span>
-              </button>
+              </Toggle>
             </li>
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }

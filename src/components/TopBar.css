@@ -34,6 +34,14 @@
   gap: var(--space-8);
 }
 
+/* Toolbar.Separator renders a bare <div>; give it a thin token-colored rule. */
+.topbar [role="separator"] {
+  width: 1px;
+  align-self: stretch;
+  margin: var(--space-2) 0;
+  background: var(--border);
+}
+
 .topbar .btn.ghost.active {
   background: var(--bg-sunken);
   color: var(--text);

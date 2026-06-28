@@ -15,6 +15,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
+import { Popover } from "@base-ui/react/popover";
+import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
 import { buildEdges, isVisible, matchesQuery } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
@@ -92,7 +94,6 @@ export function GraphView() {
     centering: DEFAULT_PARAMS.centering,
   }));
   const [display, setDisplay] = useState<Display>(DEFAULT_DISPLAY);
-  const [panelOpen, setPanelOpen] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -651,56 +652,58 @@ export function GraphView() {
         onPointerCancel={onPointerUp}
         onWheel={onWheel}
       />
-      <div className={`graph-panel${panelOpen ? " open" : ""}`}>
-        <button
-          type="button"
-          className="graph-panel-toggle"
-          aria-expanded={panelOpen}
-          onClick={() => setPanelOpen((o) => !o)}
-        >
-          {panelOpen ? "Hide controls" : "Controls"}
-        </button>
-        {panelOpen && (
-          <div className="graph-panel-body">
-            <fieldset>
-              <legend>Forces</legend>
-              <Slider label="Repel" min={0} max={3000} step={50} value={forces.repulsion}
-                onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))} />
-              <Slider label="Link distance" min={20} max={250} step={5} value={forces.springLength}
-                onChange={(v) => setForces((f) => ({ ...f, springLength: v }))} />
-              <Slider label="Link force" min={0} max={0.3} step={0.01} value={forces.springK}
-                onChange={(v) => setForces((f) => ({ ...f, springK: v }))} />
-              <Slider label="Center" min={0} max={0.2} step={0.005} value={forces.centering}
-                onChange={(v) => setForces((f) => ({ ...f, centering: v }))} />
-            </fieldset>
-            <fieldset>
-              <legend>Display</legend>
-              <Slider label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
-                onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))} />
-              <Slider label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
-                onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))} />
-              <Slider label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
-                onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))} />
-              <Slider label="Label fade" min={0.5} max={3} step={0.1} value={display.labelScale}
-                onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))} />
-            </fieldset>
-            <button
-              type="button"
-              className="graph-panel-reset"
-              onClick={() => {
-                setForces({
-                  repulsion: DEFAULT_PARAMS.repulsion,
-                  springLength: DEFAULT_PARAMS.springLength,
-                  springK: DEFAULT_PARAMS.springK,
-                  centering: DEFAULT_PARAMS.centering,
-                });
-                setDisplay(DEFAULT_DISPLAY);
-              }}
+      <div className="graph-panel">
+        <Popover.Root>
+          <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Positioner
+              className="ui-popover-positioner"
+              side="bottom"
+              align="start"
+              sideOffset={6}
             >
-              Reset
-            </button>
-          </div>
-        )}
+              <Popover.Popup className="ui-popover graph-panel-body">
+                <fieldset>
+                  <legend>Forces</legend>
+                  <Slider label="Repel" min={0} max={3000} step={50} value={forces.repulsion}
+                    onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))} />
+                  <Slider label="Link distance" min={20} max={250} step={5} value={forces.springLength}
+                    onChange={(v) => setForces((f) => ({ ...f, springLength: v }))} />
+                  <Slider label="Link force" min={0} max={0.3} step={0.01} value={forces.springK}
+                    onChange={(v) => setForces((f) => ({ ...f, springK: v }))} />
+                  <Slider label="Center" min={0} max={0.2} step={0.005} value={forces.centering}
+                    onChange={(v) => setForces((f) => ({ ...f, centering: v }))} />
+                </fieldset>
+                <fieldset>
+                  <legend>Display</legend>
+                  <Slider label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
+                    onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))} />
+                  <Slider label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
+                    onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))} />
+                  <Slider label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
+                    onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))} />
+                  <Slider label="Label fade" min={0.5} max={3} step={0.1} value={display.labelScale}
+                    onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))} />
+                </fieldset>
+                <button
+                  type="button"
+                  className="graph-panel-reset"
+                  onClick={() => {
+                    setForces({
+                      repulsion: DEFAULT_PARAMS.repulsion,
+                      springLength: DEFAULT_PARAMS.springLength,
+                      springK: DEFAULT_PARAMS.springK,
+                      centering: DEFAULT_PARAMS.centering,
+                    });
+                    setDisplay(DEFAULT_DISPLAY);
+                  }}
+                >
+                  Reset
+                </button>
+              </Popover.Popup>
+            </Popover.Positioner>
+          </Popover.Portal>
+        </Popover.Root>
       </div>
       <div className="graph-controls">
         <button type="button" className="graph-btn" aria-label="Zoom in" onClick={() => zoomBy(1.2)}>
@@ -738,16 +741,22 @@ function Slider({
   onChange: (v: number) => void;
 }) {
   return (
-    <label className="graph-slider">
+    <div className="graph-slider">
       <span className="graph-slider-label">{label}</span>
-      <input
-        type="range"
+      <BaseSlider.Root
+        value={value}
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-    </label>
+        onValueChange={(v) => onChange(v as number)}
+      >
+        <BaseSlider.Control className="ui-slider-control">
+          <BaseSlider.Track className="ui-slider-track">
+            <BaseSlider.Indicator className="ui-slider-indicator" />
+            <BaseSlider.Thumb className="ui-slider-thumb" />
+          </BaseSlider.Track>
+        </BaseSlider.Control>
+      </BaseSlider.Root>
+    </div>
   );
 }

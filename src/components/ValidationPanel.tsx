@@ -1,10 +1,18 @@
 // Validation panel — the interactive view of the OKF conformance check. Lists
 // each issue grouped by level (errors first), with counts; clicking an issue
 // with a concept jumps to it. Report, never reject. See docs/features/validation.md.
+//
+// Built on a NON-MODAL Base UI Dialog (modal={false}): a right-docked panel that
+// never traps focus, locks scroll, or dims the rest of the app. Visibility is
+// driven by the `open` prop from app state; App mounts this component
+// unconditionally. Escape and the × button close it via onOpenChange.
 
+import { Dialog } from "@base-ui/react/dialog";
+import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp } from "../store.tsx";
 import type { Issue, IssueLevel } from "../types.ts";
 import "./chrome.css";
+import "./baseui.css";
 import "./ValidationPanel.css";
 
 function Group({
@@ -61,44 +69,56 @@ export function ValidationPanel() {
   const errors = issues.filter((i) => i.level === "error");
   const warnings = issues.filter((i) => i.level === "warning");
 
-  function close() {
-    actions.togglePanel("validation", false);
-  }
-
   return (
-    <aside
-      className="panel validation"
-      role="region"
-      aria-label="Validation"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.stopPropagation();
-          close();
-        }
-      }}
+    <Dialog.Root
+      modal={false}
+      open={state.panels.validation}
+      onOpenChange={(open) => actions.togglePanel("validation", open)}
+      // Docked peer panel: toggled from the toolbar, so it stays open when the
+      // user clicks the workspace or jumps to a concept (which moves focus out).
+      // Only Escape, the × button, or the toolbar toggle close it.
+      disablePointerDismissal
     >
-      <header className="panel-head">
-        <b>Validation</b>
-        <button
-          className="btn ghost icon"
-          aria-label="Close validation panel"
-          onClick={close}
-        >
-          <span aria-hidden="true">×</span>
-        </button>
-      </header>
+      <Dialog.Portal>
+        {/* No Dialog.Backdrop: a non-modal docked panel must not add a scrim. */}
+        <Dialog.Popup className="panel validation" aria-label="Validation">
+          <header className="panel-head">
+            <Dialog.Title render={<b />}>Validation</Dialog.Title>
+            <Dialog.Close
+              className="btn ghost icon"
+              aria-label="Close validation panel"
+            >
+              <span aria-hidden="true">×</span>
+            </Dialog.Close>
+          </header>
 
-      {issues.length === 0 ? (
-        <p className="vp-conformant">
-          <span className="vp-dot ok" aria-hidden="true" />
-          Conformant — no issues.
-        </p>
-      ) : (
-        <div className="vp-body">
-          <Group level="error" issues={errors} onJump={actions.selectConcept} />
-          <Group level="warning" issues={warnings} onJump={actions.selectConcept} />
-        </div>
-      )}
-    </aside>
+          {issues.length === 0 ? (
+            <p className="vp-conformant">
+              <span className="vp-dot ok" aria-hidden="true" />
+              Conformant — no issues.
+            </p>
+          ) : (
+            <ScrollArea.Root className="ui-scrollarea vp-scroll">
+              <ScrollArea.Viewport className="ui-scrollarea-viewport">
+                <div className="vp-body">
+                  <Group level="error" issues={errors} onJump={actions.selectConcept} />
+                  <Group
+                    level="warning"
+                    issues={warnings}
+                    onJump={actions.selectConcept}
+                  />
+                </div>
+              </ScrollArea.Viewport>
+              <ScrollArea.Scrollbar
+                className="ui-scrollarea-scrollbar"
+                orientation="vertical"
+              >
+                <ScrollArea.Thumb className="ui-scrollarea-thumb" />
+              </ScrollArea.Scrollbar>
+            </ScrollArea.Root>
+          )}
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

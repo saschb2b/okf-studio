@@ -1,18 +1,16 @@
-/* Validation panel: docked on the right, below the top bar. */
+/* Validation panel. Inherits the base `.panel` docking (fixed, right edge,
+   full height) from styles.css. Here we add only the internal layout: a fixed
+   header above a flex-growing Base UI ScrollArea, and the issue-list styling.
+   Color comes from role variables; spacing/type/radius from scale tokens. */
 
-.panel {
-  position: fixed;
-  top: 49px;
-  right: 0;
-  bottom: 0;
-  width: 380px;
-  max-width: 90vw;
-  background: var(--bg-elev);
-  border-left: 1px solid var(--border);
-  box-shadow: var(--shadow);
+/* Override the base `.panel` block-scroll + padding so the header stays put and
+   the body scrolls inside its own ScrollArea instead. */
+.panel.validation,
+.panel.log-panel {
+  padding: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  z-index: 20;
 }
 
 .panel-head {
@@ -24,8 +22,13 @@
   flex: 0 0 auto;
 }
 
+/* The ScrollArea fills the space below the header. */
+.vp-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .vp-body {
-  overflow: auto;
   padding: var(--space-8) var(--space-12) var(--space-16);
 }
 

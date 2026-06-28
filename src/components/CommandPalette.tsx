@@ -1,11 +1,21 @@
 // Command Palette — Ctrl/Cmd+K. Jump to any concept by id, title, or type, and
 // run quick actions, keyboard-only. Filters over the already-parsed bundle, so
 // results are instant. See docs/features/command-palette.md.
+//
+// Built on Base UI's Dialog (modal focus trap, Escape, backdrop, scroll-lock,
+// focus restore) wrapping an inline Autocomplete (arrow/typeahead navigation,
+// active-item ARIA, Enter-to-select). Appearance is our design tokens; the
+// overlay/shell come from `.ui-backdrop`/`.ui-dialog`, the inner look from the
+// `.palette*` classes. We keep our own fuzzy ranking and feed the result to
+// Autocomplete via `filteredItems`, so the established scoring/order survives.
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { Dialog } from "@base-ui/react/dialog";
+import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useApp } from "../store.tsx";
 import type { Concept } from "../types.ts";
 import "./chrome.css";
+import "./baseui.css";
 import "./CommandPalette.css";
 
 interface ActionItem {
@@ -63,14 +73,19 @@ function scoreConcept(c: Concept, needle: string): number {
   );
 }
 
+/** Display label for an item — used by Autocomplete for ARIA/typeahead. */
+function itemLabel(item: Item): string {
+  return item.kind === "concept" ? item.concept.title : item.label;
+}
+
 export function CommandPalette() {
   const { state, actions } = useApp();
+  // Controlled input value: we need the query to compute the ranked
+  // `filteredItems` array ourselves (Autocomplete's built-in collator filter
+  // can't reproduce our prefix/word-boundary/subsequence scoring).
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
-  const listRef = useRef<HTMLUListElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
 
-  const needle = query.trim();
+  const close = () => actions.setPalette(false);
 
   const actionItems: ActionItem[] = [
     {
@@ -104,43 +119,36 @@ export function CommandPalette() {
   ];
 
   const concepts = state.bundle?.concepts ?? [];
-  const conceptItems: ConceptItem[] = concepts
-    .map((concept) => ({
-      kind: "concept" as const,
-      id: concept.id,
-      concept,
-      score: scoreConcept(concept, needle),
-    }))
-    .filter((it) => it.score >= 0)
-    .sort((a, b) => b.score - a.score || a.concept.title.localeCompare(b.concept.title))
-    .slice(0, 30);
+  const allConceptItems: ConceptItem[] = concepts.map((concept) => ({
+    kind: "concept" as const,
+    id: concept.id,
+    concept,
+    score: 0,
+  }));
 
-  const matchedActions = needle
+  // The complete item set (concepts lead — the palette is primarily a
+  // navigator — then quick actions). Autocomplete uses this for typeahead/ARIA;
+  // the visible subset is the ranked `filteredItems` below.
+  const items: Item[] = [...allConceptItems, ...actionItems];
+
+  // Our own fuzzy ranking (prefix/word-boundary/subsequence over title/id/type).
+  const needle = query.trim();
+  const conceptHits: ConceptItem[] = needle
+    ? allConceptItems
+        .map((it) => ({ ...it, score: scoreConcept(it.concept, needle) }))
+        .filter((it) => it.score >= 0)
+        .sort(
+          (a, b) =>
+            b.score - a.score || a.concept.title.localeCompare(b.concept.title),
+        )
+        .slice(0, 30)
+    : allConceptItems;
+  const actionHits = needle
     ? actionItems.filter((a) => scoreMatch(a.label, needle) >= 0)
     : actionItems;
+  const filteredItems: Item[] = [...conceptHits, ...actionHits];
 
-  // Concepts lead (the palette is primarily a navigator); actions follow.
-  const items: Item[] = [...conceptItems, ...matchedActions];
-
-  // Clamp / reset the highlighted row whenever the result set changes.
-  useEffect(() => {
-    setActive((a) => (items.length === 0 ? 0 : Math.min(a, items.length - 1)));
-  }, [items.length]);
-
-  // Keep the highlighted row scrolled into view.
-  useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(
-      `[data-index="${active}"]`,
-    );
-    el?.scrollIntoView({ block: "nearest" });
-  }, [active]);
-
-  function close() {
-    actions.setPalette(false);
-  }
-
-  function activate(item: Item | undefined) {
-    if (!item) return;
+  function activate(item: Item) {
     if (item.kind === "concept") {
       actions.selectConcept(item.id); // store also closes the palette
       close();
@@ -150,116 +158,83 @@ export function CommandPalette() {
     }
   }
 
-  function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      close();
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((a) => (items.length ? (a + 1) % items.length : 0));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((a) => (items.length ? (a - 1 + items.length) % items.length : 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      activate(items[active]);
-    } else if (e.key === "Tab") {
-      // Single focusable input: trap focus inside the dialog.
-      e.preventDefault();
-    }
-  }
-
-  if (!state.palette) return null;
-
   return (
-    <div
-      className="chrome-overlay"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) close();
+    <Dialog.Root
+      open={state.palette}
+      onOpenChange={(open) => {
+        actions.setPalette(open);
+        if (!open) setQuery(""); // clear the search when the palette closes
       }}
     >
-      <div
-        ref={dialogRef}
-        className="palette"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Command palette"
-        onKeyDown={onKeyDown}
-      >
-        <input
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus
-          type="text"
-          className="palette-input"
-          placeholder="Jump to a concept, or run a command…"
-          value={query}
-          role="combobox"
-          aria-expanded="true"
-          aria-controls="palette-results"
-          aria-activedescendant={
-            items[active] ? `palette-item-${active}` : undefined
-          }
-          aria-autocomplete="list"
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setActive(0);
-          }}
-        />
-
-        <ul
-          ref={listRef}
-          id="palette-results"
-          className="palette-list"
-          role="listbox"
-          aria-label="Results"
+      <Dialog.Portal>
+        <Dialog.Backdrop className="ui-backdrop" />
+        <Dialog.Popup
+          className="ui-dialog palette-dialog"
+          aria-label="Command palette"
         >
-          {items.length === 0 && (
-            <li className="palette-empty muted" role="presentation">
-              No matches
-            </li>
-          )}
-          {items.map((item, i) => (
-            <li
-              key={`${item.kind}:${item.id}`}
-              id={`palette-item-${i}`}
-              data-index={i}
-              role="option"
-              aria-selected={i === active}
-              className={`palette-item ${i === active ? "active" : ""}`}
-              onMouseEnter={() => setActive(i)}
-              onMouseDown={(e) => {
-                // mousedown to act before the input loses focus / backdrop fires
-                e.preventDefault();
-                activate(item);
-              }}
-            >
-              {item.kind === "concept" ? (
-                <>
-                  <span className="palette-label">{item.concept.title}</span>
-                  <span className="palette-meta">
-                    <span className="palette-type">{item.concept.type}</span>
-                    <span className="palette-id">{item.concept.id}</span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="palette-label">{item.label}</span>
-                  <span className="palette-meta">
-                    <span className="palette-hint">{item.hint}</span>
-                  </span>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+          <Autocomplete.Root
+            // Inline: render the list directly in the dialog, no nested popup.
+            // `open` is bound to the dialog so transient state resets on close.
+            inline
+            open={state.palette}
+            items={items}
+            filteredItems={filteredItems}
+            value={query}
+            onValueChange={(value) => setQuery(value)}
+            itemToStringValue={itemLabel}
+            autoHighlight
+          >
+            <Autocomplete.Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              className="palette-input"
+              placeholder="Jump to a concept, or run a command…"
+            />
 
-        <div className="palette-foot muted" aria-hidden="true">
-          <span>↑↓ to navigate</span>
-          <span>↵ to select</span>
-          <span>esc to close</span>
-        </div>
-      </div>
-    </div>
+            <Autocomplete.List className="palette-list" aria-label="Results">
+              {(item: Item) => (
+                <Autocomplete.Item
+                  key={`${item.kind}:${item.id}`}
+                  value={item}
+                  className="palette-item"
+                  onClick={() => activate(item)}
+                >
+                  {item.kind === "concept" ? (
+                    <>
+                      <span className="palette-label">
+                        {item.concept.title}
+                      </span>
+                      <span className="palette-meta">
+                        <span className="palette-type">
+                          {item.concept.type}
+                        </span>
+                        <span className="palette-id">{item.concept.id}</span>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="palette-label">{item.label}</span>
+                      <span className="palette-meta">
+                        <span className="palette-hint">{item.hint}</span>
+                      </span>
+                    </>
+                  )}
+                </Autocomplete.Item>
+              )}
+            </Autocomplete.List>
+
+            <Autocomplete.Empty className="palette-empty muted">
+              No matches
+            </Autocomplete.Empty>
+          </Autocomplete.Root>
+
+          <div className="palette-foot muted" aria-hidden="true">
+            <span>↑↓ to navigate</span>
+            <span>↵ to select</span>
+            <span>esc to close</span>
+          </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

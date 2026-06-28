@@ -44,6 +44,13 @@ if (!g.ResizeObserver) {
   } as unknown as typeof ResizeObserver;
 }
 
+// jsdom lacks Element.getAnimations; Base UI awaits it for open/close transitions.
+if (typeof Element !== "undefined" && !Element.prototype.getAnimations) {
+  Element.prototype.getAnimations = function () {
+    return [];
+  };
+}
+
 // jsdom lacks matchMedia; theme resolution calls it.
 if (typeof window !== "undefined" && !window.matchMedia) {
   window.matchMedia = ((query: string) => ({

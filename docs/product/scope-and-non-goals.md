@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What ships in v1, what is deferred, and what OKF Viewer deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-06-28T13:00:00Z
+timestamp: 2026-06-28T17:00:00Z
 ---
 
 # v1 scope (the MVP)
@@ -21,6 +21,7 @@ The first release must deliver the full read loop end to end:
 
 # Later (post-v1)
 
+- Detailed UX/UI improvements captured under [proposals/](../proposals/): a [global search launcher](../proposals/global-search.md), a [scalable sidebar](../proposals/scalable-sidebar.md), a [more useful graph](../proposals/graph-from-picture-to-tool.md), a [reader-first layout](../proposals/reader-first-layout.md), and a [native desktop feel](../proposals/native-feel.md).
 - Tag-browsing views and saved filters.
 - Export: the current graph as PNG/SVG, or the bundle as a static self-contained HTML.
 - "Cited by" graph focus mode and shortest-path-between-concepts.

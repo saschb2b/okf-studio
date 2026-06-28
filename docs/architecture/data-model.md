@@ -1,9 +1,9 @@
 ---
 type: Reference
 title: Data Model
-description: The Bundle, Concept, and Graph shapes the Rust core computes and the frontend renders.
+description: The Bundle, Concept, graph, index, and log shapes the Rust core computes and the frontend renders.
 tags: [architecture, data-model, schema]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-06-28T13:00:00Z
 ---
 
 # Shapes
@@ -41,6 +41,27 @@ interface Concept {
 
 interface GraphEdge { source: string; target: string; }  // derived from concepts[].links
 interface Issue { conceptId: string | null; level: "error" | "warning"; message: string; }
+
+// Parsed (or synthesized) index.md, one per directory, mirroring the tree for navigation.
+interface IndexNode {
+  dir: string;               // directory path relative to root ("" = bundle root)
+  title: string;             // index.md H1, else the directory name
+  synthesized: boolean;      // true if no index.md existed and the core built one
+  sections: IndexSection[];  // the index's headed groups, in document order
+}
+interface IndexSection { heading: string; entries: IndexEntry[]; }
+interface IndexEntry {
+  title: string;             // link text
+  target: string;            // Concept ID, or a subdirectory path for a directory entry
+  description: string;       // the short blurb after the link, if any
+  kind: "concept" | "directory";
+}
+
+// One date-grouped block of a parsed log.md, in file order (newest first).
+interface LogEntry {
+  date: string;              // the "## " heading verbatim, even if not ISO YYYY-MM-DD
+  entries: string[];         // the bullet lines under that date, as raw markdown
+}
 ```
 
 # Notes
@@ -48,3 +69,5 @@ interface Issue { conceptId: string | null; level: "error" | "warning"; message:
 - **`extra` preserves unknown keys** rather than dropping them, per the spec's extension contract — useful for domain-specific frontmatter a future feature might surface.
 - The frontend derives the **edge list** and the **type → color** map from `concepts`; the core does not dictate presentation (see [Frontend Architecture](frontend-architecture.md) for these derived/computed stores).
 - IDs are the join key everywhere: links, backlinks, selection, and [navigation history](../features/navigation.md) all reference Concept IDs.
+- **`indexes` carry `synthesized`** so the [navigation](../features/navigation.md) sidebar can mark which listings the core built for directories that lacked an `index.md` — the spec permits synthesizing one on the fly.
+- **`log` preserves each date heading verbatim**, even a non-ISO one, so the [Log View](../features/log-view.md) renders it while [Validation](../features/validation.md) warns separately; tolerance and reporting stay decoupled.

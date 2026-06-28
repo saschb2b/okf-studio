@@ -25,13 +25,13 @@
   bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-6);
   z-index: 2;
 }
 
 .graph-btn {
   font: inherit;
-  font-size: 16px;
+  font-size: var(--fs-md);
   line-height: 1;
   width: 34px;
   height: 34px;
@@ -51,12 +51,12 @@
 }
 
 .graph-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
 }
 
 .graph-fit {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -67,7 +67,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-4);
   color: var(--text-dim);
   text-align: center;
 }
@@ -81,15 +81,15 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--space-6);
   max-width: 240px;
 }
 
 .graph-panel-toggle {
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
-  padding: 6px 10px;
+  padding: var(--space-6) var(--space-10);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev);
@@ -105,7 +105,7 @@
 .graph-panel-toggle:focus-visible,
 .graph-slider input:focus-visible,
 .graph-panel-reset:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -115,10 +115,10 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 10px 12px;
+  padding: var(--space-10) var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-10);
 }
 
 .graph-panel-body fieldset {
@@ -127,25 +127,25 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--space-8);
 }
 
 .graph-panel-body legend {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
   padding: 0;
-  margin-bottom: 2px;
+  margin-bottom: var(--space-2);
 }
 
 .graph-slider {
   display: grid;
   grid-template-columns: 84px 1fr;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: var(--space-8);
+  font-size: var(--fs-xs);
   color: var(--text);
 }
 
@@ -160,9 +160,9 @@
 
 .graph-panel-reset {
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   align-self: flex-end;
-  padding: 4px 10px;
+  padding: var(--space-4) var(--space-10);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg);

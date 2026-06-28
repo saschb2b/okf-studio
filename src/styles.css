@@ -14,7 +14,40 @@
   --warn: #b8860b;
   --ok: #2e7d52;
   --shadow: 0 6px 24px rgba(20, 24, 31, 0.14);
+  --scrim: rgba(20, 24, 31, 0.45);
+
+  /* Radius scale */
+  --radius-sm: 6px;
   --radius: 8px;
+  --radius-lg: 12px;
+
+  /* Spacing scale (tokens named by px value; 2/4/6/8/10/12 then 4-step) */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+
+  /* Type scale (size + paired line-height) */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-normal: 1.5;
+
+  /* Focus + motion */
+  --focus-w: 2px;
+  --dur: 120ms;
+
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
@@ -33,6 +66,7 @@
   --warn: #e0b341;
   --ok: #5ed39a;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.62);
   color-scheme: dark;
 }
 
@@ -52,7 +86,7 @@ body {
   font-family: var(--ui);
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -209,7 +243,7 @@ body {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--scrim);
   display: flex;
   align-items: flex-start;
   justify-content: center;

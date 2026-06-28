@@ -4,23 +4,23 @@
 .concept-reader {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
   max-width: 760px;
 }
 
 .reader-empty {
-  padding: 24px;
+  padding: var(--space-24);
   color: var(--text-dim);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-6);
 }
 
 /* Header ------------------------------------------------------------------- */
 .reader-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 /* The base .type-badge sets shape/size; we tint it from the type palette and
@@ -35,14 +35,14 @@
 
 .concept-reader h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-lg);
   line-height: 1.25;
 }
 
 .concept-reader .desc {
   margin: 0;
   color: var(--text-dim);
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
 .tag-chips {
@@ -51,12 +51,12 @@
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-6);
 }
 
 .tag-chip {
-  font-size: 12px;
-  padding: 2px 8px;
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-8);
   border-radius: 999px;
   background: var(--bg-sunken);
   color: var(--text-dim);
@@ -64,16 +64,16 @@
 }
 
 .reader-meta {
-  margin: 4px 0 0;
+  margin: var(--space-4) 0 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12.5px;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
 }
 
 .reader-meta .meta-row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   align-items: baseline;
 }
 
@@ -81,7 +81,7 @@
   flex: 0 0 84px;
   color: var(--text-dim);
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
 }
 
@@ -93,11 +93,11 @@
 
 .concept-id {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
   background: var(--bg-sunken);
-  padding: 1px 6px;
-  border-radius: 5px;
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-sm);
 }
 
 /* A button styled as a link — used for the resource so we can route it through
@@ -116,16 +116,16 @@
   text-decoration: underline;
 }
 .link-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-w) solid var(--accent);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* Rendered markdown body --------------------------------------------------- */
 /* Override the stub's monospace <pre> look: this is real rendered prose now. */
 .concept-reader .body.markdown {
   font-family: var(--ui);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
   white-space: normal;
   background: none;
@@ -145,10 +145,10 @@
   line-height: 1.3;
   margin: 1.4em 0 0.5em;
 }
-.markdown h1 { font-size: 19px; }
-.markdown h2 { font-size: 17px; }
-.markdown h3 { font-size: 15px; }
-.markdown h4 { font-size: 14px; }
+.markdown h1 { font-size: var(--fs-lg); }
+.markdown h2 { font-size: var(--fs-md); }
+.markdown h3 { font-size: var(--fs-sm); }
+.markdown h4 { font-size: var(--fs-sm); }
 .markdown p { margin: 0.7em 0; }
 .markdown ul,
 .markdown ol { margin: 0.6em 0; padding-left: 1.4em; }
@@ -177,14 +177,14 @@
   font-family: var(--mono);
   font-size: 0.92em;
   background: var(--bg-sunken);
-  padding: 1px 5px;
-  border-radius: 5px;
+  padding: 1px var(--space-4);
+  border-radius: var(--radius-sm);
 }
 .markdown pre {
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: var(--space-12) var(--space-16);
   overflow-x: auto;
   /* Subtle syntax tint via a left accent rule. */
   border-left: 3px solid var(--accent);
@@ -192,12 +192,12 @@
 .markdown pre code {
   background: none;
   padding: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
 }
 
 .markdown blockquote {
   margin: 0.8em 0;
-  padding: 2px 14px;
+  padding: var(--space-2) var(--space-16);
   border-left: 3px solid var(--border);
   color: var(--text-dim);
 }
@@ -206,12 +206,12 @@
   border-collapse: collapse;
   width: 100%;
   margin: 0.8em 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
 }
 .markdown th,
 .markdown td {
   border: 1px solid var(--border);
-  padding: 6px 10px;
+  padding: var(--space-6) var(--space-10);
   text-align: left;
 }
 .markdown th {
@@ -232,17 +232,17 @@
 
 /* Relationships ------------------------------------------------------------ */
 .relationships {
-  margin-top: 4px;
+  margin-top: var(--space-4);
   border-top: 1px solid var(--border);
-  padding-top: 12px;
+  padding-top: var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
 }
 
 .rel-group h3 {
-  margin: 0 0 6px;
-  font-size: 12px;
+  margin: 0 0 var(--space-6);
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-dim);
@@ -259,9 +259,9 @@
   width: 100%;
   text-align: left;
   font: inherit;
-  padding: 5px 8px;
+  padding: var(--space-4) var(--space-8);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--accent);
   cursor: pointer;
@@ -270,16 +270,16 @@
   background: var(--bg-sunken);
 }
 .rel-link:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-w) solid var(--accent);
   outline-offset: -2px;
 }
 
 .broken-list .broken-link {
-  padding: 5px 8px;
-  border-radius: 6px;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   text-decoration: line-through;
   cursor: default;
   overflow-wrap: anywhere;

@@ -1,20 +1,20 @@
 /* Shared chrome primitives: buttons, badges, overlays, and dialogs used across
    the TopBar, Command Palette, Validation Panel, Settings, and Empty states.
-   Color comes only from role variables so light/dark stay consistent. */
+   Color comes only from role variables; spacing/type/radius from scale tokens. */
 
 /* --- Buttons --- */
 .btn {
   font: inherit;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-12);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--bg-elev);
   color: var(--text);
   cursor: pointer;
-  line-height: 1.2;
+  line-height: var(--lh-tight);
 }
 .btn:hover:not(:disabled) {
   background: var(--bg-sunken);
@@ -40,20 +40,20 @@
   background: var(--bg-sunken);
 }
 .btn.icon {
-  padding: 6px 9px;
+  padding: var(--space-6) var(--space-8);
 }
 
 /* --- Badges --- */
 .badge {
   font: inherit;
-  font-size: 12px;
-  padding: 4px 10px;
+  font-size: var(--fs-xs);
+  padding: var(--space-4) var(--space-10);
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg-sunken);
   color: var(--text-dim);
   cursor: pointer;
-  line-height: 1.2;
+  line-height: var(--lh-tight);
 }
 .badge:hover {
   filter: brightness(1.04);
@@ -75,7 +75,7 @@
 .btn:focus-visible,
 .badge:focus-visible,
 .chrome-overlay :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -83,7 +83,7 @@
 .chrome-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--scrim);
   display: flex;
   align-items: flex-start;
   justify-content: center;

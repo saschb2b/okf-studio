@@ -6,7 +6,7 @@
   max-width: 92vw;
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   overflow: hidden;
   display: flex;
@@ -15,9 +15,9 @@
 
 .palette-input {
   font: inherit;
-  font-size: 15px;
+  font-size: var(--fs-sm);
   width: 100%;
-  padding: 14px 16px;
+  padding: var(--space-16);
   border: 0;
   border-bottom: 1px solid var(--border);
   background: transparent;
@@ -33,7 +33,7 @@
 .palette-list {
   list-style: none;
   margin: 0;
-  padding: 6px;
+  padding: var(--space-6);
   max-height: 50vh;
   overflow: auto;
 }
@@ -42,9 +42,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .palette-item.active {
@@ -53,7 +53,7 @@
 }
 
 .palette-empty {
-  padding: 14px 10px;
+  padding: var(--space-16) var(--space-10);
   text-align: center;
 }
 
@@ -66,9 +66,9 @@
 .palette-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
 }
 .palette-item.active .palette-meta {
@@ -77,13 +77,13 @@
 }
 
 .palette-type {
-  padding: 2px 7px;
+  padding: var(--space-2) var(--space-8);
   border-radius: 999px;
   background: var(--bg-sunken);
   color: var(--text-dim);
 }
 .palette-item.active .palette-type {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--accent-contrast) 22%, transparent);
   color: var(--accent-contrast);
 }
 
@@ -98,9 +98,9 @@
 
 .palette-foot {
   display: flex;
-  gap: 16px;
-  padding: 8px 14px;
+  gap: var(--space-16);
+  padding: var(--space-8) var(--space-16);
   border-top: 1px solid var(--border);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   background: var(--bg-sunken);
 }

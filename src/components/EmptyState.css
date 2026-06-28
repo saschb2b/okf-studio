@@ -7,8 +7,8 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
-  padding: 40px;
+  gap: var(--space-12);
+  padding: var(--space-40);
   color: var(--text-dim);
 }
 
@@ -27,8 +27,8 @@
 .empty code {
   font-family: var(--mono);
   font-size: 0.9em;
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 1px var(--space-4);
+  border-radius: var(--radius-sm);
   background: var(--bg-sunken);
   color: var(--text);
 }
@@ -38,31 +38,31 @@
   max-width: 50ch;
   color: var(--error);
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   word-break: break-word;
 }
 
 .empty-path {
   margin: 0;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   max-width: 60ch;
   word-break: break-all;
 }
 
 /* Hero (first run) */
 .hero-title {
-  font-size: 34px;
+  font-size: var(--fs-xl);
   letter-spacing: -0.01em;
 }
 .hero-tagline {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--fs-md);
   max-width: 40ch;
 }
 .btn.lg {
-  padding: 10px 18px;
-  font-size: 15px;
+  padding: var(--space-10) var(--space-20);
+  font-size: var(--fs-sm);
 }
 
 /* Spinner */

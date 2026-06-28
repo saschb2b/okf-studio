@@ -25,6 +25,22 @@ If anything below conflicts with the bundle, the bundle wins; update this file t
 3. **Record decisions in the bundle, not just the commit message.** A notable choice (a stack decision, a non-goal, a tradeoff) belongs in the relevant concept and a dated [`docs/log.md`](docs/log.md) entry.
 4. **Leave it conformant.** Follow the checklist in [Keep the `docs/` bundle in sync](#keep-the-docs-bundle-in-sync-it-is-an-okf-v01-bundle) below and run `node scripts/okf-validate.mjs docs` (0 errors) before finishing.
 
+## Reviewing your own work (be the critic, not the cheerleader)
+
+Default stance: **assume the first attempt is mediocre** — code and UI both regress to the mean of training data — until proven otherwise against explicit criteria. The job of review is to find what is wrong, not to confirm what is right. A first-pass review that finds nothing is itself suspect; scan again.
+
+1. **No vibe sign-offs.** "Looks clean / good / modern / polished / production-ready" is banned as evidence. "Clean" is a conclusion earned *after* a scan, never a first impression. Every claim about the UI must cite either a specific check that passed or a screenshot examined against named criteria.
+2. **Run the skills, and treat their findings as a gate.** Before calling any UI change done:
+   - **`visual-consistency`** — scan the changed/rendered surface against its catalog: spacing on a 4/8 scale via tokens, a bounded type scale with paired line-heights, alignment, repeated-element consistency (button size, radius, elevation), focus rings, touch targets, overflow, tables. Read the catalog first.
+   - **`theme-colors`** — no hex/`rgba()`/`hsl()` literals in components; every color from a token. Literals live only in the theme definition (`src/styles.css` palette, `src/theme.ts`).
+   - **`react-stinky`** — component/hook/TS smells and semantic markup (roles, labels, keyboard).
+   - **`no-slop`** — for any human-facing prose (UI copy, docs, commit messages).
+   Apply Safe findings; surface Judgment ones. Do not report "done" with an unaddressed Glaring finding.
+3. **Verify with evidence, at two widths.** Screenshot the rendered screen at narrow (~360px) and wide, and check the loading, empty, and error states — not just the happy path. A green build is not visual proof. Prefer the real screen over reasoning about the code. (Fast path: `npm run dev` + the `agent-browser` skill — see the visual-verification note.)
+4. **Measure against modern UX floors, not the training average.** Spacing from `--space-*` tokens (4/8); a bounded type scale (≤ ~7 sizes) with paired line-heights from tokens; WCAG AA contrast (4.5:1 text, 3:1 UI); one visible, consistent focus-ring token; touch targets ≥ 24px; `prefers-reduced-motion` respected; one radius and one elevation scale; empty/loading/error states actually designed. If you cannot point to the token or the criterion, it is not done.
+5. **Pressure-test design calls — including the user's.** Name the tradeoffs and risks before implementing a direction; do not just agree. Reasoned disagreement is more useful than assent.
+6. **Report the defects, not just the wins.** End a UI review with the findings list — each rated severity (Glaring/Untidy/Nitpick) and autonomy (Safe/Judgment) — what was fixed, and what remains. Honesty about what is still rough beats a clean-sounding summary.
+
 ## What to build (one paragraph)
 
 A Tauri 2.0 app whose **Rust core** (`src-tauri/`) does all filesystem work — [scan a folder for bundles](docs/architecture/bundle-detection.md), [parse each into concepts/links/backlinks](docs/architecture/okf-parsing.md), [validate](docs/features/validation.md), and [watch for changes](docs/features/live-reload.md) — exposing a small [command/event surface](docs/architecture/ipc-and-security.md) that hands the **web frontend** (`src/`) ready-to-render JSON ([data model](docs/architecture/data-model.md)). The frontend renders a [force-directed graph](docs/features/graph-view.md) + [concept reader](docs/features/concept-reader.md) with [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [theming](docs/ux/theming.md). Read-only, offline, scoped to the chosen folder.

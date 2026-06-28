@@ -8,12 +8,12 @@
   overflow: auto;
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: var(--space-20);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .settings-head {
@@ -23,32 +23,32 @@
 }
 .settings-head h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-lg);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-6);
 }
 .field.check {
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .field-label {
   font-weight: 600;
 }
 .field-hint {
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .field select,
 .field .num {
   font: inherit;
-  padding: 7px 8px;
-  border-radius: 6px;
+  padding: var(--space-8) var(--space-8);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
@@ -63,13 +63,13 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-4);
   max-height: 30vh;
   overflow: auto;
 }
 .recents-empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
 }
 
 .recent-item {
@@ -79,9 +79,9 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 7px 10px;
+  padding: var(--space-8) var(--space-10);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   cursor: pointer;
@@ -90,7 +90,7 @@
   background: var(--bg-sunken);
 }
 .recent-item:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -99,7 +99,7 @@
 }
 .recent-path {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -109,6 +109,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
 }

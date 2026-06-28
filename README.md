@@ -39,6 +39,18 @@ node scripts/okf-validate.mjs docs     # OKF conformance of the spec bundle
 | [`AGENTS.md`](AGENTS.md) | Architecture, build order, conventions. |
 | `scripts/okf-validate.mjs` | Zero-dependency OKF conformance checker. |
 
+## The spec lives in `docs/` — read it, keep it in sync
+
+`docs/` is an OKF bundle that specifies what OKF Viewer does and why, and the app renders it as the built-in sample. Treat it as the source of truth, for humans and agents:
+
+- **Read the relevant concept before changing behavior.** Start at [`docs/index.md`](docs/index.md).
+- **Update the spec in the same change.** Any new or changed feature, flow, or decision updates the matching concept(s), so the docs never drift from the code; on conflict, the bundle wins.
+- **Record decisions in the bundle**, with a dated entry in [`docs/log.md`](docs/log.md) — not only in the commit message.
+- **Validate before finishing:** `node scripts/okf-validate.mjs docs` must report 0 errors.
+
+See [`AGENTS.md`](AGENTS.md) for the full conformance checklist.
+
 ## License
 
 [MIT](LICENSE).
+

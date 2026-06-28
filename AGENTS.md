@@ -16,6 +16,15 @@ The app is built: a Tauri 2 core (`crates/okf-core` + `src-tauri/`) and a React 
 
 If anything below conflicts with the bundle, the bundle wins; update this file to match.
 
+## Always read `docs/`, and keep it in sync
+
+`docs/` is the source of truth — an OKF bundle that specifies what the app does and why, and which the app renders as its built-in sample. This is a standing rule for every change, by humans and agents alike:
+
+1. **Read the relevant concept(s) before you change behavior.** The reasoning for features, flows, and architecture lives in `docs/`, not in code comments. Start at [`docs/index.md`](docs/index.md) and follow the map above.
+2. **Update the spec in the same change.** Any new or changed feature, flow, or decision updates the matching concept(s) so the spec never drifts from the code. On conflict, the bundle wins — change the code or the bundle so they agree.
+3. **Record decisions in the bundle, not just the commit message.** A notable choice (a stack decision, a non-goal, a tradeoff) belongs in the relevant concept and a dated [`docs/log.md`](docs/log.md) entry.
+4. **Leave it conformant.** Follow the checklist in [Keep the `docs/` bundle in sync](#keep-the-docs-bundle-in-sync-it-is-an-okf-v01-bundle) below and run `node scripts/okf-validate.mjs docs` (0 errors) before finishing.
+
 ## What to build (one paragraph)
 
 A Tauri 2.0 app whose **Rust core** (`src-tauri/`) does all filesystem work — [scan a folder for bundles](docs/architecture/bundle-detection.md), [parse each into concepts/links/backlinks](docs/architecture/okf-parsing.md), [validate](docs/features/validation.md), and [watch for changes](docs/features/live-reload.md) — exposing a small [command/event surface](docs/architecture/ipc-and-security.md) that hands the **web frontend** (`src/`) ready-to-render JSON ([data model](docs/architecture/data-model.md)). The frontend renders a [force-directed graph](docs/features/graph-view.md) + [concept reader](docs/features/concept-reader.md) with [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [theming](docs/ux/theming.md). Read-only, offline, scoped to the chosen folder.

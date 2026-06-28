@@ -5,8 +5,10 @@
 //! producing the [`model`] types the Tauri layer serializes to the frontend.
 
 pub mod detect;
+pub mod frontmatter;
 pub mod graph;
 pub mod index_tree;
+pub mod links;
 pub mod logfile;
 pub mod model;
 pub mod parse;

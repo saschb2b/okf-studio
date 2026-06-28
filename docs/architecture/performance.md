@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Performance & Scale
 description: How the "Fast" principle is achieved end to end, from the bounded directory walk to interactive graph rendering.
 tags: [architecture, decision, performance, scale]
-timestamp: 2026-06-28T14:00:00Z
+timestamp: 2026-06-28T15:00:00Z
 ---
 
 # Decision
@@ -28,11 +28,12 @@ A folder may contain many bundles, but only the active one needs to be parsed. T
 
 # Graph rendering strategy
 
-The renderer scales with bundle size:
+The [graph](../features/graph-view.md) renders on a **canvas**, with node positions and the force simulation kept out of React's render path (a requestAnimationFrame loop mutates refs and repaints). Scale comes from:
 
-- **Small bundles:** SVG plus a simple force simulation — easy to style, accessible, and fast enough for hundreds of nodes.
-- **Large bundles:** a **canvas/WebGL** renderer with a **Barnes–Hut (quad-tree) force approximation**, reducing the force step from O(n²) toward O(n log n).
-- **Label culling at zoom:** labels fade and drop out at distance and reappear on zoom-in, hover, and selection, so text rendering never dominates the frame (see [Graph View](../features/graph-view.md)).
+- **Barnes–Hut quad-tree repulsion** — the many-body force is approximated per cell (accuracy set by a theta threshold), reducing the O(n²) step toward **O(n log n)**, so thousands of nodes stay interactive.
+- **Collision** — a short-range pass over the same spatial structure keeps nodes from overlapping without scanning every pair.
+- **A cooling schedule** — every force scales by a decaying `alpha`; the loop stops once the layout settles (an idle graph costs nothing), and a hard velocity cap keeps it numerically stable instead of exploding.
+- **Level-of-detail labels** — only dots when zoomed out; labels fade in past a threshold and for the selection/hover, so text never dominates the frame.
 
 # Client-side filtering and virtualized lists
 

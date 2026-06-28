@@ -13,7 +13,7 @@
 // React Compiler is enabled: no manual useMemo/useCallback/memo. Imperative
 // canvas/sim state lives in refs and effects.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { useApp } from "../store.tsx";
 import { buildEdges, isVisible, matchesQuery } from "../selectors.ts";
@@ -27,13 +27,30 @@ import {
   step,
   type SimEdge,
   type SimNode,
+  type SimParams,
 } from "../graph/forceSim.ts";
 import "./GraphView.css";
 
 const MIN_RADIUS = 5;
 const MAX_RADIUS = 22;
 const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on
-const LABEL_MIN_SCALE = 0.7; // hide free-floating labels below this zoom
+const LABEL_MIN_SCALE = 0.7; // base zoom below which free-floating labels hide
+
+// Adjustable display options (rendering only — not physics).
+interface Display {
+  nodeScale: number;
+  linkThickness: number;
+  linkOpacity: number;
+  labelScale: number; // >1 shows labels at lower zoom
+}
+const DEFAULT_DISPLAY: Display = {
+  nodeScale: 1,
+  linkThickness: 1,
+  linkOpacity: 0.5,
+  labelScale: 1,
+};
+// The force fields the controls panel exposes (the rest come from DEFAULT_PARAMS).
+type Forces = Pick<SimParams, "repulsion" | "springLength" | "springK" | "centering">;
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
 // Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
@@ -67,6 +84,16 @@ function radiusForDegree(degree: number, maxDegree: number): number {
 export function GraphView() {
   const { state, actions } = useApp();
 
+  // Controls (React state drives the UI; refs feed the imperative draw/sim).
+  const [forces, setForces] = useState<Forces>(() => ({
+    repulsion: DEFAULT_PARAMS.repulsion,
+    springLength: DEFAULT_PARAMS.springLength,
+    springK: DEFAULT_PARAMS.springK,
+    centering: DEFAULT_PARAMS.centering,
+  }));
+  const [display, setDisplay] = useState<Display>(DEFAULT_DISPLAY);
+  const [panelOpen, setPanelOpen] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -84,6 +111,9 @@ export function GraphView() {
   const rafRef = useRef<number | null>(null);
   const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
+  const paramsRef = useRef<SimParams>({ ...DEFAULT_PARAMS });
+  const displayRef = useRef<Display>(display);
+  const needsFitRef = useRef(true); // auto-fit once a fresh layout settles
 
   // Latest selection for the imperative draw, without re-binding the whole
   // render pipeline on every selection change.
@@ -108,6 +138,7 @@ export function GraphView() {
     const view = viewRef.current;
     const data = renderRef.current;
     const selected = selectedRef.current;
+    const disp = displayRef.current;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
@@ -126,7 +157,8 @@ export function GraphView() {
     const nodeStroke = cssVar("--bg") || "#fff";
 
     // Edges first, under the nodes.
-    ctx.lineWidth = 1 / view.scale;
+    const baseLW = disp.linkThickness / view.scale;
+    ctx.lineWidth = baseLW;
     for (const e of data.edges) {
       const a = data.nodes[e.a];
       const b = data.nodes[e.b];
@@ -137,16 +169,16 @@ export function GraphView() {
       } else if (incident) {
         ctx.globalAlpha = 0.9;
         ctx.strokeStyle = accent;
-        ctx.lineWidth = 1.6 / view.scale;
+        ctx.lineWidth = (disp.linkThickness * 1.6) / view.scale;
       } else {
-        ctx.globalAlpha = 0.4;
+        ctx.globalAlpha = disp.linkOpacity;
         ctx.strokeStyle = edgeColor;
       }
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
-      ctx.lineWidth = 1 / view.scale;
+      ctx.lineWidth = baseLW;
     }
     ctx.globalAlpha = 1;
 
@@ -159,9 +191,10 @@ export function GraphView() {
       const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
       const faded = meta.dim || dimmedByFocus;
 
+      const rr = node.r * disp.nodeScale;
       ctx.globalAlpha = faded ? 0.18 : 1;
       ctx.beginPath();
-      ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+      ctx.arc(node.x, node.y, rr, 0, Math.PI * 2);
       ctx.fillStyle = meta.color;
       ctx.fill();
       ctx.lineWidth = (isSel ? 3 : 1.2) / view.scale;
@@ -185,12 +218,12 @@ export function GraphView() {
       const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
 
       const alwaysShow = isSel || isNeighbor || isHover;
-      if (!alwaysShow && view.scale < LABEL_MIN_SCALE) continue;
+      if (!alwaysShow && view.scale < LABEL_MIN_SCALE / disp.labelScale) continue;
       if (!alwaysShow && meta.dim) continue;
 
       ctx.globalAlpha = meta.dim || dimmedByFocus ? 0.25 : 1;
       ctx.fillStyle = isSel ? textColor : isNeighbor || isHover ? textColor : textDim;
-      ctx.fillText(meta.title, node.x, node.y + node.r + 2 / view.scale);
+      ctx.fillText(meta.title, node.x, node.y + node.r * disp.nodeScale + 2 / view.scale);
     }
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -211,11 +244,12 @@ export function GraphView() {
       const data = renderRef.current;
       let alpha = Math.max(alphaRef.current, 1);
       for (let i = 0; i < STATIC_ITERATIONS && alpha > ALPHA_MIN; i++) {
-        step(data.nodes, data.edges, DEFAULT_PARAMS, alpha);
+        step(data.nodes, data.edges, paramsRef.current, alpha);
         alpha += (0 - alpha) * ALPHA_DECAY;
       }
       alphaRef.current = 0;
       syncPositions();
+      maybeFit();
       draw();
       return;
     }
@@ -223,18 +257,28 @@ export function GraphView() {
     const tick = () => {
       const data = renderRef.current;
       const alpha = alphaRef.current;
-      step(data.nodes, data.edges, DEFAULT_PARAMS, alpha);
+      step(data.nodes, data.edges, paramsRef.current, alpha);
       // Cool toward zero; once cold, stop the loop and rest.
       alphaRef.current = alpha + (0 - alpha) * ALPHA_DECAY;
       syncPositions();
-      draw();
       if (alphaRef.current < ALPHA_MIN) {
         rafRef.current = null; // settled — idle until the next interaction/data change
+        maybeFit();
+        draw();
         return;
       }
+      draw();
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
+  }
+
+  /** Frame the whole graph once, after a fresh layout has settled. */
+  function maybeFit() {
+    if (needsFitRef.current) {
+      needsFitRef.current = false;
+      fit();
+    }
   }
 
   /** Persist current node positions back into the id-keyed ref. */
@@ -346,6 +390,7 @@ export function GraphView() {
     // Warm up fully for a brand-new layout; a live reload with cached positions
     // only needs a gentle nudge so it does not visibly jump.
     alphaRef.current = spawnedNew ? 1 : 0.4;
+    needsFitRef.current = spawnedNew; // auto-fit a fresh layout, not a reload
     runLoop();
     // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
     // intentionally not in the dep list; this effect rebuilds only on data/filter
@@ -356,6 +401,22 @@ export function GraphView() {
   useEffect(() => {
     draw();
   }, [state.activeConceptId]);
+
+  // Live-tune forces from the controls panel: copy into the sim params ref and
+  // gently reheat so the layout adapts in place.
+  useEffect(() => {
+    paramsRef.current = { ...DEFAULT_PARAMS, ...forces };
+    alphaRef.current = Math.max(alphaRef.current, REHEAT_ALPHA);
+    runLoop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forces]);
+
+  // Display options affect only drawing; copy and repaint.
+  useEffect(() => {
+    displayRef.current = display;
+    draw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [display]);
 
   // ---- Sizing / HiDPI ------------------------------------------------------
 
@@ -410,7 +471,7 @@ export function GraphView() {
       const node = data.nodes[i];
       const dx = worldX - node.x;
       const dy = worldY - node.y;
-      const hit = node.r + 3; // a little slack for easier clicking
+      const hit = node.r * displayRef.current.nodeScale + 3; // slack for easier clicking
       if (dx * dx + dy * dy <= hit * hit) return i;
     }
     return null;
@@ -590,6 +651,57 @@ export function GraphView() {
         onPointerCancel={onPointerUp}
         onWheel={onWheel}
       />
+      <div className={`graph-panel${panelOpen ? " open" : ""}`}>
+        <button
+          type="button"
+          className="graph-panel-toggle"
+          aria-expanded={panelOpen}
+          onClick={() => setPanelOpen((o) => !o)}
+        >
+          {panelOpen ? "Hide controls" : "Controls"}
+        </button>
+        {panelOpen && (
+          <div className="graph-panel-body">
+            <fieldset>
+              <legend>Forces</legend>
+              <Slider label="Repel" min={0} max={3000} step={50} value={forces.repulsion}
+                onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))} />
+              <Slider label="Link distance" min={20} max={250} step={5} value={forces.springLength}
+                onChange={(v) => setForces((f) => ({ ...f, springLength: v }))} />
+              <Slider label="Link force" min={0} max={0.3} step={0.01} value={forces.springK}
+                onChange={(v) => setForces((f) => ({ ...f, springK: v }))} />
+              <Slider label="Center" min={0} max={0.2} step={0.005} value={forces.centering}
+                onChange={(v) => setForces((f) => ({ ...f, centering: v }))} />
+            </fieldset>
+            <fieldset>
+              <legend>Display</legend>
+              <Slider label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
+                onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))} />
+              <Slider label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
+                onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))} />
+              <Slider label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
+                onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))} />
+              <Slider label="Label fade" min={0.5} max={3} step={0.1} value={display.labelScale}
+                onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))} />
+            </fieldset>
+            <button
+              type="button"
+              className="graph-panel-reset"
+              onClick={() => {
+                setForces({
+                  repulsion: DEFAULT_PARAMS.repulsion,
+                  springLength: DEFAULT_PARAMS.springLength,
+                  springK: DEFAULT_PARAMS.springK,
+                  centering: DEFAULT_PARAMS.centering,
+                });
+                setDisplay(DEFAULT_DISPLAY);
+              }}
+            >
+              Reset
+            </button>
+          </div>
+        )}
+      </div>
       <div className="graph-controls">
         <button type="button" className="graph-btn" aria-label="Zoom in" onClick={() => zoomBy(1.2)}>
           +
@@ -607,5 +719,35 @@ export function GraphView() {
         </button>
       </div>
     </div>
+  );
+}
+
+function Slider({
+  label,
+  min,
+  max,
+  step,
+  value,
+  onChange,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="graph-slider">
+      <span className="graph-slider-label">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </label>
   );
 }

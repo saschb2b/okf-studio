@@ -1,11 +1,12 @@
 //! Tauri layer: thin command/event wrappers over `okf-core`. The frontend never
 //! touches the filesystem; it calls these commands and listens for events.
-//! TODO(src-tauri agent): add pick_folder helpers as needed, file watching
-//! (start_watch/stop_watch) via `notify` emitting `bundle-changed`, and
-//! `scan-progress` events. See docs/architecture/ipc-and-security.md.
+
+mod watch;
 
 use okf_core::{Bundle, BundleRoot};
 use std::path::Path;
+use tauri::{AppHandle, Manager, State};
+use watch::WatchState;
 
 #[tauri::command]
 fn scan_bundles(folder: String) -> Vec<BundleRoot> {
@@ -17,13 +18,35 @@ fn read_bundle(root: String) -> Bundle {
     okf_core::read_bundle(Path::new(&root))
 }
 
+/// Begin watching `folder` recursively for filesystem changes, emitting a
+/// debounced `bundle-changed` event on each burst. Replaces any active watch.
+#[tauri::command]
+fn start_watch(app: AppHandle, state: State<'_, WatchState>, folder: String) {
+    watch::start(app, state.inner(), folder);
+}
+
+/// Stop the active watch, if any.
+#[tauri::command]
+fn stop_watch(state: State<'_, WatchState>) {
+    watch::stop(state.inner());
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![scan_bundles, read_bundle])
+        .setup(|app| {
+            app.manage(WatchState::default());
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            scan_bundles,
+            read_bundle,
+            start_watch,
+            stop_watch
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

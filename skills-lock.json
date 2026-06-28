@@ -7,6 +7,18 @@
       "skillPath": "skills/productivity/autopilot/SKILL.md",
       "computedHash": "9900d7f6426fe60c3a007eab206e85830be13fad5d3b30de65f256f65f494683"
     },
+    "javascript-ecosystem": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/javascript-ecosystem/SKILL.md",
+      "computedHash": "5fcf5ea1a521c8cf811d2b5773d71cc567e4b0eb8fa338650ba06284c0b51359"
+    },
+    "no-slop": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/no-slop/SKILL.md",
+      "computedHash": "25f3d059b8470a0dc12d54ecd2404d2697208fa68a64213ccfeea77183a2b555"
+    },
     "odsf": {
       "source": "saschb2b/skills",
       "sourceType": "github",
@@ -18,6 +30,30 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/okf/SKILL.md",
       "computedHash": "c0de39845edf82b61c32e5a04c73a35e8a3446f17c4b6674532e89b051cbaccb"
+    },
+    "react-compiler": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/react-compiler/SKILL.md",
+      "computedHash": "48621bb09355cfac1f1cd966500dfce600ed96a6248bc911de9df4508ec8692d"
+    },
+    "react-stinky": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/react-stinky/SKILL.md",
+      "computedHash": "ac41d5d30ed860e0025780a0a469ee66e6033d964114ff848648a63bb680e690"
+    },
+    "theme-colors": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/theme-colors/SKILL.md",
+      "computedHash": "5e48a76b6cb6fd39551f3f2faa4ca24562034898efb8b66e9ca03b6ead8dc90c"
+    },
+    "visual-consistency": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/visual-consistency/SKILL.md",
+      "computedHash": "47bec382b97713e6fddb4d2a7ea2e1548b682c1fda6c0caff66341c1632ef6ac"
     }
   }
 }

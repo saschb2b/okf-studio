@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-28T00:00:00Z
+timestamp: 2026-06-28T13:00:00Z
 ---
 
 # What it does
@@ -26,5 +26,5 @@ The center of the workspace renders the active bundle as an interactive **force-
 # Implementation notes
 
 - Graph data (nodes, edges, backlinks) is computed in the [Rust core](../architecture/okf-parsing.md) from the [data model](../architecture/data-model.md) and handed to the frontend as JSON.
-- The layout/render runs in the frontend. For hundreds of nodes a simple force simulation suffices; for larger bundles, prefer a canvas/WebGL renderer and a quad-tree (Barnes–Hut) force approximation to honor the [fast principle](../product/principles.md).
+- The layout/render runs in the frontend. For hundreds of nodes a simple force simulation suffices; for larger bundles, prefer a canvas/WebGL renderer and a quad-tree (Barnes–Hut) force approximation to honor the [fast principle](../product/principles.md) — see [Performance & Scale](../architecture/performance.md) for the full rendering strategy.
 - Broken cross-links simply do not produce edges — they are [tolerated](validation.md), not errors.

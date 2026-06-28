@@ -1,0 +1,95 @@
+/* Shared chrome primitives: buttons, badges, overlays, and dialogs used across
+   the TopBar, Command Palette, Validation Panel, Settings, and Empty states.
+   Color comes only from role variables so light/dark stay consistent. */
+
+/* --- Buttons --- */
+.btn {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.2;
+}
+.btn:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn.primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  background: var(--accent);
+}
+.btn.ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.btn.ghost:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+.btn.icon {
+  padding: 6px 9px;
+}
+
+/* --- Badges --- */
+.badge {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1.2;
+}
+.badge:hover {
+  filter: brightness(1.04);
+}
+.badge.ok {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.badge.warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.badge.error {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* Shared focus ring for every interactive chrome element. */
+.btn:focus-visible,
+.badge:focus-visible,
+.chrome-overlay :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* --- Overlays (modal scrim) --- */
+.chrome-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 50;
+}
+
+.muted {
+  color: var(--text-dim);
+}

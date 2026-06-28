@@ -1,0 +1,148 @@
+/* Validation panel: docked on the right, below the top bar. */
+
+.panel {
+  position: fixed;
+  top: 49px;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 90vw;
+  background: var(--bg-elev);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.vp-body {
+  overflow: auto;
+  padding: 8px 12px 16px;
+}
+
+.vp-group + .vp-group {
+  margin-top: 16px;
+}
+
+.vp-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.vp-group-head.error {
+  color: var(--error);
+}
+.vp-group-head.warning {
+  color: var(--warn);
+}
+
+.vp-count {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+
+.vp-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vp-issue {
+  border-left: 3px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background: var(--bg-sunken);
+}
+.vp-issue.error {
+  border-left-color: var(--error);
+}
+.vp-issue.warning {
+  border-left-color: var(--warn);
+}
+
+.vp-issue-body {
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.vp-issue-body.clickable {
+  cursor: pointer;
+}
+.vp-issue-body.clickable:hover {
+  background: var(--bg);
+}
+.vp-issue-body:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.vp-lvl {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+.vp-lvl.error {
+  color: var(--error);
+}
+.vp-lvl.warning {
+  color: var(--warn);
+}
+
+.vp-msg {
+  flex: 1 1 auto;
+  min-width: 60%;
+}
+
+.vp-target {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+
+.vp-conformant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 14px;
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.vp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.vp-dot.ok {
+  background: var(--ok);
+}

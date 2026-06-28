@@ -1,0 +1,70 @@
+// Type filters (the legend). Lists every `type` present in the bundle with its
+// palette color swatch and a count. Clicking a type toggles it in/out of view;
+// hidden types render struck/greyed. A "Show all" affordance restores them when
+// any are hidden. The type list is derived from the bundle — never hard-coded.
+// See docs/features/search-and-filter.md.
+
+import { useApp } from "../../store.tsx";
+import { distinctTypes } from "../../selectors.ts";
+import { buildTypePalette, resolveDark } from "../../theme.ts";
+
+export function TypeFilters() {
+  const { state, actions } = useApp();
+  const bundle = state.bundle;
+  if (!bundle) return null;
+
+  const types = distinctTypes(bundle);
+  if (types.length === 0) return null;
+
+  const dark = resolveDark(state.settings.theme);
+  const palette = buildTypePalette(types, dark);
+
+  // Count concepts per type for the legend.
+  const counts = new Map<string, number>();
+  for (const c of bundle.concepts) {
+    counts.set(c.type, (counts.get(c.type) ?? 0) + 1);
+  }
+
+  const anyHidden = state.hiddenTypes.length > 0;
+
+  return (
+    <section className="sb-section" aria-label="Type filters">
+      <div className="sb-section-head">
+        <h2 className="sb-section-title">Types</h2>
+        {anyHidden && (
+          <button
+            type="button"
+            className="sb-link-btn"
+            onClick={() => actions.showAllTypes()}
+          >
+            Show all
+          </button>
+        )}
+      </div>
+      <ul className="sb-legend">
+        {types.map((t) => {
+          const hidden = state.hiddenTypes.includes(t);
+          return (
+            <li key={t}>
+              <button
+                type="button"
+                className={`sb-legend-item${hidden ? " is-hidden" : ""}`}
+                aria-pressed={!hidden}
+                onClick={() => actions.toggleType(t)}
+                title={hidden ? `Show ${t}` : `Hide ${t}`}
+              >
+                <span
+                  className="sb-swatch"
+                  style={{ background: palette.color(t) }}
+                  aria-hidden="true"
+                />
+                <span className="sb-legend-label">{t}</span>
+                <span className="sb-legend-count">{counts.get(t) ?? 0}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}

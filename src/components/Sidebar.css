@@ -1,0 +1,363 @@
+/* Sidebar styles — scoped to .sb. Color comes only from the global role vars
+   (--bg, --bg-elev, --bg-sunken, --text, --text-dim, --accent, --border); type
+   swatches/dots are inlined from the JS palette. No hardcoded hex here. */
+
+.sb {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px;
+  min-height: 0;
+}
+
+.sb-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sb-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sb-section-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.sb-link-btn {
+  font: inherit;
+  font-size: 11px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.sb-link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ---- Shared focus ring ---- */
+.sb button:focus-visible,
+.sb input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- Bundle browser ---- */
+.sb-bundle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sb-bundle {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.sb-bundle:hover {
+  background: var(--bg-sunken);
+}
+.sb-bundle.is-active {
+  border-color: var(--accent);
+  background: var(--bg-sunken);
+}
+
+.sb-bundle-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sb-bundle-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-bundle-ver {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.sb-bundle-path {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-bundle-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+.sb-bundle-count {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.sb-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.sb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.sb-dot-more {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: 1px;
+}
+
+/* ---- Search ---- */
+.sb-search-wrap {
+  position: relative;
+}
+.sb-search {
+  font: inherit;
+  width: 100%;
+  padding: 7px 28px 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+}
+.sb-search::placeholder {
+  color: var(--text-dim);
+}
+.sb-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sb-search-clear:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+/* ---- Type filters (legend) ---- */
+.sb-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sb-legend-item {
+  width: 100%;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.sb-legend-item:hover {
+  background: var(--bg-sunken);
+}
+.sb-legend-item.is-hidden {
+  color: var(--text-dim);
+}
+.sb-legend-item.is-hidden .sb-legend-label {
+  text-decoration: line-through;
+}
+.sb-legend-item.is-hidden .sb-swatch {
+  opacity: 0.35;
+}
+.sb-swatch {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+.sb-legend-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.sb-legend-count {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Tag browser ---- */
+.sb-tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.sb-tag {
+  font: inherit;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.sb-tag:hover {
+  background: var(--bg-sunken);
+}
+.sb-tag.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.sb-tag-count {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.sb-tag.is-active .sb-tag-count {
+  color: var(--accent-contrast);
+  opacity: 0.85;
+}
+
+/* ---- Index tree ---- */
+.sb-tree-section {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.sb-tree {
+  min-height: 0;
+}
+.sb-tree-group,
+.sb-tree-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sb-tree-sec {
+  margin-bottom: 2px;
+}
+.sb-tree-heading {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 6px 6px 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sb-tree-li {
+  margin: 0;
+}
+.sb-tree-item {
+  width: 100%;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.sb-tree-item:hover {
+  background: var(--bg-sunken);
+}
+.sb-tree-concept.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.sb-tree-concept.is-dimmed {
+  opacity: 0.4;
+}
+.sb-tree-dir {
+  font-weight: 500;
+}
+.sb-tree-dir.is-missing {
+  color: var(--text-dim);
+  cursor: default;
+}
+.sb-twisty {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1;
+}
+.sb-tree-concept.is-active .sb-twisty {
+  color: var(--accent-contrast);
+}
+.sb-leaf {
+  /* spacer to align concept labels under directory labels */
+}
+.sb-tree-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-synth {
+  flex: 0 0 auto;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+  opacity: 0.8;
+}

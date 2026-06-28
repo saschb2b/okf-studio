@@ -1,12 +1,591 @@
-// STUB — replaced by the Graph View agent with a canvas force-directed renderer.
+// Graph View: a canvas-based force-directed graph of the active bundle.
+//
+// Architecture (see docs/architecture/performance.md):
+//  - Node positions live in refs, never React state. A requestAnimationFrame
+//    loop steps the force simulation and redraws the canvas, so layout/paint
+//    stays out of React's render path. The loop stops when the layout settles.
+//  - Positions are keyed by concept id and reused across re-renders, so a live
+//    reload (data refresh of the same bundle) updates in place; only brand-new
+//    nodes get fresh positions, and the existing layout is preserved.
+//  - reduceMotion runs the simulation synchronously for a fixed iteration count
+//    and draws once (and on every interaction) instead of animating.
+//
+// React Compiler is enabled: no manual useMemo/useCallback/memo. Imperative
+// canvas/sim state lives in refs and effects.
+
+import { useEffect, useRef } from "react";
+import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { useApp } from "../store.tsx";
+import { buildEdges, isVisible, matchesQuery } from "../selectors.ts";
+import { buildTypePalette, resolveDark } from "../theme.ts";
+import type { Concept } from "../types.ts";
+import { DEFAULT_PARAMS, step, type SimEdge, type SimNode } from "../graph/forceSim.ts";
+import "./GraphView.css";
+
+const MIN_RADIUS = 5;
+const MAX_RADIUS = 22;
+const SETTLE_ENERGY = 0.05; // total kinetic energy below which the loop stops
+const STATIC_ITERATIONS = 320; // synchronous steps when reduceMotion is on
+const LABEL_MIN_SCALE = 0.7; // hide free-floating labels below this zoom
+const MIN_SCALE = 0.15;
+const MAX_SCALE = 4;
+// Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
+// that mirrors --ui in styles.css.
+const LABEL_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+interface View {
+  scale: number;
+  tx: number;
+  ty: number;
+}
+
+interface RenderData {
+  /** Visible nodes (those passing the type/tag filter), in draw order. */
+  nodes: SimNode[];
+  edges: SimEdge[];
+  /** Per-node concept metadata, index-aligned with `nodes`. */
+  meta: { id: string; title: string; type: string; color: string; dim: boolean }[];
+  /** id -> index into `nodes`/`meta`. */
+  indexById: Map<string, number>;
+  /** Adjacency by node index, for selection highlighting. */
+  neighbors: Set<number>[];
+}
+
+function radiusForDegree(degree: number, maxDegree: number): number {
+  if (maxDegree <= 0) return MIN_RADIUS;
+  const t = Math.sqrt(degree / maxDegree); // sqrt so hubs grow but not wildly
+  return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS);
+}
 
 export function GraphView() {
-  const { state } = useApp();
+  const { state, actions } = useApp();
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Imperative state kept out of React's render path.
+  const positionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const renderRef = useRef<RenderData>({
+    nodes: [],
+    edges: [],
+    meta: [],
+    indexById: new Map(),
+    neighbors: [],
+  });
+  const viewRef = useRef<View>({ scale: 1, tx: 0, ty: 0 });
+  const sizeRef = useRef<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 });
+  const rafRef = useRef<number | null>(null);
+  const hoverRef = useRef<number | null>(null);
+
+  // Latest selection for the imperative draw, without re-binding the whole
+  // render pipeline on every selection change.
+  const selectedRef = useRef<string | null>(state.activeConceptId);
+  selectedRef.current = state.activeConceptId;
+
+  // ---- Drawing -------------------------------------------------------------
+
+  function cssVar(name: string): string {
+    const el = containerRef.current;
+    if (!el) return "";
+    return getComputedStyle(el).getPropertyValue(name).trim();
+  }
+
+  function draw() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const { w, h, dpr } = sizeRef.current;
+    const view = viewRef.current;
+    const data = renderRef.current;
+    const selected = selectedRef.current;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(view.tx, view.ty);
+    ctx.scale(view.scale, view.scale);
+
+    const selIdx = selected != null ? (data.indexById.get(selected) ?? null) : null;
+    const hasFocus = selIdx != null;
+    const focusNeighbors = hasFocus ? data.neighbors[selIdx] : null;
+
+    const edgeColor = cssVar("--border") || "#888";
+    const accent = cssVar("--accent") || "#2f6df6";
+    const textColor = cssVar("--text") || "#111";
+    const textDim = cssVar("--text-dim") || "#777";
+    const nodeStroke = cssVar("--bg") || "#fff";
+
+    // Edges first, under the nodes.
+    ctx.lineWidth = 1 / view.scale;
+    for (const e of data.edges) {
+      const a = data.nodes[e.a];
+      const b = data.nodes[e.b];
+      const incident = hasFocus && (e.a === selIdx || e.b === selIdx);
+      if (hasFocus && !incident) {
+        ctx.globalAlpha = 0.06;
+        ctx.strokeStyle = edgeColor;
+      } else if (incident) {
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.6 / view.scale;
+      } else {
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = edgeColor;
+      }
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.lineWidth = 1 / view.scale;
+    }
+    ctx.globalAlpha = 1;
+
+    // Nodes.
+    for (let i = 0; i < data.nodes.length; i++) {
+      const node = data.nodes[i];
+      const meta = data.meta[i];
+      const isSel = i === selIdx;
+      const isNeighbor = focusNeighbors?.has(i) ?? false;
+      const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
+      const faded = meta.dim || dimmedByFocus;
+
+      ctx.globalAlpha = faded ? 0.18 : 1;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+      ctx.fillStyle = meta.color;
+      ctx.fill();
+      ctx.lineWidth = (isSel ? 3 : 1.2) / view.scale;
+      ctx.strokeStyle = isSel ? accent : nodeStroke;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Labels: cull when zoomed out unless the node is selected, a neighbor of
+    // the selection, or hovered.
+    const hover = hoverRef.current;
+    ctx.font = `${12 / view.scale}px ${LABEL_FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    for (let i = 0; i < data.nodes.length; i++) {
+      const node = data.nodes[i];
+      const meta = data.meta[i];
+      const isSel = i === selIdx;
+      const isNeighbor = focusNeighbors?.has(i) ?? false;
+      const isHover = i === hover;
+      const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
+
+      const alwaysShow = isSel || isNeighbor || isHover;
+      if (!alwaysShow && view.scale < LABEL_MIN_SCALE) continue;
+      if (!alwaysShow && meta.dim) continue;
+
+      ctx.globalAlpha = meta.dim || dimmedByFocus ? 0.25 : 1;
+      ctx.fillStyle = isSel ? textColor : isNeighbor || isHover ? textColor : textDim;
+      ctx.fillText(meta.title, node.x, node.y + node.r + 2 / view.scale);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ---- Animation loop ------------------------------------------------------
+
+  function stopLoop() {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }
+
+  function runLoop() {
+    if (state.settings.reduceMotion) {
+      // Synchronous settle, no animation.
+      const data = renderRef.current;
+      for (let i = 0; i < STATIC_ITERATIONS; i++) {
+        const energy = step(data.nodes, data.edges, DEFAULT_PARAMS);
+        if (energy < SETTLE_ENERGY) break;
+      }
+      syncPositions();
+      draw();
+      return;
+    }
+    stopLoop();
+    const tick = () => {
+      const data = renderRef.current;
+      const energy = step(data.nodes, data.edges, DEFAULT_PARAMS);
+      syncPositions();
+      draw();
+      if (energy < SETTLE_ENERGY) {
+        rafRef.current = null; // settled — idle until the next interaction/data change
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
+  /** Persist current node positions back into the id-keyed ref. */
+  function syncPositions() {
+    const data = renderRef.current;
+    const store = positionsRef.current;
+    for (const node of data.nodes) {
+      const p = store.get(node.id);
+      if (p) {
+        p.x = node.x;
+        p.y = node.y;
+      } else {
+        store.set(node.id, { x: node.x, y: node.y });
+      }
+    }
+  }
+
+  /** Kick the loop awake (e.g. after a drag) so it can re-settle. */
+  function reheat() {
+    if (state.settings.reduceMotion) {
+      draw();
+      return;
+    }
+    if (rafRef.current == null) runLoop();
+  }
+
+  // ---- Build render data from the bundle + filters -------------------------
+  // Re-run when the data set or the structural filters change. Text query only
+  // dims (handled by recomputing `meta.dim`), so it is included too — it is cheap.
+
+  const concepts = state.bundle?.concepts ?? null;
+  const filterKey = `${state.hiddenTypes.join(",")}|${state.activeTag ?? ""}`;
+
+  useEffect(() => {
+    const list = concepts ?? [];
+    const filter = { query: "", hiddenTypes: state.hiddenTypes, activeTag: state.activeTag };
+    const visible = list.filter((c) => isVisible(c, filter));
+
+    const dark = resolveDark(state.settings.theme);
+    const types = [...new Set(list.map((c) => c.type))];
+    const palette = buildTypePalette(types, dark);
+    const maxDegree = visible.reduce((m, c) => Math.max(m, c.degree), 0);
+
+    const store = positionsRef.current;
+    // Drop positions for nodes that no longer exist (keeps the map bounded).
+    const visibleIds = new Set(visible.map((c) => c.id));
+
+    const nodes: SimNode[] = [];
+    const meta: RenderData["meta"] = [];
+    const indexById = new Map<string, number>();
+    const radius = 220; // spawn ring for brand-new nodes
+
+    visible.forEach((c: Concept, i) => {
+      const existing = store.get(c.id);
+      let x: number;
+      let y: number;
+      if (existing) {
+        x = existing.x;
+        y = existing.y;
+      } else {
+        // Fresh node: seed on a ring so the sim has something to spread out.
+        const angle = (i / Math.max(1, visible.length)) * Math.PI * 2;
+        x = Math.cos(angle) * radius * (0.4 + Math.random() * 0.6);
+        y = Math.sin(angle) * radius * (0.4 + Math.random() * 0.6);
+        store.set(c.id, { x, y });
+      }
+      indexById.set(c.id, nodes.length);
+      nodes.push({
+        id: c.id,
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        r: radiusForDegree(c.degree, maxDegree),
+        fx: null,
+        fy: null,
+      });
+      meta.push({
+        id: c.id,
+        title: c.title,
+        type: c.type,
+        color: palette.color(c.type),
+        dim: !matchesQuery(c, state.query),
+      });
+    });
+
+    // Edges among visible nodes only (edges to hidden nodes are dropped).
+    const rawEdges = buildEdges(list);
+    const edges: SimEdge[] = [];
+    const neighbors: Set<number>[] = nodes.map(() => new Set<number>());
+    for (const e of rawEdges) {
+      const a = indexById.get(e.source);
+      const b = indexById.get(e.target);
+      if (a === undefined || b === undefined || a === b) continue;
+      edges.push({ a, b });
+      neighbors[a].add(b);
+      neighbors[b].add(a);
+    }
+
+    for (const id of store.keys()) {
+      if (!visibleIds.has(id)) store.delete(id);
+    }
+
+    renderRef.current = { nodes, edges, meta, indexById, neighbors };
+    runLoop();
+    // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
+    // intentionally not in the dep list; this effect rebuilds only on data/filter
+    // changes.
+  }, [concepts, filterKey, state.query, state.settings.theme, state.settings.reduceMotion]);
+
+  // Redraw (no resim) when only the selection changes.
+  useEffect(() => {
+    draw();
+  }, [state.activeConceptId]);
+
+  // ---- Sizing / HiDPI ------------------------------------------------------
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    const apply = () => {
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.floor(rect.width));
+      const h = Math.max(1, Math.floor(rect.height));
+      const first = sizeRef.current.w === 0 && sizeRef.current.h === 0;
+      sizeRef.current = { w, h, dpr };
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      if (first) {
+        // Center the origin on first measure.
+        viewRef.current.tx = w / 2;
+        viewRef.current.ty = h / 2;
+      }
+      draw();
+    };
+
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
+  // Stop the loop on unmount.
+  useEffect(() => stopLoop, []);
+
+  // ---- Coordinate helpers --------------------------------------------------
+
+  function toWorld(clientX: number, clientY: number): { x: number; y: number } {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
+    const view = viewRef.current;
+    return { x: (px - view.tx) / view.scale, y: (py - view.ty) / view.scale };
+  }
+
+  function hitTest(worldX: number, worldY: number): number | null {
+    const data = renderRef.current;
+    // Reverse order so topmost (last drawn) wins.
+    for (let i = data.nodes.length - 1; i >= 0; i--) {
+      const node = data.nodes[i];
+      const dx = worldX - node.x;
+      const dy = worldY - node.y;
+      const hit = node.r + 3; // a little slack for easier clicking
+      if (dx * dx + dy * dy <= hit * hit) return i;
+    }
+    return null;
+  }
+
+  // ---- Pointer interactions ------------------------------------------------
+
+  const dragRef = useRef<
+    | { kind: "pan"; startX: number; startY: number; tx0: number; ty0: number }
+    | { kind: "node"; index: number; moved: boolean }
+    | null
+  >(null);
+
+  function onPointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
+    if (e.button !== 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.setPointerCapture(e.pointerId);
+    const world = toWorld(e.clientX, e.clientY);
+    const idx = hitTest(world.x, world.y);
+    if (idx != null) {
+      const node = renderRef.current.nodes[idx];
+      node.fx = node.x;
+      node.fy = node.y;
+      dragRef.current = { kind: "node", index: idx, moved: false };
+    } else {
+      const view = viewRef.current;
+      dragRef.current = {
+        kind: "pan",
+        startX: e.clientX,
+        startY: e.clientY,
+        tx0: view.tx,
+        ty0: view.ty,
+      };
+    }
+  }
+
+  function onPointerMove(e: ReactPointerEvent<HTMLCanvasElement>) {
+    const drag = dragRef.current;
+    if (!drag) {
+      // Hover handling for labels.
+      const world = toWorld(e.clientX, e.clientY);
+      const idx = hitTest(world.x, world.y);
+      if (idx !== hoverRef.current) {
+        hoverRef.current = idx;
+        const canvas = canvasRef.current;
+        if (canvas) canvas.style.cursor = idx != null ? "pointer" : "grab";
+        if (rafRef.current == null) draw();
+      }
+      return;
+    }
+    if (drag.kind === "pan") {
+      const view = viewRef.current;
+      view.tx = drag.tx0 + (e.clientX - drag.startX);
+      view.ty = drag.ty0 + (e.clientY - drag.startY);
+      draw();
+    } else {
+      const world = toWorld(e.clientX, e.clientY);
+      const node = renderRef.current.nodes[drag.index];
+      node.fx = world.x;
+      node.fy = world.y;
+      node.x = world.x;
+      node.y = world.y;
+      drag.moved = true;
+      reheat();
+    }
+  }
+
+  function onPointerUp(e: ReactPointerEvent<HTMLCanvasElement>) {
+    const drag = dragRef.current;
+    const canvas = canvasRef.current;
+    if (canvas?.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    dragRef.current = null;
+    if (!drag) return;
+    if (drag.kind === "node") {
+      const node = renderRef.current.nodes[drag.index];
+      // Release the pin so the node rejoins the simulation.
+      node.fx = null;
+      node.fy = null;
+      if (!drag.moved) {
+        actions.selectConcept(node.id);
+      } else {
+        reheat();
+      }
+    }
+  }
+
+  function onWheel(e: ReactWheelEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    const view = viewRef.current;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const factor = Math.exp(-e.deltaY * 0.0015);
+    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, view.scale * factor));
+    // Zoom around the cursor: keep the world point under the cursor fixed.
+    const wx = (px - view.tx) / view.scale;
+    const wy = (py - view.ty) / view.scale;
+    view.scale = next;
+    view.tx = px - wx * next;
+    view.ty = py - wy * next;
+    draw();
+  }
+
+  // ---- Overlay controls ----------------------------------------------------
+
+  function zoomBy(factor: number) {
+    const view = viewRef.current;
+    const { w, h } = sizeRef.current;
+    const cx = w / 2;
+    const cy = h / 2;
+    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, view.scale * factor));
+    const wx = (cx - view.tx) / view.scale;
+    const wy = (cy - view.ty) / view.scale;
+    view.scale = next;
+    view.tx = cx - wx * next;
+    view.ty = cy - wy * next;
+    draw();
+  }
+
+  function fit() {
+    const data = renderRef.current;
+    const { w, h } = sizeRef.current;
+    if (data.nodes.length === 0 || w === 0 || h === 0) return;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const n of data.nodes) {
+      minX = Math.min(minX, n.x - n.r);
+      minY = Math.min(minY, n.y - n.r);
+      maxX = Math.max(maxX, n.x + n.r);
+      maxY = Math.max(maxY, n.y + n.r);
+    }
+    const pad = 40;
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+    const scale = Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh);
+    const view = viewRef.current;
+    view.scale = Math.max(MIN_SCALE, scale);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    view.tx = w / 2 - cx * view.scale;
+    view.ty = h / 2 - cy * view.scale;
+    draw();
+  }
+
+  // ---- Render --------------------------------------------------------------
+
+  const nodeCount = concepts?.length ?? 0;
+  const edgeCount = concepts ? buildEdges(concepts).length : 0;
+  const ariaLabel = `Concept graph: ${nodeCount} node${nodeCount === 1 ? "" : "s"}, ${edgeCount} link${edgeCount === 1 ? "" : "s"}`;
+
+  if (!state.bundle || nodeCount === 0) {
+    return (
+      <div className="graph-view" ref={containerRef}>
+        <div className="graph-empty">
+          <p>No concepts to graph</p>
+          <small>Open a bundle to see its relationship graph.</small>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="graph-placeholder">
-      <p>Graph View</p>
-      <small>{state.bundle?.concepts.length ?? 0} concepts — canvas renderer pending</small>
+    <div className="graph-view" ref={containerRef}>
+      <canvas
+        ref={canvasRef}
+        className="graph-canvas"
+        role="img"
+        aria-label={ariaLabel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onWheel={onWheel}
+      />
+      <div className="graph-controls">
+        <button type="button" className="graph-btn" aria-label="Zoom in" onClick={() => zoomBy(1.2)}>
+          +
+        </button>
+        <button
+          type="button"
+          className="graph-btn"
+          aria-label="Zoom out"
+          onClick={() => zoomBy(1 / 1.2)}
+        >
+          &minus;
+        </button>
+        <button type="button" className="graph-btn graph-fit" aria-label="Fit graph to view" onClick={fit}>
+          Fit
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,89 @@
+/* Log View — co-located styles. Inherits the base .panel docking (fixed, right
+   edge). Colors come from role variables for light/dark parity. */
+
+.log-panel .log-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.log-empty {
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.log-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.log-date {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Rendered markdown change lines. */
+.log-body.markdown {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.log-body.markdown > :first-child {
+  margin-top: 0;
+}
+.log-body.markdown > :last-child {
+  margin-bottom: 0;
+}
+.log-body p {
+  margin: 0.4em 0;
+}
+.log-body ul,
+.log-body ol {
+  margin: 0.3em 0;
+  padding-left: 1.3em;
+}
+.log-body li {
+  margin: 0.15em 0;
+}
+.log-body a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.log-body a:hover {
+  text-decoration: underline;
+}
+.log-body code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--bg-sunken);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.log-body pre {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.log-body pre code {
+  background: none;
+  padding: 0;
+}

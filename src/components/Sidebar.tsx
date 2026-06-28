@@ -1,39 +1,47 @@
-// STUB — replaced by the Sidebar agent with bundle browser, index tree,
-// search box, and type/tag filters. Minimal functional baseline for now.
+// Left pane of the Browsing Layout. Composes the bundle switcher, the search box,
+// the type-filter legend, the tag browser, and the index tree. Renders nothing
+// until a bundle is loaded. See docs/ux/browsing-layout.md.
+
+import "./Sidebar.css";
 import { useApp } from "../store.tsx";
-import { filteredConceptIds } from "../selectors.ts";
+import { BundleBrowser } from "./sidebar/BundleBrowser.tsx";
+import { TypeFilters } from "./sidebar/TypeFilters.tsx";
+import { TagBrowser } from "./sidebar/TagBrowser.tsx";
+import { IndexTree } from "./sidebar/IndexTree.tsx";
 
 export function Sidebar() {
   const { state, actions } = useApp();
   if (!state.bundle) return null;
-  const visible = filteredConceptIds(state.bundle, {
-    query: state.query,
-    hiddenTypes: state.hiddenTypes,
-    activeTag: state.activeTag,
-  });
 
   return (
-    <div className="sidebar-inner">
-      <input
-        data-search
-        className="search"
-        placeholder="Search…"
-        value={state.query}
-        onChange={(e) => actions.setQuery(e.target.value)}
-      />
-      <ul className="concept-list">
-        {state.bundle.concepts
-          .filter((c) => visible.has(c.id))
-          .map((c) => (
-            <li
-              key={c.id}
-              className={c.id === state.activeConceptId ? "active" : ""}
-              onClick={() => actions.selectConcept(c.id)}
-            >
-              {c.title}
-            </li>
-          ))}
-      </ul>
-    </div>
+    <nav className="sb" aria-label="Bundle navigation">
+      <BundleBrowser />
+
+      <div className="sb-search-wrap">
+        <input
+          data-search
+          type="search"
+          className="sb-search"
+          placeholder="Search concepts…   /"
+          aria-label="Search concepts"
+          value={state.query}
+          onChange={(e) => actions.setQuery(e.target.value)}
+        />
+        {state.query && (
+          <button
+            type="button"
+            className="sb-search-clear"
+            aria-label="Clear search"
+            onClick={() => actions.setQuery("")}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      <TypeFilters />
+      <TagBrowser />
+      <IndexTree />
+    </nav>
   );
 }

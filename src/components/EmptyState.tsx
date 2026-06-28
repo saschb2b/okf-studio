@@ -1,36 +1,63 @@
-// STUB — the empty/error/loading states agent expands these (no-bundles-found,
-// permission denied, etc.). See docs/ux/empty-and-error-states.md.
+// Empty / loading / error states for the workspace area. Report, never refuse:
+// every state explains what happened and offers a way forward.
+// See docs/ux/empty-and-error-states.md.
+
 import { useApp } from "../store.tsx";
+import "./chrome.css";
+import "./EmptyState.css";
 
 export function EmptyState() {
   const { state, actions } = useApp();
 
-  if (state.loading) return <div className="empty">Scanning…</div>;
-  if (state.error)
+  // Scanning — a cancelable walk; the app stays responsive.
+  if (state.loading) {
     return (
-      <div className="empty">
-        <p className="err">{state.error}</p>
-        <button className="btn" onClick={() => void actions.openFolder()}>
+      <div className="empty" role="status" aria-live="polite">
+        <span className="spinner" aria-hidden="true" />
+        <p className="empty-line">Scanning…</p>
+      </div>
+    );
+  }
+
+  // Failure — permission denied, path gone, or an unreadable folder.
+  if (state.error) {
+    return (
+      <div className="empty" role="alert">
+        <h2>Couldn’t open that folder</h2>
+        <p className="empty-err">{state.error}</p>
+        <button className="btn primary" onClick={() => void actions.openFolder()}>
           Try another folder
         </button>
       </div>
     );
-  if (state.folder && state.bundles.length === 0)
+  }
+
+  // A folder was chosen, but no OKF bundle was detected inside it.
+  if (state.folder && state.bundles.length === 0) {
     return (
       <div className="empty">
         <h2>No OKF bundles found</h2>
-        <p>An OKF bundle is a folder of markdown files, each with a <code>type</code> in its frontmatter.</p>
-        <button className="btn" onClick={() => void actions.openFolder()}>
+        <p className="empty-line">
+          An OKF bundle is a directory of <code>.md</code> concept files, each
+          with a non-empty <code>type</code> in its YAML frontmatter. Point the
+          viewer at a folder that contains one.
+        </p>
+        <p className="empty-path muted">{state.folder}</p>
+        <button className="btn primary" onClick={() => void actions.openFolder()}>
           Open another folder
         </button>
       </div>
     );
+  }
 
+  // First run — nothing open yet.
   return (
-    <div className="empty">
-      <h1>OKF Viewer</h1>
-      <p>Point it at a folder. Read your knowledge as a graph.</p>
-      <button className="btn primary" onClick={() => void actions.openFolder()}>
+    <div className="empty hero">
+      <h1 className="hero-title">OKF Viewer</h1>
+      <p className="hero-tagline">
+        Point it at a folder. Read your knowledge as a graph.
+      </p>
+      <button className="btn primary lg" onClick={() => void actions.openFolder()}>
         Open Folder…
       </button>
     </div>

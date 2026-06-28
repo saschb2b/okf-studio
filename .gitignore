@@ -15,3 +15,6 @@ target/
 .idea/
 .DS_Store
 *.log
+
+# Tauri generated
+/src-tauri/gen/

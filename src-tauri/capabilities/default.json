@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "OKF Viewer least-privilege capabilities: dialog (folder picker), store (settings/recent), opener (resource URLs in the OS browser). No network, no webview filesystem access — the Rust core does all reads.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "store:default",
+    "opener:default"
+  ]
+}

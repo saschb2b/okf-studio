@@ -40,7 +40,8 @@ export function App() {
       {state.panels.log && <LogView />}
       {state.panels.validation && <ValidationPanel />}
       {state.palette && <CommandPalette />}
-      {state.settingsOpen && <Settings />}
+      {/* Settings renders always; its Base UI Dialog controls visibility via open state. */}
+      <Settings />
     </div>
   );
 }

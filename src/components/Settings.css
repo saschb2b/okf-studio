@@ -1,29 +1,12 @@
-/* Settings dialog. Scrim is .chrome-overlay. */
+/* Settings dialog layout. Surface/backdrop come from baseui.css (.ui-dialog,
+   .ui-backdrop); form controls from Base UI styled in baseui.css. */
 
-.dialog {
-  margin-top: 12vh;
+.settings-dialog {
   width: 440px;
-  max-width: 92vw;
-  max-height: 76vh;
-  overflow: auto;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
   padding: var(--space-20);
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-}
-
-.settings-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.settings-head h2 {
-  margin: 0;
-  font-size: var(--fs-lg);
 }
 
 .field {
@@ -42,19 +25,6 @@
 }
 .field-hint {
   font-size: var(--fs-xs);
-}
-
-.field select,
-.field .num {
-  font: inherit;
-  padding: var(--space-8) var(--space-8);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-}
-.field .num {
-  width: 8ch;
 }
 
 .recents {
@@ -103,12 +73,4 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.settings-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-  margin-top: var(--space-4);
 }

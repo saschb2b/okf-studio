@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Frontend Architecture
 description: How the React + TypeScript frontend is organized as a thin client over the Rust command and event surface.
 tags: [architecture, decision, frontend, state, react, typescript]
-timestamp: 2026-06-28T14:00:00Z
+timestamp: 2026-06-28T18:00:00Z
 ---
 
 # Decision
@@ -39,6 +39,7 @@ The frontend is **React 19 with TypeScript**, built with Vite (see [Tech Stack](
 - **State** lives in a small client store — React Context with a reducer, or a minimal store such as Zustand — holding the active Concept ID and the loaded [`Bundle`](data-model.md) in one place, dependency-light per the bundle's ethos. Panes subscribe; none owns competing state.
 - **Derived values are auto-memoized.** With the **React Compiler** enabled, the type→color map, edge list, and tag index are computed in render and memoized by the compiler — no hand-written `useMemo`/`useCallback`/`React.memo`. Manual memoization is reserved only for the cases the compiler cannot see: referential identity handed to non-React consumers (the canvas renderer), genuinely expensive non-render work, and effect-dependency stability.
 - **React 19 idioms.** `ref` is a normal prop (no `forwardRef`); the core's command promises are read with `use()` where it fits rather than `useEffect` + state; the app mounts with `createRoot` from `react-dom/client`. With no server, RSC and Server Actions do not apply.
+- **Accessible components via Base UI.** Headless primitives from `@base-ui/react` (Dialog, Select, Checkbox, Number Field, Slider, Tooltip, Menu, …) provide focus management, keyboard navigation, and ARIA; their appearance is supplied entirely by our [design tokens](../ux/theming.md). This replaces hand-rolled focus traps and native form controls with one consistent, maintained foundation, migrated component-by-component.
 - **Typed end to end.** The [data model](data-model.md) interfaces are the shared TypeScript types: the JSON the [IPC surface](ipc-and-security.md) returns is typed from the command boundary through to the components.
 - **In-place patching** uses the Concept ID as the React `key`, so a `bundle-changed` update replaces one concept's data without remounting the graph — node components keep their identity and positions ([Live Reload](../features/live-reload.md)).
 

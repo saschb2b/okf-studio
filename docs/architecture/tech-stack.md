@@ -1,14 +1,14 @@
 ---
 type: Architecture Decision
 title: Tech Stack
-description: Tauri 2.0 with a Rust core and a web frontend — the chosen stack and the reasoning behind it.
-tags: [architecture, decision, tauri, rust]
-timestamp: 2026-06-28T12:00:00Z
+description: Tauri 2.0 with a Rust core and a React + TypeScript frontend — the chosen stack and the reasoning behind it.
+tags: [architecture, decision, tauri, rust, react, typescript]
+timestamp: 2026-06-28T14:00:00Z
 ---
 
 # Decision
 
-Build OKF Viewer on **[Tauri 2.0](../reference/tauri-2.md)**: a **Rust core** for filesystem work and a **web frontend** (HTML/CSS/JS) rendered in the platform's native webview.
+Build OKF Viewer on **[Tauri 2.0](../reference/tauri-2.md)**: a **Rust core** for filesystem work and a **React + TypeScript frontend** (built with Vite) rendered in the platform's native webview.
 
 # Responsibilities
 
@@ -24,11 +24,11 @@ Build OKF Viewer on **[Tauri 2.0](../reference/tauri-2.md)**: a **Rust core** fo
 
 See also: [Testing & Dogfooding](testing.md) for how the core and frontend are verified.
 
-# Frontend framework (recommended, not yet locked)
+# Frontend stack
 
-- A lightweight reactive framework — **Svelte** (or SolidJS) is preferred for small bundle size and speed; **React** is acceptable if the implementer prefers its ecosystem. How the frontend is organized as a thin client is detailed in [Frontend Architecture](frontend-architecture.md).
-- **Graph rendering:** start with SVG + a simple force simulation for small bundles; move to **canvas/WebGL** with a Barnes–Hut force approximation for large ones. A hand-rolled renderer keeps it dependency-light, mirroring the reference HTML visualizer; a library (e.g. a canvas force-graph) is acceptable if it stays offline.
-- **Markdown:** a small, well-audited parser, or a hand-rolled renderer for full control over intra-bundle [link resolution](okf-parsing.md).
+- **React 19 + TypeScript, built with Vite.** The frontend is a single-page app loaded in the webview. There is no server, so React Server Components and Server Actions do not apply — this is a client-only SPA. The **React Compiler** is enabled, so components are written without manual `useMemo`/`useCallback`/`React.memo` (lint with `eslint-plugin-react-hooks` v6+ at error before enabling it). How the frontend is organized as a thin client is detailed in [Frontend Architecture](frontend-architecture.md).
+- **Graph rendering:** start with SVG + a simple force simulation for small bundles; move to **canvas/WebGL** with a Barnes–Hut force approximation for large ones (see [Performance & Scale](performance.md)). The renderer is wrapped in a React component, but its canvas draw loop runs outside React's reconciler so high-frequency frames never trigger re-renders. A hand-rolled renderer keeps it dependency-light, mirroring the reference HTML visualizer; an offline-capable library (e.g. a canvas force-graph) is acceptable.
+- **Markdown:** a small, well-audited TypeScript parser (CommonMark), or a hand-rolled renderer, for full control over intra-bundle [link resolution](okf-parsing.md); rendered output is sanitized before display.
 
 # Packaging
 

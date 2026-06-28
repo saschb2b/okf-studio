@@ -25,10 +25,10 @@ A Tauri 2.0 app whose **Rust core** (`src-tauri/`) does all filesystem work — 
 1. **Prerequisites** (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): a stable **Rust** toolchain + **Node.js**. On Ubuntu also install `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`. On Windows: WebView2 runtime + MSVC build tools.
 2. **Scaffold Tauri 2.0** *without clobbering `docs/`*:
    ```bash
-   npm create tauri-app@latest        # choose the v2 template + a frontend (Svelte preferred)
+   npm create tauri-app@latest        # choose the v2 template + React + TypeScript (Vite)
    ```
    Generate into the repo so `docs/` and this file are preserved (scaffold in a temp dir and move `src/`, `src-tauri/`, configs in if needed). Keep `docs/` exactly where it is — it doubles as the built-in sample bundle (see Dogfood below).
-3. **Frontend framework:** Svelte or SolidJS preferred (small, fast); React acceptable. See [tech stack](docs/architecture/tech-stack.md).
+3. **Frontend stack:** React 19 + TypeScript, built with Vite; the React Compiler is enabled (no manual memoization). See [tech stack](docs/architecture/tech-stack.md).
 4. **Add plugins:** `tauri-plugin-dialog`, `tauri-plugin-fs` (read-only), `tauri-plugin-store`; file watching via the `notify` crate. Wire up the [commands & events](docs/architecture/ipc-and-security.md).
 5. **Capabilities:** grant least privilege in `src-tauri/capabilities/` — read-only `fs` scoped to the chosen folder, dialog open, store. **No network permission.**
 

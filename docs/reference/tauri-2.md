@@ -4,7 +4,7 @@ title: Tauri 2.0
 description: Key facts about Tauri 2.0 — architecture, plugins, the permissions model, and per-platform prerequisites — for building OKF Viewer.
 resource: https://tauri.app/
 tags: [reference, tauri, rust, external]
-timestamp: 2026-06-28T00:00:00Z
+timestamp: 2026-06-28T14:00:00Z
 ---
 
 # Summary
@@ -32,7 +32,7 @@ okf-viewer/
 
 # Tooling & commands
 
-- Scaffold: `npm create tauri-app@latest` (choose the v2 template + a frontend).
+- Scaffold: `npm create tauri-app@latest` (choose the v2 template + React + TypeScript).
 - Dev: `npm run tauri dev` (hot-reloads frontend, rebuilds Rust on change).
 - Build installers: `npm run tauri build` → Windows `.msi`/`.exe`, Linux `.deb`/AppImage.
 

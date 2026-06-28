@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Performance & Scale
 description: How the "Fast" principle is achieved end to end, from the bounded directory walk to interactive graph rendering.
 tags: [architecture, decision, performance, scale]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-06-28T14:00:00Z
 ---
 
 # Decision
@@ -36,7 +36,7 @@ The renderer scales with bundle size:
 
 # Client-side filtering and virtualized lists
 
-[Search and filter](../features/search-and-filter.md) operate **purely on the client** over the already-parsed [data model](data-model.md) — no round-trip to the core. Type toggles, text matching, and tag filters are in-memory operations over `concepts`, so results are instant. Sidebar lists (concepts, indexes, search results) are **virtualized**: only visible rows are realized in the DOM, keeping a large bundle's lists scrollable without layout cost.
+[Search and filter](../features/search-and-filter.md) operate **purely on the client** over the already-parsed [data model](data-model.md) — no round-trip to the core. Type toggles, text matching, and tag filters are in-memory operations over `concepts`, so results are instant. Sidebar lists (concepts, indexes, search results) are **virtualized**: only visible rows are realized in the DOM, keeping a large bundle's lists scrollable without layout cost. Re-renders are auto-memoized by the [React Compiler](frontend-architecture.md), so a filter change repaints only the rows that actually changed — no hand-tuned `useMemo`/`memo`.
 
 # Budget
 

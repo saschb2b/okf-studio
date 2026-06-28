@@ -1,9 +1,9 @@
 ---
 type: Architecture Decision
 title: Frontend Architecture
-description: How the web frontend is organized as a thin client over the Rust command and event surface.
-tags: [architecture, decision, frontend, state]
-timestamp: 2026-06-28T12:00:00Z
+description: How the React + TypeScript frontend is organized as a thin client over the Rust command and event surface.
+tags: [architecture, decision, frontend, state, react, typescript]
+timestamp: 2026-06-28T14:00:00Z
 ---
 
 # Decision
@@ -22,7 +22,7 @@ The core hands over `concepts` and dictates no presentation; the frontend **deri
 - The **edge list** — flattened from `concepts[].links` into `{source, target}` pairs for the graph.
 - The **tag index** — synthesized by inverting `concepts[].tags` into tag → concept lists, powering tag [filters](../features/search-and-filter.md).
 
-These are computed once per bundle load and memoized, not recomputed per render.
+These are pure functions of the bundle data, so they recompute only when the bundle changes, not on every render — the React Compiler handles that memoization (see below).
 
 # Component decomposition
 
@@ -32,6 +32,14 @@ Components mirror the three panes: a **sidebar** (indexes, concept list, search 
 
 When a `bundle-changed` event arrives ([Live Reload](../features/live-reload.md)), the frontend **patches state in place** rather than rebuilding the bundle from scratch. The changed concept's record is replaced, derived stores update for just the affected entries, and the graph keeps existing node positions — only affected nodes resettle, so the layout does not jump. Selection and scroll are retained when the active concept still exists.
 
-# Framework-agnostic
+# Built on React 19 + TypeScript
 
-This architecture — one source of truth, derived stores, three components, in-place patching — depends on no specific framework. **Svelte** or **SolidJS** is preferred for small bundle size and fine-grained reactivity; **React** is acceptable if the implementer prefers its ecosystem (see [Tech Stack](tech-stack.md)). The contract is the data shape and the [IPC surface](ipc-and-security.md), not the rendering library.
+The frontend is **React 19 with TypeScript**, built with Vite (see [Tech Stack](tech-stack.md)). The pieces above map onto React directly:
+
+- **State** lives in a small client store — React Context with a reducer, or a minimal store such as Zustand — holding the active Concept ID and the loaded [`Bundle`](data-model.md) in one place, dependency-light per the bundle's ethos. Panes subscribe; none owns competing state.
+- **Derived values are auto-memoized.** With the **React Compiler** enabled, the type→color map, edge list, and tag index are computed in render and memoized by the compiler — no hand-written `useMemo`/`useCallback`/`React.memo`. Manual memoization is reserved only for the cases the compiler cannot see: referential identity handed to non-React consumers (the canvas renderer), genuinely expensive non-render work, and effect-dependency stability.
+- **React 19 idioms.** `ref` is a normal prop (no `forwardRef`); the core's command promises are read with `use()` where it fits rather than `useEffect` + state; the app mounts with `createRoot` from `react-dom/client`. With no server, RSC and Server Actions do not apply.
+- **Typed end to end.** The [data model](data-model.md) interfaces are the shared TypeScript types: the JSON the [IPC surface](ipc-and-security.md) returns is typed from the command boundary through to the components.
+- **In-place patching** uses the Concept ID as the React `key`, so a `bundle-changed` update replaces one concept's data without remounting the graph — node components keep their identity and positions ([Live Reload](../features/live-reload.md)).
+
+The contract remains the data shape and the [IPC surface](ipc-and-security.md); React is how this app realizes it.

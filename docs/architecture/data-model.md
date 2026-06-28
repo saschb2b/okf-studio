@@ -3,12 +3,12 @@ type: Reference
 title: Data Model
 description: The Bundle, Concept, graph, index, and log shapes the Rust core computes and the frontend renders.
 tags: [architecture, data-model, schema]
-timestamp: 2026-06-28T13:00:00Z
+timestamp: 2026-06-28T14:00:00Z
 ---
 
 # Shapes
 
-The [Rust core](tech-stack.md) computes these from [parsing](okf-parsing.md) and serializes them across the [IPC boundary](ipc-and-security.md) as JSON. Illustrative TypeScript:
+The [Rust core](tech-stack.md) computes these from [parsing](okf-parsing.md) and serializes them across the [IPC boundary](ipc-and-security.md) as JSON. These are the shared TypeScript types — the [React + TypeScript frontend](frontend-architecture.md) consumes that JSON directly against them:
 
 ```ts
 interface Bundle {

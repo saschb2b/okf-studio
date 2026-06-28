@@ -272,9 +272,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  // Load persisted settings once.
+  // Load persisted settings once, and reopen the most recent folder if any
+  // (first-run.md: "can reopen the last one automatically").
   useEffect(() => {
     void ipc.loadSettings().then((s) => dispatch({ t: "settings", v: s }));
+    void ipc.recentFolders().then((folders) => {
+      if (folders.length > 0) void actions.openFolderPath(folders[0]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Apply theme; re-apply on OS scheme change when following the system.

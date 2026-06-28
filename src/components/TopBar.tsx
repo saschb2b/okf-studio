@@ -9,6 +9,12 @@ import "./chrome.css";
 import "./baseui.css";
 import "./TopBar.css";
 
+// Mac shows ⌘K; everything else shows Ctrl K. Guard for non-browser (test) envs.
+const isMac =
+  typeof navigator !== "undefined" &&
+  /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
+const searchHint = isMac ? "⌘K" : "Ctrl K";
+
 export function TopBar() {
   const { state, actions } = useApp();
 
@@ -108,6 +114,34 @@ export function TopBar() {
         </span>
 
         <div className="topbar-spacer" />
+
+        <Tooltip.Root>
+          <Tooltip.Trigger
+            render={
+              <Toolbar.Button
+                className="topbar-search"
+                aria-label="Search and commands"
+                aria-keyshortcuts="Control+K Meta+K"
+                onClick={() => actions.setPalette(true)}
+              >
+                <span className="topbar-search-icon" aria-hidden="true">
+                  ⌕
+                </span>
+                <span className="topbar-search-label">Search…</span>
+                <kbd className="topbar-search-kbd" aria-hidden="true">
+                  {searchHint}
+                </kbd>
+              </Toolbar.Button>
+            }
+          />
+          <Tooltip.Portal>
+            <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+              <Tooltip.Popup className="ui-tooltip">
+                Search and commands ({searchHint} or /)
+              </Tooltip.Popup>
+            </Tooltip.Positioner>
+          </Tooltip.Portal>
+        </Tooltip.Root>
 
         {state.bundle && (
           <Toolbar.Group className="topbar-actions">

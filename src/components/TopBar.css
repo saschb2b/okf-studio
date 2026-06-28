@@ -46,3 +46,45 @@
   background: var(--bg-sunken);
   color: var(--text);
 }
+
+/* Always-visible search affordance: looks like a search field, acts as a button
+   that opens the launcher. See docs/proposals/global-search.md. */
+.topbar-search {
+  font: inherit;
+  font-size: var(--fs-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 16rem;
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  cursor: text;
+  line-height: var(--lh-tight);
+}
+.topbar-search:hover {
+  background: var(--bg-elev);
+  border-color: var(--accent);
+}
+
+.topbar-search-icon {
+  font-size: var(--fs-md);
+  line-height: 1;
+}
+
+.topbar-search-label {
+  flex: 1;
+  text-align: left;
+}
+
+.topbar-search-kbd {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text-dim);
+}

@@ -1,13 +1,16 @@
-// Command Palette — Ctrl/Cmd+K. Jump to any concept by id, title, or type, and
-// run quick actions, keyboard-only. Filters over the already-parsed bundle, so
-// results are instant. See docs/features/command-palette.md.
+// Global Search Launcher — Ctrl/Cmd+K (or `/`, or the header search field).
+// A single launcher that jumps to any concept by id/title/type, searches the
+// full text of descriptions and bodies, surfaces recent concepts, and runs
+// quick actions — keyboard-only. Filters over the already-parsed bundle, so
+// results are instant. See docs/proposals/global-search.md and
+// docs/features/command-palette.md.
 //
 // Built on Base UI's Dialog (modal focus trap, Escape, backdrop, scroll-lock,
 // focus restore) wrapping an inline Autocomplete (arrow/typeahead navigation,
-// active-item ARIA, Enter-to-select). Appearance is our design tokens; the
-// overlay/shell come from `.ui-backdrop`/`.ui-dialog`, the inner look from the
-// `.palette*` classes. We keep our own fuzzy ranking and feed the result to
-// Autocomplete via `filteredItems`, so the established scoring/order survives.
+// active-item ARIA, Enter-to-select). Results are split into ordered groups
+// (Recent / Concepts / In text / Actions) via Autocomplete.Group +
+// Autocomplete.Collection; we keep our own fuzzy ranking and hand the grouped
+// result to Autocomplete via `filteredItems`, so the scoring/order survives.
 
 import { useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
@@ -31,9 +34,28 @@ interface ConceptItem {
   id: string;
   concept: Concept;
   score: number;
+  /** A highlighted snippet for "In text" hits; absent for plain title hits. */
+  snippet?: SnippetPart[];
 }
 
 type Item = ActionItem | ConceptItem;
+
+/** One group of results. `value` is the visible label (and groups Base UI). */
+interface Group {
+  value: string;
+  items: Item[];
+}
+
+/** A slice of snippet text; `match` parts are visually highlighted. */
+interface SnippetPart {
+  text: string;
+  match: boolean;
+}
+
+const RECENT_LIMIT = 5;
+const CONCEPT_LIMIT = 30;
+const TEXT_LIMIT = 20;
+const SNIPPET_PAD = 32;
 
 /**
  * Substring / subsequence match returning a rank score (higher is better), or
@@ -73,6 +95,29 @@ function scoreConcept(c: Concept, needle: string): number {
   );
 }
 
+/**
+ * Build a one-line highlighted snippet around the first occurrence of `needle`
+ * in `text`, or null if the (case-insensitive) substring isn't present. Newlines
+ * collapse to spaces so the snippet stays single-line.
+ */
+function buildSnippet(text: string, needle: string): SnippetPart[] | null {
+  const flat = text.replace(/\s+/g, " ").trim();
+  const idx = flat.toLowerCase().indexOf(needle.toLowerCase());
+  if (idx < 0) return null;
+
+  const start = Math.max(0, idx - SNIPPET_PAD);
+  const end = Math.min(flat.length, idx + needle.length + SNIPPET_PAD);
+  const parts: SnippetPart[] = [];
+  if (start > 0) parts.push({ text: "…", match: false });
+  if (idx > start) parts.push({ text: flat.slice(start, idx), match: false });
+  parts.push({ text: flat.slice(idx, idx + needle.length), match: true });
+  if (end > idx + needle.length) {
+    parts.push({ text: flat.slice(idx + needle.length, end), match: false });
+  }
+  if (end < flat.length) parts.push({ text: "…", match: false });
+  return parts;
+}
+
 /** Display label for an item — used by Autocomplete for ARIA/typeahead. */
 function itemLabel(item: Item): string {
   return item.kind === "concept" ? item.concept.title : item.label;
@@ -80,9 +125,9 @@ function itemLabel(item: Item): string {
 
 export function CommandPalette() {
   const { state, actions } = useApp();
-  // Controlled input value: we need the query to compute the ranked
-  // `filteredItems` array ourselves (Autocomplete's built-in collator filter
-  // can't reproduce our prefix/word-boundary/subsequence scoring).
+  // Controlled input value: we need the query to compute the ranked, grouped
+  // result set ourselves (Autocomplete's built-in collator filter can't
+  // reproduce our prefix/word-boundary/subsequence scoring or grouping).
   const [query, setQuery] = useState("");
 
   const close = () => actions.setPalette(false);
@@ -119,34 +164,78 @@ export function CommandPalette() {
   ];
 
   const concepts = state.bundle?.concepts ?? [];
-  const allConceptItems: ConceptItem[] = concepts.map((concept) => ({
-    kind: "concept" as const,
+  const byId = new Map(concepts.map((c) => [c.id, c] as const));
+
+  const conceptItem = (concept: Concept, score = 0): ConceptItem => ({
+    kind: "concept",
     id: concept.id,
     concept,
-    score: 0,
-  }));
+    score,
+  });
 
-  // The complete item set (concepts lead — the palette is primarily a
-  // navigator — then quick actions). Autocomplete uses this for typeahead/ARIA;
-  // the visible subset is the ranked `filteredItems` below.
-  const items: Item[] = [...allConceptItems, ...actionItems];
+  // Recent: distinct, most-recent-first concept ids the user viewed. `back` is
+  // chronological (oldest→newest prior view); the active concept is the latest.
+  // Derived from existing state — no store change. See proposal.
+  const recentItems: ConceptItem[] = [];
+  const seenRecent = new Set<string>();
+  const recentIds = [...state.back, state.activeConceptId].reverse();
+  for (const id of recentIds) {
+    if (!id || seenRecent.has(id)) continue;
+    const c = byId.get(id);
+    if (!c) continue;
+    seenRecent.add(id);
+    recentItems.push(conceptItem(c));
+    if (recentItems.length >= RECENT_LIMIT) break;
+  }
 
-  // Our own fuzzy ranking (prefix/word-boundary/subsequence over title/id/type).
   const needle = query.trim();
+
+  // Concepts: fuzzy/substring matches on title/id/type. Title/prefix hits rank
+  // first (handled by scoreConcept). Empty query shows Recent + Actions instead
+  // (the zero-query state), so this group is empty until the user types.
   const conceptHits: ConceptItem[] = needle
-    ? allConceptItems
-        .map((it) => ({ ...it, score: scoreConcept(it.concept, needle) }))
+    ? concepts
+        .map((c) => conceptItem(c, scoreConcept(c, needle)))
         .filter((it) => it.score >= 0)
         .sort(
           (a, b) =>
             b.score - a.score || a.concept.title.localeCompare(b.concept.title),
         )
-        .slice(0, 30)
-    : allConceptItems;
-  const actionHits = needle
+        .slice(0, CONCEPT_LIMIT)
+    : [];
+
+  // In text: concepts whose description or body contains the query and that
+  // aren't already a strong (Concepts-group) hit. Render a snippet around it.
+  const strongHits = new Set(conceptHits.map((it) => it.id));
+  const textHits: ConceptItem[] = needle
+    ? concepts
+        .filter((c) => !strongHits.has(c.id))
+        .map((c): ConceptItem | null => {
+          const snippet =
+            buildSnippet(c.description, needle) ?? buildSnippet(c.body, needle);
+          return snippet ? { ...conceptItem(c), snippet } : null;
+        })
+        .filter((it): it is ConceptItem => it !== null)
+        .slice(0, TEXT_LIMIT)
+    : [];
+
+  const actionHits: ActionItem[] = needle
     ? actionItems.filter((a) => scoreMatch(a.label, needle) >= 0)
     : actionItems;
-  const filteredItems: Item[] = [...conceptHits, ...actionHits];
+
+  // Group order: Recent (zero-query only) → Concepts → In text → Actions.
+  // Zero-query shows Recent + Actions (never a blank list).
+  const groups: Group[] = [];
+  if (!needle && recentItems.length) {
+    groups.push({ value: "Recent", items: recentItems });
+  }
+  if (conceptHits.length) groups.push({ value: "Concepts", items: conceptHits });
+  if (textHits.length) groups.push({ value: "In text", items: textHits });
+  if (actionHits.length) groups.push({ value: "Actions", items: actionHits });
+
+  // Flat item set for Autocomplete typeahead/ARIA; the visible grouping comes
+  // from `filteredItems` below.
+  const items: Item[] = groups.flatMap((g) => g.items);
 
   function activate(item: Item) {
     if (item.kind === "concept") {
@@ -170,7 +259,7 @@ export function CommandPalette() {
         <Dialog.Backdrop className="ui-backdrop" />
         <Dialog.Popup
           className="ui-dialog palette-dialog"
-          aria-label="Command palette"
+          aria-label="Search and commands"
         >
           <Autocomplete.Root
             // Inline: render the list directly in the dialog, no nested popup.
@@ -178,7 +267,7 @@ export function CommandPalette() {
             inline
             open={state.palette}
             items={items}
-            filteredItems={filteredItems}
+            filteredItems={groups}
             value={query}
             onValueChange={(value) => setQuery(value)}
             itemToStringValue={itemLabel}
@@ -188,38 +277,41 @@ export function CommandPalette() {
               // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               className="palette-input"
-              placeholder="Jump to a concept, or run a command…"
+              placeholder="Search concepts and text, or run a command…"
             />
 
             <Autocomplete.List className="palette-list" aria-label="Results">
-              {(item: Item) => (
-                <Autocomplete.Item
-                  key={`${item.kind}:${item.id}`}
-                  value={item}
-                  className="palette-item"
-                  onClick={() => activate(item)}
+              {(group: Group) => (
+                <Autocomplete.Group
+                  key={group.value}
+                  items={group.items}
+                  className="palette-group"
                 >
-                  {item.kind === "concept" ? (
-                    <>
-                      <span className="palette-label">
-                        {item.concept.title}
-                      </span>
-                      <span className="palette-meta">
-                        <span className="palette-type">
-                          {item.concept.type}
-                        </span>
-                        <span className="palette-id">{item.concept.id}</span>
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="palette-label">{item.label}</span>
-                      <span className="palette-meta">
-                        <span className="palette-hint">{item.hint}</span>
-                      </span>
-                    </>
-                  )}
-                </Autocomplete.Item>
+                  <Autocomplete.GroupLabel className="palette-group-label">
+                    {group.value}
+                  </Autocomplete.GroupLabel>
+                  <Autocomplete.Collection>
+                    {(item: Item) => (
+                      <Autocomplete.Item
+                        key={`${item.kind}:${item.id}`}
+                        value={item}
+                        className="palette-item"
+                        onClick={() => activate(item)}
+                      >
+                        {item.kind === "concept" ? (
+                          <ConceptRow item={item} />
+                        ) : (
+                          <>
+                            <span className="palette-label">{item.label}</span>
+                            <span className="palette-meta">
+                              <span className="palette-hint">{item.hint}</span>
+                            </span>
+                          </>
+                        )}
+                      </Autocomplete.Item>
+                    )}
+                  </Autocomplete.Collection>
+                </Autocomplete.Group>
               )}
             </Autocomplete.List>
 
@@ -236,5 +328,33 @@ export function CommandPalette() {
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/** A concept result row: title + type/id meta, with an optional text snippet. */
+function ConceptRow({ item }: { item: ConceptItem }) {
+  return (
+    <span className="palette-row">
+      <span className="palette-row-main">
+        <span className="palette-label">{item.concept.title}</span>
+        <span className="palette-meta">
+          <span className="palette-type">{item.concept.type}</span>
+          <span className="palette-id">{item.concept.id}</span>
+        </span>
+      </span>
+      {item.snippet && (
+        <span className="palette-snippet">
+          {item.snippet.map((part, i) =>
+            part.match ? (
+              <mark key={i} className="palette-mark">
+                {part.text}
+              </mark>
+            ) : (
+              <span key={i}>{part.text}</span>
+            ),
+          )}
+        </span>
+      )}
+    </span>
   );
 }

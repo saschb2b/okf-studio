@@ -36,6 +36,20 @@
   overflow: auto;
 }
 
+/* Result groups (Recent / Concepts / In text / Actions). */
+.palette-group + .palette-group {
+  margin-top: var(--space-6);
+}
+.palette-group-label {
+  display: block;
+  padding: var(--space-6) var(--space-10) var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
 .palette-item {
   display: flex;
   align-items: center;
@@ -55,6 +69,44 @@
 .palette-empty {
   padding: var(--space-16) var(--space-10);
   text-align: center;
+}
+
+/* A concept row may carry a one-line text snippet beneath its title/meta. */
+.palette-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+}
+.palette-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.palette-snippet {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.palette-item[data-highlighted] .palette-snippet {
+  color: var(--accent-contrast);
+  opacity: 0.85;
+}
+
+.palette-mark {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+}
+.palette-item[data-highlighted] .palette-mark {
+  background: color-mix(in srgb, var(--accent-contrast) 28%, transparent);
 }
 
 .palette-label {

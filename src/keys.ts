@@ -23,8 +23,11 @@ export function useGlobalKeys() {
         e.preventDefault();
         actions.setSettingsOpen(true);
       } else if (e.key === "/" && !typing) {
+        // Open the global search launcher (a synonym for Ctrl/Cmd+K). Used to
+        // focus the in-sidebar search, but that was a dead key when the sidebar
+        // was collapsed. See docs/proposals/global-search.md.
         e.preventDefault();
-        document.querySelector<HTMLInputElement>("[data-search]")?.focus();
+        actions.setPalette(true);
       } else if (e.key === "Escape") {
         actions.setPalette(false);
         actions.setSettingsOpen(false);

@@ -35,8 +35,9 @@ if (typeof HTMLCanvasElement !== "undefined") {
 }
 
 // jsdom lacks ResizeObserver; the Graph View observes its container.
-if (typeof window !== "undefined" && !("ResizeObserver" in window)) {
-  window.ResizeObserver = class {
+const g = globalThis as { ResizeObserver?: typeof ResizeObserver };
+if (!g.ResizeObserver) {
+  g.ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}

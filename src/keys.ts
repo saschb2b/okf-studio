@@ -13,7 +13,17 @@ export function useGlobalKeys() {
       const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
       const k = e.key.toLowerCase();
 
-      if (mod && k === "o") {
+      if (mod && (e.key === "1" || e.key === "2" || e.key === "3")) {
+        // Layout modes: Ctrl/Cmd+1 graph-only, +2 split, +3 reader-only.
+        // Mirrors VS Code's preview hotkeys but flips toward content (reader).
+        e.preventDefault();
+        const map = { "1": "graph", "2": "split", "3": "reader" } as const;
+        actions.setLayout(map[e.key as "1" | "2" | "3"]);
+      } else if (!typing && !mod && k === "\\") {
+        // Cycle split -> reader -> graph (bare backslash, next to [ and ]).
+        e.preventDefault();
+        actions.cycleLayout();
+      } else if (mod && k === "o") {
         e.preventDefault();
         void actions.openFolder();
       } else if (mod && k === "k") {

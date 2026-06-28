@@ -141,18 +141,57 @@ body {
 .badge.warn { color: var(--warn); }
 .badge.error { color: var(--error); border-color: var(--error); }
 
-/* Workspace: three panes */
+/* Workspace: reader-first adaptive layout. The grid template is computed in
+   App.tsx per layout mode from these default tokens + persisted pane sizes.
+   See docs/proposals/reader-first-layout.md. */
 .workspace {
+  /* Defaults consumed by the computed grid template. The reader defaults to a
+     co-equal (>1fr) weight so a fresh split favors content, not a fixed 360px;
+     its measure cap (Reader.css) keeps wide prose readable. */
+  --sidebar-default: 280px;
+  --reader-default: 1.1fr;
+  --graph-min: 280px;
+  --divider-w: 6px;
   display: grid;
-  grid-template-columns: 280px 1fr 360px;
   flex: 1 1 auto;
   min-height: 0;
+  /* Transition the column tracks on mode change; zeroed under reduce-motion by
+     the global :root[data-reduce-motion] rule. */
+  transition: grid-template-columns var(--dur) ease;
 }
-.workspace:has(.sidebar):not(:has(.reader)) { grid-template-columns: 280px 1fr; }
+/* During an active divider drag, track the pointer 1:1 (no easing lag). */
+.workspace.dragging {
+  transition: none;
+}
 .pane { min-height: 0; overflow: auto; }
 .sidebar { border-right: 1px solid var(--border); background: var(--bg-elev); }
 .reader { border-left: 1px solid var(--border); background: var(--bg-elev); }
 .graph { background: var(--bg-sunken); position: relative; }
+
+/* Draggable, keyboard-operable column divider between panes. Sits in its own
+   narrow grid track; a wider invisible hit-area straddles the seam. */
+.pane-divider {
+  position: relative;
+  align-self: stretch;
+  cursor: col-resize;
+  background: var(--border);
+  touch-action: none;
+  z-index: 5;
+}
+/* Widen the pointer/touch target beyond the visible rule. */
+.pane-divider::before {
+  content: "";
+  position: absolute;
+  inset: 0 -4px;
+}
+.pane-divider:hover,
+.pane-divider:focus-visible {
+  background: var(--accent);
+}
+.pane-divider:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
 
 /* Sidebar */
 .sidebar-inner { padding: 10px; display: flex; flex-direction: column; gap: 8px; }

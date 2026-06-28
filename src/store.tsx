@@ -18,6 +18,9 @@ import * as ipc from "./ipc.ts";
 
 export type PanelName = "sidebar" | "reader" | "log" | "validation";
 
+/** Which sidebar lens is showing: navigation (Index/Bundles) or filtering. */
+export type Lens = "navigate" | "filter";
+
 export interface State {
   folder: string | null;
   bundles: BundleRoot[];
@@ -31,6 +34,7 @@ export interface State {
   query: string;
   hiddenTypes: string[];
   activeTag: string | null;
+  lens: Lens;
   panels: Record<PanelName, boolean>;
   palette: boolean;
   settingsOpen: boolean;
@@ -50,6 +54,7 @@ const initialState: State = {
   query: "",
   hiddenTypes: [],
   activeTag: null,
+  lens: "navigate",
   panels: { sidebar: true, reader: true, log: false, validation: false },
   palette: false,
   settingsOpen: false,
@@ -68,6 +73,7 @@ type Msg =
   | { t: "toggleType"; v: string }
   | { t: "showAllTypes" }
   | { t: "tag"; v: string | null }
+  | { t: "lens"; v: Lens }
   | { t: "panel"; name: PanelName; v?: boolean }
   | { t: "palette"; v: boolean }
   | { t: "settingsOpen"; v: boolean }
@@ -154,6 +160,8 @@ function reducer(s: State, m: Msg): State {
       return { ...s, hiddenTypes: [] };
     case "tag":
       return { ...s, activeTag: m.v };
+    case "lens":
+      return { ...s, lens: m.v };
     case "panel":
       return {
         ...s,
@@ -183,6 +191,7 @@ export interface Actions {
   toggleType(t: string): void;
   showAllTypes(): void;
   setTag(tag: string | null): void;
+  setLens(lens: Lens): void;
   togglePanel(name: PanelName, value?: boolean): void;
   setPalette(open: boolean): void;
   setSettingsOpen(open: boolean): void;
@@ -252,6 +261,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setTag(tag) {
       dispatch({ t: "tag", v: tag });
+    },
+    setLens(lens) {
+      dispatch({ t: "lens", v: lens });
     },
     togglePanel(name, value) {
       dispatch({ t: "panel", name, v: value });

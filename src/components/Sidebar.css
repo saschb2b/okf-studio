@@ -11,7 +11,66 @@
   height: 100%;
 }
 
-/* Scrollable body: fills the nav below the search box and owns the only scroll. */
+/* Below the persistent search box: the activity rail beside the active lens.
+   Fills the remaining height; the rail stays fixed-width while the lens scrolls. */
+.sb-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: var(--space-8);
+}
+
+/* ---- Activity rail (Zed-style lens switcher) ---- */
+.sb-rail {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+/* Compact icon buttons; the pressed one marks the visible lens. */
+.sb-rail-btn.ui-toggle,
+.sb-rail-btn {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.sb-rail-btn.ui-toggle:hover,
+.sb-rail-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+.sb-rail-btn.ui-toggle[data-pressed] {
+  background: var(--bg-sunken);
+  border-color: var(--border);
+  color: var(--accent);
+}
+.sb-rail-icon {
+  font-size: var(--fs-sm);
+  line-height: 1;
+}
+/* Active-filter indicator: a small accent dot on the Filter rail icon so a
+   narrowed graph stays discoverable even when the Filter lens is hidden. */
+.sb-rail-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Scrollable body: fills the space beside the rail and owns the only scroll. */
 .sb-scroll {
   flex: 1 1 auto;
   min-height: 0;

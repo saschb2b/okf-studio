@@ -2,11 +2,11 @@
 
 A cross-platform **desktop app** (Windows + Ubuntu, macOS for free) that you point at a folder; it **autodetects the OKF bundles inside** and renders each as an interactive graph of interconnected concept documents. Built with **Tauri 2.0** — a Rust core plus the system webview.
 
-## Status: greenfield
+## Status: v1 implemented
 
-There is **no application code yet**. The repo currently contains only the product specification, written as an OKF bundle in [`docs/`](docs/), plus this file, a vendored validator, and the license.
+The app is built: a Tauri 2 core (`crates/okf-core` + `src-tauri/`) and a React 19 + TypeScript frontend (`src/`). See the README for run/dev commands. The notes below capture the architecture and conventions; the build-order section is kept as the original plan and for reference.
 
-**Read the spec before writing any code.** Start at [`docs/index.md`](docs/index.md) and follow the links. The bundle is the source of truth for what to build and why:
+**The spec in [`docs/`](docs/) remains the source of truth.** Read it before changing behavior, and keep it in sync when you do. Start at [`docs/index.md`](docs/index.md):
 
 - **What it is / why:** [`docs/product/overview.md`](docs/product/overview.md), [`docs/product/principles.md`](docs/product/principles.md), [`docs/product/scope-and-non-goals.md`](docs/product/scope-and-non-goals.md)
 - **What it does (v1):** the [`docs/features/`](docs/features/) concepts — folder autodetect, bundle browser, graph view, concept reader, search & filter, navigation, validation, live reload.

@@ -21,6 +21,13 @@ export type PanelName = "sidebar" | "reader" | "log" | "validation";
 /** Which sidebar lens is showing: navigation (Index/Bundles) or filtering. */
 export type Lens = "navigate" | "filter";
 
+/**
+ * Graph rendering mode. "focus" renders the ego neighborhood of the selected
+ * concept; "overview" renders the whole (filtered) graph. See
+ * docs/proposals/graph-from-picture-to-tool.md.
+ */
+export type GraphMode = "focus" | "overview";
+
 export interface State {
   folder: string | null;
   bundles: BundleRoot[];
@@ -35,6 +42,8 @@ export interface State {
   hiddenTypes: string[];
   activeTag: string | null;
   lens: Lens;
+  graphMode: GraphMode;
+  focusDepth: number;
   panels: Record<PanelName, boolean>;
   palette: boolean;
   settingsOpen: boolean;
@@ -55,6 +64,8 @@ const initialState: State = {
   hiddenTypes: [],
   activeTag: null,
   lens: "navigate",
+  graphMode: "focus",
+  focusDepth: 1,
   panels: { sidebar: true, reader: true, log: false, validation: false },
   palette: false,
   settingsOpen: false,
@@ -74,6 +85,8 @@ type Msg =
   | { t: "showAllTypes" }
   | { t: "tag"; v: string | null }
   | { t: "lens"; v: Lens }
+  | { t: "graphMode"; v: GraphMode }
+  | { t: "focusDepth"; v: number }
   | { t: "panel"; name: PanelName; v?: boolean }
   | { t: "palette"; v: boolean }
   | { t: "settingsOpen"; v: boolean }
@@ -162,6 +175,11 @@ function reducer(s: State, m: Msg): State {
       return { ...s, activeTag: m.v };
     case "lens":
       return { ...s, lens: m.v };
+    case "graphMode":
+      return { ...s, graphMode: m.v };
+    case "focusDepth":
+      // Clamp to the supported 1/2/3 depth control.
+      return { ...s, focusDepth: Math.min(3, Math.max(1, Math.round(m.v))) };
     case "panel":
       return {
         ...s,
@@ -192,6 +210,8 @@ export interface Actions {
   showAllTypes(): void;
   setTag(tag: string | null): void;
   setLens(lens: Lens): void;
+  setGraphMode(mode: GraphMode): void;
+  setFocusDepth(depth: number): void;
   togglePanel(name: PanelName, value?: boolean): void;
   setPalette(open: boolean): void;
   setSettingsOpen(open: boolean): void;
@@ -264,6 +284,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setLens(lens) {
       dispatch({ t: "lens", v: lens });
+    },
+    setGraphMode(mode) {
+      dispatch({ t: "graphMode", v: mode });
+    },
+    setFocusDepth(depth) {
+      dispatch({ t: "focusDepth", v: depth });
     },
     togglePanel(name, value) {
       dispatch({ t: "panel", name, v: value });

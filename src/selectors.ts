@@ -70,6 +70,54 @@ export function filteredConceptIds(bundle: Bundle | null, f: Filter): Set<string
   return ids;
 }
 
+/**
+ * The ego neighborhood of `rootId`: the root plus every concept reachable in at
+ * most `depth` hops over the *undirected* adjacency (links ∪ citedBy). Returns
+ * an empty set if the root is missing. Tolerant of dangling ids — an id that
+ * appears in `links`/`citedBy` but has no concept of its own is still walked
+ * (it just contributes no further neighbors).
+ */
+export function egoIds(bundle: Bundle | null, rootId: string | null, depth: number): Set<string> {
+  const result = new Set<string>();
+  if (!bundle || !rootId) return result;
+  const byId = new Map(bundle.concepts.map((c) => [c.id, c] as const));
+  if (!byId.has(rootId)) return result;
+
+  result.add(rootId);
+  let frontier: string[] = [rootId];
+  const hops = Math.max(0, Math.floor(depth));
+  for (let d = 0; d < hops; d++) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      const c = byId.get(id);
+      if (!c) continue;
+      for (const nb of c.links) {
+        if (!result.has(nb)) {
+          result.add(nb);
+          next.push(nb);
+        }
+      }
+      for (const nb of c.citedBy) {
+        if (!result.has(nb)) {
+          result.add(nb);
+          next.push(nb);
+        }
+      }
+    }
+    if (next.length === 0) break;
+    frontier = next;
+  }
+  return result;
+}
+
+/** Ids of concepts with no relations at all (degree 0: no links and no citedBy). */
+export function orphanIds(bundle: Bundle | null): string[] {
+  if (!bundle) return [];
+  return bundle.concepts
+    .filter((c) => c.degree === 0 && c.links.length === 0 && c.citedBy.length === 0)
+    .map((c) => c.id);
+}
+
 /** Look up a concept by id. */
 export function conceptById(bundle: Bundle | null, id: string | null): Concept | null {
   if (!bundle || !id) return null;

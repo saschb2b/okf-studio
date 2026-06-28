@@ -18,9 +18,9 @@ import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent }
 import { Popover } from "@base-ui/react/popover";
 import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
-import { buildEdges, isVisible, matchesQuery } from "../selectors.ts";
+import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
-import type { Concept } from "../types.ts";
+import type { Bundle, Concept } from "../types.ts";
 import {
   ALPHA_DECAY,
   ALPHA_MIN,
@@ -70,7 +70,17 @@ interface RenderData {
   nodes: SimNode[];
   edges: SimEdge[];
   /** Per-node concept metadata, index-aligned with `nodes`. */
-  meta: { id: string; title: string; type: string; color: string; dim: boolean }[];
+  meta: {
+    id: string;
+    title: string;
+    type: string;
+    color: string;
+    dim: boolean;
+    /** True for a degree-0 concept (no links and no citedBy) — drawn with a ring. */
+    orphan: boolean;
+    /** Count of unresolved outbound hrefs — drawn as a warning marker when > 0. */
+    broken: number;
+  }[];
   /** id -> index into `nodes`/`meta`. */
   indexById: Map<string, number>;
   /** Adjacency by node index, for selection highlighting. */
@@ -81,6 +91,21 @@ function radiusForDegree(degree: number, maxDegree: number): number {
   if (maxDegree <= 0) return MIN_RADIUS;
   const t = Math.sqrt(degree / maxDegree); // sqrt so hubs grow but not wildly
   return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS);
+}
+
+/** A set of `ids` plus their direct neighbors (links ∪ citedBy), for isolating
+ *  a defect set into the view with enough context to see why it is one. */
+function expandWithNeighbors(bundle: Bundle | null, ids: string[]): Set<string> {
+  const out = new Set(ids);
+  if (!bundle) return out;
+  const byId = new Map(bundle.concepts.map((c) => [c.id, c] as const));
+  for (const id of ids) {
+    const c = byId.get(id);
+    if (!c) continue;
+    for (const nb of c.links) out.add(nb);
+    for (const nb of c.citedBy) out.add(nb);
+  }
+  return out;
 }
 
 export function GraphView() {
@@ -94,6 +119,10 @@ export function GraphView() {
     centering: DEFAULT_PARAMS.centering,
   }));
   const [display, setDisplay] = useState<Display>(DEFAULT_DISPLAY);
+  // A transient "isolate" set: when non-null, the graph renders only these ids
+  // (plus their neighbors), overriding focus/overview. Driven by the defect
+  // count chip. Read-only and tolerant — clearing it returns to normal.
+  const [isolate, setIsolate] = useState<{ label: string; ids: string[] } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -115,6 +144,7 @@ export function GraphView() {
   const paramsRef = useRef<SimParams>({ ...DEFAULT_PARAMS });
   const displayRef = useRef<Display>(display);
   const needsFitRef = useRef(true); // auto-fit once a fresh layout settles
+  const prevRestrictKey = useRef<string | null>(null); // last focus/isolate set, to refit on change
 
   // Latest selection for the imperative draw, without re-binding the whole
   // render pipeline on every selection change.
@@ -156,6 +186,7 @@ export function GraphView() {
     const textColor = cssVar("--text") || "#111";
     const textDim = cssVar("--text-dim") || "#777";
     const nodeStroke = cssVar("--bg") || "#fff";
+    const warnColor = cssVar("--warn") || "#b8860b"; // orphan ring + broken-link marker
 
     // Edges first, under the nodes.
     const baseLW = disp.linkThickness / view.scale;
@@ -200,6 +231,42 @@ export function GraphView() {
       ctx.fill();
       ctx.lineWidth = (isSel ? 3 : 1.2) / view.scale;
       ctx.strokeStyle = isSel ? accent : nodeStroke;
+      ctx.stroke();
+
+      // Orphan: a dashed warning ring just outside the node (degree 0).
+      if (meta.orphan && !faded) {
+        ctx.save();
+        ctx.setLineDash([4 / view.scale, 3 / view.scale]);
+        ctx.lineWidth = 1.5 / view.scale;
+        ctx.strokeStyle = warnColor;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, rr + 3 / view.scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // Broken-link markers: a small warning dot at the node's upper-right for any
+    // node with unresolved outbound hrefs. Drawn after all nodes so it sits on
+    // top. Tolerant signal — never an error glyph, just a flag.
+    for (let i = 0; i < data.nodes.length; i++) {
+      const meta = data.meta[i];
+      if (meta.broken <= 0) continue;
+      const node = data.nodes[i];
+      const isSel = i === selIdx;
+      const isNeighbor = focusNeighbors?.has(i) ?? false;
+      const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
+      if (meta.dim || dimmedByFocus) continue;
+      const rr = node.r * disp.nodeScale;
+      const off = rr * 0.72;
+      const mr = Math.max(2.5, rr * 0.38) / 1; // marker radius in world units
+      ctx.beginPath();
+      ctx.arc(node.x + off, node.y - off, mr, 0, Math.PI * 2);
+      ctx.fillStyle = warnColor;
+      ctx.fill();
+      ctx.lineWidth = 1 / view.scale;
+      ctx.strokeStyle = nodeStroke;
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
@@ -315,10 +382,27 @@ export function GraphView() {
   const concepts = state.bundle?.concepts ?? null;
   const filterKey = `${state.hiddenTypes.join(",")}|${state.activeTag ?? ""}`;
 
+  // The node set the focus/isolate logic restricts to. In focus mode with a
+  // selection (and no active isolate), this is the ego neighborhood of the
+  // selection; otherwise null means "show the whole filtered graph". An active
+  // isolate set wins over both. Computed as a stable string key so the rebuild
+  // effect only fires when the *set* actually changes.
+  const restrictIds: Set<string> | null = isolate
+    ? expandWithNeighbors(state.bundle, isolate.ids)
+    : state.graphMode === "focus" && state.activeConceptId
+      ? egoIds(state.bundle, state.activeConceptId, state.focusDepth)
+      : null;
+  // A key that changes only when the restricted set's membership changes, so the
+  // heavy rebuild + re-fit is skipped on pure selection moves in overview mode.
+  const restrictKey = restrictIds ? [...restrictIds].sort().join(",") : "";
+
   useEffect(() => {
     const list = concepts ?? [];
     const filter = { query: "", hiddenTypes: state.hiddenTypes, activeTag: state.activeTag };
-    const visible = list.filter((c) => isVisible(c, filter));
+    // Apply type/tag filtering first, then the focus/isolate restriction on top.
+    const visible = list.filter(
+      (c) => isVisible(c, filter) && (restrictIds === null || restrictIds.has(c.id)),
+    );
 
     const dark = resolveDark(state.settings.theme);
     const types = [...new Set(list.map((c) => c.type))];
@@ -326,8 +410,11 @@ export function GraphView() {
     const maxDegree = visible.reduce((m, c) => Math.max(m, c.degree), 0);
 
     const store = positionsRef.current;
-    // Drop positions for nodes that no longer exist (keeps the map bounded).
-    const visibleIds = new Set(visible.map((c) => c.id));
+    // Drop positions only for nodes no longer in the *bundle* — not for nodes
+    // merely hidden by the focus/isolate restriction. Keeping their cached
+    // positions means re-entering the wider set animates from where they were
+    // rather than re-spawning (the disorientation trap the proposal calls out).
+    const bundleIds = new Set(list.map((c) => c.id));
 
     const nodes: SimNode[] = [];
     const meta: RenderData["meta"] = [];
@@ -367,6 +454,8 @@ export function GraphView() {
         type: c.type,
         color: palette.color(c.type),
         dim: !matchesQuery(c, state.query),
+        orphan: c.degree === 0 && c.links.length === 0 && c.citedBy.length === 0,
+        broken: c.brokenLinks.length,
       });
     });
 
@@ -384,24 +473,41 @@ export function GraphView() {
     }
 
     for (const id of store.keys()) {
-      if (!visibleIds.has(id)) store.delete(id);
+      if (!bundleIds.has(id)) store.delete(id);
     }
 
     renderRef.current = { nodes, edges, meta, indexById, neighbors };
-    // Warm up fully for a brand-new layout; a live reload with cached positions
-    // only needs a gentle nudge so it does not visibly jump.
-    alphaRef.current = spawnedNew ? 1 : 0.4;
-    needsFitRef.current = spawnedNew; // auto-fit a fresh layout, not a reload
+    // The focus/isolate set changed (or this is the first build) — frame the new
+    // subgraph so it is centered and readable.
+    const restrictChanged = prevRestrictKey.current !== restrictKey;
+    prevRestrictKey.current = restrictKey;
+    // Warm up fully for a brand-new layout; otherwise a gentle nudge so kept
+    // positions do not visibly jump. A focus/isolate change reheats a touch more
+    // so the smaller set can spread out from its cached positions.
+    alphaRef.current = spawnedNew ? 1 : restrictChanged ? Math.max(0.4, REHEAT_ALPHA) : 0.4;
+    needsFitRef.current = spawnedNew || restrictChanged; // refit a fresh layout or a new focus set
     runLoop();
     // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
     // intentionally not in the dep list; this effect rebuilds only on data/filter
     // changes.
-  }, [concepts, filterKey, state.query, state.settings.theme, state.settings.reduceMotion]);
+    // restrictKey folds in graphMode/focusDepth/activeConceptId/isolate: the
+    // rebuild fires only when the focused/isolated node *set* changes, so a
+    // selection move in overview mode stays a cheap redraw (below).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concepts, filterKey, restrictKey, state.query, state.settings.theme, state.settings.reduceMotion]);
 
-  // Redraw (no resim) when only the selection changes.
+  // Redraw (no resim) when only the selection changes (overview mode: the node
+  // set is unchanged, just the highlight). In focus mode a selection change moves
+  // the ego set, which the rebuild effect above handles via restrictKey.
   useEffect(() => {
     draw();
   }, [state.activeConceptId]);
+
+  // Drop a stale isolate set when the bundle changes (its ids belong to the old
+  // bundle). Keeps the view from going blank on bundle switch.
+  useEffect(() => {
+    setIsolate(null);
+  }, [state.activeRoot]);
 
   // Live-tune forces from the controls panel: copy into the sim params ref and
   // gently reheat so the layout adapts in place.
@@ -628,6 +734,21 @@ export function GraphView() {
   const edgeCount = concepts ? buildEdges(concepts).length : 0;
   const ariaLabel = `Concept graph: ${nodeCount} node${nodeCount === 1 ? "" : "s"}, ${edgeCount} link${edgeCount === 1 ? "" : "s"}`;
 
+  // Defect counts over the whole bundle (not just the rendered set) — the chip
+  // reports the global health and offers to isolate it.
+  const orphans = orphanIds(state.bundle);
+  const brokenConceptIds = (concepts ?? []).filter((c) => c.brokenLinks.length > 0).map((c) => c.id);
+  const hasDefects = orphans.length > 0 || brokenConceptIds.length > 0;
+  // Focus mode is on but there is no selection (or an isolate overrides it): the
+  // graph falls back to Overview, so tell the newcomer how to engage focus.
+  const focusFallback =
+    state.graphMode === "focus" && state.activeConceptId == null && !isolate;
+
+  function isolateSet(label: string, ids: string[]) {
+    // Toggle: clicking the active chip clears the isolate.
+    setIsolate((cur) => (cur && cur.label === label ? null : { label, ids }));
+  }
+
   if (!state.bundle || nodeCount === 0) {
     return (
       <div className="graph-view" ref={containerRef}>
@@ -705,6 +826,74 @@ export function GraphView() {
           </Popover.Portal>
         </Popover.Root>
       </div>
+      <div className="graph-mode" role="group" aria-label="Graph mode">
+        <div className="graph-seg">
+          <button
+            type="button"
+            className="graph-seg-btn"
+            aria-label="Overview: show the whole graph"
+            aria-pressed={state.graphMode === "overview"}
+            onClick={() => actions.setGraphMode("overview")}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            className="graph-seg-btn"
+            aria-label="Focus: show the selected concept's neighborhood"
+            aria-pressed={state.graphMode === "focus"}
+            onClick={() => actions.setGraphMode("focus")}
+          >
+            Focus
+          </button>
+        </div>
+        {state.graphMode === "focus" && (
+          <div className="graph-depth" role="group" aria-label="Focus depth">
+            <span className="graph-depth-label">Depth</span>
+            {[1, 2, 3].map((d) => (
+              <button
+                key={d}
+                type="button"
+                className="graph-seg-btn"
+                aria-label={`Focus depth ${d}`}
+                aria-pressed={state.focusDepth === d}
+                onClick={() => actions.setFocusDepth(d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        )}
+        {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
+      </div>
+      {(hasDefects || isolate) && (
+        <div className="graph-chips">
+          {isolate ? (
+            <button
+              type="button"
+              className="graph-chip graph-chip-active"
+              aria-label={`Showing isolated set: ${isolate.label}. Click to clear.`}
+              onClick={() => setIsolate(null)}
+            >
+              {isolate.label} &times;
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="graph-chip graph-chip-warn"
+              aria-label={`${orphans.length} orphan${orphans.length === 1 ? "" : "s"}, ${brokenConceptIds.length} with broken links. Click to isolate.`}
+              onClick={() =>
+                isolateSet(
+                  `${orphans.length} orphans · ${brokenConceptIds.length} broken`,
+                  [...new Set([...orphans, ...brokenConceptIds])],
+                )
+              }
+            >
+              {orphans.length} orphan{orphans.length === 1 ? "" : "s"} &middot; {brokenConceptIds.length} broken
+            </button>
+          )}
+        </div>
+      )}
       <div className="graph-controls">
         <button type="button" className="graph-btn" aria-label="Zoom in" onClick={() => zoomBy(1.2)}>
           +

@@ -15,16 +15,16 @@ The product specification lives as an OKF bundle in [`docs/`](docs/) and is the 
 Prerequisites: a stable **Rust** toolchain and **Node.js 20.19+/22.12+**. On Ubuntu also install the Tauri Linux deps (`libwebkit2gtk-4.1-dev`, `build-essential`, `libssl-dev`, `librsvg2-dev`, and related GTK packages); on Windows, the WebView2 runtime + MSVC build tools.
 
 ```bash
-npm install
-npm run tauri dev      # run the app with hot reload
-npm run tauri build    # installers: .deb/AppImage (Ubuntu), .msi/.exe (Windows)
+pnpm install
+pnpm tauri dev      # run the app with hot reload
+pnpm tauri build    # installers: .deb/AppImage (Ubuntu), .msi/.exe (Windows)
 ```
 
 Checks:
 
 ```bash
 cargo test -p okf-core                 # Rust core unit + integration tests (against docs/)
-npm test                               # frontend integration tests (Vitest)
+pnpm test                              # frontend integration tests (Vitest)
 node scripts/okf-validate.mjs docs     # OKF conformance of the spec bundle
 ```
 

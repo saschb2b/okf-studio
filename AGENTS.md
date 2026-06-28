@@ -36,7 +36,7 @@ Default stance: **assume the first attempt is mediocre** — code and UI both re
    - **`react-stinky`** — component/hook/TS smells and semantic markup (roles, labels, keyboard).
    - **`no-slop`** — for any human-facing prose (UI copy, docs, commit messages).
    Apply Safe findings; surface Judgment ones. Do not report "done" with an unaddressed Glaring finding.
-3. **Verify with evidence, at two widths.** Screenshot the rendered screen at narrow (~360px) and wide, and check the loading, empty, and error states — not just the happy path. A green build is not visual proof. Prefer the real screen over reasoning about the code. (Fast path: `npm run dev` + the `agent-browser` skill — see the visual-verification note.)
+3. **Verify with evidence, at two widths.** Screenshot the rendered screen at narrow (~360px) and wide, and check the loading, empty, and error states — not just the happy path. A green build is not visual proof. Prefer the real screen over reasoning about the code. (Fast path: `pnpm dev` + the `agent-browser` skill — see the visual-verification note.)
 4. **Measure against modern UX floors, not the training average.** Spacing from `--space-*` tokens (4/8); a bounded type scale (≤ ~7 sizes) with paired line-heights from tokens; WCAG AA contrast (4.5:1 text, 3:1 UI); one visible, consistent focus-ring token; touch targets ≥ 24px; `prefers-reduced-motion` respected; one radius and one elevation scale; empty/loading/error states actually designed. If you cannot point to the token or the criterion, it is not done.
 5. **Pressure-test design calls — including the user's.** Name the tradeoffs and risks before implementing a direction; do not just agree. Reasoned disagreement is more useful than assent.
 6. **Report the defects, not just the wins.** End a UI review with the findings list — each rated severity (Glaring/Untidy/Nitpick) and autonomy (Safe/Judgment) — what was fixed, and what remains. Honesty about what is still rough beats a clean-sounding summary.
@@ -50,7 +50,7 @@ A Tauri 2.0 app whose **Rust core** (`src-tauri/`) does all filesystem work — 
 1. **Prerequisites** (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): a stable **Rust** toolchain + **Node.js**. On Ubuntu also install `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`. On Windows: WebView2 runtime + MSVC build tools.
 2. **Scaffold Tauri 2.0** *without clobbering `docs/`*:
    ```bash
-   npm create tauri-app@latest        # choose the v2 template + React + TypeScript (Vite)
+   pnpm create tauri-app        # choose the v2 template + React + TypeScript (Vite)
    ```
    Generate into the repo so `docs/` and this file are preserved (scaffold in a temp dir and move `src/`, `src-tauri/`, configs in if needed). Keep `docs/` exactly where it is — it doubles as the built-in sample bundle (see Dogfood below).
 3. **Frontend stack:** React 19 + TypeScript, built with Vite; the React Compiler is enabled (no manual memoization). See [tech stack](docs/architecture/tech-stack.md).
@@ -71,9 +71,9 @@ okf-viewer/
 ### Dev & build commands (after scaffolding)
 
 ```bash
-npm install
-npm run tauri dev      # run the app with hot reload
-npm run tauri build    # produce installers: .msi/.exe (Windows), .deb/AppImage (Ubuntu)
+pnpm install
+pnpm tauri dev      # run the app with hot reload
+pnpm tauri build    # produce installers: .msi/.exe (Windows), .deb/AppImage (Ubuntu)
 ```
 
 ## Build order (suggested)

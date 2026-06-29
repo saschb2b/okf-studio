@@ -3,7 +3,7 @@ type: Reference
 title: Theming
 description: Light/dark theming that follows the OS, and the deterministic palette that colors concepts by type.
 tags: [ux, theme, color, accessibility]
-timestamp: 2026-06-28T16:00:00Z
+timestamp: 2026-06-29T10:00:00Z
 ---
 
 # Design tokens (one scale layer)
@@ -33,3 +33,7 @@ Concept `type` drives node and badge color across the [graph](../features/graph-
 
 - A readable UI font for chrome and bodies; a monospace font for inline code and fenced blocks, with light syntax tinting.
 - Markdown rendering styles (tables, blockquotes, headings) are consistent in both themes.
+
+# Native chrome
+
+Small touches make the system webview feel like a native desktop app rather than a web page: scrollbars are themed to the token palette with `scrollbar-gutter: stable` (so layout doesn't shift when they appear), text selection is disabled on chrome but preserved on [reader](../features/concept-reader.md) prose, and the browser context menu and page-zoom are suppressed. The text-size zoom this pairs with is content-scoped — see [Settings](settings.md).

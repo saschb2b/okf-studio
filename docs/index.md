@@ -59,16 +59,6 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Tauri 2.0](reference/tauri-2.md) - Key facts about the framework and its plugins.
 * [Glossary](reference/glossary.md) - Terms used across this bundle.
 
-# Proposals
-
-Post-v1 UX/UI improvements captured for later (not yet implemented).
-
-* [Global Search Launcher](proposals/global-search.md) - Always-on header search + hotkey fuzzy dialog, merged with the palette.
-* [Scalable Sidebar & Navigation Lenses](proposals/scalable-sidebar.md) - A lens switcher separating filtering from navigation at scale.
-* [Graph View — From Picture to Tool](proposals/graph-from-picture-to-tool.md) - Focused neighborhood by default; surface orphans and broken links.
-* [Reader-First Adaptive Layout](proposals/reader-first-layout.md) - Resizable panes, layout modes, and opt-in adaptive auto-switch.
-* [Native Desktop Feel](proposals/native-feel.md) - Scope zoom to content; suppress web defaults so it feels native.
-
 # Subdirectories
 
 * [Product](product/) - Vision, audience, principles, and scope.
@@ -76,4 +66,3 @@ Post-v1 UX/UI improvements captured for later (not yet implemented).
 * [UX](ux/) - Flows, layout, shortcuts, theming, accessibility, settings.
 * [Architecture](architecture/) - How it is built.
 * [Reference](reference/) - External specs, the OKF ecosystem, and a glossary.
-* [Proposals](proposals/) - Post-v1 UX/UI improvements captured for later.

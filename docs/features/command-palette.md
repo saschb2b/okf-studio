@@ -1,18 +1,19 @@
 ---
 type: Feature
 title: Command Palette
-description: A Ctrl/Cmd + K palette that jumps to any concept by id or title and runs quick actions, keyboard-only.
-tags: [feature, palette, navigation, keyboard]
-timestamp: 2026-06-28T12:00:00Z
+description: A global launcher (Ctrl/Cmd + K or /) that jumps to any concept, searches body text, and runs quick actions — keyboard-only, grouped results.
+tags: [feature, palette, launcher, navigation, keyboard, search]
+timestamp: 2026-06-29T10:00:00Z
 ---
 
 # What it does
 
-A `Ctrl/Cmd + K` palette that jumps to any concept by id or title, and offers quick actions — open folder, fit graph, toggle [log](log-view.md), re-scan (see [keyboard shortcuts](../ux/keyboard-shortcuts.md)). It is the fast way to get anywhere without reaching for the mouse.
+A **global launcher** — opened with `Ctrl/Cmd + K`, with `/`, or by clicking the search field in the top bar — that jumps to any concept, searches concept **body text**, and runs quick actions (open folder, fit graph, toggle [log](log-view.md), re-scan; see [keyboard shortcuts](../ux/keyboard-shortcuts.md)). It is the one fast way to get anywhere without reaching for the mouse, and the app's primary search entry point.
 
-# Matching
+# Matching & grouping
 
-- **Fuzzy matching** over each concept's id, `title`, and `type`, ranked so the closest match leads.
+- **Fuzzy matching** over each concept's id, `title`, and `type`, ranked so the closest match leads; with no query it offers a starting set rather than a blank box.
+- Results are **grouped** so a long list stays scannable: **Recent** (recently visited concepts), **Concepts** (id / title / type matches), **In text** (full-text body matches, each with the matching snippet), and **Actions** (the quick commands).
 - Quick actions appear alongside concept results, so the same box launches a command or navigates to a node.
 
 # Keyboard-only
@@ -27,6 +28,6 @@ A `Ctrl/Cmd + K` palette that jumps to any concept by id or title, and offers qu
 
 - It filters over the already-parsed [data model](../architecture/data-model.md) — no re-scan, no disk read — keeping results instant ([performance](../architecture/performance.md)).
 
-# Not full-text search
+# Launcher vs. filters
 
-- Distinct from [Search & Filter](search-and-filter.md): the palette is a fast **navigator / launcher** that resolves a target by id or title; search narrows the *whole view* by matching body text, type, and tags. Use the palette to go somewhere, search to see less.
+- The launcher is a **transient overlay** for finding and going to one thing — by id, title, or body text — then it dismisses. [Search & Filter](search-and-filter.md) is the *persistent* surface: type and tag filters in the sidebar's Filter lens that narrow the *whole view* and stay applied. Use the launcher to go somewhere; use filters to keep seeing less.

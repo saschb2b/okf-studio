@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-28T15:00:00Z
+timestamp: 2026-06-29T10:00:00Z
 ---
 
 # What it does
@@ -32,6 +32,14 @@ A collapsible controls panel (top-left of the graph, in the spirit of Obsidian's
 - **Display** — *node size*, *link thickness*, *link opacity*, and the *label* fade threshold.
 
 The graph **auto-fits** the viewport once a fresh layout settles, and a **collision** pass keeps nodes from overlapping, so clusters read as distinct blobs rather than a tangle.
+
+# Focus mode
+
+By default the graph shows a **focused neighborhood** of the selected concept — that concept plus its neighbors out to an adjustable **depth** (1–3 hops over links and backlinks) — rather than the whole bundle, so it answers "what relates to *this*?" instead of presenting a hairball. An **Overview / Focus** toggle switches to the full graph (Overview is the default when nothing is selected), and a depth stepper sets the hop count. Toggling reuses cached node positions so the layout animates rather than jumps.
+
+# Surfacing defects
+
+The graph makes conformance problems visible instead of hiding them: **orphans** (concepts with no links in or out) get a marked ring, concepts with **broken links** get a warning marker, and a count chip (`N orphans · M broken`) isolates that set on click. This stays [tolerant](validation.md) — defects are surfaced, never rejected, and use the same severity language as [Validation](validation.md).
 
 # Implementation notes
 

@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-29T16:00:00Z
+timestamp: 2026-06-29T17:00:00Z
 ---
 
 # What it does
@@ -21,7 +21,7 @@ The center of the workspace renders the active bundle as an interactive **force-
 
 - Pan (drag background), zoom (wheel), drag nodes to reposition, **Fit** to reframe — all via [keyboard shortcuts](../ux/keyboard-shortcuts.md) too.
 - Click a node to open it in the [Concept Reader](concept-reader.md) and recenter on it.
-- Hovering or selecting a node focuses it: incident edges and neighbors highlight while the rest dims, so structure is readable even in a dense graph.
+- **Selecting** a node keeps the whole graph bright but rings it and accents its links, so the open concept's connections stand out without hiding the rest. **Hovering** a node dims everything except it and its neighbors, to trace one neighborhood at a time. Either way structure stays readable in a dense graph.
 - Hidden types (toggled in the legend) drop out of the layout; [search](search-and-filter.md) dims non-matches.
 
 # Controls

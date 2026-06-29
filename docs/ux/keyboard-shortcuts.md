@@ -3,7 +3,7 @@ type: Reference
 title: Keyboard Shortcuts
 description: The default keybindings; every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-06-29T16:00:00Z
 ---
 
 # Defaults
@@ -28,9 +28,10 @@ timestamp: 2026-06-29T12:00:00Z
 | `L` | Toggle the `log.md` view |
 | `R` | Re-scan the folder |
 | `Ctrl/Cmd + ,` | [Settings](settings.md) (theme, reader text size, scan) |
+| `?` | Show the keyboard-shortcuts overlay |
 
 # Notes
 
 - Full keyboard operability is an [accessibility](accessibility.md) commitment, not just a convenience.
-- Shortcuts are documented in-app via a `?` overlay.
+- Press `?` for an in-app overlay listing every shortcut, grouped by area (also reachable from the [command palette](../features/command-palette.md)).
 - A later release may make these user-configurable; v1 ships sensible defaults (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).

@@ -212,8 +212,18 @@ export function Reader() {
     <div className="reader-shell" data-rail={railSide ? "side" : "below"}>
       <article
         className="reader-main concept-reader"
-        // Reader-scoped text-size scale (the native replacement for page-zoom).
-        style={{ "--reader-scale": readerScale } as CSSProperties}
+        // Reader-scoped reading layer (the content-scoped replacement for page
+        // zoom), driven by the "Aa" preferences and persisted in settings.
+        data-aids={state.settings.readerAids ? "on" : undefined}
+        style={
+          {
+            "--reader-scale": readerScale,
+            "--reader-measure": `${state.settings.readerMeasure}ch`,
+            "--reader-leading": state.settings.readerLeading,
+            "--reader-font":
+              state.settings.readerFont === "serif" ? "var(--serif)" : "var(--ui)",
+          } as CSSProperties
+        }
       >
         <header className="reader-header">
           {crumbs.length > 0 && (

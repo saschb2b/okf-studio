@@ -20,6 +20,12 @@
   padding: var(--space-20) var(--space-24) var(--space-40);
 }
 
+/* Reading aids (dyslexia-friendly): looser letter/word spacing in the body. */
+.concept-reader[data-aids="on"] .body.markdown {
+  letter-spacing: 0.03em;
+  word-spacing: 0.08em;
+}
+
 /* Base type badge (shape/size); .concept-reader .type-badge tints it. */
 .type-badge {
   display: inline-block;

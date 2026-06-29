@@ -90,6 +90,8 @@ export interface RecentBundle {
 
 export type ThemeMode = "system" | "light" | "dark";
 
+export type ReaderFont = "sans" | "serif";
+
 export interface Settings {
   theme: ThemeMode;
   reduceMotion: boolean;
@@ -99,6 +101,14 @@ export interface Settings {
    * scale, this is the native, content-scoped replacement for browser page-zoom.
    */
   readerScale: number;
+  /** Reading-column measure in characters (line length). */
+  readerMeasure: number;
+  /** Reading line-height (leading). */
+  readerLeading: number;
+  /** Reading font: the UI humanist sans (default) or an opt-in serif. */
+  readerFont: ReaderFont;
+  /** Dyslexia-friendly letter/word spacing in the reader body. */
+  readerAids: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +116,10 @@ export const DEFAULT_SETTINGS: Settings = {
   reduceMotion: false,
   scanMaxDepth: 8,
   readerScale: 1,
+  readerMeasure: 72,
+  readerLeading: 1.7,
+  readerFont: "sans",
+  readerAids: false,
 };
 
 /** A directed cross-link edge in the concept graph. */

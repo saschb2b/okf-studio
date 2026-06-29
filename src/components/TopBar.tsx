@@ -7,6 +7,7 @@ import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "../store.tsx";
 import type { LayoutMode } from "../store.tsx";
 import { BundleSwitcher } from "./BundleSwitcher.tsx";
+import { ReaderPrefs } from "./ReaderPrefs.tsx";
 import "./chrome.css";
 import "./baseui.css";
 import "./TopBar.css";
@@ -172,6 +173,8 @@ export function TopBar() {
 
         {state.bundle && (
           <Toolbar.Group className="topbar-actions">
+            {state.layout !== "graph" && <ReaderPrefs />}
+
             <Tooltip.Root>
               <Tooltip.Trigger
                 render={

@@ -39,6 +39,11 @@ export async function isWindowMaximized(): Promise<boolean> {
   return (await win()).isMaximized();
 }
 
+export async function startWindowDrag(): Promise<void> {
+  if (!isTauri()) return;
+  await (await win()).startDragging();
+}
+
 export async function startWindowResize(dir: ResizeDir): Promise<void> {
   if (!isTauri()) return;
   await (await win()).startResizeDragging(dir);

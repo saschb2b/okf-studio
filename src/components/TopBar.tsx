@@ -2,10 +2,13 @@
 // name, and the right-side cluster (Log toggle, validation badge, Settings).
 // See docs/ux/browsing-layout.md.
 
+import { useRef } from "react";
+import type { MouseEvent } from "react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "../store.tsx";
 import type { LayoutMode } from "../store.tsx";
+import { startWindowDrag, toggleMaximizeWindow } from "../window.ts";
 import { BundleSwitcher } from "./BundleSwitcher.tsx";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
 import { WindowControls } from "./WindowControls.tsx";
@@ -32,6 +35,34 @@ const LAYOUTS: { mode: LayoutMode; label: string; hint: string; icon: string }[]
 export function TopBar() {
   const { state, actions } = useApp();
 
+  // Custom title-bar dragging, driven manually rather than via
+  // data-tauri-drag-region: the built-in double-click "restore" leaves a
+  // borderless window at its maximized size (tauri-apps/tauri#11945). We use the
+  // JS window API (which resizes correctly) and a move-threshold so a
+  // double-click (maximize/restore) and a drag never race.
+  const dragArmed = useRef(false);
+
+  function onBarMouseDown(e: MouseEvent<HTMLElement>) {
+    if (e.button !== 0) return;
+    // Only the bar's own background is a drag handle — never a child control.
+    if (!(e.target as HTMLElement).matches(".topbar, .topbar-spacer")) return;
+    if (e.detail === 2) {
+      dragArmed.current = false;
+      void toggleMaximizeWindow();
+    } else {
+      dragArmed.current = true; // start the OS move on first motion, not on press
+    }
+  }
+  function onBarMouseMove(e: MouseEvent<HTMLElement>) {
+    if (dragArmed.current && e.buttons === 1) {
+      dragArmed.current = false;
+      void startWindowDrag();
+    }
+  }
+  function onBarMouseUp() {
+    dragArmed.current = false;
+  }
+
   const errors =
     state.bundle?.issues.filter((i) => i.level === "error").length ?? 0;
   const warns =
@@ -53,7 +84,16 @@ export function TopBar() {
 
   return (
     <Tooltip.Provider delay={400}>
-      <Toolbar.Root render={<div className="topbar" data-tauri-drag-region />}>
+      <Toolbar.Root
+        render={
+          <div
+            className="topbar"
+            onMouseDown={onBarMouseDown}
+            onMouseMove={onBarMouseMove}
+            onMouseUp={onBarMouseUp}
+          />
+        }
+      >
         <BundleSwitcher />
 
         <Toolbar.Group className="topbar-nav">
@@ -104,7 +144,7 @@ export function TopBar() {
           </Tooltip.Root>
         </Toolbar.Group>
 
-        <div className="topbar-spacer" data-tauri-drag-region />
+        <div className="topbar-spacer" />
 
         {state.bundle && (
           <Toolbar.Group

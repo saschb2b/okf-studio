@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The test strategy — Rust unit and integration tests, golden link tests, validator parity, tolerance proofs, and dogfooding this bundle.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-06-29T16:00:00Z
+timestamp: 2026-06-29T23:59:00Z
 ---
 
 # Decision
@@ -44,3 +44,14 @@ Frontend tests use **Vitest** with **React Testing Library** for component and i
 # Automated accessibility gate
 
 An **axe-core** check runs over the rendered app (the empty state and an open bundle) and **fails the suite on any violation**, so the [accessibility](../ux/accessibility.md) commitments are verified, not merely asserted (Microsoft's "run automated accessibility checks in CI" practice). Colour contrast needs real layout that jsdom lacks, so that rule is verified via the [design tokens](../ux/theming.md) instead; the gate covers the structural rules — accessible names, roles, ARIA state, landmarks, and labels. It has already caught real regressions (an inappropriate role on the title bar, a splitter missing `aria-valuenow`).
+
+# Static analysis and linting
+
+A strict, **type-aware** ESLint stack (`pnpm lint`) backs the tests as a second gate, run on the full source:
+
+- **typescript-eslint** `strictTypeChecked` + `stylisticTypeChecked` — type-aware rules (no floating promises, no needless conditions, exhaustive nullish handling), which require the TypeScript project service.
+- The **React Compiler** ruleset (`eslint-plugin-react-hooks` v7) at error — the correctness rules (refs not read during render, no setState-in-render, purity, immutability) and the dependency rules. Because the [React Compiler](frontend-architecture.md) is on, `react-hooks/rule-suppression` forbids silencing the correctness rules; only the long-standing `exhaustive-deps` may be suppressed, and only for the imperative ref-driven [graph](../features/graph-view.md) effects with a stated reason.
+- **jsx-a11y** (recommended) — the static accessibility rules, complementing the runtime axe gate above.
+- **eslint-config-prettier** last, so formatting is left to a formatter rather than fought by lint rules.
+
+The intent is that the same strictness applies as in sibling projects: catch the class of defect that compiles and passes tests but is still wrong. A handful of rules are tuned, not disabled — numbers are allowed in template literals, and test files relax the no-empty-function and (for polyfilled DOM globals) no-unnecessary-condition rules — each with a comment in `eslint.config.mjs` saying why.

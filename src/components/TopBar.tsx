@@ -8,6 +8,7 @@ import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "../store.tsx";
 import type { LayoutMode } from "../store.tsx";
+import { isMac, modKey } from "../platform.ts";
 import { startWindowDrag, toggleMaximizeWindow } from "../window.ts";
 import { BundleSwitcher } from "./BundleSwitcher.tsx";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
@@ -16,12 +17,9 @@ import "./chrome.css";
 import "./baseui.css";
 import "./TopBar.css";
 
-// Mac shows ⌘K; everything else shows Ctrl K. Guard for non-browser (test) envs.
-const isMac =
-  typeof navigator !== "undefined" &&
-  /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
+// Mac shows ⌘K; everything else shows Ctrl K.
 const searchHint = isMac ? "⌘K" : "Ctrl K";
-const mod = isMac ? "⌘" : "Ctrl";
+const mod = modKey;
 
 // 3-way layout segmented control. Order graph -> split -> reader so the icons
 // read left (explore) to right (read), matching the Ctrl/Cmd+1/2/3 hotkeys.
@@ -86,6 +84,7 @@ export function TopBar() {
     <Tooltip.Provider delay={400}>
       <Toolbar.Root
         render={
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Toolbar.Root injects role="toolbar"; handlers implement window dragging (no keyboard equivalent exists)
           <div
             className="topbar"
             onMouseDown={onBarMouseDown}

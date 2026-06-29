@@ -35,7 +35,7 @@ describe("OKF Viewer app", () => {
     const { container } = renderApp();
     await openFolder(user);
 
-    const sidebar = container.querySelector(".sidebar") as HTMLElement;
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
     expect(within(sidebar).getByRole("treeitem", { name: /Overview/i })).toBeInTheDocument();
     expect(within(sidebar).getByRole("treeitem", { name: /Graph View/i })).toBeInTheDocument();
   });
@@ -45,12 +45,12 @@ describe("OKF Viewer app", () => {
     const { container } = renderApp();
     await openFolder(user);
 
-    const reader = container.querySelector(".reader") as HTMLElement;
+    const reader = container.querySelector<HTMLElement>(".reader")!;
     // Default selection is the first index concept (Overview).
     expect(within(reader).getByRole("heading", { name: "Overview" })).toBeInTheDocument();
 
     // Selecting another concept in the sidebar updates the reader.
-    const sidebar = container.querySelector(".sidebar") as HTMLElement;
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
     await user.click(within(sidebar).getByRole("treeitem", { name: /Graph View/i }));
     expect(
       await within(reader).findByRole("heading", { name: "Graph View" }),

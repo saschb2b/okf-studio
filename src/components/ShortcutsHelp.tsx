@@ -4,14 +4,12 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import { useApp } from "../store.tsx";
+import { modKey } from "../platform.ts";
 import "./chrome.css";
 import "./baseui.css";
 import "./ShortcutsHelp.css";
 
-const isMac =
-  typeof navigator !== "undefined" &&
-  /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
-const mod = isMac ? "⌘" : "Ctrl";
+const mod = modKey;
 
 interface Shortcut {
   combo: string[];

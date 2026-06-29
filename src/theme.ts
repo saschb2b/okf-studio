@@ -40,7 +40,7 @@ export function resolveDark(mode: ThemeMode): boolean {
   if (mode === "light") return false;
   return (
     typeof window !== "undefined" &&
-    window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    window.matchMedia("(prefers-color-scheme: dark)").matches
   );
 }
 

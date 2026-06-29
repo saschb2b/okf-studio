@@ -112,7 +112,7 @@ export function ReaderPrefs() {
                 className="ui-checkbox"
                 checked={s.readerAids}
                 onCheckedChange={(checked) =>
-                  actions.updateSettings({ readerAids: checked === true })
+                  actions.updateSettings({ readerAids: checked })
                 }
               >
                 <Checkbox.Indicator

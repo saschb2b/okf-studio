@@ -37,7 +37,7 @@ function transformCallouts(html: string): string {
     if (!m) continue;
     const kind = m[1].toLowerCase();
     firstP.innerHTML = firstP.innerHTML.replace(ALERT_RE, "");
-    if (!firstP.textContent?.trim() && !firstP.querySelector("*")) firstP.remove();
+    if (!firstP.textContent.trim() && !firstP.querySelector("*")) firstP.remove();
 
     const callout = document.createElement("div");
     callout.className = `callout callout-${kind}`;
@@ -58,7 +58,7 @@ export function renderMarkdown(md: string): string {
   // `async: false` forces the synchronous overload (string, not Promise).
   // `gfm` enables tables/strikethrough; `breaks:false` keeps authored single
   // newlines from becoming spurious <br>. headerIds off — assigned at mount.
-  const html = marked.parse(md ?? "", {
+  const html = marked.parse(md, {
     async: false,
     gfm: true,
     breaks: false,
@@ -110,7 +110,7 @@ function normalizePath(path: string): string {
  * that resolves to nothing usable (empty, or escaping the root) is "broken".
  */
 export function resolveHref(href: string, fromConceptId: string): ResolvedHref {
-  const raw = (href ?? "").trim();
+  const raw = href.trim();
   if (!raw) return { kind: "broken", href };
 
   // External schemes and protocol-relative URLs open in the system browser.
@@ -122,7 +122,7 @@ export function resolveHref(href: string, fromConceptId: string): ResolvedHref {
   if (raw.startsWith("#")) return { kind: "broken", href };
 
   // Strip any query/fragment; concept targets are file paths, not anchors.
-  let path = raw.split("#")[0].split("?")[0];
+  const path = raw.split("#")[0].split("?")[0];
   if (!path) return { kind: "broken", href };
 
   // Resolve against the bundle root (absolute) or the linking concept's dir.

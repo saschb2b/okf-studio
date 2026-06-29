@@ -77,8 +77,8 @@ function scoreMatch(haystack: string, needle: string): number {
   // fuzzy subsequence fallback
   let hi = 0;
   let matched = 0;
-  for (let ni = 0; ni < n.length; ni++) {
-    while (hi < h.length && h[hi] !== n[ni]) hi++;
+  for (const ch of n) {
+    while (hi < h.length && h[hi] !== ch) hi++;
     if (hi >= h.length) return -1;
     hi++;
     matched++;

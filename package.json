@@ -8,6 +8,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri"
@@ -25,6 +28,7 @@
     "react-dom": "^19"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6",
     "@testing-library/react": "^16",
@@ -35,8 +39,14 @@
     "@vitejs/plugin-react": "^5",
     "axe-core": "^4.12.1",
     "babel-plugin-react-compiler": "^1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
     "jsdom": "^25",
     "typescript": "^5",
+    "typescript-eslint": "^8.62.1",
     "vite": "^6",
     "vitest": "^3"
   },

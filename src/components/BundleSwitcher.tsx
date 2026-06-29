@@ -10,6 +10,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { useApp } from "../store.tsx";
 import type { Actions } from "../store.tsx";
+import { modKey } from "../platform.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import type { BundleRoot, RecentBundle } from "../types.ts";
 import "./baseui.css";
@@ -17,10 +18,7 @@ import "./BundleSwitcher.css";
 
 const MAX_DOTS = 5;
 
-const isMac =
-  typeof navigator !== "undefined" &&
-  /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
-const mod = isMac ? "⌘" : "Ctrl";
+const mod = modKey;
 
 /** Last path segment of a folder/root path, for a compact label. */
 function baseName(p: string): string {
@@ -142,6 +140,7 @@ export function BundleSwitcher() {
             className="ui-popover switcher-popup"
             aria-label="Bundle switcher"
           >
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- keyboard handler delegates roving focus to the focusable children (input + buttons) */}
             <div
               ref={popupRef}
               className="switcher-body"

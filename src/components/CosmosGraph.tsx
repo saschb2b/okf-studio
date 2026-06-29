@@ -65,9 +65,13 @@ export function CosmosGraph() {
   const dataRef = useRef<GData>({ ids: [], titles: [], index: new Map() });
   const hoverRef = useRef<number | null>(null);
   const actionsRef = useRef<Actions>(actions);
-  actionsRef.current = actions;
   const selectedRef = useRef<string | null>(state.activeConceptId);
-  selectedRef.current = state.activeConceptId;
+  // Keep the latest actions/selection in refs for the cosmos event handlers,
+  // synced in an effect (not during render) — handlers fire after commit.
+  useEffect(() => {
+    actionsRef.current = actions;
+    selectedRef.current = state.activeConceptId;
+  });
   const [labels, setLabels] = useState<Label[]>([]);
 
   // Reposition the active label set (selected + hovered + hovered's neighbors)
@@ -97,7 +101,7 @@ export function CosmosGraph() {
       if (i == null) continue;
       const wx = pos[i * 2];
       const wy = pos[i * 2 + 1];
-      if (wx == null) continue;
+      if (!Number.isFinite(wx)) continue;
       const [sx, sy] = g.spaceToScreenPosition([wx, wy]);
       next.push({ id, title: data.titles[i], x: sx, y: sy });
     }
@@ -146,7 +150,7 @@ export function CosmosGraph() {
       graph.destroy();
       graphRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Rebuild graph data when the bundle, filters, focus, or theme change.
@@ -247,8 +251,8 @@ export function CosmosGraph() {
 
   // Reposition labels when the selection changes (node set is unchanged).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     positionLabels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeConceptId]);
 
   return (

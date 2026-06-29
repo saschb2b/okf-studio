@@ -44,7 +44,7 @@ describe("OKF Viewer features", () => {
     // Reader-only puts the rail to the side and shows the outline.
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
-    const reader = container.querySelector(".reader") as HTMLElement;
+    const reader = container.querySelector<HTMLElement>(".reader")!;
     expect(within(reader).getByText("Links to")).toBeInTheDocument();
     expect(
       within(reader).getByRole("navigation", { name: /on this page/i }),

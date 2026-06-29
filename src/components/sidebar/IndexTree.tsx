@@ -20,7 +20,7 @@ import type { IndexEntry, IndexNode } from "../../types.ts";
 /** Pick the root index: prefer the empty / "." dir, else the first node. */
 function rootNode(indexes: IndexNode[]): IndexNode | null {
   return (
-    indexes.find((n) => n.dir === "" || n.dir === ".") ?? indexes[0] ?? null
+    indexes.find((n) => n.dir === "" || n.dir === ".") ?? indexes.at(0) ?? null
   );
 }
 
@@ -139,7 +139,7 @@ export function IndexTree() {
 
   function moveFocus(i: number) {
     const clamped = Math.max(0, Math.min(rows.length - 1, i));
-    const row = rows[clamped];
+    const row = rows.at(clamped);
     if (!row) return;
     setFocusKey(row.key);
     // Move DOM focus to the corresponding row button.
@@ -151,7 +151,7 @@ export function IndexTree() {
   }
 
   function onKeyDown(e: KeyboardEvent) {
-    const row = rows[focusIdx];
+    const row = rows.at(focusIdx);
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
@@ -209,6 +209,7 @@ export function IndexTree() {
         className="sb-tree"
         role="tree"
         aria-label={`${bundle.name} index`}
+        tabIndex={-1}
         onKeyDown={onKeyDown}
       >
         <TreeNode
@@ -282,6 +283,7 @@ function TreeNode({
                     <button
                       type="button"
                       role="treeitem"
+                      aria-selected={false}
                       aria-expanded={child ? isOpen : undefined}
                       aria-level={depth + 1}
                       data-row-key={key}
@@ -313,7 +315,7 @@ function TreeNode({
                         indexes={indexes}
                         node={child}
                         depth={depth + 1}
-                        pathKey={expandKey!}
+                        pathKey={expandKey}
                         expanded={expanded}
                         toggle={toggle}
                         rows={rows}
@@ -336,6 +338,7 @@ function TreeNode({
                   <button
                     type="button"
                     role="treeitem"
+                    aria-selected={active}
                     aria-level={depth + 1}
                     aria-current={active ? "true" : undefined}
                     data-row-key={key}

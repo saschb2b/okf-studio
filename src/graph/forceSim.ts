@@ -464,8 +464,7 @@ function resolveCollisions(nodes: SimNode[], strength: number, padding: number):
         for (let dgy = -1; dgy <= 1; dgy++) {
           const bucket = grid.get(cellKey(gx + dgx, gy + dgy));
           if (!bucket) continue;
-          for (let k = 0; k < bucket.length; k++) {
-            const j = bucket[k];
+          for (const j of bucket) {
             if (j <= i) continue; // each unordered pair handled once.
             const b = nodes[j];
             let dx = b.x - a.x;
@@ -555,7 +554,6 @@ export function step(
   for (const e of edges) {
     const a = nodes[e.a];
     const b = nodes[e.b];
-    if (!a || !b) continue;
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1e-4;

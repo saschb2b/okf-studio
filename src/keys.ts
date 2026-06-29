@@ -18,7 +18,7 @@ export function useGlobalKeys() {
         // Mirrors VS Code's preview hotkeys but flips toward content (reader).
         e.preventDefault();
         const map = { "1": "graph", "2": "split", "3": "reader" } as const;
-        actions.setLayout(map[e.key as "1" | "2" | "3"]);
+        actions.setLayout(map[e.key]);
       } else if (!typing && !mod && k === "\\") {
         // Cycle split -> reader -> graph (bare backslash, next to [ and ]).
         e.preventDefault();

@@ -51,6 +51,9 @@ export async function startWindowResize(dir: ResizeDir): Promise<void> {
 
 /** Subscribe to size/maximize changes; returns an unsubscribe (no-op off-Tauri). */
 export async function onWindowResized(cb: () => void): Promise<() => void> {
-  if (!isTauri()) return () => {};
+  if (!isTauri())
+    return () => {
+      /* no resize events off-Tauri */
+    };
   return (await win()).onResized(() => cb());
 }

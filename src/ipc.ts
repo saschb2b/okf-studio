@@ -133,7 +133,10 @@ export async function startWatch(
   folder: string,
   onChanged: (e: BundleChanged) => void,
 ): Promise<() => void> {
-  if (!isTauri()) return () => {};
+  if (!isTauri())
+    return () => {
+      /* nothing to watch off-Tauri */
+    };
   const { invoke } = await import("@tauri-apps/api/core");
   const { listen } = await import("@tauri-apps/api/event");
   const unlisten = await listen<BundleChanged>("bundle-changed", (ev) =>
@@ -142,6 +145,8 @@ export async function startWatch(
   await invoke("start_watch", { folder });
   return () => {
     unlisten();
-    void invoke("stop_watch").catch(() => {});
+    void invoke("stop_watch").catch(() => {
+      /* best-effort cleanup */
+    });
   };
 }

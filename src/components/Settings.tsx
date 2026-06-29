@@ -92,11 +92,13 @@ export function Settings() {
             <span className="field-label">Theme</span>
             <Select.Root
               value={s.theme}
-              onValueChange={(v) => actions.updateSettings({ theme: v as ThemeMode })}
+              onValueChange={(v) => {
+                if (v) actions.updateSettings({ theme: v });
+              }}
             >
               <Select.Trigger className="ui-select-trigger" aria-label="Theme">
                 <Select.Value>
-                  {(value) => THEME_LABELS[(value as ThemeMode) ?? "system"]}
+                  {(value) => THEME_LABELS[(value as ThemeMode | null) ?? "system"]}
                 </Select.Value>
                 <Select.Icon className="ui-select-icon" aria-hidden="true">
                   ▾
@@ -124,7 +126,7 @@ export function Settings() {
               className="ui-checkbox"
               checked={s.reduceMotion}
               onCheckedChange={(checked) =>
-                actions.updateSettings({ reduceMotion: checked === true })
+                actions.updateSettings({ reduceMotion: checked })
               }
             >
               <Checkbox.Indicator className="ui-checkbox-indicator" aria-hidden="true">
@@ -144,7 +146,7 @@ export function Settings() {
             >
               <Select.Trigger className="ui-select-trigger" aria-label="Reader text size">
                 <Select.Value>
-                  {(value) => scaleLabel((value as number) ?? 1)}
+                  {(value) => scaleLabel((value as number | null) ?? 1)}
                 </Select.Value>
                 <Select.Icon className="ui-select-icon" aria-hidden="true">
                   ▾

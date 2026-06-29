@@ -197,9 +197,12 @@ export function GraphView() {
   const prevRestrictKey = useRef<string | null>(null); // last focus/isolate set, to refit on change
 
   // Latest selection for the imperative draw, without re-binding the whole
-  // render pipeline on every selection change.
+  // render pipeline on every selection change. Synced in an effect (not during
+  // render); the draw loop runs after commit, so it sees the current value.
   const selectedRef = useRef<string | null>(state.activeConceptId);
-  selectedRef.current = state.activeConceptId;
+  useEffect(() => {
+    selectedRef.current = state.activeConceptId;
+  });
 
   // ---- Drawing -------------------------------------------------------------
 
@@ -232,7 +235,7 @@ export function GraphView() {
     // Highlight the hovered node, else the selected one (so the open concept's
     // links stay visible). Only a hover *dims* the rest of the graph — selection
     // alone keeps the whole spread bright, so overview stays readable.
-    const focusIdx = hover != null ? hover : selIdx;
+    const focusIdx = hover ?? selIdx;
     const hasFocus = focusIdx != null;
     const focusNeighbors = hasFocus ? data.neighbors[focusIdx] : null;
     const dimOthers = hover != null;
@@ -474,7 +477,9 @@ export function GraphView() {
     const meta: RenderData["meta"] = [];
     const indexById = new Map<string, number>();
     const radius = 220; // spawn ring for brand-new nodes
-    let spawnedNew = false;
+    // Whether any node lacks a cached position (a brand-new layout). Computed
+    // before the loop below populates the cache.
+    const spawnedNew = visible.some((c) => !store.has(c.id));
 
     visible.forEach((c: Concept, i) => {
       const existing = store.get(c.id);
@@ -489,7 +494,6 @@ export function GraphView() {
         x = Math.cos(angle) * radius * (0.4 + Math.random() * 0.6);
         y = Math.sin(angle) * radius * (0.4 + Math.random() * 0.6);
         store.set(c.id, { x, y });
-        spawnedNew = true;
       }
       indexById.set(c.id, nodes.length);
       nodes.push({
@@ -592,11 +596,14 @@ export function GraphView() {
   // the ego set, which the rebuild effect above handles via restrictKey.
   useEffect(() => {
     draw();
+    // draw() reads refs only; it intentionally re-runs just on selection change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.activeConceptId]);
 
   // Drop a stale isolate set when the bundle changes (its ids belong to the old
   // bundle). Keeps the view from going blank on bundle switch.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsolate(null);
   }, [state.activeRoot]);
 
@@ -646,6 +653,8 @@ export function GraphView() {
     const ro = new ResizeObserver(apply);
     ro.observe(container);
     return () => ro.disconnect();
+    // Mount-only: observes the container and draws via refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Stop the loop on unmount.
@@ -654,7 +663,8 @@ export function GraphView() {
   // ---- Coordinate helpers --------------------------------------------------
 
   function toWorld(clientX: number, clientY: number): { x: number; y: number } {
-    const canvas = canvasRef.current!;
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     const px = clientX - rect.left;
     const py = clientY - rect.top;
@@ -837,7 +847,7 @@ export function GraphView() {
 
   function isolateSet(label: string, ids: string[]) {
     // Toggle: clicking the active chip clears the isolate.
-    setIsolate((cur) => (cur && cur.label === label ? null : { label, ids }));
+    setIsolate((cur) => (cur?.label === label ? null : { label, ids }));
   }
 
   if (!state.bundle || nodeCount === 0) {
@@ -930,7 +940,9 @@ export function GraphView() {
                       { value: "all", text: "All" },
                     ]}
                     value={state.linkDensity}
-                    onChange={actions.setLinkDensity}
+                    onChange={(d) => {
+                      actions.setLinkDensity(d);
+                    }}
                   />
                   <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
                 </Section>
@@ -1186,7 +1198,7 @@ function Slider({
         min={min}
         max={max}
         step={step}
-        onValueChange={(v) => onChange(v as number)}
+        onValueChange={(v) => onChange(v)}
       >
         <BaseSlider.Control className="ui-slider-control">
           <BaseSlider.Track className="ui-slider-track">

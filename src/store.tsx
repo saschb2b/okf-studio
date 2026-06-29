@@ -362,14 +362,19 @@ const Ctx = createContext<{ state: State; actions: Actions } | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  // Latest state for async actions to read. Updated in an effect (not during
+  // render) so it never mutates a ref while rendering; actions run from event
+  // handlers/effects after commit, so they always see the current value.
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => {
+    stateRef.current = state;
+  });
 
   const actions: Actions = {
     async openFolder() {
       const folder = await ipc.pickFolder();
       if (!folder) return;
-      await this.openFolderPath(folder);
+      await actions.openFolderPath(folder);
     },
     async openFolderPath(folder) {
       dispatch({ t: "loading", v: true });
@@ -379,7 +384,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           stateRef.current.settings.scanMaxDepth,
         );
         dispatch({ t: "openFolder", folder, bundles });
-        if (bundles.length >= 1) await this.selectBundle(bundles[0].root, folder);
+        if (bundles.length >= 1) await actions.selectBundle(bundles[0].root, folder);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
@@ -423,7 +428,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const root = bundles.some((b) => b.root === entry.root)
           ? entry.root
           : bundles[0]?.root;
-        if (root) await this.selectBundle(root, entry.folder);
+        if (root) await actions.selectBundle(root, entry.folder);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
@@ -447,7 +452,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       dispatch({ t: "openFolder", folder, bundles });
       const root = activeRoot ?? bundles[0]?.root;
-      if (root) await this.selectBundle(root);
+      if (root) await actions.selectBundle(root);
     },
     selectConcept(id) {
       dispatch({ t: "select", id });
@@ -528,7 +533,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // maximized). No-op off-Tauri.
   useEffect(() => {
     if (!ipc.isTauri()) return;
-    let unsub = () => {};
+    let unsub = () => {
+      /* replaced once the resize listener is registered */
+    };
     const sync = () =>
       void isWindowMaximized().then((m) => dispatch({ t: "maximized", v: m }));
     sync();

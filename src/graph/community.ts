@@ -79,8 +79,12 @@ function oneLevel(
   let next = 0;
   for (let i = 0; i < n; i++) {
     const c = comm[i];
-    if (!map.has(c)) map.set(c, next++);
-    comm[i] = map.get(c)!;
+    let mapped = map.get(c);
+    if (mapped === undefined) {
+      mapped = next++;
+      map.set(c, mapped);
+    }
+    comm[i] = mapped;
   }
   return { comm, improved: improvedAny };
 }
@@ -115,11 +119,11 @@ function renumberBySize(membership: number[]): number[] {
   const size = new Map<number, number>();
   for (const c of membership) size.set(c, (size.get(c) ?? 0) + 1);
   const order = [...size.keys()].sort(
-    (x, y) => (size.get(y)! - size.get(x)!) || x - y,
+    (x, y) => (size.get(y) ?? 0) - (size.get(x) ?? 0) || x - y,
   );
   const map = new Map<number, number>();
   order.forEach((c, i) => map.set(c, i));
-  return membership.map((c) => map.get(c)!);
+  return membership.map((c) => map.get(c) ?? 0);
 }
 
 /**

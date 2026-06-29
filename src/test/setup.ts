@@ -36,13 +36,11 @@ if (typeof HTMLCanvasElement !== "undefined") {
 
 // jsdom lacks ResizeObserver; the Graph View observes its container.
 const g = globalThis as { ResizeObserver?: typeof ResizeObserver };
-if (!g.ResizeObserver) {
-  g.ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  } as unknown as typeof ResizeObserver;
-}
+g.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 // jsdom lacks Element.getAnimations; Base UI awaits it for open/close transitions.
 if (typeof Element !== "undefined" && !Element.prototype.getAnimations) {
@@ -53,7 +51,7 @@ if (typeof Element !== "undefined" && !Element.prototype.getAnimations) {
 
 // jsdom lacks matchMedia; theme resolution calls it.
 if (typeof window !== "undefined" && !window.matchMedia) {
-  window.matchMedia = ((query: string) => ({
+  window.matchMedia = (query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -62,5 +60,5 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     addListener: () => {},
     removeListener: () => {},
     dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
+  });
 }

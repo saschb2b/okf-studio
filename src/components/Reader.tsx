@@ -93,7 +93,7 @@ export function Reader() {
       }
     }
 
-    const heads = Array.from(el.querySelectorAll("h2, h3")) as HTMLElement[];
+    const heads = Array.from(el.querySelectorAll("h2, h3"));
     const used = new Set<string>();
     const items: OutlineItem[] = heads.map((h) => {
       // Idempotent across StrictMode's double-invoke (and re-runs): drop any
@@ -127,15 +127,17 @@ export function Reader() {
     // A copy affordance on each fenced code block.
     for (const pre of Array.from(el.querySelectorAll("pre"))) {
       if (pre.querySelector(".code-copy")) continue;
-      const text = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+      const text = pre.querySelector("code")?.textContent ?? pre.textContent;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "code-copy";
       btn.textContent = "Copy";
       btn.setAttribute("aria-label", "Copy code");
       btn.addEventListener("click", () => {
-        if (!navigator.clipboard) return;
-        void navigator.clipboard.writeText(text).then(() => {
+        // clipboard is undefined in insecure contexts despite the DOM lib type.
+        const clipboard = navigator.clipboard as Clipboard | undefined;
+        if (!clipboard) return;
+        void clipboard.writeText(text).then(() => {
           btn.textContent = "Copied";
           window.setTimeout(() => {
             btn.textContent = "Copy";
@@ -146,7 +148,7 @@ export function Reader() {
     }
 
     if (heads.length === 0 || typeof IntersectionObserver === "undefined") return;
-    const root = el.closest(".pane") as HTMLElement | null;
+    const root = el.closest(".pane");
     const obs = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
@@ -157,6 +159,8 @@ export function Reader() {
     );
     heads.forEach((h) => obs.observe(h));
     return () => obs.disconnect();
+    // `c` is tracked via c?.id; the effect only needs to re-run on concept change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c?.id, bodyHtml, bundle, reduceMotion]);
 
   if (!c) {
@@ -184,11 +188,12 @@ export function Reader() {
   // Event delegation for body anchor clicks: route concept links in-app,
   // external links to the OS browser, and keep unresolved links inert.
   function onBodyClick(e: MouseEvent<HTMLDivElement>) {
+    if (!c) return;
     const anchor = (e.target as HTMLElement).closest("a");
     if (!anchor) return;
     const href = anchor.getAttribute("href");
     if (!href) return;
-    const resolved = resolveHref(href, c!.id);
+    const resolved = resolveHref(href, c.id);
     if (resolved.kind === "external") {
       e.preventDefault();
       actions.openExternal(resolved.url);
@@ -255,6 +260,7 @@ export function Reader() {
           )}
         </header>
 
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- delegated routing for in-body <a>s, which are natively keyboard-accessible (Enter fires a bubbling click) */}
         <div
           ref={bodyRef}
           className="body markdown"
@@ -324,7 +330,9 @@ export function Reader() {
                   <button
                     type="button"
                     className="link-btn"
-                    onClick={() => actions.openExternal(c.resource!)}
+                    onClick={() => {
+                      if (c.resource) actions.openExternal(c.resource);
+                    }}
                   >
                     {c.resource}
                   </button>

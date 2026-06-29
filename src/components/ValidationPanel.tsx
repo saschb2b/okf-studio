@@ -101,11 +101,19 @@ export function ValidationPanel() {
             <ScrollArea.Root className="ui-scrollarea vp-scroll">
               <ScrollArea.Viewport className="ui-scrollarea-viewport">
                 <div className="vp-body">
-                  <Group level="error" issues={errors} onJump={actions.selectConcept} />
+                  <Group
+                    level="error"
+                    issues={errors}
+                    onJump={(id) => {
+                      actions.selectConcept(id);
+                    }}
+                  />
                   <Group
                     level="warning"
                     issues={warnings}
-                    onJump={actions.selectConcept}
+                    onJump={(id) => {
+                      actions.selectConcept(id);
+                    }}
                   />
                 </div>
               </ScrollArea.Viewport>

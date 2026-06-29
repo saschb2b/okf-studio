@@ -13,14 +13,20 @@
 // React Compiler is enabled: no manual useMemo/useCallback/memo. Imperative
 // canvas/sim state lives in refs and effects.
 
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { Popover } from "@base-ui/react/popover";
 import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
 import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
+// Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
+// switches to the GPU renderer — the default canvas path stays lean.
+const CosmosGraph = lazy(() =>
+  import("./CosmosGraph.tsx").then((m) => ({ default: m.CosmosGraph })),
+);
 import { buildTypePalette, resolveDark } from "../theme.ts";
+import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import type { Bundle, Concept } from "../types.ts";
 import {
   ALPHA_DECAY,
@@ -140,6 +146,10 @@ export function GraphView() {
   // (plus their neighbors), overriding focus/overview. Driven by the defect
   // count chip. Read-only and tolerant — clearing it returns to normal.
   const [isolate, setIsolate] = useState<{ label: string; ids: string[] } | null>(null);
+  // Which renderer draws the graph: the bespoke canvas (default, full features)
+  // or the GPU cosmos.gl renderer (scales to very large graphs). See
+  // docs/features/graph-view.md.
+  const [renderer, setRenderer] = useState<"canvas" | "gpu">("canvas");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -802,17 +812,46 @@ export function GraphView() {
 
   return (
     <div className="graph-view" ref={containerRef}>
-      <canvas
-        ref={canvasRef}
-        className="graph-canvas"
-        role="img"
-        aria-label={ariaLabel}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        onWheel={onWheel}
-      />
+      {renderer === "gpu" ? (
+        <ErrorBoundary
+          resetKey={renderer}
+          fallback={
+            <div className="graph-empty">
+              <p>GPU renderer unavailable</p>
+              <small>WebGL couldn&apos;t start in this environment.</small>
+              <button
+                type="button"
+                className="graph-panel-toggle"
+                onClick={() => setRenderer("canvas")}
+              >
+                Use Canvas renderer
+              </button>
+            </div>
+          }
+        >
+          <Suspense
+            fallback={
+              <div className="graph-empty">
+                <p>Loading GPU renderer…</p>
+              </div>
+            }
+          >
+            <CosmosGraph />
+          </Suspense>
+        </ErrorBoundary>
+      ) : (
+        <canvas
+          ref={canvasRef}
+          className="graph-canvas"
+          role="img"
+          aria-label={ariaLabel}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onWheel={onWheel}
+        />
+      )}
       <div className="graph-panel">
         <Popover.Root>
           <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
@@ -824,6 +863,29 @@ export function GraphView() {
               sideOffset={6}
             >
               <Popover.Popup className="ui-popover graph-panel-body">
+                <div className="graph-colorby" role="group" aria-label="Renderer">
+                  <span className="graph-colorby-label">Renderer</span>
+                  <div className="graph-seg">
+                    <button
+                      type="button"
+                      className="graph-seg-btn"
+                      aria-pressed={renderer === "canvas"}
+                      onClick={() => setRenderer("canvas")}
+                    >
+                      Canvas
+                    </button>
+                    <button
+                      type="button"
+                      className="graph-seg-btn"
+                      aria-pressed={renderer === "gpu"}
+                      onClick={() => setRenderer("gpu")}
+                    >
+                      GPU
+                    </button>
+                  </div>
+                </div>
+                {renderer === "canvas" && (
+                  <>
                 <fieldset>
                   <legend>Forces</legend>
                   <Slider label="Repel" min={0} max={6000} step={50} value={forces.repulsion}
@@ -877,6 +939,8 @@ export function GraphView() {
                 >
                   Reset
                 </button>
+                  </>
+                )}
               </Popover.Popup>
             </Popover.Positioner>
           </Popover.Portal>
@@ -922,7 +986,7 @@ export function GraphView() {
         )}
         {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
       </div>
-      {(hasDefects || isolate) && (
+      {renderer === "canvas" && (hasDefects || isolate) && (
         <div className="graph-chips">
           {isolate ? (
             <button
@@ -950,22 +1014,24 @@ export function GraphView() {
           )}
         </div>
       )}
-      <div className="graph-controls">
-        <button type="button" className="graph-btn" aria-label="Zoom in" onClick={() => zoomBy(1.2)}>
-          +
-        </button>
-        <button
-          type="button"
-          className="graph-btn"
-          aria-label="Zoom out"
-          onClick={() => zoomBy(1 / 1.2)}
-        >
-          &minus;
-        </button>
-        <button type="button" className="graph-btn graph-fit" aria-label="Fit graph to view" onClick={fit}>
-          Fit
-        </button>
-      </div>
+      {renderer === "canvas" && (
+        <div className="graph-controls">
+          <button type="button" className="graph-btn" aria-label="Zoom in" onClick={() => zoomBy(1.2)}>
+            +
+          </button>
+          <button
+            type="button"
+            className="graph-btn"
+            aria-label="Zoom out"
+            onClick={() => zoomBy(1 / 1.2)}
+          >
+            &minus;
+          </button>
+          <button type="button" className="graph-btn graph-fit" aria-label="Fit graph to view" onClick={fit}>
+            Fit
+          </button>
+        </div>
+      )}
     </div>
   );
 }

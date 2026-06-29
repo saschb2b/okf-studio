@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-29T19:00:00Z
+timestamp: 2026-06-29T21:30:00Z
 ---
 
 # What it does
@@ -28,6 +28,7 @@ The center of the workspace renders the active bundle as an interactive **force-
 
 A collapsible controls panel (top-left of the graph, in the spirit of Obsidian's graph view) tunes the layout without leaving the view:
 
+- **Renderer** — *Canvas* (the default) or *GPU*. The canvas renderer carries the full control set, level-of-detail labels, and defect markers; the GPU renderer offloads the force simulation to the graphics card (WebGL) for very large graphs. See [Implementation notes](#implementation-notes).
 - **Forces** — *repel* (node spacing), *link distance*, *link force*, and *center* gravity. Adjusting a force gently reheats the layout so it re-settles.
 - **Display** — the **color** mode (by type or by detected cluster), *node size*, *link thickness*, *link opacity*, and the *label* fade threshold.
 
@@ -44,5 +45,6 @@ The graph makes conformance problems visible instead of hiding them: **orphans**
 # Implementation notes
 
 - Graph data (nodes, edges, backlinks) is computed in the [Rust core](../architecture/okf-parsing.md) from the [data model](../architecture/data-model.md) and handed to the frontend as JSON.
-- The layout/render runs in the frontend on a **canvas**, with positions and the simulation kept out of React's render path. Repulsion uses a **Barnes–Hut quad-tree** (O(n log n)), **weighted by node degree** (a ForceAtlas2-style body mass) so hubs and dense clusters claim more space and separate emergently, while a **LinLog link attraction** (a gentle logarithmic pull that doesn't tighten with distance) keeps connected clusters from collapsing into a central tangle — together a neat, untangled distribution with no separate clustering pass — and a **collision** pass prevents overlap, so the view scales from tens to thousands of nodes; a cooling schedule settles the layout and then the loop idles. See [Performance & Scale](../architecture/performance.md) for the full strategy and the [fast principle](../product/principles.md) it serves.
+- The default layout/render runs in the frontend on a **canvas**, with positions and the simulation kept out of React's render path. Repulsion uses a **Barnes–Hut quad-tree** (O(n log n)), **weighted by node degree** (a ForceAtlas2-style body mass) so hubs and dense clusters claim more space and separate emergently, while a **LinLog link attraction** (a gentle logarithmic pull that doesn't tighten with distance) keeps connected clusters from collapsing into a central tangle — together a neat, untangled distribution with no separate clustering pass — and a **collision** pass prevents overlap, so the view scales from tens to thousands of nodes; a cooling schedule settles the layout and then the loop idles. See [Performance & Scale](../architecture/performance.md) for the full strategy and the [fast principle](../product/principles.md) it serves.
+- An optional **GPU renderer** (cosmos.gl) runs the same force model entirely on the graphics card via WebGL, scaling to graphs far larger than the canvas path comfortably handles. It keeps the essentials — community coloring, degree-scaled node sizes, click-to-open, hover highlight, [focus mode](#focus-mode), an HTML label overlay for the selected and hovered concepts, and Fit — and is **loaded on demand** (its WebGL bundle downloads only when selected, so the default path stays lean) and **degrades gracefully to the canvas renderer** if WebGL is unavailable in the host webview. The canvas renderer stays the default and the more fully-featured of the two.
 - Broken cross-links simply do not produce edges — they are [tolerated](validation.md), not errors.

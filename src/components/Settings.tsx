@@ -94,7 +94,7 @@ export function Settings() {
               value={s.theme}
               onValueChange={(v) => actions.updateSettings({ theme: v as ThemeMode })}
             >
-              <Select.Trigger className="ui-select-trigger">
+              <Select.Trigger className="ui-select-trigger" aria-label="Theme">
                 <Select.Value>
                   {(value) => THEME_LABELS[(value as ThemeMode) ?? "system"]}
                 </Select.Value>
@@ -142,7 +142,7 @@ export function Settings() {
                 actions.updateSettings({ readerScale: roundScale(Number(v)) })
               }
             >
-              <Select.Trigger className="ui-select-trigger">
+              <Select.Trigger className="ui-select-trigger" aria-label="Reader text size">
                 <Select.Value>
                   {(value) => scaleLabel((value as number) ?? 1)}
                 </Select.Value>
@@ -188,7 +188,10 @@ export function Settings() {
                 <NumberField.Decrement className="ui-numberfield-btn" aria-label="Decrease">
                   &minus;
                 </NumberField.Decrement>
-                <NumberField.Input className="ui-numberfield-input" />
+                <NumberField.Input
+                  className="ui-numberfield-input"
+                  aria-label="Scan max depth"
+                />
                 <NumberField.Increment className="ui-numberfield-btn" aria-label="Increase">
                   +
                 </NumberField.Increment>

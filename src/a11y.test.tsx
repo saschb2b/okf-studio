@@ -19,8 +19,8 @@ function renderApp() {
   );
 }
 
-async function expectNoViolations(container: HTMLElement) {
-  const results = await axe.run(container, {
+async function expectNoViolations(node: Element) {
+  const results = await axe.run(node, {
     rules: { "color-contrast": { enabled: false } },
   });
   const summary = results.violations.map(
@@ -30,6 +30,11 @@ async function expectNoViolations(container: HTMLElement) {
         .join(" | ")}`,
   );
   expect(summary).toEqual([]);
+}
+
+async function openBundle(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
+  await screen.findByText("OKF Viewer (sample)");
 }
 
 describe("accessibility (axe-core)", () => {
@@ -42,8 +47,32 @@ describe("accessibility (axe-core)", () => {
   it("the open bundle (workspace) has no violations", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
-    await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
-    await screen.findByText("OKF Viewer (sample)");
+    await openBundle(user);
     await expectNoViolations(container);
+  });
+
+  it("the settings dialog has no violations", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("button", { name: /open settings/i }));
+    await expectNoViolations(await screen.findByRole("dialog"));
+  });
+
+  it("the shortcuts overlay has no violations", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+    await user.keyboard("?");
+    await expectNoViolations(await screen.findByRole("dialog"));
+  });
+
+  it("the bundle switcher has no violations", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("button", { name: /switch bundle/i }));
+    const popup = await screen.findByLabelText("Bundle switcher");
+    await expectNoViolations(popup);
   });
 });

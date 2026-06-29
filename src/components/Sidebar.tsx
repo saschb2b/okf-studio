@@ -1,11 +1,11 @@
 // Left pane of the Browsing Layout. A persistent search box sits atop a Zed-style
 // activity rail that swaps the sidebar body between two lenses — Navigate (the
-// bundle browser + index tree) and Filter (types + tags) — so filtering and
-// navigation no longer compete for one long scroll. The active lens's content
-// renders inside a themed Base UI ScrollArea. An active-filter dot on the Filter
-// rail icon keeps a narrowed graph discoverable even while the Filter lens is
-// hidden. Renders nothing until a bundle is loaded. See docs/ux/browsing-layout.md
-// and docs/proposals/scalable-sidebar.md.
+// index tree) and Filter (types + tags) — so filtering and navigation no longer
+// compete for one long scroll. The active lens's content renders inside a themed
+// Base UI ScrollArea. An active-filter dot on the Filter rail icon keeps a
+// narrowed graph discoverable even while the Filter lens is hidden. Renders
+// nothing until a bundle is loaded. Switching *bundles* lives in the top-left
+// Bundle Switcher, not here. See docs/ux/browsing-layout.md.
 
 import { Collapsible } from "@base-ui/react/collapsible";
 import { ScrollArea } from "@base-ui/react/scroll-area";
@@ -17,7 +17,6 @@ import "./baseui.css";
 import "./Sidebar.css";
 import { useApp } from "../store.tsx";
 import type { Lens } from "../store.tsx";
-import { BundleBrowser } from "./sidebar/BundleBrowser.tsx";
 import { TypeFilters } from "./sidebar/TypeFilters.tsx";
 import { TagBrowser } from "./sidebar/TagBrowser.tsx";
 import { IndexTree } from "./sidebar/IndexTree.tsx";
@@ -87,7 +86,6 @@ export function Sidebar() {
   const { state, actions } = useApp();
   if (!state.bundle) return null;
 
-  const multipleBundles = state.bundles.length > 1;
   const filterActive = state.hiddenTypes.length > 0 || !!state.activeTag;
 
   return (
@@ -139,16 +137,9 @@ export function Sidebar() {
           <ScrollArea.Viewport className="ui-scrollarea-viewport sb-scroll-viewport">
             <div className="sb-sections">
               {state.lens === "navigate" ? (
-                <>
-                  {multipleBundles && (
-                    <Section title="Bundles" className="sb-collapsible-bundles">
-                      <BundleBrowser />
-                    </Section>
-                  )}
-                  <Section title="Index" className="sb-collapsible-tree">
-                    <IndexTree />
-                  </Section>
-                </>
+                <Section title="Index" className="sb-collapsible-tree">
+                  <IndexTree />
+                </Section>
               ) : (
                 <>
                   <Section title="Types">

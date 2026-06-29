@@ -2,7 +2,7 @@
 // window it calls Rust commands and plugins; in a browser or test it falls back
 // to an in-memory mock, so the UI runs and tests pass without the backend.
 
-import type { Bundle, BundleRoot, Settings } from "./types.ts";
+import type { Bundle, BundleRoot, RecentBundle, Settings } from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
 import { MOCK_BUNDLE, MOCK_FOLDER, MOCK_ROOTS } from "./mock/fixture.ts";
 
@@ -43,9 +43,11 @@ export async function openExternal(url: string): Promise<void> {
   await openUrl(url);
 }
 
-// --- Settings & recent folders, persisted via the store plugin ---
+// --- Settings & recent bundles, persisted via the store plugin ---
 
 const STORE_FILE = "okf-viewer.json";
+const RECENTS_KEY = "recentBundles";
+const RECENTS_CAP = 12;
 
 async function store() {
   const { load } = await import("@tauri-apps/plugin-store");
@@ -65,17 +67,52 @@ export async function saveSettings(settings: Settings): Promise<void> {
   await st.save();
 }
 
-export async function recentFolders(): Promise<string[]> {
+export async function recentBundles(): Promise<RecentBundle[]> {
   if (!isTauri()) return [];
-  return (await (await store()).get<string[]>("recentFolders")) ?? [];
+  return (await (await store()).get<RecentBundle[]>(RECENTS_KEY)) ?? [];
 }
 
-export async function pinFolder(folder: string): Promise<string[]> {
+/** Keep every pinned entry; cap the unpinned tail of a newest-first list. */
+function capRecents(list: RecentBundle[]): RecentBundle[] {
+  let unpinned = 0;
+  return list.filter((r) => (r.pinned ? true : ++unpinned <= RECENTS_CAP));
+}
+
+/** Record a freshly-opened bundle at the top of recents (dedup by root). */
+export async function pushRecentBundle(
+  entry: Omit<RecentBundle, "ts" | "pinned">,
+): Promise<RecentBundle[]> {
   if (!isTauri()) return [];
   const st = await store();
-  const prev = (await st.get<string[]>("recentFolders")) ?? [];
-  const next = [folder, ...prev.filter((f) => f !== folder)].slice(0, 10);
-  await st.set("recentFolders", next);
+  const prev = (await st.get<RecentBundle[]>(RECENTS_KEY)) ?? [];
+  const pinned = prev.find((r) => r.root === entry.root)?.pinned ?? false;
+  const next = capRecents([
+    { ...entry, ts: Date.now(), pinned },
+    ...prev.filter((r) => r.root !== entry.root),
+  ]);
+  await st.set(RECENTS_KEY, next);
+  await st.save();
+  return next;
+}
+
+export async function pinBundle(root: string): Promise<RecentBundle[]> {
+  if (!isTauri()) return [];
+  const st = await store();
+  const prev = (await st.get<RecentBundle[]>(RECENTS_KEY)) ?? [];
+  const next = prev.map((r) =>
+    r.root === root ? { ...r, pinned: !r.pinned } : r,
+  );
+  await st.set(RECENTS_KEY, next);
+  await st.save();
+  return next;
+}
+
+export async function forgetBundle(root: string): Promise<RecentBundle[]> {
+  if (!isTauri()) return [];
+  const st = await store();
+  const prev = (await st.get<RecentBundle[]>(RECENTS_KEY)) ?? [];
+  const next = prev.filter((r) => r.root !== root);
+  await st.set(RECENTS_KEY, next);
   await st.save();
   return next;
 }

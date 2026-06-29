@@ -73,6 +73,21 @@ export interface Bundle {
   confidence: Confidence;
 }
 
+/**
+ * One entry in the Bundle Switcher's recent list. Recents are per-BUNDLE
+ * (OKF's unit); `folder` is the picked directory that granted the read scope
+ * and is re-granted when the entry is reopened. See docs/features/bundle-switcher.md.
+ */
+export interface RecentBundle {
+  root: string; // absolute path of the bundle root
+  folder: string; // the picked folder that grants the read scope
+  name: string; // bundle display name
+  conceptCount: number;
+  types: string[];
+  ts: number; // last-opened epoch ms; recents are newest-first
+  pinned?: boolean;
+}
+
 export type ThemeMode = "system" | "light" | "dark";
 
 export interface Settings {

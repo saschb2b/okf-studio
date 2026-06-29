@@ -161,7 +161,6 @@ body,
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
 }
-.topbar-title { font-weight: 600; }
 .spacer { flex: 1; }
 
 .btn {

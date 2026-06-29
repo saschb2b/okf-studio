@@ -11,7 +11,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { Bundle, BundleRoot, Concept, Settings } from "./types.ts";
+import type { Bundle, BundleRoot, Concept, RecentBundle, Settings } from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
 import { applyTheme } from "./theme.ts";
 import * as ipc from "./ipc.ts";
@@ -97,6 +97,8 @@ export type GraphMode = "focus" | "overview";
 export interface State {
   folder: string | null;
   bundles: BundleRoot[];
+  recents: RecentBundle[];
+  switcherOpen: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
   loading: boolean;
@@ -123,6 +125,8 @@ const persistedLayout = loadLayout();
 const initialState: State = {
   folder: null,
   bundles: [],
+  recents: [],
+  switcherOpen: false,
   activeRoot: null,
   bundle: null,
   loading: false,
@@ -148,6 +152,8 @@ type Msg =
   | { t: "loading"; v: boolean }
   | { t: "error"; v: string | null }
   | { t: "openFolder"; folder: string; bundles: BundleRoot[] }
+  | { t: "recents"; v: RecentBundle[] }
+  | { t: "switcher"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
   | { t: "back" }
@@ -185,6 +191,10 @@ function reducer(s: State, m: Msg): State {
       return { ...s, error: m.v, loading: false };
     case "openFolder":
       return { ...s, folder: m.folder, bundles: m.bundles, error: null };
+    case "recents":
+      return { ...s, recents: m.v };
+    case "switcher":
+      return { ...s, switcherOpen: m.v };
     case "setBundle": {
       const keep =
         s.activeConceptId &&
@@ -300,7 +310,11 @@ function reducer(s: State, m: Msg): State {
 export interface Actions {
   openFolder(): Promise<void>;
   openFolderPath(folder: string): Promise<void>;
-  selectBundle(root: string): Promise<void>;
+  selectBundle(root: string, folder?: string): Promise<void>;
+  openRecentBundle(entry: RecentBundle): Promise<void>;
+  pinBundle(root: string): Promise<void>;
+  forgetBundle(root: string): Promise<void>;
+  setSwitcher(open: boolean): void;
   rescan(): Promise<void>;
   selectConcept(id: string | null): void;
   back(): void;
@@ -340,21 +354,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const bundles = await ipc.scanBundles(folder);
         dispatch({ t: "openFolder", folder, bundles });
-        void ipc.pinFolder(folder);
-        if (bundles.length >= 1) await this.selectBundle(bundles[0].root);
+        if (bundles.length >= 1) await this.selectBundle(bundles[0].root, folder);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
       }
     },
-    async selectBundle(root) {
+    async selectBundle(root, folder) {
       dispatch({ t: "loading", v: true });
       try {
         const bundle = await ipc.readBundle(root);
         dispatch({ t: "setBundle", root, bundle });
+        // Record this bundle in recents, keyed by root, with the folder that
+        // granted its read scope so it can be re-granted on reopen.
+        const f = folder ?? stateRef.current.folder;
+        if (f) {
+          const types = [
+            ...new Set(bundle.concepts.map((c) => c.type).filter(Boolean)),
+          ].sort();
+          const recents = await ipc.pushRecentBundle({
+            root,
+            folder: f,
+            name: bundle.name,
+            conceptCount: bundle.concepts.length,
+            types,
+          });
+          dispatch({ t: "recents", v: recents });
+        }
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
       }
+    },
+    async openRecentBundle(entry) {
+      dispatch({ t: "loading", v: true });
+      try {
+        // Re-grant the folder scope, then open the specific bundle (falling
+        // back to the first if it has moved/disappeared inside the folder).
+        const bundles = await ipc.scanBundles(entry.folder);
+        dispatch({ t: "openFolder", folder: entry.folder, bundles });
+        const root = bundles.some((b) => b.root === entry.root)
+          ? entry.root
+          : bundles[0]?.root;
+        if (root) await this.selectBundle(root, entry.folder);
+        else dispatch({ t: "loading", v: false });
+      } catch (e) {
+        dispatch({ t: "error", v: String(e) });
+      }
+    },
+    async pinBundle(root) {
+      dispatch({ t: "recents", v: await ipc.pinBundle(root) });
+    },
+    async forgetBundle(root) {
+      dispatch({ t: "recents", v: await ipc.forgetBundle(root) });
+    },
+    setSwitcher(open) {
+      dispatch({ t: "switcher", v: open });
     },
     async rescan() {
       const { folder, activeRoot } = stateRef.current;
@@ -426,8 +480,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // (first-run.md: "can reopen the last one automatically").
   useEffect(() => {
     void ipc.loadSettings().then((s) => dispatch({ t: "settings", v: s }));
-    void ipc.recentFolders().then((folders) => {
-      if (folders.length > 0) void actions.openFolderPath(folders[0]);
+    void ipc.recentBundles().then((recents) => {
+      dispatch({ t: "recents", v: recents });
+      if (recents.length > 0) void actions.openRecentBundle(recents[0]);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -3,13 +3,12 @@
 // Select / Checkbox / NumberField. Appearance is our design tokens. Opens with
 // Ctrl/Cmd+, . See docs/ux/settings.md.
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Select } from "@base-ui/react/select";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { NumberField } from "@base-ui/react/number-field";
 import { useApp } from "../store.tsx";
-import { recentFolders } from "../ipc.ts";
 import { DEFAULT_SETTINGS } from "../types.ts";
 import type { ThemeMode } from "../types.ts";
 import { ZOOM_EVENT } from "../native.ts";
@@ -51,27 +50,9 @@ function scaleLabel(v: number): string {
   return SCALE_LABELS[String(v)] ?? `${Math.round(v * 100)}%`;
 }
 
-function shortPath(p: string): string {
-  const parts = p.split(/[/\\]/).filter(Boolean);
-  return parts[parts.length - 1] || p;
-}
-
 export function Settings() {
   const { state, actions } = useApp();
   const s = state.settings;
-  const [recents, setRecents] = useState<string[]>([]);
-
-  // Load the recent-folders list whenever the dialog opens.
-  useEffect(() => {
-    if (!state.settingsOpen) return;
-    let alive = true;
-    void recentFolders().then((list) => {
-      if (alive) setRecents(list);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [state.settingsOpen]);
 
   // Remap the suppressed browser zoom keys/gestures to reader text-size.
   // native.ts dispatches `okf:zoom` on window when Ctrl/Cmd +/-/0 or Ctrl+wheel
@@ -216,32 +197,6 @@ export function Settings() {
             <span className="field-hint muted">
               How deep autodetect descends into subfolders.
             </span>
-          </div>
-
-          <div className="field">
-            <span className="field-label">Recent folders</span>
-            {recents.length === 0 ? (
-              <p className="muted recents-empty">No recent folders yet.</p>
-            ) : (
-              <ul className="recents">
-                {recents.map((folder) => (
-                  <li key={folder}>
-                    <button
-                      className="recent-item"
-                      title={folder}
-                      aria-label={`Open ${folder}`}
-                      onClick={() => {
-                        void actions.openFolderPath(folder);
-                        actions.setSettingsOpen(false);
-                      }}
-                    >
-                      <span className="recent-name">{shortPath(folder)}</span>
-                      <span className="recent-path muted">{folder}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           <footer className="ui-dialog-foot">

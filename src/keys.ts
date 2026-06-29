@@ -26,6 +26,12 @@ export function useGlobalKeys() {
       } else if (mod && k === "o") {
         e.preventDefault();
         void actions.openFolder();
+      } else if (mod && k === "p") {
+        // Open the Bundle Switcher (when a bundle is open); otherwise jump
+        // straight to the folder picker. preventDefault to suppress print.
+        e.preventDefault();
+        if (state.bundle) actions.setSwitcher(!state.switcherOpen);
+        else void actions.openFolder();
       } else if (mod && k === "k") {
         e.preventDefault();
         actions.setPalette(!state.palette);
@@ -41,6 +47,7 @@ export function useGlobalKeys() {
       } else if (e.key === "Escape") {
         actions.setPalette(false);
         actions.setSettingsOpen(false);
+        actions.setSwitcher(false);
       } else if (e.altKey && e.key === "ArrowLeft") {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {

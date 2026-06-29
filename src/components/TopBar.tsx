@@ -6,6 +6,7 @@ import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "../store.tsx";
 import type { LayoutMode } from "../store.tsx";
+import { BundleSwitcher } from "./BundleSwitcher.tsx";
 import "./chrome.css";
 import "./baseui.css";
 import "./TopBar.css";
@@ -51,26 +52,7 @@ export function TopBar() {
   return (
     <Tooltip.Provider delay={400}>
       <Toolbar.Root render={<header className="topbar" />}>
-        <Tooltip.Root>
-          <Tooltip.Trigger
-            render={
-              <Toolbar.Button
-                className="btn"
-                aria-label="Open folder"
-                onClick={() => void actions.openFolder()}
-              >
-                Open Folder…
-              </Toolbar.Button>
-            }
-          />
-          <Tooltip.Portal>
-            <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
-              <Tooltip.Popup className="ui-tooltip">
-                Open folder (Ctrl/Cmd+O)
-              </Tooltip.Popup>
-            </Tooltip.Positioner>
-          </Tooltip.Portal>
-        </Tooltip.Root>
+        <BundleSwitcher />
 
         <Toolbar.Group className="topbar-nav">
           <Tooltip.Root>
@@ -119,10 +101,6 @@ export function TopBar() {
             </Tooltip.Portal>
           </Tooltip.Root>
         </Toolbar.Group>
-
-        <span className="topbar-title" title={state.bundle?.name ?? "OKF Viewer"}>
-          {state.bundle?.name ?? "OKF Viewer"}
-        </span>
 
         <div className="topbar-spacer" />
 

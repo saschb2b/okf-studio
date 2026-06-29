@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The test strategy — Rust unit and integration tests, golden link tests, validator parity, tolerance proofs, and dogfooding this bundle.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-06-29T14:00:00Z
+timestamp: 2026-06-29T16:00:00Z
 ---
 
 # Decision
@@ -39,7 +39,7 @@ Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — 
 
 # Frontend and performance checks
 
-Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks, and **Playwright** for end-to-end flows. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout. **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks, and **Playwright** for end-to-end flows. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout — plus the major interactive features (layout modes, the reader's context rail, the [bundle switcher](../features/bundle-switcher.md), and the keyboard-shortcuts overlay). **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
 
 # Automated accessibility gate
 

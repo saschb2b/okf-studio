@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-06-29T14:00:00Z
+timestamp: 2026-06-29T15:00:00Z
 ---
 
 # The three panes
@@ -36,5 +36,5 @@ The workspace switches between three layout modes — **split** (default, graph 
 The window runs **borderless** (native title-bar decorations are off — see [Theming](theming.md)); the top bar *is* the app's title bar, so the chrome is ours end to end (in the spirit of Zed's custom frame).
 
 - Left to right it holds the [**Bundle Switcher**](../features/bundle-switcher.md) (naming the open bundle and its folder), a **search** field that opens the [global launcher](../features/command-palette.md), the **layout** switch, the reader **"Aa"** controls, a **Log** toggle (renders `log.md` — see [Log View](../features/log-view.md)), the [validation](../features/validation.md) badge, and the **window controls** (minimize · maximize/restore · close) at the far right.
-- Empty regions of the bar are a **drag handle** for moving the window (double-click to maximize/restore); interactive controls are excluded from the drag region. Invisible **resize handles** line the window edges and corners.
+- Empty regions of the bar are a **drag handle** for moving the window (double-click to maximize/restore); interactive controls are excluded from the drag region. Invisible **resize handles** line the window edges and corners, and the window has **slightly rounded corners** (squared when maximized).
 - Honors [theming](theming.md) and a [native desktop feel](settings.md) (content-scoped zoom, our own frame), and is fully driveable by [keyboard](keyboard-shortcuts.md).

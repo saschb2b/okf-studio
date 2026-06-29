@@ -20,6 +20,7 @@ import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
 import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
+import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
 // Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
 // switches to the GPU renderer — the default canvas path stays lean.
 const CosmosGraph = lazy(() =>
@@ -498,22 +499,36 @@ export function GraphView() {
       });
     });
 
-    // Edges among visible nodes only (edges to hidden nodes are dropped).
-    const rawEdges = buildEdges(list);
-    const edges: SimEdge[] = [];
-    const neighbors: Set<number>[] = nodes.map(() => new Set<number>());
-    for (const e of rawEdges) {
+    // Cross-links among visible nodes only (links to hidden nodes are dropped),
+    // as directed index pairs.
+    const directed: SimEdge[] = [];
+    for (const e of buildEdges(list)) {
       const a = indexById.get(e.source);
       const b = indexById.get(e.target);
       if (a === undefined || b === undefined || a === b) continue;
-      edges.push({ a, b });
-      neighbors[a].add(b);
-      neighbors[b].add(a);
+      directed.push({ a, b });
     }
 
-    // Detect communities (Louvain) over the visible graph and assign each node a
-    // cluster color from the deterministic palette — the "color by cluster" mode.
-    const comm = louvain(nodes.length, edges);
+    // Detect communities (Louvain) over the *full* link graph and assign each
+    // node a cluster color — kept on the full graph so cluster colors stay
+    // stable regardless of the link-density (backbone) setting below.
+    const comm = louvain(nodes.length, directed);
+
+    // Draw and simulate a readable *backbone* rather than every edge: a dense
+    // cross-link graph is otherwise an unreadable hairball (see graph/backbone).
+    // Hover/selection highlighting follows the drawn edges, so neighbors are
+    // built from the backbone too.
+    const edges: SimEdge[] = graphBackbone({
+      n: nodes.length,
+      directed,
+      tags: list.map((c) => c.tags),
+      maxPerNode: maxPerNodeFor(state.linkDensity),
+    });
+    const neighbors: Set<number>[] = nodes.map(() => new Set<number>());
+    for (const e of edges) {
+      neighbors[e.a].add(e.b);
+      neighbors[e.b].add(e.a);
+    }
     const clusterPalette = buildTypePalette(
       [...new Set(comm.map(String))],
       dark,
@@ -544,7 +559,15 @@ export function GraphView() {
     // rebuild fires only when the focused/isolated node *set* changes, so a
     // selection move in overview mode stays a cheap redraw (below).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [concepts, filterKey, restrictKey, state.query, state.settings.theme, state.settings.reduceMotion]);
+  }, [
+    concepts,
+    filterKey,
+    restrictKey,
+    state.query,
+    state.linkDensity,
+    state.settings.theme,
+    state.settings.reduceMotion,
+  ]);
 
   // Redraw (no resim) when only the selection changes (overview mode: the node
   // set is unchanged, just the highlight). In focus mode a selection change moves
@@ -899,6 +922,22 @@ export function GraphView() {
                 </fieldset>
                 <fieldset>
                   <legend>Display</legend>
+                  <div className="graph-colorby" role="group" aria-label="Link density">
+                    <span className="graph-colorby-label">Links</span>
+                    <div className="graph-seg">
+                      {(["sparse", "balanced", "all"] as const).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          className="graph-seg-btn"
+                          aria-pressed={state.linkDensity === d}
+                          onClick={() => actions.setLinkDensity(d)}
+                        >
+                          {d === "sparse" ? "Key" : d === "balanced" ? "Balanced" : "All"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="graph-colorby" role="group" aria-label="Color nodes by">
                     <span className="graph-colorby-label">Color</span>
                     <div className="graph-seg">
@@ -935,6 +974,7 @@ export function GraphView() {
                   onClick={() => {
                     setForces({ ...GRAPH_FORCES });
                     setDisplay(DEFAULT_DISPLAY);
+                    actions.setLinkDensity("balanced");
                   }}
                 >
                   Reset

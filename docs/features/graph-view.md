@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-29T21:30:00Z
+timestamp: 2026-06-29T23:00:00Z
 ---
 
 # What it does
@@ -14,7 +14,7 @@ The center of the workspace renders the active bundle as an interactive **force-
 
 - **Node = concept.** Color comes from one of two modes (a Controls toggle): by `type` via the deterministic palette (the default-ish semantic coloring; the legend doubles as a [type filter](search-and-filter.md)), or by **detected cluster** — **Louvain** community detection groups densely-interlinked concepts and gives each community a unified color, so emergent clusters read at a glance.
 - **Node size** scales with degree (how connected a concept is), so hubs stand out.
-- **Edge = cross-link** between concepts. Direction is available (A links to B), and selecting a node highlights its incident edges plus its neighbors.
+- **Edge = cross-link** between concepts. Direction is available (A links to B), and selecting a node highlights its incident edges plus its neighbors. A richly cross-linked bundle is dense enough that drawing *every* link reads as a hairball, so by default the graph draws a **structural backbone** — each concept's most significant edges — rather than all of them; a Controls *Links* setting trades readability for completeness. See [Implementation notes](#implementation-notes).
 - **Label** shows the concept `title`. Labels are **level-of-detail**: when zoomed out only dots show; labels fade in past an adjustable zoom threshold, and are always shown for the selected node, its neighbors, and the hovered node — so a large graph stays legible instead of becoming a wall of text.
 
 # Interaction
@@ -30,7 +30,7 @@ A collapsible controls panel (top-left of the graph, in the spirit of Obsidian's
 
 - **Renderer** — *Canvas* (the default) or *GPU*. The canvas renderer carries the full control set, level-of-detail labels, and defect markers; the GPU renderer offloads the force simulation to the graphics card (WebGL) for very large graphs. See [Implementation notes](#implementation-notes).
 - **Forces** — *repel* (node spacing), *link distance*, *link force*, and *center* gravity. Adjusting a force gently reheats the layout so it re-settles.
-- **Display** — the **color** mode (by type or by detected cluster), *node size*, *link thickness*, *link opacity*, and the *label* fade threshold.
+- **Display** — the **link density** (*Key* / *Balanced* / *All* — how aggressively edges are pruned to a readable backbone), the **color** mode (by type or by detected cluster), *node size*, *link thickness*, *link opacity*, and the *label* fade threshold.
 
 The graph **auto-fits** the viewport once a fresh layout settles, and a **collision** pass keeps nodes from overlapping, so clusters read as distinct blobs rather than a tangle.
 
@@ -46,5 +46,6 @@ The graph makes conformance problems visible instead of hiding them: **orphans**
 
 - Graph data (nodes, edges, backlinks) is computed in the [Rust core](../architecture/okf-parsing.md) from the [data model](../architecture/data-model.md) and handed to the frontend as JSON.
 - The default layout/render runs in the frontend on a **canvas**, with positions and the simulation kept out of React's render path. Repulsion uses a **Barnes–Hut quad-tree** (O(n log n)), **weighted by node degree** (a ForceAtlas2-style body mass) so hubs and dense clusters claim more space and separate emergently, while a **LinLog link attraction** (a gentle logarithmic pull that doesn't tighten with distance) keeps connected clusters from collapsing into a central tangle — together a neat, untangled distribution with no separate clustering pass — and a **collision** pass prevents overlap, so the view scales from tens to thousands of nodes; a cooling schedule settles the layout and then the loop idles. See [Performance & Scale](../architecture/performance.md) for the full strategy and the [fast principle](../product/principles.md) it serves.
+- A bundle's cross-links are deliberately rich (good for navigation), which makes the raw graph **dense** — our docs bundle averages ~14 edges per node — and no force layout can untangle a graph that near-complete. So the view draws a **backbone**, not every edge: each edge is weighted by how much it reveals structure (mutual links, shared neighborhoods, shared tags), each concept keeps only its strongest few (a weighted **k-nearest-neighbor** graph), and a **maximum spanning forest** is overlaid so pruning never disconnects the graph. This is the established *edge-filtering / backbone-extraction* approach for dense networks; we use weighted top-k rather than the disparity filter ([Serrano et al., 2009](https://www.pnas.org/doi/10.1073/pnas.0808904106)) because our near-binary edge weights make that filter degenerate. The *Links* control (Key / Balanced / All) sets how many edges per concept survive; **communities and focus neighborhoods are still computed on the full link graph**, so cluster colors and "what relates to this" stay complete regardless of the density setting.
 - An optional **GPU renderer** (cosmos.gl) runs the same force model entirely on the graphics card via WebGL, scaling to graphs far larger than the canvas path comfortably handles. It keeps the essentials — community coloring, degree-scaled node sizes, click-to-open, hover highlight, [focus mode](#focus-mode), an HTML label overlay for the selected and hovered concepts, and Fit — and is **loaded on demand** (its WebGL bundle downloads only when selected, so the default path stays lean) and **degrades gracefully to the canvas renderer** if WebGL is unavailable in the host webview. The canvas renderer stays the default and the more fully-featured of the two.
 - Broken cross-links simply do not produce edges — they are [tolerated](validation.md), not errors.

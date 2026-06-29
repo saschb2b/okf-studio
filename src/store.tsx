@@ -95,6 +95,10 @@ function saveLayout(mode: LayoutMode, sizes: PaneSizes): void {
  */
 export type GraphMode = "focus" | "overview";
 
+/** How aggressively the graph prunes edges to a readable backbone (see
+ *  src/graph/backbone.ts). "all" draws every cross-link (the raw, dense graph). */
+export type LinkDensity = "sparse" | "balanced" | "all";
+
 export interface State {
   folder: string | null;
   bundles: BundleRoot[];
@@ -114,6 +118,7 @@ export interface State {
   lens: Lens;
   graphMode: GraphMode;
   focusDepth: number;
+  linkDensity: LinkDensity;
   layout: LayoutMode;
   paneSizes: PaneSizes;
   panels: Record<PanelName, boolean>;
@@ -144,6 +149,7 @@ const initialState: State = {
   lens: "navigate",
   graphMode: "focus",
   focusDepth: 1,
+  linkDensity: "balanced",
   layout: persistedLayout.mode,
   paneSizes: persistedLayout.sizes,
   panels: { sidebar: true, reader: true, log: false, validation: false },
@@ -171,6 +177,7 @@ type Msg =
   | { t: "lens"; v: Lens }
   | { t: "graphMode"; v: GraphMode }
   | { t: "focusDepth"; v: number }
+  | { t: "linkDensity"; v: LinkDensity }
   | { t: "layout"; v: LayoutMode }
   | { t: "cycleLayout" }
   | { t: "paneSize"; pane: "sidebar" | "reader"; v: number | null }
@@ -274,6 +281,8 @@ function reducer(s: State, m: Msg): State {
     case "focusDepth":
       // Clamp to the supported 1/2/3 depth control.
       return { ...s, focusDepth: Math.min(3, Math.max(1, Math.round(m.v))) };
+    case "linkDensity":
+      return { ...s, linkDensity: m.v };
     case "layout": {
       if (m.v === s.layout) return s;
       saveLayout(m.v, s.paneSizes);
@@ -337,6 +346,7 @@ export interface Actions {
   setLens(lens: Lens): void;
   setGraphMode(mode: GraphMode): void;
   setFocusDepth(depth: number): void;
+  setLinkDensity(density: LinkDensity): void;
   setLayout(mode: LayoutMode): void;
   cycleLayout(): void;
   setPaneSize(pane: "sidebar" | "reader", value: number | null): void;
@@ -468,6 +478,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setFocusDepth(depth) {
       dispatch({ t: "focusDepth", v: depth });
+    },
+    setLinkDensity(density) {
+      dispatch({ t: "linkDensity", v: density });
     },
     setLayout(mode) {
       dispatch({ t: "layout", v: mode });

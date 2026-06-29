@@ -12,6 +12,7 @@ import { useApp } from "../store.tsx";
 import type { Actions } from "../store.tsx";
 import { buildEdges, egoIds, isVisible } from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
+import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import "./CosmosGraph.css";
 
@@ -168,20 +169,31 @@ export function CosmosGraph() {
     const index = new Map(ids.map((id, i) => [id, i] as const));
     dataRef.current = { ids, titles, index };
 
-    // Edges among visible nodes only.
-    const linkPairs: number[] = [];
-    const louvainEdges: { a: number; b: number }[] = [];
+    // Cross-links among visible nodes, as directed index pairs.
+    const directed: { a: number; b: number }[] = [];
     for (const e of buildEdges(bundle.concepts)) {
       const a = index.get(e.source);
       const b = index.get(e.target);
       if (a === undefined || b === undefined || a === b) continue;
-      linkPairs.push(a, b);
-      louvainEdges.push({ a, b });
+      directed.push({ a, b });
     }
 
-    // Colors by Louvain community; sizes by degree.
+    // Colors by Louvain community (over the full link graph, so cluster colors
+    // stay stable across density settings); sizes by degree.
     const dark = resolveDark(state.settings.theme);
-    const comm = louvain(ids.length, louvainEdges);
+    const comm = louvain(ids.length, directed);
+
+    // Draw a readable backbone rather than every edge — a dense cross-link graph
+    // is otherwise an unreadable hairball (see graph/backbone.ts).
+    const linkPairs: number[] = [];
+    for (const e of graphBackbone({
+      n: ids.length,
+      directed,
+      tags: visible.map((c) => c.tags),
+      maxPerNode: maxPerNodeFor(state.linkDensity),
+    })) {
+      linkPairs.push(e.a, e.b);
+    }
     const palette = buildTypePalette([...new Set(comm.map(String))], dark);
     const maxDeg = visible.reduce((m, c) => Math.max(m, c.degree), 0) || 1;
 
@@ -229,6 +241,7 @@ export function CosmosGraph() {
     state.graphMode,
     state.focusDepth,
     state.activeConceptId,
+    state.linkDensity,
     state.settings.theme,
   ]);
 

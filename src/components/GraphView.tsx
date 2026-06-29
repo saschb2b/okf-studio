@@ -19,6 +19,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
 import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
+import { louvain } from "../graph/community.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import type { Bundle, Concept } from "../types.ts";
 import {
@@ -46,12 +47,15 @@ interface Display {
   linkThickness: number;
   linkOpacity: number;
   labelScale: number; // >1 shows labels at lower zoom
+  /** Node color source: by concept `type`, or by detected `cluster` (Louvain). */
+  colorBy: "type" | "cluster";
 }
 const DEFAULT_DISPLAY: Display = {
   nodeScale: 1,
   linkThickness: 1,
   linkOpacity: 0.5,
   labelScale: 1,
+  colorBy: "cluster",
 };
 // The force fields the controls panel exposes (the rest come from DEFAULT_PARAMS).
 type Forces = Pick<SimParams, "repulsion" | "springLength" | "springK" | "centering">;
@@ -89,7 +93,10 @@ interface RenderData {
     id: string;
     title: string;
     type: string;
+    /** Color by concept type (the legend palette). */
     color: string;
+    /** Color by detected community (Louvain) — used when Display.colorBy is "cluster". */
+    clusterColor: string;
     dim: boolean;
     /** True for a degree-0 concept (no links and no citedBy) — drawn with a ring. */
     orphan: boolean;
@@ -247,7 +254,7 @@ export function GraphView() {
       ctx.globalAlpha = faded ? 0.18 : 1;
       ctx.beginPath();
       ctx.arc(node.x, node.y, rr, 0, Math.PI * 2);
-      ctx.fillStyle = meta.color;
+      ctx.fillStyle = disp.colorBy === "cluster" ? meta.clusterColor : meta.color;
       ctx.fill();
       ctx.lineWidth = (isSel ? 3 : 1.2) / view.scale;
       ctx.strokeStyle = isSel ? accent : nodeStroke;
@@ -474,6 +481,7 @@ export function GraphView() {
         title: c.title,
         type: c.type,
         color: palette.color(c.type),
+        clusterColor: "", // filled below once communities are detected
         dim: !matchesQuery(c, state.query),
         orphan: c.degree === 0 && c.links.length === 0 && c.citedBy.length === 0,
         broken: c.brokenLinks.length,
@@ -491,6 +499,17 @@ export function GraphView() {
       edges.push({ a, b });
       neighbors[a].add(b);
       neighbors[b].add(a);
+    }
+
+    // Detect communities (Louvain) over the visible graph and assign each node a
+    // cluster color from the deterministic palette — the "color by cluster" mode.
+    const comm = louvain(nodes.length, edges);
+    const clusterPalette = buildTypePalette(
+      [...new Set(comm.map(String))],
+      dark,
+    );
+    for (let i = 0; i < meta.length; i++) {
+      meta[i].clusterColor = clusterPalette.color(String(comm[i] ?? 0));
     }
 
     for (const id of store.keys()) {
@@ -807,7 +826,7 @@ export function GraphView() {
               <Popover.Popup className="ui-popover graph-panel-body">
                 <fieldset>
                   <legend>Forces</legend>
-                  <Slider label="Repel" min={0} max={3000} step={50} value={forces.repulsion}
+                  <Slider label="Repel" min={0} max={6000} step={50} value={forces.repulsion}
                     onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))} />
                   <Slider label="Link distance" min={20} max={250} step={5} value={forces.springLength}
                     onChange={(v) => setForces((f) => ({ ...f, springLength: v }))} />
@@ -818,6 +837,27 @@ export function GraphView() {
                 </fieldset>
                 <fieldset>
                   <legend>Display</legend>
+                  <div className="graph-colorby" role="group" aria-label="Color nodes by">
+                    <span className="graph-colorby-label">Color</span>
+                    <div className="graph-seg">
+                      <button
+                        type="button"
+                        className="graph-seg-btn"
+                        aria-pressed={display.colorBy === "cluster"}
+                        onClick={() => setDisplay((d) => ({ ...d, colorBy: "cluster" }))}
+                      >
+                        Cluster
+                      </button>
+                      <button
+                        type="button"
+                        className="graph-seg-btn"
+                        aria-pressed={display.colorBy === "type"}
+                        onClick={() => setDisplay((d) => ({ ...d, colorBy: "type" }))}
+                      >
+                        Type
+                      </button>
+                    </div>
+                  </div>
                   <Slider label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
                     onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))} />
                   <Slider label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
@@ -831,12 +871,7 @@ export function GraphView() {
                   type="button"
                   className="graph-panel-reset"
                   onClick={() => {
-                    setForces({
-                      repulsion: DEFAULT_PARAMS.repulsion,
-                      springLength: DEFAULT_PARAMS.springLength,
-                      springK: DEFAULT_PARAMS.springK,
-                      centering: DEFAULT_PARAMS.centering,
-                    });
+                    setForces({ ...GRAPH_FORCES });
                     setDisplay(DEFAULT_DISPLAY);
                   }}
                 >

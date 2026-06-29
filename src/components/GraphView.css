@@ -197,6 +197,19 @@
   padding: 0 var(--space-4);
 }
 
+/* "Color by" row inside the Display fieldset (Cluster / Type). */
+.graph-colorby {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+}
+.graph-colorby-label {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
 .graph-seg-btn {
   font: inherit;
   font-size: var(--fs-xs);

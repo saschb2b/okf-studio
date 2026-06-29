@@ -65,10 +65,10 @@ const MAX_SCALE = 4;
 // doesn't compress into a blob. This is what produces the cluster-separated,
 // canvas-filling look rather than a tight clump.
 const GRAPH_FORCES: Forces = {
-  repulsion: 2600,
-  springLength: 130,
-  springK: 0.045,
-  centering: 0.02,
+  repulsion: 3200,
+  springLength: 130, // unused under LinLog; kept for the spring fallback/controls
+  springK: 0.12, // LinLog attraction is gentle (log), so it wants a higher gain
+  centering: 0.015,
 };
 // Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
 // that mirrors --ui in styles.css.
@@ -151,7 +151,11 @@ export function GraphView() {
   const rafRef = useRef<number | null>(null);
   const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
-  const paramsRef = useRef<SimParams>({ ...DEFAULT_PARAMS, ...GRAPH_FORCES });
+  const paramsRef = useRef<SimParams>({
+    ...DEFAULT_PARAMS,
+    ...GRAPH_FORCES,
+    linkModel: "linlog", // gentle log attraction → spread, untangled clusters
+  });
   const displayRef = useRef<Display>(display);
   const needsFitRef = useRef(true); // auto-fit once a fresh layout settles
   const prevRestrictKey = useRef<string | null>(null); // last focus/isolate set, to refit on change
@@ -529,7 +533,7 @@ export function GraphView() {
   // Live-tune forces from the controls panel: copy into the sim params ref and
   // gently reheat so the layout adapts in place.
   useEffect(() => {
-    paramsRef.current = { ...DEFAULT_PARAMS, ...forces };
+    paramsRef.current = { ...DEFAULT_PARAMS, ...forces, linkModel: "linlog" };
     alphaRef.current = Math.max(alphaRef.current, REHEAT_ALPHA);
     runLoop();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -68,6 +68,14 @@ export interface SimParams {
   theta: number;
   /** Hard cap on per-step speed — the safety net against close-range spikes. */
   maxSpeed: number;
+  /**
+   * Link attraction model. "spring" is Hooke toward `springLength` (the neutral
+   * default; the sim tests use it). "linlog" is a gentle logarithmic pull
+   * (ForceAtlas2's LinLog) that does NOT grow with distance, so connected
+   * clusters aren't yanked tight — repulsion spreads them into a neatly
+   * distributed, untangled layout instead of a central knot. Defaults to "spring".
+   */
+  linkModel?: "spring" | "linlog";
 }
 
 export const DEFAULT_PARAMS: SimParams = {
@@ -80,6 +88,7 @@ export const DEFAULT_PARAMS: SimParams = {
   collisionPadding: 4,
   theta: 0.9,
   maxSpeed: 40,
+  linkModel: "spring",
 };
 
 // Cooling schedule (mirrors d3-force's defaults). The renderer owns the current
@@ -537,7 +546,12 @@ export function step(
     }
   }
 
-  // 2. Spring (link) attraction along edges, Hooke's law, scaled by alpha.
+  // 2. Link attraction along edges, scaled by alpha. Two models (see SimParams):
+  //  - "spring": Hooke toward `springLength` — pulls harder the farther apart, so
+  //    a dense graph collapses toward its hubs into a tangle.
+  //  - "linlog": a gentle logarithmic pull that does not grow with distance, so
+  //    repulsion can spread clusters apart for a neat, untangled distribution.
+  const linlog = params.linkModel === "linlog";
   for (const e of edges) {
     const a = nodes[e.a];
     const b = nodes[e.b];
@@ -545,8 +559,9 @@ export function step(
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1e-4;
-    const disp = dist - params.springLength;
-    const force = params.springK * disp * alpha;
+    const force = linlog
+      ? params.springK * Math.log1p(dist) * alpha
+      : params.springK * (dist - params.springLength) * alpha;
     const fx = (dx / dist) * force;
     const fy = (dy / dist) * force;
     a.vx += fx;

@@ -147,6 +147,10 @@ function Divider({
 }) {
   const { state, actions } = useApp();
   const clamp = PANE_CLAMPS[pane];
+  // A focusable role="separator" requires aria-valuenow; when the pane is at its
+  // CSS default (no dragged px), report the clamp midpoint as a best effort.
+  const valueNow =
+    state.paneSizes[pane] ?? Math.round((clamp.min + clamp.max) / 2);
 
   function current(): number {
     const stored = state.paneSizes[pane];
@@ -214,7 +218,7 @@ function Divider({
       }
       aria-valuemin={clamp.min}
       aria-valuemax={clamp.max}
-      aria-valuenow={state.paneSizes[pane] ?? undefined}
+      aria-valuenow={valueNow}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onDoubleClick={() => actions.setPaneSize(pane, null)}

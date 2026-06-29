@@ -69,7 +69,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  min-width: 16rem;
+  /* Preferred 16rem, but allowed to shrink so the bar never overflows at the
+     minimum window width (Microsoft "work at small dimensions" guidance). */
+  flex: 0 1 16rem;
+  min-width: 7rem;
   padding: var(--space-6) var(--space-10);
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -90,7 +93,11 @@
 
 .topbar-search-label {
   flex: 1;
+  min-width: 0;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-search-kbd {

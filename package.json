@@ -32,6 +32,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5",
+    "axe-core": "^4.12.1",
     "babel-plugin-react-compiler": "^1",
     "jsdom": "^25",
     "typescript": "^5",
@@ -39,6 +40,8 @@
     "vitest": "^3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

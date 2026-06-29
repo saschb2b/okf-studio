@@ -53,7 +53,7 @@ export function TopBar() {
 
   return (
     <Tooltip.Provider delay={400}>
-      <Toolbar.Root render={<header className="topbar" data-tauri-drag-region />}>
+      <Toolbar.Root render={<div className="topbar" data-tauri-drag-region />}>
         <BundleSwitcher />
 
         <Toolbar.Group className="topbar-nav">

@@ -10,17 +10,62 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
+// GFM "alert" callouts: a blockquote whose first line is [!NOTE] / [!TIP] /
+// [!IMPORTANT] / [!WARNING] / [!CAUTION] becomes a titled, themed callout.
+const ALERT_LABELS: Record<string, string> = {
+  note: "Note",
+  tip: "Tip",
+  important: "Important",
+  warning: "Warning",
+  caution: "Caution",
+};
+const ALERT_RE = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(<br\s*\/?>)?\s*/i;
+
+/**
+ * Promote GFM alert blockquotes into `<div class="callout callout-KIND">` with a
+ * title row, operating on a detached DOM fragment (re-sanitized afterwards). A
+ * no-op where `document` is unavailable.
+ */
+function transformCallouts(html: string): string {
+  if (typeof document === "undefined") return html;
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  for (const bq of Array.from(tpl.content.querySelectorAll("blockquote"))) {
+    const firstP = bq.querySelector("p");
+    if (!firstP) continue;
+    const m = ALERT_RE.exec(firstP.textContent || "");
+    if (!m) continue;
+    const kind = m[1].toLowerCase();
+    firstP.innerHTML = firstP.innerHTML.replace(ALERT_RE, "");
+    if (!firstP.textContent?.trim() && !firstP.querySelector("*")) firstP.remove();
+
+    const callout = document.createElement("div");
+    callout.className = `callout callout-${kind}`;
+    const title = document.createElement("p");
+    title.className = "callout-title";
+    title.textContent = ALERT_LABELS[kind];
+    const body = document.createElement("div");
+    body.className = "callout-body";
+    while (bq.firstChild) body.appendChild(bq.firstChild);
+    callout.append(title, body);
+    bq.replaceWith(callout);
+  }
+  return tpl.innerHTML;
+}
+
 /** Render markdown to sanitized, safe-to-inject HTML. */
 export function renderMarkdown(md: string): string {
   // `async: false` forces the synchronous overload (string, not Promise).
-  // `gfm` enables tables/strikethrough; `breaks` keeps single newlines as <br>
-  // so authored bullet lines survive. headerIds off — these are inline snippets.
+  // `gfm` enables tables/strikethrough; `breaks:false` keeps authored single
+  // newlines from becoming spurious <br>. headerIds off — assigned at mount.
   const html = marked.parse(md ?? "", {
     async: false,
     gfm: true,
     breaks: false,
   });
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+  return DOMPurify.sanitize(transformCallouts(html), {
+    USE_PROFILES: { html: true },
+  });
 }
 
 /** Outcome of resolving a markdown link href found inside a concept body. */

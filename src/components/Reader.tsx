@@ -25,6 +25,11 @@ function conceptExists(bundle: Bundle | null, id: string): boolean {
   return conceptById(bundle, id) !== null;
 }
 
+/** Humanize a path segment for the breadcrumb (e.g. "data-model" → "Data Model"). */
+function humanize(seg: string): string {
+  return seg.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
 /** A url-safe slug for a heading's text, used as its anchor id. */
 function slugify(s: string): string {
   return (
@@ -91,16 +96,54 @@ export function Reader() {
     const heads = Array.from(el.querySelectorAll("h2, h3")) as HTMLElement[];
     const used = new Set<string>();
     const items: OutlineItem[] = heads.map((h) => {
-      const base = slugify(h.textContent || "");
+      // Idempotent across StrictMode's double-invoke (and re-runs): drop any
+      // anchor we appended on a prior pass before reading the heading text.
+      h.querySelector(".heading-anchor")?.remove();
+      const text = h.textContent || "";
+      const base = slugify(text);
       let id = base;
       let n = 2;
       while (used.has(id)) id = `${base}-${n++}`;
       used.add(id);
       h.id = id;
-      return { id, text: h.textContent || "", level: h.tagName === "H2" ? 2 : 3 };
+      // A hover permalink that scrolls to the section (never navigates the view).
+      if (!h.querySelector(".heading-anchor")) {
+        const a = document.createElement("a");
+        a.className = "heading-anchor";
+        a.href = `#${id}`;
+        a.textContent = "#";
+        a.setAttribute("aria-label", `Link to section: ${text}`);
+        a.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          h.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+        });
+        h.appendChild(a);
+      }
+      return { id, text, level: h.tagName === "H2" ? 2 : 3 };
     });
     setOutline(items);
     setActiveId(items[0]?.id ?? null);
+
+    // A copy affordance on each fenced code block.
+    for (const pre of Array.from(el.querySelectorAll("pre"))) {
+      if (pre.querySelector(".code-copy")) continue;
+      const text = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "code-copy";
+      btn.textContent = "Copy";
+      btn.setAttribute("aria-label", "Copy code");
+      btn.addEventListener("click", () => {
+        if (!navigator.clipboard) return;
+        void navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = "Copied";
+          window.setTimeout(() => {
+            btn.textContent = "Copy";
+          }, 1200);
+        });
+      });
+      pre.appendChild(btn);
+    }
 
     if (heads.length === 0 || typeof IntersectionObserver === "undefined") return;
     const root = el.closest(".pane") as HTMLElement | null;
@@ -114,7 +157,7 @@ export function Reader() {
     );
     heads.forEach((h) => obs.observe(h));
     return () => obs.disconnect();
-  }, [c?.id, bodyHtml, bundle]);
+  }, [c?.id, bodyHtml, bundle, reduceMotion]);
 
   if (!c) {
     return (
@@ -133,6 +176,8 @@ export function Reader() {
   const related = relatedByTag(bundle, c);
   // Side rail in reader-only mode; otherwise (split / narrow) it falls below.
   const railSide = state.layout === "reader";
+  // Breadcrumb: the concept's directory path (its place in the bundle).
+  const crumbs = c.id.includes("/") ? c.id.split("/").slice(0, -1) : [];
 
   const select = (id: string) => actions.selectConcept(id);
 
@@ -171,6 +216,15 @@ export function Reader() {
         style={{ "--reader-scale": readerScale } as CSSProperties}
       >
         <header className="reader-header">
+          {crumbs.length > 0 && (
+            <nav className="reader-crumbs" aria-label="Breadcrumb">
+              {crumbs.map((seg, i) => (
+                <span key={i} className="crumb">
+                  {humanize(seg)}
+                </span>
+              ))}
+            </nav>
+          )}
           <span
             className="type-badge"
             style={{ color: typeColor, borderColor: typeColor }}

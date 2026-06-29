@@ -45,6 +45,23 @@
   gap: var(--space-8);
 }
 
+/* Breadcrumb: the concept's place in the bundle (orientation, not links yet). */
+.reader-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.reader-crumbs .crumb {
+  white-space: nowrap;
+}
+.reader-crumbs .crumb + .crumb::before {
+  content: "/";
+  margin: 0 var(--space-6);
+  opacity: 0.6;
+}
+
 /* The base .type-badge sets shape/size; we tint it from the type palette and
    make the border visible so the type color reads on either theme. */
 .concept-reader .type-badge {
@@ -193,15 +210,39 @@
 .markdown a:hover {
   text-decoration-thickness: 2px;
 }
-/* Unresolved intra-bundle links: dim and non-navigating. */
+/* Unresolved intra-bundle links: line-through (a non-color affordance) at a
+   contrast-safe dim — no opacity dilution. */
 .markdown a[data-link="unresolved"] {
   color: var(--text-dim);
   text-decoration: line-through;
-  cursor: default;
-  opacity: 0.7;
+  text-decoration-thickness: from-font;
+  cursor: not-allowed;
 }
 .markdown a[data-link="unresolved"]:hover {
   text-decoration: line-through;
+}
+/* External links carry a small outbound marker so in-bundle vs external reads
+   at a glance (not color alone). */
+.markdown a[data-link="external"]::after {
+  content: " ↗";
+  font-size: 0.85em;
+  color: var(--text-dim);
+}
+
+/* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */
+.markdown a.heading-anchor {
+  margin-left: var(--space-6);
+  color: var(--text-dim);
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+}
+.markdown :is(h2, h3):hover .heading-anchor,
+.markdown a.heading-anchor:focus-visible {
+  opacity: 1;
+}
+.markdown a.heading-anchor:hover {
+  color: var(--accent);
 }
 
 .markdown code {
@@ -212,6 +253,7 @@
   border-radius: var(--radius-sm);
 }
 .markdown pre {
+  position: relative;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -223,8 +265,68 @@
 .markdown pre code {
   background: none;
   padding: 0;
-  /* em-relative (≈0.857 of the 14px prose base) so code rides the reader scale. */
-  font-size: 0.857em;
+  /* em-relative so code rides the reader scale. */
+  font-size: 0.875em;
+}
+
+/* Copy affordance, injected into each code block at mount. */
+.code-copy {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur) ease;
+}
+.markdown pre:hover .code-copy,
+.code-copy:focus-visible {
+  opacity: 1;
+}
+.code-copy:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* GFM alert callouts (> [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]). */
+.markdown .callout {
+  margin: 1em 0;
+  padding: var(--space-10) var(--space-16);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--c, var(--accent));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c, var(--accent)) 8%, transparent);
+}
+.markdown .callout-title {
+  margin: 0 0 var(--space-4);
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--c, var(--accent));
+}
+.markdown .callout-body > :first-child {
+  margin-top: 0;
+}
+.markdown .callout-body > :last-child {
+  margin-bottom: 0;
+}
+.markdown .callout-note,
+.markdown .callout-important {
+  --c: var(--accent);
+}
+.markdown .callout-tip {
+  --c: var(--ok);
+}
+.markdown .callout-warning {
+  --c: var(--warn);
+}
+.markdown .callout-caution {
+  --c: var(--error);
 }
 
 .markdown blockquote {

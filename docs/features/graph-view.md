@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-29T23:00:00Z
+timestamp: 2026-06-29T23:45:00Z
 ---
 
 # What it does
@@ -26,13 +26,15 @@ The center of the workspace renders the active bundle as an interactive **force-
 
 # Controls
 
-A collapsible controls panel (top-left of the graph, in the spirit of Obsidian's graph view) tunes the layout without leaving the view:
+A collapsible controls panel (top-left of the graph, in the spirit of Obsidian's graph view) tunes the view without leaving it. Every control sits under a **titled section with a one-line description**, uses a **plain-language label**, and — for sliders — shows its **live value** and a short hint of what it does, so the panel *teaches* rather than just labels (it scrolls when it outgrows the viewport):
 
-- **Renderer** — *Canvas* (the default) or *GPU*. The canvas renderer carries the full control set, level-of-detail labels, and defect markers; the GPU renderer offloads the force simulation to the graphics card (WebGL) for very large graphs. See [Implementation notes](#implementation-notes).
-- **Forces** — *repel* (node spacing), *link distance*, *link force*, and *center* gravity. Adjusting a force gently reheats the layout so it re-settles.
-- **Display** — the **link density** (*Key* / *Balanced* / *All* — how aggressively edges are pruned to a readable backbone), the **color** mode (by type or by detected cluster), *node size*, *link thickness*, *link opacity*, and the *label* fade threshold.
+- **Renderer** — *Canvas* (the default) or *GPU* (WebGL, for very large graphs). The canvas renderer carries the full control set, level-of-detail labels, and defect markers. See [Implementation notes](#implementation-notes).
+- **Connections** — the [link density](#visual-encoding) (*Key* / *Balanced* / *All*): how many edges are drawn, from each concept's strongest few to every cross-link. A live hint names what the current choice does.
+- **Color** — color nodes by detected **cluster** (Louvain community) or by concept **type**.
+- **Appearance** — *node size*, *link thickness*, *link opacity*, and *label visibility* (how early titles appear as you zoom in).
+- **Layout** — fine-tune the forces in plain terms: *spacing* (how hard nodes push apart), *link length*, *link pull*, and *gravity*. Adjusting one gently reheats the layout so it re-settles.
 
-The graph **auto-fits** the viewport once a fresh layout settles, and a **collision** pass keeps nodes from overlapping, so clusters read as distinct blobs rather than a tangle.
+A **Reset to defaults** restores the tuned starting point. The graph **auto-fits** the viewport once a fresh layout settles, and a **collision** pass keeps nodes from overlapping, so clusters read as distinct blobs rather than a tangle.
 
 # Focus mode
 

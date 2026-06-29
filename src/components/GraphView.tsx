@@ -14,10 +14,12 @@
 // canvas/sim state lives in refs and effects.
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
 import { Popover } from "@base-ui/react/popover";
 import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
+import type { LinkDensity } from "../store.tsx";
 import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
@@ -63,6 +65,22 @@ const DEFAULT_DISPLAY: Display = {
   linkOpacity: 0.5,
   labelScale: 1,
   colorBy: "cluster",
+};
+
+// Plain-language explanations of the *currently selected* option, shown under
+// each segmented control so the panel teaches instead of just labelling.
+const RENDERER_HINTS: Record<"canvas" | "gpu", string> = {
+  canvas: "Default renderer — crisp and full-featured.",
+  gpu: "WebGL — for very large graphs. Needs hardware support.",
+};
+const DENSITY_HINTS: Record<LinkDensity, string> = {
+  sparse: "Only each concept's strongest links — clearest structure.",
+  balanced: "A clean structural backbone. Recommended.",
+  all: "Every cross-link — dense bundles can tangle.",
+};
+const COLOR_HINTS: Record<"cluster" | "type", string> = {
+  cluster: "By detected community — groups of densely-linked concepts.",
+  type: "By concept type (Feature, Reference, …).",
 };
 // The force fields the controls panel exposes (the rest come from DEFAULT_PARAMS).
 type Forces = Pick<SimParams, "repulsion" | "springLength" | "springK" | "centering">;
@@ -886,88 +904,98 @@ export function GraphView() {
               sideOffset={6}
             >
               <Popover.Popup className="ui-popover graph-panel-body">
-                <div className="graph-colorby" role="group" aria-label="Renderer">
-                  <span className="graph-colorby-label">Renderer</span>
-                  <div className="graph-seg">
-                    <button
-                      type="button"
-                      className="graph-seg-btn"
-                      aria-pressed={renderer === "canvas"}
-                      onClick={() => setRenderer("canvas")}
-                    >
-                      Canvas
-                    </button>
-                    <button
-                      type="button"
-                      className="graph-seg-btn"
-                      aria-pressed={renderer === "gpu"}
-                      onClick={() => setRenderer("gpu")}
-                    >
-                      GPU
-                    </button>
-                  </div>
-                </div>
+                <Section title="Renderer" desc="How the graph is drawn.">
+                  <Segmented
+                    ariaLabel="Renderer"
+                    options={[
+                      { value: "canvas", text: "Canvas" },
+                      { value: "gpu", text: "GPU" },
+                    ]}
+                    value={renderer}
+                    onChange={setRenderer}
+                  />
+                  <p className="graph-hint">{RENDERER_HINTS[renderer]}</p>
+                </Section>
                 {renderer === "canvas" && (
                   <>
-                <fieldset>
-                  <legend>Forces</legend>
-                  <Slider label="Repel" min={0} max={6000} step={50} value={forces.repulsion}
-                    onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))} />
-                  <Slider label="Link distance" min={20} max={250} step={5} value={forces.springLength}
-                    onChange={(v) => setForces((f) => ({ ...f, springLength: v }))} />
-                  <Slider label="Link force" min={0} max={0.3} step={0.01} value={forces.springK}
-                    onChange={(v) => setForces((f) => ({ ...f, springK: v }))} />
-                  <Slider label="Center" min={0} max={0.2} step={0.005} value={forces.centering}
-                    onChange={(v) => setForces((f) => ({ ...f, centering: v }))} />
-                </fieldset>
-                <fieldset>
-                  <legend>Display</legend>
-                  <div className="graph-colorby" role="group" aria-label="Link density">
-                    <span className="graph-colorby-label">Links</span>
-                    <div className="graph-seg">
-                      {(["sparse", "balanced", "all"] as const).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          className="graph-seg-btn"
-                          aria-pressed={state.linkDensity === d}
-                          onClick={() => actions.setLinkDensity(d)}
-                        >
-                          {d === "sparse" ? "Key" : d === "balanced" ? "Balanced" : "All"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="graph-colorby" role="group" aria-label="Color nodes by">
-                    <span className="graph-colorby-label">Color</span>
-                    <div className="graph-seg">
-                      <button
-                        type="button"
-                        className="graph-seg-btn"
-                        aria-pressed={display.colorBy === "cluster"}
-                        onClick={() => setDisplay((d) => ({ ...d, colorBy: "cluster" }))}
-                      >
-                        Cluster
-                      </button>
-                      <button
-                        type="button"
-                        className="graph-seg-btn"
-                        aria-pressed={display.colorBy === "type"}
-                        onClick={() => setDisplay((d) => ({ ...d, colorBy: "type" }))}
-                      >
-                        Type
-                      </button>
-                    </div>
-                  </div>
-                  <Slider label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
-                    onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))} />
-                  <Slider label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
-                    onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))} />
-                  <Slider label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
-                    onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))} />
-                  <Slider label="Label fade" min={0.5} max={3} step={0.1} value={display.labelScale}
-                    onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))} />
-                </fieldset>
+                <Section
+                  title="Connections"
+                  desc="A bundle can be densely cross-linked. Choose how many links to draw."
+                >
+                  <Segmented
+                    ariaLabel="Link density"
+                    options={[
+                      { value: "sparse", text: "Key" },
+                      { value: "balanced", text: "Balanced" },
+                      { value: "all", text: "All" },
+                    ]}
+                    value={state.linkDensity}
+                    onChange={actions.setLinkDensity}
+                  />
+                  <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
+                </Section>
+                <Section title="Color" desc="What a node's color means.">
+                  <Segmented
+                    ariaLabel="Color nodes by"
+                    options={[
+                      { value: "cluster", text: "Cluster" },
+                      { value: "type", text: "Type" },
+                    ]}
+                    value={display.colorBy}
+                    onChange={(v) => setDisplay((d) => ({ ...d, colorBy: v }))}
+                  />
+                  <p className="graph-hint">{COLOR_HINTS[display.colorBy]}</p>
+                </Section>
+                <Section title="Appearance" desc="Size and emphasis of nodes and links.">
+                  <Slider
+                    label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
+                    format={(v) => `${v.toFixed(1)}×`}
+                    onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))}
+                  />
+                  <Slider
+                    label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
+                    format={(v) => `${v.toFixed(1)}×`}
+                    onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))}
+                  />
+                  <Slider
+                    label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
+                    format={(v) => `${Math.round(v * 100)}%`}
+                    onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))}
+                  />
+                  <Slider
+                    label="Label visibility"
+                    hint="How early titles appear as you zoom in."
+                    min={0.5} max={3} step={0.1} value={display.labelScale}
+                    format={(v) => `${v.toFixed(1)}×`}
+                    onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))}
+                  />
+                </Section>
+                <Section title="Layout" desc="Fine-tune how the graph arranges itself.">
+                  <Slider
+                    label="Spacing" hint="How strongly nodes push apart."
+                    min={0} max={6000} step={50} value={forces.repulsion}
+                    format={(v) => `${Math.round((v / 6000) * 100)}%`}
+                    onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))}
+                  />
+                  <Slider
+                    label="Link length" hint="Resting distance between connected nodes."
+                    min={20} max={250} step={5} value={forces.springLength}
+                    format={(v) => `${Math.round(((v - 20) / 230) * 100)}%`}
+                    onChange={(v) => setForces((f) => ({ ...f, springLength: v }))}
+                  />
+                  <Slider
+                    label="Link pull" hint="How strongly links draw nodes together."
+                    min={0} max={0.3} step={0.01} value={forces.springK}
+                    format={(v) => `${Math.round((v / 0.3) * 100)}%`}
+                    onChange={(v) => setForces((f) => ({ ...f, springK: v }))}
+                  />
+                  <Slider
+                    label="Gravity" hint="Pull toward the center; keeps the graph compact."
+                    min={0} max={0.2} step={0.005} value={forces.centering}
+                    format={(v) => `${Math.round((v / 0.2) * 100)}%`}
+                    onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
+                  />
+                </Section>
                 <button
                   type="button"
                   className="graph-panel-reset"
@@ -977,7 +1005,7 @@ export function GraphView() {
                     actions.setLinkDensity("balanced");
                   }}
                 >
-                  Reset
+                  Reset to defaults
                 </button>
                   </>
                 )}
@@ -1076,24 +1104,83 @@ export function GraphView() {
   );
 }
 
+/** A titled, optionally-described group of controls in the panel. */
+function Section({
+  title,
+  desc,
+  children,
+}: {
+  title: string;
+  desc?: string;
+  children: ReactNode;
+}) {
+  return (
+    <fieldset className="graph-section">
+      <legend>{title}</legend>
+      {desc && <p className="graph-section-desc">{desc}</p>}
+      {children}
+    </fieldset>
+  );
+}
+
+/** A full-width segmented (single-choice) control. */
+function Segmented<T extends string>({
+  ariaLabel,
+  options,
+  value,
+  onChange,
+}: {
+  ariaLabel: string;
+  options: { value: T; text: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="graph-seg graph-seg-full" role="group" aria-label={ariaLabel}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className="graph-seg-btn"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * A labelled slider with its current value shown alongside (so the value stays
+ * visible while dragging) and an optional one-line hint explaining what it does.
+ */
 function Slider({
   label,
+  hint,
   min,
   max,
   step,
   value,
+  format,
   onChange,
 }: {
   label: string;
+  hint?: string;
   min: number;
   max: number;
   step: number;
   value: number;
+  format?: (v: number) => string;
   onChange: (v: number) => void;
 }) {
   return (
     <div className="graph-slider">
-      <span className="graph-slider-label">{label}</span>
+      <div className="graph-slider-head">
+        <span className="graph-slider-label">{label}</span>
+        <span className="graph-slider-value">{format ? format(value) : String(value)}</span>
+      </div>
       <BaseSlider.Root
         value={value}
         min={min}
@@ -1108,6 +1195,7 @@ function Slider({
           </BaseSlider.Track>
         </BaseSlider.Control>
       </BaseSlider.Root>
+      {hint && <p className="graph-slider-hint">{hint}</p>}
     </div>
   );
 }

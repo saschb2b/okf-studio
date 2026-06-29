@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-06-29T13:00:00Z
+timestamp: 2026-06-29T14:00:00Z
 ---
 
 # The three panes
@@ -31,7 +31,10 @@ There is one shared "active concept." Selecting it anywhere — a graph node, a 
 
 The workspace switches between three layout modes — **split** (default, graph + reader co-equal), **reader-only**, and **graph-only** — via a segmented control in the top bar or [keyboard](keyboard-shortcuts.md) (`Ctrl/Cmd + 1/2/3`, `\` to cycle). In split mode the panes are **resizable** with draggable, keyboard-operable dividers (double-click to reset); the chosen mode and pane sizes persist. The reader keeps a comfortable measure cap so wide prose stays readable.
 
-# Chrome
+# Chrome — the custom title bar
 
-- A top bar holds, left to right: the [**Bundle Switcher**](../features/bundle-switcher.md) (top-left, naming the open bundle and its folder), a **search** field that opens the [global launcher](../features/command-palette.md), the **layout** switch, a **Log** toggle (renders `log.md` — see [Log View](../features/log-view.md)), and the [validation](../features/validation.md) badge.
-- Honors [theming](theming.md) and a [native desktop feel](settings.md) (content-scoped zoom, not browser page-zoom), and is fully driveable by [keyboard](keyboard-shortcuts.md).
+The window runs **borderless** (native title-bar decorations are off — see [Theming](theming.md)); the top bar *is* the app's title bar, so the chrome is ours end to end (in the spirit of Zed's custom frame).
+
+- Left to right it holds the [**Bundle Switcher**](../features/bundle-switcher.md) (naming the open bundle and its folder), a **search** field that opens the [global launcher](../features/command-palette.md), the **layout** switch, the reader **"Aa"** controls, a **Log** toggle (renders `log.md` — see [Log View](../features/log-view.md)), the [validation](../features/validation.md) badge, and the **window controls** (minimize · maximize/restore · close) at the far right.
+- Empty regions of the bar are a **drag handle** for moving the window (double-click to maximize/restore); interactive controls are excluded from the drag region. Invisible **resize handles** line the window edges and corners.
+- Honors [theming](theming.md) and a [native desktop feel](settings.md) (content-scoped zoom, our own frame), and is fully driveable by [keyboard](keyboard-shortcuts.md).

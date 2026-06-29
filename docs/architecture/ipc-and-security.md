@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The Tauri command/event surface between Rust and the frontend, and the read-only, scoped capability model.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-06-29T14:00:00Z
 ---
 
 # Command & event surface
@@ -31,5 +31,5 @@ Honors the [read-only and local-first principles](../product/principles.md) thro
 - **Read-only filesystem.** Only read/stat/watch operations are permitted on the chosen folder; no write/delete capability is granted there. Pointing the app at a folder cannot modify it. The store plugin's small writes (recent bundles, [settings](../ux/settings.md)) go to the app's own config directory, never into the scanned bundle scope.
 - **Scoped to the chosen folder.** Filesystem capability is constrained to the user-selected directory subtree (the dialog grants the scope). Nothing outside it is reachable. Reopening a recent bundle re-grants its stored folder scope — the [Bundle Switcher](../features/bundle-switcher.md) never reaches a path the user did not originally pick.
 - **No network capability.** The app declares no HTTP/network permission; it cannot phone home. `resource` URLs are handed to the OS browser, not fetched in-app.
-- **Least privilege in `capabilities/`.** The Tauri capabilities config enables exactly the `fs` (read), `dialog`, and `store` permissions needed — nothing more (see [Tauri 2.0](../reference/tauri-2.md)).
+- **Least privilege in `capabilities/`.** The Tauri capabilities config enables exactly the permissions needed — `fs` (read), `dialog`, `store`, `opener`, and the **window** controls for the [custom title bar](../ux/browsing-layout.md) (start-dragging, start-resize-dragging, minimize, toggle-maximize, close, is-maximized) — nothing more (see [Tauri 2.0](../reference/tauri-2.md)).
 - **Heavy work in Rust.** Parsing untrusted markdown happens in the core; the webview only renders sanitized output, reducing the attack surface of opening an unknown bundle.

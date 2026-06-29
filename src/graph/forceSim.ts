@@ -31,6 +31,13 @@ export interface SimNode {
   vy: number;
   /** Visual radius, derived from degree by the renderer. */
   r: number;
+  /**
+   * Repulsive weight (the Barnes-Hut body mass), derived from degree by the
+   * renderer (≈ degree + 1). Heavier hubs and denser clusters push others away
+   * more — the ForceAtlas2 trick that gives the hub-and-spoke spread and lets
+   * clusters separate for free. Defaults to 1 (unit mass) when unset.
+   */
+  mass?: number;
   /** When set, the node is pinned to (fx, fy) — used while dragging. */
   fx: number | null;
   fy: number | null;
@@ -107,9 +114,11 @@ export const REHEAT_ALPHA = 0.3;
 const MAX_DEPTH = 40;
 
 interface QuadTree {
-  /** Subtree node count (== aggregate mass, unit mass per node). */
+  /** Subtree node count — used for structure and self-exclusion. */
   count: Int32Array;
-  /** Aggregate centre of mass (for leaves this is the body position). */
+  /** Aggregate repulsive mass of the subtree (sum of node masses). */
+  mass: Float64Array;
+  /** Aggregate (mass-weighted) centre of mass; for leaves it's the body position. */
   comX: Float64Array;
   comY: Float64Array;
   /** Cell centre and half-width of the square region it covers. */
@@ -158,6 +167,7 @@ function buildQuadTree(nodes: SimNode[]): QuadTree | null {
   const cap = MAX_DEPTH * n + 16;
   const tree: QuadTree = {
     count: new Int32Array(cap),
+    mass: new Float64Array(cap),
     comX: new Float64Array(cap),
     comY: new Float64Array(cap),
     cx: new Float64Array(cap),
@@ -172,7 +182,7 @@ function buildQuadTree(nodes: SimNode[]): QuadTree | null {
   const root = allocCell(tree, cx0, cy0, half);
 
   for (let i = 0; i < n; i++) {
-    insert(tree, root, i, nodes[i].x, nodes[i].y);
+    insert(tree, root, i, nodes[i].x, nodes[i].y, nodes[i].mass ?? 1);
   }
 
   // Compute aggregate mass and centre of mass bottom-up. Because a child cell
@@ -182,21 +192,24 @@ function buildQuadTree(nodes: SimNode[]): QuadTree | null {
     // Skip empties and leaves (incl. merged coincident leaves, count > 1 but no
     // children) — their count/com are already final from insertion.
     if (tree.qLeaf[c] >= 0 || tree.count[c] === 0) continue;
-    let m = 0;
+    let cnt = 0;
+    let mass = 0;
     let sx = 0;
     let sy = 0;
     const base = c * 4;
     for (let q = 0; q < 4; q++) {
       const child = tree.qChild[base + q];
       if (child < 0) continue;
-      const cm = tree.count[child];
-      m += cm;
-      sx += tree.comX[child] * cm;
-      sy += tree.comY[child] * cm;
+      const cmass = tree.mass[child];
+      cnt += tree.count[child];
+      mass += cmass;
+      sx += tree.comX[child] * cmass; // mass-weighted centre of mass
+      sy += tree.comY[child] * cmass;
     }
-    tree.count[c] = m;
-    tree.comX[c] = sx / m;
-    tree.comY[c] = sy / m;
+    tree.count[c] = cnt;
+    tree.mass[c] = mass;
+    tree.comX[c] = sx / mass;
+    tree.comY[c] = sy / mass;
   }
 
   return tree;
@@ -228,7 +241,14 @@ function allocCell(t: QuadTree, cx: number, cy: number, half: number): number {
 //                      otherwise push the resident down one level and continue
 //                      descending so both end up in separate sub-cells.
 // Internal cell     -> descend into the matching quadrant and repeat.
-function insert(t: QuadTree, cell: number, idx: number, x: number, y: number): void {
+function insert(
+  t: QuadTree,
+  cell: number,
+  idx: number,
+  x: number,
+  y: number,
+  m: number,
+): void {
   let depth = 0;
   for (;;) {
     const c = t.count[cell];
@@ -236,6 +256,7 @@ function insert(t: QuadTree, cell: number, idx: number, x: number, y: number): v
     if (c === 0) {
       // Empty cell becomes a leaf holding this node.
       t.count[cell] = 1;
+      t.mass[cell] = m;
       t.qLeaf[cell] = idx;
       t.comX[cell] = x;
       t.comY[cell] = y;
@@ -250,9 +271,11 @@ function insert(t: QuadTree, cell: number, idx: number, x: number, y: number): v
       const same = Math.abs(rx - x) < 1e-9 && Math.abs(ry - y) < 1e-9;
       if (same || depth >= MAX_DEPTH) {
         // Coincident (or at the depth cap): merge into a shared leaf bucket.
-        // Keep com as the (equal) position; just bump the mass. qLeaf stays set
-        // and no children are created, so it reads as a single body of mass c+1.
+        // Keep com as the (equal) position; just bump the count and accumulate
+        // the mass. qLeaf stays set and no children are created, so it reads as a
+        // single body of the combined mass.
         t.count[cell] = c + 1;
+        t.mass[cell] += m;
         return;
       }
       // Split: push the resident node down into its child quadrant, turning this
@@ -269,6 +292,7 @@ function insert(t: QuadTree, cell: number, idx: number, x: number, y: number): v
       );
       t.qChild[cell * 4 + rq] = rChild;
       t.count[rChild] = 1;
+      t.mass[rChild] = t.mass[cell]; // the resident keeps its own mass
       t.qLeaf[rChild] = leaf;
       t.comX[rChild] = rx;
       t.comY[rChild] = ry;
@@ -319,8 +343,8 @@ function applyRepulsion(
 
   while (sp > 0) {
     const cell = stack[--sp];
-    const mass = t.count[cell];
-    if (mass === 0) continue;
+    const cnt = t.count[cell];
+    if (cnt === 0) continue;
 
     let dx = t.comX[cell] - px;
     let dy = t.comY[cell] - py;
@@ -328,15 +352,16 @@ function applyRepulsion(
 
     const leaf = t.qLeaf[cell];
     if (leaf >= 0) {
-      // A leaf is a single point. It may hold several coincident nodes (mass>1);
-      // its mass is then the body weight. Exclude this node itself if it lives
-      // here (subtract one from the effective mass).
-      let bodies = mass;
+      // A leaf is a single point that may hold several coincident nodes; its
+      // mass is the combined body weight. Exclude this node's own contribution
+      // if it lives here (subtract its mass).
+      let bodies = t.mass[cell];
+      const im = node.mass ?? 1;
       if (leaf === i || d2 < 1e-12) {
         // Either this leaf is exactly where node i sits (so it likely contains
         // i), or it is coincident with i. Drop i's own contribution.
-        bodies -= 1;
-        if (bodies <= 0) continue; // only this node here: nothing to apply.
+        bodies -= im;
+        if (bodies <= 1e-9) continue; // only this node here: nothing to apply.
         // Separate coincident points deterministically (no randomness).
         const o = leaf;
         dx = ((i - o) % 7) * 0.5 + 0.5;
@@ -355,7 +380,7 @@ function applyRepulsion(
     if (d2 > 1e-12 && (size * size) / d2 < theta2) {
       // Far enough: treat the whole subtree as one aggregate body.
       const dist = Math.sqrt(d2);
-      const force = (repAlpha * mass) / d2;
+      const force = (repAlpha * t.mass[cell]) / d2;
       fvx -= (dx / dist) * force;
       fvy -= (dy / dist) * force;
     } else {

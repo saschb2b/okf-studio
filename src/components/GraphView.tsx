@@ -445,6 +445,9 @@ export function GraphView() {
         vx: 0,
         vy: 0,
         r: radiusForDegree(c.degree, maxDegree),
+        // Repulsive mass ∝ degree+1 (ForceAtlas2): hubs and dense clusters claim
+        // more space, so the layout spreads and clusters separate emergently.
+        mass: c.degree + 1,
         fx: null,
         fy: null,
       });

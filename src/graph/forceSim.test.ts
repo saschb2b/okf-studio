@@ -99,6 +99,17 @@ describe("forceSim", () => {
     }
   });
 
+  it("repels more strongly from heavier (higher-degree) nodes", () => {
+    // T sits between a heavy node H (left) and a light node L (right), equidistant.
+    // With degree-weighted mass, H pushes T harder than L, so T drifts right (+x);
+    // with unit mass the two would cancel. No edges/overlap to interfere.
+    const T: SimNode = { id: "T", x: 0, y: 0, vx: 0, vy: 0, r: 8, mass: 1, fx: null, fy: null };
+    const H: SimNode = { id: "H", x: -100, y: 0, vx: 0, vy: 0, r: 8, mass: 10, fx: null, fy: null };
+    const L: SimNode = { id: "L", x: 100, y: 0, vx: 0, vy: 0, r: 8, mass: 1, fx: null, fy: null };
+    step([T, H, L], [], DEFAULT_PARAMS, 1);
+    expect(T.vx).toBeGreaterThan(0);
+  });
+
   it("scales to many nodes without blowing up (Barnes-Hut smoke test)", () => {
     const N = 1500;
     const nodes: SimNode[] = Array.from({ length: N }, (_, i) =>

@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-29T18:00:00Z
+timestamp: 2026-06-29T19:00:00Z
 ---
 
 # What it does
@@ -12,7 +12,7 @@ The center of the workspace renders the active bundle as an interactive **force-
 
 # Visual encoding
 
-- **Node = concept.** Color is determined by its `type` via a deterministic palette (see [Theming](../ux/theming.md)); the legend doubles as a [type filter](search-and-filter.md).
+- **Node = concept.** Color comes from one of two modes (a Controls toggle): by `type` via the deterministic palette (the default-ish semantic coloring; the legend doubles as a [type filter](search-and-filter.md)), or by **detected cluster** — **Louvain** community detection groups densely-interlinked concepts and gives each community a unified color, so emergent clusters read at a glance.
 - **Node size** scales with degree (how connected a concept is), so hubs stand out.
 - **Edge = cross-link** between concepts. Direction is available (A links to B), and selecting a node highlights its incident edges plus its neighbors.
 - **Label** shows the concept `title`. Labels are **level-of-detail**: when zoomed out only dots show; labels fade in past an adjustable zoom threshold, and are always shown for the selected node, its neighbors, and the hovered node — so a large graph stays legible instead of becoming a wall of text.
@@ -29,7 +29,7 @@ The center of the workspace renders the active bundle as an interactive **force-
 A collapsible controls panel (top-left of the graph, in the spirit of Obsidian's graph view) tunes the layout without leaving the view:
 
 - **Forces** — *repel* (node spacing), *link distance*, *link force*, and *center* gravity. Adjusting a force gently reheats the layout so it re-settles.
-- **Display** — *node size*, *link thickness*, *link opacity*, and the *label* fade threshold.
+- **Display** — the **color** mode (by type or by detected cluster), *node size*, *link thickness*, *link opacity*, and the *label* fade threshold.
 
 The graph **auto-fits** the viewport once a fresh layout settles, and a **collision** pass keeps nodes from overlapping, so clusters read as distinct blobs rather than a tangle.
 

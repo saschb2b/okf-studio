@@ -3,7 +3,7 @@
 // intra-bundle links, and its relationship lists (links-to / cited-by /
 // broken). See docs/features/concept-reader.md.
 
-import type { MouseEvent } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 import { useActiveConcept, useApp } from "../store.tsx";
 import { titleOf, conceptById } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
@@ -19,6 +19,7 @@ function conceptExists(bundle: Bundle | null, id: string): boolean {
 export function Reader() {
   const c = useActiveConcept();
   const { state, actions } = useApp();
+  const readerScale = state.settings.readerScale;
 
   if (!c) {
     return (
@@ -92,7 +93,12 @@ export function Reader() {
     c.links.length > 0 || c.citedBy.length > 0 || c.brokenLinks.length > 0;
 
   return (
-    <article className="reader-inner concept-reader">
+    <article
+      className="reader-inner concept-reader"
+      // Reader-scoped text-size scale (the native replacement for page-zoom).
+      // Reader.css multiplies the body/prose font sizes by this var.
+      style={{ "--reader-scale": readerScale } as CSSProperties}
+    >
       <header className="reader-header">
         <span className="type-badge" style={{ color: typeColor, borderColor: typeColor }}>
           {c.type}

@@ -12,6 +12,8 @@ import { useApp } from "../store.tsx";
 import { recentFolders } from "../ipc.ts";
 import { DEFAULT_SETTINGS } from "../types.ts";
 import type { ThemeMode } from "../types.ts";
+import { ZOOM_EVENT } from "../native.ts";
+import type { ZoomIntent } from "../native.ts";
 import "./chrome.css";
 import "./baseui.css";
 import "./Settings.css";
@@ -21,6 +23,33 @@ const THEME_LABELS: Record<ThemeMode, string> = {
   light: "Light",
   dark: "Dark",
 };
+
+// Reader text-size presets, shown in the Settings select. The keyboard remap
+// (Ctrl/Cmd +/-/0) steps through the same range; see the okf:zoom handler below.
+const READER_SCALE_MIN = 0.8;
+const READER_SCALE_MAX = 1.6;
+const READER_SCALE_STEP = 0.1;
+
+const SCALE_OPTIONS = [0.9, 1.0, 1.15, 1.3] as const;
+const SCALE_LABELS: Record<string, string> = {
+  "0.9": "Small",
+  "1": "Default",
+  "1.15": "Large",
+  "1.3": "Larger",
+};
+
+function clampScale(v: number): number {
+  return Math.min(READER_SCALE_MAX, Math.max(READER_SCALE_MIN, v));
+}
+
+/** Round to one decimal so persisted scale values stay clean. */
+function roundScale(v: number): number {
+  return Math.round(v * 10) / 10;
+}
+
+function scaleLabel(v: number): string {
+  return SCALE_LABELS[String(v)] ?? `${Math.round(v * 100)}%`;
+}
 
 function shortPath(p: string): string {
   const parts = p.split(/[/\\]/).filter(Boolean);
@@ -43,6 +72,25 @@ export function Settings() {
       alive = false;
     };
   }, [state.settingsOpen]);
+
+  // Remap the suppressed browser zoom keys/gestures to reader text-size.
+  // native.ts dispatches `okf:zoom` on window when Ctrl/Cmd +/-/0 or Ctrl+wheel
+  // fire off the graph; we apply it via the store so it persists like any other
+  // setting. Settings is always mounted, so this works in every layout mode.
+  useEffect(() => {
+    const onZoom = (e: Event): void => {
+      const intent = (e as CustomEvent<ZoomIntent>).detail;
+      if (intent === 0) {
+        actions.updateSettings({ readerScale: 1 });
+        return;
+      }
+      const next = clampScale(s.readerScale + intent * READER_SCALE_STEP);
+      actions.updateSettings({ readerScale: roundScale(next) });
+    };
+    window.addEventListener(ZOOM_EVENT, onZoom);
+    return () => window.removeEventListener(ZOOM_EVENT, onZoom);
+    // Re-bind when scale changes so the closure reads the current value.
+  }, [s.readerScale, actions]);
 
   return (
     <Dialog.Root
@@ -104,6 +152,46 @@ export function Settings() {
             </Checkbox.Root>
             <span className="field-label">Reduce motion</span>
           </label>
+
+          <div className="field">
+            <span className="field-label">Reader text size</span>
+            <Select.Root
+              value={s.readerScale}
+              onValueChange={(v) =>
+                actions.updateSettings({ readerScale: roundScale(Number(v)) })
+              }
+            >
+              <Select.Trigger className="ui-select-trigger">
+                <Select.Value>
+                  {(value) => scaleLabel((value as number) ?? 1)}
+                </Select.Value>
+                <Select.Icon className="ui-select-icon" aria-hidden="true">
+                  ▾
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Positioner className="ui-select-positioner" sideOffset={4}>
+                  <Select.Popup className="ui-select-popup">
+                    {SCALE_OPTIONS.map((scale) => (
+                      <Select.Item
+                        key={scale}
+                        value={scale}
+                        className="ui-select-item"
+                      >
+                        <Select.ItemText>{scaleLabel(scale)}</Select.ItemText>
+                        <Select.ItemIndicator className="ui-select-check">
+                          ✓
+                        </Select.ItemIndicator>
+                      </Select.Item>
+                    ))}
+                  </Select.Popup>
+                </Select.Positioner>
+              </Select.Portal>
+            </Select.Root>
+            <span className="field-hint muted">
+              Scales the reader pane only. Ctrl/Cmd&nbsp;+/−/0 also adjusts it.
+            </span>
+          </div>
 
           <div className="field">
             <span className="field-label">Scan max depth</span>

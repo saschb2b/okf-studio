@@ -79,12 +79,18 @@ export interface Settings {
   theme: ThemeMode;
   reduceMotion: boolean;
   scanMaxDepth: number;
+  /**
+   * Reader text-size multiplier (1 = default). Applied as a reader-scoped CSS
+   * scale, this is the native, content-scoped replacement for browser page-zoom.
+   */
+  readerScale: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   reduceMotion: false,
   scanMaxDepth: 8,
+  readerScale: 1,
 };
 
 /** A directed cross-link edge in the concept graph. */

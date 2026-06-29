@@ -90,6 +90,60 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Native feel ------------------------------------------------------------- */
+/* Chrome (toolbar, sidebar, badges, panels) is not selectable text — dragging
+   across it should select nothing, like a native app. We opt selectable
+   surfaces back IN below. Web page-zoom and the default context menu are
+   suppressed in JS (src/native.ts). See docs/proposals/native-feel.md. */
+body,
+.app {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Opt real content back into selection/copy: the reader body, code blocks, and
+   any explicitly selectable value (e.g. the concept id). */
+.reader,
+.reader .body,
+.reader code,
+.reader pre,
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Theme-token scrollbars on scrolling surfaces, with a stable gutter so a
+   scrollbar appearing doesn't shift the layout. Firefox/standard properties
+   first, then a WebKit fallback tied to the same tokens. */
+.pane,
+.panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-gutter: stable;
+}
+.pane::-webkit-scrollbar,
+.panel::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.pane::-webkit-scrollbar-track,
+.panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pane::-webkit-scrollbar-thumb,
+.panel::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius);
+  /* Inset the thumb so it reads thin against the track. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.pane::-webkit-scrollbar-thumb:hover,
+.panel::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+  background-clip: padding-box;
+}
+
 .app {
   display: flex;
   flex-direction: column;

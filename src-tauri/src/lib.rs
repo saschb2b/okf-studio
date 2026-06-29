@@ -31,6 +31,16 @@ fn stop_watch(state: State<'_, WatchState>) {
     watch::stop(state.inner());
 }
 
+// Native-feel reinforcement: browser page-zoom hotkeys are disabled per window.
+// The `main` window is declared in tauri.conf.json, so we set
+// `"zoomHotkeysEnabled": false` there (the config maps to the same webview
+// attribute as the `WebviewWindowBuilder::zoom_hotkeys_enabled(false)` builder
+// method — there is no runtime setter on a live window in Tauri 2). On Windows
+// this disables WebView2's zoom control; on macOS/Linux it ensures Tauri's
+// ctrl/cmd +/- zoom polyfill is never injected. The cross-platform floor — and
+// the only guard on Linux/WebKitGTK — is the JS handler in src/native.ts, which
+// also remaps the keys/gesture to the reader text-size setting.
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

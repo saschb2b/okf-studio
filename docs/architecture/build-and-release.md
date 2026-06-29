@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-06-29T14:00:00Z
 ---
 
 # Decision
@@ -37,6 +37,10 @@ Two version numbers stay deliberately distinct:
 # Updates
 
 In v1, updates are a **manual download** of the new installer — consistent with the offline, no-account stance. **Auto-update** (Tauri's updater) is a deliberate post-v1 idea, recorded as out of scope for now (see [Scope & Non-Goals](../product/scope-and-non-goals.md)); adopting it later would mean introducing a network path, which must be weighed against the offline principle.
+
+# Install & uninstall
+
+Following platform install best practices: installers target a **per-user install where the platform allows**, avoiding admin elevation and reboots. **Uninstalling removes the app binaries**; the only user data is in the app's own config directory (recent bundles and [settings](../ux/settings.md) via the store plugin — see [IPC & Security](ipc-and-security.md)), which the user can keep or clear. Nothing is written system-wide and nothing phones home, so there is no residue to chase.
 
 # Offline build, no phone-home
 

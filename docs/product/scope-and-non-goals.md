@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What ships in v1, what is deferred, and what OKF Viewer deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-06-29T14:00:00Z
 ---
 
 # v1 scope (the MVP)
@@ -26,6 +26,7 @@ The first release must deliver the full read loop end to end:
 - "Cited by" graph focus mode and shortest-path-between-concepts.
 - **Folder-as-workspace grouping** — treat the containing folder as a first-class entity that groups the bundles it holds, so bundles from one repo or context are visually connected (today recents are per-bundle via the [Bundle Switcher](../features/bundle-switcher.md), with the folder kept only as the read scope).
 - Optional remote bundles (git URL, tarball) — fetched locally, still read-only.
+- **Custom-frame platform polish** — the [borderless title bar](../ux/browsing-layout.md) trades away some per-OS niceties: the Windows 11 **Snap Layouts** flyout on the maximize button, Win11 **rounded window corners**, and macOS **traffic-light** placement. Restoring each is platform-specific work for a later pass.
 
 # Non-goals
 

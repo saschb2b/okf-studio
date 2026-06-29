@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The test strategy — Rust unit and integration tests, golden link tests, validator parity, tolerance proofs, and dogfooding this bundle.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-06-28T14:00:00Z
+timestamp: 2026-06-29T14:00:00Z
 ---
 
 # Decision
@@ -40,3 +40,7 @@ Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — 
 # Frontend and performance checks
 
 Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks, and **Playwright** for end-to-end flows. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout. **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+
+# Automated accessibility gate
+
+An **axe-core** check runs over the rendered app (the empty state and an open bundle) and **fails the suite on any violation**, so the [accessibility](../ux/accessibility.md) commitments are verified, not merely asserted (Microsoft's "run automated accessibility checks in CI" practice). Colour contrast needs real layout that jsdom lacks, so that rule is verified via the [design tokens](../ux/theming.md) instead; the gate covers the structural rules — accessible names, roles, ARIA state, landmarks, and labels. It has already caught real regressions (an inappropriate role on the title bar, a splitter missing `aria-valuenow`).

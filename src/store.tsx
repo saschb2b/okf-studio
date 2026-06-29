@@ -15,6 +15,7 @@ import type { Bundle, BundleRoot, Concept, RecentBundle, Settings } from "./type
 import { DEFAULT_SETTINGS } from "./types.ts";
 import { applyTheme } from "./theme.ts";
 import * as ipc from "./ipc.ts";
+import { isWindowMaximized, onWindowResized } from "./window.ts";
 
 export type PanelName = "sidebar" | "reader" | "log" | "validation";
 
@@ -99,6 +100,7 @@ export interface State {
   bundles: BundleRoot[];
   recents: RecentBundle[];
   switcherOpen: boolean;
+  maximized: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
   loading: boolean;
@@ -127,6 +129,7 @@ const initialState: State = {
   bundles: [],
   recents: [],
   switcherOpen: false,
+  maximized: false,
   activeRoot: null,
   bundle: null,
   loading: false,
@@ -154,6 +157,7 @@ type Msg =
   | { t: "openFolder"; folder: string; bundles: BundleRoot[] }
   | { t: "recents"; v: RecentBundle[] }
   | { t: "switcher"; v: boolean }
+  | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
   | { t: "back" }
@@ -195,6 +199,8 @@ function reducer(s: State, m: Msg): State {
       return { ...s, recents: m.v };
     case "switcher":
       return { ...s, switcherOpen: m.v };
+    case "maximized":
+      return { ...s, maximized: m.v };
     case "setBundle": {
       const keep =
         s.activeConceptId &&
@@ -485,6 +491,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (recents.length > 0) void actions.openRecentBundle(recents[0]);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Track the window's maximized state for the custom frame (square corners when
+  // maximized). No-op off-Tauri.
+  useEffect(() => {
+    if (!ipc.isTauri()) return;
+    let unsub = () => {};
+    const sync = () =>
+      void isWindowMaximized().then((m) => dispatch({ t: "maximized", v: m }));
+    sync();
+    void onWindowResized(sync).then((u) => {
+      unsub = u;
+    });
+    return () => unsub();
   }, []);
 
   // Apply theme; re-apply on OS scheme change when following the system.

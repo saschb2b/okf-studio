@@ -18,7 +18,7 @@ export function App() {
   useGlobalKeys();
 
   return (
-    <div className="app">
+    <div className="app" data-maximized={state.maximized || undefined}>
       <TopBar />
       {state.bundle ? (
         <Workspace />

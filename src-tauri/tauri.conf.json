@@ -19,7 +19,8 @@
         "minWidth": 880,
         "minHeight": 600,
         "zoomHotkeysEnabled": false,
-        "decorations": false
+        "decorations": false,
+        "transparent": true
       }
     ],
     "security": {

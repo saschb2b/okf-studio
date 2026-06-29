@@ -20,6 +20,8 @@
   --radius-sm: 6px;
   --radius: 8px;
   --radius-lg: 12px;
+  /* Window frame corner radius for the borderless window (Zed-style, slight). */
+  --frame-radius: 10px;
 
   /* Spacing scale (tokens named by px value; 2/4/6/8/10/12 then 4-step) */
   --space-2: 2px;
@@ -85,7 +87,9 @@ html, body, #root {
 
 body {
   font-family: var(--ui);
-  background: var(--bg);
+  /* Transparent so the borderless window's rounded corners cut out; the opaque
+     surface is painted by .app. */
+  background: transparent;
   color: var(--text);
   font-size: var(--fs-sm);
   -webkit-font-smoothing: antialiased;
@@ -150,6 +154,13 @@ body,
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  /* The opaque app surface; rounded so the borderless window has soft corners.
+     overflow:hidden clips the panes to the radius. Squared off when maximized. */
+  background: var(--bg);
+  border-radius: var(--frame-radius);
+}
+.app[data-maximized="true"] {
+  border-radius: 0;
 }
 
 /* Top bar */

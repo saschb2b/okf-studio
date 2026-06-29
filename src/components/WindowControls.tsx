@@ -2,30 +2,17 @@
 // maximize icon swaps to a restore glyph when the window is maximized. Off-Tauri
 // the buttons render but do nothing (window.ts guards). See docs/ux/browsing-layout.md.
 
-import { useEffect, useState } from "react";
-import { isTauri } from "../ipc.ts";
+import { useApp } from "../store.tsx";
 import {
   closeWindow,
-  isWindowMaximized,
   minimizeWindow,
-  onWindowResized,
   toggleMaximizeWindow,
 } from "../window.ts";
 import "./WindowControls.css";
 
 export function WindowControls() {
-  const [maxed, setMaxed] = useState(false);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unsub = () => {};
-    const sync = () => void isWindowMaximized().then(setMaxed);
-    sync();
-    void onWindowResized(sync).then((u) => {
-      unsub = u;
-    });
-    return () => unsub();
-  }, []);
+  // Maximized state is tracked centrally in the store (see AppProvider).
+  const maxed = useApp().state.maximized;
 
   return (
     <div className="win-controls">

@@ -278,34 +278,7 @@ body,
   gap: 4px;
 }
 
-/* Reader */
-.reader-inner { padding: 18px 20px; }
-.reader-empty { padding: 24px; color: var(--text-dim); }
-.type-badge {
-  display: inline-block;
-  font-size: 12px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--bg-sunken);
-  color: var(--text-dim);
-  margin-bottom: 8px;
-}
-.reader-inner h1 { margin: 4px 0 6px; font-size: 22px; }
-.reader-inner .desc { color: var(--text-dim); margin: 0 0 14px; }
-.reader-inner .body {
-  font-family: var(--mono);
-  font-size: 12.5px;
-  white-space: pre-wrap;
-  background: var(--bg-sunken);
-  padding: 12px;
-  border-radius: var(--radius);
-  overflow-x: auto;
-}
-.rels { margin-top: 18px; }
-.rels h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); }
-.rels ul { list-style: none; padding: 0; margin: 0; }
-.rels li { padding: 5px 8px; border-radius: 6px; cursor: pointer; color: var(--accent); }
-.rels li:hover { background: var(--bg-sunken); }
+/* Reader styling lives in Reader.css (the single source for the reading pane). */
 
 /* Panels (log / validation) — docked on the right */
 .panel {

@@ -8,6 +8,7 @@ import { useApp } from "../store.tsx";
 import type { LayoutMode } from "../store.tsx";
 import { BundleSwitcher } from "./BundleSwitcher.tsx";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
+import { WindowControls } from "./WindowControls.tsx";
 import "./chrome.css";
 import "./baseui.css";
 import "./TopBar.css";
@@ -52,7 +53,7 @@ export function TopBar() {
 
   return (
     <Tooltip.Provider delay={400}>
-      <Toolbar.Root render={<header className="topbar" />}>
+      <Toolbar.Root render={<header className="topbar" data-tauri-drag-region />}>
         <BundleSwitcher />
 
         <Toolbar.Group className="topbar-nav">
@@ -103,7 +104,7 @@ export function TopBar() {
           </Tooltip.Root>
         </Toolbar.Group>
 
-        <div className="topbar-spacer" />
+        <div className="topbar-spacer" data-tauri-drag-region />
 
         {state.bundle && (
           <Toolbar.Group
@@ -250,6 +251,8 @@ export function TopBar() {
             </Tooltip.Root>
           </Toolbar.Group>
         )}
+
+        <WindowControls />
       </Toolbar.Root>
     </Tooltip.Provider>
   );

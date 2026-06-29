@@ -11,6 +11,7 @@ import { ValidationPanel } from "./components/ValidationPanel.tsx";
 import { LogView } from "./components/LogView.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { EmptyState } from "./components/EmptyState.tsx";
+import { ResizeHandles } from "./components/ResizeHandles.tsx";
 
 export function App() {
   const { state } = useApp();
@@ -37,6 +38,9 @@ export function App() {
       )}
       {/* Settings works without a bundle (theme on first run); always mounted. */}
       <Settings />
+
+      {/* Borderless-window resize handles (Tauri only). */}
+      <ResizeHandles />
     </div>
   );
 }

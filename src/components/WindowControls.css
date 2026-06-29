@@ -1,0 +1,44 @@
+/* Window controls for the custom title bar. Kept inset within the top bar's
+   padding so the edge resize handles never overlap the buttons. */
+.win-controls {
+  display: inline-flex;
+  align-items: stretch;
+  margin-left: var(--space-4);
+}
+
+.win-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  padding: var(--space-4) 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.win-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+.win-btn:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
+}
+.win-close:hover {
+  background: var(--error);
+  color: var(--accent-contrast);
+}
+
+.win-btn svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  fill: none;
+}
+.win-btn svg rect {
+  stroke: currentColor;
+  fill: none;
+}

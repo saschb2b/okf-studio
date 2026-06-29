@@ -218,7 +218,7 @@ body,
 }
 .pane { min-height: 0; overflow: auto; }
 .sidebar { border-right: 1px solid var(--border); background: var(--bg-elev); }
-.reader { border-left: 1px solid var(--border); background: var(--bg-elev); }
+.reader { border-left: 1px solid var(--border); background: var(--bg-elev); container-type: inline-size; }
 .graph { background: var(--bg-sunken); position: relative; }
 
 /* Draggable, keyboard-operable column divider between panes. Sits in its own

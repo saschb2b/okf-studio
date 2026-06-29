@@ -266,28 +266,138 @@
   height: auto;
 }
 
-/* Relationships ------------------------------------------------------------ */
-.relationships {
-  margin-top: var(--space-4);
+/* Layout: reading column + right context rail ----------------------------- */
+.reader-shell {
+  --reader-rail-w: 300px;
+  --reader-max: 1140px;
+  max-width: var(--reader-max);
+  margin-inline: auto;
+}
+.reader-shell[data-rail="side"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--reader-rail-w);
+  gap: var(--space-32);
+  align-items: start;
+}
+
+/* Default rail = stacked below the article (split mode, or a narrow pane). */
+.reader-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-16) var(--space-24);
+  max-width: var(--reader-measure);
+  margin-inline: auto;
+  padding: var(--space-16) var(--space-24) var(--space-40);
   border-top: 1px solid var(--border);
-  padding-top: var(--space-12);
+}
+/* Side rail = a sticky single column beside the prose. */
+.reader-shell[data-rail="side"] .reader-rail {
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
+  position: sticky;
+  top: var(--space-16);
+  max-height: calc(100vh - var(--space-40));
+  overflow: auto;
+  max-width: none;
+  margin: 0;
+  padding: var(--space-20) var(--space-8) var(--space-40) 0;
+  border-top: 0;
+}
+/* Too narrow for two columns → collapse the side rail to the stacked form. */
+@container (max-width: 900px) {
+  .reader-shell[data-rail="side"] {
+    display: block;
+  }
+  .reader-shell[data-rail="side"] .reader-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-16) var(--space-24);
+    position: static;
+    max-height: none;
+    overflow: visible;
+    max-width: var(--reader-measure);
+    margin-inline: auto;
+    padding: var(--space-16) var(--space-24) var(--space-40);
+    border-top: 1px solid var(--border);
+  }
 }
 
-.rel-group h3 {
+/* The outline is only useful as a side rail; hide it when stacked. */
+.rail-outline {
+  display: none;
+}
+.reader-shell[data-rail="side"] .rail-outline {
+  display: block;
+}
+@container (max-width: 900px) {
+  .reader-shell[data-rail="side"] .rail-outline {
+    display: none;
+  }
+}
+
+/* Rail modules ------------------------------------------------------------- */
+.rail-module {
+  min-width: 0;
+}
+.rail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
   margin: 0 0 var(--space-6);
   font-size: var(--fs-xs);
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-dim);
 }
+.rail-count {
+  padding: 0 var(--space-6);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border-radius: 999px;
+}
 
-.rel-group ul {
+.rel-list {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* On this page (outline) */
+.outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.outline-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: var(--space-2) var(--space-8);
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.outline-item.lvl-3 .outline-link {
+  padding-left: var(--space-20);
+}
+.outline-link:hover {
+  color: var(--text);
+}
+.outline-item.is-active .outline-link {
+  color: var(--text);
+  border-left-color: var(--accent);
+}
+.outline-link:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* Relation rows read as native list rows, not web hyperlinks: normal text color

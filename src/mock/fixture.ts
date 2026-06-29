@@ -18,7 +18,20 @@ const raw: RawConcept[] = [
     timestamp: "2026-06-28T00:00:00Z",
     resource: null,
     extra: {},
-    body: "# What it is\n\nA desktop app that renders [OKF](../reference/glossary.md) bundles as a [graph](../features/graph-view.md). It is built for the analyst who keeps a folder of markdown notes and wants to traverse the cross-links offline, without a server. Everything ships in one binary so there is no signup and no telemetry.",
+    body:
+      "## What it is\n\n" +
+      "A desktop app that renders [OKF](../reference/glossary.md) bundles as a [graph](../features/graph-view.md). It is built for the analyst who keeps a folder of markdown notes and wants to traverse the cross-links offline, without a server.\n\n" +
+      "> [!NOTE]\n> Everything ships in one binary — no signup, no telemetry, nothing leaves your machine.\n\n" +
+      "## How it works\n\n" +
+      "Point it at a folder; it finds every bundle inside and renders each as an interactive graph alongside this reader.\n\n" +
+      "### Pipeline\n\n" +
+      "1. Scan the folder for bundles\n2. Parse each concept and its links\n3. Render the graph and the reader\n\n" +
+      "```ts\nconst bundle = await readBundle(root);\nrenderGraph(bundle);\n```\n\n" +
+      "### At a glance\n\n" +
+      "| Stage | Runs in |\n| --- | --- |\n| Scan | Rust core |\n| Parse | Rust core |\n| Render | Frontend |\n\n" +
+      "> [!WARNING]\n> Broken cross-links are surfaced, never hidden — the viewer is a tolerant consumer.\n\n" +
+      "## Who it's for\n\n" +
+      "Engineers and agent builders who keep knowledge in their repos and want to *read* it, not just grep it.",
     links: ["features/graph-view", "reference/glossary"],
     externalLinks: [],
   },

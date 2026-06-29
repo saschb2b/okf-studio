@@ -119,6 +119,7 @@ export interface State {
   panels: Record<PanelName, boolean>;
   palette: boolean;
   settingsOpen: boolean;
+  help: boolean;
   settings: Settings;
 }
 
@@ -148,6 +149,7 @@ const initialState: State = {
   panels: { sidebar: true, reader: true, log: false, validation: false },
   palette: false,
   settingsOpen: false,
+  help: false,
   settings: DEFAULT_SETTINGS,
 };
 
@@ -175,6 +177,7 @@ type Msg =
   | { t: "panel"; name: PanelName; v?: boolean }
   | { t: "palette"; v: boolean }
   | { t: "settingsOpen"; v: boolean }
+  | { t: "help"; v: boolean }
   | { t: "settings"; v: Settings };
 
 function defaultConcept(bundle: Bundle): string | null {
@@ -308,6 +311,8 @@ function reducer(s: State, m: Msg): State {
       return { ...s, palette: m.v };
     case "settingsOpen":
       return { ...s, settingsOpen: m.v };
+    case "help":
+      return { ...s, help: m.v };
     case "settings":
       return { ...s, settings: m.v };
   }
@@ -338,6 +343,7 @@ export interface Actions {
   togglePanel(name: PanelName, value?: boolean): void;
   setPalette(open: boolean): void;
   setSettingsOpen(open: boolean): void;
+  setHelp(open: boolean): void;
   updateSettings(patch: Partial<Settings>): void;
   openExternal(url: string): void;
 }
@@ -471,6 +477,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setSettingsOpen(open) {
       dispatch({ t: "settingsOpen", v: open });
+    },
+    setHelp(open) {
+      dispatch({ t: "help", v: open });
     },
     updateSettings(patch) {
       const next = { ...stateRef.current.settings, ...patch };

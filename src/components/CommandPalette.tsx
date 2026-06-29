@@ -161,6 +161,13 @@ export function CommandPalette() {
       hint: "Action",
       run: () => actions.setSettingsOpen(true),
     },
+    {
+      kind: "action",
+      id: "act:shortcuts",
+      label: "Keyboard shortcuts",
+      hint: "Action",
+      run: () => actions.setHelp(true),
+    },
   ];
 
   const concepts = state.bundle?.concepts ?? [];

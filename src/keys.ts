@@ -44,10 +44,16 @@ export function useGlobalKeys() {
         // was collapsed. See docs/proposals/global-search.md.
         e.preventDefault();
         actions.setPalette(true);
+      } else if (e.key === "?" && !typing) {
+        // Toggle the keyboard-shortcuts overlay (Shift+/). See
+        // docs/ux/keyboard-shortcuts.md.
+        e.preventDefault();
+        actions.setHelp(!state.help);
       } else if (e.key === "Escape") {
         actions.setPalette(false);
         actions.setSettingsOpen(false);
         actions.setSwitcher(false);
+        actions.setHelp(false);
       } else if (e.altKey && e.key === "ArrowLeft") {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {

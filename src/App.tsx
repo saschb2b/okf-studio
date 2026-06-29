@@ -12,6 +12,7 @@ import { LogView } from "./components/LogView.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { EmptyState } from "./components/EmptyState.tsx";
 import { ResizeHandles } from "./components/ResizeHandles.tsx";
+import { ShortcutsHelp } from "./components/ShortcutsHelp.tsx";
 
 export function App() {
   const { state } = useApp();
@@ -36,8 +37,9 @@ export function App() {
           <CommandPalette />
         </>
       )}
-      {/* Settings works without a bundle (theme on first run); always mounted. */}
+      {/* Settings and the shortcuts overlay work without a bundle; always mounted. */}
       <Settings />
+      <ShortcutsHelp />
 
       {/* Borderless-window resize handles (Tauri only). */}
       <ResizeHandles />

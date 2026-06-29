@@ -19,11 +19,9 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-/// Maximum directory depth the scan descends from the chosen folder.
-const MAX_DEPTH: usize = 8;
-
-/// Scan `folder` for OKF bundle roots.
-pub fn scan(folder: &Path) -> Vec<BundleRoot> {
+/// Scan `folder` for OKF bundle roots, descending at most `max_depth` levels
+/// (clamped to a sane range).
+pub fn scan(folder: &Path, max_depth: usize) -> Vec<BundleRoot> {
     // Per-directory facts: whether its index.md declares okf_version.
     let mut confident_dirs: Vec<PathBuf> = Vec::new();
     // Concepts grouped by their nearest scanned ancestor are computed lazily;
@@ -31,7 +29,7 @@ pub fn scan(folder: &Path) -> Vec<BundleRoot> {
     let mut typed_concept_dirs: Vec<PathBuf> = Vec::new();
 
     for entry in WalkDir::new(folder)
-        .max_depth(MAX_DEPTH)
+        .max_depth(max_depth.clamp(1, 64))
         .follow_links(false) // cycle-safe: never follow symlinks
         .into_iter()
         .filter_entry(|e| !parse::is_ignored_dir(e.path(), folder))

@@ -21,10 +21,14 @@ export async function pickFolder(): Promise<string | null> {
   return typeof picked === "string" ? picked : null;
 }
 
-export async function scanBundles(folder: string): Promise<BundleRoot[]> {
+export async function scanBundles(
+  folder: string,
+  maxDepth = 8,
+): Promise<BundleRoot[]> {
   if (!isTauri()) return MOCK_ROOTS;
   const { invoke } = await import("@tauri-apps/api/core");
-  return invoke<BundleRoot[]>("scan_bundles", { folder });
+  // Tauri maps `maxDepth` to the command's `max_depth` argument.
+  return invoke<BundleRoot[]>("scan_bundles", { folder, maxDepth });
 }
 
 export async function readBundle(root: string): Promise<Bundle> {

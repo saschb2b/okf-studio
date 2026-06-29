@@ -150,7 +150,17 @@ fn docs_log_has_entries() {
     let bundle = read_bundle(&docs);
     assert!(!bundle.log.is_empty(), "log.md should parse to >=1 entry");
     let first = &bundle.log[0];
-    assert_eq!(first.date, "2026-06-28", "newest-first, ISO date verbatim");
+    // Newest-first; the top entry's heading is a verbatim ISO date. Assert the
+    // shape (YYYY-MM-DD), not a fixed day, so maintaining log.md doesn't break it.
+    let parts: Vec<&str> = first.date.split('-').collect();
+    assert!(
+        parts.len() == 3
+            && parts
+                .iter()
+                .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit())),
+        "newest log entry should be a verbatim ISO YYYY-MM-DD heading, got {:?}",
+        first.date
+    );
     assert!(!first.entries.is_empty());
 }
 
@@ -331,6 +341,27 @@ fn candidate_root_without_okf_version() {
             .iter()
             .any(|r| r.confidence == Confidence::Candidate),
         "a typed concept with no okf_version is a candidate root"
+    );
+
+    fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn scan_respects_max_depth() {
+    let dir = temp_bundle("depth");
+    // A typed concept nested three directories below the chosen folder.
+    write(&dir, "a/b/c/deep.md", "---\ntype: Note\n---\n# Deep\n");
+
+    // A shallow scan can't reach it; a deeper scan finds it.
+    let shallow = okf_core::scan_bundles_with_depth(&dir, 2);
+    assert!(
+        shallow.is_empty(),
+        "a concept three levels down is out of reach at max_depth=2"
+    );
+    let deep = okf_core::scan_bundles_with_depth(&dir, 8);
+    assert!(
+        deep.iter().any(|r| r.concept_count >= 1),
+        "the nested concept is detected with a deeper scan"
     );
 
     fs::remove_dir_all(&dir).ok();

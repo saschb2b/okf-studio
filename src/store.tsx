@@ -364,7 +364,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async openFolderPath(folder) {
       dispatch({ t: "loading", v: true });
       try {
-        const bundles = await ipc.scanBundles(folder);
+        const bundles = await ipc.scanBundles(
+          folder,
+          stateRef.current.settings.scanMaxDepth,
+        );
         dispatch({ t: "openFolder", folder, bundles });
         if (bundles.length >= 1) await this.selectBundle(bundles[0].root, folder);
         else dispatch({ t: "loading", v: false });
@@ -402,7 +405,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         // Re-grant the folder scope, then open the specific bundle (falling
         // back to the first if it has moved/disappeared inside the folder).
-        const bundles = await ipc.scanBundles(entry.folder);
+        const bundles = await ipc.scanBundles(
+          entry.folder,
+          stateRef.current.settings.scanMaxDepth,
+        );
         dispatch({ t: "openFolder", folder: entry.folder, bundles });
         const root = bundles.some((b) => b.root === entry.root)
           ? entry.root
@@ -425,7 +431,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async rescan() {
       const { folder, activeRoot } = stateRef.current;
       if (!folder) return;
-      const bundles = await ipc.scanBundles(folder);
+      const bundles = await ipc.scanBundles(
+          folder,
+          stateRef.current.settings.scanMaxDepth,
+        );
       dispatch({ t: "openFolder", folder, bundles });
       const root = activeRoot ?? bundles[0]?.root;
       if (root) await this.selectBundle(root);

@@ -9,8 +9,8 @@ use tauri::{AppHandle, Manager, State};
 use watch::WatchState;
 
 #[tauri::command]
-fn scan_bundles(folder: String) -> Vec<BundleRoot> {
-    okf_core::scan_bundles(Path::new(&folder))
+fn scan_bundles(folder: String, max_depth: usize) -> Vec<BundleRoot> {
+    okf_core::scan_bundles_with_depth(Path::new(&folder), max_depth)
 }
 
 #[tauri::command]

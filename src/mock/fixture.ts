@@ -109,11 +109,63 @@ function finalize(items: RawConcept[]): Concept[] {
   });
 }
 
+/** Title-case the last path segment ("tables/orders" → "Orders"). */
+function prettify(id: string): string {
+  const seg = id.split("/").pop() ?? id;
+  return seg.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+// A few typed hub-and-spoke clusters wired into the hand-written core above, so
+// the dev/test graph resembles a real knowledge bundle (multiple clusters, hubs
+// with fanned leaves, cross-links) rather than a five-node toy. This is what the
+// Graph View's spread/level-of-detail tuning is exercised against.
+function generated(): RawConcept[] {
+  const clusters = [
+    { hub: "tables/orders", type: "Table", leaf: "Column", n: 8, into: "architecture/data-model" },
+    { hub: "metrics/revenue", type: "Metric", leaf: "Dimension", n: 7, into: "tables/orders" },
+    { hub: "runbooks/on-call", type: "Runbook", leaf: "Step", n: 6, into: "features/graph-view" },
+    { hub: "api/gateway", type: "API", leaf: "Endpoint", n: 7, into: "runbooks/on-call" },
+  ];
+  const out: RawConcept[] = [];
+  for (const c of clusters) {
+    for (let i = 1; i <= c.n; i++) {
+      const id = `${c.hub}-${String(i).padStart(2, "0")}`;
+      out.push({
+        id,
+        type: c.leaf,
+        title: `${prettify(c.hub)} ${i}`,
+        description: "",
+        tags: [],
+        timestamp: null,
+        resource: null,
+        extra: {},
+        body: `# ${prettify(c.hub)} ${i}\n\nA sample ${c.leaf.toLowerCase()}.`,
+        links: [c.hub],
+        externalLinks: [],
+      });
+    }
+    out.push({
+      id: c.hub,
+      type: c.type,
+      title: prettify(c.hub),
+      description: `A sample ${c.type.toLowerCase()}.`,
+      tags: [c.type.toLowerCase()],
+      timestamp: null,
+      resource: null,
+      extra: {},
+      body: `# ${prettify(c.hub)}\n\nA sample ${c.type.toLowerCase()} with ${c.n} related concepts.`,
+      links: [c.into],
+      externalLinks: [],
+    });
+  }
+  return out;
+}
+
 export const MOCK_BUNDLE: Bundle = {
   root: `${MOCK_FOLDER}/docs`,
   name: "OKF Viewer (sample)",
   okfVersion: "0.1",
-  concepts: finalize(raw),
+  concepts: finalize([...raw, ...generated()]),
   indexes: [
     {
       dir: "",

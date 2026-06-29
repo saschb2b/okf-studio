@@ -33,10 +33,12 @@ import {
 } from "../graph/forceSim.ts";
 import "./GraphView.css";
 
-const MIN_RADIUS = 5;
-const MAX_RADIUS = 22;
+const MIN_RADIUS = 4;
+const MAX_RADIUS = 20;
 const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on
-const LABEL_MIN_SCALE = 0.7; // base zoom below which free-floating labels hide
+// Base zoom below which free-floating labels hide (Obsidian-style: dots at
+// overview, labels as you zoom in; selection/hover/neighbors always labelled).
+const LABEL_MIN_SCALE = 1.1;
 
 // Adjustable display options (rendering only — not physics).
 interface Display {
@@ -55,6 +57,19 @@ const DEFAULT_DISPLAY: Display = {
 type Forces = Pick<SimParams, "repulsion" | "springLength" | "springK" | "centering">;
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
+
+// Tuned force defaults for the app's graph. The sim's DEFAULT_PARAMS stays the
+// neutral baseline (used by the sim tests); the graph wants a noticeably more
+// spread, organic layout — strong repulsion (amplified by the degree-weighted
+// mass), longer links so leaves fan out, and gentle centering so the core
+// doesn't compress into a blob. This is what produces the cluster-separated,
+// canvas-filling look rather than a tight clump.
+const GRAPH_FORCES: Forces = {
+  repulsion: 2600,
+  springLength: 130,
+  springK: 0.045,
+  centering: 0.02,
+};
 // Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
 // that mirrors --ui in styles.css.
 const LABEL_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -112,12 +127,7 @@ export function GraphView() {
   const { state, actions } = useApp();
 
   // Controls (React state drives the UI; refs feed the imperative draw/sim).
-  const [forces, setForces] = useState<Forces>(() => ({
-    repulsion: DEFAULT_PARAMS.repulsion,
-    springLength: DEFAULT_PARAMS.springLength,
-    springK: DEFAULT_PARAMS.springK,
-    centering: DEFAULT_PARAMS.centering,
-  }));
+  const [forces, setForces] = useState<Forces>(() => ({ ...GRAPH_FORCES }));
   const [display, setDisplay] = useState<Display>(DEFAULT_DISPLAY);
   // A transient "isolate" set: when non-null, the graph renders only these ids
   // (plus their neighbors), overriding focus/overview. Driven by the defect
@@ -141,7 +151,7 @@ export function GraphView() {
   const rafRef = useRef<number | null>(null);
   const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
-  const paramsRef = useRef<SimParams>({ ...DEFAULT_PARAMS });
+  const paramsRef = useRef<SimParams>({ ...DEFAULT_PARAMS, ...GRAPH_FORCES });
   const displayRef = useRef<Display>(display);
   const needsFitRef = useRef(true); // auto-fit once a fresh layout settles
   const prevRestrictKey = useRef<string | null>(null); // last focus/isolate set, to refit on change
@@ -178,10 +188,16 @@ export function GraphView() {
     ctx.scale(view.scale, view.scale);
 
     const selIdx = selected != null ? (data.indexById.get(selected) ?? null) : null;
-    const hasFocus = selIdx != null;
-    const focusNeighbors = hasFocus ? data.neighbors[selIdx] : null;
+    const hover = hoverRef.current;
+    // Highlight the hovered node, else the selected one (so the open concept's
+    // links stay visible). Only a hover *dims* the rest of the graph — selection
+    // alone keeps the whole spread bright, so overview stays readable.
+    const focusIdx = hover != null ? hover : selIdx;
+    const hasFocus = focusIdx != null;
+    const focusNeighbors = hasFocus ? data.neighbors[focusIdx] : null;
+    const dimOthers = hover != null;
 
-    const edgeColor = cssVar("--border") || "#888";
+    const edgeColor = cssVar("--text-dim") || "#888"; // visible links, not faint hairlines
     const accent = cssVar("--accent") || "#2f6df6";
     const textColor = cssVar("--text") || "#111";
     const textDim = cssVar("--text-dim") || "#777";
@@ -194,14 +210,14 @@ export function GraphView() {
     for (const e of data.edges) {
       const a = data.nodes[e.a];
       const b = data.nodes[e.b];
-      const incident = hasFocus && (e.a === selIdx || e.b === selIdx);
-      if (hasFocus && !incident) {
-        ctx.globalAlpha = 0.06;
-        ctx.strokeStyle = edgeColor;
-      } else if (incident) {
+      const incident = hasFocus && (e.a === focusIdx || e.b === focusIdx);
+      if (incident) {
         ctx.globalAlpha = 0.9;
         ctx.strokeStyle = accent;
         ctx.lineWidth = (disp.linkThickness * 1.6) / view.scale;
+      } else if (dimOthers) {
+        ctx.globalAlpha = 0.06;
+        ctx.strokeStyle = edgeColor;
       } else {
         ctx.globalAlpha = disp.linkOpacity;
         ctx.strokeStyle = edgeColor;
@@ -220,7 +236,7 @@ export function GraphView() {
       const meta = data.meta[i];
       const isSel = i === selIdx;
       const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
+      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
       const faded = meta.dim || dimmedByFocus;
 
       const rr = node.r * disp.nodeScale;
@@ -254,9 +270,8 @@ export function GraphView() {
       const meta = data.meta[i];
       if (meta.broken <= 0) continue;
       const node = data.nodes[i];
-      const isSel = i === selIdx;
       const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
+      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
       if (meta.dim || dimmedByFocus) continue;
       const rr = node.r * disp.nodeScale;
       const off = rr * 0.72;
@@ -273,7 +288,6 @@ export function GraphView() {
 
     // Labels: cull when zoomed out unless the node is selected, a neighbor of
     // the selection, or hovered.
-    const hover = hoverRef.current;
     ctx.font = `${12 / view.scale}px ${LABEL_FONT}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
@@ -283,7 +297,7 @@ export function GraphView() {
       const isSel = i === selIdx;
       const isNeighbor = focusNeighbors?.has(i) ?? false;
       const isHover = i === hover;
-      const dimmedByFocus = hasFocus && !isSel && !isNeighbor;
+      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
 
       const alwaysShow = isSel || isNeighbor || isHover;
       if (!alwaysShow && view.scale < LABEL_MIN_SCALE / disp.labelScale) continue;

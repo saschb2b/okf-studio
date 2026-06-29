@@ -83,6 +83,10 @@
 html, body, #root {
   height: 100%;
   margin: 0;
+  /* Block touchscreen pinch-zoom and double-tap zoom (page-zoom isn't a native
+     desktop behavior); pan-x/pan-y still allows scrolling. Trackpad/gesture
+     pinch is handled in native.ts. */
+  touch-action: pan-x pan-y;
 }
 
 body {

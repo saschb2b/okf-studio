@@ -67,6 +67,17 @@ export function installNativeBehaviors(): () => void {
     emitZoom(e.deltaY < 0 ? 1 : -1);
   };
 
+  // --- Block WebKit trackpad pinch-zoom. -----------------------------------
+  // WebKit webviews (macOS WKWebView and the Linux WebKitGTK runtime Tauri uses)
+  // report trackpad pinch as gesture events, NOT as ctrl+wheel — so the handler
+  // above never sees them and the page zooms like a website. Block them outright:
+  // page-zoom isn't a native desktop behavior, and reader text-size has its own
+  // affordances (Ctrl/Cmd +/-/0 and the "Aa" panel). Touchscreen pinch / double-
+  // tap zoom is blocked separately via `touch-action` in styles.css.
+  const onGesture = (e: Event): void => {
+    e.preventDefault();
+  };
+
   // --- Suppress the default browser context menu on the app chrome. ---------
   // The reader keeps its menu so text stays copyable / selectable there.
   const onContextMenu = (e: MouseEvent): void => {
@@ -74,13 +85,21 @@ export function installNativeBehaviors(): () => void {
     e.preventDefault();
   };
 
+  const GESTURES = ["gesturestart", "gesturechange", "gestureend"];
+
   document.addEventListener("keydown", onKeyDown, { capture: true });
   document.addEventListener("wheel", onWheel, { passive: false, capture: true });
+  for (const t of GESTURES) {
+    document.addEventListener(t, onGesture, { passive: false, capture: true });
+  }
   document.addEventListener("contextmenu", onContextMenu);
 
   return () => {
     document.removeEventListener("keydown", onKeyDown, { capture: true });
     document.removeEventListener("wheel", onWheel, { capture: true });
+    for (const t of GESTURES) {
+      document.removeEventListener(t, onGesture, { capture: true });
+    }
     document.removeEventListener("contextmenu", onContextMenu);
   };
 }

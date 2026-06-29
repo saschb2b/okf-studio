@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-29T10:00:00Z
+timestamp: 2026-06-29T16:00:00Z
 ---
 
 # What it does
@@ -44,5 +44,5 @@ The graph makes conformance problems visible instead of hiding them: **orphans**
 # Implementation notes
 
 - Graph data (nodes, edges, backlinks) is computed in the [Rust core](../architecture/okf-parsing.md) from the [data model](../architecture/data-model.md) and handed to the frontend as JSON.
-- The layout/render runs in the frontend on a **canvas**, with positions and the simulation kept out of React's render path. Repulsion uses a **Barnes–Hut quad-tree** (O(n log n)) and a **collision** pass prevents overlap, so the view scales from tens to thousands of nodes; a cooling schedule settles the layout and then the loop idles. See [Performance & Scale](../architecture/performance.md) for the full strategy and the [fast principle](../product/principles.md) it serves.
+- The layout/render runs in the frontend on a **canvas**, with positions and the simulation kept out of React's render path. Repulsion uses a **Barnes–Hut quad-tree** (O(n log n)), **weighted by node degree** (a ForceAtlas2-style body mass) so hubs and dense clusters claim more space and separate emergently — no separate clustering pass — and a **collision** pass prevents overlap, so the view scales from tens to thousands of nodes; a cooling schedule settles the layout and then the loop idles. See [Performance & Scale](../architecture/performance.md) for the full strategy and the [fast principle](../product/principles.md) it serves.
 - Broken cross-links simply do not produce edges — they are [tolerated](validation.md), not errors.

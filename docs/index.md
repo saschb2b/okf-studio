@@ -19,7 +19,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 # Features
 
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
-* [Bundle Browser](features/bundle-browser.md) - List and switch between the bundles found in a folder.
+* [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Concept Reader](features/concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
 * [Search & Filter](features/search-and-filter.md) - Full-text search, type filters, and tag browsing.

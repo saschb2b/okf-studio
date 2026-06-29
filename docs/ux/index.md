@@ -8,4 +8,4 @@ How OKF Viewer looks and feels: the flows, the workspace layout, shortcuts, them
 * [Keyboard Shortcuts](keyboard-shortcuts.md) - Keys for power users.
 * [Theming](theming.md) - Light/dark and the deterministic type-color palette.
 * [Accessibility](accessibility.md) - Keyboard operability, focus, screen-reader semantics, contrast, and motion.
-* [Settings & Preferences](settings.md) - Theme, recent folders, scan tuning, motion, and reset.
+* [Settings & Preferences](settings.md) - Theme, reader text size, scan tuning, motion, and reset.

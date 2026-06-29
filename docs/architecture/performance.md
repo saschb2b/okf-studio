@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Performance & Scale
 description: How the "Fast" principle is achieved end to end, from the bounded directory walk to interactive graph rendering.
 tags: [architecture, decision, performance, scale]
-timestamp: 2026-06-28T15:00:00Z
+timestamp: 2026-06-29T12:00:00Z
 ---
 
 # Decision
@@ -20,7 +20,7 @@ All filesystem and CPU work — directory walking, [OKF parsing](okf-parsing.md)
 
 # Lazy parsing with per-bundle caching
 
-A folder may contain many bundles, but only the active one needs to be parsed. The core parses a bundle the first time it is opened and **caches the result keyed by root**. Re-selecting a bundle in the [Bundle Browser](../features/bundle-browser.md) serves the cached `Bundle` immediately — switching is instant, with no re-parse. Detection lists roots cheaply (it only needs to find one typed concept per candidate); the expensive full parse is deferred until a root is actually opened.
+A folder may contain many bundles, but only the active one needs to be parsed. The core parses a bundle the first time it is opened and **caches the result keyed by root**. Re-selecting a bundle in the [Bundle Switcher](../features/bundle-switcher.md) serves the cached `Bundle` immediately — switching is instant, with no re-parse. Detection lists roots cheaply (it only needs to find one typed concept per candidate); the expensive full parse is deferred until a root is actually opened.
 
 # Incremental updates on live reload
 

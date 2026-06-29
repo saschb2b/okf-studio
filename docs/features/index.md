@@ -3,7 +3,7 @@
 One concept per user-facing capability. Together these define the v1 read loop (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
 
 * [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
-* [Bundle Browser](bundle-browser.md) - List and switch between the bundles found in a folder.
+* [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.
 * [Graph View](graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Concept Reader](concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
 * [Search & Filter](search-and-filter.md) - Full-text search, type filters, and tag browsing.

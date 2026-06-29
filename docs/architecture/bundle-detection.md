@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Bundle Detection
 description: The algorithm that walks a chosen folder and decides which directories are OKF bundle roots.
 tags: [architecture, decision, discovery, algorithm]
-timestamp: 2026-06-28T00:00:00Z
+timestamp: 2026-06-29T12:00:00Z
 ---
 
 # Problem
@@ -37,7 +37,7 @@ scan(folder):
 - **Nesting:** the outermost qualifying root wins; inner `index.md` directories are parts of that bundle (sub-directory indexes), not separate bundles.
 - **The chosen folder may itself be a bundle root** — detection includes the root, not just descendants.
 - **Bound the walk** (depth + ignore list) so pointing at a big monorepo stays [fast](../product/principles.md).
-- **Confidence is recorded** and shown in the [Bundle Browser](../features/bundle-browser.md); low-confidence candidates are still offered, since the app is a [tolerant consumer](../product/principles.md).
+- **Confidence is recorded** and shown in the [Bundle Switcher](../features/bundle-switcher.md); low-confidence candidates are still offered, since the app is a [tolerant consumer](../product/principles.md).
 - Detection re-runs when [Live Reload](../features/live-reload.md) sees structural changes.
 
 Output feeds [OKF Parsing](okf-parsing.md), which turns each root into the [data model](data-model.md).

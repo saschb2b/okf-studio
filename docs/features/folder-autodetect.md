@@ -3,7 +3,7 @@ type: Feature
 title: Folder Autodetect
 description: Point the app at a folder and it finds every OKF bundle nested inside, with no manifest or configuration.
 tags: [feature, discovery, core]
-timestamp: 2026-06-28T00:00:00Z
+timestamp: 2026-06-29T12:00:00Z
 ---
 
 # What it does
@@ -15,7 +15,7 @@ The user chooses a single folder. The app recursively scans it and discovers **a
 - Scanning runs in the [Rust core](../architecture/tech-stack.md) and is bounded (max depth, ignore `.git`, `node_modules`, `target`, `dist`) so pointing at a large repo stays fast.
 - A directory qualifies as a bundle root per the [Bundle Detection](../architecture/bundle-detection.md) algorithm — primarily a root `index.md` declaring `okf_version`, or a tree of `.md` files carrying `type` frontmatter.
 - Nested results are de-duplicated: the outermost qualifying root wins; its sub-`index.md` directories are treated as parts of that bundle, not separate bundles.
-- The result is a list handed to the [Bundle Browser](bundle-browser.md). If exactly one bundle is found, it opens automatically (see [First Run](../ux/first-run.md)).
+- The result is a list handed to the [Bundle Switcher](bundle-switcher.md). If exactly one bundle is found, it opens automatically (see [First Run](../ux/first-run.md)).
 - Re-scan on demand (and automatically via [Live Reload](live-reload.md)).
 
 # Empty / edge cases

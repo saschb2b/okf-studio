@@ -3,7 +3,7 @@ type: Feature
 title: Validation
 description: Surface OKF conformance — errors and warnings — in the UI without ever refusing to render the bundle.
 tags: [feature, validation, conformance]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-06-29T12:00:00Z
 ---
 
 # What it does
@@ -17,7 +17,7 @@ Runs the [OKF conformance check](../reference/okf-spec-summary.md) over each bun
 
 # How it surfaces
 
-- A per-bundle **conformance badge** in the [Bundle Browser](bundle-browser.md) (conformant / N warnings / N errors).
+- A per-bundle **conformance badge** in the [Bundle Switcher](bundle-switcher.md) (conformant / N warnings / N errors).
 - A **validation panel** listing each issue with its file and a one-line explanation; clicking an issue jumps to the concept.
 - Inline cues: a concept with an error gets a marked node in the [graph](graph-view.md); a [broken link](concept-reader.md) renders but is styled as unresolved.
 

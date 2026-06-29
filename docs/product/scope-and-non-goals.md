@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What ships in v1, what is deferred, and what OKF Viewer deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-06-29T10:00:00Z
+timestamp: 2026-06-29T12:00:00Z
 ---
 
 # v1 scope (the MVP)
@@ -11,7 +11,7 @@ timestamp: 2026-06-29T10:00:00Z
 The first release must deliver the full read loop end to end:
 
 - [Folder Autodetect](../features/folder-autodetect.md) — pick a folder, find all bundles in it.
-- [Bundle Browser](../features/bundle-browser.md) — switch between detected bundles.
+- [Bundle Switcher](../features/bundle-switcher.md) — switch between bundles in the folder and recently-opened bundles, from the top-left.
 - [Graph View](../features/graph-view.md) — force-directed, type-colored, cross-linked.
 - [Concept Reader](../features/concept-reader.md) — rendered markdown, frontmatter, backlinks.
 - [Search & Filter](../features/search-and-filter.md) and [Navigation](../features/navigation.md).
@@ -24,7 +24,7 @@ The first release must deliver the full read loop end to end:
 - Tag-browsing views and saved filters.
 - Export: the current graph as PNG/SVG, or the bundle as a static self-contained HTML.
 - "Cited by" graph focus mode and shortest-path-between-concepts.
-- Multi-folder workspaces and recent-folder pinning.
+- **Folder-as-workspace grouping** — treat the containing folder as a first-class entity that groups the bundles it holds, so bundles from one repo or context are visually connected (today recents are per-bundle via the [Bundle Switcher](../features/bundle-switcher.md), with the folder kept only as the read scope).
 - Optional remote bundles (git URL, tarball) — fetched locally, still read-only.
 
 # Non-goals

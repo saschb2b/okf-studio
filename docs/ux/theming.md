@@ -3,7 +3,7 @@ type: Reference
 title: Theming
 description: Light/dark theming that follows the OS, and the deterministic palette that colors concepts by type.
 tags: [ux, theme, color, accessibility]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-06-29T13:00:00Z
 ---
 
 # Design tokens (one scale layer)
@@ -15,6 +15,7 @@ All visual values come from a single token layer defined once on `:root` (light 
 - **Type scale** (`--fs-xs 12 / --fs-sm 14 / --fs-md 16 / --fs-lg 20 / --fs-xl 28`) with paired line-height tokens — a bounded set, not a dozen ad-hoc sizes.
 - **Radius scale** (`--radius-sm 6 / --radius 8 / --radius-lg 12`; `999px`/`50%` reserved for pills and dots).
 - **Focus** (`--focus-w`, applied as one consistent ring) and **motion** (`--dur`), the latter suppressed under `prefers-reduced-motion` (see [Accessibility](accessibility.md)).
+- **Reading layer** — the [Concept Reader](../features/concept-reader.md) adds reader-scoped variables for its prose column: a character-based **measure**, **line-height**, **font** (the UI sans by default, an opt-in serif), and the context-**rail** width, all tunable via its "Aa" control and persisted in [settings](settings.md). Callouts/admonitions reuse the status roles (`--accent` / `--ok` / `--warn` / `--error`) via `color-mix()` tints, adding no new color literals.
 
 # Light & dark
 

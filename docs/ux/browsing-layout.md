@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-06-29T13:00:00Z
 ---
 
 # The three panes
@@ -21,7 +21,7 @@ timestamp: 2026-06-29T12:00:00Z
 
 - **Left — Sidebar.** A **lens switcher** (an activity rail) flips between a *Navigate* lens (the [index tree](../features/navigation.md)) and a *Filter* lens (type/tag [filters](../features/search-and-filter.md)), so the two never share one long scroll; a dot on the Filter icon flags an active filter. The search box stays pinned above both lenses. Collapsible. Switching *bundles* lives in the top-left [Bundle Switcher](../features/bundle-switcher.md), not the sidebar.
 - **Center — Graph.** The [Graph View](../features/graph-view.md), focused on the selected concept by default.
-- **Right — Reader.** The [Concept Reader](../features/concept-reader.md) for the selected concept, including its [backlinks](../features/concept-reader.md) — a first-class pane, weighted co-equal with the graph, not a runt.
+- **Right — Reader.** The [Concept Reader](../features/concept-reader.md) for the selected concept — a first-class pane, weighted co-equal with the graph. It is a reading surface: a centered, comfortable prose column with a quiet right context rail (outline, relationships, details) that collapses when space is tight (e.g. in split mode, where the graph already supplies relationship context).
 
 # Synced selection
 

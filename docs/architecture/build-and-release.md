@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-06-29T14:00:00Z
+timestamp: 2026-06-30T19:00:00Z
 ---
 
 # Decision
@@ -19,9 +19,12 @@ The app ships as native installers per platform, built by `tauri build` on a per
 
 Each is a [self-contained, portable](../product/principles.md) artifact using the system webview — no bundled runtime the user must manage.
 
-# CI matrix
+# CI and release workflows
 
-Builds run on a **per-OS runner matrix** — a Windows runner and an Ubuntu runner — because the installers are produced natively per platform; there is no reliable cross-compilation path for the packaged artifacts. Each runner builds, runs the [test suite](testing.md), and emits its installers.
+Two GitHub Actions workflows (`.github/workflows/`):
+
+- **`ci.yml`** — on every push to `main` and every pull request, runs the fast checks: the whole **frontend** (ESLint, `tsc` typecheck, the Vitest [suite](testing.md), and a production `vite build`) and the **Rust core** (`cargo clippy -D warnings` and `cargo test` on `okf-core`). `okf-core` is pure Rust — no WebKitGTK and no built frontend — so this stays quick. The full `src-tauri` compile is left to the release build, which exercises it on each OS.
+- **`release.yml`** — when a GitHub **Release is published**, builds the installers on a **per-OS runner matrix** (an Ubuntu and a Windows runner), because the packaged artifacts are produced natively per platform; there is no reliable cross-compilation path. It uses the official `tauri-apps/tauri-action`, which runs `tauri build` (frontend via the config's `beforeBuildCommand`, then bundling) and **uploads the artifacts to the triggering release**. The Linux runner pins to an older Ubuntu so the `.deb`/AppImage stay widely compatible.
 
 # Code signing
 

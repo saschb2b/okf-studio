@@ -1,0 +1,102 @@
+/* Live example previews in the reader. The iframe is the asset's own document,
+   so its styling is fully isolated; only the frame chrome uses theme variables.
+   See docs/features/design-system-rendering.md. */
+
+.examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  margin: 0 0 var(--space-32);
+}
+
+.example {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elev);
+}
+
+.example-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-12);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.example-kind {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.example-kind.kind-do {
+  color: var(--ok);
+}
+.example-kind.kind-dont {
+  color: var(--error);
+}
+
+.example-tabs {
+  display: flex;
+  gap: var(--space-4);
+}
+.example-tab {
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.example-tab:hover {
+  color: var(--text);
+}
+.example-tab.is-active {
+  background: var(--bg-elev);
+  border-color: var(--border);
+  color: var(--text);
+}
+.example-tab:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.example-path {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* The asset renders on white so it reads as the design system intends, not
+   re-tinted by the app theme; a min-height covers the brief load. */
+.example-frame {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  border: 0;
+  background: #ffffff;
+}
+.example-frame[hidden] {
+  display: none;
+}
+
+.example-code {
+  margin: 0;
+  padding: var(--space-12);
+  max-height: 440px;
+  overflow: auto;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--text);
+}

@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The Tauri command/event surface between Rust and the frontend, and the read-only, scoped capability model.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-06-30T22:30:00Z
+timestamp: 2026-06-30T23:00:00Z
 ---
 
 # Command & event surface
@@ -35,3 +35,4 @@ Honors the [read-only and local-first principles](../product/principles.md) thro
 - **Network: opt-in updates only.** The app makes no automatic network calls and sends no telemetry. The single network path is the **user-initiated** updater (Settings → "Check for updates"), which contacts the GitHub release endpoint only when clicked and verifies a signature before installing ([Build & Release](build-and-release.md)). `resource` URLs are handed to the OS browser, not fetched in-app.
 - **Least privilege in `capabilities/`.** The Tauri capabilities config enables exactly the permissions needed — `fs` (read), `dialog`, `store`, `opener`, the opt-in `updater` + `process` (restart-after-update), and the **window** controls for the [custom title bar](../ux/browsing-layout.md) (start-dragging, start-resize-dragging, minimize, toggle-maximize, close, is-maximized) — nothing more (see [Tauri 2.0](../reference/tauri-2.md)).
 - **Heavy work in Rust.** Parsing untrusted markdown happens in the core; the webview only renders sanitized output, reducing the attack surface of opening an unknown bundle.
+- **Example previews are sandboxed and script-free.** An ODSF [example asset](../features/design-system-rendering.md) renders in a `sandbox`ed iframe with **no** `allow-scripts`, so even a bundle whose example HTML carries a `<script>` runs no JavaScript; `allow-same-origin` is granted only so the app can size the frame to its content. The app CSP allows the frame (`frame-src 'self' blob: data:`) while its inline styles stay under the existing `style-src 'unsafe-inline'`.

@@ -15,6 +15,7 @@ import type { Bundle, Concept } from "../types.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "../odsf.ts";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
 import { TokenViz } from "./TokenViz.tsx";
+import { ExamplePreview } from "./ExamplePreview.tsx";
 import "./Reader.css";
 
 interface OutlineItem {
@@ -80,6 +81,11 @@ export function Reader() {
         a.setAttribute("rel", "noopener noreferrer");
       } else if (r.kind === "concept" && conceptExists(bundle, r.id)) {
         a.dataset.link = "concept";
+      } else if (/\.(html|css|svg)(#|$)/i.test(href)) {
+        // A companion asset (an ODSF example/stylesheet) — not a broken concept
+        // link; it renders as a live preview, so point the reader at it.
+        a.dataset.link = "asset";
+        a.setAttribute("title", "Jump to the rendered example");
       } else {
         a.dataset.link = "unresolved";
         a.setAttribute("aria-disabled", "true");
@@ -228,6 +234,15 @@ export function Reader() {
       actions.selectConcept(resolved.id);
       return;
     }
+    // A companion-asset link scrolls to its rendered preview above the body.
+    if (anchor.dataset.link === "asset") {
+      e.preventDefault();
+      bodyRef.current
+        ?.closest(".reader-main")
+        ?.querySelector(".examples")
+        ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      return;
+    }
     e.preventDefault();
   }
 
@@ -304,6 +319,11 @@ export function Reader() {
         {/* Design-token visualizations (ODSF): swatches, specimens, scales —
             renders nothing for a concept without tokens. */}
         <TokenViz concept={c} index={tokenIndex} />
+
+        {/* Live previews of the concept's example assets (ODSF) — renders
+            nothing for a concept without example HTML. Keyed by id so each
+            concept mounts fresh (no stale-preview flash on navigation). */}
+        <ExamplePreview key={c.id} concept={c} bundle={bundle} />
 
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- delegated routing for in-body <a>s, which are natively keyboard-accessible (Enter fires a bubbling click) */}
         <div

@@ -288,6 +288,14 @@
   font-size: 0.85em;
   color: var(--text-dim);
 }
+/* A companion-asset link (an ODSF example/stylesheet) renders as a live preview
+   above; mark it with a small frame glyph so it reads as "see the example", not
+   a broken link. */
+.markdown a[data-link="asset"]::after {
+  content: " ▣";
+  font-size: 0.85em;
+  color: var(--text-dim);
+}
 
 /* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */
 .markdown a.heading-anchor {

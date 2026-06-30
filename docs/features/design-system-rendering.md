@@ -1,9 +1,9 @@
 ---
 type: Feature
 title: Design-System Rendering
-description: Render an ODSF bundle's design artifacts — token swatches/specimens/scales and design status — natively in the reader.
+description: Render an ODSF bundle's design artifacts — token swatches/specimens/scales, design status, and live HTML example previews — natively in the reader.
 tags: [feature, odsf, design-system, tokens, reader]
-timestamp: 2026-06-30T18:30:00Z
+timestamp: 2026-06-30T19:00:00Z
 ---
 
 # What it does
@@ -30,6 +30,10 @@ A token value may reference another with design.md's `{group.name}` syntax (a co
 # Status & platform labels
 
 Beside the type badge, the reader surfaces two ODSF frontmatter fields when present: **`status`** (`stable` / `experimental` / `deprecated`, colored only to flag the exception so a stable system stays quiet) and **`applies_to`** (the platforms/surfaces a concept governs).
+
+# Live example previews
+
+A concept's companion **example assets** — `*.example.html` (canonical usage) and the `*.do.html` / `*.dont.html` of a do/don't pair — render as **live previews** between the header and the body: the actual HTML, rendered, with a **Preview / Code** toggle and a Do/Don't label. Assets are listed in the `examples` frontmatter and also discovered from `.html` links in the body (so a `# Examples` link is a live affordance, not a broken one — clicking it jumps to the rendered preview). Each is read via [`read_asset`](../architecture/ipc-and-security.md), and the stylesheets it links (`styles/tokens.css`, `styles/components.css`) are **inlined** so it renders truthfully to the system's tokens. The preview is a **sandboxed, script-free** iframe (the asset is static HTML/CSS by spec, so no JavaScript runs), sized to its content; a missing asset is skipped, not surfaced as an error.
 
 # What it deliberately is not
 

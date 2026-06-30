@@ -180,3 +180,34 @@ export function resolveHref(href: string, fromConceptId: string): ResolvedHref {
 
   return { kind: "concept", id };
 }
+
+/**
+ * Resolve a companion-asset href (an ODSF `*.example.html` or a `styles/*.css`
+ * it links) to a normalized **bundle-relative path**, keeping the extension —
+ * the form `read_asset` expects. Like {@link resolveHref} but for assets, not
+ * concepts. Returns null for external/data hrefs or anything escaping the root.
+ *
+ * `fromId` is the path the href is relative to: a concept id for an `examples`
+ * entry or a body link, or an asset's own bundle path when resolving the
+ * stylesheets that asset links.
+ */
+export function resolveAssetHref(href: string, fromId: string): string | null {
+  const raw = href.trim();
+  if (!raw) return null;
+  if (/^(https?:|mailto:|tel:|data:)/i.test(raw) || raw.startsWith("//")) return null;
+
+  const path = raw.split("#")[0].split("?")[0];
+  if (!path) return null;
+
+  let combined: string;
+  if (path.startsWith("/")) {
+    combined = path.slice(1);
+  } else {
+    const dir = dirOf(fromId);
+    combined = dir ? `${dir}/${path}` : path;
+  }
+
+  const normalized = normalizePath(combined);
+  if (!normalized || normalized.startsWith("..")) return null;
+  return normalized;
+}

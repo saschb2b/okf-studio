@@ -343,10 +343,48 @@ export const MOCK_BUNDLE: Bundle = {
 /**
  * Companion assets (ODSF example HTML / CSS) keyed by bundle-relative path, so
  * the design-system renderer's previews resolve off-Tauri (browser + tests)
- * exactly as `read_asset` serves them in the desktop app. Populated alongside
- * the sample design-system concepts the previews reference.
+ * exactly as `read_asset` serves them in the desktop app. The button example
+ * links its stylesheets relatively (`../styles/...`), which the preview inlines.
  */
-export const MOCK_ASSETS: Record<string, string> = {};
+export const MOCK_ASSETS: Record<string, string> = {
+  "styles/tokens.css": [
+    ":root {",
+    "  --bgColor-default: #ffffff;",
+    "  --bgColor-muted: #f6f8fa;",
+    "  --bgColor-success-emphasis: #1f883d;",
+    "  --fgColor-default: #1f2328;",
+    "  --fgColor-onEmphasis: #ffffff;",
+    "  --fgColor-danger: #d1242f;",
+    "  --borderColor-default: #d1d9e0;",
+    "  --radius-medium: 6px;",
+    "}",
+  ].join("\n"),
+  "styles/components.css": [
+    "body { margin: 0; padding: 16px; background: var(--bgColor-default);",
+    "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;",
+    "  display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }",
+    ".btn { font: inherit; font-size: 14px; font-weight: 500; padding: 5px 16px;",
+    "  border-radius: var(--radius-medium); border: 1px solid var(--borderColor-default);",
+    "  background: var(--bgColor-muted); color: var(--fgColor-default); cursor: pointer; }",
+    ".btn-primary { background: var(--bgColor-success-emphasis);",
+    "  border-color: var(--bgColor-success-emphasis); color: var(--fgColor-onEmphasis); }",
+    ".btn-danger { color: var(--fgColor-danger); }",
+  ].join("\n"),
+  "design/button.example.html": [
+    "<!doctype html>",
+    '<html lang="en">',
+    '<head><meta charset="utf-8">',
+    '<link rel="stylesheet" href="../styles/tokens.css">',
+    '<link rel="stylesheet" href="../styles/components.css">',
+    "</head>",
+    "<body>",
+    '  <button class="btn">Default</button>',
+    '  <button class="btn btn-primary">Save changes</button>',
+    '  <button class="btn btn-danger">Delete</button>',
+    "</body>",
+    "</html>",
+  ].join("\n"),
+};
 
 export const MOCK_ROOTS: BundleRoot[] = [
   {

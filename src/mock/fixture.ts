@@ -200,6 +200,7 @@ const designSystem: RawConcept[] = [
       "| `fgColor-default` | `#1f2328` | Primary text. |\n" +
       "| `fgColor-accent` | `#0969da` | Links and accents. |\n" +
       "| `bgColor-success-emphasis` | `#1f883d` | The green primary button. |\n\n" +
+      "# Border\n\n`borderColor-default` (#d1d9e0) hairlines · `borderColor-muted` (translucent) in-surface dividers · `borderColor-accent` (#0969da) focused edges.\n\n" +
       "# Usage\n\nAlways pair a foreground role with its intended background so contrast stays AA in both themes. The runnable projection lives in [`styles/tokens.css`](../styles/tokens.css).",
     links: [],
     externalLinks: [],

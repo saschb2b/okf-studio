@@ -297,9 +297,10 @@
   color: var(--text-dim);
 }
 
-/* A color value in inline code (`#1f883d`) gets a small swatch so design-system
-   role tables and prose show their colors inline. */
-.markdown code .color-chip {
+/* A color value — in inline code (`#1f883d`) or in plain prose (`#d1d9e0`) —
+   gets a small swatch so design-system role tables and prose show their colors
+   inline. `.color-token` keeps the chip and the hex on one line. */
+.markdown .color-chip {
   display: inline-block;
   width: 0.72em;
   height: 0.72em;
@@ -307,6 +308,9 @@
   border-radius: 2px;
   border: 1px solid var(--border);
   vertical-align: baseline;
+}
+.markdown .color-token {
+  white-space: nowrap;
 }
 
 /* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */

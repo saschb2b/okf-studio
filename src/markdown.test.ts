@@ -52,6 +52,26 @@ describe("renderMarkdown color decoration", () => {
     expect(html).not.toContain("color-chip");
   });
 
+  it("decorates a hex color that appears in plain prose", () => {
+    // The value is in parentheses, not in backticks (the Primer Border case).
+    const html = renderMarkdown("`borderColor-default` (#d1d9e0) hairlines.");
+    expect(html).toContain("background:#d1d9e0");
+    expect(html).toContain("color-token");
+    // The literal text is preserved beside the chip.
+    expect(html).toContain("#d1d9e0");
+  });
+
+  it("decorates 8-digit (alpha) hex in prose and leaves a 5-digit run alone", () => {
+    expect(renderMarkdown("translucent #818b981f fill")).toContain("background:#818b981f");
+    expect(renderMarkdown("not a color #abcde here")).not.toContain("color-chip");
+  });
+
+  it("does not decorate hex inside code or links twice", () => {
+    // Inside a link, the hex is left as text (links are skipped).
+    const html = renderMarkdown("[see #ffffff](https://x.com)");
+    expect(html).not.toContain("color-token");
+  });
+
   it("does not inline an unsafe value as a style", () => {
     // A code span that is not a clean color gets no chip and no style attribute;
     // the raw text survives only as escaped code content, never as CSS.

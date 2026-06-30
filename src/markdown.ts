@@ -66,13 +66,74 @@ function isSafeColor(value: string): boolean {
 /** A token reference: inline code that is exactly `{group.name}`. */
 const TOKEN_REF = /^\{([a-zA-Z0-9_.-]+)\}$/;
 
-/** Prepend a validated-color swatch chip to a `<code>` element. */
-function prependChip(code: Element, color: string): void {
+// A hex color appearing *within* prose text (not a whole code span): `#` plus
+// exactly 3/4/6/8 hex digits, word-bounded so `#abcde` or a 7-digit run never
+// half-matches. The digits-only body keeps it safe to inline as a style.
+const HEX_IN_TEXT = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b/g;
+
+// Elements whose text must never be touched: code/pre (literal), links, and
+// anything that already carries a chip.
+const SKIP_TEXT_ANCESTORS = new Set(["CODE", "PRE", "A", "STYLE", "SCRIPT"]);
+
+/** A validated-color swatch chip element. */
+function makeChip(color: string): HTMLSpanElement {
   const chip = document.createElement("span");
   chip.className = "color-chip";
   chip.setAttribute("style", `background:${color}`);
   chip.setAttribute("aria-hidden", "true");
-  code.prepend(chip);
+  return chip;
+}
+
+/** Prepend a validated-color swatch chip to a `<code>` element. */
+function prependChip(code: Element, color: string): void {
+  code.prepend(makeChip(color));
+}
+
+/**
+ * Decorate hex colors that appear in plain prose (e.g. `borderColor (#d1d9e0)`)
+ * with a swatch, by rewriting matching text nodes. Skips code/pre/link text (and
+ * anything under them). The matched value is hex-only, so inlining it as a style
+ * is safe.
+ */
+function decorateHexInText(root: DocumentFragment): void {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const targets: Text[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node as Text;
+    if (!text.nodeValue.includes("#")) continue;
+    let el = text.parentElement;
+    let skip = false;
+    while (el) {
+      if (SKIP_TEXT_ANCESTORS.has(el.tagName)) {
+        skip = true;
+        break;
+      }
+      el = el.parentElement;
+    }
+    if (!skip) targets.push(text);
+  }
+  for (const text of targets) {
+    const value = text.nodeValue;
+    HEX_IN_TEXT.lastIndex = 0;
+    if (!HEX_IN_TEXT.test(value)) continue;
+    HEX_IN_TEXT.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = HEX_IN_TEXT.exec(value)) !== null) {
+      const hex = m[0];
+      if (m.index > last) frag.appendChild(document.createTextNode(value.slice(last, m.index)));
+      // Keep the chip and the hex on one line.
+      const wrap = document.createElement("span");
+      wrap.className = "color-token";
+      wrap.appendChild(makeChip(hex));
+      wrap.appendChild(document.createTextNode(hex));
+      frag.appendChild(wrap);
+      last = m.index + hex.length;
+    }
+    if (last < value.length) frag.appendChild(document.createTextNode(value.slice(last)));
+    text.replaceWith(frag);
+  }
 }
 
 /**
@@ -80,7 +141,8 @@ function prependChip(code: Element, color: string): void {
  * - inline `<code>` that is *exactly* a color (hex / rgb / hsl) gets a swatch;
  * - inline `<code>` that is a `{group.name}` token reference is resolved against
  *   `tokenIndex` (when given) — annotated with the value it resolves to, and
- *   given a swatch too when that value is itself a color.
+ *   given a swatch too when that value is itself a color;
+ * - a hex color appearing in plain prose (`(#d1d9e0)`) gets a swatch too.
  *
  * Runs on a detached fragment after sanitization; a chip's only dynamic part is
  * the color, validated by {@link isSafeColor} before it reaches the inline
@@ -105,6 +167,7 @@ function decorateColorValues(html: string, tokenIndex?: Record<string, string>):
       if (isSafeColor(resolved)) prependChip(code, resolved);
     }
   }
+  decorateHexInText(tpl.content);
   return tpl.innerHTML;
 }
 

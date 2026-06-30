@@ -1,7 +1,7 @@
 // The top chrome bar: Open Folder, back/forward history, the current bundle
-// name, and the right-side cluster (reading prefs, Log toggle). App-level
+// name, and the right-side cluster (layout switch, reading prefs). App-level
 // actions (Settings, shortcuts) live in the [ActivityBar]; the validation issue
-// indicator lives in the [StatusBar] — neither floats in the title bar.
+// indicator and the Log toggle live in the [StatusBar] — neither floats here.
 // See docs/ux/browsing-layout.md.
 
 import { useRef } from "react";
@@ -193,29 +193,9 @@ export function TopBar() {
             </Toolbar.Group>
           )}
 
-          {state.bundle && (
+          {state.bundle && state.layout !== "graph" && (
             <Toolbar.Group className="topbar-actions">
-              {state.layout !== "graph" && <ReaderPrefs />}
-
-              <Tooltip.Root>
-                <Tooltip.Trigger
-                  render={
-                    <Toolbar.Button
-                      className={`btn ghost ${state.panels.log ? "active" : ""}`}
-                      aria-label="Toggle log panel"
-                      aria-pressed={state.panels.log}
-                      onClick={() => actions.togglePanel("log")}
-                    >
-                      Log
-                    </Toolbar.Button>
-                  }
-                />
-                <Tooltip.Portal>
-                  <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
-                    <Tooltip.Popup className="ui-tooltip">Log</Tooltip.Popup>
-                  </Tooltip.Positioner>
-                </Tooltip.Portal>
-              </Tooltip.Root>
+              <ReaderPrefs />
             </Toolbar.Group>
           )}
 

@@ -3,7 +3,7 @@ type: Feature
 title: Log View
 description: Render a bundle's reserved log.md as a readable, date-grouped timeline of changes, newest first.
 tags: [feature, log, timeline, history]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-06-30T15:30:00Z
 ---
 
 # What it does
@@ -12,7 +12,7 @@ Renders a bundle's `log.md` — a [reserved OKF file](../reference/okf-spec-summ
 
 # Opening it
 
-- Toggled from the top bar's **Log** control (see [Browsing Layout](../ux/browsing-layout.md)) and the `L` [keyboard shortcut](../ux/keyboard-shortcuts.md).
+- Toggled from the **Log** control in the [status bar](../ux/browsing-layout.md) (a low-frequency view, so it lives there rather than in the title bar) and the `L` [keyboard shortcut](../ux/keyboard-shortcuts.md).
 - It is a peer panel to the [reader](concept-reader.md) and [graph](graph-view.md), not a concept node — `log.md` is reserved, so it never appears as a concept in the [glossary](../reference/glossary.md) sense.
 
 # Timeline

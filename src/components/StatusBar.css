@@ -43,6 +43,11 @@ button.status-item:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: -1px;
 }
+/* A toggle whose panel is open reads as recessed/active. */
+.status-item.is-active {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
 
 .status-icon {
   font-size: var(--fs-xs);

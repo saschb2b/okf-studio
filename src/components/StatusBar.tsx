@@ -1,6 +1,6 @@
 // The bottom status bar (VS Code pattern): a thin, full-width strip below the
-// workspace. It houses the validation issue indicator at the left and quiet
-// bundle context at the right.
+// workspace. It houses the validation issue indicator at the left and, at the
+// right, low-frequency toggles (the Log panel) plus quiet bundle context.
 //
 // Urgency is inverted from a badge: conformance is the expected baseline, so it
 // is shown *quietly* (dim, no colour) — "everything is fine" should not shout.
@@ -52,6 +52,21 @@ export function StatusBar() {
         )}
       </div>
       <div className="status-region">
+        {bundle && (
+          <button
+            type="button"
+            className={`status-item status-toggle${state.panels.log ? " is-active" : ""}`}
+            aria-label="Toggle log panel"
+            aria-pressed={state.panels.log}
+            title="Change log (L)"
+            onClick={() => actions.togglePanel("log")}
+          >
+            <span className="status-icon" aria-hidden="true">
+              ≣
+            </span>
+            <span>Log</span>
+          </button>
+        )}
         {bundle && (
           <span className="status-item status-muted">
             {plural(bundle.concepts.length, "concept")}

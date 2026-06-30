@@ -13,7 +13,7 @@ import { DEFAULT_SETTINGS } from "../types.ts";
 import type { ThemeMode } from "../types.ts";
 import { ZOOM_EVENT } from "../native.ts";
 import type { ZoomIntent } from "../native.ts";
-import { checkForUpdate } from "../updater.ts";
+import { checkForUpdate, installUpdate, RELEASES_URL } from "../updater.ts";
 import type { UpdateStatus } from "../updater.ts";
 import "./chrome.css";
 import "./baseui.css";
@@ -56,7 +56,11 @@ function updateHint(s: UpdateStatus): string {
   switch (s.kind) {
     case "checking":
       return "Checking the latest release…";
-    case "downloading":
+    case "available":
+      return s.canInstall
+        ? `Version ${s.version} is ready to install.`
+        : `Version ${s.version} is available — download the new package to upgrade.`;
+    case "installing":
       return "Downloading and installing — the app will restart.";
     case "uptodate":
       return "You're on the latest version.";
@@ -71,7 +75,7 @@ export function Settings() {
   const { state, actions } = useApp();
   const s = state.settings;
   const [update, setUpdate] = useState<UpdateStatus>({ kind: "idle" });
-  const updateBusy = update.kind === "checking" || update.kind === "downloading";
+  const updateBusy = update.kind === "checking" || update.kind === "installing";
 
   // Remap the suppressed browser zoom keys/gestures to reader text-size.
   // native.ts dispatches `okf:zoom` on window when Ctrl/Cmd +/-/0 or Ctrl+wheel
@@ -225,19 +229,41 @@ export function Settings() {
 
           <div className="field">
             <span className="field-label">Updates</span>
-            <button
-              className="btn"
-              disabled={updateBusy}
-              onClick={() => {
-                void checkForUpdate(setUpdate);
-              }}
-            >
-              {update.kind === "checking"
-                ? "Checking…"
-                : update.kind === "downloading"
-                  ? `Downloading v${update.version}…`
-                  : "Check for updates"}
-            </button>
+            {update.kind === "available" ? (
+              update.canInstall ? (
+                <button
+                  className="btn primary"
+                  onClick={() => {
+                    void installUpdate(setUpdate, update.version);
+                  }}
+                >
+                  {`Install v${update.version} & restart`}
+                </button>
+              ) : (
+                <button
+                  className="btn primary"
+                  onClick={() => {
+                    actions.openExternal(RELEASES_URL);
+                  }}
+                >
+                  {`Download v${update.version}`}
+                </button>
+              )
+            ) : (
+              <button
+                className="btn"
+                disabled={updateBusy}
+                onClick={() => {
+                  void checkForUpdate(setUpdate);
+                }}
+              >
+                {update.kind === "checking"
+                  ? "Checking…"
+                  : update.kind === "installing"
+                    ? `Installing v${update.version}…`
+                    : "Check for updates"}
+              </button>
+            )}
             <span className="field-hint muted">{updateHint(update)}</span>
           </div>
 

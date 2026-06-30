@@ -31,6 +31,22 @@ fn stop_watch(state: State<'_, WatchState>) {
     watch::stop(state.inner());
 }
 
+/// Whether the running install can update itself in place. The Tauri updater
+/// only replaces an AppImage on Linux, so a `.deb` (or any non-AppImage) install
+/// must update by downloading the new package; Windows/macOS self-update fine.
+/// The Settings "Check for updates" flow uses this to offer Install vs Download.
+#[tauri::command]
+fn can_self_update() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::env::var_os("APPIMAGE").is_some()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        true
+    }
+}
+
 // Native-feel reinforcement: browser page-zoom hotkeys are disabled per window.
 // The `main` window is declared in tauri.conf.json, so we set
 // `"zoomHotkeysEnabled": false` there (the config maps to the same webview
@@ -65,7 +81,8 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             start_watch,
-            stop_watch
+            stop_watch,
+            can_self_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

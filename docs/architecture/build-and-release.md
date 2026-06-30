@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-06-30T22:00:00Z
+timestamp: 2026-06-30T23:00:00Z
 ---
 
 # Decision
@@ -47,7 +47,7 @@ Two version numbers stay deliberately distinct:
 Updates are **opt-in**, via Tauri's updater plugin: the user clicks "Check for updates" in [Settings](../ux/settings.md) — the app never checks on its own, so the offline-by-default stance holds (see [Design Principles](../product/principles.md)). The check hits a single stable endpoint, GitHub's `releases/latest/download/latest.json`, which always serves the newest release's updater manifest; `tauri-action` generates and uploads that manifest (`includeUpdaterJson`).
 
 - **Signing is mandatory.** The updater verifies a **minisign** signature on each artifact (it cannot be disabled). The public key lives in `tauri.conf.json`; the private key + password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing (which is still not done — see above).
-- **Update vehicles:** the **AppImage** on Linux and **NSIS** on Windows. The **`.deb` is not auto-updated** by Tauri (its updates go through the system package manager / manual download), so `.deb` users update by reinstalling.
+- **Update vehicles:** the **AppImage** (Linux) and **NSIS** (Windows) self-install in place. A **`.deb` install can't self-replace** (the OS package manager owns it), so it is detected (a small `can_self_update` command checks for the AppImage runtime) and given the **same in-app "version X available" hint plus a Download link** to the releases page — rather than a failing in-app install. So `.deb` users still find out about updates; they just install by downloading the new package.
 
 Silent/automatic updates remain out of scope — the network call only ever happens on an explicit user action.
 

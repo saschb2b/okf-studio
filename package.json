@@ -27,7 +27,8 @@
     "dompurify": "^3",
     "marked": "^15",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "shiki": "^4.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

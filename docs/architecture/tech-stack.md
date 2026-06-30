@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Tech Stack
 description: Tauri 2.0 with a Rust core and a React + TypeScript frontend — the chosen stack and the reasoning behind it.
 tags: [architecture, decision, tauri, rust, react, typescript]
-timestamp: 2026-06-28T20:00:00Z
+timestamp: 2026-06-30T12:00:00Z
 ---
 
 # Decision
@@ -30,6 +30,7 @@ See also: [Testing & Dogfooding](testing.md) for how the core and frontend are v
 - **Components: Base UI (`@base-ui/react`).** Headless, accessible primitives — Dialog, Select, Checkbox, Number Field, Slider, Tooltip, Menu, Scroll Area, and so on — supply behavior, keyboard handling, and ARIA. **Base UI ships no styles**; appearance comes entirely from our [design tokens](../ux/theming.md). This replaces hand-rolled focus traps and native controls for UI conformity and maintenance stability. Migrated across the app: Settings (Dialog / Select / Checkbox / Number Field), the command palette (Dialog + Autocomplete), the top bar (Toolbar + Tooltip), graph controls (Popover + Slider), the sidebar (Collapsible / Toggle / Scroll Area), and the validation/log panels (non-modal Dialog). Primitive styling lives once in `src/components/baseui.css` (token-only).
 - **Graph rendering:** start with SVG + a simple force simulation for small bundles; move to **canvas/WebGL** with a Barnes–Hut force approximation for large ones (see [Performance & Scale](performance.md)). The renderer is wrapped in a React component, but its canvas draw loop runs outside React's reconciler so high-frequency frames never trigger re-renders. A hand-rolled renderer keeps it dependency-light, mirroring the reference HTML visualizer; an offline-capable library (e.g. a canvas force-graph) is acceptable.
 - **Markdown:** a small, well-audited TypeScript parser (CommonMark), or a hand-rolled renderer, for full control over intra-bundle [link resolution](okf-parsing.md); rendered output is sanitized before display.
+- **Syntax highlighting: Shiki** (the VS Code grammar engine), used in its **fine-grained, WASM-free** form — the JS regex engine and a curated grammar set, all lazy dynamic-imported — so it stays offline, CSP-safe, and out of the initial bundle. Powers the [reader](../features/concept-reader.md)'s code blocks; see [Design-System Rendering](../features/design-system-rendering.md).
 
 # Packaging
 

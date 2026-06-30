@@ -351,6 +351,25 @@
   padding: var(--space-4) var(--space-8);
 }
 
+/* Syntax-highlighted code (Shiki dual theme). Shiki emits per-token
+   --shiki-light / --shiki-dark CSS vars (defaultColor:false); we pick the set
+   that matches the app's resolved theme. The surrounding .markdown pre styles
+   (border, radius, padding, copy button) still apply. */
+.markdown pre.shiki {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+.markdown pre.shiki span {
+  color: var(--shiki-light);
+}
+:root[data-theme="dark"] .markdown pre.shiki {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}
+:root[data-theme="dark"] .markdown pre.shiki span {
+  color: var(--shiki-dark);
+}
+
 /* Image spotlight overlay. */
 .lightbox {
   position: fixed;

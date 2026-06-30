@@ -12,6 +12,7 @@ import { titleOf, conceptById } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { renderMarkdown, resolveAssetHref, resolveHref } from "../markdown.ts";
 import { readAssetDataUrl } from "../ipc.ts";
+import { highlightCodeBlocks } from "../highlight.ts";
 import type { Bundle, Concept } from "../types.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "../odsf.ts";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
@@ -62,17 +63,20 @@ function brokenImage(raw: string): HTMLSpanElement {
 }
 
 /**
- * Resolve every `<img>` in a (already-sanitized) body HTML string and return the
- * rewritten string: a local bundle image becomes an inline `data:` URL
- * (offline-safe, zoomable), a remote one an open-in-browser placeholder, an
- * unresolvable one a quiet "missing" note. Operates on a detached template; the
- * data URL comes from the trusted core command and the placeholders are
- * constructed here, so the result needs no re-sanitizing.
+ * Post-process a (already-sanitized) body HTML string and return the rewritten
+ * string, baked once so it survives React re-applying dangerouslySetInnerHTML:
+ * - **syntax-highlight** code blocks (Shiki, lazy + offline);
+ * - resolve every `<img>` — a local bundle image becomes an inline `data:` URL
+ *   (offline-safe, zoomable), a remote one an open-in-browser placeholder, an
+ *   unresolvable one a quiet "missing" note.
+ * Operates on a detached template; the highlighter output, the trusted core's
+ * data URL, and the constructed placeholders need no re-sanitizing.
  */
-async function processBodyImages(html: string, conceptId: string, bundle: Bundle): Promise<string> {
+async function processBody(html: string, conceptId: string, bundle: Bundle): Promise<string> {
   if (typeof document === "undefined") return html;
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
+  await highlightCodeBlocks(tpl.content);
   for (const img of Array.from(tpl.content.querySelectorAll("img"))) {
     const raw = img.getAttribute("data-mdsrc");
     if (!raw) {
@@ -269,17 +273,16 @@ export function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c?.id, displayHtml, bundle, reduceMotion]);
 
-  // Resolve body images into the HTML *string* (not by mutating the live DOM):
-  // render neutralizes each <img> (src → data-mdsrc) so nothing auto-loads, then
-  // this rewrites a *local* image to an inline data URL (offline-safe,
-  // click-to-zoom) and a *remote* one to an open-in-browser affordance. Baking
-  // the result into the rendered string (like heading ids) keeps it from being
-  // wiped when React re-applies dangerouslySetInnerHTML. `processed` is paired
-  // with the source html so a concept switch never shows the previous body.
+  // Post-process the body into the HTML *string* (not by mutating the live DOM):
+  // syntax-highlight code blocks and resolve images (local → inline data URL,
+  // remote → open-in-browser). Baking the result into the rendered string (like
+  // heading ids) keeps it from being wiped when React re-applies
+  // dangerouslySetInnerHTML. `processed` is paired with the source html so a
+  // concept switch never shows the previous body.
   useEffect(() => {
     let cancelled = false;
-    if (c && bundle && bodyHtml.includes("<img")) {
-      void processBodyImages(bodyHtml, c.id, bundle).then((html) => {
+    if (c && bundle && (bodyHtml.includes("<img") || bodyHtml.includes("<pre"))) {
+      void processBody(bodyHtml, c.id, bundle).then((html) => {
         if (!cancelled) setProcessed({ src: bodyHtml, html });
       });
     }

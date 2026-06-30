@@ -134,4 +134,49 @@ describe("OKF Viewer features", () => {
       within(popover).getByText("OKF Viewer (sample)"),
     ).toBeInTheDocument();
   });
+
+  it("arrow-key navigation in the command palette steps through every result, not just the first two", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+
+    await screen.findByRole("combobox");
+    // Zero-query state: Recent (1: Overview) + Actions (5) — six navigable
+    // results spanning two groups, reproducing the bug where the combobox's
+    // `items` and `filteredItems` props disagreed on whether the list was
+    // grouped, so keyboard navigation only ever toggled between the first
+    // two results instead of walking the full list.
+    const options = await screen.findAllByRole("option");
+    expect(options).toHaveLength(6);
+
+    for (const option of options) {
+      await user.keyboard("{ArrowDown}");
+      await waitFor(() => expect(option).toHaveAttribute("data-highlighted"));
+    }
+
+    // One more step wraps back around to the first result.
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(options[0]).toHaveAttribute("data-highlighted"));
+
+    await user.keyboard("{Escape}");
+  });
+
+  it("finds actions by fuzzy match, ranked ahead of concept results", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+
+    const combo = await screen.findByRole("combobox");
+    // Non-contiguous subsequence match against the "Re-scan folder" action
+    // label — and a query short enough to also fuzzy-match several concepts,
+    // so the action must outrank them instead of sinking under a long
+    // Concepts/In text list.
+    await user.type(combo, "rescan");
+
+    const action = await screen.findByRole("option", { name: /re-scan folder/i });
+    const allOptions = screen.getAllByRole("option");
+    expect(allOptions.indexOf(action)).toBe(0);
+  });
 });

@@ -226,23 +226,30 @@ export function CommandPalette() {
         .slice(0, TEXT_LIMIT)
     : [];
 
+  // Ranked like concepts (fuzzy/substring on the label, best match first) so a
+  // good action match doesn't lose to a weaker fuzzy concept hit for ordering
+  // purposes — actions are few, so this group never grows past actionItems.length.
   const actionHits: ActionItem[] = needle
-    ? actionItems.filter((a) => scoreMatch(a.label, needle) >= 0)
+    ? actionItems
+        .map((a) => ({ a, score: scoreMatch(a.label, needle) }))
+        .filter(({ score }) => score >= 0)
+        .sort((x, y) => y.score - x.score)
+        .map(({ a }) => a)
     : actionItems;
 
-  // Group order: Recent (zero-query only) → Concepts → In text → Actions.
-  // Zero-query shows Recent + Actions (never a blank list).
+  // Group order: Recent (zero-query only) → Actions → Concepts → In text.
+  // Actions come right after Recent, ahead of Concepts/In text, because there
+  // are at most a handful of them — buried below dozens of fuzzy concept
+  // hits, a matching action was effectively unreachable without scrolling
+  // past everything else first. Zero-query shows Recent + Actions (never a
+  // blank list).
   const groups: Group[] = [];
   if (!needle && recentItems.length) {
     groups.push({ value: "Recent", items: recentItems });
   }
+  if (actionHits.length) groups.push({ value: "Actions", items: actionHits });
   if (conceptHits.length) groups.push({ value: "Concepts", items: conceptHits });
   if (textHits.length) groups.push({ value: "In text", items: textHits });
-  if (actionHits.length) groups.push({ value: "Actions", items: actionHits });
-
-  // Flat item set for Autocomplete typeahead/ARIA; the visible grouping comes
-  // from `filteredItems` below.
-  const items: Item[] = groups.flatMap((g) => g.items);
 
   function activate(item: Item) {
     if (item.kind === "concept") {
@@ -271,9 +278,14 @@ export function CommandPalette() {
           <Autocomplete.Root
             // Inline: render the list directly in the dialog, no nested popup.
             // `open` is bound to the dialog so transient state resets on close.
+            // `items` and `filteredItems` must share the same grouped shape —
+            // passing a flattened `items` here previously left the combobox
+            // thinking the list was ungrouped, so its keyboard-navigation index
+            // walked the 2-3 *groups* instead of the items inside them (arrow
+            // key navigation got stuck after one or two presses).
             inline
             open={state.palette}
-            items={items}
+            items={groups}
             filteredItems={groups}
             value={query}
             onValueChange={(value) => setQuery(value)}

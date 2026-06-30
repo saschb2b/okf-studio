@@ -205,24 +205,10 @@ body,
 .btn:hover { background: var(--bg-sunken); }
 .btn.primary { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
 .btn.ghost { border-color: transparent; background: transparent; }
-.btn:focus-visible, .badge:focus-visible, input:focus-visible, select:focus-visible, li:focus-visible {
+.btn:focus-visible, input:focus-visible, select:focus-visible, li:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-
-.badge {
-  font: inherit;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-sunken);
-  color: var(--text-dim);
-  cursor: pointer;
-}
-.badge.ok { color: var(--ok); }
-.badge.warn { color: var(--warn); }
-.badge.error { color: var(--error); border-color: var(--error); }
 
 /* Workspace: reader-first adaptive layout. The grid template is computed in
    App.tsx per layout mode from these default tokens + persisted pane sizes.

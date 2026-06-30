@@ -1,6 +1,7 @@
 // The top chrome bar: Open Folder, back/forward history, the current bundle
-// name, and the right-side cluster (reading prefs, Log toggle, validation badge).
-// App-level actions (Settings, shortcuts) live in the [ActivityBar], not here.
+// name, and the right-side cluster (reading prefs, Log toggle). App-level
+// actions (Settings, shortcuts) live in the [ActivityBar]; the validation issue
+// indicator lives in the [StatusBar] — neither floats in the title bar.
 // See docs/ux/browsing-layout.md.
 
 import { useRef } from "react";
@@ -61,22 +62,6 @@ export function TopBar() {
   function onBarMouseUp() {
     dragArmed.current = false;
   }
-
-  const errors =
-    state.bundle?.issues.filter((i) => i.level === "error").length ?? 0;
-  const warns =
-    state.bundle?.issues.filter((i) => i.level === "warning").length ?? 0;
-  const badgeKind = errors ? "error" : warns ? "warn" : "ok";
-  const badgeLabel = errors
-    ? `${errors} error${errors === 1 ? "" : "s"}`
-    : warns
-      ? `${warns} warning${warns === 1 ? "" : "s"}`
-      : "conformant";
-  const badgeAria = errors
-    ? `Validation: ${errors} error${errors === 1 ? "" : "s"}`
-    : warns
-      ? `Validation: ${warns} warning${warns === 1 ? "" : "s"}`
-      : "Validation: conformant, no issues";
 
   const canBack = state.back.length > 0;
   const canForward = state.fwd.length > 0;
@@ -239,30 +224,6 @@ export function TopBar() {
               </Tooltip.Portal>
             </Tooltip.Root>
 
-            <Toolbar.Separator />
-
-            <Tooltip.Root>
-              <Tooltip.Trigger
-                render={
-                  <Toolbar.Button
-                    className={`badge ${badgeKind}`}
-                    aria-label={badgeAria}
-                    aria-pressed={state.panels.validation}
-                    onClick={() => actions.togglePanel("validation")}
-                  >
-                    {badgeLabel}
-                  </Toolbar.Button>
-                }
-              />
-              <Tooltip.Portal>
-                <Tooltip.Positioner
-                  className="ui-tooltip-positioner"
-                  sideOffset={6}
-                >
-                  <Tooltip.Popup className="ui-tooltip">{badgeAria}</Tooltip.Popup>
-                </Tooltip.Positioner>
-              </Tooltip.Portal>
-            </Tooltip.Root>
           </Toolbar.Group>
         )}
 

@@ -4,6 +4,7 @@ import { useApp, PANE_CLAMPS } from "./store.tsx";
 import { useGlobalKeys } from "./keys.ts";
 import { TopBar } from "./components/TopBar.tsx";
 import { ActivityBar } from "./components/ActivityBar.tsx";
+import { StatusBar } from "./components/StatusBar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { GraphView } from "./components/GraphView.tsx";
 import { Reader } from "./components/Reader.tsx";
@@ -26,6 +27,7 @@ export function App() {
         <ActivityBar />
         {state.bundle ? <Workspace /> : <EmptyState />}
       </div>
+      <StatusBar />
 
       {/* Base UI Dialogs: mounted whenever a bundle is open; their `open` prop
           (from store state) drives visibility, so they manage their own

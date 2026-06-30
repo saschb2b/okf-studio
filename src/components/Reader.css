@@ -297,6 +297,18 @@
   color: var(--text-dim);
 }
 
+/* A color value in inline code (`#1f883d`) gets a small swatch so design-system
+   role tables and prose show their colors inline. */
+.markdown code .color-chip {
+  display: inline-block;
+  width: 0.72em;
+  height: 0.72em;
+  margin-right: 0.4em;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  vertical-align: baseline;
+}
+
 /* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */
 .markdown a.heading-anchor {
   margin-left: var(--space-6);

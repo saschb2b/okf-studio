@@ -53,6 +53,41 @@ function transformCallouts(html: string): string {
   return tpl.innerHTML;
 }
 
+// A color value safe to inline verbatim into a `style` attribute: a hex color,
+// or an rgb()/hsl() function restricted to digits, separators, and percent —
+// no `;`, `<`, `}`, or `url(...)`, so there is no CSS-injection surface.
+const SAFE_HEX = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const SAFE_FUNC = /^(?:rgb|rgba|hsl|hsla)\(\s*[0-9.,%/\s]+\)$/i;
+
+function isSafeColor(value: string): boolean {
+  return SAFE_HEX.test(value) || SAFE_FUNC.test(value);
+}
+
+/**
+ * Enhance rendered content: prefix any inline `<code>` that is *exactly* a color
+ * value (a hex or simple rgb/hsl) with a small swatch chip, so a design-system
+ * doc's role tables and prose *show* their colors. Runs on a detached fragment
+ * after sanitization; the chip's only dynamic part is the color, validated by
+ * {@link isSafeColor} before it is written to the inline style. A no-op without
+ * a DOM (SSR/tests in the node env).
+ */
+function decorateColorValues(html: string): string {
+  if (typeof document === "undefined") return html;
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  for (const code of Array.from(tpl.content.querySelectorAll("code"))) {
+    const value = code.textContent.trim();
+    if (!isSafeColor(value)) continue;
+    if (code.querySelector(".color-chip")) continue; // idempotent
+    const chip = document.createElement("span");
+    chip.className = "color-chip";
+    chip.setAttribute("style", `background:${value}`);
+    chip.setAttribute("aria-hidden", "true");
+    code.prepend(chip);
+  }
+  return tpl.innerHTML;
+}
+
 /** Slugify heading text into a stable id (matches the reader's outline). */
 function slugify(s: string): string {
   return (
@@ -97,9 +132,12 @@ export function renderMarkdown(md: string): string {
     gfm: true,
     breaks: false,
   });
-  return DOMPurify.sanitize(slugifyHeadings(transformCallouts(html)), {
+  const clean = DOMPurify.sanitize(slugifyHeadings(transformCallouts(html)), {
     USE_PROFILES: { html: true },
   });
+  // Decorate after sanitizing: the chip is fully constructed here from a
+  // strictly-validated color, so it adds no untrusted markup.
+  return decorateColorValues(clean);
 }
 
 /** Outcome of resolving a markdown link href found inside a concept body. */

@@ -195,7 +195,11 @@ const designSystem: RawConcept[] = [
     },
     body:
       "Color is **functional**, not literal: a component references a role (`fgColor-accent` for a link), never a hex, so the whole UI re-themes by swapping the value behind each role.\n\n" +
-      "# Roles\n\nForeground roles carry text and icons; background roles fill surfaces; border roles draw hairlines.\n\n" +
+      "# Roles\n\n" +
+      "| Token | Value | Role |\n| --- | --- | --- |\n" +
+      "| `fgColor-default` | `#1f2328` | Primary text. |\n" +
+      "| `fgColor-accent` | `#0969da` | Links and accents. |\n" +
+      "| `bgColor-success-emphasis` | `#1f883d` | The green primary button. |\n\n" +
       "# Usage\n\nAlways pair a foreground role with its intended background so contrast stays AA in both themes.",
     links: [],
     externalLinks: [],

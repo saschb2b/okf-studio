@@ -27,6 +27,10 @@ When a concept carries a `tokens` map (preserved into `extra` by the [indentatio
 
 A token value may reference another with design.md's `{group.name}` syntax (a component's `background: "{colors.bgColor-success-emphasis}"`). The viewer builds a **bundle-wide token index** from every concept's foundation tokens and resolves references against it, so a component shows the concrete value (and color dot) it will actually render. An unresolved reference is left verbatim, tolerated like a [broken link](../architecture/okf-parsing.md).
 
+# Color values in the body
+
+Beyond the dedicated token visualizations, the [reader's markdown body](concept-reader.md) enhances the bundle's own content in place: any inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`) is prefixed with a small swatch, so a hand-written `# Roles` table or a value mentioned in prose *shows* its color. This reads the document as authored — no synthesized overview — and just renders its content as richly as possible. It is bundle-agnostic (any OKF bundle benefits) and the chip color is strictly validated before being inlined.
+
 # Status & platform labels
 
 Beside the type badge, the reader surfaces two ODSF frontmatter fields when present: **`status`** (`stable` / `experimental` / `deprecated`, colored only to flag the exception so a stable system stays quiet) and **`applies_to`** (the platforms/surfaces a concept governs).

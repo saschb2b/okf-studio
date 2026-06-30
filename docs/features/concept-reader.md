@@ -33,6 +33,7 @@ Rendered for pleasant reading, sanitized before injection ([security](../archite
 - A generous, readable base size and rhythm; a clear **heading hierarchy** (distinct h1–h4), with **anchored headings** (a hover permalink and a stable id) so sections can be linked and jumped to.
 - **Callouts / admonitions** via GFM alert syntax (`> [!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]`), themed from the status [color roles](../ux/theming.md).
 - **Fenced code** with a one-click **copy** affordance; **tables** styled for legibility (readable size, header weight, row hover, tabular numerals); blockquotes, lists, and the conventional [`# Schema` / `# Examples` / `# Citations`](../reference/okf-spec-summary.md) sections.
+- **Color values get a swatch.** Inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`) is prefixed with a small chip, so a design-system role table or prose *shows* its colors — see [Design-System Rendering](design-system-rendering.md). Bundle-agnostic; the chip's color is strictly validated before it is inlined.
 - **Links are underlined** (never color-only — [WCAG 1.4.1](../ux/accessibility.md)). **Intra-bundle links** are visually distinguished from external ones; clicking an in-bundle link resolves the [path](../architecture/okf-parsing.md) and navigates (graph + reader stay in sync), external URLs open in the system browser, and **unresolved links** carry a non-color "broken" affordance, not merely a dimmed strikethrough.
 
 # The right context rail

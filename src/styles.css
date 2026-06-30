@@ -14,6 +14,9 @@
   --warn: #b8860b;
   --ok: #2e7d52;
   --shadow: 0 6px 24px rgba(20, 24, 31, 0.14);
+  /* Subtle elevation for small raised surfaces (e.g. the segmented-control
+     thumb) — far lighter than the dialog/popover --shadow. */
+  --shadow-sm: 0 1px 2px rgba(20, 24, 31, 0.12);
   --scrim: rgba(20, 24, 31, 0.45);
 
   /* Radius scale */
@@ -69,6 +72,7 @@
   --warn: #e0b341;
   --ok: #5ed39a;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --scrim: rgba(0, 0, 0, 0.62);
   color-scheme: dark;
 }

@@ -65,26 +65,66 @@
   color: var(--text);
 }
 
-/* 3-way layout segmented control: graph-only / split / reader-only. */
+/* 3-way layout segmented control: graph-only / split / reader-only. A sunken
+   track of three equal segments with a single raised thumb (::before) that
+   slides to the active one — a soft, native-feeling selection instead of a
+   loud accent fill. Each segment is the --space-32 × --space-24 button box. */
 .layout-switch {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0; /* flush segments — reads as one control, not three buttons */
   padding: var(--space-2);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--bg-sunken);
 }
 
-.layout-switch .layout-btn {
-  font-size: var(--fs-md);
-  line-height: 1;
-  padding: var(--space-4) var(--space-8);
+/* The sliding thumb: a raised tile behind the active segment. --seg (0/1/2),
+   set on the group in TopBar.tsx, positions it; the global reduce-motion rule
+   zeroes the slide. */
+.layout-switch::before {
+  content: "";
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  width: var(--space-32);
+  height: var(--space-24);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--border);
+  transform: translateX(calc(var(--seg, 0) * var(--space-32)));
+  transition: transform var(--dur) ease;
 }
 
+.layout-switch .layout-btn {
+  position: relative;
+  z-index: 1; /* sit above the thumb */
+  width: var(--space-32);
+  height: var(--space-24);
+  padding: 0;
+  justify-content: center;
+  color: var(--text-dim);
+  transition: color var(--dur) ease;
+}
+/* The thumb owns the selected background; segments stay transparent even on
+   hover, so only the icon color responds. */
+.layout-switch .layout-btn:hover:not(:disabled) {
+  background: transparent;
+  color: var(--text);
+}
 .topbar .layout-switch .layout-btn.active {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: transparent;
+  color: var(--accent);
+}
+
+/* Icon panes: solid = pane shown, ghost = pane collapsed. The frame and fills
+   all inherit currentColor, so the icon tracks the segment's text color. */
+.layout-ico .pane {
+  fill: currentColor;
+}
+.layout-ico .pane[data-on="false"] {
+  fill-opacity: 0.22;
 }
 
 /* Always-visible search affordance: looks like a search field, acts as a button

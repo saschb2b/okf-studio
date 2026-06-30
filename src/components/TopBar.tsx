@@ -6,7 +6,7 @@
 // See docs/ux/browsing-layout.md.
 
 import { useRef } from "react";
-import type { MouseEvent } from "react";
+import type { CSSProperties, MouseEvent, ReactElement } from "react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "../store.tsx";
@@ -23,14 +23,57 @@ import "./TopBar.css";
 const searchHint = isMac ? "⌘K" : "Ctrl K";
 const mod = modKey;
 
-// 3-way layout segmented control. Order graph -> split -> reader so the icons
+// One shared "window" frame so the three icons read as a family. Each pane is
+// solid when its content is shown and a faint ghost when it's collapsed, so the
+// glyph mirrors what's actually on screen (left = graph, right = reader). The
+// 1.1px center gap is the divider — negative space, not a drawn line, so it
+// stays visible even when both panes are filled (split).
+function LayoutIcon({ left, right }: { left: boolean; right: boolean }) {
+  return (
+    <svg
+      className="layout-ico"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        className="pane"
+        data-on={left}
+        d="M4.3 4 H7.45 V12 H4.3 A1.8 1.8 0 0 1 2.5 10.2 V5.8 A1.8 1.8 0 0 1 4.3 4 Z"
+      />
+      <path
+        className="pane"
+        data-on={right}
+        d="M8.55 4 H11.7 A1.8 1.8 0 0 1 13.5 5.8 V10.2 A1.8 1.8 0 0 1 11.7 12 H8.55 Z"
+      />
+      <rect
+        x="2.5"
+        y="4"
+        width="11"
+        height="8"
+        rx="1.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+    </svg>
+  );
+}
+
+// 3-way layout segmented control. Order graph -> split -> reader so the panes
 // read left (explore) to right (read), matching the Ctrl/Cmd+1/2/3 hotkeys.
-const LAYOUTS: { mode: LayoutMode; label: string; hint: string; icon: string }[] =
-  [
-    { mode: "graph", label: "Graph only", hint: `${mod}+1`, icon: "◧" },
-    { mode: "split", label: "Split", hint: `${mod}+2`, icon: "▥" },
-    { mode: "reader", label: "Reader only", hint: `${mod}+3`, icon: "◨" },
-  ];
+const LAYOUTS: {
+  mode: LayoutMode;
+  label: string;
+  hint: string;
+  icon: ReactElement;
+}[] = [
+  { mode: "graph", label: "Graph only", hint: `${mod}+1`, icon: <LayoutIcon left right={false} /> },
+  { mode: "split", label: "Split", hint: `${mod}+2`, icon: <LayoutIcon left right /> },
+  { mode: "reader", label: "Reader only", hint: `${mod}+3`, icon: <LayoutIcon left={false} right /> },
+];
 
 export function TopBar() {
   const { state, actions } = useApp();
@@ -163,6 +206,15 @@ export function TopBar() {
               className="layout-switch"
               role="radiogroup"
               aria-label="Workspace layout"
+              // Drives the sliding thumb (::before): 0/1/2 = the active segment.
+              style={
+                {
+                  "--seg": Math.max(
+                    0,
+                    LAYOUTS.findIndex((l) => l.mode === state.layout),
+                  ),
+                } as CSSProperties
+              }
             >
               {LAYOUTS.map(({ mode, label, hint, icon }) => (
                 <Tooltip.Root key={mode}>
@@ -177,7 +229,7 @@ export function TopBar() {
                         aria-label={label}
                         onClick={() => actions.setLayout(mode)}
                       >
-                        <span aria-hidden="true">{icon}</span>
+                        {icon}
                       </Toolbar.Button>
                     }
                   />

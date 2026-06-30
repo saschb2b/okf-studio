@@ -73,7 +73,7 @@ pub fn scan(folder: &Path, max_depth: usize) -> Vec<BundleRoot> {
 
     // Final outermost-wins de-dup across whatever survived (e.g. nested
     // candidate trees), preferring the outermost path.
-    kept.sort_by(|a, b| a.0.components().count().cmp(&b.0.components().count()));
+    kept.sort_by_key(|p| p.0.components().count());
     let mut roots: Vec<(PathBuf, Confidence)> = Vec::new();
     for (path, conf) in kept {
         if roots.iter().any(|(k, _)| k == &path) {

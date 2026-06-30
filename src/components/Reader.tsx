@@ -10,7 +10,8 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "../store.tsx";
 import { titleOf, conceptById } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
-import { renderMarkdown, resolveHref } from "../markdown.ts";
+import { renderMarkdown, resolveAssetHref, resolveHref } from "../markdown.ts";
+import { readAssetDataUrl } from "../ipc.ts";
 import type { Bundle, Concept } from "../types.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "../odsf.ts";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
@@ -32,6 +33,74 @@ function conceptExists(bundle: Bundle | null, id: string): boolean {
 /** Humanize a path segment for the breadcrumb (e.g. "data-model" → "Data Model"). */
 function humanize(seg: string): string {
   return seg.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+/** Whether a raw image src is an external URL (vs a bundle-relative path). */
+function isExternalUrl(raw: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith("//");
+}
+
+/** A non-fetching stand-in for a remote image: opens it in the system browser
+ *  (handled by the body click delegation), honoring the offline stance. */
+function remoteImage(url: string, alt: string | null): HTMLButtonElement {
+  const label = alt?.trim() ? alt.trim() : "Remote image";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "md-img-remote";
+  btn.dataset.remoteSrc = url;
+  btn.title = url;
+  btn.textContent = `🖼 ${label} — open in browser`;
+  return btn;
+}
+
+/** A quiet placeholder for a local image that could not be read. */
+function brokenImage(raw: string): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.className = "md-img-broken";
+  span.textContent = `🖼 missing image: ${raw}`;
+  return span;
+}
+
+/**
+ * Resolve every `<img>` in a (already-sanitized) body HTML string and return the
+ * rewritten string: a local bundle image becomes an inline `data:` URL
+ * (offline-safe, zoomable), a remote one an open-in-browser placeholder, an
+ * unresolvable one a quiet "missing" note. Operates on a detached template; the
+ * data URL comes from the trusted core command and the placeholders are
+ * constructed here, so the result needs no re-sanitizing.
+ */
+async function processBodyImages(html: string, conceptId: string, bundle: Bundle): Promise<string> {
+  if (typeof document === "undefined") return html;
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  for (const img of Array.from(tpl.content.querySelectorAll("img"))) {
+    const raw = img.getAttribute("data-mdsrc");
+    if (!raw) {
+      // An author-inlined data: image — just make it zoomable.
+      if (img.getAttribute("src")?.startsWith("data:")) {
+        img.classList.add("md-img");
+        img.setAttribute("data-lightbox", "1");
+      }
+      continue;
+    }
+    const rel = resolveAssetHref(raw, conceptId);
+    if (rel) {
+      const url = await readAssetDataUrl(bundle.root, rel);
+      if (url) {
+        img.setAttribute("src", url);
+        img.removeAttribute("data-mdsrc");
+        img.classList.add("md-img");
+        img.setAttribute("data-lightbox", "1");
+      } else {
+        img.replaceWith(brokenImage(raw));
+      }
+    } else if (isExternalUrl(raw)) {
+      img.replaceWith(remoteImage(raw, img.getAttribute("alt")));
+    } else {
+      img.replaceWith(brokenImage(raw));
+    }
+  }
+  return tpl.innerHTML;
 }
 
 /** A url-safe slug for a heading's text, used as its anchor id. */
@@ -60,11 +129,19 @@ export function Reader() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // The image currently shown in the spotlight overlay (a data URL), or null.
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  // Body HTML with images resolved, paired with the source html it derives from
+  // (so a concept switch never renders the previous body while the new one loads).
+  const [processed, setProcessed] = useState<{ src: string; html: string } | null>(null);
 
   // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
   // the body's `{ref}` resolution and the TokenViz below.
   const tokenIndex = buildTokenIndex(bundle);
   const bodyHtml = c ? renderMarkdown(c.body, tokenIndex) : "";
+  // Use the image-resolved html once it matches the current body; until then
+  // (or when there are no images) render the body as-is.
+  const displayHtml = processed?.src === bodyHtml ? processed.html : bodyHtml;
 
   // After the body renders: tag anchors for link routing/styling, assign stable
   // heading ids, build the outline, and wire scroll-spy to the scrolling pane.
@@ -190,7 +267,37 @@ export function Reader() {
     };
     // `c` is tracked via c?.id; the effect only needs to re-run on concept change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [c?.id, bodyHtml, bundle, reduceMotion]);
+  }, [c?.id, displayHtml, bundle, reduceMotion]);
+
+  // Resolve body images into the HTML *string* (not by mutating the live DOM):
+  // render neutralizes each <img> (src → data-mdsrc) so nothing auto-loads, then
+  // this rewrites a *local* image to an inline data URL (offline-safe,
+  // click-to-zoom) and a *remote* one to an open-in-browser affordance. Baking
+  // the result into the rendered string (like heading ids) keeps it from being
+  // wiped when React re-applies dangerouslySetInnerHTML. `processed` is paired
+  // with the source html so a concept switch never shows the previous body.
+  useEffect(() => {
+    let cancelled = false;
+    if (c && bundle && bodyHtml.includes("<img")) {
+      void processBodyImages(bodyHtml, c.id, bundle).then((html) => {
+        if (!cancelled) setProcessed({ src: bodyHtml, html });
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c?.id, bodyHtml, bundle?.root]);
+
+  // Close the image spotlight on Escape (click/close-button handle the rest).
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   if (!c) {
     return (
@@ -221,7 +328,20 @@ export function Reader() {
   // external links to the OS browser, and keep unresolved links inert.
   function onBodyClick(e: MouseEvent<HTMLDivElement>) {
     if (!c) return;
-    const anchor = (e.target as HTMLElement).closest("a");
+    const target = e.target as HTMLElement;
+    // A local image opens in the spotlight overlay.
+    const zoomable = target.closest<HTMLImageElement>("img[data-lightbox]");
+    if (zoomable) {
+      setLightbox(zoomable.src);
+      return;
+    }
+    // A remote-image placeholder opens the original in the system browser.
+    const remote = target.closest<HTMLElement>("[data-remote-src]");
+    if (remote?.dataset.remoteSrc) {
+      actions.openExternal(remote.dataset.remoteSrc);
+      return;
+    }
+    const anchor = target.closest("a");
     if (!anchor) return;
     const href = anchor.getAttribute("href");
     if (!href) return;
@@ -332,8 +452,9 @@ export function Reader() {
           ref={bodyRef}
           className="body markdown"
           onClick={onBodyClick}
-          // Sanitized in renderMarkdown via DOMPurify before injection.
-          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+          // Sanitized in renderMarkdown via DOMPurify; images resolved (to local
+          // data URLs / placeholders) by processBodyImages before injection.
+          dangerouslySetInnerHTML={{ __html: displayHtml }}
         />
       </article>
 
@@ -427,6 +548,29 @@ export function Reader() {
           </RailModule>
         )}
       </aside>
+
+      {/* Image spotlight. Click anywhere or the close button to dismiss; Escape
+          is handled by an effect. Keyboard-accessible via the close button. */}
+      {lightbox && (
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events -- backdrop click-to-close; Escape + a real close button provide keyboard access
+        <div
+          className="lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
+          onClick={() => setLightbox(null)}
+        >
+          <img className="lightbox-img" src={lightbox} alt="" />
+          <button
+            type="button"
+            className="lightbox-close"
+            aria-label="Close image preview"
+            onClick={() => setLightbox(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

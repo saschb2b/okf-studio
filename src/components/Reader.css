@@ -313,6 +313,85 @@
   white-space: nowrap;
 }
 
+/* Body images — inlined local bundle images. Click to open the spotlight. */
+.markdown img.md-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  display: block;
+  margin: var(--space-12) 0;
+}
+/* A remote image is not auto-fetched (offline); this opens it in the browser. */
+.markdown .md-img-remote {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: var(--space-6) var(--space-10);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.markdown .md-img-remote:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.markdown .md-img-broken {
+  display: inline-block;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-8);
+}
+
+/* Image spotlight overlay. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-32);
+  background: var(--scrim);
+  cursor: zoom-out;
+}
+.lightbox-img {
+  max-width: 92vw;
+  max-height: 92vh;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  background: var(--bg);
+}
+.lightbox-close {
+  position: absolute;
+  top: var(--space-16);
+  right: var(--space-20);
+  width: 40px;
+  height: 40px;
+  font-size: var(--fs-xl);
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+}
+.lightbox-close:hover {
+  border-color: var(--accent);
+}
+.lightbox-close:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */
 .markdown a.heading-anchor {
   margin-left: var(--space-6);

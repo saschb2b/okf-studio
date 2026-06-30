@@ -54,6 +54,27 @@ export async function readAsset(
   return invoke<string | null>("read_asset", { root, rel });
 }
 
+/**
+ * Read a *local* bundle image as a `data:` URL so the reader renders it inline
+ * with no network fetch (the offline stance). Resolves to `null` when the image
+ * is absent, not an image type, or escapes the bundle root. Off-Tauri it encodes
+ * the in-memory mock asset so images render in the browser and tests.
+ */
+export async function readAssetDataUrl(
+  root: string,
+  rel: string,
+): Promise<string | null> {
+  if (!isTauri()) {
+    const key = rel.replace(/^\/+/, "");
+    const text = MOCK_ASSETS[key];
+    if (!text) return null;
+    const mime = key.toLowerCase().endsWith(".svg") ? "image/svg+xml" : "image/png";
+    return `data:${mime};base64,${btoa(text)}`;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("read_asset_data_url", { root, rel });
+}
+
 /** Open an external URL in the OS browser (never fetched in-app). */
 export async function openExternal(url: string): Promise<void> {
   if (!isTauri()) {

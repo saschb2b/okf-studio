@@ -44,3 +44,10 @@ pub fn read_bundle(root: &Path) -> Bundle {
 pub fn read_asset(root: &Path, rel: &str) -> Option<String> {
     asset::read_asset(root, rel)
 }
+
+/// Read a *local* bundle image as a `data:` URL (offline-safe inlining), or
+/// `None` if it is absent, not an image, or escapes the root. See
+/// [`asset::read_asset_data_url`].
+pub fn read_asset_data_url(root: &Path, rel: &str) -> Option<String> {
+    asset::read_asset_data_url(root, rel)
+}

@@ -27,6 +27,14 @@ fn read_asset(root: String, rel: String) -> Option<String> {
     okf_core::read_asset(Path::new(&root), &rel)
 }
 
+/// Read a local bundle image as a `data:` URL so the reader can render it inline
+/// without a network fetch (the offline stance). Returns `null` when the image
+/// is absent, not an image type, or escapes the bundle root.
+#[tauri::command]
+fn read_asset_data_url(root: String, rel: String) -> Option<String> {
+    okf_core::read_asset_data_url(Path::new(&root), &rel)
+}
+
 /// Begin watching `folder` recursively for filesystem changes, emitting a
 /// debounced `bundle-changed` event on each burst. Replaces any active watch.
 #[tauri::command]
@@ -90,6 +98,7 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             read_asset,
+            read_asset_data_url,
             start_watch,
             stop_watch,
             can_self_update

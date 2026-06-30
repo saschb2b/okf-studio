@@ -29,7 +29,7 @@ A token value may reference another with design.md's `{group.name}` syntax (a co
 
 # Color values in the body
 
-Beyond the dedicated token visualizations, the [reader's markdown body](concept-reader.md) enhances the bundle's own content in place: a color value — inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), or a **hex color written in plain prose** (Primer's `borderColor-default (#d1d9e0) hairlines …`) — is prefixed with a small swatch, so a hand-written `# Roles` table or a value mentioned mid-sentence *shows* its color. This reads the document as authored — no synthesized overview — and just renders its content as richly as possible. It is bundle-agnostic (any OKF bundle benefits) and the chip color is strictly validated before being inlined.
+Beyond the dedicated token visualizations, the [reader's markdown body](concept-reader.md) enhances the bundle's own content in place: a color value — inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), or a **hex color written in plain prose** (Primer's `borderColor-default (#d1d9e0) hairlines …`) — is prefixed with a small swatch, so a hand-written `# Roles` table or a value mentioned mid-sentence *shows* its color. The body also renders **images** (a local diagram inlined and click-to-zoom; a remote one offered as a browser link) — see [Concept Reader](concept-reader.md). This reads the document as authored — no synthesized overview — and just renders its content as richly as possible. It is bundle-agnostic (any OKF bundle benefits) and the chip color is strictly validated before being inlined.
 
 # Status & platform labels
 

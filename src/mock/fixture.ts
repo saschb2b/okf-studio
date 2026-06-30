@@ -201,6 +201,7 @@ const designSystem: RawConcept[] = [
       "| `fgColor-accent` | `#0969da` | Links and accents. |\n" +
       "| `bgColor-success-emphasis` | `#1f883d` | The green primary button. |\n\n" +
       "# Border\n\n`borderColor-default` (#d1d9e0) hairlines · `borderColor-muted` (translucent) in-surface dividers · `borderColor-accent` (#0969da) focused edges.\n\n" +
+      "# Diagram\n\n![Color model](diagram.svg)\n\nA remote reference (opened in the browser, never auto-fetched): ![Brand logo](https://example.com/logo.png)\n\n" +
       "# Usage\n\nAlways pair a foreground role with its intended background so contrast stays AA in both themes. The runnable projection lives in [`styles/tokens.css`](../styles/tokens.css).",
     links: [],
     externalLinks: [],
@@ -481,6 +482,11 @@ export const MOCK_ASSETS: Record<string, string> = {
     '  <span class="status">✓ Merged</span>',
     "</body></html>",
   ].join("\n"),
+  "design/diagram.svg":
+    '<svg xmlns="http://www.w3.org/2000/svg" width="280" height="120">' +
+    '<rect width="280" height="120" rx="8" fill="#0969da"/>' +
+    '<text x="24" y="70" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="600">Color model</text>' +
+    "</svg>",
   "design/color-not-alone.dont.html": [
     "<!doctype html>",
     '<html lang="en"><head><meta charset="utf-8"><style>',

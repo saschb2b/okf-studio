@@ -13,41 +13,84 @@
 
 use std::path::Path;
 
-/// Extensions an asset may have. Deliberately tiny: ODSF bundles are text-only
-/// (`.md`, `.html`, `.css`), and this door never serves `.md` (those are
-/// concepts, read elsewhere) — only the renderable companion files.
+use std::path::PathBuf;
+
+/// Extensions a text asset may have. Deliberately tiny: ODSF bundles are
+/// text-only (`.md`, `.html`, `.css`), and this door never serves `.md` (those
+/// are concepts, read elsewhere) — only the renderable companion files.
 const ALLOWED_EXTENSIONS: [&str; 3] = ["html", "css", "svg"];
 
-/// Read a bundle asset's text, or `None` if it does not exist, is not a
-/// permitted text asset, or resolves outside `root` (path traversal / symlink
-/// escape). `rel` is a bundle-relative path; a leading `/` (the bundle-absolute
-/// form an ODSF `examples:` entry uses) is treated as relative to the root.
-pub fn read_asset(root: &Path, rel: &str) -> Option<String> {
-    // Normalize the request to a path under the root. Strip a leading slash so a
-    // bundle-absolute "/styles/tokens.css" joins correctly; reject a Windows
-    // drive/UNC-looking input outright by never trusting `rel` as absolute.
+/// Image extensions and their MIME types, for inlining a *local* bundle image
+/// as a `data:` URL (the offline-safe way to render it — no network fetch).
+const IMAGE_MIME: [(&str, &str); 9] = [
+    ("png", "image/png"),
+    ("jpg", "image/jpeg"),
+    ("jpeg", "image/jpeg"),
+    ("gif", "image/gif"),
+    ("webp", "image/webp"),
+    ("avif", "image/avif"),
+    ("svg", "image/svg+xml"),
+    ("ico", "image/x-icon"),
+    ("bmp", "image/bmp"),
+];
+
+/// Resolve a bundle-relative path to a real file *inside* `root`, or `None` if
+/// it is absent or escapes the root (via `..` or a symlink). `rel` may carry a
+/// leading `/` (the bundle-absolute form), treated as relative to the root.
+/// This is the single path-safety gate every asset read goes through.
+fn resolve_in_root(root: &Path, rel: &str) -> Option<PathBuf> {
     let rel = rel.trim().trim_start_matches('/');
     if rel.is_empty() {
         return None;
     }
-
     let root_canon = root.canonicalize().ok()?;
-    // canonicalize() resolves `..` and symlinks and requires the file to exist —
+    // canonicalize() resolves `..`/symlinks and requires the file to exist —
     // a missing asset is a clean `None`.
     let target = root_canon.join(rel).canonicalize().ok()?;
-
-    // The real file must live inside the real bundle root.
     if !target.starts_with(&root_canon) {
         return None;
     }
+    Some(target)
+}
 
-    // Allowlist the extension (case-insensitive).
+/// Read a bundle asset's text, or `None` if it does not exist, is not a
+/// permitted text asset, or resolves outside `root`.
+pub fn read_asset(root: &Path, rel: &str) -> Option<String> {
+    let target = resolve_in_root(root, rel)?;
     let ext = target.extension()?.to_string_lossy().to_ascii_lowercase();
     if !ALLOWED_EXTENSIONS.contains(&ext.as_str()) {
         return None;
     }
-
     std::fs::read_to_string(&target).ok()
+}
+
+/// Read a *local* bundle image and return it as a `data:<mime>;base64,…` URL, or
+/// `None` if it is absent, not a known image type, or escapes the root. Inlining
+/// keeps image rendering offline (no network fetch); a remote image is never
+/// loaded here — the consumer opens it in the browser instead.
+pub fn read_asset_data_url(root: &Path, rel: &str) -> Option<String> {
+    let target = resolve_in_root(root, rel)?;
+    let ext = target.extension()?.to_string_lossy().to_ascii_lowercase();
+    let mime = IMAGE_MIME.iter().find(|(e, _)| *e == ext).map(|(_, m)| *m)?;
+    let bytes = std::fs::read(&target).ok()?;
+    Some(format!("data:{};base64,{}", mime, base64_encode(&bytes)))
+}
+
+/// Standard base64 (RFC 4648) with padding. Hand-rolled to avoid a dependency.
+fn base64_encode(data: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = *chunk.get(1).unwrap_or(&0) as u32;
+        let b2 = *chunk.get(2).unwrap_or(&0) as u32;
+        let n = (b0 << 16) | (b1 << 8) | b2;
+        out.push(T[((n >> 18) & 63) as usize] as char);
+        out.push(T[((n >> 12) & 63) as usize] as char);
+        out.push(if chunk.len() > 1 { T[((n >> 6) & 63) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 2 { T[(n & 63) as usize] as char } else { '=' });
+    }
+    out
 }
 
 #[cfg(test)]
@@ -104,5 +147,38 @@ mod tests {
     fn missing_asset_is_none() {
         let root = tmp();
         assert_eq!(read_asset(&root, "components/nope.example.html"), None);
+    }
+
+    #[test]
+    fn base64_matches_known_vectors() {
+        assert_eq!(base64_encode(b""), "");
+        assert_eq!(base64_encode(b"M"), "TQ==");
+        assert_eq!(base64_encode(b"Ma"), "TWE=");
+        assert_eq!(base64_encode(b"Man"), "TWFu");
+        assert_eq!(base64_encode(b"any carnal pleasure."), "YW55IGNhcm5hbCBwbGVhc3VyZS4=");
+    }
+
+    #[test]
+    fn reads_a_local_image_as_data_url() {
+        let root = tmp();
+        // A 1x1 transparent GIF (binary) — bytes round-trip through base64.
+        let gif: [u8; 35] = [
+            0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0xff,
+            0xff, 0xff, 0x00, 0x00, 0x00, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c,
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01,
+        ];
+        fs::write(root.join("pic.gif"), gif).unwrap();
+        let url = read_asset_data_url(&root, "pic.gif").expect("image reads as data url");
+        assert!(url.starts_with("data:image/gif;base64,"));
+        assert_eq!(url, format!("data:image/gif;base64,{}", base64_encode(&gif)));
+    }
+
+    #[test]
+    fn data_url_rejects_non_image_and_escape() {
+        let root = tmp();
+        fs::write(root.join("styles/tokens.css"), "x").unwrap();
+        // A CSS file is a text asset, never served as an image data URL.
+        assert_eq!(read_asset_data_url(&root, "styles/tokens.css"), None);
+        assert_eq!(read_asset_data_url(&root, "../outside.png"), None);
     }
 }

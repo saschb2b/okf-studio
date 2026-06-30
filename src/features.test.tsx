@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
@@ -88,6 +88,37 @@ describe("OKF Viewer features", () => {
     // The example asset renders as a live (iframe) preview, loaded via readAsset.
     expect(
       await within(reader).findByTitle("design/button.example.html"),
+    ).toBeInTheDocument();
+  });
+
+  it("inlines a local image (zoomable) and offers a remote one as a link", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("radio", { name: /reader only/i }));
+
+    // Jump to the Color concept, whose body embeds a local SVG + a remote image.
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await user.type(combo, "Color");
+    // "Color" matches several concepts; the top result is the Color foundation.
+    await user.click((await screen.findAllByRole("option"))[0]);
+
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    // The local image is inlined as a data URL and marked zoomable.
+    await waitFor(() => {
+      const img = reader.querySelector("img.md-img");
+      expect(img?.getAttribute("src")).toMatch(/^data:image\/svg/);
+    });
+    // The remote image is not fetched — it becomes an open-in-browser control.
+    expect(
+      within(reader).getByRole("button", { name: /open in browser/i }),
+    ).toBeInTheDocument();
+
+    // Clicking the inlined image opens the spotlight overlay.
+    await user.click(reader.querySelector<HTMLImageElement>("img.md-img")!);
+    expect(
+      await screen.findByRole("dialog", { name: /image preview/i }),
     ).toBeInTheDocument();
   });
 

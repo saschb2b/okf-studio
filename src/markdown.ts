@@ -168,7 +168,25 @@ function decorateColorValues(html: string, tokenIndex?: Record<string, string>):
     }
   }
   decorateHexInText(tpl.content);
+  neutralizeImages(tpl.content);
   return tpl.innerHTML;
+}
+
+/**
+ * Defuse `<img>` loading at render time: move a non-`data:` `src` to `data-mdsrc`
+ * and drop `src`, so the webview never auto-fetches a remote image (the offline
+ * stance) or flashes a broken local one. The reader then resolves each image —
+ * inlining a local bundle file, or offering a remote one as an external link.
+ * An inline `data:` image is left to render as-is.
+ */
+function neutralizeImages(root: DocumentFragment): void {
+  for (const img of Array.from(root.querySelectorAll("img"))) {
+    const src = img.getAttribute("src");
+    if (src && !/^data:/i.test(src)) {
+      img.setAttribute("data-mdsrc", src);
+      img.removeAttribute("src");
+    }
+  }
 }
 
 /** Slugify heading text into a stable id (matches the reader's outline). */

@@ -107,3 +107,18 @@ describe("renderMarkdown token-reference resolution", () => {
     expect(renderMarkdown("`{colors.primary}`")).not.toContain("resolves to");
   });
 });
+
+describe("renderMarkdown image neutralization", () => {
+  it("moves a non-data src to data-mdsrc so nothing auto-loads", () => {
+    const html = renderMarkdown("![Diagram](diagram.svg)");
+    expect(html).toContain('data-mdsrc="diagram.svg"');
+    // The original src is removed (no auto-fetch of a local/remote image).
+    expect(html).not.toMatch(/<img[^>]*\ssrc=/);
+  });
+
+  it("leaves an inline data: image's src intact", () => {
+    const html = renderMarkdown("![x](data:image/png;base64,iVBORw0KGgo=)");
+    expect(html).toContain('src="data:image/png;base64,iVBORw0KGgo="');
+    expect(html).not.toContain("data-mdsrc");
+  });
+});

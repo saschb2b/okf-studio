@@ -47,11 +47,6 @@
   gap: var(--space-2);
 }
 
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
 
 /* Toolbar.Separator renders a bare <div>; give it a thin token-colored rule. */
 .topbar [role="separator"] {

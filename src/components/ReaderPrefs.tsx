@@ -5,7 +5,6 @@
 // docs/features/concept-reader.md.
 
 import { Popover } from "@base-ui/react/popover";
-import { Toolbar } from "@base-ui/react/toolbar";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { useApp } from "../store.tsx";
 import type { ReaderFont } from "../types.ts";
@@ -41,9 +40,9 @@ export function ReaderPrefs() {
     <Popover.Root>
       <Popover.Trigger
         render={
-          <Toolbar.Button className="btn ghost" aria-label="Reading preferences">
+          <button type="button" className="btn ghost reader-prefs-btn" aria-label="Reading preferences">
             <span aria-hidden="true">Aa</span>
-          </Toolbar.Button>
+          </button>
         }
       />
       <Popover.Portal>

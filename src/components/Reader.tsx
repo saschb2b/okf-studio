@@ -12,6 +12,7 @@ import { titleOf, conceptById } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { renderMarkdown, resolveHref } from "../markdown.ts";
 import type { Bundle, Concept } from "../types.ts";
+import { ReaderPrefs } from "./ReaderPrefs.tsx";
 import "./Reader.css";
 
 interface OutlineItem {
@@ -231,15 +232,22 @@ export function Reader() {
         }
       >
         <header className="reader-header">
-          {crumbs.length > 0 && (
-            <nav className="reader-crumbs" aria-label="Breadcrumb">
-              {crumbs.map((seg, i) => (
-                <span key={i} className="crumb">
-                  {humanize(seg)}
-                </span>
-              ))}
-            </nav>
-          )}
+          {/* Top row: breadcrumb at the left, reading-preferences ("Aa") at the
+              right — reading options live with the content, not the title bar. */}
+          <div className="reader-header-top">
+            {crumbs.length > 0 ? (
+              <nav className="reader-crumbs" aria-label="Breadcrumb">
+                {crumbs.map((seg, i) => (
+                  <span key={i} className="crumb">
+                    {humanize(seg)}
+                  </span>
+                ))}
+              </nav>
+            ) : (
+              <span />
+            )}
+            <ReaderPrefs />
+          </div>
           <span
             className="type-badge"
             style={{ color: typeColor, borderColor: typeColor }}

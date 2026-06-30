@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-06-29T13:00:00Z
+timestamp: 2026-06-30T16:30:00Z
 ---
 
 # What it does
@@ -49,4 +49,4 @@ Every relationship row is clickable and drives the **single shared selection**, 
 
 # Reading preferences
 
-An **"Aa" control** in the reader opens a small popover (built on [Base UI](../architecture/frontend-architecture.md)) to tune reading comfort: **text size**, **measure width**, **line spacing**, **font** (the humanist UI sans by default, with an opt-in reading **serif**), and a **reading-aids** toggle (dyslexia-friendly letter/word spacing). Each maps to a CSS variable on the reader and **persists** alongside the other [settings](../ux/settings.md); the keyboard text-size shortcuts (`Ctrl/Cmd +/-/0`) drive the same size control. This is the content-scoped reading layer, distinct from page zoom (suppressed for a [native feel](../ux/theming.md)).
+An **"Aa" control** at the **top-right of the reader's header** (with the content, not in the title bar — reading is a reader concern, used sparingly) opens a small popover (built on [Base UI](../architecture/frontend-architecture.md)) to tune reading comfort: **text size**, **measure width**, **line spacing**, **font** (the humanist UI sans by default, with an opt-in reading **serif**), and a **reading-aids** toggle (dyslexia-friendly letter/word spacing). Each maps to a CSS variable on the reader and **persists** alongside the other [settings](../ux/settings.md); the keyboard text-size shortcuts (`Ctrl/Cmd +/-/0`) drive the same size control. This is the content-scoped reading layer, distinct from page zoom (suppressed for a [native feel](../ux/theming.md)).

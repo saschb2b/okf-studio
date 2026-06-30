@@ -1,7 +1,8 @@
 // The top chrome bar: Open Folder, back/forward history, the current bundle
-// name, and the right-side cluster (layout switch, reading prefs). App-level
+// name, and the right-side cluster (layout switch · window controls). App-level
 // actions (Settings, shortcuts) live in the [ActivityBar]; the validation issue
-// indicator and the Log toggle live in the [StatusBar] — neither floats here.
+// indicator and Log toggle in the [StatusBar]; reading prefs ("Aa") with the
+// content in the [Reader]. The title bar holds only frequent, primary controls.
 // See docs/ux/browsing-layout.md.
 
 import { useRef } from "react";
@@ -13,7 +14,6 @@ import type { LayoutMode } from "../store.tsx";
 import { isMac, modKey } from "../platform.ts";
 import { startWindowDrag, toggleMaximizeWindow } from "../window.ts";
 import { BundleSwitcher } from "./BundleSwitcher.tsx";
-import { ReaderPrefs } from "./ReaderPrefs.tsx";
 import { WindowControls } from "./WindowControls.tsx";
 import "./chrome.css";
 import "./baseui.css";
@@ -190,12 +190,6 @@ export function TopBar() {
                   </Tooltip.Portal>
                 </Tooltip.Root>
               ))}
-            </Toolbar.Group>
-          )}
-
-          {state.bundle && state.layout !== "graph" && (
-            <Toolbar.Group className="topbar-actions">
-              <ReaderPrefs />
             </Toolbar.Group>
           )}
 

@@ -51,6 +51,23 @@
   gap: var(--space-8);
 }
 
+/* Top row: breadcrumb (left) and the "Aa" reading-preferences control (right). */
+.reader-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+/* Compact, quiet "Aa" trigger — it sits with the content, not in the chrome. */
+.reader-prefs-btn {
+  flex: 0 0 auto;
+  padding: var(--space-4) var(--space-8);
+  color: var(--text-dim);
+}
+.reader-prefs-btn:hover {
+  color: var(--text);
+}
+
 /* Breadcrumb: the concept's place in the bundle (orientation, not links yet). */
 .reader-crumbs {
   display: flex;

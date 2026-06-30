@@ -12,7 +12,9 @@ import { titleOf, conceptById } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { renderMarkdown, resolveHref } from "../markdown.ts";
 import type { Bundle, Concept } from "../types.ts";
+import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "../odsf.ts";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
+import { TokenViz } from "./TokenViz.tsx";
 import "./Reader.css";
 
 interface OutlineItem {
@@ -196,6 +198,10 @@ export function Reader() {
   );
   const typeColor = palette.color(c.type);
   const related = relatedByTag(bundle, c);
+  // Design-system (ODSF) extras, feature-detected — null/empty on plain OKF.
+  const status = conceptStatus(c);
+  const appliesTo = conceptAppliesTo(c);
+  const tokenIndex = buildTokenIndex(bundle);
   // Side rail in reader-only mode; otherwise (split / narrow) it falls below.
   const railSide = state.layout === "reader";
   // Breadcrumb: the concept's directory path (its place in the bundle).
@@ -265,12 +271,22 @@ export function Reader() {
             )}
             <ReaderPrefs />
           </div>
-          <span
-            className="type-badge"
-            style={{ color: typeColor, borderColor: typeColor }}
-          >
-            {c.type}
-          </span>
+          <div className="reader-labels">
+            <span
+              className="type-badge"
+              style={{ color: typeColor, borderColor: typeColor }}
+            >
+              {c.type}
+            </span>
+            {status && (
+              <span className="status-badge" data-status={status}>
+                {status}
+              </span>
+            )}
+            {appliesTo.length > 0 && (
+              <span className="applies-badge">{appliesTo.join(" · ")}</span>
+            )}
+          </div>
           <h1>{c.title}</h1>
           {c.description && <p className="desc">{c.description}</p>}
 
@@ -284,6 +300,10 @@ export function Reader() {
             </ul>
           )}
         </header>
+
+        {/* Design-token visualizations (ODSF): swatches, specimens, scales —
+            renders nothing for a concept without tokens. */}
+        <TokenViz concept={c} index={tokenIndex} />
 
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- delegated routing for in-body <a>s, which are natively keyboard-accessible (Enter fires a bubbling click) */}
         <div

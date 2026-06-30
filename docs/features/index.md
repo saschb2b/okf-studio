@@ -6,6 +6,7 @@ One concept per user-facing capability. Together these define the v1 read loop (
 * [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.
 * [Graph View](graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Concept Reader](concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
+* [Design-System Rendering](design-system-rendering.md) - Render an ODSF bundle's tokens (swatches, specimens, scales) and example assets natively.
 * [Search & Filter](search-and-filter.md) - Full-text search, type filters, and tag browsing.
 * [Navigation](navigation.md) - Progressive disclosure from index.md, link following, and history.
 * [Command Palette](command-palette.md) - Jump to any concept and run quick actions from the keyboard.

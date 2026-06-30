@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-06-30T18:00:00Z
+timestamp: 2026-06-30T18:30:00Z
 ---
 
 # What it does
@@ -22,8 +22,9 @@ This is **responsive**: when the pane is narrow (or in the [split layout](../ux/
 # Header
 
 - A **breadcrumb** of the concept's index path (e.g. `Architecture / Data Model`), orienting the reader in the bundle ([Navigation](navigation.md)).
-- A **type badge** colored to match the [graph palette](../ux/theming.md), the **title**, and a lead **description**.
+- A **type badge** colored to match the [graph palette](../ux/theming.md), the **title**, and a lead **description**. A design-system concept also shows its **status** and **applies_to** here — see [Design-System Rendering](design-system-rendering.md).
 - Technical metadata (Concept ID, timestamp, `resource`) lives in the rail's **Details** module rather than as a wall of labels above the prose.
+- A concept that carries design **tokens** renders them as a visualization (swatches, type specimens, scales, or a token table) between the header and the body — see [Design-System Rendering](design-system-rendering.md).
 
 # Body — a polished Markdown renderer
 

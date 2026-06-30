@@ -1,0 +1,184 @@
+/* Design-token visualizations in the reader. Chrome uses theme variables only;
+   the literal colors that appear inline (swatch fills, token dots) are token
+   *values* — data, not chrome. See docs/features/design-system-rendering.md. */
+
+.token-viz {
+  margin: 0 0 var(--space-32);
+}
+.token-viz-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-12);
+}
+
+/* ---- Color swatches ---- */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-12);
+}
+.swatch {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elev);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color var(--dur);
+}
+.swatch:hover {
+  border-color: var(--accent);
+}
+.swatch:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
+}
+.swatch-chip {
+  position: relative;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.swatch-copied {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.swatch-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-8) var(--space-10);
+  min-width: 0;
+}
+.swatch-name {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.swatch-val {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
+/* ---- Typography specimens ---- */
+.specimens {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+.specimen {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-12) var(--space-16);
+  background: var(--bg-elev);
+}
+.specimen-label {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  margin-bottom: var(--space-8);
+}
+.specimen-sample {
+  color: var(--text);
+}
+
+/* ---- Spacing / scale bars ---- */
+.scale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.scale-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: var(--space-16);
+}
+.scale-key {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.scale-track {
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+}
+.scale-bar {
+  height: 14px;
+  max-width: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Radius / elevation boxes ---- */
+.boxes {
+  display: flex;
+  gap: var(--space-20);
+  flex-wrap: wrap;
+}
+.box {
+  width: 104px;
+}
+.box-demo {
+  height: 64px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+.box-key {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  margin-top: var(--space-6);
+}
+.box-val {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Token table ---- */
+.token-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.token-table th,
+.token-table td {
+  text-align: left;
+  padding: var(--space-8) var(--space-10);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  vertical-align: top;
+}
+.token-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.token-table td.tok {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+.tok-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  margin-right: var(--space-6);
+  vertical-align: -1px;
+  border: 1px solid var(--border);
+}

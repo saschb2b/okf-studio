@@ -88,11 +88,48 @@
 /* The base .type-badge sets shape/size; we tint it from the type palette and
    make the border visible so the type color reads on either theme. */
 .concept-reader .type-badge {
-  align-self: flex-start;
   margin-bottom: 0;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   font-weight: 600;
+}
+
+/* A row of concept labels: type badge, design-system status, applies-to. */
+.reader-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+/* Lifecycle status (ODSF): quiet by default, colored only to flag the
+   exception — experimental and (especially) deprecated. */
+.status-badge {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-8);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  text-transform: capitalize;
+}
+.status-badge[data-status="stable"] {
+  color: var(--ok);
+}
+.status-badge[data-status="experimental"] {
+  color: var(--warn);
+}
+.status-badge[data-status="deprecated"] {
+  color: var(--error);
+}
+.applies-badge {
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-8);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
 }
 
 .concept-reader h1 {

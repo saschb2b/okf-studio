@@ -161,11 +161,141 @@ function generated(): RawConcept[] {
   return out;
 }
 
+// A small ODSF (design-system) cluster so the rich-artifact rendering — token
+// swatches, type specimens, spacing scales, the component token table, and the
+// live example preview — has data to render off-Tauri (browser + tests). These
+// are conformant OKF concepts that additionally carry ODSF `tokens`/`examples`
+// in `extra`, exactly as the indentation-aware core parser produces them.
+const designSystem: RawConcept[] = [
+  {
+    id: "design/color",
+    type: "Color",
+    title: "Color",
+    description: "Functional foreground, background, and border roles.",
+    tags: ["foundations", "color", "tokens"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "stable",
+      tokens: {
+        colors: {
+          "fgColor-default": "#1f2328",
+          "fgColor-muted": "#59636e",
+          "fgColor-accent": "#0969da",
+          "fgColor-success": "#1a7f37",
+          "fgColor-danger": "#d1242f",
+          "bgColor-default": "#ffffff",
+          "bgColor-muted": "#f6f8fa",
+          "bgColor-emphasis": "#25292e",
+          "bgColor-success-emphasis": "#1f883d",
+          "bgColor-danger-emphasis": "#cf222e",
+          "borderColor-default": "#d1d9e0",
+        },
+      },
+    },
+    body:
+      "Color is **functional**, not literal: a component references a role (`fgColor-accent` for a link), never a hex, so the whole UI re-themes by swapping the value behind each role.\n\n" +
+      "# Roles\n\nForeground roles carry text and icons; background roles fill surfaces; border roles draw hairlines.\n\n" +
+      "# Usage\n\nAlways pair a foreground role with its intended background so contrast stays AA in both themes.",
+    links: [],
+    externalLinks: [],
+  },
+  {
+    id: "design/typography",
+    type: "Typography",
+    title: "Typography",
+    description: "A compact type scale over a system font stack.",
+    tags: ["foundations", "typography", "tokens"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "stable",
+      tokens: {
+        typography: {
+          display: { fontSize: "40px", fontWeight: "400", lineHeight: "1.4" },
+          "title-large": { fontSize: "32px", fontWeight: "600", lineHeight: "1.25" },
+          "title-medium": { fontSize: "20px", fontWeight: "600", lineHeight: "1.3" },
+          "body-medium": { fontSize: "14px", fontWeight: "400", lineHeight: "1.5" },
+          "body-small": { fontSize: "12px", fontWeight: "400", lineHeight: "1.4" },
+        },
+      },
+    },
+    body:
+      "A small set of text roles on a 14px product base.\n\n" +
+      "# Usage\n\nReach for `body-medium` for UI text and the `title-*` roles for headings; `display` is for hero moments only.",
+    links: [],
+    externalLinks: [],
+  },
+  {
+    id: "design/spacing",
+    type: "Spacing",
+    title: "Spacing",
+    description: "The 4px-based spacing scale.",
+    tags: ["foundations", "spacing", "tokens"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "stable",
+      tokens: {
+        spacing: {
+          "1": "4px",
+          "2": "8px",
+          "3": "16px",
+          "4": "24px",
+          "5": "32px",
+          "6": "48px",
+          "7": "64px",
+        },
+      },
+    },
+    body:
+      "Every gap, pad, and margin snaps to this scale so rhythm stays consistent.\n\n" +
+      "# Usage\n\nPrefer a single `gap` on a container over per-child margins.",
+    links: [],
+    externalLinks: [],
+  },
+  {
+    id: "design/button",
+    type: "Component",
+    title: "Button",
+    description: "Default, the green primary, and danger variants.",
+    tags: ["components", "button", "action"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "stable",
+      applies_to: ["web"],
+      examples: ["button.example.html"],
+      tokens: {
+        "button-default": {
+          background: "{colors.bgColor-muted}",
+          color: "{colors.fgColor-default}",
+          border: "{colors.borderColor-default}",
+        },
+        "button-primary": {
+          background: "{colors.bgColor-success-emphasis}",
+          color: "#ffffff",
+        },
+        "button-danger": {
+          color: "{colors.fgColor-danger}",
+        },
+      },
+    },
+    body:
+      "The primary button is **green** — every variant resolves to functional [color](color.md) tokens, so the set re-themes with no markup change.\n\n" +
+      "# Anatomy\n\nA `<button>` with base `.btn` plus an optional variant modifier.\n\n" +
+      "# Variants & States\n\n| Variant | Use |\n| --- | --- |\n| `.btn` | Default neutral action. |\n| `.btn-primary` | The one affirmative action (green). |\n| `.btn-danger` | Destructive action. |\n\n" +
+      "# Examples\n\n- [button.example.html](button.example.html) — every variant, rendered live.",
+    links: ["design/color"],
+    externalLinks: [],
+  },
+];
+
 export const MOCK_BUNDLE: Bundle = {
   root: `${MOCK_FOLDER}/docs`,
   name: "OKF Viewer (sample)",
   okfVersion: "0.1",
-  concepts: finalize([...raw, ...generated()]),
+  concepts: finalize([...raw, ...designSystem, ...generated()]),
   indexes: [
     {
       dir: "",

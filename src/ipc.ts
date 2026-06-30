@@ -4,7 +4,7 @@
 
 import type { Bundle, BundleRoot, RecentBundle, Settings } from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
-import { MOCK_BUNDLE, MOCK_FOLDER, MOCK_ROOTS } from "./mock/fixture.ts";
+import { MOCK_ASSETS, MOCK_BUNDLE, MOCK_FOLDER, MOCK_ROOTS } from "./mock/fixture.ts";
 
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -35,6 +35,23 @@ export async function readBundle(root: string): Promise<Bundle> {
   if (!isTauri()) return MOCK_BUNDLE;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<Bundle>("read_bundle", { root });
+}
+
+/**
+ * Read one companion asset's text (an ODSF `*.example.html` preview or a
+ * `styles/*.css` it links) for the design-system renderer. `rel` is a
+ * bundle-relative path; the Rust core guards against escaping the bundle root
+ * and only serves text assets. Resolves to `null` when the asset is absent or
+ * not permitted, so the caller degrades gracefully. Off-Tauri it serves the
+ * in-memory mock so previews render in the browser and tests.
+ */
+export async function readAsset(
+  root: string,
+  rel: string,
+): Promise<string | null> {
+  if (!isTauri()) return MOCK_ASSETS[rel.replace(/^\/+/, "")] ?? null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("read_asset", { root, rel });
 }
 
 /** Open an external URL in the OS browser (never fetched in-app). */

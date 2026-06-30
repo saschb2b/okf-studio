@@ -18,6 +18,15 @@ fn read_bundle(root: String) -> Bundle {
     okf_core::read_bundle(Path::new(&root))
 }
 
+/// Read one companion asset's text (an ODSF `*.example.html` or a `styles/*.css`
+/// it links) for the design-system renderer. `rel` is a bundle-relative path;
+/// the core guards against escaping the bundle root and only serves text assets.
+/// Returns `null` to the frontend when the asset is absent or not permitted.
+#[tauri::command]
+fn read_asset(root: String, rel: String) -> Option<String> {
+    okf_core::read_asset(Path::new(&root), &rel)
+}
+
 /// Begin watching `folder` recursively for filesystem changes, emitting a
 /// debounced `bundle-changed` event on each burst. Replaces any active watch.
 #[tauri::command]
@@ -80,6 +89,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             scan_bundles,
             read_bundle,
+            read_asset,
             start_watch,
             stop_watch,
             can_self_update

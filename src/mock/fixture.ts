@@ -210,6 +210,14 @@ export const MOCK_BUNDLE: Bundle = {
   confidence: "confident",
 };
 
+/**
+ * Companion assets (ODSF example HTML / CSS) keyed by bundle-relative path, so
+ * the design-system renderer's previews resolve off-Tauri (browser + tests)
+ * exactly as `read_asset` serves them in the desktop app. Populated alongside
+ * the sample design-system concepts the previews reference.
+ */
+export const MOCK_ASSETS: Record<string, string> = {};
+
 export const MOCK_ROOTS: BundleRoot[] = [
   {
     root: MOCK_BUNDLE.root,

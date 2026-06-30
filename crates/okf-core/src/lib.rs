@@ -4,6 +4,7 @@
 //! bundle detection, OKF parsing, graph/backlink computation, and validation,
 //! producing the [`model`] types the Tauri layer serializes to the frontend.
 
+pub mod asset;
 pub mod detect;
 pub mod frontmatter;
 pub mod graph;
@@ -35,4 +36,11 @@ pub fn scan_bundles_with_depth(folder: &Path, max_depth: usize) -> Vec<BundleRoo
 /// Parse a detected bundle root into a full [`Bundle`] — see `docs/architecture/okf-parsing.md`.
 pub fn read_bundle(root: &Path) -> Bundle {
     parse::read_bundle(root)
+}
+
+/// Read one companion asset's text from a bundle (an ODSF example HTML or the
+/// stylesheet it links), or `None` if it is absent, the wrong type, or escapes
+/// the bundle root. See [`asset::read_asset`].
+pub fn read_asset(root: &Path, rel: &str) -> Option<String> {
+    asset::read_asset(root, rel)
 }

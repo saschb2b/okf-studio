@@ -39,6 +39,10 @@
   gap: var(--space-8);
   min-width: 0;
   justify-self: end;
+  /* Stretch to the row's full height so WindowControls can in turn stretch to
+     fill the title bar — native caption buttons span its full height, not
+     just the height of their own icon. */
+  align-self: stretch;
 }
 
 .topbar-nav {

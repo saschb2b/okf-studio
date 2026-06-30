@@ -3,14 +3,14 @@ type: Design Principle
 title: Design Principles
 description: The non-negotiable principles every OKF Viewer feature and decision must respect.
 tags: [product, principles]
-timestamp: 2026-06-28T00:00:00Z
+timestamp: 2026-06-30T22:00:00Z
 ---
 
 # Principles
 
 These are the constraints behind every [feature](../features/) and [architecture decision](../architecture/). When a trade-off is unclear, the earlier principle wins.
 
-1. **Local-first and offline.** No server, no account, no network round-trip to read a bundle. Everything runs on the user's machine against the local filesystem. The app must work fully air-gapped.
+1. **Local-first and offline.** No server, no account, no network round-trip to read a bundle. Everything runs on the user's machine against the local filesystem, and the app works fully air-gapped. The **single** exception is **opt-in**: a user-initiated "Check for updates" ([Settings](../ux/settings.md)) is the only network call the app ever makes, and it is never automatic — so the default experience stays offline and there is no silent phone-home.
 
 2. **Vendor-neutral.** The viewer renders *any* conformant OKF bundle from any producer — not just bundles we made. It targets the [format](../reference/okf-spec-summary.md), never a specific tool or schema.
 

@@ -43,10 +43,20 @@ fn stop_watch(state: State<'_, WatchState>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::init());
+
+    // Opt-in updater — the user triggers a check from Settings; the app never
+    // checks on its own (see docs/ux/settings.md). `process` is needed to
+    // relaunch after an update installs. Desktop only.
+    #[cfg(desktop)]
+    let builder = builder
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
+
+    builder
         .setup(|app| {
             app.manage(WatchState::default());
             Ok(())

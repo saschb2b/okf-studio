@@ -3,7 +3,7 @@
 // Select / Checkbox / NumberField. Appearance is our design tokens. Opens with
 // Ctrl/Cmd+, . See docs/ux/settings.md.
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Select } from "@base-ui/react/select";
 import { Checkbox } from "@base-ui/react/checkbox";
@@ -13,6 +13,8 @@ import { DEFAULT_SETTINGS } from "../types.ts";
 import type { ThemeMode } from "../types.ts";
 import { ZOOM_EVENT } from "../native.ts";
 import type { ZoomIntent } from "../native.ts";
+import { checkForUpdate } from "../updater.ts";
+import type { UpdateStatus } from "../updater.ts";
 import "./chrome.css";
 import "./baseui.css";
 import "./Settings.css";
@@ -50,9 +52,26 @@ function scaleLabel(v: number): string {
   return SCALE_LABELS[String(v)] ?? `${Math.round(v * 100)}%`;
 }
 
+function updateHint(s: UpdateStatus): string {
+  switch (s.kind) {
+    case "checking":
+      return "Checking the latest release…";
+    case "downloading":
+      return "Downloading and installing — the app will restart.";
+    case "uptodate":
+      return "You're on the latest version.";
+    case "error":
+      return s.message;
+    case "idle":
+      return "OKF Viewer only checks when you ask — never on its own.";
+  }
+}
+
 export function Settings() {
   const { state, actions } = useApp();
   const s = state.settings;
+  const [update, setUpdate] = useState<UpdateStatus>({ kind: "idle" });
+  const updateBusy = update.kind === "checking" || update.kind === "downloading";
 
   // Remap the suppressed browser zoom keys/gestures to reader text-size.
   // native.ts dispatches `okf:zoom` on window when Ctrl/Cmd +/-/0 or Ctrl+wheel
@@ -202,6 +221,24 @@ export function Settings() {
             <span className="field-hint muted">
               How deep autodetect descends into subfolders.
             </span>
+          </div>
+
+          <div className="field">
+            <span className="field-label">Updates</span>
+            <button
+              className="btn"
+              disabled={updateBusy}
+              onClick={() => {
+                void checkForUpdate(setUpdate);
+              }}
+            >
+              {update.kind === "checking"
+                ? "Checking…"
+                : update.kind === "downloading"
+                  ? `Downloading v${update.version}…`
+                  : "Check for updates"}
+            </button>
+            <span className="field-hint muted">{updateHint(update)}</span>
           </div>
 
           <footer className="ui-dialog-foot">

@@ -1,7 +1,7 @@
 {
   "name": "okf-viewer",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "Point it at a folder. Read your knowledge as a graph.",
   "scripts": {
@@ -21,7 +21,9 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-store": "^2",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "dompurify": "^3",
     "marked": "^15",
     "react": "^19",

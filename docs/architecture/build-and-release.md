@@ -3,12 +3,12 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-06-30T21:00:00Z
+timestamp: 2026-06-30T22:00:00Z
 ---
 
 # Decision
 
-The app ships as native installers per platform, built by `tauri build` on a per-OS CI matrix. No code signing and no auto-update are assumed for v1 — distribution is a manual download — and the build honors the offline principle by phoning home neither at build time nor at runtime.
+The app ships as native installers per platform, built by `tauri build` on a per-OS CI matrix. No OS code signing for v1 (users see an "unverified publisher" prompt). Updates are **opt-in** — a user-initiated "Check for updates" via Tauri's signed updater — so the build still honors the offline principle: it phones home neither at build time nor automatically at runtime.
 
 # Packaging
 
@@ -44,7 +44,12 @@ Two version numbers stay deliberately distinct:
 
 # Updates
 
-In v1, updates are a **manual download** of the new installer — consistent with the offline, no-account stance. **Auto-update** (Tauri's updater) is a deliberate post-v1 idea, recorded as out of scope for now (see [Scope & Non-Goals](../product/scope-and-non-goals.md)); adopting it later would mean introducing a network path, which must be weighed against the offline principle.
+Updates are **opt-in**, via Tauri's updater plugin: the user clicks "Check for updates" in [Settings](../ux/settings.md) — the app never checks on its own, so the offline-by-default stance holds (see [Design Principles](../product/principles.md)). The check hits a single stable endpoint, GitHub's `releases/latest/download/latest.json`, which always serves the newest release's updater manifest; `tauri-action` generates and uploads that manifest (`includeUpdaterJson`).
+
+- **Signing is mandatory.** The updater verifies a **minisign** signature on each artifact (it cannot be disabled). The public key lives in `tauri.conf.json`; the private key + password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing (which is still not done — see above).
+- **Update vehicles:** the **AppImage** on Linux and **NSIS** on Windows. The **`.deb` is not auto-updated** by Tauri (its updates go through the system package manager / manual download), so `.deb` users update by reinstalling.
+
+Silent/automatic updates remain out of scope — the network call only ever happens on an explicit user action.
 
 # Install & uninstall
 
@@ -52,4 +57,4 @@ Following platform install best practices: installers target a **per-user instal
 
 # Offline build, no phone-home
 
-The [local-first / offline principle](../product/principles.md) extends to the build. The shipped binary declares **no network capability** ([IPC & Security](ipc-and-security.md)): no telemetry, no update check, no license call. There is nothing to disable for air-gapped use — the absence of a network path is the default, by construction.
+The [local-first / offline principle](../product/principles.md) extends to the build. The shipped binary sends **no telemetry**, makes **no automatic network calls**, and has no license call. The one network path is the **user-initiated** update check above — never automatic — so the app is still air-gapped by default; an offline user simply never clicks "Check for updates" and nothing reaches out.

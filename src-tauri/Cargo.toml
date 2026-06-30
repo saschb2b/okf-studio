@@ -26,3 +26,10 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 okf-core = { path = "../crates/okf-core" }
 notify = "6"
+
+# Opt-in update check against the latest GitHub release (see
+# docs/architecture/build-and-release.md). process is needed to relaunch after
+# an update. Desktop only.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"

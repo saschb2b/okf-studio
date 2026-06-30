@@ -18,20 +18,26 @@ jobs:
       matrix:
         include:
           # .deb links against the *system* libraries, so building on an older
-          # base keeps it installable on 22.04 and every newer release.
+          # base keeps it installable on 22.04 and every newer release. Not an
+          # updater target (deb updates go through the system package manager).
           - platform: ubuntu-22.04
             label: deb
             args: --bundles deb
+            updaterJson: false
           # The AppImage *bundles* glib/Mesa, so build it on the current LTS:
           # a 22.04-bundled AppImage breaks on modern hosts (glib symbol +
-          # EGL_BAD_PARAMETER). 26.04 is a preview runner for now.
+          # EGL_BAD_PARAMETER). 26.04 is a preview runner for now. This is the
+          # Linux updater target.
           - platform: ubuntu-26.04
             label: appimage
             args: --bundles appimage
-          # Windows: .msi + NSIS .exe (from the tauri.conf bundle targets).
+            updaterJson: true
+          # Windows: .msi + NSIS .exe (from the tauri.conf bundle targets); NSIS
+          # is the updater target.
           - platform: windows-latest
             label: msi+nsis
             args: ""
+            updaterJson: true
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +86,15 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updater signing — set these repo secrets before the first signed
+          # release (`pnpm tauri signer generate`); without them the
+          # updater-target builds (AppImage, NSIS) fail to sign.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tauriScript: pnpm tauri
           releaseId: ${{ github.event.release.id }}
           args: ${{ matrix.args }}
+          # Generates/merges latest.json (the updater manifest) on the updater
+          # target jobs only; the .deb job skips it.
+          includeUpdaterJson: ${{ matrix.updaterJson }}

@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What ships in v1, what is deferred, and what OKF Viewer deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-06-29T16:00:00Z
+timestamp: 2026-06-30T22:00:00Z
 ---
 
 # v1 scope (the MVP)
@@ -33,6 +33,6 @@ The first release must deliver the full read loop end to end:
 
 - **Not an editor (in v1).** OKF Viewer reads bundles; it does not author or mutate them. (Authoring belongs to a producer such as the `okf` skill.) Editing may be revisited later, but read-only is the default forever.
 - **Not a general markdown wiki.** It renders markdown, but it is organized around OKF concepts, types, and links — not arbitrary note-taking.
-- **Not a cloud / sync product.** No backend, no accounts, no telemetry. See [Design Principles](principles.md).
+- **Not a cloud / sync product.** No backend, no accounts, no telemetry. Software updates are **opt-in** (a user-initiated "Check for updates"), never silent or automatic. See [Design Principles](principles.md).
 - **Not a validator CLI.** It surfaces conformance in the UI, but the canonical checker remains the standalone `scripts/okf-validate.mjs`.
 - **Not tied to one bundle schema.** It must never assume a specific set of `type` values or domain.

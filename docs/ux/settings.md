@@ -3,12 +3,12 @@ type: Reference
 title: Settings & Preferences
 description: The preferences surface — theme, reader text size, scan tuning, motion, and reset.
 tags: [ux, settings, preferences]
-timestamp: 2026-06-30T10:00:00Z
+timestamp: 2026-06-30T22:00:00Z
 ---
 
 # Opening Settings
 
-Settings open from the **⚙ at the foot of the [Activity Bar](browsing-layout.md)** (the desktop convention — like VS Code's "Manage" gear at the bottom of its rail, not a gear floating in the title bar), with `Ctrl/Cmd + ,` (see [Keyboard Shortcuts](keyboard-shortcuts.md)), and from the [command palette](../features/command-palette.md). It is a small, local preferences surface — there is deliberately no account and no cloud sync, per the [local-first principle](../product/principles.md).
+Settings open from the **⚙ at the foot of the [Activity Bar](browsing-layout.md)** (the desktop convention — like VS Code's "Manage" gear at the bottom of its rail, not a gear floating in the title bar), with `Ctrl/Cmd + ,` (see [Keyboard Shortcuts](keyboard-shortcuts.md)), and from the [command palette](../features/command-palette.md). It is a small, local preferences surface — there is deliberately no account and no cloud sync, per the [local-first principle](../product/principles.md). The one place it touches the network is an **opt-in** "Check for updates" (below), which runs only when the user clicks it — never automatically.
 
 # Preferences
 
@@ -17,6 +17,7 @@ Settings open from the **⚙ at the foot of the [Activity Bar](browsing-layout.m
 - **Recent bundles** are no longer managed here — they moved to the top-left [Bundle Switcher](../features/bundle-switcher.md) (pin and remove there), closer to where you actually switch context. The [First Run](first-run.md) re-entry flow surfaces them on launch.
 - **Scan tuning.** The **max depth** the [autodetect](../features/folder-autodetect.md) scan descends is user-configurable and drives [detection](../architecture/bundle-detection.md). The **ignore-list** of skipped directories (`.git`, `node_modules`, `target`, `dist`, `build`, `.venv`, and hidden dirs) is a fixed sensible default for now; making it editable is a [later](../product/scope-and-non-goals.md) refinement.
 - **Reduce motion.** Override the OS reduce-motion setting honored in [Accessibility](accessibility.md).
+- **Check for updates.** An **opt-in** button that checks the latest GitHub release via the [updater](../architecture/build-and-release.md), then downloads, installs, and relaunches — only when clicked. It is the app's sole network path; the rest of the app stays offline. (Desktop only; in the dev/web build it reports as unavailable.)
 - **Reset to defaults.** Restore every preference above to its shipped default.
 
 # Persistence

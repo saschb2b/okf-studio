@@ -1,0 +1,335 @@
+/* Graph View — canvas fills the graph pane; overlay controls float on top.
+   Colors come from the global role variables (styles.css). */
+
+.graph-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.graph-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none; /* let pointer drag/pan work without browser gestures */
+}
+
+.graph-canvas:active {
+  cursor: grabbing;
+}
+
+.graph-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  z-index: 2;
+}
+
+.graph-btn {
+  font: inherit;
+  font-size: var(--fs-md);
+  line-height: 1;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.graph-btn:hover {
+  background: var(--bg-sunken);
+}
+
+.graph-btn:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.graph-fit {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.graph-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* Controls panel (top-left), Obsidian-style. */
+.graph-panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-6);
+  max-width: 280px;
+}
+
+.graph-panel-toggle {
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: var(--space-6) var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.graph-panel-toggle:hover {
+  background: var(--bg-sunken);
+}
+
+.graph-panel-toggle:focus-visible,
+.graph-panel-reset:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Appearance (bg/border/shadow/padding) comes from .ui-popover; this only
+   sizes and lays out the controls. */
+.graph-panel-body {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  /* Never exceed the viewport — long panels scroll inside the popover. */
+  max-height: min(72vh, 660px);
+  overflow-y: auto;
+}
+
+.graph-panel-body fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.graph-panel-body legend {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  padding: 0;
+}
+
+/* One-line description under a section header. */
+.graph-section-desc {
+  margin: calc(var(--space-2) * -1) 0 var(--space-2);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* Dynamic hint explaining the currently-selected segmented option. */
+.graph-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.graph-slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
+  color: var(--text);
+}
+
+.graph-slider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.graph-slider-label {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.graph-slider-value {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.graph-slider-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.graph-panel-reset {
+  font: inherit;
+  font-size: var(--fs-xs);
+  align-self: flex-end;
+  padding: var(--space-4) var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.graph-panel-reset:hover {
+  background: var(--bg-sunken);
+}
+
+/* Mode toggle (Overview/Focus) + depth stepper — top center. */
+.graph-mode {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.graph-seg,
+.graph-depth {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
+}
+
+.graph-depth-label {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  padding: 0 var(--space-4);
+}
+
+/* Full-width segmented control inside the controls panel: a recessed track with
+   equal-width options (no floating shadow — it sits inside the popover). */
+.graph-seg-full {
+  display: flex;
+  width: 100%;
+  background: var(--bg-sunken);
+  box-shadow: none;
+}
+.graph-seg-full .graph-seg-btn {
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+}
+
+.graph-seg-btn {
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+  min-width: 26px;
+  padding: var(--space-6) var(--space-10);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.graph-seg-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.graph-seg-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.graph-seg-btn:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.graph-mode-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
+}
+
+/* Defect count chip — bottom left, validation severity feel. */
+.graph-chips {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  gap: var(--space-6);
+}
+
+.graph-chip {
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.graph-chip:hover {
+  background: var(--bg-sunken);
+}
+
+.graph-chip:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.graph-chip-warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.graph-chip-active {
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.graph-chip-active:hover {
+  background: var(--accent);
+  opacity: 0.9;
+}

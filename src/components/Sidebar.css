@@ -1,0 +1,353 @@
+/* Sidebar styles — scoped to .sb. Color comes only from the global role vars
+   (--bg, --bg-elev, --bg-sunken, --text, --text-dim, --accent, --border); type
+   swatches/dots are inlined from the JS palette. No hardcoded hex here. */
+
+.sb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  padding: var(--space-10);
+  min-height: 0;
+  height: 100%;
+}
+
+/* Below the persistent search box: the active lens's content, filling the
+   remaining height. The lens/visibility switchers live in the Activity Bar. */
+.sb-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable body: fills the sidebar and owns the only scroll. */
+.sb-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.sb-scroll-viewport {
+  /* Padding so content (and focus rings) clear the themed scrollbar. */
+  padding-right: var(--space-4);
+}
+.sb-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+/* Collapsible top-level sections. */
+.sb-collapsible {
+  display: flex;
+  flex-direction: column;
+}
+.sb-collapsible .ui-collapsible-panel {
+  /* Body content spacing lives on the inner .sb-section wrappers. */
+  padding-top: var(--space-2);
+}
+/* The Index tree section should be able to grow when expanded. */
+.sb-collapsible-tree {
+  min-height: 0;
+}
+
+/* The inner components keep their own <section><h2> markup; the collapsible
+   trigger now provides the visible heading, so suppress the redundant title. */
+.sb-collapsible .ui-collapsible-panel .sb-section-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sb-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.sb-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+.sb-section-head--end {
+  justify-content: flex-end;
+}
+
+.sb-section-title {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.sb-link-btn {
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.sb-link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ---- Shared focus ring ---- */
+.sb button:focus-visible,
+.sb input:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- Search ---- */
+.sb-search-wrap {
+  position: relative;
+}
+.sb-search {
+  font: inherit;
+  width: 100%;
+  padding: var(--space-8) var(--space-32) var(--space-8) var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+}
+.sb-search::placeholder {
+  color: var(--text-dim);
+}
+.sb-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: 1;
+  cursor: pointer;
+}
+.sb-search-clear:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+/* ---- Type filters (legend) ---- */
+.sb-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+/* Legend rows are full-width Toggles; they reuse the .ui-toggle focus/press
+   semantics but keep the borderless, non-chip row look. The compound selector
+   (.sb-legend-item.ui-toggle) outranks the single-class .ui-toggle rules. */
+.sb-legend-item.ui-toggle,
+.sb-legend-item {
+  width: 100%;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.sb-legend-item.ui-toggle:hover,
+.sb-legend-item:hover {
+  background: var(--bg-sunken);
+}
+/* A visible (pressed) type is the default state — don't fill the row with the
+   accent the way a chip would; the dimmed/struck state marks hidden types. */
+.sb-legend-item.ui-toggle[data-pressed] {
+  background: transparent;
+  color: var(--text);
+}
+.sb-legend-item.ui-toggle[data-pressed]:hover {
+  background: var(--bg-sunken);
+}
+.sb-legend-item.is-hidden {
+  color: var(--text-dim);
+}
+.sb-legend-item.is-hidden .sb-legend-label {
+  text-decoration: line-through;
+}
+.sb-legend-item.is-hidden .sb-swatch {
+  opacity: 0.35;
+}
+.sb-swatch {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  border-radius: var(--radius-sm);
+}
+.sb-legend-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.sb-legend-count {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Tag browser ---- */
+.sb-tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+/* Tag chips are Toggles; keep the pill radius/layout, let .ui-toggle drive the
+   pressed (active) styling. Compound selector outranks single-class .ui-toggle. */
+.sb-tag.ui-toggle,
+.sb-tag {
+  font: inherit;
+  font-size: var(--fs-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 3px var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.sb-tag.ui-toggle:hover,
+.sb-tag:hover {
+  background: var(--bg-sunken);
+}
+.sb-tag.ui-toggle[data-pressed],
+.sb-tag.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.sb-tag-count {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.sb-tag.is-active .sb-tag-count {
+  color: var(--accent-contrast);
+  opacity: 0.85;
+}
+
+/* ---- Index tree ---- */
+.sb-tree-section {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.sb-tree {
+  min-height: 0;
+}
+.sb-tree-group,
+.sb-tree-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sb-tree-sec {
+  margin-bottom: var(--space-2);
+}
+.sb-tree-heading {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: var(--space-6) var(--space-6) var(--space-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sb-tree-li {
+  margin: 0;
+}
+.sb-tree-item {
+  width: 100%;
+  font: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.sb-tree-item:hover {
+  background: var(--bg-sunken);
+}
+.sb-tree-concept.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.sb-tree-concept.is-dimmed {
+  opacity: 0.4;
+}
+.sb-tree-dir {
+  font-weight: 500;
+}
+.sb-tree-dir.is-missing {
+  color: var(--text-dim);
+  cursor: default;
+}
+.sb-twisty {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: 1;
+}
+.sb-tree-concept.is-active .sb-twisty {
+  color: var(--accent-contrast);
+}
+.sb-leaf {
+  /* spacer to align concept labels under directory labels */
+}
+.sb-tree-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-synth {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
+  opacity: 0.8;
+}

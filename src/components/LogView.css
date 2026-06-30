@@ -1,0 +1,103 @@
+/* Log View — co-located styles. Inherits the base .panel docking (fixed, right
+   edge, full height) from styles.css; the flex-column / no-padding popup layout
+   and shared .panel-head live in ValidationPanel.css (both bundle app-wide).
+   Colors come from role variables for light/dark parity. */
+
+.log-panel .log-title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+/* The ScrollArea fills the space below the header. */
+.log-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* The base .panel had padding; with that removed on the popup, pad the
+   scrolling content instead. */
+.log-scroll .ui-scrollarea-viewport > * {
+  padding: var(--space-12) var(--space-12);
+}
+
+.log-empty {
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-12) var(--space-12);
+}
+
+.log-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.log-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.log-date {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Rendered markdown change lines. */
+.log-body.markdown {
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--text);
+}
+.log-body.markdown > :first-child {
+  margin-top: 0;
+}
+.log-body.markdown > :last-child {
+  margin-bottom: 0;
+}
+.log-body p {
+  margin: 0.4em 0;
+}
+.log-body ul,
+.log-body ol {
+  margin: 0.3em 0;
+  padding-left: 1.3em;
+}
+.log-body li {
+  margin: 0.15em 0;
+}
+.log-body a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.log-body a:hover {
+  text-decoration: underline;
+}
+.log-body code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--bg-sunken);
+  padding: 1px var(--space-4);
+  border-radius: var(--radius-sm);
+}
+.log-body pre {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-10) var(--space-12);
+  overflow-x: auto;
+}
+.log-body pre code {
+  background: none;
+  padding: 0;
+}

@@ -1,0 +1,158 @@
+/* Command Palette: a centered modal navigator/launcher built on a Base UI
+   Dialog. The overlay/shell come from .ui-backdrop / .ui-dialog (baseui.css);
+   .palette-dialog only sizes the dialog and lays out the inner column. */
+
+.palette-dialog {
+  width: 560px;
+  /* override .ui-dialog's scroll: the list scrolls on its own */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.palette-input {
+  font: inherit;
+  font-size: var(--fs-sm);
+  width: 100%;
+  padding: var(--space-16);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+.palette-input::placeholder {
+  color: var(--text-dim);
+}
+.palette-input:focus {
+  outline: none;
+}
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-6);
+  max-height: 50vh;
+  overflow: auto;
+}
+
+/* Result groups (Recent / Concepts / In text / Actions). */
+.palette-group + .palette-group {
+  margin-top: var(--space-6);
+}
+.palette-group-label {
+  display: block;
+  padding: var(--space-6) var(--space-10) var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+}
+/* Base UI marks the active row via [data-highlighted] (keyboard + hover). */
+.palette-item[data-highlighted] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.palette-empty {
+  padding: var(--space-16) var(--space-10);
+  text-align: center;
+}
+
+/* A concept row may carry a one-line text snippet beneath its title/meta. */
+.palette-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+}
+.palette-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.palette-snippet {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.palette-item[data-highlighted] .palette-snippet {
+  color: var(--accent-contrast);
+  opacity: 0.85;
+}
+
+.palette-mark {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+}
+.palette-item[data-highlighted] .palette-mark {
+  background: color-mix(in srgb, var(--accent-contrast) 28%, transparent);
+}
+
+.palette-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.palette-item[data-highlighted] .palette-meta {
+  color: var(--accent-contrast);
+  opacity: 0.85;
+}
+
+.palette-type {
+  padding: var(--space-2) var(--space-8);
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+.palette-item[data-highlighted] .palette-type {
+  background: color-mix(in srgb, var(--accent-contrast) 22%, transparent);
+  color: var(--accent-contrast);
+}
+
+.palette-id,
+.palette-hint {
+  font-family: var(--mono);
+  max-width: 22ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette-foot {
+  display: flex;
+  gap: var(--space-16);
+  padding: var(--space-8) var(--space-16);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  background: var(--bg-sunken);
+}

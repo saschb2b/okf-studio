@@ -1,0 +1,59 @@
+/* Borderless-window resize handles. Thin, transparent, fixed to the viewport
+   edges; z below modal surfaces so dialogs/popovers are never blocked. */
+.rz {
+  position: fixed;
+  z-index: 8;
+}
+.rz-n,
+.rz-s {
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  cursor: ns-resize;
+}
+.rz-e,
+.rz-w {
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  cursor: ew-resize;
+}
+.rz-n {
+  top: 0;
+}
+.rz-s {
+  bottom: 0;
+}
+.rz-e {
+  right: 0;
+}
+.rz-w {
+  left: 0;
+}
+.rz-ne,
+.rz-nw,
+.rz-se,
+.rz-sw {
+  width: 8px;
+  height: 8px;
+}
+.rz-nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+.rz-ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+.rz-sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+.rz-se {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}

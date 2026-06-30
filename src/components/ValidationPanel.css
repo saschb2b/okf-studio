@@ -1,0 +1,151 @@
+/* Validation panel. Inherits the base `.panel` docking (fixed, right edge,
+   full height) from styles.css. Here we add only the internal layout: a fixed
+   header above a flex-growing Base UI ScrollArea, and the issue-list styling.
+   Color comes from role variables; spacing/type/radius from scale tokens. */
+
+/* Override the base `.panel` block-scroll + padding so the header stays put and
+   the body scrolls inside its own ScrollArea instead. */
+.panel.validation,
+.panel.log-panel {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-10) var(--space-12) var(--space-10) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+/* The ScrollArea fills the space below the header. */
+.vp-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.vp-body {
+  padding: var(--space-8) var(--space-12) var(--space-16);
+}
+
+.vp-group + .vp-group {
+  margin-top: var(--space-16);
+}
+
+.vp-group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: var(--space-8) 0 var(--space-6);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.vp-group-head.error {
+  color: var(--error);
+}
+.vp-group-head.warning {
+  color: var(--warn);
+}
+
+.vp-count {
+  font-size: var(--fs-xs);
+  padding: 1px var(--space-8);
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+
+.vp-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vp-issue {
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+  background: var(--bg-sunken);
+}
+.vp-issue.error {
+  border-left-color: var(--error);
+}
+.vp-issue.warning {
+  border-left-color: var(--warn);
+}
+
+.vp-issue-body {
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-6);
+  padding: var(--space-8) var(--space-10);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.vp-issue-body.clickable {
+  cursor: pointer;
+}
+.vp-issue-body.clickable:hover {
+  background: var(--bg);
+}
+.vp-issue-body:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
+}
+
+.vp-lvl {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-sm);
+  flex: 0 0 auto;
+}
+.vp-lvl.error {
+  color: var(--error);
+}
+.vp-lvl.warning {
+  color: var(--warn);
+}
+
+.vp-msg {
+  flex: 1 1 auto;
+  min-width: 60%;
+}
+
+.vp-target {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+
+.vp-conformant {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-16) var(--space-16);
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.vp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.vp-dot.ok {
+  background: var(--ok);
+}

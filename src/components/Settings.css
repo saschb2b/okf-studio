@@ -1,0 +1,28 @@
+/* Settings dialog layout. Surface/backdrop come from baseui.css (.ui-dialog,
+   .ui-backdrop); form controls from Base UI styled in baseui.css. */
+
+.settings-dialog {
+  width: 440px;
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.field.check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.field-label {
+  font-weight: 600;
+}
+.field-hint {
+  font-size: var(--fs-xs);
+}

@@ -1,0 +1,80 @@
+/* The persistent left Activity Bar. A fixed-width vertical column that fills the
+   height between the title bar and the window bottom; view switchers sit at the
+   top and global actions are pinned to the foot. Colors come only from role
+   tokens. See docs/ux/browsing-layout.md. */
+.activity-bar {
+  flex: 0 0 auto;
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) 0;
+  background: var(--bg-elev);
+  border-right: 1px solid var(--border);
+}
+
+.activity-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.activity-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.activity-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+/* The active view switcher (sidebar showing this lens). VS Code marks it with a
+   left accent bar; we tint the icon and recess it. */
+.activity-btn[aria-pressed="true"] {
+  background: var(--bg-sunken);
+  color: var(--accent);
+}
+.activity-btn[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 20px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+.activity-btn:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.activity-icon {
+  font-size: var(--fs-md);
+  line-height: 1;
+}
+
+/* Active-filter indicator: a small accent dot on the Filter icon, so a narrowed
+   graph stays discoverable even when the Filter lens is hidden. */
+.activity-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}

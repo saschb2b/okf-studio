@@ -1,0 +1,56 @@
+name: CI
+
+# Fast checks on every push to main and every pull request. The full per-OS
+# Tauri build is exercised by release.yml (it needs the platform toolchains and
+# a built frontend); CI here stays quick: the whole frontend, and the Rust core.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend — lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  core:
+    name: Rust core — clippy · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      # okf-core is pure Rust (no Tauri/webkit), so it needs no system libraries
+      # and no built frontend — keeping this job fast.
+      - run: cargo clippy -p okf-core --all-targets -- -D warnings
+      - run: cargo test -p okf-core

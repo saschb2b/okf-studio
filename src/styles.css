@@ -1,0 +1,378 @@
+/* OKF Viewer base styles. Color comes from role variables so light/dark and the
+   type palette stay consistent. Component agents add their own scoped styles. */
+
+:root {
+  --bg: #f7f8fa;
+  --bg-elev: #ffffff;
+  --bg-sunken: #eceef2;
+  --text: #1a1d21;
+  --text-dim: #5b626b;
+  --border: #d8dce2;
+  --accent: #2f6df6;
+  --accent-contrast: #ffffff;
+  --error: #c0392b;
+  --warn: #b8860b;
+  --ok: #2e7d52;
+  --shadow: 0 6px 24px rgba(20, 24, 31, 0.14);
+  --scrim: rgba(20, 24, 31, 0.45);
+
+  /* Radius scale */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  /* Window frame corner radius for the borderless window (Zed-style, slight). */
+  --frame-radius: 10px;
+
+  /* Spacing scale (tokens named by px value; 2/4/6/8/10/12 then 4-step) */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+
+  /* Type scale (size + paired line-height) */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-normal: 1.5;
+
+  /* Focus + motion */
+  --focus-w: 2px;
+  --dur: 120ms;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #14171c;
+  --bg-elev: #1c2026;
+  --bg-sunken: #0f1216;
+  --text: #e6e9ee;
+  --text-dim: #9aa3ad;
+  --border: #2c323b;
+  --accent: #5b8cff;
+  --accent-contrast: #0f1216;
+  --error: #ff6b5e;
+  --warn: #e0b341;
+  --ok: #5ed39a;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.62);
+  color-scheme: dark;
+}
+
+:root[data-reduce-motion="true"] * {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  /* Block touchscreen pinch-zoom and double-tap zoom (page-zoom isn't a native
+     desktop behavior); pan-x/pan-y still allows scrolling. Trackpad/gesture
+     pinch is handled in native.ts. */
+  touch-action: pan-x pan-y;
+}
+
+body {
+  font-family: var(--ui);
+  /* Transparent so the borderless window's rounded corners cut out; the opaque
+     surface is painted by .app. */
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Native feel ------------------------------------------------------------- */
+/* Chrome (toolbar, sidebar, badges, panels) is not selectable text — dragging
+   across it should select nothing, like a native app. We opt selectable
+   surfaces back IN below. Web page-zoom and the default context menu are
+   suppressed in JS (src/native.ts). See docs/proposals/native-feel.md. */
+body,
+.app {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Opt real content back into selection/copy: the reader body, code blocks, and
+   any explicitly selectable value (e.g. the concept id). */
+.reader,
+.reader .body,
+.reader code,
+.reader pre,
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Theme-token scrollbars on scrolling surfaces, with a stable gutter so a
+   scrollbar appearing doesn't shift the layout. Firefox/standard properties
+   first, then a WebKit fallback tied to the same tokens. */
+.pane,
+.panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-gutter: stable;
+}
+.pane::-webkit-scrollbar,
+.panel::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.pane::-webkit-scrollbar-track,
+.panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pane::-webkit-scrollbar-thumb,
+.panel::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius);
+  /* Inset the thumb so it reads thin against the track. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.pane::-webkit-scrollbar-thumb:hover,
+.panel::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+  background-clip: padding-box;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  /* The opaque app surface; rounded so the borderless window has soft corners.
+     overflow:hidden clips the panes to the radius. Squared off when maximized. */
+  background: var(--bg);
+  border-radius: var(--frame-radius);
+}
+.app[data-maximized="true"] {
+  border-radius: 0;
+}
+
+/* The body below the title bar: the persistent Activity Bar beside the content
+   (workspace or empty state). The content flexes to fill the rest. */
+.app-main {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.app-main > .workspace,
+.app-main > .empty {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Top bar layout lives in TopBar.css. */
+
+.btn {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+}
+.btn:hover { background: var(--bg-sunken); }
+.btn.primary { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, li:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Workspace: reader-first adaptive layout. The grid template is computed in
+   App.tsx per layout mode from these default tokens + persisted pane sizes.
+   See docs/proposals/reader-first-layout.md. */
+.workspace {
+  /* Defaults consumed by the computed grid template. The reader defaults to a
+     co-equal (>1fr) weight so a fresh split favors content, not a fixed 360px;
+     its measure cap (Reader.css) keeps wide prose readable. */
+  --sidebar-default: 280px;
+  --reader-default: 1.1fr;
+  --graph-min: 280px;
+  --divider-w: 6px;
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Transition the column tracks on mode change; zeroed under reduce-motion by
+     the global :root[data-reduce-motion] rule. */
+  transition: grid-template-columns var(--dur) ease;
+}
+/* During an active divider drag, track the pointer 1:1 (no easing lag). */
+.workspace.dragging {
+  transition: none;
+}
+.pane { min-height: 0; overflow: auto; }
+.sidebar { border-right: 1px solid var(--border); background: var(--bg-elev); }
+.reader { border-left: 1px solid var(--border); background: var(--bg-elev); container-type: inline-size; }
+.graph { background: var(--bg-sunken); position: relative; }
+
+/* Draggable, keyboard-operable column divider between panes. Sits in its own
+   narrow grid track; a wider invisible hit-area straddles the seam. */
+.pane-divider {
+  position: relative;
+  align-self: stretch;
+  cursor: col-resize;
+  background: var(--border);
+  touch-action: none;
+  z-index: 5;
+}
+/* Widen the pointer/touch target beyond the visible rule. */
+.pane-divider::before {
+  content: "";
+  position: absolute;
+  inset: 0 -4px;
+}
+.pane-divider:hover,
+.pane-divider:focus-visible {
+  background: var(--accent);
+}
+.pane-divider:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Sidebar */
+.sidebar-inner { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.search {
+  font: inherit;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+}
+.concept-list { list-style: none; margin: 0; padding: 0; }
+.concept-list li {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.concept-list li:hover { background: var(--bg-sunken); }
+.concept-list li.active { background: var(--accent); color: var(--accent-contrast); }
+
+/* Graph placeholder */
+.graph-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  gap: 4px;
+}
+
+/* Reader styling lives in Reader.css (the single source for the reading pane). */
+
+/* Panels (log / validation) — docked on the right */
+.panel {
+  position: fixed;
+  top: 49px;
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  bottom: 0;
+  background: var(--bg-elev);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  overflow: auto;
+  z-index: 20;
+}
+.panel header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.issues, .panel ul { list-style: none; margin: 0; padding: 0; }
+.issues li { padding: 7px 8px; border-radius: 6px; cursor: pointer; border-left: 3px solid var(--border); margin-bottom: 4px; }
+.issues li.error { border-left-color: var(--error); }
+.issues li.warning { border-left-color: var(--warn); }
+.issues .lvl { font-size: 11px; text-transform: uppercase; color: var(--text-dim); }
+.muted { color: var(--text-dim); }
+.log-entry h4 { margin: 12px 0 4px; }
+
+/* Overlays (palette / settings) */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 50;
+}
+.palette {
+  margin-top: 12vh;
+  width: 560px;
+  max-width: 92vw;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.palette input {
+  font: inherit;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+.palette ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
+.palette li { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+.palette li:hover { background: var(--bg-sunken); }
+.palette small, .concept-list small { color: var(--text-dim); }
+
+.dialog {
+  margin-top: 14vh;
+  width: 420px;
+  max-width: 92vw;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dialog h2 { margin: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field.check { flex-direction: row; align-items: center; gap: 8px; }
+.field select { font: inherit; padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+
+/* Empty state */
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 40px;
+  color: var(--text-dim);
+}
+.empty h1 { color: var(--text); margin: 0; }
+.empty .err { color: var(--error); }

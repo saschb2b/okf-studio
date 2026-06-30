@@ -1,0 +1,133 @@
+/* TopBar layout. Visuals (.btn, .badge) live in chrome.css. */
+
+/* Three zones: left (Bundle Switcher), a window-centered command center
+   (back/forward + search), and right (layout · actions · window controls).
+   The 1fr side columns are equal, so the center column stays centered to the
+   window regardless of the side content's width. */
+.topbar {
+  display: grid;
+  /* The center column owns the command center's width — prominent and
+     responsive (grows with the window, bounded) — while the equal 1fr side
+     columns keep it centered to the window. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, clamp(20rem, 44vw, 44rem)) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  justify-self: start;
+}
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+  /* Fill the (centered) command-center column so the search can stretch. */
+  justify-self: stretch;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  justify-self: end;
+}
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+
+/* Toolbar.Separator renders a bare <div>; give it a thin token-colored rule. */
+.topbar [role="separator"] {
+  width: 1px;
+  align-self: stretch;
+  margin: var(--space-2) 0;
+  background: var(--border);
+}
+
+.topbar .btn.ghost.active {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+/* 3-way layout segmented control: graph-only / split / reader-only. */
+.layout-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.layout-switch .layout-btn {
+  font-size: var(--fs-md);
+  line-height: 1;
+  padding: var(--space-4) var(--space-8);
+}
+
+.topbar .layout-switch .layout-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* Always-visible search affordance: looks like a search field, acts as a button
+   that opens the launcher. See docs/proposals/global-search.md. */
+.topbar-search {
+  font: inherit;
+  font-size: var(--fs-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  /* Fills the command-center column beside the back/forward nav; the column
+     (TopBar grid) owns the responsive width. */
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  cursor: text;
+  line-height: var(--lh-tight);
+}
+.topbar-search:hover {
+  background: var(--bg-elev);
+  border-color: var(--accent);
+}
+
+.topbar-search-icon {
+  font-size: var(--fs-md);
+  line-height: 1;
+}
+
+.topbar-search-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-search-kbd {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text-dim);
+}

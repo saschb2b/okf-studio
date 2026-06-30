@@ -1,0 +1,560 @@
+/* Concept Reader — co-located styles. Colors come from role variables so the
+   pane tracks light/dark; the type badge color is set inline from the palette. */
+
+.concept-reader {
+  /* Reading-layer variables — the content-scoped reading layer (not page zoom),
+     tunable via the "Aa" control and persisted in settings. Prose surfaces below
+     multiply their font-size by --reader-scale via calc(). */
+  --reader-scale: 1;
+  --reader-measure: 72ch;
+  --reader-leading: 1.7;
+  --reader-font: var(--ui);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  /* Cap the line length to a comfortable measure and center the column with
+     balanced gutters instead of pinning it to the left edge of a wide pane. */
+  max-width: var(--reader-measure);
+  margin-inline: auto;
+  padding: var(--space-20) var(--space-24) var(--space-40);
+}
+
+/* Reading aids (dyslexia-friendly): looser letter/word spacing in the body. */
+.concept-reader[data-aids="on"] .body.markdown {
+  letter-spacing: 0.03em;
+  word-spacing: 0.08em;
+}
+
+/* Base type badge (shape/size); .concept-reader .type-badge tints it. */
+.type-badge {
+  display: inline-block;
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-8);
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+
+.reader-empty {
+  padding: var(--space-24);
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Header ------------------------------------------------------------------- */
+.reader-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* Top row: breadcrumb (left) and the "Aa" reading-preferences control (right). */
+.reader-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+/* Compact, quiet "Aa" trigger — it sits with the content, not in the chrome. */
+.reader-prefs-btn {
+  flex: 0 0 auto;
+  padding: var(--space-4) var(--space-8);
+  color: var(--text-dim);
+}
+.reader-prefs-btn:hover {
+  color: var(--text);
+}
+
+/* Breadcrumb: the concept's place in the bundle (orientation, not links yet). */
+.reader-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.reader-crumbs .crumb {
+  white-space: nowrap;
+}
+.reader-crumbs .crumb + .crumb::before {
+  content: "/";
+  margin: 0 var(--space-6);
+  opacity: 0.6;
+}
+
+/* The base .type-badge sets shape/size; we tint it from the type palette and
+   make the border visible so the type color reads on either theme. */
+.concept-reader .type-badge {
+  align-self: flex-start;
+  margin-bottom: 0;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.concept-reader h1 {
+  margin: 0;
+  font-size: calc(var(--fs-xl) * var(--reader-scale, 1));
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.concept-reader .desc {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: calc(var(--fs-sm) * var(--reader-scale, 1));
+}
+
+.tag-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.tag-chip {
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-8);
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.reader-meta {
+  margin: var(--space-4) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
+}
+
+.reader-meta .meta-row {
+  display: flex;
+  gap: var(--space-8);
+  align-items: baseline;
+}
+
+.reader-meta dt {
+  flex: 0 0 84px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+}
+
+.reader-meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.concept-id {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-sm);
+}
+
+/* A button styled as a link — used for the resource so we can route it through
+   actions.openExternal instead of a raw <a href>. */
+.link-btn {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}
+.link-btn:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Rendered markdown body --------------------------------------------------- */
+/* Override the stub's monospace <pre> look: this is real rendered prose now. */
+.concept-reader .body.markdown {
+  font-family: var(--reader-font);
+  /* Comfortable reading base (16px) that scales with the reader text-size
+     control; headings and code use em units so they ride the scaled base. */
+  font-size: calc(var(--fs-md) * var(--reader-scale, 1));
+  line-height: var(--reader-leading);
+  white-space: normal;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  overflow-x: visible;
+  color: var(--text);
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  line-height: 1.3;
+  margin: 1.6em 0 0.5em;
+  font-weight: 600;
+}
+/* em-relative so they scale with the reader text-size control via the
+   .body.markdown base font-size; a real, distinct hierarchy (h3 ≠ h4). */
+.markdown h1 { font-size: 1.6em; letter-spacing: -0.01em; }
+.markdown h2 { font-size: 1.3em; letter-spacing: -0.01em; }
+.markdown h3 { font-size: 1.12em; }
+.markdown h4 { font-size: 1em; color: var(--text-dim); }
+.markdown p { margin: 0.9em 0; }
+.markdown ul,
+.markdown ol { margin: 0.8em 0; padding-left: 1.5em; }
+.markdown li { margin: 0.3em 0; }
+.markdown li::marker { color: var(--text-dim); }
+
+.markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: from-font;
+  cursor: pointer;
+}
+.markdown a:hover {
+  text-decoration-thickness: 2px;
+}
+/* Unresolved intra-bundle links: line-through (a non-color affordance) at a
+   contrast-safe dim — no opacity dilution. */
+.markdown a[data-link="unresolved"] {
+  color: var(--text-dim);
+  text-decoration: line-through;
+  text-decoration-thickness: from-font;
+  cursor: not-allowed;
+}
+.markdown a[data-link="unresolved"]:hover {
+  text-decoration: line-through;
+}
+/* External links carry a small outbound marker so in-bundle vs external reads
+   at a glance (not color alone). */
+.markdown a[data-link="external"]::after {
+  content: " ↗";
+  font-size: 0.85em;
+  color: var(--text-dim);
+}
+
+/* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */
+.markdown a.heading-anchor {
+  margin-left: var(--space-6);
+  color: var(--text-dim);
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+}
+.markdown :is(h2, h3):hover .heading-anchor,
+.markdown a.heading-anchor:focus-visible {
+  opacity: 1;
+}
+.markdown a.heading-anchor:hover {
+  color: var(--accent);
+}
+
+.markdown code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--bg-sunken);
+  padding: 1px var(--space-4);
+  border-radius: var(--radius-sm);
+}
+.markdown pre {
+  position: relative;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-12) var(--space-16);
+  overflow-x: auto;
+  /* Subtle syntax tint via a left accent rule. */
+  border-left: 3px solid var(--accent);
+}
+.markdown pre code {
+  background: none;
+  padding: 0;
+  /* em-relative so code rides the reader scale. */
+  font-size: 0.875em;
+}
+
+/* Copy affordance, injected into each code block at mount. */
+.code-copy {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur) ease;
+}
+.markdown pre:hover .code-copy,
+.code-copy:focus-visible {
+  opacity: 1;
+}
+.code-copy:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* GFM alert callouts (> [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]). */
+.markdown .callout {
+  margin: 1em 0;
+  padding: var(--space-10) var(--space-16);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--c, var(--accent));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c, var(--accent)) 8%, transparent);
+}
+.markdown .callout-title {
+  margin: 0 0 var(--space-4);
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--c, var(--accent));
+}
+.markdown .callout-body > :first-child {
+  margin-top: 0;
+}
+.markdown .callout-body > :last-child {
+  margin-bottom: 0;
+}
+.markdown .callout-note,
+.markdown .callout-important {
+  --c: var(--accent);
+}
+.markdown .callout-tip {
+  --c: var(--ok);
+}
+.markdown .callout-warning {
+  --c: var(--warn);
+}
+.markdown .callout-caution {
+  --c: var(--error);
+}
+
+.markdown blockquote {
+  margin: 0.8em 0;
+  padding: var(--space-2) var(--space-16);
+  border-left: 3px solid var(--border);
+  color: var(--text-dim);
+}
+
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  font-size: var(--fs-sm);
+}
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: var(--space-6) var(--space-10);
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.markdown th {
+  background: var(--bg-sunken);
+  font-weight: 600;
+}
+.markdown tbody tr:hover {
+  background: color-mix(in srgb, var(--bg-sunken) 60%, transparent);
+}
+
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1.4em 0;
+}
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Layout: reading column + right context rail ----------------------------- */
+.reader-shell {
+  --reader-rail-w: 300px;
+  --reader-max: 1140px;
+  max-width: var(--reader-max);
+  margin-inline: auto;
+}
+.reader-shell[data-rail="side"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--reader-rail-w);
+  gap: var(--space-32);
+  align-items: start;
+}
+
+/* Default rail = stacked below the article (split mode, or a narrow pane). */
+.reader-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-16) var(--space-24);
+  max-width: var(--reader-measure);
+  margin-inline: auto;
+  padding: var(--space-16) var(--space-24) var(--space-40);
+  border-top: 1px solid var(--border);
+}
+/* Side rail = a sticky single column beside the prose. */
+.reader-shell[data-rail="side"] .reader-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  position: sticky;
+  top: var(--space-16);
+  max-height: calc(100vh - var(--space-40));
+  overflow: auto;
+  max-width: none;
+  margin: 0;
+  padding: var(--space-20) var(--space-8) var(--space-40) 0;
+  border-top: 0;
+}
+/* Too narrow for two columns → collapse the side rail to the stacked form. */
+@container (max-width: 900px) {
+  .reader-shell[data-rail="side"] {
+    display: block;
+  }
+  .reader-shell[data-rail="side"] .reader-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-16) var(--space-24);
+    position: static;
+    max-height: none;
+    overflow: visible;
+    max-width: var(--reader-measure);
+    margin-inline: auto;
+    padding: var(--space-16) var(--space-24) var(--space-40);
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* The outline is only useful as a side rail; hide it when stacked. */
+.rail-outline {
+  display: none;
+}
+.reader-shell[data-rail="side"] .rail-outline {
+  display: block;
+}
+@container (max-width: 900px) {
+  .reader-shell[data-rail="side"] .rail-outline {
+    display: none;
+  }
+}
+
+/* Rail modules ------------------------------------------------------------- */
+.rail-module {
+  min-width: 0;
+}
+.rail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0 0 var(--space-6);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.rail-count {
+  padding: 0 var(--space-6);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border-radius: 999px;
+}
+
+.rel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* On this page (outline) */
+.outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.outline-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: var(--space-2) var(--space-8);
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.outline-item.lvl-3 .outline-link {
+  padding-left: var(--space-20);
+}
+.outline-link:hover {
+  color: var(--text);
+}
+.outline-item.is-active .outline-link {
+  color: var(--text);
+  border-left-color: var(--accent);
+}
+.outline-link:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Relation rows read as native list rows, not web hyperlinks: normal text color
+   with a token hover fill. Genuine external links keep the .link-btn link look
+   (accent + underline); these intra-bundle navigations do not. */
+.rel-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  padding: var(--space-4) var(--space-8);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.rel-link:hover {
+  background: var(--bg-sunken);
+}
+.rel-link:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
+}
+
+.broken-list .broken-link {
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  text-decoration: line-through;
+  cursor: default;
+  overflow-wrap: anywhere;
+}

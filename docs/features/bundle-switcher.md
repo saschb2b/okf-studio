@@ -1,0 +1,47 @@
+---
+type: Feature
+title: Bundle Switcher
+description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
+tags: [feature, navigation, bundles, switcher]
+timestamp: 2026-06-29T12:00:00Z
+---
+
+# What it does
+
+The top-left of the [top bar](../ux/browsing-layout.md) names the **currently open bundle** and, on click, opens a popover for switching context — to another bundle detected in the open folder, to a recently-opened bundle, or to a brand-new folder. It consolidates two scattered surfaces: the old sidebar bundle list and the recent list buried in [Settings](../ux/settings.md). Switching context becomes a first-class, always-visible action, in the spirit of Zed's project switcher.
+
+# Why "bundle", and the folder underneath
+
+OKF's unit is the **bundle** ([glossary](../reference/glossary.md)), so the switcher's unit is the bundle: the trigger names a bundle and recents are bundles. The **folder** stays underneath as the [security scope](../architecture/ipc-and-security.md) — the OS only ever grants read access to a folder the user picked, and one folder may hold several bundles ([Folder Autodetect](folder-autodetect.md)). So each recent bundle also records the folder that granted its scope, and reopening one silently re-establishes that folder's read scope before loading the bundle. In the common case (a folder holding exactly one bundle) the two collapse and the distinction is invisible. Promoting the folder to a first-class entity that *groups* the bundles it contains — so tied contexts are visually connected — is a deliberate [post-v1 direction](../product/scope-and-non-goals.md).
+
+# The trigger
+
+- A button at the **top-left of the top bar** whose label is the active bundle's name (its root `index.md` first `# Heading`, falling back to the directory name), with a chevron.
+- A smaller secondary line shows the **folder** the bundle lives in, since one folder can hold several bundles.
+- With nothing open, the label reads **"Open a folder…"** and clicking goes straight to the OS picker (the [First Run](../ux/first-run.md) empty state).
+
+# The popover
+
+Top to bottom, keyboard-first (a Base UI Popover with a filter input):
+
+- **Search field** — placeholder "Search bundles…"; fuzzy-filters the lists below while keeping the section headers as group labels. It is distinct from the [global launcher](command-palette.md): the launcher navigates *within* a bundle to concepts and actions; this only narrows the switcher's own lists.
+- **Bundles in this folder** — the bundles [autodetected](folder-autodetect.md) in the currently open folder, the active one marked ✓. Each row carries what the old browser showed: name, relative path, concept count and `type` dots (the [graph palette](../ux/theming.md)), and a [conformance badge](validation.md). Shown whenever a folder is open; a single-bundle folder shows one row.
+- **Pinned** *(when any exist)* — bundles the user pinned, kept above recents so frequently-used contexts stay one click away. Pinning is a deliberate differentiator: the IDEs surveyed order recents by recency only.
+- **Recent bundles** — recently-opened bundles **not** already listed under the current folder, newest first, each showing the bundle name with its folder/path dimmed beneath. Per-row **pin** and **remove** (✕) on hover.
+- **Footer actions** — **Open folder…** (primary; the OS picker, `Ctrl/Cmd + O`) and **Open remote folder…**, the latter shown **disabled with a "coming soon" hint** because remote bundles are explicitly [post-v1](../product/scope-and-non-goals.md). Showing it inert reserves the slot and signals the roadmap without a dead end.
+
+# Behavior
+
+- Selecting a bundle drives the single shared selection the rest of the app uses, loading it into the [Graph View](graph-view.md) and [Reader](concept-reader.md); switching is instant because parsed bundles are cached per root by the [core](../architecture/performance.md).
+- Selecting a **recent** bundle re-grants its folder's read scope, re-detects if needed, and reopens the bundle — returning to its last-active concept where possible.
+- **Recents persist** (bundle root + granting folder scope + timestamp) via the [store plugin](../architecture/ipc-and-security.md), recency-ordered, with the current folder's bundles excluded; per-entry **remove**, and **pin** to keep one above the recency churn.
+- A folder that no longer exists fails into the recoverable ["path is gone"](../ux/empty-and-error-states.md) prompt, offering to forget the stale entry rather than erroring.
+
+# Empty states
+
+Following the [report-never-refuse stance](../ux/empty-and-error-states.md): nothing open → the trigger reads "Open a folder…" and the popover shows only the footer plus any recents; a folder with **zero bundles** → the inline "what an OKF bundle is" note with a [spec-summary](../reference/okf-spec-summary.md) link; **no recents yet** → "Bundles you open will show up here."
+
+# Keyboard
+
+- **`Ctrl/Cmd + P`** opens the switcher (mnemonic: pick a bundle); it does not collide with the [launcher](command-palette.md) (`Ctrl/Cmd + K` / `/`), **Open folder** (`Ctrl/Cmd + O`), or **Re-scan** (`R`). See [Keyboard Shortcuts](../ux/keyboard-shortcuts.md).
+- Inside the popover: type to filter, `↑` / `↓` to move, `Enter` to switch, `Esc` to dismiss — the same contract as the launcher.

@@ -123,24 +123,46 @@ body,
 
 /* Theme-token scrollbars on scrolling surfaces, with a stable gutter so a
    scrollbar appearing doesn't shift the layout. Firefox/standard properties
-   first, then a WebKit fallback tied to the same tokens. */
+   first, then a WebKit fallback tied to the same tokens. Covers every
+   overflow:auto surface (panes/panels, dialogs, popovers, code blocks) so
+   none of them fall back to the unstyled browser scrollbar. */
 .pane,
-.panel {
+.panel,
+.ui-dialog,
+.example-code,
+.palette-list,
+.switcher-scroll,
+.graph-panel-body {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
   scrollbar-gutter: stable;
 }
 .pane::-webkit-scrollbar,
-.panel::-webkit-scrollbar {
+.panel::-webkit-scrollbar,
+.ui-dialog::-webkit-scrollbar,
+.example-code::-webkit-scrollbar,
+.palette-list::-webkit-scrollbar,
+.switcher-scroll::-webkit-scrollbar,
+.graph-panel-body::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 .pane::-webkit-scrollbar-track,
-.panel::-webkit-scrollbar-track {
+.panel::-webkit-scrollbar-track,
+.ui-dialog::-webkit-scrollbar-track,
+.example-code::-webkit-scrollbar-track,
+.palette-list::-webkit-scrollbar-track,
+.switcher-scroll::-webkit-scrollbar-track,
+.graph-panel-body::-webkit-scrollbar-track {
   background: transparent;
 }
 .pane::-webkit-scrollbar-thumb,
-.panel::-webkit-scrollbar-thumb {
+.panel::-webkit-scrollbar-thumb,
+.ui-dialog::-webkit-scrollbar-thumb,
+.example-code::-webkit-scrollbar-thumb,
+.palette-list::-webkit-scrollbar-thumb,
+.switcher-scroll::-webkit-scrollbar-thumb,
+.graph-panel-body::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: var(--radius);
   /* Inset the thumb so it reads thin against the track. */
@@ -148,7 +170,12 @@ body,
   background-clip: padding-box;
 }
 .pane::-webkit-scrollbar-thumb:hover,
-.panel::-webkit-scrollbar-thumb:hover {
+.panel::-webkit-scrollbar-thumb:hover,
+.ui-dialog::-webkit-scrollbar-thumb:hover,
+.example-code::-webkit-scrollbar-thumb:hover,
+.palette-list::-webkit-scrollbar-thumb:hover,
+.switcher-scroll::-webkit-scrollbar-thumb:hover,
+.graph-panel-body::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
   background-clip: padding-box;
 }

@@ -3,7 +3,7 @@ type: Reference
 title: Data Model
 description: The Bundle, Concept, graph, index, and log shapes the Rust core computes and the frontend renders.
 tags: [architecture, data-model, schema]
-timestamp: 2026-06-28T14:00:00Z
+timestamp: 2026-06-30T12:00:00Z
 ---
 
 # Shapes
@@ -66,7 +66,7 @@ interface LogEntry {
 
 # Notes
 
-- **`extra` preserves unknown keys** rather than dropping them, per the spec's extension contract — useful for domain-specific frontmatter a future feature might surface.
+- **`extra` preserves unknown keys** rather than dropping them, per the spec's extension contract — including **nested maps and lists in author order** (an [ODSF](../reference/okf-spec-summary.md) `tokens:` tree arrives as an ordered object), which is what a design-aware consumer surfaces. The [parser](okf-parsing.md) is indentation-aware for exactly this.
 - The frontend derives the **edge list** and the **type → color** map from `concepts`; the core does not dictate presentation (see [Frontend Architecture](frontend-architecture.md) for these derived/computed stores).
 - IDs are the join key everywhere: links, backlinks, selection, and [navigation history](../features/navigation.md) all reference Concept IDs.
 - **`indexes` carry `synthesized`** so the [navigation](../features/navigation.md) sidebar can mark which listings the core built for directories that lacked an `index.md` — the spec permits synthesizing one on the fly.

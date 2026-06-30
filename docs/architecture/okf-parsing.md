@@ -3,7 +3,7 @@ type: Reference
 title: OKF Parsing
 description: How a bundle root is turned into concepts, resolved links, backlinks, and an index tree.
 tags: [architecture, parsing, links]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-06-30T12:00:00Z
 ---
 
 # Pipeline
@@ -11,7 +11,7 @@ timestamp: 2026-06-28T12:00:00Z
 For each [detected bundle root](bundle-detection.md), the [Rust core](tech-stack.md) produces the [data model](data-model.md):
 
 1. **Enumerate** non-reserved `.md` files → each is a concept. Reserved filenames (`index.md`, `log.md`) are handled separately.
-2. **Split frontmatter / body.** Parse the leading `---` YAML block (a tolerant subset: scalars, quoted strings, and `[a, b]` / block lists). Missing or malformed frontmatter is tolerated; only a present-but-typeless concept is an [error](../features/validation.md).
+2. **Split frontmatter / body.** Parse the leading `---` YAML block (a tolerant subset: scalars, quoted strings, `[a, b]` / block lists, and **indentation-nested maps and lists**). Known keys are surfaced typed; every other top-level key is preserved into `extra` — a scalar as a string, a nested block as an ordered object/array — so an [ODSF](../reference/okf-spec-summary.md) `tokens:` tree survives intact for a design-aware consumer. Missing or malformed frontmatter is tolerated; only a present-but-typeless concept is an [error](../features/validation.md).
 3. **Concept ID = path − `.md`,** relative to the bundle root. `tables/orders.md` → `tables/orders`.
 4. **Extract links** from the body (`[text](href)`), classify, and **resolve**:
    - Bundle-absolute (`/tables/x.md`) → relative to bundle root.

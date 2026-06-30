@@ -9,7 +9,10 @@ license = "MIT"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `preserve_order` keeps nested frontmatter maps (ODSF `tokens`) in author order
+# across IPC, so e.g. color swatches render in the order the author wrote them
+# rather than alphabetized.
+serde_json = { version = "1", features = ["preserve_order"] }
 
 [profile.release]
 panic = "abort"

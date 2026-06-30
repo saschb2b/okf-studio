@@ -167,6 +167,20 @@ body,
   border-radius: 0;
 }
 
+/* The body below the title bar: the persistent Activity Bar beside the content
+   (workspace or empty state). The content flexes to fill the rest. */
+.app-main {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.app-main > .workspace,
+.app-main > .empty {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Top bar */
 .topbar {
   display: flex;

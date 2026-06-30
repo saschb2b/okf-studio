@@ -3,23 +3,24 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-06-29T15:00:00Z
+timestamp: 2026-06-30T10:00:00Z
 ---
 
 # The three panes
 
 ```
-┌───────────────┬───────────────────────────┬───────────────────┐
-│  SIDEBAR      │        GRAPH               │     READER        │
-│               │                           │                   │
-│ lens switch   │  force-directed graph     │ type badge        │
-│ search box    │  (nodes by type,          │ title / tags      │
-│ type filters  │   edges = links)          │ rendered body     │
-│ index tree    │  pan · zoom · drag · fit  │ Links to / Cited  │
-└───────────────┴───────────────────────────┴───────────────────┘
+┌────┬─────────────┬───────────────────────────┬───────────────────┐
+│ ▤  │  SIDEBAR    │        GRAPH               │     READER        │
+│ ⚲  │ search box   │  force-directed graph     │ type badge        │
+│    │ index tree   │  (nodes by type,          │ title / tags      │
+│    │  or filters  │   edges = links)          │ rendered body     │
+│ ⌨  │             │  pan · zoom · drag · fit   │ Links to / Cited  │
+│ ⚙  │             │                            │                   │
+└────┴─────────────┴───────────────────────────┴───────────────────┘
 ```
 
-- **Left — Sidebar.** A **lens switcher** (an activity rail) flips between a *Navigate* lens (the [index tree](../features/navigation.md)) and a *Filter* lens (type/tag [filters](../features/search-and-filter.md)), so the two never share one long scroll; a dot on the Filter icon flags an active filter. The search box stays pinned above both lenses. Collapsible. Switching *bundles* lives in the top-left [Bundle Switcher](../features/bundle-switcher.md), not the sidebar.
+- **Far left — Activity Bar.** A persistent vertical icon rail (the VS Code / Zed pattern) that stays put whether or not the sidebar is open. Its **top** holds the **view switchers** — *Navigate* (the [index tree](../features/navigation.md)) and *Filter* (type/tag [filters](../features/search-and-filter.md)); clicking a view opens the sidebar to that lens, and clicking the active view collapses the sidebar (a dot on the Filter icon flags an active filter even while hidden). Its **foot** pins the app's **global actions** — **Keyboard shortcuts** and **[Settings](settings.md)** (`Ctrl/Cmd + ,`) — where native desktop apps put "Manage"-style entries, rather than floating a gear in the title bar.
+- **Sidebar.** The active lens's content — the [index tree](../features/navigation.md) or the type/tag [filters](../features/search-and-filter.md) — under a pinned **search box**, so navigation and filtering never share one long scroll. Collapsible (toggled from the Activity Bar). Switching *bundles* lives in the top-left [Bundle Switcher](../features/bundle-switcher.md), not here.
 - **Center — Graph.** The [Graph View](../features/graph-view.md), focused on the selected concept by default.
 - **Right — Reader.** The [Concept Reader](../features/concept-reader.md) for the selected concept — a first-class pane, weighted co-equal with the graph. It is a reading surface: a centered, comfortable prose column with a quiet right context rail (outline, relationships, details) that collapses when space is tight (e.g. in split mode, where the graph already supplies relationship context).
 

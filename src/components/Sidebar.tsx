@@ -1,22 +1,17 @@
-// Left pane of the Browsing Layout. A persistent search box sits atop a Zed-style
-// activity rail that swaps the sidebar body between two lenses — Navigate (the
-// index tree) and Filter (types + tags) — so filtering and navigation no longer
-// compete for one long scroll. The active lens's content renders inside a themed
-// Base UI ScrollArea. An active-filter dot on the Filter rail icon keeps a
-// narrowed graph discoverable even while the Filter lens is hidden. Renders
+// Left pane of the Browsing Layout. A persistent search box atop the active
+// lens's content — Navigate (the index tree) or Filter (types + tags), chosen
+// from the Activity Bar so filtering and navigation no longer compete for one
+// long scroll. The content renders inside a themed Base UI ScrollArea. Renders
 // nothing until a bundle is loaded. Switching *bundles* lives in the top-left
-// Bundle Switcher, not here. See docs/ux/browsing-layout.md.
+// Bundle Switcher; the lens/visibility switchers live in the [ActivityBar].
+// See docs/ux/browsing-layout.md.
 
 import { Collapsible } from "@base-ui/react/collapsible";
 import { ScrollArea } from "@base-ui/react/scroll-area";
-import { ToggleGroup } from "@base-ui/react/toggle-group";
-import { Toggle } from "@base-ui/react/toggle";
-import { Tooltip } from "@base-ui/react/tooltip";
 import type { ReactNode } from "react";
 import "./baseui.css";
 import "./Sidebar.css";
 import { useApp } from "../store.tsx";
-import type { Lens } from "../store.tsx";
 import { TypeFilters } from "./sidebar/TypeFilters.tsx";
 import { TagBrowser } from "./sidebar/TagBrowser.tsx";
 import { IndexTree } from "./sidebar/IndexTree.tsx";
@@ -49,44 +44,9 @@ function Section({
   );
 }
 
-/** One icon button in the activity rail, wrapped in a tooltip. */
-function RailButton({
-  value,
-  label,
-  badge,
-  children,
-}: {
-  value: Lens;
-  label: string;
-  badge?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Tooltip.Root>
-      <Tooltip.Trigger
-        render={
-          <Toggle value={value} className="sb-rail-btn" aria-label={label}>
-            <span className="sb-rail-icon" aria-hidden="true">
-              {children}
-            </span>
-            {badge && <span className="sb-rail-badge" aria-hidden="true" />}
-          </Toggle>
-        }
-      />
-      <Tooltip.Portal>
-        <Tooltip.Positioner className="ui-tooltip-positioner" side="right" sideOffset={6}>
-          <Tooltip.Popup className="ui-tooltip">{label}</Tooltip.Popup>
-        </Tooltip.Positioner>
-      </Tooltip.Portal>
-    </Tooltip.Root>
-  );
-}
-
 export function Sidebar() {
   const { state, actions } = useApp();
   if (!state.bundle) return null;
-
-  const filterActive = state.hiddenTypes.length > 0 || !!state.activeTag;
 
   return (
     <nav className="sb" aria-label="Bundle navigation">
@@ -113,26 +73,6 @@ export function Sidebar() {
       </div>
 
       <div className="sb-body">
-        <Tooltip.Provider delay={400}>
-          <ToggleGroup
-            className="sb-rail"
-            aria-label="Sidebar lens"
-            value={[state.lens]}
-            onValueChange={(next) => {
-              // Single-select: keep the current lens if a re-press would empty it.
-              const lens = (next[0] as Lens | undefined) ?? state.lens;
-              actions.setLens(lens);
-            }}
-          >
-            <RailButton value="navigate" label="Navigate">
-              ☰
-            </RailButton>
-            <RailButton value="filter" label="Filter" badge={filterActive}>
-              ⚲
-            </RailButton>
-          </ToggleGroup>
-        </Tooltip.Provider>
-
         <ScrollArea.Root className="ui-scrollarea sb-scroll">
           <ScrollArea.Viewport className="ui-scrollarea-viewport sb-scroll-viewport">
             <div className="sb-sections">

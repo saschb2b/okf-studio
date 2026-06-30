@@ -3,6 +3,7 @@ import type * as React from "react";
 import { useApp, PANE_CLAMPS } from "./store.tsx";
 import { useGlobalKeys } from "./keys.ts";
 import { TopBar } from "./components/TopBar.tsx";
+import { ActivityBar } from "./components/ActivityBar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { GraphView } from "./components/GraphView.tsx";
 import { Reader } from "./components/Reader.tsx";
@@ -21,11 +22,10 @@ export function App() {
   return (
     <div className="app" data-maximized={state.maximized || undefined}>
       <TopBar />
-      {state.bundle ? (
-        <Workspace />
-      ) : (
-        <EmptyState />
-      )}
+      <div className="app-main">
+        <ActivityBar />
+        {state.bundle ? <Workspace /> : <EmptyState />}
+      </div>
 
       {/* Base UI Dialogs: mounted whenever a bundle is open; their `open` prop
           (from store state) drives visibility, so they manage their own

@@ -1,5 +1,6 @@
 // The top chrome bar: Open Folder, back/forward history, the current bundle
-// name, and the right-side cluster (Log toggle, validation badge, Settings).
+// name, and the right-side cluster (reading prefs, Log toggle, validation badge).
+// App-level actions (Settings, shortcuts) live in the [ActivityBar], not here.
 // See docs/ux/browsing-layout.md.
 
 import { useRef } from "react";
@@ -259,32 +260,6 @@ export function TopBar() {
                   sideOffset={6}
                 >
                   <Tooltip.Popup className="ui-tooltip">{badgeAria}</Tooltip.Popup>
-                </Tooltip.Positioner>
-              </Tooltip.Portal>
-            </Tooltip.Root>
-
-            <Toolbar.Separator />
-
-            <Tooltip.Root>
-              <Tooltip.Trigger
-                render={
-                  <Toolbar.Button
-                    className="btn ghost icon"
-                    aria-label="Open settings"
-                    onClick={() => actions.setSettingsOpen(true)}
-                  >
-                    <span aria-hidden="true">⚙</span>
-                  </Toolbar.Button>
-                }
-              />
-              <Tooltip.Portal>
-                <Tooltip.Positioner
-                  className="ui-tooltip-positioner"
-                  sideOffset={6}
-                >
-                  <Tooltip.Popup className="ui-tooltip">
-                    Settings (Ctrl/Cmd+,)
-                  </Tooltip.Popup>
                 </Tooltip.Positioner>
               </Tooltip.Portal>
             </Tooltip.Root>

@@ -3,12 +3,12 @@ type: Reference
 title: Settings & Preferences
 description: The preferences surface — theme, reader text size, scan tuning, motion, and reset.
 tags: [ux, settings, preferences]
-timestamp: 2026-06-29T16:00:00Z
+timestamp: 2026-06-30T10:00:00Z
 ---
 
 # Opening Settings
 
-Settings open with `Ctrl/Cmd + ,` (see [Keyboard Shortcuts](keyboard-shortcuts.md)). It is a small, local preferences surface — there is deliberately no account and no cloud sync, per the [local-first principle](../product/principles.md).
+Settings open from the **⚙ at the foot of the [Activity Bar](browsing-layout.md)** (the desktop convention — like VS Code's "Manage" gear at the bottom of its rail, not a gear floating in the title bar), with `Ctrl/Cmd + ,` (see [Keyboard Shortcuts](keyboard-shortcuts.md)), and from the [command palette](../features/command-palette.md). It is a small, local preferences surface — there is deliberately no account and no cloud sync, per the [local-first principle](../product/principles.md).
 
 # Preferences
 

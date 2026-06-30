@@ -6,9 +6,11 @@
 //! that directory's own concepts (marked `synthesized: true`).
 //!
 //! Entry resolution reuses the link rules: a concept entry's `target` is the
-//! resolved Concept ID; a directory entry (href ending in `/`) targets the
-//! subdirectory path. The root `index.md` may carry frontmatter (`okf_version`),
-//! which is split off before parsing.
+//! resolved Concept ID; a directory entry targets the subdirectory path. A
+//! bullet points at a subdirectory either with a trailing slash (`foo/`) or by
+//! linking the directory's reserved `index.md` (`foo/index.md`) — both descend
+//! into `foo`, since the spec says `index.md` is never a concept. The root
+//! `index.md` may carry frontmatter (`okf_version`), split off before parsing.
 
 use crate::frontmatter;
 use crate::links;
@@ -147,8 +149,8 @@ fn parse_bullet(line: &str, dir: &str, ids: &HashSet<String>) -> Option<IndexEnt
             kind: EntryKind::Directory,
         })
     } else {
-        // Concept entry: resolve the href to a Concept ID. Use a synthetic
-        // source id in this directory so relative resolution is anchored here.
+        // Resolve the href to a bundle path. Use a synthetic source id in this
+        // directory so relative `./`, `../`, and bundle-absolute hrefs anchor here.
         let anchor = if dir.is_empty() {
             "index".to_string()
         } else {
@@ -157,15 +159,41 @@ fn parse_bullet(line: &str, dir: &str, ids: &HashSet<String>) -> Option<IndexEnt
         let without_anchor = href.split('#').next().unwrap_or(href);
         let target =
             links::resolve(without_anchor, &anchor).unwrap_or_else(|| without_anchor.to_string());
-        // Keep the entry even if the target does not resolve to a known concept;
-        // navigation renders it and validation reports broken links separately.
-        let _ = ids; // resolution does not require existence for index display
-        Some(IndexEntry {
-            title,
-            target,
-            description,
-            kind: EntryKind::Concept,
-        })
+
+        // A link to a directory's reserved `index.md` is a directory entry — the
+        // explicit-path twin of the `foo/` form above, so `[Ref](reference/index.md)`
+        // descends into `reference/` just like `[Ref](reference/)`. Per the spec,
+        // `index.md` is never a concept, so this can never be a real concept target.
+        if let Some(subdir) = index_target_dir(&target) {
+            Some(IndexEntry {
+                title,
+                target: subdir,
+                description,
+                kind: EntryKind::Directory,
+            })
+        } else {
+            // Concept entry. Keep it even if the target does not resolve to a
+            // known concept; navigation renders it and validation reports broken
+            // links separately.
+            let _ = ids; // resolution does not require existence for index display
+            Some(IndexEntry {
+                title,
+                target,
+                description,
+                kind: EntryKind::Concept,
+            })
+        }
+    }
+}
+
+/// If `target` is a directory's reserved index (`index` or `…/index`, the result
+/// of resolving a `…/index.md` href), return the directory it descends into
+/// (`""` for the bundle root). Otherwise `None` — it is a concept target.
+fn index_target_dir(target: &str) -> Option<String> {
+    if target == "index" {
+        Some(String::new())
+    } else {
+        target.strip_suffix("/index").map(str::to_string)
     }
 }
 
@@ -276,6 +304,38 @@ mod tests {
         let e = &node.sections[0].entries[0];
         assert_eq!(e.kind, EntryKind::Directory);
         assert_eq!(e.target, "features");
+    }
+
+    #[test]
+    fn index_md_link_is_a_directory_entry() {
+        // `[Reference](reference/index.md)` from the root descends into
+        // `reference/`, exactly like the trailing-slash `reference/` form.
+        let text = "# Top\n* [Reference](reference/index.md) - the API.\n";
+        let node = parse_index("", text, &ids(&[]));
+        let e = &node.sections[0].entries[0];
+        assert_eq!(e.kind, EntryKind::Directory);
+        assert_eq!(e.target, "reference");
+        assert_eq!(e.description, "the API.");
+    }
+
+    #[test]
+    fn nested_index_md_link_resolves_relative() {
+        // From the `reference` index, `[react](react/index.md)` -> `reference/react`.
+        let text = "* [react](react/index.md) - core package.\n";
+        let node = parse_index("reference", text, &ids(&[]));
+        let e = &node.sections[0].entries[0];
+        assert_eq!(e.kind, EntryKind::Directory);
+        assert_eq!(e.target, "reference/react");
+    }
+
+    #[test]
+    fn concept_named_with_index_suffix_stays_a_concept() {
+        // Only the `/index` boundary marks a directory; `something-index` does not.
+        let text = "* [Notes](something-index.md)\n";
+        let node = parse_index("", text, &ids(&[]));
+        let e = &node.sections[0].entries[0];
+        assert_eq!(e.kind, EntryKind::Concept);
+        assert_eq!(e.target, "something-index");
     }
 
     #[test]

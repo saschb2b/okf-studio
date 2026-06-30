@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-06-30T19:00:00Z
+timestamp: 2026-06-30T21:00:00Z
 ---
 
 # Decision
@@ -24,7 +24,12 @@ Each is a [self-contained, portable](../product/principles.md) artifact using th
 Two GitHub Actions workflows (`.github/workflows/`):
 
 - **`ci.yml`** — on every push to `main` and every pull request, runs the fast checks: the whole **frontend** (ESLint, `tsc` typecheck, the Vitest [suite](testing.md), and a production `vite build`) and the **Rust core** (`cargo clippy -D warnings` and `cargo test` on `okf-core`). `okf-core` is pure Rust — no WebKitGTK and no built frontend — so this stays quick. The full `src-tauri` compile is left to the release build, which exercises it on each OS.
-- **`release.yml`** — when a GitHub **Release is published**, builds the installers on a **per-OS runner matrix** (an Ubuntu and a Windows runner), because the packaged artifacts are produced natively per platform; there is no reliable cross-compilation path. It uses the official `tauri-apps/tauri-action`, which runs `tauri build` (frontend via the config's `beforeBuildCommand`, then bundling) and **uploads the artifacts to the triggering release**. The Linux runner pins to an older Ubuntu so the `.deb`/AppImage stay widely compatible.
+- **`release.yml`** — when a GitHub **Release is published**, builds the installers on a runner matrix (the packaged artifacts are produced natively per platform; there is no reliable cross-compilation path), via the official `tauri-apps/tauri-action`, which runs `tauri build` (frontend via the config's `beforeBuildCommand`, then bundling) and **uploads the artifacts to the triggering release**. The matrix is split by how each artifact links its libraries:
+  - **`.deb` on the oldest supported Ubuntu (22.04)** — it links against the *system* WebKitGTK/glib, so an older base keeps it installable on 22.04 and every newer release.
+  - **AppImage on the current Ubuntu LTS** — it *bundles* glib/Mesa, so it must be built on a modern base: an AppImage built on 22.04 fails on newer hosts (a glib symbol mismatch with the host's GVfs modules, then `EGL_BAD_PARAMETER` when WebKit's bundled GL stack can't init). Building on the current LTS makes the bundled libraries match modern systems.
+  - **Windows on `windows-latest`** — `.msi` + NSIS `.exe`.
+
+  Each Linux runner is restricted to its one bundle target (`--bundles deb` / `--bundles appimage`) so it never emits the other's (broken) artifact.
 
 # Code signing
 

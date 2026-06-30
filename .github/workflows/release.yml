@@ -1,8 +1,8 @@
 name: Release
 
-# When a GitHub Release is published, build the desktop app for Windows and
-# Ubuntu and attach the installers/packages to that release. Create a release
-# (e.g. from a tag like v0.1.0) and publish it to trigger this.
+# When a GitHub Release is published, build the desktop app and attach the
+# installers/packages to that release. Create a release (e.g. from a tag like
+# v0.1.0) and publish it to trigger this.
 on:
   release:
     types: [published]
@@ -12,13 +12,26 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }}
+    name: Build ${{ matrix.platform }} (${{ matrix.label }})
     strategy:
       fail-fast: false
       matrix:
-        # ubuntu-22.04 → .deb + .AppImage; windows-latest → .msi + NSIS .exe.
-        # 22.04 (older glibc) keeps the Linux packages widely compatible.
-        platform: [ubuntu-22.04, windows-latest]
+        include:
+          # .deb links against the *system* libraries, so building on an older
+          # base keeps it installable on 22.04 and every newer release.
+          - platform: ubuntu-22.04
+            label: deb
+            args: --bundles deb
+          # The AppImage *bundles* glib/Mesa, so build it on the current LTS:
+          # a 22.04-bundled AppImage breaks on modern hosts (glib symbol +
+          # EGL_BAD_PARAMETER). 26.04 is a preview runner for now.
+          - platform: ubuntu-26.04
+            label: appimage
+            args: --bundles appimage
+          # Windows: .msi + NSIS .exe (from the tauri.conf bundle targets).
+          - platform: windows-latest
+            label: msi+nsis
+            args: ""
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +39,7 @@ jobs:
       # Tauri 2 on Linux links against WebKitGTK 4.1 and friends; AppImage needs
       # patchelf. (The official Tauri prerequisites list for Debian/Ubuntu.)
       - name: Install Linux build dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -60,8 +73,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Runs the Tauri build (frontend via the `beforeBuildCommand`, then bundles)
-      # and uploads the resulting artifacts to the triggering release.
+      # Runs the Tauri build (frontend via the `beforeBuildCommand`, then bundles
+      # the targets in `args`) and uploads the resulting artifacts to the
+      # triggering release.
       - name: Build app and upload artifacts
         uses: tauri-apps/tauri-action@v0
         env:
@@ -69,3 +83,4 @@ jobs:
         with:
           tauriScript: pnpm tauri
           releaseId: ${{ github.event.release.id }}
+          args: ${{ matrix.args }}

@@ -2352,7 +2352,7 @@ dependencies = [
 
 [[package]]
 name = "okf-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "regex",
  "serde",
@@ -2362,7 +2362,7 @@ dependencies = [
 
 [[package]]
 name = "okf-viewer"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "notify",
  "okf-core",

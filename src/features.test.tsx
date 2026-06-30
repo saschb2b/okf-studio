@@ -63,6 +63,33 @@ describe("OKF Viewer features", () => {
     expect(within(dialog).getByText("Fit graph to view")).toBeInTheDocument();
   });
 
+  it("renders ODSF design tokens and a live example preview", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("radio", { name: /reader only/i }));
+
+    // Jump to the Button component (an ODSF concept) via the command palette.
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await user.type(combo, "Button");
+    await user.click(await screen.findByRole("option", { name: /button.*component/i }));
+
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    // The token table renders the component's tokens and resolves a {ref}.
+    expect(await within(reader).findByText("button-primary.background")).toBeInTheDocument();
+    expect(
+      within(reader).getByText("{colors.bgColor-success-emphasis}"),
+    ).toBeInTheDocument();
+    // The status and applies_to labels render beside the type badge.
+    expect(within(reader).getByText("stable")).toBeInTheDocument();
+    expect(within(reader).getByText("web")).toBeInTheDocument();
+    // The example asset renders as a live (iframe) preview, loaded via readAsset.
+    expect(
+      await within(reader).findByTitle("design/button.example.html"),
+    ).toBeInTheDocument();
+  });
+
   it("opens the bundle switcher listing the open folder's bundles", async () => {
     const user = userEvent.setup();
     renderApp();

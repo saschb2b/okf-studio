@@ -255,6 +255,88 @@ const designSystem: RawConcept[] = [
     externalLinks: [],
   },
   {
+    id: "design/shape",
+    type: "Shape",
+    title: "Shape",
+    description: "A restrained corner-radius scale.",
+    tags: ["foundations", "shape", "tokens"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "stable",
+      tokens: {
+        radius: { small: "3px", medium: "6px", large: "12px", full: "999px" },
+      },
+    },
+    body: "Corners are gentle, never novelty-round.\n\n# Usage\n\n`full` is for pills and avatars only.",
+    links: [],
+    externalLinks: [],
+  },
+  {
+    id: "design/elevation",
+    type: "Elevation",
+    title: "Elevation",
+    description: "Layered, low-alpha shadows.",
+    tags: ["foundations", "elevation", "tokens"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "experimental",
+      tokens: {
+        elevation: {
+          low: "0 1px 3px rgba(31,35,40,0.12)",
+          medium: "0 4px 12px rgba(31,35,40,0.15)",
+          high: "0 12px 28px rgba(31,35,40,0.2)",
+        },
+      },
+    },
+    body: "Shadow signals layering, not decoration; deeper means closer to the user.",
+    links: [],
+    externalLinks: [],
+  },
+  {
+    id: "design/motion",
+    type: "Motion",
+    title: "Motion",
+    description: "Quick transitions; reduced-motion first.",
+    tags: ["foundations", "motion", "tokens"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "stable",
+      tokens: {
+        motion: {
+          fast: "120ms",
+          base: "200ms",
+          "easing-standard": "cubic-bezier(0.2, 0, 0, 1)",
+        },
+      },
+    },
+    body: "Transitions are short and purposeful, and always yield to a reduced-motion preference.",
+    links: [],
+    externalLinks: [],
+  },
+  {
+    id: "design/color-not-alone",
+    type: "Guideline",
+    title: "Color is not the only signal",
+    description: "Pair status color with an icon or text.",
+    tags: ["guidelines", "accessibility"],
+    timestamp: "2026-06-30T00:00:00Z",
+    resource: null,
+    extra: {
+      status: "stable",
+      examples: ["color-not-alone.do.html", "color-not-alone.dont.html"],
+    },
+    body:
+      "# Rule\n\nNever rely on color alone to carry meaning.\n\n" +
+      "# Why\n\nColor-blind users and grayscale contexts lose a color-only signal.\n\n" +
+      "# Do\n\n- [color-not-alone.do.html](color-not-alone.do.html) — status with an icon and a word.\n\n" +
+      "# Don't\n\n- [color-not-alone.dont.html](color-not-alone.dont.html) — a bare colored dot, no label.",
+    links: ["design/color"],
+    externalLinks: [],
+  },
+  {
     id: "design/button",
     type: "Component",
     title: "Button",
@@ -383,6 +465,24 @@ export const MOCK_ASSETS: Record<string, string> = {
     '  <button class="btn btn-danger">Delete</button>',
     "</body>",
     "</html>",
+  ].join("\n"),
+  "design/color-not-alone.do.html": [
+    "<!doctype html>",
+    '<html lang="en"><head><meta charset="utf-8"><style>',
+    "  body { margin: 0; padding: 16px; font-family: system-ui, sans-serif; }",
+    "  .status { display: inline-flex; align-items: center; gap: 6px; color: #1a7f37; font-weight: 600; }",
+    "</style></head><body>",
+    '  <span class="status">✓ Merged</span>',
+    "</body></html>",
+  ].join("\n"),
+  "design/color-not-alone.dont.html": [
+    "<!doctype html>",
+    '<html lang="en"><head><meta charset="utf-8"><style>',
+    "  body { margin: 0; padding: 16px; font-family: system-ui, sans-serif; }",
+    "  .dot { display: inline-block; width: 14px; height: 14px; border-radius: 999px; background: #1a7f37; }",
+    "</style></head><body>",
+    '  <span class="dot"></span>',
+    "</body></html>",
   ].join("\n"),
 };
 

@@ -32,15 +32,6 @@ function humanize(seg: string): string {
 }
 
 /** A url-safe slug for a heading's text, used as its anchor id. */
-function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "section"
-  );
-}
 
 /** Concepts sharing a tag with `c`, excluding itself and its direct relations. */
 function relatedByTag(bundle: Bundle | null, c: Concept): string[] {
@@ -95,31 +86,23 @@ export function Reader() {
     }
 
     const heads = Array.from(el.querySelectorAll("h2, h3"));
-    const used = new Set<string>();
     const items: OutlineItem[] = heads.map((h) => {
       // Idempotent across StrictMode's double-invoke (and re-runs): drop any
       // anchor we appended on a prior pass before reading the heading text.
       h.querySelector(".heading-anchor")?.remove();
-      const text = h.textContent || "";
-      const base = slugify(text);
-      let id = base;
-      let n = 2;
-      while (used.has(id)) id = `${base}-${n++}`;
-      used.add(id);
-      h.id = id;
+      const id = h.id; // baked into the HTML by renderMarkdown
+      const text = h.textContent;
       // A hover permalink that scrolls to the section (never navigates the view).
-      if (!h.querySelector(".heading-anchor")) {
-        const a = document.createElement("a");
-        a.className = "heading-anchor";
-        a.href = `#${id}`;
-        a.textContent = "#";
-        a.setAttribute("aria-label", `Link to section: ${text}`);
-        a.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          h.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-        });
-        h.appendChild(a);
-      }
+      const a = document.createElement("a");
+      a.className = "heading-anchor";
+      a.href = `#${id}`;
+      a.textContent = "#";
+      a.setAttribute("aria-label", `Link to section: ${text}`);
+      a.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        h.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      });
+      h.appendChild(a);
       return { id, text, level: h.tagName === "H2" ? 2 : 3 };
     });
     setOutline(items);
@@ -148,18 +131,52 @@ export function Reader() {
       pre.appendChild(btn);
     }
 
-    if (heads.length === 0 || typeof IntersectionObserver === "undefined") return;
-    const root = el.closest(".pane");
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) setActiveId((e.target as HTMLElement).id);
-        }
-      },
-      { root, rootMargin: "0px 0px -70% 0px", threshold: 0 },
-    );
-    heads.forEach((h) => obs.observe(h));
-    return () => obs.disconnect();
+    if (heads.length === 0) return;
+    // Scroll-spy: highlight the section currently being read. A scroll handler
+    // (rather than an IntersectionObserver "top band") so it stays correct at
+    // the bottom of the page — short trailing sections can never scroll up into
+    // a band, so there we force-activate the last heading instead.
+    const scroller = el.closest(".pane");
+    if (!scroller) return;
+    let raf = 0;
+    const sync = () => {
+      raf = 0;
+      // Query the *live* headings each time and map by index to the outline
+      // `items`. The heading nodes captured above can be replaced after this
+      // effect runs (React re-applies the dangerouslySetInnerHTML body), leaving
+      // the captured nodes detached (zero rects) and the live ones without ids —
+      // so we read positions from the live DOM but ids from `items`, which the
+      // rail actually renders with. Index alignment holds: both are the h2/h3
+      // sequence in document order.
+      const live = scroller.querySelectorAll<HTMLElement>(
+        ".body.markdown h2, .body.markdown h3",
+      );
+      if (live.length === 0 || live.length !== items.length) return;
+      // Not scrollable (short doc, or jsdom) → keep the first heading active.
+      if (scroller.scrollHeight <= scroller.clientHeight) return;
+      // At the bottom, the last sections can't reach the top — activate the last.
+      if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4) {
+        setActiveId(items[items.length - 1].id);
+        return;
+      }
+      // Otherwise: the last heading scrolled above a line just below the top.
+      const top = scroller.getBoundingClientRect().top;
+      let idx = 0;
+      for (let i = 0; i < live.length; i++) {
+        if (live[i].getBoundingClientRect().top - top <= 96) idx = i;
+        else break;
+      }
+      setActiveId(items[idx].id);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(sync);
+    };
+    sync();
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
     // `c` is tracked via c?.id; the effect only needs to re-run on concept change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c?.id, bodyHtml, bundle, reduceMotion]);

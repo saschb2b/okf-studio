@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-06-30T16:30:00Z
+timestamp: 2026-06-30T18:00:00Z
 ---
 
 # What it does
@@ -38,7 +38,7 @@ Rendered for pleasant reading, sanitized before injection ([security](../archite
 
 Stacked, titled modules — quiet navigation context kept beside the prose instead of stranded at the bottom:
 
-- **On this page** — an outline of the body's headings with **scroll-spy** (the current section highlights as you read); jumps to the anchored headings.
+- **On this page** — an outline of the body's headings with **scroll-spy** (the current section highlights as you read, and the last section stays highlighted once you reach the end of the page); clicking jumps to the anchored heading.
 - **Cited by** — the backlinks: every concept that links *to* this one ([computed by the core](../architecture/data-model.md)). The reverse-index a flat file tree hides; listed first because it is the context the file system cannot give.
 - **Links to** — the outbound references.
 - **Related by tag** — other concepts sharing this one's tags (synthesized from frontmatter), a relationship dimension beyond explicit links.

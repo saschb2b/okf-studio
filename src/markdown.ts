@@ -53,17 +53,51 @@ function transformCallouts(html: string): string {
   return tpl.innerHTML;
 }
 
+/** Slugify heading text into a stable id (matches the reader's outline). */
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "section"
+  );
+}
+
+/**
+ * Assign deduped slug ids to body headings *in the HTML string*, so the ids are
+ * inherent to the rendered DOM (scroll-spy, the outline, anchor permalinks, and
+ * hash links all rely on them). Baking them here — rather than mutating the
+ * injected DOM at mount — keeps them present no matter how React re-applies the
+ * `dangerouslySetInnerHTML` body.
+ */
+function slugifyHeadings(html: string): string {
+  if (typeof document === "undefined") return html;
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  const used = new Set<string>();
+  for (const h of Array.from(tpl.content.querySelectorAll("h2, h3, h4, h5, h6"))) {
+    const base = slugify(h.textContent);
+    let id = base;
+    let n = 2;
+    while (used.has(id)) id = `${base}-${n++}`;
+    used.add(id);
+    h.id = id;
+  }
+  return tpl.innerHTML;
+}
+
 /** Render markdown to sanitized, safe-to-inject HTML. */
 export function renderMarkdown(md: string): string {
   // `async: false` forces the synchronous overload (string, not Promise).
   // `gfm` enables tables/strikethrough; `breaks:false` keeps authored single
-  // newlines from becoming spurious <br>. headerIds off — assigned at mount.
+  // newlines from becoming spurious <br>.
   const html = marked.parse(md, {
     async: false,
     gfm: true,
     breaks: false,
   });
-  return DOMPurify.sanitize(transformCallouts(html), {
+  return DOMPurify.sanitize(slugifyHeadings(transformCallouts(html)), {
     USE_PROFILES: { html: true },
   });
 }

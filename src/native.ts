@@ -1,6 +1,6 @@
 // Native desktop behaviors — suppress the web defaults the system webview gives
 // us for free (page zoom, default context menu) so the app feels like a native
-// desktop app, not a website. See docs/proposals/native-feel.md.
+// desktop app, not a website. See the native-feel mention in docs/ux/settings.md.
 //
 // This module is framework-free: it only touches the DOM and `window`. It never
 // reads or writes React state directly. To preserve the accessibility intent of

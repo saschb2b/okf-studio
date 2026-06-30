@@ -31,7 +31,7 @@ fn scan_detects_docs_as_confident_root() {
 
     assert_eq!(docs_root.confidence, Confidence::Confident);
     assert_eq!(docs_root.okf_version.as_deref(), Some("0.1"));
-    assert_eq!(docs_root.concept_count, 36, "docs/ has 36 concepts");
+    assert_eq!(docs_root.concept_count, 37, "docs/ has 37 concepts");
     assert!(
         !docs_root.types.is_empty(),
         "distinct concept types should be collected"
@@ -61,7 +61,7 @@ fn read_bundle_docs_full_shape() {
     let docs = docs_dir();
     let bundle = read_bundle(&docs);
 
-    assert_eq!(bundle.concepts.len(), 36, "36 concepts parsed");
+    assert_eq!(bundle.concepts.len(), 37, "37 concepts parsed");
     assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
     assert_eq!(bundle.confidence, Confidence::Confident);
 
@@ -187,6 +187,30 @@ fn write(dir: &Path, rel: &str, contents: &str) {
         fs::create_dir_all(parent).unwrap();
     }
     fs::write(path, contents).unwrap();
+}
+
+#[test]
+fn root_index_versions_are_read() {
+    let dir = temp_bundle("odsf-version");
+    write(
+        &dir,
+        "index.md",
+        "---\nodsf_version: \"0.1\"\nokf_version: \"0.1\"\n---\n# Design system\n* [Button](components/button.md)\n",
+    );
+    write(
+        &dir,
+        "components/button.md",
+        "---\ntype: Component\n---\nA button.\n",
+    );
+    let bundle = read_bundle(&dir);
+    assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
+    assert_eq!(bundle.odsf_version.as_deref(), Some("0.1"));
+
+    // A plain OKF bundle (no odsf_version) reads as None, never an error.
+    let plain = temp_bundle("no-odsf");
+    write(&plain, "index.md", "---\nokf_version: \"0.1\"\n---\n# Plain\n");
+    write(&plain, "x.md", "---\ntype: Note\n---\nBody.\n");
+    assert_eq!(read_bundle(&plain).odsf_version, None);
 }
 
 #[test]

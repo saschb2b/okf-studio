@@ -72,6 +72,17 @@ export function StatusBar() {
             {plural(bundle.concepts.length, "concept")}
           </span>
         )}
+        {/* Format version(s), read-only — a property of the data, not the app. */}
+        {bundle && (bundle.odsfVersion ?? bundle.okfVersion) !== null && (
+          <span className="status-item status-muted" title="Bundle format version">
+            {[
+              bundle.odsfVersion ? `ODSF ${bundle.odsfVersion}` : null,
+              bundle.okfVersion ? `OKF ${bundle.okfVersion}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        )}
       </div>
     </footer>
   );

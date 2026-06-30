@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-06-30T16:30:00Z
+timestamp: 2026-06-30T23:30:00Z
 ---
 
 # The three panes
@@ -42,4 +42,4 @@ The window runs **borderless** (native title-bar decorations are off — see [Th
 
 # Chrome — the status bar
 
-A thin **status bar** spans the bottom of the window (the VS Code pattern). It carries ambient status and low-frequency toggles: the [validation](../features/validation.md) **issue indicator** at the left, and at the right a **Log** toggle (opens the change-log panel — see [Log View](../features/log-view.md)) plus quiet bundle context (concept count). Its urgency is deliberately **inverted from a badge** — conformance is the expected baseline, so it reads *quietly* (dim, no colour); colour and weight are reserved for the exception (amber for warnings, red for errors), so the eye is only drawn when there is something to act on. The indicator opens the [Validation](../features/validation.md) panel.
+A thin **status bar** spans the bottom of the window (the VS Code pattern). It carries ambient status and low-frequency toggles: the [validation](../features/validation.md) **issue indicator** at the left, and at the right a **Log** toggle (opens the change-log panel — see [Log View](../features/log-view.md)) plus quiet bundle context (concept count, and the bundle's **format version** — `OKF x.y`, prefixed with `ODSF x.y` for a [design-system bundle](../features/design-system-rendering.md) — a read-only property of the data). Its urgency is deliberately **inverted from a badge** — conformance is the expected baseline, so it reads *quietly* (dim, no colour); colour and weight are reserved for the exception (amber for warnings, red for errors), so the eye is only drawn when there is something to act on. The indicator opens the [Validation](../features/validation.md) panel.

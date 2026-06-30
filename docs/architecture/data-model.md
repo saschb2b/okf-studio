@@ -15,6 +15,7 @@ interface Bundle {
   root: string;            // absolute path of the bundle root
   name: string;            // from root index.md H1, else dir name
   okfVersion: string | null;
+  odsfVersion: string | null;  // ODSF profile version, if the root declares one
   concepts: Concept[];
   indexes: IndexNode[];    // parsed/synthesized index.md tree (navigation)
   log: LogEntry[];         // parsed log.md, newest first

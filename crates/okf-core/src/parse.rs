@@ -55,6 +55,12 @@ pub fn read_bundle(root: &Path) -> Bundle {
         .as_ref()
         .and_then(|fm| fm.scalar("okf_version"))
         .map(str::to_owned);
+    // ODSF bundles additionally declare odsf_version in the root index (§10);
+    // it is the data's property, surfaced but never required.
+    let odsf_version = root_fm
+        .as_ref()
+        .and_then(|fm| fm.scalar("odsf_version"))
+        .map(str::to_owned);
     let name = read_bundle_name(root);
     let confidence = if okf_version.is_some() {
         Confidence::Confident
@@ -66,6 +72,7 @@ pub fn read_bundle(root: &Path) -> Bundle {
         root: root.display().to_string(),
         name,
         okf_version,
+        odsf_version,
         concepts,
         indexes,
         log,

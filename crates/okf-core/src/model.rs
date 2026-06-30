@@ -28,6 +28,9 @@ pub struct Bundle {
     pub root: String,
     pub name: String,
     pub okf_version: Option<String>,
+    /// The ODSF profile version a design-system bundle's root `index.md` declares
+    /// (`odsf_version`), if any. A property of the data, surfaced read-only.
+    pub odsf_version: Option<String>,
     pub concepts: Vec<Concept>,
     pub indexes: Vec<IndexNode>,
     pub log: Vec<LogEntry>,

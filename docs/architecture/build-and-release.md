@@ -40,7 +40,7 @@ Two GitHub Actions workflows (`.github/workflows/`):
 Two version numbers stay deliberately distinct:
 
 - **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Viewer app itself, set in the Tauri config and shown in the about/settings surface.
-- **`okf_version`** — the version of the OKF **format** a bundle declares in its root `index.md` (see [OKF Spec Summary](../reference/okf-spec-summary.md)). The app reads and displays this; it is a property of the data, never of the app. A new app release does not change a bundle's `okf_version`, and vice versa.
+- **`okf_version`** — the version of the OKF **format** a bundle declares in its root `index.md` (see [OKF Spec Summary](../reference/okf-spec-summary.md)). The app reads and displays this (quietly, in the [status bar](../ux/browsing-layout.md)); it is a property of the data, never of the app. A new app release does not change a bundle's `okf_version`, and vice versa. A bundle that is also an [ODSF](../features/design-system-rendering.md) design system declares an **`odsf_version`** in the same root frontmatter; the core reads it alongside `okf_version` and the app shows both — equally a property of the data.
 
 # Updates
 

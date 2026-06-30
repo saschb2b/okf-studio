@@ -200,7 +200,7 @@ const designSystem: RawConcept[] = [
       "| `fgColor-default` | `#1f2328` | Primary text. |\n" +
       "| `fgColor-accent` | `#0969da` | Links and accents. |\n" +
       "| `bgColor-success-emphasis` | `#1f883d` | The green primary button. |\n\n" +
-      "# Usage\n\nAlways pair a foreground role with its intended background so contrast stays AA in both themes.",
+      "# Usage\n\nAlways pair a foreground role with its intended background so contrast stays AA in both themes. The runnable projection lives in [`styles/tokens.css`](../styles/tokens.css).",
     links: [],
     externalLinks: [],
   },
@@ -368,7 +368,7 @@ const designSystem: RawConcept[] = [
       },
     },
     body:
-      "The primary button is **green** — every variant resolves to functional [color](color.md) tokens, so the set re-themes with no markup change.\n\n" +
+      "The primary button is **green** (`{colors.bgColor-success-emphasis}`) — every variant resolves to functional [color](color.md) tokens, so the set re-themes with no markup change. Styled by [`styles/components.css`](../styles/components.css).\n\n" +
       "# Anatomy\n\nA `<button>` with base `.btn` plus an optional variant modifier.\n\n" +
       "# Variants & States\n\n| Variant | Use |\n| --- | --- |\n| `.btn` | Default neutral action. |\n| `.btn-primary` | The one affirmative action (green). |\n| `.btn-danger` | Destructive action. |\n\n" +
       "# Examples\n\n- [button.example.html](button.example.html) — every variant, rendered live.",
@@ -381,6 +381,7 @@ export const MOCK_BUNDLE: Bundle = {
   root: `${MOCK_FOLDER}/docs`,
   name: "OKF Viewer (sample)",
   okfVersion: "0.1",
+  odsfVersion: "0.1",
   concepts: finalize([...raw, ...designSystem, ...generated()]),
   indexes: [
     {

@@ -20,6 +20,8 @@ interface PreviewItem {
   raw: string;
   /** The HTML with its linked stylesheets inlined, ready for the iframe. */
   doc: string;
+  /** A linked stylesheet (`.css`): shown as code only, no rendered preview. */
+  codeOnly: boolean;
 }
 
 const KIND_LABEL: Record<ExampleKind, string> = {
@@ -46,14 +48,15 @@ async function inlineStylesheets(html: string, assetPath: string, root: string):
 }
 
 /** Collect the asset paths a concept declares (frontmatter `examples`) or links
- *  to (`.html` in the body), as normalized bundle-relative paths. */
+ *  to in the body — `.html` (rendered) and `.css` (shown as code) — as
+ *  normalized bundle-relative paths. */
 function exampleAssetPaths(concept: Concept): string[] {
   const paths = new Set<string>();
   for (const ex of conceptExamples(concept)) {
     const p = resolveAssetHref(ex, concept.id);
-    if (p && /\.html$/i.test(p)) paths.add(p);
+    if (p && /\.(html|css)$/i.test(p)) paths.add(p);
   }
-  for (const m of concept.body.matchAll(/\]\(([^)\s#]+\.html)\)/gi)) {
+  for (const m of concept.body.matchAll(/\]\(([^)\s#]+\.(?:html|css))\)/gi)) {
     const p = resolveAssetHref(m[1], concept.id);
     if (p) paths.add(p);
   }
@@ -77,8 +80,13 @@ export function ExamplePreview({ concept, bundle }: { concept: Concept; bundle: 
         for (const path of exampleAssetPaths(concept)) {
           const raw = await readAsset(root, path);
           if (raw == null) continue;
-          const doc = await inlineStylesheets(raw, path, root);
-          loaded.push({ path, kind: exampleKind(path), raw, doc });
+          if (/\.css$/i.test(path)) {
+            // A linked stylesheet has no rendered form; show it as code.
+            loaded.push({ path, kind: "example", raw, doc: "", codeOnly: true });
+          } else {
+            const doc = await inlineStylesheets(raw, path, root);
+            loaded.push({ path, kind: exampleKind(path), raw, doc, codeOnly: false });
+          }
         }
         if (live.current) setItems(loaded);
       })();
@@ -112,6 +120,21 @@ function ExampleFrame({ item }: { item: PreviewItem }) {
     } catch {
       if (frame) frame.style.height = "240px";
     }
+  }
+
+  // A linked stylesheet: there is nothing to render, so show it as code only.
+  if (item.codeOnly) {
+    return (
+      <figure className="example example-code-only">
+        <figcaption className="example-head">
+          <span className="example-kind kind-stylesheet">Stylesheet</span>
+          <span className="example-path">{item.path}</span>
+        </figcaption>
+        <pre className="example-code">
+          <code>{item.raw}</code>
+        </pre>
+      </figure>
+    );
   }
 
   return (

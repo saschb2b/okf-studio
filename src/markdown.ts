@@ -63,27 +63,47 @@ function isSafeColor(value: string): boolean {
   return SAFE_HEX.test(value) || SAFE_FUNC.test(value);
 }
 
+/** A token reference: inline code that is exactly `{group.name}`. */
+const TOKEN_REF = /^\{([a-zA-Z0-9_.-]+)\}$/;
+
+/** Prepend a validated-color swatch chip to a `<code>` element. */
+function prependChip(code: Element, color: string): void {
+  const chip = document.createElement("span");
+  chip.className = "color-chip";
+  chip.setAttribute("style", `background:${color}`);
+  chip.setAttribute("aria-hidden", "true");
+  code.prepend(chip);
+}
+
 /**
- * Enhance rendered content: prefix any inline `<code>` that is *exactly* a color
- * value (a hex or simple rgb/hsl) with a small swatch chip, so a design-system
- * doc's role tables and prose *show* their colors. Runs on a detached fragment
- * after sanitization; the chip's only dynamic part is the color, validated by
- * {@link isSafeColor} before it is written to the inline style. A no-op without
- * a DOM (SSR/tests in the node env).
+ * Enhance rendered content in place, reading the document as authored:
+ * - inline `<code>` that is *exactly* a color (hex / rgb / hsl) gets a swatch;
+ * - inline `<code>` that is a `{group.name}` token reference is resolved against
+ *   `tokenIndex` (when given) — annotated with the value it resolves to, and
+ *   given a swatch too when that value is itself a color.
+ *
+ * Runs on a detached fragment after sanitization; a chip's only dynamic part is
+ * the color, validated by {@link isSafeColor} before it reaches the inline
+ * style, and the resolved value is set via `setAttribute` (auto-escaped), so
+ * there is no injection surface. A no-op without a DOM (SSR / node-env tests).
  */
-function decorateColorValues(html: string): string {
+function decorateColorValues(html: string, tokenIndex?: Record<string, string>): string {
   if (typeof document === "undefined") return html;
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   for (const code of Array.from(tpl.content.querySelectorAll("code"))) {
-    const value = code.textContent.trim();
-    if (!isSafeColor(value)) continue;
     if (code.querySelector(".color-chip")) continue; // idempotent
-    const chip = document.createElement("span");
-    chip.className = "color-chip";
-    chip.setAttribute("style", `background:${value}`);
-    chip.setAttribute("aria-hidden", "true");
-    code.prepend(chip);
+    const value = code.textContent.trim();
+    if (isSafeColor(value)) {
+      prependChip(code, value);
+      continue;
+    }
+    const ref = TOKEN_REF.exec(value);
+    if (tokenIndex && ref && Object.prototype.hasOwnProperty.call(tokenIndex, ref[1])) {
+      const resolved = tokenIndex[ref[1]];
+      code.setAttribute("title", `resolves to ${resolved}`);
+      if (isSafeColor(resolved)) prependChip(code, resolved);
+    }
   }
   return tpl.innerHTML;
 }
@@ -122,8 +142,12 @@ function slugifyHeadings(html: string): string {
   return tpl.innerHTML;
 }
 
-/** Render markdown to sanitized, safe-to-inject HTML. */
-export function renderMarkdown(md: string): string {
+/**
+ * Render markdown to sanitized, safe-to-inject HTML. When `tokenIndex` is given
+ * (the reader passes the bundle's design-token index), `{group.name}` references
+ * in inline code are resolved and annotated. See docs/features/design-system-rendering.md.
+ */
+export function renderMarkdown(md: string, tokenIndex?: Record<string, string>): string {
   // `async: false` forces the synchronous overload (string, not Promise).
   // `gfm` enables tables/strikethrough; `breaks:false` keeps authored single
   // newlines from becoming spurious <br>.
@@ -137,7 +161,7 @@ export function renderMarkdown(md: string): string {
   });
   // Decorate after sanitizing: the chip is fully constructed here from a
   // strictly-validated color, so it adds no untrusted markup.
-  return decorateColorValues(clean);
+  return decorateColorValues(clean, tokenIndex);
 }
 
 /** Outcome of resolving a markdown link href found inside a concept body. */

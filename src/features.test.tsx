@@ -78,9 +78,10 @@ describe("OKF Viewer features", () => {
     const reader = container.querySelector<HTMLElement>(".reader")!;
     // The token table renders the component's tokens and resolves a {ref}.
     expect(await within(reader).findByText("button-primary.background")).toBeInTheDocument();
+    // The ref appears in the token table and (now) the body prose; assert ≥1.
     expect(
-      within(reader).getByText("{colors.bgColor-success-emphasis}"),
-    ).toBeInTheDocument();
+      within(reader).getAllByText("{colors.bgColor-success-emphasis}").length,
+    ).toBeGreaterThan(0);
     // The status and applies_to labels render beside the type badge.
     expect(within(reader).getByText("stable")).toBeInTheDocument();
     expect(within(reader).getByText("web")).toBeInTheDocument();

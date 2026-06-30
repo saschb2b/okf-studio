@@ -61,7 +61,10 @@ export function Reader() {
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const bodyHtml = c ? renderMarkdown(c.body) : "";
+  // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
+  // the body's `{ref}` resolution and the TokenViz below.
+  const tokenIndex = buildTokenIndex(bundle);
+  const bodyHtml = c ? renderMarkdown(c.body, tokenIndex) : "";
 
   // After the body renders: tag anchors for link routing/styling, assign stable
   // heading ids, build the outline, and wire scroll-spy to the scrolling pane.
@@ -207,7 +210,6 @@ export function Reader() {
   // Design-system (ODSF) extras, feature-detected — null/empty on plain OKF.
   const status = conceptStatus(c);
   const appliesTo = conceptAppliesTo(c);
-  const tokenIndex = buildTokenIndex(bundle);
   // Side rail in reader-only mode; otherwise (split / narrow) it falls below.
   const railSide = state.layout === "reader";
   // Breadcrumb: the concept's directory path (its place in the bundle).

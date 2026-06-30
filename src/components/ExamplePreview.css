@@ -36,6 +36,11 @@
 .example-kind.kind-dont {
   color: var(--error);
 }
+.example-kind.kind-stylesheet {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-weight: 500;
+}
 
 .example-tabs {
   display: flex;

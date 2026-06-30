@@ -60,3 +60,30 @@ describe("renderMarkdown color decoration", () => {
     expect(html).not.toContain('style="background');
   });
 });
+
+describe("renderMarkdown token-reference resolution", () => {
+  const index = { "colors.primary": "#1f883d", "spacing.md": "16px" };
+
+  it("resolves a color {ref} with a chip and a resolves-to title", () => {
+    const html = renderMarkdown("Use `{colors.primary}` here.", index);
+    expect(html).toContain("color-chip");
+    expect(html).toContain("background:#1f883d");
+    expect(html).toContain('title="resolves to #1f883d"');
+  });
+
+  it("annotates a non-color {ref} with its value, no chip", () => {
+    const html = renderMarkdown("Pad by `{spacing.md}`.", index);
+    expect(html).toContain('title="resolves to 16px"');
+    expect(html).not.toContain("color-chip");
+  });
+
+  it("leaves an unknown {ref} untouched", () => {
+    const html = renderMarkdown("`{nope.missing}`", index);
+    expect(html).not.toContain("resolves to");
+    expect(html).not.toContain("color-chip");
+  });
+
+  it("leaves {refs} untouched when no index is given", () => {
+    expect(renderMarkdown("`{colors.primary}`")).not.toContain("resolves to");
+  });
+});

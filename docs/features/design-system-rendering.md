@@ -25,7 +25,7 @@ When a concept carries a `tokens` map (preserved into `extra` by the [indentatio
 
 ## Token references
 
-A token value may reference another with design.md's `{group.name}` syntax (a component's `background: "{colors.bgColor-success-emphasis}"`). The viewer builds a **bundle-wide token index** from every concept's foundation tokens and resolves references against it, so a component shows the concrete value (and color dot) it will actually render. An unresolved reference is left verbatim, tolerated like a [broken link](../architecture/okf-parsing.md).
+A token value may reference another with design.md's `{group.name}` syntax (a component's `background: "{colors.bgColor-success-emphasis}"`). The viewer builds a **bundle-wide token index** from every concept's foundation tokens and resolves references against it, so a component shows the concrete value (and color dot) it will actually render. The **same resolution runs in the body prose**: a `{group.name}` written in inline code is annotated with the value it resolves to (and gets a swatch when that value is a color), so a doc that *mentions* a token still shows it. An unresolved reference is left verbatim, tolerated like a [broken link](../architecture/okf-parsing.md).
 
 # Color values in the body
 
@@ -38,6 +38,8 @@ Beside the type badge, the reader surfaces two ODSF frontmatter fields when pres
 # Live example previews
 
 A concept's companion **example assets** — `*.example.html` (canonical usage) and the `*.do.html` / `*.dont.html` of a do/don't pair — render as **live previews** between the header and the body: the actual HTML, rendered, with a **Preview / Code** toggle and a Do/Don't label. Assets are listed in the `examples` frontmatter and also discovered from `.html` links in the body (so a `# Examples` link is a live affordance, not a broken one — clicking it jumps to the rendered preview). Each is read via [`read_asset`](../architecture/ipc-and-security.md), and the stylesheets it links (`styles/tokens.css`, `styles/components.css`) are **inlined** so it renders truthfully to the system's tokens. The preview is a **sandboxed, script-free** iframe (the asset is static HTML/CSS by spec, so no JavaScript runs), sized to its content; a missing asset is skipped, not surfaced as an error.
+
+A linked **stylesheet** (`.css`) has no rendered form, so it is shown as a **code block** instead of an iframe — a foundation that links `styles/tokens.css`, or a component that links `styles/components.css`, displays its source inline.
 
 # What it deliberately is not
 

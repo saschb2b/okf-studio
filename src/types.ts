@@ -66,6 +66,8 @@ export interface Bundle {
   root: string;
   name: string;
   okfVersion: string | null;
+  /** ODSF profile version from the root index, if the bundle declares one. */
+  odsfVersion: string | null;
   concepts: Concept[];
   indexes: IndexNode[];
   log: LogEntry[];

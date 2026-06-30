@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-06-30T10:00:00Z
+timestamp: 2026-06-30T14:00:00Z
 ---
 
 # The three panes
@@ -36,7 +36,7 @@ The workspace switches between three layout modes — **split** (default, graph 
 
 The window runs **borderless** (native title-bar decorations are off — see [Theming](theming.md)); the top bar *is* the app's title bar, so the chrome is ours end to end (in the spirit of Zed's custom frame).
 
-- Left to right it holds the [**Bundle Switcher**](../features/bundle-switcher.md) (naming the open bundle and its folder), a **search** field that opens the [global launcher](../features/command-palette.md), the **layout** switch, the reader **"Aa"** controls, a **Log** toggle (renders `log.md` — see [Log View](../features/log-view.md)), and the **window controls** (minimize · maximize/restore · close) at the far right. App-level actions (Settings, shortcuts) live in the Activity Bar; the validation indicator lives in the status bar (below) — neither floats in the title bar.
+- It is laid out in three zones (the VS Code command-center pattern). **Left:** the [**Bundle Switcher**](../features/bundle-switcher.md) (naming the open bundle and its folder). **Center — window-centered:** the **back/forward** history controls immediately left of a prominent **search** field that opens the [global launcher](../features/command-palette.md); search is a primary feature, so it gets a generous, responsive width and stays centered to the window regardless of the side content. **Right:** the **layout** switch, the reader **"Aa"** controls, a **Log** toggle (renders `log.md` — see [Log View](../features/log-view.md)), and the **window controls** (minimize · maximize/restore · close) at the far right. App-level actions (Settings, shortcuts) live in the Activity Bar; the validation indicator lives in the status bar (below) — neither floats in the title bar.
 - Empty regions of the bar are a **drag handle** for moving the window (double-click to maximize/restore); interactive controls are excluded from the drag region. Invisible **resize handles** line the window edges and corners, and the window has **slightly rounded corners** (squared when maximized).
 - Honors [theming](theming.md) and a [native desktop feel](settings.md) (content-scoped zoom, our own frame), and is fully driveable by [keyboard](keyboard-shortcuts.md).
 

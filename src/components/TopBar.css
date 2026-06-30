@@ -1,7 +1,15 @@
 /* TopBar layout. Visuals (.btn, .badge) live in chrome.css. */
 
+/* Three zones: left (Bundle Switcher), a window-centered command center
+   (back/forward + search), and right (layout · actions · window controls).
+   The 1fr side columns are equal, so the center column stays centered to the
+   window regardless of the side content's width. */
 .topbar {
-  display: flex;
+  display: grid;
+  /* The center column owns the command center's width — prominent and
+     responsive (grows with the window, bounded) — while the equal 1fr side
+     columns keep it centered to the window. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, clamp(20rem, 44vw, 44rem)) minmax(0, 1fr);
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-8) var(--space-12);
@@ -10,14 +18,33 @@
   flex: 0 0 auto;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  justify-self: start;
+}
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+  /* Fill the (centered) command-center column so the search can stretch. */
+  justify-self: stretch;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  justify-self: end;
+}
+
 .topbar-nav {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.topbar-spacer {
-  flex: 1;
 }
 
 .topbar-actions {
@@ -69,10 +96,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  /* Preferred 16rem, but allowed to shrink so the bar never overflows at the
-     minimum window width (Microsoft "work at small dimensions" guidance). */
-  flex: 0 1 16rem;
-  min-width: 7rem;
+  /* Fills the command-center column beside the back/forward nav; the column
+     (TopBar grid) owns the responsive width. */
+  flex: 1 1 auto;
+  min-width: 0;
   padding: var(--space-6) var(--space-10);
   border-radius: var(--radius);
   border: 1px solid var(--border);

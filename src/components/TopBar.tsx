@@ -79,155 +79,148 @@ export function TopBar() {
           />
         }
       >
-        <BundleSwitcher />
+        <div className="topbar-left">
+          <BundleSwitcher />
+        </div>
 
-        <Toolbar.Group className="topbar-nav">
-          <Tooltip.Root>
-            <Tooltip.Trigger
-              render={
-                <Toolbar.Button
-                  className="btn ghost icon"
-                  aria-label="Go back"
-                  disabled={!canBack}
-                  onClick={() => actions.back()}
-                >
-                  ←
-                </Toolbar.Button>
-              }
-            />
-            <Tooltip.Portal>
-              <Tooltip.Positioner
-                className="ui-tooltip-positioner"
-                sideOffset={6}
-              >
-                <Tooltip.Popup className="ui-tooltip">Back</Tooltip.Popup>
-              </Tooltip.Positioner>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-
-          <Tooltip.Root>
-            <Tooltip.Trigger
-              render={
-                <Toolbar.Button
-                  className="btn ghost icon"
-                  aria-label="Go forward"
-                  disabled={!canForward}
-                  onClick={() => actions.forward()}
-                >
-                  →
-                </Toolbar.Button>
-              }
-            />
-            <Tooltip.Portal>
-              <Tooltip.Positioner
-                className="ui-tooltip-positioner"
-                sideOffset={6}
-              >
-                <Tooltip.Popup className="ui-tooltip">Forward</Tooltip.Popup>
-              </Tooltip.Positioner>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-        </Toolbar.Group>
-
-        <div className="topbar-spacer" />
-
-        {state.bundle && (
-          <Toolbar.Group
-            className="layout-switch"
-            role="radiogroup"
-            aria-label="Workspace layout"
-          >
-            {LAYOUTS.map(({ mode, label, hint, icon }) => (
-              <Tooltip.Root key={mode}>
-                <Tooltip.Trigger
-                  render={
-                    <Toolbar.Button
-                      className={`btn ghost icon layout-btn ${
-                        state.layout === mode ? "active" : ""
-                      }`}
-                      role="radio"
-                      aria-checked={state.layout === mode}
-                      aria-label={label}
-                      onClick={() => actions.setLayout(mode)}
-                    >
-                      <span aria-hidden="true">{icon}</span>
-                    </Toolbar.Button>
-                  }
-                />
-                <Tooltip.Portal>
-                  <Tooltip.Positioner
-                    className="ui-tooltip-positioner"
-                    sideOffset={6}
+        {/* Window-centered command center: back/forward immediately left of the
+            search, in the spirit of VS Code's command center. */}
+        <div className="topbar-center">
+          <Toolbar.Group className="topbar-nav">
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <Toolbar.Button
+                    className="btn ghost icon"
+                    aria-label="Go back"
+                    disabled={!canBack}
+                    onClick={() => actions.back()}
                   >
-                    <Tooltip.Popup className="ui-tooltip">
-                      {label} ({hint})
-                    </Tooltip.Popup>
-                  </Tooltip.Positioner>
-                </Tooltip.Portal>
-              </Tooltip.Root>
-            ))}
-          </Toolbar.Group>
-        )}
-
-        <Tooltip.Root>
-          <Tooltip.Trigger
-            render={
-              <Toolbar.Button
-                className="topbar-search"
-                aria-label="Search and commands"
-                aria-keyshortcuts="Control+K Meta+K"
-                onClick={() => actions.setPalette(true)}
-              >
-                <span className="topbar-search-icon" aria-hidden="true">
-                  ⌕
-                </span>
-                <span className="topbar-search-label">Search…</span>
-                <kbd className="topbar-search-kbd" aria-hidden="true">
-                  {searchHint}
-                </kbd>
-              </Toolbar.Button>
-            }
-          />
-          <Tooltip.Portal>
-            <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
-              <Tooltip.Popup className="ui-tooltip">
-                Search and commands ({searchHint} or /)
-              </Tooltip.Popup>
-            </Tooltip.Positioner>
-          </Tooltip.Portal>
-        </Tooltip.Root>
-
-        {state.bundle && (
-          <Toolbar.Group className="topbar-actions">
-            {state.layout !== "graph" && <ReaderPrefs />}
+                    ←
+                  </Toolbar.Button>
+                }
+              />
+              <Tooltip.Portal>
+                <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                  <Tooltip.Popup className="ui-tooltip">Back</Tooltip.Popup>
+                </Tooltip.Positioner>
+              </Tooltip.Portal>
+            </Tooltip.Root>
 
             <Tooltip.Root>
               <Tooltip.Trigger
                 render={
                   <Toolbar.Button
-                    className={`btn ghost ${state.panels.log ? "active" : ""}`}
-                    aria-label="Toggle log panel"
-                    aria-pressed={state.panels.log}
-                    onClick={() => actions.togglePanel("log")}
+                    className="btn ghost icon"
+                    aria-label="Go forward"
+                    disabled={!canForward}
+                    onClick={() => actions.forward()}
                   >
-                    Log
+                    →
                   </Toolbar.Button>
                 }
               />
               <Tooltip.Portal>
-                <Tooltip.Positioner
-                  className="ui-tooltip-positioner"
-                  sideOffset={6}
-                >
-                  <Tooltip.Popup className="ui-tooltip">Log</Tooltip.Popup>
+                <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                  <Tooltip.Popup className="ui-tooltip">Forward</Tooltip.Popup>
                 </Tooltip.Positioner>
               </Tooltip.Portal>
             </Tooltip.Root>
-
           </Toolbar.Group>
-        )}
 
-        <WindowControls />
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              render={
+                <Toolbar.Button
+                  className="topbar-search"
+                  aria-label="Search and commands"
+                  aria-keyshortcuts="Control+K Meta+K"
+                  onClick={() => actions.setPalette(true)}
+                >
+                  <span className="topbar-search-icon" aria-hidden="true">
+                    ⌕
+                  </span>
+                  <span className="topbar-search-label">Search…</span>
+                  <kbd className="topbar-search-kbd" aria-hidden="true">
+                    {searchHint}
+                  </kbd>
+                </Toolbar.Button>
+              }
+            />
+            <Tooltip.Portal>
+              <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                <Tooltip.Popup className="ui-tooltip">
+                  Search and commands ({searchHint} or /)
+                </Tooltip.Popup>
+              </Tooltip.Positioner>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        </div>
+
+        <div className="topbar-right">
+          {state.bundle && (
+            <Toolbar.Group
+              className="layout-switch"
+              role="radiogroup"
+              aria-label="Workspace layout"
+            >
+              {LAYOUTS.map(({ mode, label, hint, icon }) => (
+                <Tooltip.Root key={mode}>
+                  <Tooltip.Trigger
+                    render={
+                      <Toolbar.Button
+                        className={`btn ghost icon layout-btn ${
+                          state.layout === mode ? "active" : ""
+                        }`}
+                        role="radio"
+                        aria-checked={state.layout === mode}
+                        aria-label={label}
+                        onClick={() => actions.setLayout(mode)}
+                      >
+                        <span aria-hidden="true">{icon}</span>
+                      </Toolbar.Button>
+                    }
+                  />
+                  <Tooltip.Portal>
+                    <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                      <Tooltip.Popup className="ui-tooltip">
+                        {label} ({hint})
+                      </Tooltip.Popup>
+                    </Tooltip.Positioner>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              ))}
+            </Toolbar.Group>
+          )}
+
+          {state.bundle && (
+            <Toolbar.Group className="topbar-actions">
+              {state.layout !== "graph" && <ReaderPrefs />}
+
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <Toolbar.Button
+                      className={`btn ghost ${state.panels.log ? "active" : ""}`}
+                      aria-label="Toggle log panel"
+                      aria-pressed={state.panels.log}
+                      onClick={() => actions.togglePanel("log")}
+                    >
+                      Log
+                    </Toolbar.Button>
+                  }
+                />
+                <Tooltip.Portal>
+                  <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                    <Tooltip.Popup className="ui-tooltip">Log</Tooltip.Popup>
+                  </Tooltip.Positioner>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Toolbar.Group>
+          )}
+
+          <WindowControls />
+        </div>
       </Toolbar.Root>
     </Tooltip.Provider>
   );

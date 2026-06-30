@@ -181,17 +181,7 @@ body,
   min-width: 0;
 }
 
-/* Top bar */
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--bg-elev);
-  border-bottom: 1px solid var(--border);
-  flex: 0 0 auto;
-}
-.spacer { flex: 1; }
+/* Top bar layout lives in TopBar.css. */
 
 .btn {
   font: inherit;

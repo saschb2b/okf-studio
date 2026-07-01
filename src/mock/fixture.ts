@@ -426,7 +426,17 @@ export const MOCK_BUNDLE: Bundle = {
   log: [
     { date: "2026-06-28", entries: ["**Creation**: Sample bundle for the viewer's empty-handed dev mode."] },
   ],
-  issues: [],
+  issues: [
+    // Mirrors what the core's validate() reports for this fixture's broken
+    // cross-link (see crates/okf-core/src/validate.rs), so the status bar's
+    // amber state and the validation panel render off-Tauri too.
+    {
+      conceptId: "features/concept-reader",
+      level: "warning",
+      message:
+        "features/concept-reader.md: link target not found -> features/does-not-exist",
+    },
+  ],
   confidence: "confident",
 };
 

@@ -57,10 +57,17 @@ describe("OKF Viewer app", () => {
     ).toBeInTheDocument();
   });
 
-  it("reports the bundle as conformant in the validation badge", async () => {
+  it("surfaces the fixture's broken-link warning in the validation badge", async () => {
     const user = userEvent.setup();
     renderApp();
     await openFolder(user);
-    expect(screen.getByText(/conformant/i)).toBeInTheDocument();
+    // The mock bundle carries one broken cross-link, which validation reports
+    // as a warning (amber), not the quiet conformant baseline.
+    const badge = screen.getByRole("button", { name: /validation/i });
+    expect(badge).toHaveTextContent(/1 warning/i);
+    await user.click(badge);
+    expect(
+      await screen.findByText(/link target not found/i),
+    ).toBeInTheDocument();
   });
 });

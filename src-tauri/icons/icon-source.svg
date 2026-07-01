@@ -1,16 +1,29 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <!-- App tile: 896x896 inside a 1024 canvas -> a 64px transparent safe-area
-       gutter (macOS icons need padding; the mask is not auto-applied). Corner
-       radius 144 (~16% of the tile): softer than the 22.5% macOS squircle,
-       tighter than a full-bleed rounding. -->
-  <rect x="64" y="64" width="896" height="896" rx="144" fill="#141518"/>
-  <!-- Folder + three fanned sheets, scaled to fill ~74% of the tile. -->
+  <defs>
+    <!-- Black-gradient tile: near-black top -> deeper black bottom. Per Apple's
+         dark-icon guidance a subtle gradient (not flat #000) keeps the rounded
+         tile's edge visible on dark docks/wallpapers and OLED. -->
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2A2E"/>
+      <stop offset="1" stop-color="#060608"/>
+    </linearGradient>
+    <!-- Brand folder front: blue -> violet analogous gradient (owns a color so
+         the mark reads as ours, not a generic system folder). -->
+    <linearGradient id="folder" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B8CFF"/>
+      <stop offset="1" stop-color="#9A6BFF"/>
+    </linearGradient>
+  </defs>
+  <!-- App tile: 896 inside a 1024 canvas (64px safe-area gutter), radius 144 (~16%). -->
+  <rect x="64" y="64" width="896" height="896" rx="144" fill="url(#tile)"/>
+  <!-- Folder + three fanned sheets, scaled to ~74% of the tile. Papers use a
+       deepened 3-step scale so the fan reads as distinct pages. -->
   <g transform="translate(512 513) scale(1.20) translate(-512 -513)">
-    <rect x="236" y="292" width="232" height="118" rx="30" fill="#868C94"/>
-    <rect x="236" y="350" width="552" height="384" rx="44" fill="#868C94"/>
-    <rect x="300" y="372" width="352" height="232" rx="20" fill="#C7CCD1"/>
-    <rect x="344" y="350" width="352" height="254" rx="20" fill="#E2E5E9"/>
+    <rect x="236" y="292" width="232" height="118" rx="30" fill="#3E4BAF"/>
+    <rect x="236" y="350" width="552" height="384" rx="44" fill="#3E4BAF"/>
+    <rect x="300" y="372" width="352" height="232" rx="20" fill="#97A4C6"/>
+    <rect x="344" y="350" width="352" height="254" rx="20" fill="#C6D1EC"/>
     <rect x="388" y="326" width="352" height="278" rx="20" fill="#FFFFFF"/>
-    <rect x="236" y="480" width="552" height="254" rx="44" fill="#BFC5CC"/>
+    <rect x="236" y="480" width="552" height="254" rx="44" fill="url(#folder)"/>
   </g>
 </svg>

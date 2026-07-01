@@ -72,17 +72,37 @@
   text-align: center;
 }
 
-/* Controls panel (top-left), Obsidian-style. */
-.graph-panel {
+/* Top toolbar row: the Controls toggle (left) and the mode toggle (center).
+   Same centering trick as the title bar — max-content side columns keep the
+   mode toggle window-centered while there is room, and push it aside instead
+   of letting the two overlap when the pane gets narrow. */
+.graph-toolbar {
   position: absolute;
   top: 12px;
   left: 12px;
+  right: 12px;
   z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+  column-gap: var(--space-8);
+  align-items: start;
+  /* The row spans the pane; let clicks and drags in its empty stretches fall
+     through to the canvas below. */
+  pointer-events: none;
+}
+
+.graph-toolbar > * {
+  pointer-events: auto;
+}
+
+/* Controls panel (top-left), Obsidian-style. */
+.graph-panel {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-6);
   max-width: 280px;
+  justify-self: start;
 }
 
 .graph-panel-toggle {
@@ -202,18 +222,14 @@
   background: var(--bg-sunken);
 }
 
-/* Mode toggle (Overview/Focus) + depth stepper — top center. */
+/* Mode toggle (Overview/Focus) + depth stepper — the toolbar's center cell. */
 .graph-mode {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 3;
   display: flex;
   align-items: center;
   gap: var(--space-8);
   flex-wrap: wrap;
   justify-content: center;
+  justify-self: center;
 }
 
 .graph-seg,

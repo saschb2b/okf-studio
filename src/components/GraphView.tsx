@@ -903,168 +903,170 @@ export function GraphView() {
           onWheel={onWheel}
         />
       )}
-      <div className="graph-panel">
-        <Popover.Root>
-          <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Positioner
-              className="ui-popover-positioner"
-              side="bottom"
-              align="start"
-              sideOffset={6}
-            >
-              <Popover.Popup className="ui-popover graph-panel-body">
-                <Section title="Renderer" desc="How the graph is drawn.">
-                  <Segmented
-                    ariaLabel="Renderer"
-                    options={[
-                      { value: "canvas", text: "Canvas" },
-                      { value: "gpu", text: "GPU" },
-                    ]}
-                    value={renderer}
-                    onChange={setRenderer}
-                  />
-                  <p className="graph-hint">{RENDERER_HINTS[renderer]}</p>
-                </Section>
-                {renderer === "canvas" && (
-                  <>
-                <Section
-                  title="Connections"
-                  desc="A bundle can be densely cross-linked. Choose how many links to draw."
-                >
-                  <Segmented
-                    ariaLabel="Link density"
-                    options={[
-                      { value: "sparse", text: "Key" },
-                      { value: "balanced", text: "Balanced" },
-                      { value: "all", text: "All" },
-                    ]}
-                    value={state.linkDensity}
-                    onChange={(d) => {
-                      actions.setLinkDensity(d);
-                    }}
-                  />
-                  <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
-                </Section>
-                <Section title="Color" desc="What a node's color means.">
-                  <Segmented
-                    ariaLabel="Color nodes by"
-                    options={[
-                      { value: "cluster", text: "Cluster" },
-                      { value: "type", text: "Type" },
-                    ]}
-                    value={display.colorBy}
-                    onChange={(v) => setDisplay((d) => ({ ...d, colorBy: v }))}
-                  />
-                  <p className="graph-hint">{COLOR_HINTS[display.colorBy]}</p>
-                </Section>
-                <Section title="Appearance" desc="Size and emphasis of nodes and links.">
-                  <Slider
-                    label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
-                    format={(v) => `${v.toFixed(1)}×`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))}
-                  />
-                  <Slider
-                    label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
-                    format={(v) => `${v.toFixed(1)}×`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))}
-                  />
-                  <Slider
-                    label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
-                    format={(v) => `${Math.round(v * 100)}%`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))}
-                  />
-                  <Slider
-                    label="Label visibility"
-                    hint="How early titles appear as you zoom in."
-                    min={0.5} max={3} step={0.1} value={display.labelScale}
-                    format={(v) => `${v.toFixed(1)}×`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))}
-                  />
-                </Section>
-                <Section title="Layout" desc="Fine-tune how the graph arranges itself.">
-                  <Slider
-                    label="Spacing" hint="How strongly nodes push apart."
-                    min={0} max={6000} step={50} value={forces.repulsion}
-                    format={(v) => `${Math.round((v / 6000) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))}
-                  />
-                  <Slider
-                    label="Link length" hint="Resting distance between connected nodes."
-                    min={20} max={250} step={5} value={forces.springLength}
-                    format={(v) => `${Math.round(((v - 20) / 230) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, springLength: v }))}
-                  />
-                  <Slider
-                    label="Link pull" hint="How strongly links draw nodes together."
-                    min={0} max={0.3} step={0.01} value={forces.springK}
-                    format={(v) => `${Math.round((v / 0.3) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, springK: v }))}
-                  />
-                  <Slider
-                    label="Gravity" hint="Pull toward the center; keeps the graph compact."
-                    min={0} max={0.2} step={0.005} value={forces.centering}
-                    format={(v) => `${Math.round((v / 0.2) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
-                  />
-                </Section>
-                <button
-                  type="button"
-                  className="graph-panel-reset"
-                  onClick={() => {
-                    setForces({ ...GRAPH_FORCES });
-                    setDisplay(DEFAULT_DISPLAY);
-                    actions.setLinkDensity("balanced");
-                  }}
-                >
-                  Reset to defaults
-                </button>
-                  </>
-                )}
-              </Popover.Popup>
-            </Popover.Positioner>
-          </Popover.Portal>
-        </Popover.Root>
-      </div>
-      <div className="graph-mode" role="group" aria-label="Graph mode">
-        <div className="graph-seg">
-          <button
-            type="button"
-            className="graph-seg-btn"
-            aria-label="Overview: show the whole graph"
-            aria-pressed={state.graphMode === "overview"}
-            onClick={() => actions.setGraphMode("overview")}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            className="graph-seg-btn"
-            aria-label="Focus: show the selected concept's neighborhood"
-            aria-pressed={state.graphMode === "focus"}
-            onClick={() => actions.setGraphMode("focus")}
-          >
-            Focus
-          </button>
-        </div>
-        {state.graphMode === "focus" && (
-          <div className="graph-depth" role="group" aria-label="Focus depth">
-            <span className="graph-depth-label">Depth</span>
-            {[1, 2, 3].map((d) => (
-              <button
-                key={d}
-                type="button"
-                className="graph-seg-btn"
-                aria-label={`Focus depth ${d}`}
-                aria-pressed={state.focusDepth === d}
-                onClick={() => actions.setFocusDepth(d)}
+      <div className="graph-toolbar">
+        <div className="graph-panel">
+          <Popover.Root>
+            <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Positioner
+                className="ui-popover-positioner"
+                side="bottom"
+                align="start"
+                sideOffset={6}
               >
-                {d}
-              </button>
-            ))}
+                <Popover.Popup className="ui-popover graph-panel-body">
+                  <Section title="Renderer" desc="How the graph is drawn.">
+                    <Segmented
+                      ariaLabel="Renderer"
+                      options={[
+                        { value: "canvas", text: "Canvas" },
+                        { value: "gpu", text: "GPU" },
+                      ]}
+                      value={renderer}
+                      onChange={setRenderer}
+                    />
+                    <p className="graph-hint">{RENDERER_HINTS[renderer]}</p>
+                  </Section>
+                  {renderer === "canvas" && (
+                    <>
+                  <Section
+                    title="Connections"
+                    desc="A bundle can be densely cross-linked. Choose how many links to draw."
+                  >
+                    <Segmented
+                      ariaLabel="Link density"
+                      options={[
+                        { value: "sparse", text: "Key" },
+                        { value: "balanced", text: "Balanced" },
+                        { value: "all", text: "All" },
+                      ]}
+                      value={state.linkDensity}
+                      onChange={(d) => {
+                        actions.setLinkDensity(d);
+                      }}
+                    />
+                    <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
+                  </Section>
+                  <Section title="Color" desc="What a node's color means.">
+                    <Segmented
+                      ariaLabel="Color nodes by"
+                      options={[
+                        { value: "cluster", text: "Cluster" },
+                        { value: "type", text: "Type" },
+                      ]}
+                      value={display.colorBy}
+                      onChange={(v) => setDisplay((d) => ({ ...d, colorBy: v }))}
+                    />
+                    <p className="graph-hint">{COLOR_HINTS[display.colorBy]}</p>
+                  </Section>
+                  <Section title="Appearance" desc="Size and emphasis of nodes and links.">
+                    <Slider
+                      label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
+                      format={(v) => `${v.toFixed(1)}×`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))}
+                    />
+                    <Slider
+                      label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
+                      format={(v) => `${v.toFixed(1)}×`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))}
+                    />
+                    <Slider
+                      label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
+                      format={(v) => `${Math.round(v * 100)}%`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))}
+                    />
+                    <Slider
+                      label="Label visibility"
+                      hint="How early titles appear as you zoom in."
+                      min={0.5} max={3} step={0.1} value={display.labelScale}
+                      format={(v) => `${v.toFixed(1)}×`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))}
+                    />
+                  </Section>
+                  <Section title="Layout" desc="Fine-tune how the graph arranges itself.">
+                    <Slider
+                      label="Spacing" hint="How strongly nodes push apart."
+                      min={0} max={6000} step={50} value={forces.repulsion}
+                      format={(v) => `${Math.round((v / 6000) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))}
+                    />
+                    <Slider
+                      label="Link length" hint="Resting distance between connected nodes."
+                      min={20} max={250} step={5} value={forces.springLength}
+                      format={(v) => `${Math.round(((v - 20) / 230) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, springLength: v }))}
+                    />
+                    <Slider
+                      label="Link pull" hint="How strongly links draw nodes together."
+                      min={0} max={0.3} step={0.01} value={forces.springK}
+                      format={(v) => `${Math.round((v / 0.3) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, springK: v }))}
+                    />
+                    <Slider
+                      label="Gravity" hint="Pull toward the center; keeps the graph compact."
+                      min={0} max={0.2} step={0.005} value={forces.centering}
+                      format={(v) => `${Math.round((v / 0.2) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
+                    />
+                  </Section>
+                  <button
+                    type="button"
+                    className="graph-panel-reset"
+                    onClick={() => {
+                      setForces({ ...GRAPH_FORCES });
+                      setDisplay(DEFAULT_DISPLAY);
+                      actions.setLinkDensity("balanced");
+                    }}
+                  >
+                    Reset to defaults
+                  </button>
+                    </>
+                  )}
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
+          </Popover.Root>
+        </div>
+        <div className="graph-mode" role="group" aria-label="Graph mode">
+          <div className="graph-seg">
+            <button
+              type="button"
+              className="graph-seg-btn"
+              aria-label="Overview: show the whole graph"
+              aria-pressed={state.graphMode === "overview"}
+              onClick={() => actions.setGraphMode("overview")}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              className="graph-seg-btn"
+              aria-label="Focus: show the selected concept's neighborhood"
+              aria-pressed={state.graphMode === "focus"}
+              onClick={() => actions.setGraphMode("focus")}
+            >
+              Focus
+            </button>
           </div>
-        )}
-        {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
+          {state.graphMode === "focus" && (
+            <div className="graph-depth" role="group" aria-label="Focus depth">
+              <span className="graph-depth-label">Depth</span>
+              {[1, 2, 3].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className="graph-seg-btn"
+                  aria-label={`Focus depth ${d}`}
+                  aria-pressed={state.focusDepth === d}
+                  onClick={() => actions.setFocusDepth(d)}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          )}
+          {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
+        </div>
       </div>
       {renderer === "canvas" && (hasDefects || isolate) && (
         <div className="graph-chips">

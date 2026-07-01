@@ -1,0 +1,15 @@
+{
+  "name": "okf-viewer-site",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "sync:ds": "node scripts/sync-ds.mjs",
+    "dev": "npm run sync:ds && astro dev",
+    "build": "npm run sync:ds && astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^7.0.4"
+  }
+}

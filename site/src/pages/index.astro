@@ -1,0 +1,195 @@
+---
+import Base from "../layouts/Base.astro";
+
+const base = import.meta.env.BASE_URL;
+const icon = `${base}icon.svg`;
+const shotGraph = `${base}screenshot-graph.webp`;
+const shotReader = `${base}screenshot-reader.webp`;
+const shotDs = `${base}screenshot-ds.webp`;
+
+const repo = "https://github.com/saschb2b/okf-viewer";
+const releasesLatest = `${repo}/releases/latest`;
+const releases = `${repo}/releases`;
+const version = "v0.2.0";
+
+const features = [
+  {
+    glyph: "◱",
+    title: "Knowledge as a graph",
+    body: "Explore concepts, links, and structure visually — not a wall of files.",
+  },
+  {
+    glyph: "⬡",
+    title: "Any conformant bundle",
+    body: "Reads Open Knowledge Format & ODSF bundles from any producer — yours or someone else's.",
+  },
+  {
+    glyph: "⚡",
+    title: "Native & fast",
+    body: "A Tauri desktop app for Windows, macOS, and Linux. Small, quick, no browser bloat.",
+  },
+  {
+    glyph: "✓",
+    title: "Conformance built in",
+    body: "Validation surfaces issues inline; a tolerant reader never rejects a sloppy bundle.",
+  },
+  {
+    glyph: "◐",
+    title: "Design-system aware",
+    body: "Renders ODSF design tokens and live HTML/CSS examples right in the reader.",
+  },
+  {
+    glyph: "❯",
+    title: "A real reader",
+    body: "Syntax-highlighted code, zoomable images, and keyboard-first navigation.",
+  },
+];
+
+const downloads = [
+  { glyph: "⊞", os: "Windows", meta: ".msi · .exe · x64", href: releasesLatest },
+  { glyph: "◈", os: "Linux", meta: ".deb · AppImage", href: releasesLatest },
+];
+---
+
+<Base>
+  <header class="topbar">
+    <nav class="container topbar__inner" aria-label="Primary">
+      <a class="site-nav__brand" href={base}>
+        <img class="site-nav__logo" src={icon} alt="" width="28" height="28" />
+        OKF Viewer
+      </a>
+      <div class="site-nav__links">
+        <a class="site-nav__link" href="#features">Features</a>
+        <a class="site-nav__link" href="#download">Download</a>
+        <a class="site-nav__link" href={repo}>GitHub</a>
+        <a class="btn btn--primary" href="#download">↓ Download</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <span class="eyebrow hero__eyebrow">Open Knowledge Format Viewer · {version}</span>
+        <h1 class="hero__title">
+          Read your knowledge<br /><span class="hero__grad">as a graph.</span>
+        </h1>
+        <p class="hero__sub">
+          A fast, native desktop reader for Open Knowledge Format bundles. Point it
+          at a folder — explore concepts, follow links, and see the structure of
+          what you know.
+        </p>
+        <div class="hero__cta">
+          <a class="btn btn--primary" href="#download">↓ Download for free</a>
+          <a class="btn btn--secondary" href={repo}>View on GitHub</a>
+        </div>
+        <p class="hero__meta">Free & open source · Windows · macOS · Linux</p>
+        <figure class="hero__art">
+          <img
+            src={shotGraph}
+            alt="OKF Viewer showing a knowledge bundle as a concept graph beside the reader"
+            width="1760"
+            height="1117"
+          />
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">Why OKF Viewer</span>
+          <h2 class="section__title">Built to read knowledge, not just files.</h2>
+          <p class="section__sub">
+            A focused reader for the Open Knowledge Format — the vendor-neutral way
+            to package agent-readable knowledge.
+          </p>
+        </div>
+        <div class="features">
+          {
+            features.map((f) => (
+              <article class="feature-card">
+                <span class="feature-card__glyph" aria-hidden="true">{f.glyph}</span>
+                <h3 class="feature-card__title">{f.title}</h3>
+                <p class="feature-card__body">{f.body}</p>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="section showcase">
+      <div class="container">
+        <div class="showcase__row">
+          <div class="showcase__text">
+            <span class="eyebrow showcase__eyebrow">The reader</span>
+            <h2 class="showcase__title">Every concept, its links, and where it's cited.</h2>
+            <p class="showcase__body">
+              A distraction-free reader with a live index, syntax-highlighted code,
+              zoomable images, and the relationship panel — see what a concept links
+              to and what cites it, without leaving the page.
+            </p>
+          </div>
+          <figure class="showcase__media">
+            <img src={shotReader} alt="OKF Viewer's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" />
+          </figure>
+        </div>
+
+        <div class="showcase__row showcase__row--reverse">
+          <div class="showcase__text">
+            <span class="eyebrow showcase__eyebrow">Design-system aware</span>
+            <h2 class="showcase__title">It reads design systems, too.</h2>
+            <p class="showcase__body">
+              Open an ODSF bundle and OKF Viewer renders its design tokens and
+              live HTML/CSS examples inline. Here it's reading this very site's
+              design system — previewing the hero it was built from.
+            </p>
+          </div>
+          <figure class="showcase__media">
+            <img src={shotDs} alt="OKF Viewer rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" />
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="download">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">Download</span>
+          <h2 class="section__title">Get OKF Viewer</h2>
+          <p class="section__sub">Free and open source. Pick your platform.</p>
+        </div>
+        <div class="download__row">
+          {
+            downloads.map((d) => (
+              <a class="dl-btn" href={d.href}>
+                <span class="dl-btn__glyph" aria-hidden="true">{d.glyph}</span>
+                <span class="dl-btn__text">
+                  <span class="dl-btn__os">{d.os}</span>
+                  <span class="dl-btn__meta">{d.meta}</span>
+                </span>
+              </a>
+            ))
+          }
+        </div>
+        <p class="download__note">
+          {version} · unsigned for now (your OS may warn on first launch) ·
+          <a href={releases}>all releases</a> ·
+          macOS: <a href={repo}>build from source</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <span>OKF Viewer — open source. Point it at a folder.</span>
+      <div class="footer__links">
+        <a href={repo}>GitHub</a>
+        <a href={releases}>Releases</a>
+        <a href="https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md">OKF Spec</a>
+      </div>
+    </div>
+  </footer>
+</Base>

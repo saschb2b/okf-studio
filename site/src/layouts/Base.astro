@@ -1,0 +1,44 @@
+---
+// Base document shell. Imports the design-system token + component CSS (the
+// bridge from the ODSF bundle) and the page styles, in cascade order.
+import "../styles/design-system/tokens.css";
+import "../styles/design-system/components.css";
+import "../styles/site.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "OKF Viewer — read your knowledge as a graph",
+  description =
+    "A fast, native desktop reader for Open Knowledge Format bundles. Point it at a folder and explore your knowledge as a graph.",
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const site = Astro.site;
+const canonical = site ? new URL(base, site).href : base;
+const ogImage = site ? new URL(`${base}icon-512.png`, site).href : `${base}icon-512.png`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={`${base}icon.svg`} type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

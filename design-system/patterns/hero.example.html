@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OKF Viewer DS · Hero</title>
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <link rel="stylesheet" href="../styles/components.css">
+  <style>
+    body{background:var(--colors-bg);color:var(--colors-text);font-family:var(--font-sans);margin:0}
+    .hero{max-width:var(--size-container);margin:0 auto;padding:var(--space-96) var(--space-24);text-align:center;position:relative}
+    .hero__title{font-size:var(--text-display);line-height:var(--leading-tight);letter-spacing:var(--tracking-tight);font-weight:var(--font-weight-bold);margin:var(--space-16) 0}
+    .hero__sub{font-size:var(--text-lg);color:var(--colors-text-muted);max-width:var(--size-measure);margin:0 auto var(--space-32);line-height:var(--leading-normal)}
+    .hero__cta{display:flex;gap:var(--space-16);justify-content:center;flex-wrap:wrap}
+    .hero__art{width:160px;height:160px;margin:var(--space-64) auto 0;border-radius:var(--radius-xl);background:var(--colors-gradient-tile);box-shadow:var(--glow-brand-strong)}
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <span class="eyebrow">OKF Viewer · v0.2</span>
+    <h1 class="hero__title">Read your knowledge<br>as a graph.</h1>
+    <p class="hero__sub">A fast, native desktop reader for Open Knowledge Format bundles. Point it at a folder — explore concepts, links, and structure.</p>
+    <div class="hero__cta">
+      <a class="btn btn--primary" href="#download">↓ Download for free</a>
+      <a class="btn btn--secondary" href="#">View on GitHub</a>
+    </div>
+    <div class="hero__art" aria-hidden="true"></div>
+  </section>
+</body>
+</html>

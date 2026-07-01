@@ -1,0 +1,85 @@
+/* tokens.css — mechanical projection of the foundation `tokens` frontmatter.
+   Token path a.b.c -> --a-b-c, resolved literal value. Source of truth is the
+   foundation concepts under /foundations; regenerate with `/odsf token`. */
+:root {
+  /* color */
+  --colors-bg: #0B0B0D;
+  --colors-surface: #141518;
+  --colors-surface-2: #1C1D22;
+  --colors-border: #26272E;
+  --colors-border-strong: #34353E;
+  --colors-text: #EDEEF2;
+  --colors-text-muted: #A0A6B0;
+  --colors-text-dim: #6C717B;
+  --colors-primary: #5B8CFF;
+  --colors-primary-hover: #6E9BFF;
+  --colors-secondary: #9A6BFF;
+  --colors-indigo: #3E4BAF;
+  --colors-on-primary: #FFFFFF;
+  --colors-success: #5ED39A;
+  --colors-warning: #E0B341;
+  --colors-error: #FF6B5E;
+  --colors-focus: #5B8CFF;
+  --colors-gradient-brand: linear-gradient(135deg, #5B8CFF, #9A6BFF);
+  --colors-gradient-tile: linear-gradient(180deg, #2A2A2E, #060608);
+
+  /* typography */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --text-display: clamp(2.75rem, 6vw, 4.5rem);
+  --text-h1: clamp(2rem, 4vw, 2.75rem);
+  --text-h2: 1.75rem;
+  --text-h3: 1.25rem;
+  --text-lg: 1.125rem;
+  --text-base: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.8125rem;
+  --leading-tight: 1.08;
+  --leading-snug: 1.3;
+  --leading-normal: 1.6;
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+
+  /* spacing */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+  --space-80: 80px;
+  --space-96: 96px;
+  --space-128: 128px;
+  --size-container: 1120px;
+  --size-measure: 42rem;
+
+  /* shape */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --border-width: 1px;
+
+  /* elevation */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
+  --shadow-md: 0 8px 30px rgba(0,0,0,0.45);
+  --shadow-lg: 0 24px 70px rgba(0,0,0,0.55);
+  --glow-brand: 0 0 80px rgba(91,140,255,0.25);
+  --glow-brand-strong: 0 0 120px rgba(122,107,255,0.35);
+
+  /* motion */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0.6, 0.2, 1);
+}

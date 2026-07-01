@@ -1,0 +1,155 @@
+/* components.css — the rules the example assets render with. Every value comes
+   from a token custom property (var(--…)); no hard-coded literals. BEM naming:
+   .block, .block--modifier, .block__element. */
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-20);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--colors-focus);
+  outline-offset: 2px;
+}
+.btn--primary {
+  background: var(--colors-gradient-brand);
+  color: var(--colors-on-primary);
+}
+.btn--primary:hover {
+  box-shadow: var(--glow-brand);
+  transform: translateY(-1px);
+}
+.btn--secondary {
+  background: var(--colors-surface-2);
+  color: var(--colors-text);
+  border-color: var(--colors-border-strong);
+}
+.btn--secondary:hover { border-color: var(--colors-text-dim); }
+.btn--ghost {
+  background: transparent;
+  color: var(--colors-text-muted);
+}
+.btn--ghost:hover { color: var(--colors-text); }
+
+/* --- Download button (OS-specific CTA) --- */
+.dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-20);
+  min-width: 240px;
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-md);
+  background: var(--colors-surface);
+  color: var(--colors-text);
+  text-decoration: none;
+  transition: border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+.dl-btn:hover {
+  border-color: var(--colors-primary);
+  background: var(--colors-surface-2);
+}
+.dl-btn__glyph { font-size: 1.5rem; line-height: 1; }
+.dl-btn__text { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.dl-btn__os { font-weight: var(--font-weight-semibold); }
+.dl-btn__meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--colors-text-dim);
+}
+
+/* --- Eyebrow label --- */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--colors-primary);
+}
+
+/* --- Site nav --- */
+.site-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-24);
+  padding: var(--space-16) var(--space-24);
+  border-bottom: var(--border-width) solid var(--colors-border);
+  background: color-mix(in oklab, var(--colors-bg) 80%, transparent);
+}
+.site-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  font-weight: var(--font-weight-semibold);
+  color: var(--colors-text);
+  text-decoration: none;
+}
+.site-nav__logo { width: 28px; height: 28px; border-radius: var(--radius-sm); }
+.site-nav__links { display: flex; align-items: center; gap: var(--space-20); }
+.site-nav__link {
+  color: var(--colors-text-muted);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+.site-nav__link:hover { color: var(--colors-text); }
+
+/* --- Feature card --- */
+.feature-card {
+  padding: var(--space-24);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-lg);
+  background: var(--colors-surface);
+  transition: border-color var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+.feature-card:hover {
+  border-color: var(--colors-border-strong);
+  transform: translateY(-2px);
+}
+.feature-card__glyph {
+  display: inline-flex;
+  width: 44px; height: 44px;
+  align-items: center; justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--colors-surface-2);
+  margin-bottom: var(--space-16);
+  font-size: 1.25rem;
+}
+.feature-card__title {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-semibold);
+  color: var(--colors-text);
+}
+.feature-card__body {
+  margin: 0;
+  color: var(--colors-text-muted);
+  line-height: var(--leading-normal);
+}
+
+/* --- Layout helpers used by the pattern examples --- */
+.stack { display: flex; flex-direction: column; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; }
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.001ms !important; }
+}

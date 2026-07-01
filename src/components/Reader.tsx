@@ -31,6 +31,85 @@ function conceptExists(bundle: Bundle | null, id: string): boolean {
   return conceptById(bundle, id) !== null;
 }
 
+/** Append a visually-hidden cue to a link. Idempotent so the cue is never
+ *  duplicated across re-parses. */
+function appendSrOnly(a: HTMLAnchorElement, text: string): void {
+  if (a.querySelector(".sr-only")) return;
+  const span = document.createElement("span");
+  span.className = "sr-only";
+  span.textContent = text;
+  a.appendChild(span);
+}
+
+/** What a body link points at, so the reader can both style and route it. */
+type LinkKind =
+  | { kind: "external"; url: string }
+  | { kind: "asset" }
+  | { kind: "concept"; id: string }
+  | { kind: "directory"; dir: string }
+  | { kind: "unresolved" };
+
+/** True when `dir` is a real directory in the bundle (a concept lives under it). */
+function dirHasConcepts(bundle: Bundle | null, dir: string): boolean {
+  return bundle?.concepts.some((x) => x.id.startsWith(`${dir}/`)) ?? false;
+}
+
+/** The first concept under a directory, so a section link can "enter" it. */
+function firstConceptInDir(bundle: Bundle | null, dir: string): string | null {
+  return bundle?.concepts.find((x) => x.id.startsWith(`${dir}/`))?.id ?? null;
+}
+
+/** Classify a body link against the bundle: where does clicking it lead? */
+function classifyLink(href: string, fromId: string, bundle: Bundle | null): LinkKind {
+  const r = resolveHref(href, fromId);
+  if (r.kind === "external") return { kind: "external", url: r.url };
+  // A companion asset (.html/.css/.svg) renders as a live preview, not a concept.
+  if (/\.(html|css|svg)(#|$)/i.test(href)) return { kind: "asset" };
+  if (r.kind === "concept" && conceptExists(bundle, r.id)) return { kind: "concept", id: r.id };
+  if (r.kind === "concept" && dirHasConcepts(bundle, r.id)) return { kind: "directory", dir: r.id };
+  return { kind: "unresolved" };
+}
+
+/** Classify every link in the body HTML *string* and bake the routing/styling
+ *  attributes (data-link, title, rel, screen-reader cue) into it. Doing this in
+ *  the string — not by mutating the live DOM after render — keeps the cues from
+ *  being wiped when React re-applies `dangerouslySetInnerHTML`. */
+function classifyBodyLinks(html: string, fromId: string, bundle: Bundle | null): string {
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  for (const a of Array.from(tpl.content.querySelectorAll("a"))) {
+    const href = a.getAttribute("href");
+    if (!href) continue;
+    const link = classifyLink(href, fromId, bundle);
+    switch (link.kind) {
+      case "external":
+        a.dataset.link = "external";
+        a.setAttribute("rel", "noopener noreferrer");
+        a.setAttribute("title", `Opens in your browser: ${link.url}`);
+        appendSrOnly(a, " (opens in browser)");
+        break;
+      case "asset":
+        a.dataset.link = "asset";
+        a.setAttribute("title", `Companion asset: ${href}`);
+        break;
+      case "concept":
+        a.dataset.link = "concept";
+        a.setAttribute("title", `Open in the reader: ${titleOf(bundle, link.id)}`);
+        break;
+      case "directory":
+        a.dataset.link = "directory";
+        a.setAttribute("title", `Open section: ${link.dir}`);
+        break;
+      default:
+        a.dataset.link = "unresolved";
+        a.setAttribute("aria-disabled", "true");
+        a.setAttribute("title", `Broken link (target not found in this bundle): ${href}`);
+        appendSrOnly(a, " (broken link)");
+    }
+  }
+  return tpl.innerHTML;
+}
+
 /** Humanize a path segment for the breadcrumb (e.g. "data-model" → "Data Model"). */
 function humanize(seg: string): string {
   return seg.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
@@ -142,39 +221,21 @@ export function Reader() {
   // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
   // the body's `{ref}` resolution and the TokenViz below.
   const tokenIndex = buildTokenIndex(bundle);
-  const bodyHtml = c ? renderMarkdown(c.body, tokenIndex) : "";
+  // Classify links in the HTML string (not by post-render DOM mutation) so the
+  // routing/styling cues survive React re-applying the body's innerHTML.
+  const bodyHtml = c ? classifyBodyLinks(renderMarkdown(c.body, tokenIndex), c.id, bundle) : "";
   // Use the image-resolved html once it matches the current body; until then
   // (or when there are no images) render the body as-is.
   const displayHtml = processed?.src === bodyHtml ? processed.html : bodyHtml;
 
-  // After the body renders: tag anchors for link routing/styling, assign stable
-  // heading ids, build the outline, and wire scroll-spy to the scrolling pane.
+  // After the body renders: assign heading anchors, build the outline, and wire
+  // scroll-spy. (Link routing/styling is baked into the body HTML string above,
+  // so it is not re-applied here.)
   useEffect(() => {
     const el = bodyRef.current;
     if (!el || !c) {
       setOutline([]);
       return;
-    }
-
-    for (const a of Array.from(el.querySelectorAll("a"))) {
-      const href = a.getAttribute("href");
-      if (!href) continue;
-      const r = resolveHref(href, c.id);
-      if (r.kind === "external") {
-        a.dataset.link = "external";
-        a.setAttribute("rel", "noopener noreferrer");
-      } else if (r.kind === "concept" && conceptExists(bundle, r.id)) {
-        a.dataset.link = "concept";
-      } else if (/\.(html|css|svg)(#|$)/i.test(href)) {
-        // A companion asset (an ODSF example/stylesheet) — not a broken concept
-        // link; it renders as a live preview, so point the reader at it.
-        a.dataset.link = "asset";
-        a.setAttribute("title", "Jump to the rendered example");
-      } else {
-        a.dataset.link = "unresolved";
-        a.setAttribute("aria-disabled", "true");
-        a.setAttribute("title", "Unresolved link");
-      }
     }
 
     const heads = Array.from(el.querySelectorAll("h2, h3"));
@@ -348,27 +409,25 @@ export function Reader() {
     if (!anchor) return;
     const href = anchor.getAttribute("href");
     if (!href) return;
-    const resolved = resolveHref(href, c.id);
-    if (resolved.kind === "external") {
-      e.preventDefault();
-      actions.openExternal(resolved.url);
-      return;
-    }
-    if (resolved.kind === "concept" && conceptExists(bundle, resolved.id)) {
-      e.preventDefault();
-      actions.selectConcept(resolved.id);
-      return;
-    }
-    // A companion-asset link scrolls to its rendered preview above the body.
-    if (anchor.dataset.link === "asset") {
-      e.preventDefault();
+    // Route by the same classification baked into the link's styling.
+    const link = classifyLink(href, c.id, bundle);
+    e.preventDefault();
+    if (link.kind === "external") {
+      actions.openExternal(link.url);
+    } else if (link.kind === "concept") {
+      actions.selectConcept(link.id);
+    } else if (link.kind === "directory") {
+      // Enter the section: open its first concept (the sidebar expands to it).
+      const first = firstConceptInDir(bundle, link.dir);
+      if (first) actions.selectConcept(first);
+    } else if (link.kind === "asset") {
+      // Scroll to the asset's rendered preview above the body, if one exists.
       bodyRef.current
         ?.closest(".reader-main")
         ?.querySelector(".examples")
         ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-      return;
     }
-    e.preventDefault();
+    // "unresolved": inert (already de-emphasized and marked broken).
   }
 
   function jumpTo(id: string) {

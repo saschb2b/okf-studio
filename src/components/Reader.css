@@ -270,23 +270,35 @@
 .markdown a:hover {
   text-decoration-thickness: 2px;
 }
-/* Unresolved intra-bundle links: line-through (a non-color affordance) at a
-   contrast-safe dim — no opacity dilution. */
+/* Unresolved intra-bundle link: reads as broken, not a live link. A dashed
+   underline plus a trailing prohibited marker are non-color affordances (per
+   WCAG and the tolerant-consumer principle), at a contrast-safe dim with a
+   not-allowed cursor. The href is named in the hover title. */
 .markdown a[data-link="unresolved"] {
   color: var(--text-dim);
-  text-decoration: line-through;
+  text-decoration: underline dashed;
   text-decoration-thickness: from-font;
+  text-underline-offset: 2px;
   cursor: not-allowed;
 }
 .markdown a[data-link="unresolved"]:hover {
-  text-decoration: line-through;
+  text-decoration: underline dashed;
 }
-/* External links carry a small outbound marker so in-bundle vs external reads
-   at a glance (not color alone). */
+.markdown a[data-link="unresolved"]::after {
+  content: "⊘";
+  margin-left: 0.15em;
+  font-size: 0.8em;
+}
+/* External link: a clear outbound arrow, in the link color, so "leaves the app"
+   reads at a glance (the arrow, not color, is the cue). Paired with a
+   visually-hidden "opens in browser" and an "Opens in your browser: URL" title. */
 .markdown a[data-link="external"]::after {
-  content: " ↗";
-  font-size: 0.85em;
-  color: var(--text-dim);
+  content: "↗";
+  display: inline-block;
+  margin-left: 0.18em;
+  font-size: 0.82em;
+  color: var(--accent);
+  vertical-align: 0.06em;
 }
 /* A companion-asset link (an ODSF example/stylesheet) renders as a live preview
    above; mark it with a small frame glyph so it reads as "see the example", not

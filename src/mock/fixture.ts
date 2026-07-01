@@ -57,9 +57,10 @@ const raw: RawConcept[] = [
     timestamp: "2026-06-28T00:00:00Z",
     resource: null,
     extra: {},
-    body: "# What it does\n\nRenders a concept's markdown body alongside its frontmatter and its `Cited by` backlinks, so you always know what points here. Internal links resolve to other concepts and open in place; external links open in the system browser. Code blocks and tables are styled to match the surrounding theme.",
+    body: "# What it does\n\nRenders a concept's markdown body alongside its frontmatter and its `Cited by` backlinks, so you always know what points here. Links show where they lead: an [in-bundle link](graph-view.md) opens in the reader, a [section link](../architecture/) opens that part of the bundle, an [external link](https://github.com/GoogleCloudPlatform/knowledge-catalog) opens in your browser, and a [broken link](does-not-exist.md) is marked unresolved. Code blocks and tables are styled to match the surrounding theme.",
     links: ["features/graph-view"],
-    externalLinks: [],
+    externalLinks: ["https://github.com/GoogleCloudPlatform/knowledge-catalog"],
+    brokenLinks: ["features/does-not-exist"],
   },
   {
     id: "architecture/data-model",

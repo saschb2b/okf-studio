@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-06-30T18:30:00Z
+timestamp: 2026-07-01T19:30:00Z
 ---
 
 # What it does
@@ -36,7 +36,7 @@ Rendered for pleasant reading, sanitized before injection ([security](../archite
 - **Color values get a swatch.** A color value — inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), *or* a hex color written in plain prose (`borderColor-default (#d1d9e0)`) — is prefixed with a small chip, so a design-system role table or sentence *shows* its colors — see [Design-System Rendering](design-system-rendering.md). Bundle-agnostic; the chip's color is strictly validated before it is inlined, and code/link/pre text is left untouched.
 - **Token references resolve in prose.** Inline code that is a `{group.name}` token reference is annotated with the value it resolves to (and gets a swatch when that value is a color), so a doc that mentions a token still shows it — see [Design-System Rendering](design-system-rendering.md).
 - **Images render with a spotlight.** A **local** bundle image is inlined (read as a `data:` URL — no network fetch, per the [offline principle](../product/principles.md)) and is **click-to-zoom**: clicking opens a full-window spotlight overlay (dismiss with the close button, Escape, or a backdrop click). A **remote** image is never auto-fetched; it becomes an "open in browser" control. An unreadable local image degrades to a quiet placeholder. See [IPC & Security](../architecture/ipc-and-security.md) for how the offline guarantee holds.
-- **Links are underlined** (never color-only — [WCAG 1.4.1](../ux/accessibility.md)). **Intra-bundle links** are visually distinguished from external ones; clicking an in-bundle link resolves the [path](../architecture/okf-parsing.md) and navigates (graph + reader stay in sync), external URLs open in the system browser, and **unresolved links** carry a non-color "broken" affordance, not merely a dimmed strikethrough.
+- **Links say where they lead.** Every link is underlined (never color-only, per [WCAG 1.4.1](../ux/accessibility.md)) and carries a hover hint naming its destination, so a click is predictable before it happens. An **in-bundle link** resolves the [path](../architecture/okf-parsing.md) and opens in the reader (graph + reader stay in sync). A **section link** (one that points at a directory, e.g. `reference/` or `reference/index.md`) opens that part of the bundle rather than doing nothing. An **external link** carries an outbound arrow and a visually-hidden "opens in browser" cue, and opens in the system browser. An **unresolved link** is marked broken with non-color affordances (a dashed underline and a prohibited marker), not merely a dimmed strikethrough, and names the missing target on hover. Broken links are surfaced, never hidden, per the [tolerant-consumer principle](../product/principles.md). Classification is baked into the rendered body so the cues never disappear on re-render.
 
 # The right context rail
 

@@ -2,14 +2,6 @@
    pane tracks light/dark; the type badge color is set inline from the palette. */
 
 .concept-reader {
-  /* Reading-layer variables — the content-scoped reading layer (not page zoom),
-     tunable via the "Aa" control and persisted in settings. Prose surfaces below
-     multiply their font-size by --reader-scale via calc(). */
-  --reader-scale: 1;
-  --reader-measure: 72ch;
-  --reader-leading: 1.7;
-  --reader-font: var(--ui);
-
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
@@ -542,6 +534,9 @@
   padding: var(--space-6) var(--space-10);
   text-align: left;
   font-variant-numeric: tabular-nums;
+  /* Long unbreakable values (token names, hashes) may wrap mid-token, so a
+     table can always shrink to the prose column instead of overflowing it. */
+  overflow-wrap: anywhere;
 }
 .markdown th {
   background: var(--bg-sunken);
@@ -564,6 +559,14 @@
 
 /* Layout: reading column + right context rail ----------------------------- */
 .reader-shell {
+  /* Reading-layer variables — the content-scoped reading layer (not page zoom),
+     tunable via the "Aa" control and persisted in settings (Reader.tsx sets
+     them inline here). On the shell, not the article, so the rail shares them.
+     Prose surfaces multiply their font-size by --reader-scale via calc(). */
+  --reader-scale: 1;
+  --reader-measure: 72ch;
+  --reader-leading: 1.7;
+  --reader-font: var(--ui);
   --reader-rail-w: 300px;
   --reader-max: 1140px;
   max-width: var(--reader-max);
@@ -574,6 +577,12 @@
   grid-template-columns: minmax(0, 1fr) var(--reader-rail-w);
   gap: var(--space-32);
   align-items: start;
+}
+/* Grid items refuse to shrink below their min-content by default; without
+   this, wide unbreakable content (a token table) overflows the prose column
+   and paints under the rail instead of the column just getting narrower. */
+.reader-shell[data-rail="side"] .reader-main {
+  min-width: 0;
 }
 
 /* Default rail = stacked below the article (split mode, or a narrow pane). */
@@ -600,12 +609,32 @@
   padding: var(--space-20) var(--space-8) var(--space-40) 0;
   border-top: 0;
 }
-/* Too narrow for two columns → collapse the side rail to the stacked form. */
+/* Too narrow for two columns → collapse the side rail to the stacked form.
+   The threshold tracks the chosen measure (data-measure, from the "Aa" width
+   preference): 900px fits the default 72ch column beside the rail; the Wide
+   88ch column needs ~1040px before the rail stops crowding the prose. */
 @container (max-width: 900px) {
   .reader-shell[data-rail="side"] {
     display: block;
   }
   .reader-shell[data-rail="side"] .reader-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-16) var(--space-24);
+    position: static;
+    max-height: none;
+    overflow: visible;
+    max-width: var(--reader-measure);
+    margin-inline: auto;
+    padding: var(--space-16) var(--space-24) var(--space-40);
+    border-top: 1px solid var(--border);
+  }
+}
+@container (max-width: 1040px) {
+  .reader-shell[data-measure="88"][data-rail="side"] {
+    display: block;
+  }
+  .reader-shell[data-measure="88"][data-rail="side"] .reader-rail {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: var(--space-16) var(--space-24);
@@ -628,6 +657,11 @@
 }
 @container (max-width: 900px) {
   .reader-shell[data-rail="side"] .rail-outline {
+    display: none;
+  }
+}
+@container (max-width: 1040px) {
+  .reader-shell[data-measure="88"][data-rail="side"] .rail-outline {
     display: none;
   }
 }

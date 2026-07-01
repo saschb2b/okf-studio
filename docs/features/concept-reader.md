@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-01T19:30:00Z
+timestamp: 2026-07-01T23:20:00Z
 ---
 
 # What it does
@@ -17,7 +17,7 @@ At a wide width the reader is a **centered content shell** holding two columns:
 - A **reading column** capped to a comfortable measure (~70 characters) via [reading-layer tokens](../ux/theming.md), centered with balanced gutters so the text never pins to one edge or sprawls edge-to-edge. Prose stays **flush-left** (centered body text harms readability — see [Accessibility](../ux/accessibility.md)).
 - A **right context rail** (~300px), sticky, scrolling independently — quiet context only, never a second stream of prose.
 
-This is **responsive**: when the pane is narrow (or in the [split layout](../ux/browsing-layout.md) where the graph already supplies relationship context), the rail collapses and its modules fall back beneath the article; the rail shows in full in reader-only and wide windows. The rail always follows the `<article>` in document/focus order with its own landmark, so reading order stays correct.
+This is **responsive**: when the pane is narrow (or in the [split layout](../ux/browsing-layout.md) where the graph already supplies relationship context), the rail collapses and its modules fall back beneath the article; the rail shows in full in reader-only and wide windows. The collapse threshold **tracks the chosen text width** ([settings](../ux/settings.md)): a wider measure claims the rail's space for prose sooner, so the two never crowd or overlap each other. The rail always follows the `<article>` in document/focus order with its own landmark, so reading order stays correct.
 
 # Header
 

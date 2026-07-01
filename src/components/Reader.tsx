@@ -437,21 +437,28 @@ export function Reader() {
   }
 
   return (
-    <div className="reader-shell" data-rail={railSide ? "side" : "below"}>
+    <div
+      className="reader-shell"
+      data-rail={railSide ? "side" : "below"}
+      // The measure choice also feeds the side-rail collapse breakpoint: a
+      // wider prose column leaves less room for the rail (Reader.css).
+      data-measure={state.settings.readerMeasure}
+      // Reader-scoped reading layer (the content-scoped replacement for page
+      // zoom), driven by the "Aa" preferences and persisted in settings. Set
+      // on the shell, not the article, so the rail sees the vars too.
+      style={
+        {
+          "--reader-scale": readerScale,
+          "--reader-measure": `${state.settings.readerMeasure}ch`,
+          "--reader-leading": state.settings.readerLeading,
+          "--reader-font":
+            state.settings.readerFont === "serif" ? "var(--serif)" : "var(--ui)",
+        } as CSSProperties
+      }
+    >
       <article
         className="reader-main concept-reader"
-        // Reader-scoped reading layer (the content-scoped replacement for page
-        // zoom), driven by the "Aa" preferences and persisted in settings.
         data-aids={state.settings.readerAids ? "on" : undefined}
-        style={
-          {
-            "--reader-scale": readerScale,
-            "--reader-measure": `${state.settings.readerMeasure}ch`,
-            "--reader-leading": state.settings.readerLeading,
-            "--reader-font":
-              state.settings.readerFont === "serif" ? "var(--serif)" : "var(--ui)",
-          } as CSSProperties
-        }
       >
         <header className="reader-header">
           {/* Top row: breadcrumb at the left, reading-preferences ("Aa") at the

@@ -29,6 +29,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["deb", "appimage", "msi", "nsis"],
     "icon": [
       "icons/32x32.png",
@@ -43,7 +44,7 @@
       "endpoints": [
         "https://github.com/saschb2b/okf-viewer/releases/latest/download/latest.json"
       ],
-      "pubkey": "REPLACE_WITH_TAURI_SIGNER_PUBLIC_KEY"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI1RUM0MDE4NzU4REU2RTkKUldUcDVvMTFHRURzdFhHZ3J5cnkwWE5VMGJ4STJpM25jd1haNnZ4Y2sxVFRXUE11TEdhTmliOFEK"
     }
   }
 }

@@ -19,6 +19,26 @@ body {
   line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  position: relative;
+}
+/* Decorative backdrop: a faint node grid (dots that nod to the graph), anchored
+   to the top of the page and masked so it fades out below the hero. */
+body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1300px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 1.6px
+  );
+  background-size: 26px 26px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
 }
 a {
   color: inherit;
@@ -85,18 +105,16 @@ svg {
   overflow: hidden;
 }
 .hero::before {
-  /* brand bloom behind the headline */
+  /* brand color blend behind the headline: a violet core with a blue offset */
   content: "";
   position: absolute;
-  inset: -20% 0 auto 0;
-  height: 520px;
+  inset: -26% 0 auto 0;
+  height: 640px;
   margin: 0 auto;
-  max-width: 900px;
-  background: radial-gradient(
-    ellipse at center top,
-    rgba(122, 107, 255, 0.22),
-    transparent 60%
-  );
+  max-width: 1100px;
+  background:
+    radial-gradient(58% 52% at 48% 26%, rgba(122, 107, 255, 0.22), transparent 70%),
+    radial-gradient(46% 48% at 72% 16%, rgba(91, 140, 255, 0.16), transparent 72%);
   pointer-events: none;
   z-index: -1;
 }

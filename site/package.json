@@ -3,6 +3,7 @@
   "type": "module",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.20.0",
   "scripts": {
     "sync:ds": "node scripts/sync-ds.mjs",
     "dev": "npm run sync:ds && astro dev",

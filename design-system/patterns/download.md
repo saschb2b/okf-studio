@@ -1,7 +1,7 @@
 ---
 type: Pattern
 title: Download grid
-description: The per-OS download section — a row of platform download buttons over a mono note about signing/updates.
+description: The per-OS download section: a row of platform download buttons over a mono note about signing/updates.
 tags: [patterns, download]
 status: stable
 timestamp: 2026-07-01T16:31:45Z

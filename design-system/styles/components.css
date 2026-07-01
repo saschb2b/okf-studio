@@ -1,4 +1,4 @@
-/* components.css — the rules the example assets render with. Every value comes
+/* components.css: the rules the example assets render with. Every value comes
    from a token custom property (var(--…)); no hard-coded literals. BEM naming:
    .block, .block--modifier, .block__element. */
 

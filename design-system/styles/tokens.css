@@ -1,4 +1,4 @@
-/* tokens.css — mechanical projection of the foundation `tokens` frontmatter.
+/* tokens.css: mechanical projection of the foundation `tokens` frontmatter.
    Token path a.b.c -> --a-b-c, resolved literal value. Source of truth is the
    foundation concepts under /foundations; regenerate with `/odsf token`. */
 :root {

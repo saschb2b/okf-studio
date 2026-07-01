@@ -1,7 +1,7 @@
 ---
 type: Pattern
 title: Hero
-description: The above-the-fold composition — eyebrow, display headline, sub, download CTAs, and a glowing product tile.
+description: The above-the-fold composition: eyebrow, display headline, sub, download CTAs, and a glowing product tile.
 tags: [patterns, hero, landing]
 status: stable
 timestamp: 2026-07-01T16:31:45Z

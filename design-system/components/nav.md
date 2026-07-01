@@ -1,7 +1,7 @@
 ---
 type: Component
 title: Site nav
-description: Sticky top bar — brand mark on the left, links and a primary action on the right.
+description: Sticky top bar: brand mark on the left, links and a primary action on the right.
 tags: [components, navigation]
 status: stable
 applies_to: [web]

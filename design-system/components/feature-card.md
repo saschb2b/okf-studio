@@ -1,7 +1,7 @@
 ---
 type: Component
 title: Feature card
-description: A glyph, title, and one-line body — the unit of the feature grid.
+description: A glyph, title, and one-line body: the unit of the feature grid.
 tags: [components, card]
 status: stable
 applies_to: [web]

@@ -1,7 +1,7 @@
 ---
 type: Design System
 title: OKF Viewer Design System
-description: The dark-first visual language for OKF Viewer's marketing and download site — built from the app theme and app icon, in the register of zed.dev.
+description: The dark-first visual language for OKF Viewer's marketing and download site, built from the app theme and app icon, in the register of zed.dev.
 tags: [overview, design-system]
 status: stable
 timestamp: 2026-07-01T16:31:45Z

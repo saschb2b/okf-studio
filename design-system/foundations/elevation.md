@@ -16,7 +16,7 @@ tokens:
 ---
 
 # Tokens
-Shadows are pure black at low alpha (they read on dark). The **glow** tokens are the brand's light — a soft blue/violet bloom behind the hero art and under the primary CTA on hover.
+Shadows are pure black at low alpha (they read on dark). The **glow** tokens are the brand's light, a soft blue/violet bloom behind the hero art and under the primary CTA on hover.
 
 # Do & Don't
 - **Do** use `glow.brand` once, as a focal bloom.

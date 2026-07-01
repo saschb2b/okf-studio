@@ -8,7 +8,7 @@ timestamp: 2026-07-01T16:31:45Z
 ---
 
 # Rule
-Use `colors.bg` (#0B0B0D) and `colors.gradient-tile` for large dark areas — never flat `#000000`.
+Use `colors.bg` (#0B0B0D) and `colors.gradient-tile` for large dark areas, never flat `#000000`.
 
 # Why
 Per Apple's dark-icon/dark-UI guidance, flat pure black loses edge definition on dark displays and OLED: surfaces and tiles lose their silhouette. A subtle near-black (and a gentle top→bottom gradient on hero tiles) keeps edges and depth.
@@ -20,4 +20,4 @@ Fill the page with `colors.bg`; give hero/product tiles `colors.gradient-tile`.
 Set `background: #000` on the page or large panels.
 
 # Citations
-[1] [Apple HIG — App icons](https://developer.apple.com/design/human-interface-guidelines/app-icons)
+[1] [Apple HIG: App icons](https://developer.apple.com/design/human-interface-guidelines/app-icons)

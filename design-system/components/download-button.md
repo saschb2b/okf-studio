@@ -1,7 +1,7 @@
 ---
 type: Component
 title: Download button
-description: OS-specific download CTA — platform glyph, label, and a mono file/format meta line.
+description: OS-specific download CTA: platform glyph, label, and a mono file/format meta line.
 tags: [components, download, button]
 status: stable
 applies_to: [web]

@@ -1,7 +1,7 @@
 ---
 type: Color
 title: Color
-description: Dark-first palette built from the app theme and app-icon gradient — near-black surfaces with a blue→violet brand accent.
+description: Dark-first palette built from the app theme and app-icon gradient: near-black surfaces with a blue→violet brand accent.
 tags: [foundations, color, tokens]
 status: stable
 timestamp: 2026-07-01T16:29:01Z
@@ -37,12 +37,12 @@ tokens:
 | `colors.border` | `#26272E` | Hairline dividers and card borders. |
 | `colors.text` | `#EDEEF2` | Primary body / heading text. |
 | `colors.text-muted` | `#A0A6B0` | Secondary text, captions. |
-| `colors.primary` | `#5B8CFF` | Brand blue — links, primary accents. |
-| `colors.secondary` | `#9A6BFF` | Brand violet — the second gradient stop. |
+| `colors.primary` | `#5B8CFF` | Brand blue for links and primary accents. |
+| `colors.secondary` | `#9A6BFF` | Brand violet, the second gradient stop. |
 | `colors.gradient-brand` | blue→violet | The signature CTA / highlight gradient. |
 
 # Roles
-The system is **dark-first**: everything sits on `bg`, cards lift to `surface`. Color identity is carried by exactly one thing — the blue→violet **gradient-brand**, lifted straight from the app icon's folder — so the brand reads without a rainbow. `text` / `text-muted` / `text-dim` are the three legible steps on dark.
+The system is **dark-first**: everything sits on `bg`, cards lift to `surface`. Color identity is carried by exactly one thing, the blue→violet **gradient-brand**, lifted straight from the app icon's folder, so the brand reads without a rainbow. `text` / `text-muted` / `text-dim` are the three legible steps on dark.
 
 # Usage
 Use `gradient-brand` sparingly: the primary CTA, one hero highlight, focus/hover glows. Everything else is neutral (`text`, `border`, `surface`) so the accent stays special.

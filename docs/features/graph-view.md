@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-06-29T23:45:00Z
+timestamp: 2026-07-02T02:00:00Z
 ---
 
 # What it does
@@ -14,12 +14,12 @@ The center of the workspace renders the active bundle as an interactive **force-
 
 - **Node = concept.** Color comes from one of two modes (a Controls toggle): by `type` via the deterministic palette (the default-ish semantic coloring; the legend doubles as a [type filter](search-and-filter.md)), or by **detected cluster** — **Louvain** community detection groups densely-interlinked concepts and gives each community a unified color, so emergent clusters read at a glance.
 - **Node size** scales with degree (how connected a concept is), so hubs stand out.
-- **Edge = cross-link** between concepts. Direction is available (A links to B), and selecting a node highlights its incident edges plus its neighbors. A richly cross-linked bundle is dense enough that drawing *every* link reads as a hairball, so by default the graph draws a **structural backbone** — each concept's most significant edges — rather than all of them; a Controls *Links* setting trades readability for completeness. See [Implementation notes](#implementation-notes).
-- **Label** shows the concept `title`. Labels are **level-of-detail**: when zoomed out only dots show; labels fade in past an adjustable zoom threshold, and are always shown for the selected node, its neighbors, and the hovered node — so a large graph stays legible instead of becoming a wall of text.
+- **Edge = cross-link** between concepts. Each edge draws in its **source (citing) node's color** — Gephi's convention, following the active color mode — so hub fans and cluster membership read from the wiring, not just the dots. Selecting or hovering a node accents its incident edges and adds an **arrowhead at each cited end** (reciprocal links show both), so citation direction appears exactly where the user is looking while the overview stays clean. A richly cross-linked bundle is dense enough that drawing *every* link reads as a hairball, so by default the graph draws a **structural backbone** — each concept's most significant edges — rather than all of them; a Controls *Links* setting trades readability for completeness. See [Implementation notes](#implementation-notes).
+- **Label** shows the concept `title`, **sized by the node's importance** (hubs get larger labels). Labels are **level-of-detail** in the dataviz sense: each node's reveal threshold scales with its size, so zooming out sheds leaf labels first and keeps the hubs as a labeled map; overlapping labels are **collision-culled by priority** (selection/hover context first, then bigger nodes) instead of smearing. The selected node, its neighbors, and the hovered node are always labeled.
 
 # Interaction
 
-- Pan (drag background), zoom (wheel), drag nodes to reposition, **Fit** to reframe — all via [keyboard shortcuts](../ux/keyboard-shortcuts.md) too.
+- Pan (drag background), zoom (wheel), drag nodes to reposition, **Fit** to reframe — all via [keyboard shortcuts](../ux/keyboard-shortcuts.md) too. Switching the focus/isolate set reframes the new subgraph **immediately** from its cached positions (and again once the layout settles), so it never sits half out of view while the simulation runs.
 - Click a node to open it in the [Concept Reader](concept-reader.md) and recenter on it.
 - **Selecting** a node keeps the whole graph bright but rings it and accents its links, so the open concept's connections stand out without hiding the rest. **Hovering** a node dims everything except it and its neighbors, to trace one neighborhood at a time. Either way structure stays readable in a dense graph.
 - Hidden types (toggled in the legend) drop out of the layout; [search](search-and-filter.md) dims non-matches.

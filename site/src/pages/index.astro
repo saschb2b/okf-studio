@@ -12,6 +12,9 @@ const releasesLatest = `${repo}/releases/latest`;
 const releases = `${repo}/releases`;
 const version = "v0.2.0";
 
+const okfSpec = "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf";
+const odsfSpec = "https://saschb2b.github.io/Open-Design-System-Format/";
+
 const features = [
   {
     glyph: "◱",
@@ -59,6 +62,7 @@ const downloads = [
         OKF Viewer
       </a>
       <div class="site-nav__links">
+        <a class="site-nav__link" href="#formats">What is OKF?</a>
         <a class="site-nav__link" href="#features">Features</a>
         <a class="site-nav__link" href="#download">Download</a>
         <a class="site-nav__link" href={repo}>GitHub</a>
@@ -92,6 +96,43 @@ const downloads = [
             height="1117"
           />
         </figure>
+      </div>
+    </section>
+
+    <section class="section" id="formats">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">New here?</span>
+          <h2 class="section__title">What's OKF? What's ODSF?</h2>
+          <p class="section__sub">
+            OKF Viewer reads two open, vendor-neutral formats. Here's the short
+            version.
+          </p>
+        </div>
+        <div class="specs">
+          <article class="spec-card">
+            <span class="spec-card__kicker">Open Knowledge Format</span>
+            <h3 class="spec-card__title">Knowledge an agent can read</h3>
+            <p class="spec-card__body">
+              Google's open spec for packaging knowledge as plain markdown files
+              with YAML frontmatter, organized into a portable bundle — no SDK, no
+              database, no lock-in. Table docs, runbooks, API references, concept
+              graphs: anything an agent or a human should be able to read.
+            </p>
+            <a class="spec-card__link" href={okfSpec}>Read the OKF spec →</a>
+          </article>
+          <article class="spec-card">
+            <span class="spec-card__kicker">Open Design System Format</span>
+            <h3 class="spec-card__title">A design system an agent can build from</h3>
+            <p class="spec-card__body">
+              A profile of OKF for design systems: it adds machine-readable design
+              tokens and runnable HTML/CSS examples, so an agent produces UI that
+              matches your system. This very site was built from an ODSF bundle —
+              which OKF Viewer can open and preview.
+            </p>
+            <a class="spec-card__link" href={odsfSpec}>Read the ODSF spec →</a>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -188,7 +229,8 @@ const downloads = [
       <div class="footer__links">
         <a href={repo}>GitHub</a>
         <a href={releases}>Releases</a>
-        <a href="https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md">OKF Spec</a>
+        <a href={okfSpec}>OKF</a>
+        <a href={odsfSpec}>ODSF</a>
       </div>
     </div>
   </footer>

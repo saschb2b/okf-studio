@@ -210,6 +210,49 @@ svg {
   gap: var(--space-24);
 }
 
+/* --- Spec explainer (what is OKF / ODSF) --- */
+.specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-24);
+}
+.spec-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-32);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-lg);
+  background: var(--colors-surface);
+}
+.spec-card__kicker {
+  margin-bottom: var(--space-12);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--colors-text-dim);
+}
+.spec-card__title {
+  margin: 0 0 var(--space-12);
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-semibold);
+}
+.spec-card__body {
+  margin: 0 0 var(--space-20);
+  color: var(--colors-text-muted);
+  line-height: var(--leading-normal);
+}
+.spec-card__link {
+  margin-top: auto;
+  align-self: flex-start;
+  color: var(--colors-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+}
+.spec-card__link:hover {
+  text-decoration: underline;
+}
+
 /* --- Download --- */
 .download__row {
   display: flex;

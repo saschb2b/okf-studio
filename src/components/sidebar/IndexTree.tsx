@@ -104,6 +104,17 @@ export function IndexTree() {
   const filtering =
     !!state.query || state.hiddenTypes.length > 0 || !!state.activeTag;
 
+  // Does anything listed in the index (expanded or not) survive the filter?
+  // When it doesn't, every row is dimmed and the tree reads as a dead end, so
+  // a notice explains it and routes to the launcher (the full-text search).
+  const indexHasMatch =
+    !filtering ||
+    bundle.indexes.some((n) =>
+      n.sections.some((s) =>
+        s.entries.some((e) => e.kind === "concept" && visibleIds.has(e.target)),
+      ),
+    );
+
   const rows: Row[] = [];
   flatten(bundle.indexes, root, expanded, 0, "root", rows);
 
@@ -204,6 +215,24 @@ export function IndexTree() {
   return (
     <section className="sb-section sb-tree-section" aria-label="Index">
       <h2 className="sb-section-title">Index</h2>
+      {!indexHasMatch && (
+        <div className="sb-tree-empty" role="status">
+          <p className="sb-tree-empty-line">
+            {visibleIds.size === 0
+              ? "No concepts match the current search and filters."
+              : `${visibleIds.size} concept${visibleIds.size === 1 ? "" : "s"} match, but none are listed in this index.`}
+          </p>
+          {visibleIds.size > 0 && (
+            <button
+              type="button"
+              className="sb-tree-empty-cta"
+              onClick={() => actions.setPalette(true)}
+            >
+              Open full search
+            </button>
+          )}
+        </div>
+      )}
       <div
         ref={listRef}
         className="sb-tree"

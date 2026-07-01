@@ -179,4 +179,31 @@ describe("OKF Viewer features", () => {
     const allOptions = screen.getAllByRole("option");
     expect(allOptions.indexOf(action)).toBe(0);
   });
+
+  it("explains an all-filtered index tree and routes to the full search", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    const search = screen.getByRole("searchbox", { name: /search concepts/i });
+
+    // Matches exist (design/button and friends) but none are index entries →
+    // the tree explains itself and offers the launcher.
+    await user.type(search, "Button");
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/none are listed in this index/i);
+    await user.click(screen.getByRole("button", { name: /open full search/i }));
+    expect(await screen.findByRole("combobox")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    // Nothing matches at all → the notice says so, without the launcher CTA
+    // (it searches the same fields, so it cannot do better).
+    await user.clear(search);
+    await user.type(search, "zzzz");
+    const none = await screen.findByRole("status");
+    expect(none).toHaveTextContent(/no concepts match/i);
+    expect(
+      screen.queryByRole("button", { name: /open full search/i }),
+    ).not.toBeInTheDocument();
+  });
 });

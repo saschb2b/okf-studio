@@ -423,7 +423,7 @@
   text-decoration: none;
   opacity: 0;
 }
-.markdown :is(h2, h3):hover .heading-anchor,
+.markdown :is(h2, h3, h4, h5, h6):hover .heading-anchor,
 .markdown a.heading-anchor:focus-visible {
   opacity: 1;
 }
@@ -455,7 +455,7 @@
   font-size: 0.875em;
 }
 
-/* Copy affordance, injected into each code block at mount. */
+/* Copy affordance, baked into each code block's HTML (processBody). */
 .code-copy {
   position: absolute;
   top: var(--space-6);

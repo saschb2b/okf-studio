@@ -201,16 +201,29 @@ function slugify(s: string): string {
 }
 
 /**
- * Assign deduped slug ids to body headings *in the HTML string*, so the ids are
- * inherent to the rendered DOM (scroll-spy, the outline, anchor permalinks, and
- * hash links all rely on them). Baking them here — rather than mutating the
- * injected DOM at mount — keeps them present no matter how React re-applies the
- * `dangerouslySetInnerHTML` body.
+ * Prepare body headings *in the HTML string* — demote, slug, and anchor them —
+ * so the result is inherent to the rendered DOM (scroll-spy, the outline,
+ * anchor permalinks, and hash links all rely on it). Baking it here — rather
+ * than mutating the injected DOM at mount — keeps it present no matter how
+ * React re-applies the `dangerouslySetInnerHTML` body.
+ *
+ * - Body `<h1>`s demote to `<h2>`: the page's one h1 is the concept title, and
+ *   OKF bodies conventionally use `# Section` headings (`# Schema`,
+ *   `# Examples`) — left as h1 they'd rival the title and, worse, sit outside
+ *   the outline/anchor pass entirely.
+ * - Every h2–h6 gets a deduped slug id and a hover permalink (`.heading-anchor`)
+ *   that scrolls to the section; the click is routed by the reader's delegated
+ *   body handler.
  */
 function slugifyHeadings(html: string): string {
   if (typeof document === "undefined") return html;
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
+  for (const h1 of Array.from(tpl.content.querySelectorAll("h1"))) {
+    const h2 = document.createElement("h2");
+    while (h1.firstChild) h2.appendChild(h1.firstChild);
+    h1.replaceWith(h2);
+  }
   const used = new Set<string>();
   for (const h of Array.from(tpl.content.querySelectorAll("h2, h3, h4, h5, h6"))) {
     const base = slugify(h.textContent);
@@ -219,6 +232,12 @@ function slugifyHeadings(html: string): string {
     while (used.has(id)) id = `${base}-${n++}`;
     used.add(id);
     h.id = id;
+    const a = document.createElement("a");
+    a.className = "heading-anchor";
+    a.href = `#${id}`;
+    a.textContent = "#";
+    a.setAttribute("aria-label", `Link to section: ${h.textContent}`);
+    h.appendChild(a);
   }
   return tpl.innerHTML;
 }

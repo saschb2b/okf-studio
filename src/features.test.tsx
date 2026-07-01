@@ -180,6 +180,27 @@ describe("OKF Viewer features", () => {
     expect(allOptions.indexOf(action)).toBe(0);
   });
 
+  it("bakes the code-copy affordance and heading permalinks into the body", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // The copy button is part of the processed body HTML (not a post-render
+    // DOM append, which React's innerHTML re-application used to wipe).
+    const copy = await screen.findByRole("button", { name: /copy code/i });
+    await user.click(copy);
+    // Re-query in the waiter: the body's innerHTML can be re-applied while the
+    // clipboard write is in flight, replacing the clicked node.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /copy code/i })).toHaveTextContent("Copied"),
+    );
+    expect(await window.navigator.clipboard.readText()).toContain("readBundle(root)");
+
+    // Heading permalinks are baked in too, with ids to jump to.
+    const anchor = screen.getByRole("link", { name: /link to section: what it is/i });
+    expect(anchor).toHaveAttribute("href", "#what-it-is");
+  });
+
   it("explains an all-filtered index tree and routes to the full search", async () => {
     const user = userEvent.setup();
     renderApp();

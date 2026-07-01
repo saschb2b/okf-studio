@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-01T23:20:00Z
+timestamp: 2026-07-02T00:30:00Z
 ---
 
 # What it does
@@ -30,7 +30,7 @@ This is **responsive**: when the pane is narrow (or in the [split layout](../ux/
 
 Rendered for pleasant reading, sanitized before injection ([security](../architecture/ipc-and-security.md)):
 
-- A generous, readable base size and rhythm; a clear **heading hierarchy** (distinct h1–h4), with **anchored headings** (a hover permalink and a stable id) so sections can be linked and jumped to.
+- A generous, readable base size and rhythm; a clear **heading hierarchy** (distinct levels), with **anchored headings** (a hover permalink and a stable id) so sections can be linked and jumped to — in-page `#anchor` links in the body work too. A body's `# Section` headings (the OKF convention — `# Schema`, `# Examples`) are **demoted one step to h2**: the concept title owns the page's single h1, and left as h1 they would rival it and fall outside the outline and anchor pass. All of this — ids, permalinks, the code-copy affordance below — is **baked into the rendered HTML string**, never appended to the live DOM afterwards, so React re-applying the body can't wipe it.
 - **Callouts / admonitions** via GFM alert syntax (`> [!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]`), themed from the status [color roles](../ux/theming.md).
 - **Fenced code**, **syntax-highlighted** ([Shiki](../architecture/tech-stack.md), the engine behind VS Code) with a dual light/dark theme that follows the app, and a one-click **copy** affordance. Highlighting is offline and CSP-safe — Shiki's WASM-free JS engine and a curated grammar set, all lazy-loaded only when a concept has code; an unknown language degrades to a plain themed block. Also: **tables** styled for legibility (readable size, header weight, row hover, tabular numerals); blockquotes, lists, and the conventional [`# Schema` / `# Examples` / `# Citations`](../reference/okf-spec-summary.md) sections.
 - **Color values get a swatch.** A color value — inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), *or* a hex color written in plain prose (`borderColor-default (#d1d9e0)`) — is prefixed with a small chip, so a design-system role table or sentence *shows* its colors — see [Design-System Rendering](design-system-rendering.md). Bundle-agnostic; the chip's color is strictly validated before it is inlined, and code/link/pre text is left untouched.

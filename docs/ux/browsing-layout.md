@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-06-30T23:30:00Z
+timestamp: 2026-07-01T23:45:00Z
 ---
 
 # The three panes
@@ -36,7 +36,7 @@ The workspace switches between three layout modes — **split** (default, graph 
 
 The window runs **borderless** (native title-bar decorations are off — see [Theming](theming.md)); the top bar *is* the app's title bar, so the chrome is ours end to end (in the spirit of Zed's custom frame).
 
-- It is laid out in three zones (the VS Code command-center pattern). **Left:** the [**Bundle Switcher**](../features/bundle-switcher.md) (naming the open bundle and its folder). **Center — window-centered:** the **back/forward** history controls immediately left of a prominent **search** field that opens the [global launcher](../features/command-palette.md); search is a primary feature, so it gets a generous, responsive width and stays centered to the window regardless of the side content. **Right:** the **layout** switch and the **window controls** (minimize · maximize/restore · close) at the far right. The title bar keeps only frequent, primary controls — app-level actions (Settings, shortcuts) live in the Activity Bar, the validation indicator and the low-frequency **Log** toggle in the status bar (below), and the reader **"Aa"** reading preferences with the content in the [reader](../features/concept-reader.md) itself.
+- It is laid out in three zones (the VS Code command-center pattern). **Left:** the [**Bundle Switcher**](../features/bundle-switcher.md) (naming the open bundle and its folder). **Center — window-centered:** the **back/forward** history controls immediately left of a prominent **search** field that opens the [global launcher](../features/command-palette.md); search is a primary feature, so it gets a generous, responsive width and stays centered to the window regardless of the side content; when the window gets too narrow to afford both, the search field shrinks rather than letting the side zones overlap it (the same rule keeps the graph's centered mode toggle clear of its Controls button). **Right:** the **layout** switch and the **window controls** (minimize · maximize/restore · close) at the far right. The title bar keeps only frequent, primary controls — app-level actions (Settings, shortcuts) live in the Activity Bar, the validation indicator and the low-frequency **Log** toggle in the status bar (below), and the reader **"Aa"** reading preferences with the content in the [reader](../features/concept-reader.md) itself.
 - Empty regions of the bar are a **drag handle** for moving the window (double-click to maximize/restore); interactive controls are excluded from the drag region. Invisible **resize handles** line the window edges and corners, and the window has **slightly rounded corners** (squared when maximized).
 - Honors [theming](theming.md) and a [native desktop feel](settings.md) (content-scoped zoom, our own frame), and is fully driveable by [keyboard](keyboard-shortcuts.md).
 

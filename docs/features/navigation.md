@@ -3,7 +3,7 @@ type: Feature
 title: Navigation
 description: Move through a bundle by progressive disclosure — the index tree, link following, and back/forward history.
 tags: [feature, navigation]
-timestamp: 2026-06-29T10:00:00Z
+timestamp: 2026-07-01T23:45:00Z
 ---
 
 # What it does
@@ -14,6 +14,7 @@ Provides the ways to move through a bundle that complement the [graph](graph-vie
 
 - The sidebar's **Navigate lens** renders the bundle's `index.md` hierarchy: the root index's sections and links, descending into sub-directory `index.md` files on expand. A [lens switcher](../ux/browsing-layout.md) keeps this separate from the type/tag [filters](search-and-filter.md) so neither crowds the other at scale.
 - This mirrors OKF's intended navigation — an agent or human "decides where to descend without reading every file." When an `index.md` is missing, the viewer **synthesizes** one from the directory's concepts (the spec permits this).
+- The sidebar search and [filters](search-and-filter.md) **dim** tree entries they exclude rather than hiding them. When *nothing* listed in the index survives — a query can match concepts an index never lists — the tree says so instead of dead-ending: a quiet notice reports either that nothing matches, or that N concepts match elsewhere, with an **Open full search** action that opens the [launcher](command-palette.md) seeded with the same query.
 
 # Link following & history
 

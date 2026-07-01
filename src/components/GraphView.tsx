@@ -113,6 +113,9 @@ interface RenderData {
   /** Visible nodes (those passing the type/tag filter), in draw order. */
   nodes: SimNode[];
   edges: SimEdge[];
+  /** Citation direction per edge (backbone edges are undirected): bit 1 =
+   *  a cites b, bit 2 = b cites a. Drawn as arrowheads on highlighted edges. */
+  edgeDir: number[];
   /** Per-node concept metadata, index-aligned with `nodes`. */
   meta: {
     id: string;
@@ -178,6 +181,7 @@ export function GraphView() {
   const renderRef = useRef<RenderData>({
     nodes: [],
     edges: [],
+    edgeDir: [],
     meta: [],
     indexById: new Map(),
     neighbors: [],
@@ -253,8 +257,29 @@ export function GraphView() {
     // color (the citing concept owns the link — Gephi's convention), so hub
     // fans and cluster membership read from the wiring, not just the dots.
     const baseLW = disp.linkThickness / view.scale;
+    // Arrowhead into `to`, pulled back to its rim — drawn only on highlighted
+    // edges, so citation direction shows exactly where the user is looking.
+    const arrowInto = (from: SimNode, to: SimNode) => {
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return;
+      const ux = dx / len;
+      const uy = dy / len;
+      const rim = to.r * disp.nodeScale + 2 / view.scale;
+      const tipX = to.x - ux * rim;
+      const tipY = to.y - uy * rim;
+      const s = 6 / view.scale;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX - ux * s - uy * s * 0.45, tipY - uy * s + ux * s * 0.45);
+      ctx.lineTo(tipX - ux * s + uy * s * 0.45, tipY - uy * s - ux * s * 0.45);
+      ctx.closePath();
+      ctx.fill();
+    };
     ctx.lineWidth = baseLW;
-    for (const e of data.edges) {
+    for (let ei = 0; ei < data.edges.length; ei++) {
+      const e = data.edges[ei];
       const a = data.nodes[e.a];
       const b = data.nodes[e.b];
       const incident = hasFocus && (e.a === focusIdx || e.b === focusIdx);
@@ -274,6 +299,12 @@ export function GraphView() {
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
+      if (incident) {
+        const dir = data.edgeDir[ei] ?? 0;
+        ctx.fillStyle = accent;
+        if (dir & 1) arrowInto(a, b);
+        if (dir & 2) arrowInto(b, a);
+      }
       ctx.lineWidth = baseLW;
     }
     ctx.globalAlpha = 1;
@@ -614,6 +645,14 @@ export function GraphView() {
       neighbors[e.a].add(e.b);
       neighbors[e.b].add(e.a);
     }
+    // Recover citation direction for the (undirected) backbone edges, for the
+    // arrowheads on highlighted edges: bit 1 = a cites b, bit 2 = b cites a.
+    const dirSet = new Set(directed.map((e) => e.a * nodes.length + e.b));
+    const edgeDir = edges.map(
+      (e) =>
+        (dirSet.has(e.a * nodes.length + e.b) ? 1 : 0) |
+        (dirSet.has(e.b * nodes.length + e.a) ? 2 : 0),
+    );
     const clusterPalette = buildTypePalette(
       [...new Set(comm.map(String))],
       dark,
@@ -626,7 +665,7 @@ export function GraphView() {
       if (!bundleIds.has(id)) store.delete(id);
     }
 
-    renderRef.current = { nodes, edges, meta, indexById, neighbors };
+    renderRef.current = { nodes, edges, edgeDir, meta, indexById, neighbors };
     // The focus/isolate set changed (or this is the first build) — frame the new
     // subgraph so it is centered and readable.
     const restrictChanged = prevRestrictKey.current !== restrictKey;

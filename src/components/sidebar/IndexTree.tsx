@@ -226,7 +226,7 @@ export function IndexTree() {
             <button
               type="button"
               className="sb-tree-empty-cta"
-              onClick={() => actions.setPalette(true)}
+              onClick={() => actions.setPalette(true, state.query)}
             >
               Open full search
             </button>

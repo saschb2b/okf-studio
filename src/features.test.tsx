@@ -193,7 +193,12 @@ describe("OKF Viewer features", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent(/none are listed in this index/i);
     await user.click(screen.getByRole("button", { name: /open full search/i }));
-    expect(await screen.findByRole("combobox")).toBeInTheDocument();
+    // The launcher opens seeded with the sidebar's query, results ready.
+    const combo = await screen.findByRole("combobox");
+    expect(combo).toHaveValue("Button");
+    expect(
+      await screen.findByRole("option", { name: /button.*component/i }),
+    ).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
     // Nothing matches at all → the notice says so, without the launcher CTA

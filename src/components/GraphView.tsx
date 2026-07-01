@@ -776,6 +776,31 @@ export function GraphView() {
     [],
   );
 
+  // The graph shortcuts the shortcuts overlay promises: + / − zoom, F fit.
+  // Bound while the graph is mounted (reader-only layout unmounts it); bare
+  // keys only, so the reader's Ctrl/Cmd +/−/0 text sizing stays untouched.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        zoomBy(1.2);
+      } else if (e.key === "-") {
+        e.preventDefault();
+        zoomBy(1 / 1.2);
+      } else if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        fit();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // zoomBy/fit read refs; reduce-motion (read by applyView) re-binds via dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.settings.reduceMotion]);
+
 
   // ---- Coordinate helpers --------------------------------------------------
 

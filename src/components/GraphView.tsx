@@ -247,7 +247,9 @@ export function GraphView() {
     const nodeStroke = cssVar("--bg") || "#fff";
     const warnColor = cssVar("--warn") || "#b8860b"; // orphan ring + broken-link marker
 
-    // Edges first, under the nodes.
+    // Edges first, under the nodes. Each edge carries its *source* node's
+    // color (the citing concept owns the link — Gephi's convention), so hub
+    // fans and cluster membership read from the wiring, not just the dots.
     const baseLW = disp.linkThickness / view.scale;
     ctx.lineWidth = baseLW;
     for (const e of data.edges) {
@@ -573,6 +575,11 @@ export function GraphView() {
     // so the smaller set can spread out from its cached positions.
     alphaRef.current = spawnedNew ? 1 : restrictChanged ? Math.max(0.4, REHEAT_ALPHA) : 0.4;
     needsFitRef.current = spawnedNew || restrictChanged; // refit a fresh layout or a new focus set
+    // Frame the new node set right away from its cached/seeded positions — the
+    // sim can take seconds to settle, and until the post-settle refit the new
+    // subgraph could sit half out of view. (Skipped for a brand-new layout:
+    // seed positions on the spawn ring say nothing about the final shape.)
+    if (restrictChanged && !spawnedNew) fit();
     runLoop();
     // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
     // intentionally not in the dep list; this effect rebuilds only on data/filter

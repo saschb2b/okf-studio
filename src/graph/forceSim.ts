@@ -41,6 +41,12 @@ export interface SimNode {
   /** When set, the node is pinned to (fx, fy) — used while dragging. */
   fx: number | null;
   fy: number | null;
+  /**
+   * Detected community id (Louvain), assigned by the renderer. When
+   * `clusterStrength` > 0, same-cluster nodes are gently pulled toward their
+   * shared centroid so the layout agrees with the detected clustering.
+   */
+  cluster?: number;
 }
 
 export interface SimEdge {
@@ -76,6 +82,14 @@ export interface SimParams {
    * distributed, untangled layout instead of a central knot. Defaults to "spring".
    */
   linkModel?: "spring" | "linlog";
+  /**
+   * Cluster gravity (cosmos.gl's point-clustering force): pull strength toward
+   * each node's detected-community centroid (see SimNode.cluster). Emergent
+   * layout only *approximates* the communities Louvain detects; this makes the
+   * geometry agree with them — tighter blobs, clearer separation. 0 (default)
+   * disables the pass entirely.
+   */
+  clusterStrength?: number;
 }
 
 export const DEFAULT_PARAMS: SimParams = {
@@ -568,8 +582,35 @@ export function step(
     b.vy -= fy;
   }
 
-  // 3. Centering gravity toward the origin (scaled by alpha so it too fades),
-  // 4. then integrate: damp, cap speed, move. Pinned nodes snap to (fx, fy).
+  // 3. Cluster gravity: pull each node toward its detected community's
+  // centroid (unweighted mean, recomputed per step — O(n)). Linear in
+  // distance, like centering, and alpha-scaled so it fades as the layout
+  // cools. Skipped entirely at strength 0; singleton clusters cancel out.
+  const clusterK = (params.clusterStrength ?? 0) * alpha;
+  if (clusterK > 0) {
+    const sums = new Map<number, { x: number; y: number; n: number }>();
+    for (const node of nodes) {
+      if (node.cluster === undefined) continue;
+      const s = sums.get(node.cluster);
+      if (s) {
+        s.x += node.x;
+        s.y += node.y;
+        s.n++;
+      } else {
+        sums.set(node.cluster, { x: node.x, y: node.y, n: 1 });
+      }
+    }
+    for (const node of nodes) {
+      if (node.cluster === undefined) continue;
+      const s = sums.get(node.cluster);
+      if (!s || s.n < 2) continue;
+      node.vx += (s.x / s.n - node.x) * clusterK;
+      node.vy += (s.y / s.n - node.y) * clusterK;
+    }
+  }
+
+  // 4. Centering gravity toward the origin (scaled by alpha so it too fades),
+  // 5. then integrate: damp, cap speed, move. Pinned nodes snap to (fx, fy).
   const maxSpeed = params.maxSpeed;
   const damping = params.damping;
   const centering = params.centering * alpha;
@@ -603,7 +644,7 @@ export function step(
     energy += node.vx * node.vx + node.vy * node.vy;
   }
 
-  // 5. Collision pass: resolve overlaps in position space (not velocity, not
+  // 6. Collision pass: resolve overlaps in position space (not velocity, not
   // alpha-scaled), so nodes never overlap even after the graph has cooled.
   resolveCollisions(nodes, params.collision, params.collisionPadding);
 

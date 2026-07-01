@@ -83,7 +83,10 @@ const COLOR_HINTS: Record<"cluster" | "type", string> = {
   type: "By concept type (Feature, Reference, …).",
 };
 // The force fields the controls panel exposes (the rest come from DEFAULT_PARAMS).
-type Forces = Pick<SimParams, "repulsion" | "springLength" | "springK" | "centering">;
+type Forces = Pick<
+  SimParams,
+  "repulsion" | "springLength" | "springK" | "centering" | "clusterStrength"
+>;
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
 
@@ -98,6 +101,10 @@ const GRAPH_FORCES: Forces = {
   springLength: 130, // unused under LinLog; kept for the spring fallback/controls
   springK: 0.12, // LinLog attraction is gentle (log), so it wants a higher gain
   centering: 0.015,
+  // Gentle pull toward each Louvain community's centroid (cosmos.gl's
+  // point-clustering force), so the geometry agrees with the detected
+  // clusters that also drive the default node coloring.
+  clusterStrength: 0.05,
 };
 // Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
 // that mirrors --ui in styles.css.
@@ -631,6 +638,9 @@ export function GraphView() {
     // node a cluster color — kept on the full graph so cluster colors stay
     // stable regardless of the link-density (backbone) setting below.
     const comm = louvain(nodes.length, directed);
+    // The sim's cluster-gravity pass reads each node's community; assigned in
+    // both color modes so switching Color never reflows the layout.
+    for (let i = 0; i < nodes.length; i++) nodes[i].cluster = comm[i] ?? 0;
 
     // Draw and simulate a readable *backbone* rather than every edge: a dense
     // cross-link graph is otherwise an unreadable hairball (see graph/backbone).
@@ -1194,6 +1204,13 @@ export function GraphView() {
                       min={0} max={0.2} step={0.005} value={forces.centering}
                       format={(v) => `${Math.round((v / 0.2) * 100)}%`}
                       onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
+                    />
+                    <Slider
+                      label="Cluster pull"
+                      hint="Gathers each detected community around its own center."
+                      min={0} max={0.25} step={0.01} value={forces.clusterStrength ?? 0}
+                      format={(v) => `${Math.round((v / 0.25) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, clusterStrength: v }))}
                     />
                   </Section>
                   <button

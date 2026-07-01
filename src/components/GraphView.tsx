@@ -265,7 +265,8 @@ export function GraphView() {
         ctx.strokeStyle = edgeColor;
       } else {
         ctx.globalAlpha = disp.linkOpacity;
-        ctx.strokeStyle = edgeColor;
+        const src = data.meta[e.a];
+        ctx.strokeStyle = disp.colorBy === "cluster" ? src.clusterColor : src.color;
       }
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);

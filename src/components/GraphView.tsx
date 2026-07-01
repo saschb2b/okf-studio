@@ -193,6 +193,8 @@ export function GraphView() {
   const hoverRef = useRef<number | null>(null);
   // Screen-px label widths, cached per (font-size, title) across frames.
   const labelWidthRef = useRef<Map<string, number>>(new Map());
+  // RAF id of the in-flight view tween (fit / zoom-button glide), if any.
+  const viewTweenRef = useRef<number | null>(null);
   const paramsRef = useRef<SimParams>({
     ...DEFAULT_PARAMS,
     ...GRAPH_FORCES,
@@ -765,7 +767,15 @@ export function GraphView() {
   }, []);
 
   // Stop the loop on unmount.
-  useEffect(() => stopLoop, []);
+  // Unmount-only cleanup; both helpers only touch refs.
+  useEffect(
+    () => () => {
+      stopLoop();
+      cancelViewTween();
+    },
+    [],
+  );
+
 
   // ---- Coordinate helpers --------------------------------------------------
 
@@ -813,6 +823,7 @@ export function GraphView() {
       node.fy = node.y;
       dragRef.current = { kind: "node", index: idx, moved: false };
     } else {
+      cancelViewTween(); // direct panning takes over from any glide
       const view = viewRef.current;
       dragRef.current = {
         kind: "pan",
@@ -876,6 +887,7 @@ export function GraphView() {
 
   function onWheel(e: ReactWheelEvent<HTMLCanvasElement>) {
     e.preventDefault();
+    cancelViewTween(); // direct zooming takes over from any glide
     const view = viewRef.current;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -895,6 +907,56 @@ export function GraphView() {
 
   // ---- Overlay controls ----------------------------------------------------
 
+  function cancelViewTween() {
+    if (viewTweenRef.current != null) {
+      cancelAnimationFrame(viewTweenRef.current);
+      viewTweenRef.current = null;
+    }
+  }
+
+  /**
+   * Glide the view to `target` over a short ease-out, so a fit or zoom step
+   * reads as movement through the graph instead of a teleport. The world point
+   * under the viewport center travels linearly while scale interpolates
+   * geometrically (zoom *feels* linear that way). Direct input — wheel, pan —
+   * interrupts the glide; reduce-motion jumps instantly.
+   */
+  function applyView(target: View) {
+    cancelViewTween();
+    const v = viewRef.current;
+    if (state.settings.reduceMotion) {
+      v.scale = target.scale;
+      v.tx = target.tx;
+      v.ty = target.ty;
+      draw();
+      return;
+    }
+    const ms = 260;
+    const { w, h } = sizeRef.current;
+    const cx = w / 2;
+    const cy = h / 2;
+    const s0 = v.scale;
+    const s1 = target.scale;
+    const wc0x = (cx - v.tx) / s0;
+    const wc0y = (cy - v.ty) / s0;
+    const wc1x = (cx - target.tx) / s1;
+    const wc1y = (cy - target.ty) / s1;
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - t0) / ms);
+      const k = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      const s = s0 * Math.pow(s1 / s0, k);
+      const wcx = wc0x + (wc1x - wc0x) * k;
+      const wcy = wc0y + (wc1y - wc0y) * k;
+      v.scale = s;
+      v.tx = cx - wcx * s;
+      v.ty = cy - wcy * s;
+      if (rafRef.current == null) draw(); // when the sim loop is hot, it draws
+      viewTweenRef.current = t < 1 ? requestAnimationFrame(tick) : null;
+    };
+    viewTweenRef.current = requestAnimationFrame(tick);
+  }
+
   function zoomBy(factor: number) {
     const view = viewRef.current;
     const { w, h } = sizeRef.current;
@@ -903,10 +965,7 @@ export function GraphView() {
     const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, view.scale * factor));
     const wx = (cx - view.tx) / view.scale;
     const wy = (cy - view.ty) / view.scale;
-    view.scale = next;
-    view.tx = cx - wx * next;
-    view.ty = cy - wy * next;
-    draw();
+    applyView({ scale: next, tx: cx - wx * next, ty: cy - wy * next });
   }
 
   function fit() {
@@ -926,14 +985,10 @@ export function GraphView() {
     const pad = 40;
     const bw = Math.max(1, maxX - minX);
     const bh = Math.max(1, maxY - minY);
-    const scale = Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh);
-    const view = viewRef.current;
-    view.scale = Math.max(MIN_SCALE, scale);
+    const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh));
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    view.tx = w / 2 - cx * view.scale;
-    view.ty = h / 2 - cy * view.scale;
-    draw();
+    applyView({ scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale });
   }
 
   // ---- Render --------------------------------------------------------------

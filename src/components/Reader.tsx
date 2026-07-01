@@ -42,7 +42,7 @@ function appendSrOnly(a: HTMLAnchorElement, text: string): void {
 }
 
 /** What a body link points at, so the reader can both style and route it. */
-type LinkKind =
+export type LinkKind =
   | { kind: "external"; url: string }
   | { kind: "asset" }
   | { kind: "concept"; id: string }
@@ -61,7 +61,7 @@ function firstConceptInDir(bundle: Bundle | null, dir: string): string | null {
 }
 
 /** Classify a body link against the bundle: where does clicking it lead? */
-function classifyLink(href: string, fromId: string, bundle: Bundle | null): LinkKind {
+export function classifyLink(href: string, fromId: string, bundle: Bundle | null): LinkKind {
   // A pure in-page anchor jumps to a section of this concept (heading ids are
   // baked into the body by renderMarkdown).
   if (href.startsWith("#")) return { kind: "anchor", id: href.slice(1) };
@@ -78,7 +78,7 @@ function classifyLink(href: string, fromId: string, bundle: Bundle | null): Link
  *  attributes (data-link, title, rel, screen-reader cue) into it. Doing this in
  *  the string — not by mutating the live DOM after render — keeps the cues from
  *  being wiped when React re-applies `dangerouslySetInnerHTML`. */
-function classifyBodyLinks(html: string, fromId: string, bundle: Bundle | null): string {
+export function classifyBodyLinks(html: string, fromId: string, bundle: Bundle | null): string {
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   for (const a of Array.from(tpl.content.querySelectorAll("a"))) {
@@ -166,6 +166,8 @@ async function processBody(html: string, conceptId: string, bundle: Bundle): Pro
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   await highlightCodeBlocks(tpl.content);
+  // The await can outlive the environment (a test's DOM torn down mid-flight).
+  if (typeof document === "undefined") return html;
   // A copy affordance on each fenced code block, baked into the string (the
   // click is handled by the reader's delegated body handler).
   for (const pre of Array.from(tpl.content.querySelectorAll("pre"))) {

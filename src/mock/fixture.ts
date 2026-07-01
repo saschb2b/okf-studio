@@ -424,7 +424,12 @@ export const MOCK_BUNDLE: Bundle = {
     },
   ],
   log: [
-    { date: "2026-06-28", entries: ["**Creation**: Sample bundle for the viewer's empty-handed dev mode."] },
+    {
+      date: "2026-06-28",
+      entries: [
+        "**Creation**: Sample bundle for the viewer's empty-handed dev mode. Starts with the [Concept Reader](features/concept-reader.md) and the [OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog).",
+      ],
+    },
   ],
   issues: [
     // Mirrors what the core's validate() reports for this fixture's broken

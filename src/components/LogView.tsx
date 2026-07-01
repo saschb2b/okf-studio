@@ -7,10 +7,13 @@
 // driven by the `open` prop from app state; App mounts this component
 // unconditionally. Escape and the × button close it via onOpenChange.
 
+import { useMemo } from "react";
+import type { MouseEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp } from "../store.tsx";
 import { renderMarkdown } from "../markdown.ts";
+import { classifyBodyLinks, classifyLink } from "./Reader.tsx";
 import type { LogEntry } from "../types.ts";
 import "./chrome.css";
 import "./baseui.css";
@@ -30,8 +33,42 @@ function renderEntries(entries: string[]): string {
 
 export function LogView() {
   const { state, actions } = useApp();
-  const log = state.bundle?.log ?? [];
-  const groups = newestFirst(log);
+  const bundle = state.bundle;
+
+  // Rendered once per log change, links classified against the bundle (log.md
+  // lives at the bundle root, so hrefs resolve from ""). The {__html} objects
+  // must keep a stable identity: React 19 diffs dangerouslySetInnerHTML by
+  // object identity and re-sets innerHTML whenever it changes.
+  const groups = useMemo(
+    () =>
+      newestFirst(bundle?.log ?? []).map((g) => ({
+        date: g.date,
+        html: { __html: classifyBodyLinks(renderEntries(g.entries), "", bundle) },
+      })),
+    [bundle],
+  );
+
+  // Delegated routing for the timeline's <a>s: a log entry links the concepts
+  // it talks about, and a raw href would navigate the webview away from the
+  // app. Concept/section links drive the shared selection (the panel stays
+  // open, the reader updates behind it); external links open in the browser.
+  function onTimelineClick(e: MouseEvent<HTMLOListElement>) {
+    const anchor = (e.target as HTMLElement).closest("a");
+    if (!anchor) return;
+    const href = anchor.getAttribute("href");
+    if (!href) return;
+    e.preventDefault(); // never let the webview navigate
+    const link = classifyLink(href, "", bundle);
+    if (link.kind === "external") {
+      actions.openExternal(link.url);
+    } else if (link.kind === "concept") {
+      actions.selectConcept(link.id);
+    } else if (link.kind === "directory") {
+      const first = bundle?.concepts.find((x) => x.id.startsWith(`${link.dir}/`));
+      if (first) actions.selectConcept(first.id);
+    }
+    // anchor/asset/unresolved: inert here — the timeline has no such targets.
+  }
 
   return (
     <Dialog.Root
@@ -66,14 +103,15 @@ export function LogView() {
           ) : (
             <ScrollArea.Root className="ui-scrollarea log-scroll">
               <ScrollArea.Viewport className="ui-scrollarea-viewport">
-                <ol className="log-timeline">
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events -- delegated routing for in-entry <a>s, which are natively keyboard-accessible (Enter fires a bubbling click) */}
+                <ol className="log-timeline" onClick={onTimelineClick}>
                   {groups.map((g, i) => (
                     <li key={`${g.date}-${i}`} className="log-entry">
                       <h3 className="log-date">{g.date}</h3>
                       <div
                         className="log-body markdown"
                         // Sanitized in renderMarkdown via DOMPurify before injection.
-                        dangerouslySetInnerHTML={{ __html: renderEntries(g.entries) }}
+                        dangerouslySetInnerHTML={g.html}
                       />
                     </li>
                   ))}

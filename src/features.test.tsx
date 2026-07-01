@@ -201,6 +201,23 @@ describe("OKF Viewer features", () => {
     expect(anchor).toHaveAttribute("href", "#what-it-is");
   });
 
+  it("routes concept links inside the change-log timeline instead of navigating", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle log panel/i }));
+    const panel = await screen.findByRole("dialog", { name: /change log/i });
+    const link = within(panel).getByRole("link", { name: /concept reader/i });
+    await user.click(link);
+
+    // The shared selection moved to the linked concept; the app didn't navigate.
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    expect(
+      await within(reader).findByRole("heading", { name: "Concept Reader" }),
+    ).toBeInTheDocument();
+  });
+
   it("explains an all-filtered index tree and routes to the full search", async () => {
     const user = userEvent.setup();
     renderApp();

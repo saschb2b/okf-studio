@@ -3,7 +3,7 @@ type: Feature
 title: Log View
 description: Render a bundle's reserved log.md as a readable, date-grouped timeline of changes, newest first.
 tags: [feature, log, timeline, history]
-timestamp: 2026-06-30T15:30:00Z
+timestamp: 2026-07-02T01:00:00Z
 ---
 
 # What it does
@@ -19,6 +19,7 @@ Renders a bundle's `log.md` — a [reserved OKF file](../reference/okf-spec-summ
 
 - The [Rust core](../architecture/okf-parsing.md) parses `log.md` into dated entries — the `log: LogEntry[]` shape in the [data model](../architecture/data-model.md).
 - Entries render **grouped by their ISO `YYYY-MM-DD` date**, newest group first, each group a heading over its change lines.
+- Entry **links behave like the [reader's](concept-reader.md)**: a log line naming the concepts it changed is navigation, so a concept or section link drives the shared selection (the panel stays open, the reader updates behind it), an external link opens in the system browser with the same outbound cues, and no click ever navigates the webview itself away from the app.
 - A date heading that is not ISO `YYYY-MM-DD` still renders, but is surfaced as a **non-blocking warning** by [Validation](validation.md) — reported, never fatal.
 
 # Empty state

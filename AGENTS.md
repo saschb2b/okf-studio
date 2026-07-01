@@ -41,6 +41,23 @@ Default stance: **assume the first attempt is mediocre** — code and UI both re
 5. **Pressure-test design calls — including the user's.** Name the tradeoffs and risks before implementing a direction; do not just agree. Reasoned disagreement is more useful than assent.
 6. **Report the defects, not just the wins.** End a UI review with the findings list — each rated severity (Glaring/Untidy/Nitpick) and autonomy (Safe/Judgment) — what was fixed, and what remains. Honesty about what is still rough beats a clean-sounding summary.
 
+## Before you finish: run the checks locally (they mirror CI)
+
+Do not push and let CI find failures you could have caught. Before committing or reporting a change done, run the same gate the [CI workflow](.github/workflows/ci.yml) runs, from the repo root, and get each to pass:
+
+```bash
+pnpm lint        # eslint . (type-aware: parse, type, and a11y issues)
+pnpm typecheck   # tsc --noEmit
+pnpm test        # vitest run
+pnpm build       # tsc --noEmit && vite build
+cargo clippy -p okf-core --all-targets -- -D warnings
+cargo test -p okf-core
+```
+
+`pnpm lint` is the one that most often breaks on *new* files: a directory the root `tsconfig` does not cover, or an unignored config the type-aware parser cannot place. Run it after adding or moving files, not only after editing existing ones; if a new sub-project does not belong to the app's `tsconfig`, add it to `ignores` in `eslint.config.mjs`.
+
+Separate sub-projects carry their own gate. If you touched the marketing site under `site/`, also run `pnpm --dir site build` (it deploys via the [Pages workflow](.github/workflows/pages.yml), not the app CI), and validate the design system with `node .claude/skills/odsf/odsf-validate.mjs design-system` (0 errors) when it changes.
+
 ## What to build (one paragraph)
 
 A Tauri 2.0 app whose **Rust core** (`src-tauri/`) does all filesystem work — [scan a folder for bundles](docs/architecture/bundle-detection.md), [parse each into concepts/links/backlinks](docs/architecture/okf-parsing.md), [validate](docs/features/validation.md), and [watch for changes](docs/features/live-reload.md) — exposing a small [command/event surface](docs/architecture/ipc-and-security.md) that hands the **web frontend** (`src/`) ready-to-render JSON ([data model](docs/architecture/data-model.md)). The frontend renders a [force-directed graph](docs/features/graph-view.md) + [concept reader](docs/features/concept-reader.md) with [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [theming](docs/ux/theming.md). Read-only, offline, scoped to the chosen folder.

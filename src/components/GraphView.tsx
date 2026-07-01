@@ -187,6 +187,8 @@ export function GraphView() {
   const rafRef = useRef<number | null>(null);
   const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
+  // Screen-px label widths, cached per (font-size, title) across frames.
+  const labelWidthRef = useRef<Map<string, number>>(new Map());
   const paramsRef = useRef<SimParams>({
     ...DEFAULT_PARAMS,
     ...GRAPH_FORCES,
@@ -332,26 +334,84 @@ export function GraphView() {
     }
     ctx.globalAlpha = 1;
 
-    // Labels: cull when zoomed out unless the node is selected, a neighbor of
-    // the selection, or hovered.
-    ctx.font = `${12 / view.scale}px ${LABEL_FONT}`;
+    // Labels, dataviz-style: sized by node importance, hubs surfacing first as
+    // you zoom out (each node's reveal threshold scales with its radius), and
+    // collision-culled by priority so dense regions stay legible instead of
+    // becoming a text smear. Selection/hover/neighbors always label.
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
+    const widths = labelWidthRef.current;
+    const baseReveal = LABEL_MIN_SCALE / disp.labelScale;
+    interface LabelCand {
+      i: number;
+      /** Label font size in *screen* px (importance-scaled). */
+      fontPx: number;
+      alwaysShow: boolean;
+    }
+    const cands: LabelCand[] = [];
     for (let i = 0; i < data.nodes.length; i++) {
       const node = data.nodes[i];
       const meta = data.meta[i];
       const isSel = i === selIdx;
       const isNeighbor = focusNeighbors?.has(i) ?? false;
       const isHover = i === hover;
-      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
-
       const alwaysShow = isSel || isNeighbor || isHover;
-      if (!alwaysShow && view.scale < LABEL_MIN_SCALE / disp.labelScale) continue;
+      // 0 for the smallest node, 1 for the biggest hub.
+      const t = (node.r - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
+      // Hubs reveal their labels well before leaves do.
+      if (!alwaysShow && view.scale < baseReveal * (1 - 0.75 * t)) continue;
       if (!alwaysShow && meta.dim) continue;
-
+      cands.push({ i, fontPx: 10 + 5 * t, alwaysShow });
+    }
+    // Priority: always-shown labels first, then bigger nodes.
+    cands.sort(
+      (a, b) =>
+        Number(b.alwaysShow) - Number(a.alwaysShow) ||
+        data.nodes[b.i].r - data.nodes[a.i].r,
+    );
+    // Greedy screen-space collision: a label is dropped when it overlaps one
+    // already kept — except always-shown labels, which draw regardless (but
+    // still claim their space so lower-priority neighbors yield).
+    const kept: { cx: number; x: number; y: number; w: number; h: number; cand: LabelCand }[] = [];
+    for (const cand of cands) {
+      const node = data.nodes[cand.i];
+      const meta = data.meta[cand.i];
+      // Measured at screen size and cached; world width follows the zoom.
+      const key = `${Math.round(cand.fontPx * 2)}|${meta.title}`;
+      let w = widths.get(key);
+      if (w === undefined) {
+        ctx.font = `${cand.fontPx}px ${LABEL_FONT}`;
+        w = ctx.measureText(meta.title).width;
+        if (widths.size > 8192) widths.clear();
+        widths.set(key, w);
+      }
+      const wWorld = w / view.scale;
+      const hWorld = (cand.fontPx * 1.25) / view.scale;
+      const rect = {
+        cx: node.x,
+        x: node.x - wWorld / 2,
+        y: node.y + node.r * disp.nodeScale + 2 / view.scale,
+        w: wWorld,
+        h: hWorld,
+        cand,
+      };
+      const collides = kept.some(
+        (k) =>
+          rect.x < k.x + k.w && k.x < rect.x + rect.w && rect.y < k.y + k.h && k.y < rect.y + rect.h,
+      );
+      if (collides && !cand.alwaysShow) continue;
+      kept.push(rect);
+    }
+    for (const { cx, y, cand } of kept) {
+      const meta = data.meta[cand.i];
+      const isSel = cand.i === selIdx;
+      const isNeighbor = focusNeighbors?.has(cand.i) ?? false;
+      const isHover = cand.i === hover;
+      const dimmedByFocus = dimOthers && cand.i !== focusIdx && !isNeighbor;
+      ctx.font = `${cand.fontPx / view.scale}px ${LABEL_FONT}`;
       ctx.globalAlpha = meta.dim || dimmedByFocus ? 0.25 : 1;
-      ctx.fillStyle = isSel ? textColor : isNeighbor || isHover ? textColor : textDim;
-      ctx.fillText(meta.title, node.x, node.y + node.r * disp.nodeScale + 2 / view.scale);
+      ctx.fillStyle = isSel || isNeighbor || isHover ? textColor : textDim;
+      ctx.fillText(meta.title, cx, y);
     }
     ctx.globalAlpha = 1;
     ctx.restore();

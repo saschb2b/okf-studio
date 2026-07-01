@@ -20,6 +20,9 @@ export default tseslint.config(
       "target/**",
       "scripts/**",
       "coverage/**",
+      // Separate sub-projects with their own tooling, not in this tsconfig.
+      "site/**",
+      "design-system/**",
       // Vendored skill scripts (their own repos / not in this tsconfig).
       ".claude/**",
       ".agents/**",

@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="1024" height="1024" rx="228" fill="#141518"/>
+  <!-- folder back + tab -->
+  <rect x="236" y="292" width="232" height="118" rx="30" fill="#868C94"/>
+  <rect x="236" y="350" width="552" height="384" rx="44" fill="#868C94"/>
+  <!-- three papers, fanned up-right -->
+  <rect x="300" y="372" width="352" height="232" rx="20" fill="#C7CCD1"/>
+  <rect x="344" y="350" width="352" height="254" rx="20" fill="#E2E5E9"/>
+  <rect x="388" y="326" width="352" height="278" rx="20" fill="#FFFFFF"/>
+  <!-- folder front pocket -->
+  <rect x="236" y="480" width="552" height="254" rx="44" fill="#BFC5CC"/>
+</svg>

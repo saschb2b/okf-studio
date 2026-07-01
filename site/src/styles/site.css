@@ -168,8 +168,9 @@ svg {
   order: -1;
 }
 .showcase__media {
+  /* Tighter than the hero: at half-width these read too round at radius-lg. */
   border: var(--border-width) solid var(--colors-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
 }
@@ -295,6 +296,35 @@ svg {
 }
 .footer__links a:hover {
   color: var(--colors-text);
+}
+
+/* --- Spotlight (click a screenshot to enlarge) --- */
+.zoomable {
+  cursor: zoom-in;
+}
+.spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-32);
+  background: rgba(6, 6, 8, 0.86);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+}
+.spotlight[data-open="true"] {
+  display: flex;
+}
+.spotlight img {
+  width: auto;
+  height: auto;
+  max-width: min(1400px, 96vw);
+  max-height: 92vh;
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
 }
 
 @media (prefers-reduced-motion: reduce) {

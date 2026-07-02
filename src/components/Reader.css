@@ -5,11 +5,25 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  /* Cap the line length to a comfortable measure and center the column with
-     balanced gutters instead of pinning it to the left edge of a wide pane. */
-  max-width: var(--reader-measure);
+  width: 100%;
   margin-inline: auto;
   padding: var(--space-20) var(--space-24) var(--space-40);
+}
+/* The reading layer, as a layout-breakouts content column: prose keeps the
+   chosen measure (long line lengths hurt reading — the classic 45–75ch band;
+   WCAG 1.4.8 draws the line at 80) and stays centered, while media that
+   *isn't* prose opts out below and uses the full column. */
+.concept-reader > * {
+  width: 100%;
+  max-width: var(--reader-measure);
+  margin-inline: auto;
+}
+/* Breakouts: design-system surfaces are figures, not prose. A live example
+   preview renders a real page — every pixel of width it can get is fidelity —
+   and token tables/swatch grids read better with room. */
+.concept-reader > .examples,
+.concept-reader > .token-viz {
+  max-width: none;
 }
 
 /* Reading aids (dyslexia-friendly): looser letter/word spacing in the body. */
@@ -568,7 +582,11 @@
   --reader-leading: 1.7;
   --reader-font: var(--ui);
   --reader-rail-w: 300px;
-  --reader-max: 1140px;
+  /* The shell's outer cap. Sized for big displays: the prose column stays at
+     its measure regardless, so the extra width all goes to the breakout
+     surfaces (live examples, token tables) and the rail — the reason this is
+     wider than a prose-only cap would be. */
+  --reader-max: 1480px;
   max-width: var(--reader-max);
   margin-inline: auto;
 }

@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-02T00:30:00Z
+timestamp: 2026-07-02T06:30:00Z
 ---
 
 # What it does
@@ -15,6 +15,7 @@ Selecting a node (in the [graph](graph-view.md) or [sidebar](navigation.md)) ope
 At a wide width the reader is a **centered content shell** holding two columns:
 
 - A **reading column** capped to a comfortable measure (~70 characters) via [reading-layer tokens](../ux/theming.md), centered with balanced gutters so the text never pins to one edge or sprawls edge-to-edge. Prose stays **flush-left** (centered body text harms readability — see [Accessibility](../ux/accessibility.md)).
+- **Media breaks out of the measure** (the layout-breakouts pattern from long-form editorial design): prose keeps its line length on any display — wide text hurts reading, per the classic 45–75ch band and WCAG 1.4.8's 80-character line — while the surfaces that *aren't* prose, the [design-system](design-system-rendering.md) **live example previews and token visualizations**, expand to the full content column. On a large display an example renders at near-real page width instead of squeezed into a text column, which is the whole point of a live preview; the shell's outer cap is sized accordingly (wider than any prose-only cap would be).
 - A **right context rail** (~300px), sticky, scrolling independently — quiet context only, never a second stream of prose.
 
 This is **responsive**: when the pane is narrow (or in the [split layout](../ux/browsing-layout.md) where the graph already supplies relationship context), the rail collapses and its modules fall back beneath the article; the rail shows in full in reader-only and wide windows. The collapse threshold **tracks the chosen text width** ([settings](../ux/settings.md)): a wider measure claims the rail's space for prose sooner, so the two never crowd or overlap each other. The rail always follows the `<article>` in document/focus order with its own landmark, so reading order stays correct.

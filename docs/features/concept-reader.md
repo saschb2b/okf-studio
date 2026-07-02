@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-02T06:30:00Z
+timestamp: 2026-07-02T07:00:00Z
 ---
 
 # What it does
@@ -23,7 +23,7 @@ This is **responsive**: when the pane is narrow (or in the [split layout](../ux/
 # Header
 
 - A **breadcrumb** of the concept's index path (e.g. `Architecture / Data Model`), orienting the reader in the bundle ([Navigation](navigation.md)).
-- A **type badge** colored to match the [graph palette](../ux/theming.md), the **title**, and a lead **description**. A design-system concept also shows its **status** and **applies_to** here — see [Design-System Rendering](design-system-rendering.md).
+- A single quiet **meta line** above the title — `● Type · status · applies-to` as plain dim text with dot separators, the type carrying its [palette color](../ux/theming.md) as a small dot (the same encoding the Filter lens and graph use). Status is colored **only when exceptional** (experimental / deprecated); stable is the baseline and reads as plain text. An earlier revision rendered each of these as its own bordered pill — three competing chip treatments read as noise, and the pills were dropped for the flat line. Tags render the same way beneath the description, as quiet `#tag` text: they are labels, not buttons, so no pill chrome suggesting a dead click. See [Design-System Rendering](design-system-rendering.md) for status/applies_to.
 - Technical metadata (Concept ID, timestamp, `resource`) lives in the rail's **Details** module rather than as a wall of labels above the prose.
 - A concept that carries design **tokens** renders them as a visualization (swatches, type specimens, scales, or a token table) between the header and the body — see [Design-System Rendering](design-system-rendering.md).
 

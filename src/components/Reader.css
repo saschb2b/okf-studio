@@ -32,16 +32,6 @@
   word-spacing: 0.08em;
 }
 
-/* Base type badge (shape/size); .concept-reader .type-badge tints it. */
-.type-badge {
-  display: inline-block;
-  font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  background: var(--bg-sunken);
-  color: var(--text-dim);
-}
-
 .reader-empty {
   padding: var(--space-24);
   color: var(--text-dim);
@@ -91,51 +81,50 @@
   opacity: 0.6;
 }
 
-/* The base .type-badge sets shape/size; we tint it from the type palette and
-   make the border visible so the type color reads on either theme. */
-.concept-reader .type-badge {
-  margin-bottom: 0;
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  font-weight: 600;
-}
-
-/* A row of concept labels: type badge, design-system status, applies-to. */
+/* One quiet meta line above the title — plain text with · separators instead
+   of a row of pill chips (three competing pill treatments read as noise). The
+   type keeps its palette color as a small dot, the same encoding the Filter
+   lens and graph use; everything else is dim text. */
 .reader-labels {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-6);
-}
-
-/* Lifecycle status (ODSF): quiet by default, colored only to flag the
-   exception — experimental and (especially) deprecated. */
-.status-badge {
+  column-gap: var(--space-8);
+  row-gap: var(--space-2);
   font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-sunken);
   color: var(--text-dim);
+}
+.reader-labels > * + *::before {
+  content: "·";
+  margin-right: var(--space-8);
+  opacity: 0.6;
+}
+.type-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--text);
+  font-weight: 500;
+}
+.type-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+/* Lifecycle status (ODSF): quiet by default — colored text only to flag the
+   exception, experimental and (especially) deprecated. Stable is the expected
+   baseline and reads as plain text. */
+.status-label {
   text-transform: capitalize;
 }
-.status-badge[data-status="stable"] {
-  color: var(--ok);
-}
-.status-badge[data-status="experimental"] {
+.status-label[data-status="experimental"] {
   color: var(--warn);
+  font-weight: 500;
 }
-.status-badge[data-status="deprecated"] {
+.status-label[data-status="deprecated"] {
   color: var(--error);
-}
-.applies-badge {
-  font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-sunken);
-  color: var(--text-dim);
+  font-weight: 500;
 }
 
 .concept-reader h1 {
@@ -151,22 +140,21 @@
   font-size: calc(var(--fs-sm) * var(--reader-scale, 1));
 }
 
-.tag-chips {
+/* Tags as quiet #text — they are labels, not buttons, so no pill chrome
+   suggesting a click that goes nowhere. */
+.tag-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-6);
-}
-
-.tag-chip {
+  gap: var(--space-2) var(--space-10);
   font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  background: var(--bg-sunken);
   color: var(--text-dim);
-  border: 1px solid var(--border);
+}
+.tag::before {
+  content: "#";
+  opacity: 0.55;
 }
 
 .reader-meta {

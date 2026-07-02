@@ -505,29 +505,34 @@ export function Reader() {
             )}
             <ReaderPrefs />
           </div>
+          {/* One quiet meta line, not a row of pills: the type carries its
+              palette color as a dot (the same encoding the Filter lens uses),
+              and status only speaks up when it is exceptional. */}
           <div className="reader-labels">
-            <span
-              className="type-badge"
-              style={{ color: typeColor, borderColor: typeColor }}
-            >
+            <span className="type-label">
+              <span
+                className="type-dot"
+                style={{ background: typeColor }}
+                aria-hidden="true"
+              />
               {c.type}
             </span>
             {status && (
-              <span className="status-badge" data-status={status}>
+              <span className="status-label" data-status={status}>
                 {status}
               </span>
             )}
             {appliesTo.length > 0 && (
-              <span className="applies-badge">{appliesTo.join(" · ")}</span>
+              <span className="applies-label">{appliesTo.join(" · ")}</span>
             )}
           </div>
           <h1>{c.title}</h1>
           {c.description && <p className="desc">{c.description}</p>}
 
           {c.tags.length > 0 && (
-            <ul className="tag-chips" aria-label="Tags">
+            <ul className="tag-list" aria-label="Tags">
               {c.tags.map((t) => (
-                <li key={t} className="tag-chip">
+                <li key={t} className="tag">
                   {t}
                 </li>
               ))}

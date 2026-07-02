@@ -135,35 +135,53 @@ export function IndexTree() {
   const listRef = useRef<HTMLDivElement>(null);
 
   // Reveal the active concept: a selection made anywhere (graph node, launcher,
-  // reader link) expands the directory chain leading to it and scrolls its row
-  // into view. Only ever expands — never fights a fold the user just made.
+  // reader link) expands the directory chain leading to it. Only ever expands —
+  // never fights a fold the user just made. The scroll happens in the paired
+  // effect below, once the expanded rows have actually rendered.
   const activeId = state.activeConceptId;
+  const scrolledToRef = useRef<string | null>(null);
   useEffect(() => {
+    scrolledToRef.current = null; // new selection → the scroll effect may fire
     if (!activeId || !bundle) return;
     const rootNode0 = rootNode(bundle.indexes);
     if (!rootNode0) return;
     const path = expandPathTo(bundle.indexes, rootNode0, activeId, "root");
-    if (path === null) return; // not listed in the index — nothing to reveal
-    if (path.length) {
-      // Reacting to an external selection is the point of this effect; the
-      // updater bails (returns prev) when the chain is already expanded.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setExpanded((prev) => {
-        if (path.every((k) => prev.has(k))) return prev;
-        return new Set([...prev, ...path]);
-      });
-    }
-    // After the expansion commits, bring the row into view.
-    requestAnimationFrame(() => {
-      const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-row-key]");
-      for (const row of rows ?? []) {
-        if (row.dataset.rowKey?.endsWith(`:${activeId}`)) {
-          row.scrollIntoView({ block: "nearest" });
-          break;
-        }
-      }
+    if (path === null || path.length === 0) return;
+    // Reacting to an external selection is the point of this effect; the
+    // updater bails (returns prev) when the chain is already expanded.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExpanded((prev) => {
+      if (path.every((k) => prev.has(k))) return prev;
+      return new Set([...prev, ...path]);
     });
   }, [activeId, bundle]);
+
+  // Scroll the active row into view once it exists. Runs after every commit
+  // (dep-less) because the row may only appear on the re-render *after* the
+  // expansion above — a one-shot rAF raced that commit and often missed it.
+  // The ref guards to one scroll per selection, so it never fights the user's
+  // own scrolling afterwards. An offscreen row centers (context above and
+  // below, VS Code's reveal); an already-visible row is left alone.
+  useEffect(() => {
+    if (!activeId || scrolledToRef.current === activeId) return;
+    const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-row-key]");
+    for (const row of rows ?? []) {
+      if (!row.dataset.rowKey?.endsWith(`:${activeId}`)) continue;
+      scrolledToRef.current = activeId;
+      const vp = row.closest(".ui-scrollarea-viewport");
+      const vr = vp?.getBoundingClientRect();
+      const rr = row.getBoundingClientRect();
+      // Zero-height rects mean the environment can't measure (jsdom) — fall
+      // back to a minimal scroll rather than skipping.
+      const measurable = !!vr && vr.height > 0;
+      const visible =
+        measurable && rr.top >= vr.top && rr.bottom <= vr.bottom;
+      if (!visible) {
+        row.scrollIntoView({ block: measurable ? "center" : "nearest" });
+      }
+      break;
+    }
+  });
 
   if (!bundle) return null;
   const root = rootNode(bundle.indexes);

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
@@ -243,6 +243,7 @@ describe("OKF Viewer features", () => {
 
   it("reveals a concept selected elsewhere by expanding its index directory", async () => {
     const user = userEvent.setup();
+    const scrollSpy = vi.spyOn(Element.prototype, "scrollIntoView");
     renderApp();
     await openBundle(user);
 
@@ -258,6 +259,12 @@ describe("OKF Viewer features", () => {
     // The tree expanded the chain and the row is now present and current.
     const row = await screen.findByRole("treeitem", { name: /^button$/i });
     expect(row).toHaveAttribute("aria-current", "true");
+    // …and was scrolled into view AFTER it rendered (a one-shot rAF used to
+    // race the expansion commit and miss the row entirely).
+    await waitFor(() => {
+      expect(scrollSpy.mock.instances).toContain(row);
+    });
+    scrollSpy.mockRestore();
   });
 
   it("explains an all-filtered index tree and routes to the full search", async () => {

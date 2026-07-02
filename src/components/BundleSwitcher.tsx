@@ -30,6 +30,7 @@ export function BundleSwitcher() {
   const { state, actions } = useApp();
   const [query, setQuery] = useState("");
   const popupRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   // Nothing open yet → the trigger is a direct "open a folder" button rather
   // than a popover (mirrors First Run; keeps an obvious entry point).
@@ -71,34 +72,39 @@ export function BundleSwitcher() {
   const close = () => actions.setSwitcher(false);
 
   // Lightweight roving: ArrowUp/Down move focus through the rows; the search
-  // input owns typing. Base UI handles Escape and focus restore.
+  // input owns typing (ArrowUp from the first row returns to it). Base UI
+  // handles Escape and focus restore. This single handler owns the arrows —
+  // handling them on the input too used to double-fire and skip the first row.
   function onPopupKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const rows = Array.from(
       popupRef.current?.querySelectorAll<HTMLElement>("[data-row]") ?? [],
     );
     if (!rows.length) return;
-    e.preventDefault();
     const i = rows.indexOf(document.activeElement as HTMLElement);
-    const next =
-      e.key === "ArrowDown" ? Math.min(rows.length - 1, i + 1) : Math.max(0, i - 1);
-    rows[next === -1 ? 0 : next]?.focus();
+    if (i === -1) {
+      // From the search input: only ArrowDown enters the list.
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        rows[0].focus();
+      }
+      return;
+    }
+    e.preventDefault();
+    if (e.key === "ArrowUp") {
+      if (i === 0) searchRef.current?.focus();
+      else rows[i - 1].focus();
+    } else {
+      rows[Math.min(rows.length - 1, i + 1)].focus();
+    }
   }
 
   function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    const first = () => popupRef.current?.querySelector<HTMLElement>("[data-row]");
-    if (e.key === "Enter") {
-      const el = first();
-      if (el) {
-        e.preventDefault();
-        el.click();
-      }
-    } else if (e.key === "ArrowDown") {
-      const el = first();
-      if (el) {
-        e.preventDefault();
-        el.focus();
-      }
+    if (e.key !== "Enter") return;
+    const first = popupRef.current?.querySelector<HTMLElement>("[data-row]");
+    if (first) {
+      e.preventDefault();
+      first.click();
     }
   }
 
@@ -147,6 +153,7 @@ export function BundleSwitcher() {
               onKeyDown={onPopupKeyDown}
             >
               <input
+                ref={searchRef}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 type="search"
@@ -166,6 +173,7 @@ export function BundleSwitcher() {
                         key={b.root}
                         bundle={b}
                         active={b.root === state.activeRoot}
+                        folderLabel={folderLabel}
                         dark={dark}
                         onSelect={() => {
                           void actions.selectBundle(b.root);
@@ -205,7 +213,7 @@ export function BundleSwitcher() {
                     ))
                   ) : (
                     <p className="switcher-empty muted">
-                      Bundles you open will show up here.
+                      {q ? "No matches." : "Bundles you open will show up here."}
                     </p>
                   )}
                 </Group>
@@ -280,20 +288,27 @@ function Dots({ types, dark }: { types: string[]; dark: boolean }) {
 function FolderRow({
   bundle,
   active,
+  folderLabel,
   dark,
   onSelect,
 }: {
   bundle: BundleRoot;
   active: boolean;
+  /** Basename of the picked folder — the sub for a bundle at its root. */
+  folderLabel: string;
   dark: boolean;
   onSelect: () => void;
 }) {
+  // A bundle at the picked folder's root has an empty relPath; showing the
+  // folder's own name beats a bare "." of punctuation.
+  const sub = bundle.relPath || folderLabel;
   return (
     <button
       type="button"
       data-row
       className={`switcher-row${active ? " is-active" : ""}`}
       aria-current={active ? "true" : undefined}
+      title={`${bundle.name} — ${bundle.root}`}
       onClick={onSelect}
     >
       <span className="switcher-check" aria-hidden="true">
@@ -301,9 +316,7 @@ function FolderRow({
       </span>
       <span className="switcher-row-main">
         <span className="switcher-row-name">{bundle.name}</span>
-        <span className="switcher-row-sub" title={bundle.relPath}>
-          {bundle.relPath || "."}
-        </span>
+        <span className="switcher-row-sub">{sub}</span>
       </span>
       <span className="switcher-row-meta">
         <span className="switcher-count">{bundle.conceptCount}</span>
@@ -330,6 +343,7 @@ function RecentRow({
         type="button"
         data-row
         className="switcher-row"
+        title={`${entry.name} — ${entry.root}`}
         onClick={() => {
           void actions.openRecentBundle(entry);
           close();
@@ -338,9 +352,7 @@ function RecentRow({
         <span className="switcher-check" aria-hidden="true" />
         <span className="switcher-row-main">
           <span className="switcher-row-name">{entry.name}</span>
-          <span className="switcher-row-sub" title={entry.folder}>
-            {baseName(entry.folder)}
-          </span>
+          <span className="switcher-row-sub">{baseName(entry.folder)}</span>
         </span>
         <span className="switcher-row-meta">
           <span className="switcher-count">{entry.conceptCount}</span>

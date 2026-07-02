@@ -1,7 +1,7 @@
 // A tiny in-memory OKF bundle so the UI renders (and tests run) without the
 // Rust backend. Mirrors the shape the core produces; backlinks/degree derived.
 
-import type { Bundle, BundleRoot, Concept } from "../types.ts";
+import type { Bundle, BundleRoot, Concept, RecentBundle } from "../types.ts";
 
 export const MOCK_FOLDER = "/mock/workspace";
 
@@ -523,5 +523,30 @@ export const MOCK_ROOTS: BundleRoot[] = [
     confidence: "confident",
     conceptCount: MOCK_BUNDLE.concepts.length,
     types: [...new Set(MOCK_BUNDLE.concepts.map((c) => c.type))].sort(),
+  },
+];
+
+/**
+ * Seed recents from *other* folders so the Bundle Switcher's recent rows —
+ * pins, hover actions, the Pinned group — render off-Tauri (browser + tests).
+ * One pinned and one plain entry; fixed timestamps keep runs deterministic.
+ */
+export const MOCK_RECENTS: RecentBundle[] = [
+  {
+    root: "/mock/primer/design-system",
+    folder: "/mock/primer",
+    name: "Primer design system",
+    conceptCount: 60,
+    types: ["Color", "Component", "Elevation", "Guideline", "Motion", "Pattern", "Shape", "Typography"],
+    ts: 1750000000000,
+    pinned: true,
+  },
+  {
+    root: "/mock/handbook",
+    folder: "/mock/handbook",
+    name: "Team Handbook",
+    conceptCount: 202,
+    types: ["Guide", "Policy", "Runbook", "Template"],
+    ts: 1749000000000,
   },
 ];

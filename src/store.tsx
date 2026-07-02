@@ -523,12 +523,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // Load persisted settings once, and reopen the most recent folder if any
-  // (first-run.md: "can reopen the last one automatically").
+  // (first-run.md: "can reopen the last one automatically"). Auto-reopen is
+  // desktop-only: off-Tauri the recents are a seeded fixture for the switcher
+  // UI, and dev/tests should still boot into the first-run state.
   useEffect(() => {
     void ipc.loadSettings().then((s) => dispatch({ t: "settings", v: s }));
     void ipc.recentBundles().then((recents) => {
       dispatch({ t: "recents", v: recents });
-      if (recents.length > 0) void actions.openRecentBundle(recents[0]);
+      if (recents.length > 0 && ipc.isTauri()) {
+        void actions.openRecentBundle(recents[0]);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

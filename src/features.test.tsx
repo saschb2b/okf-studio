@@ -133,6 +133,29 @@ describe("OKF Viewer features", () => {
     expect(
       within(popover).getByText("OKF Viewer (sample)"),
     ).toBeInTheDocument();
+
+    // Seeded recents render, split into Pinned and Recent groups.
+    expect(
+      within(popover).getByText("Primer design system"),
+    ).toBeInTheDocument();
+    expect(within(popover).getByText(/pinned/i)).toBeInTheDocument();
+    expect(within(popover).getByText("Team Handbook")).toBeInTheDocument();
+
+    // ArrowDown from the search enters the list at the FIRST row (a double
+    // handler used to skip it); ArrowUp from there returns to the search.
+    const search = within(popover).getByRole("searchbox");
+    expect(search).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(
+      within(popover).getByRole("button", { name: /OKF Viewer \(sample\)/i }),
+    ).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(search).toHaveFocus();
+
+    // A query that matches nothing says so in both groups — not the
+    // "bundles you open will show up here" onboarding copy.
+    await user.type(search, "zzzz");
+    expect(within(popover).getAllByText("No matches.")).toHaveLength(2);
   });
 
   it("arrow-key navigation in the command palette steps through every result, not just the first two", async () => {

@@ -60,7 +60,8 @@
 /* --- Popover --- */
 .switcher-popup {
   padding: 0;
-  width: 22rem;
+  /* Wide enough that typical bundle names survive beside the meta column. */
+  width: 25rem;
   max-width: 92vw;
 }
 .switcher-body {
@@ -151,21 +152,27 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Fixed meta columns so the numbers right-align and the dot clusters start at
+   the same x on every row, instead of drifting with each count's width. */
 .switcher-row-meta {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 3ch auto;
   align-items: center;
-  gap: var(--space-6);
-  flex: 0 0 auto;
+  column-gap: var(--space-6);
 }
 .switcher-count {
   font-size: var(--fs-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .switcher-dots {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  /* Reserve the full 5-dot width (5×8px + 4×3px) so shorter clusters and the
+     "+N" overflow stay column-aligned across rows. */
+  min-width: 52px;
 }
 .switcher-dot {
   width: 8px;
@@ -177,12 +184,12 @@
   color: var(--text-dim);
 }
 
-/* Recent rows carry pin/remove actions revealed on hover/focus. */
+/* Recent rows carry pin/remove actions revealed on hover/focus. They overlay
+   the row's meta on an opaque chip (instead of reserving right padding, which
+   knocked recents' meta column out of line with the folder rows above), and
+   are click-through while hidden. */
 .switcher-recent {
   position: relative;
-}
-.switcher-recent .switcher-row {
-  padding-right: 3.5rem;
 }
 .switcher-recent-actions {
   position: absolute;
@@ -191,11 +198,18 @@
   transform: translateY(-50%);
   display: inline-flex;
   gap: 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
   opacity: 0;
+  pointer-events: none;
 }
 .switcher-recent:hover .switcher-recent-actions,
 .switcher-recent:focus-within .switcher-recent-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 .switcher-mini {
   padding: var(--space-4);

@@ -36,7 +36,7 @@ function Group({
         {issues.map((issue, n) => {
           const target = issue.conceptId;
           return (
-            <li key={`${level}-${n}`} className={`vp-issue ${level}`}>
+            <li key={`${level}-${n}`} className="vp-issue">
               {target ? (
                 <button
                   type="button"
@@ -44,13 +44,13 @@ function Group({
                   aria-label={`${level}: ${issue.message}. Jump to ${target}.`}
                   onClick={() => onJump(target)}
                 >
-                  <span className={`vp-lvl ${level}`}>{level}</span>
+                  <span className={`vp-issue-dot ${level}`} aria-hidden="true" />
                   <span className="vp-msg">{issue.message}</span>
                   <span className="vp-target">{target}</span>
                 </button>
               ) : (
                 <div className="vp-issue-body">
-                  <span className={`vp-lvl ${level}`}>{level}</span>
+                  <span className={`vp-issue-dot ${level}`} aria-hidden="true" />
                   <span className="vp-msg">{issue.message}</span>
                 </div>
               )}

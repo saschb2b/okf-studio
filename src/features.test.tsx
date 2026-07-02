@@ -267,6 +267,18 @@ describe("OKF Viewer features", () => {
     scrollSpy.mockRestore();
   });
 
+  it("explains an expanded directory that holds no concepts", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // styles/ resolves to a synthesized index with zero entries (assets only).
+    await user.click(screen.getByRole("treeitem", { name: /^styles\// }));
+    expect(
+      await screen.findByText(/no concepts in this folder/i),
+    ).toBeInTheDocument();
+  });
+
   it("explains an all-filtered index tree and routes to the full search", async () => {
     const user = userEvent.setup();
     renderApp();

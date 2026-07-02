@@ -441,23 +441,35 @@ function TreeNode({
                       )}
                       <DirCount count={dirCounts.get(entry.target)} />
                     </button>
-                    {child && isOpen && (
-                      <TreeNode
-                        indexes={indexes}
-                        node={child}
-                        depth={depth + 1}
-                        pathKey={expandKey}
-                        expanded={expanded}
-                        toggle={toggle}
-                        rows={rows}
-                        focusIdx={focusIdx}
-                        activeId={activeId}
-                        visibleIds={visibleIds}
-                        filtering={filtering}
-                        dirCounts={dirCounts}
-                        onOpenConcept={onOpenConcept}
-                      />
-                    )}
+                    {child &&
+                      isOpen &&
+                      (child.sections.some((s) => s.entries.length > 0) ? (
+                        <TreeNode
+                          indexes={indexes}
+                          node={child}
+                          depth={depth + 1}
+                          pathKey={expandKey}
+                          expanded={expanded}
+                          toggle={toggle}
+                          rows={rows}
+                          focusIdx={focusIdx}
+                          activeId={activeId}
+                          visibleIds={visibleIds}
+                          filtering={filtering}
+                          dirCounts={dirCounts}
+                          onOpenConcept={onOpenConcept}
+                        />
+                      ) : (
+                        // A directory with no concepts (assets only, or empty):
+                        // expanding must say so, not silently add zero rows.
+                        <div
+                          className="sb-tree-empty-dir"
+                          role="none"
+                          style={indent(depth + 1)}
+                        >
+                          No concepts in this folder
+                        </div>
+                      ))}
                   </li>
                 );
               }

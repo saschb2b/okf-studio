@@ -429,9 +429,24 @@ export const MOCK_BUNDLE: Bundle = {
               description: "The ODSF sample: tokens, components, guidelines.",
               kind: "directory",
             },
+            {
+              title: "styles/",
+              target: "styles",
+              description: "Companion stylesheets (assets, not concepts).",
+              kind: "directory",
+            },
           ],
         },
       ],
+    },
+    {
+      // An asset-only directory (the Primer bundle's styles/ case): the core
+      // synthesizes an index for it, but it holds no concepts — the tree must
+      // explain the empty expansion instead of silently adding zero rows.
+      dir: "styles",
+      title: "Styles",
+      synthesized: true,
+      sections: [],
     },
     {
       // A synthesized per-directory index (no index.md in design/), so the

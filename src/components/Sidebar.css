@@ -384,6 +384,15 @@
   opacity: 0.7;
 }
 
+/* Expanding a concept-less directory (assets only, or empty) explains itself
+   instead of silently adding zero rows. */
+.sb-tree-empty-dir {
+  padding: var(--space-2) var(--space-6) var(--space-4);
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--text-dim);
+}
+
 /* Right-aligned concept count on directory rows — how much bundle lives
    behind the fold. */
 .sb-tree-count {

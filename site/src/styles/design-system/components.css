@@ -70,6 +70,20 @@
   font-size: var(--text-xs);
   color: var(--colors-text-dim);
 }
+/* Trailing download arrow: the quiet affordance that makes the card read as
+   an action, not an info tile. Dim at rest; on hover it takes the primary
+   color and nudges down a touch (instant under reduced motion). */
+.dl-btn__arrow {
+  margin-left: auto;
+  padding-left: var(--space-12);
+  color: var(--colors-text-dim);
+  transition: color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+.dl-btn:hover .dl-btn__arrow {
+  color: var(--colors-primary);
+  transform: translateY(2px);
+}
 
 /* --- Eyebrow label --- */
 .eyebrow {

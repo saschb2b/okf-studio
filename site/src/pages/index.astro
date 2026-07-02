@@ -214,14 +214,15 @@ const downloads = [
                   <span class="dl-btn__os">{d.os}</span>
                   <span class="dl-btn__meta">{d.meta}</span>
                 </span>
+                <span class="dl-btn__arrow" aria-hidden="true">↓</span>
               </a>
             ))
           }
         </div>
+        {/* One line: JSX collapses the whitespace around newline-separated
+            inline children, which glued the middots to their neighbors. */}
         <p class="download__note">
-          {version} · unsigned for now (your OS may warn on first launch) ·
-          <a href={releases}>all releases</a> ·
-          macOS: <a href={repo}>build from source</a>
+          {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases</a> · macOS: <a href={repo}>build from source</a>
         </p>
       </div>
     </section>

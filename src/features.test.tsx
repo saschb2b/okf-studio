@@ -241,6 +241,25 @@ describe("OKF Viewer features", () => {
     ).toBeInTheDocument();
   });
 
+  it("reveals a concept selected elsewhere by expanding its index directory", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // design/button lives behind the collapsed design/ directory row.
+    expect(screen.queryByRole("treeitem", { name: /^button$/i })).not.toBeInTheDocument();
+
+    // Select it from the launcher (a selection made outside the tree).
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await user.type(combo, "Button");
+    await user.keyboard("{Enter}");
+
+    // The tree expanded the chain and the row is now present and current.
+    const row = await screen.findByRole("treeitem", { name: /^button$/i });
+    expect(row).toHaveAttribute("aria-current", "true");
+  });
+
   it("explains an all-filtered index tree and routes to the full search", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -248,18 +267,18 @@ describe("OKF Viewer features", () => {
 
     const search = screen.getByRole("searchbox", { name: /search concepts/i });
 
-    // Matches exist (design/button and friends) but none are index entries →
-    // the tree explains itself and offers the launcher.
-    await user.type(search, "Button");
+    // Matches exist (the Revenue cluster) but none are index entries → the
+    // tree explains itself and offers the launcher.
+    await user.type(search, "Revenue");
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent(/none are listed in this index/i);
     await user.click(screen.getByRole("button", { name: /open full search/i }));
     // The launcher opens seeded with the sidebar's query, results ready.
     const combo = await screen.findByRole("combobox");
-    expect(combo).toHaveValue("Button");
+    expect(combo).toHaveValue("Revenue");
     expect(
-      await screen.findByRole("option", { name: /button.*component/i }),
-    ).toBeInTheDocument();
+      await screen.findAllByRole("option", { name: /revenue/i }),
+    ).not.toHaveLength(0);
     await user.keyboard("{Escape}");
 
     // Nothing matches at all → the notice says so, without the launcher CTA

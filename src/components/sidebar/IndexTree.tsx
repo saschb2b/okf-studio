@@ -11,11 +11,11 @@
 // move between visible rows, Left/Right collapse/expand directories, Enter opens.
 // See docs/features/navigation.md.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useApp } from "../../store.tsx";
 import { filteredConceptIds } from "../../selectors.ts";
-import type { IndexEntry, IndexNode } from "../../types.ts";
+import type { Bundle, IndexEntry, IndexNode } from "../../types.ts";
 
 /** Pick the root index: prefer the empty / "." dir, else the first node. */
 function rootNode(indexes: IndexNode[]): IndexNode | null {
@@ -35,6 +35,48 @@ function nodeFor(
 ): IndexNode | undefined {
   if (target === selfDir) return undefined;
   return indexes.find((n) => n.dir === target);
+}
+
+/** Concepts under each directory (every ancestor gets credit), so directory
+ *  rows can say how much bundle lives behind them. */
+function dirConceptCounts(bundle: Bundle): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const c of bundle.concepts) {
+    let slash = c.id.lastIndexOf("/");
+    while (slash > 0) {
+      const dir = c.id.slice(0, slash);
+      counts.set(dir, (counts.get(dir) ?? 0) + 1);
+      slash = dir.lastIndexOf("/");
+    }
+  }
+  return counts;
+}
+
+/**
+ * The chain of expand keys leading to `conceptId` in the index tree, mirroring
+ * flatten()'s key scheme — so a selection made anywhere (graph, launcher,
+ * reader links) can reveal itself in the tree. Null when the index never
+ * lists the concept.
+ */
+function expandPathTo(
+  indexes: IndexNode[],
+  node: IndexNode,
+  conceptId: string,
+  pathKey: string,
+): string[] | null {
+  for (const sec of node.sections) {
+    for (const entry of sec.entries) {
+      if (entry.kind === "concept" && entry.target === conceptId) return [];
+      if (entry.kind === "directory") {
+        const child = nodeFor(indexes, entry.target, node.dir);
+        if (!child) continue;
+        const key = `node:${pathKey}/${entry.target}`;
+        const sub = expandPathTo(indexes, child, conceptId, key);
+        if (sub) return [key, ...sub];
+      }
+    }
+  }
+  return null;
 }
 
 /** A single flattened, currently-visible row used for keyboard navigation. */
@@ -92,9 +134,41 @@ export function IndexTree() {
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Reveal the active concept: a selection made anywhere (graph node, launcher,
+  // reader link) expands the directory chain leading to it and scrolls its row
+  // into view. Only ever expands — never fights a fold the user just made.
+  const activeId = state.activeConceptId;
+  useEffect(() => {
+    if (!activeId || !bundle) return;
+    const rootNode0 = rootNode(bundle.indexes);
+    if (!rootNode0) return;
+    const path = expandPathTo(bundle.indexes, rootNode0, activeId, "root");
+    if (path === null) return; // not listed in the index — nothing to reveal
+    if (path.length) {
+      // Reacting to an external selection is the point of this effect; the
+      // updater bails (returns prev) when the chain is already expanded.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExpanded((prev) => {
+        if (path.every((k) => prev.has(k))) return prev;
+        return new Set([...prev, ...path]);
+      });
+    }
+    // After the expansion commits, bring the row into view.
+    requestAnimationFrame(() => {
+      const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-row-key]");
+      for (const row of rows ?? []) {
+        if (row.dataset.rowKey?.endsWith(`:${activeId}`)) {
+          row.scrollIntoView({ block: "nearest" });
+          break;
+        }
+      }
+    });
+  }, [activeId, bundle]);
+
   if (!bundle) return null;
   const root = rootNode(bundle.indexes);
   if (!root) return null;
+  const dirCounts = dirConceptCounts(bundle);
 
   const visibleIds = filteredConceptIds(bundle, {
     query: state.query,
@@ -253,11 +327,18 @@ export function IndexTree() {
           activeId={state.activeConceptId}
           visibleIds={visibleIds}
           filtering={filtering}
+          dirCounts={dirCounts}
           onOpenConcept={(id) => actions.selectConcept(id)}
         />
       </div>
     </section>
   );
+}
+
+/** A quiet, right-aligned "how many concepts live in here" for directory rows. */
+function DirCount({ count }: { count: number | undefined }) {
+  if (!count) return null;
+  return <span className="sb-tree-count">{count}</span>;
 }
 
 function TreeNode({
@@ -272,6 +353,7 @@ function TreeNode({
   activeId,
   visibleIds,
   filtering,
+  dirCounts,
   onOpenConcept,
 }: {
   indexes: IndexNode[];
@@ -285,6 +367,7 @@ function TreeNode({
   activeId: string | null;
   visibleIds: Set<string>;
   filtering: boolean;
+  dirCounts: Map<string, number>;
   onOpenConcept: (id: string) => void;
 }) {
   const focusedKey = rows[focusIdx]?.key;
@@ -335,9 +418,10 @@ function TreeNode({
                           className="sb-synth"
                           title="Synthesized index (no index.md in this directory)"
                         >
-                          synth
+                          auto
                         </span>
                       )}
+                      <DirCount count={dirCounts.get(entry.target)} />
                     </button>
                     {child && isOpen && (
                       <TreeNode
@@ -352,6 +436,7 @@ function TreeNode({
                         activeId={activeId}
                         visibleIds={visibleIds}
                         filtering={filtering}
+                        dirCounts={dirCounts}
                         onOpenConcept={onOpenConcept}
                       />
                     )}

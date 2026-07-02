@@ -420,6 +420,50 @@ export const MOCK_BUNDLE: Bundle = {
             },
           ],
         },
+        {
+          heading: "Design system",
+          entries: [
+            {
+              title: "design/",
+              target: "design",
+              description: "The ODSF sample: tokens, components, guidelines.",
+              kind: "directory",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      // A synthesized per-directory index (no index.md in design/), so the
+      // tree's expandable directory rows, concept counts, and the synthesized
+      // marker all render off-Tauri.
+      dir: "design",
+      title: "Design",
+      synthesized: true,
+      sections: [
+        {
+          heading: "",
+          entries: [
+            {
+              title: "Button",
+              target: "design/button",
+              description: "Default, primary, and danger variants.",
+              kind: "concept",
+            },
+            {
+              title: "Color",
+              target: "design/color",
+              description: "Functional color roles.",
+              kind: "concept",
+            },
+            {
+              title: "Typography",
+              target: "design/typography",
+              description: "Type scale and faces.",
+              kind: "concept",
+            },
+          ],
+        },
       ],
     },
   ],

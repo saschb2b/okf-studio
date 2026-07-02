@@ -374,14 +374,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Synthesized-index marker: a quiet dim word, not a badge — the tooltip
+   carries the explanation. */
 .sb-synth {
   flex: 0 0 auto;
   font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-style: italic;
   color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--space-4);
+  opacity: 0.7;
+}
+
+/* Right-aligned concept count on directory rows — how much bundle lives
+   behind the fold. */
+.sb-tree-count {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
   opacity: 0.8;
 }

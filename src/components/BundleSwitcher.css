@@ -6,35 +6,53 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  max-width: 22rem;
+  /* Fixed width: the chrome stays put across bundle switches — long names
+     ellipsize, the chevron stays pinned to the right edge. */
+  width: 16rem;
   padding: var(--space-4) var(--space-8);
   border-radius: var(--radius);
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   cursor: pointer;
   font: inherit;
+  text-align: left;
 }
 .topbar-switch:hover,
 .topbar-switch[data-popup-open] {
   background: var(--bg-sunken);
-  border-color: var(--border);
 }
 .topbar-switch[data-popup-open] {
   border-color: var(--accent);
+}
+
+/* Identity tile — the bundle's initial on a quiet accent wash. */
+.switch-tile {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: 700;
 }
 
 .switch-trigger {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  flex: 1;
   min-width: 0;
   line-height: var(--lh-tight);
 }
 .switch-name {
   font-weight: 600;
   font-size: var(--fs-sm);
-  max-width: 18rem;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -42,7 +60,7 @@
 .switch-folder {
   font-size: var(--fs-xs);
   color: var(--text-dim);
-  max-width: 18rem;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -152,36 +170,25 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Fixed meta columns so the numbers right-align and the dot clusters start at
-   the same x on every row, instead of drifting with each count's width. */
+/* The row's right column: two labeled lines ("45 concepts" / "20 types" or
+   "2w ago"), right-aligned so they mirror the name/sub pair on the left. */
 .switcher-row-meta {
-  display: grid;
-  grid-template-columns: 3ch auto;
-  align-items: center;
-  column-gap: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: var(--lh-tight);
 }
 .switcher-count {
   font-size: var(--fs-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  white-space: nowrap;
 }
-.switcher-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  /* Reserve the full 5-dot width (5×8px + 4×3px) so shorter clusters and the
-     "+N" overflow stay column-aligned across rows. */
-  min-width: 52px;
-}
-.switcher-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.switcher-dot-more {
+.switcher-meta-sub {
   font-size: var(--fs-xs);
   color: var(--text-dim);
+  opacity: 0.75;
+  white-space: nowrap;
 }
 
 /* Recent rows carry pin/remove actions revealed on hover/focus. They overlay

@@ -11,12 +11,9 @@ import { Toolbar } from "@base-ui/react/toolbar";
 import { useApp } from "../store.tsx";
 import type { Actions } from "../store.tsx";
 import { modKey } from "../platform.ts";
-import { buildTypePalette, resolveDark } from "../theme.ts";
 import type { BundleRoot, RecentBundle } from "../types.ts";
 import "./baseui.css";
 import "./BundleSwitcher.css";
-
-const MAX_DOTS = 5;
 
 const mod = modKey;
 
@@ -24,6 +21,30 @@ const mod = modKey;
 function baseName(p: string): string {
   const parts = p.split(/[/\\]/).filter(Boolean);
   return parts[parts.length - 1] || p;
+}
+
+/** First code point of a name, uppercased — the trigger tile's initial.
+ *  codePointAt keeps surrogate pairs (emoji, CJK extensions) intact. */
+function initialOf(name: string): string {
+  const cp = name.trim().codePointAt(0);
+  return cp ? String.fromCodePoint(cp).toUpperCase() : "?";
+}
+
+/** Compact "how long ago" for a recent's last-opened timestamp. */
+function relTime(ts: number): string {
+  const s = Math.max(0, (Date.now() - ts) / 1000);
+  if (s < 60) return "just now";
+  const m = s / 60;
+  if (m < 60) return `${Math.round(m)}m ago`;
+  const h = m / 60;
+  if (h < 24) return `${Math.round(h)}h ago`;
+  const d = h / 24;
+  if (d < 7) return `${Math.round(d)}d ago`;
+  const w = d / 7;
+  if (w < 9) return `${Math.round(w)}w ago`;
+  const mo = d / 30.44;
+  if (mo < 12) return `${Math.round(mo)}mo ago`;
+  return `${Math.round(d / 365.25)}y ago`;
 }
 
 export function BundleSwitcher() {
@@ -49,7 +70,6 @@ export function BundleSwitcher() {
     );
   }
 
-  const dark = resolveDark(state.settings.theme);
   const q = query.trim().toLowerCase();
 
   const matchRoot = (b: BundleRoot) =>
@@ -119,6 +139,11 @@ export function BundleSwitcher() {
       <Popover.Trigger
         render={
           <Toolbar.Button className="topbar-switch" aria-label="Switch bundle">
+            {/* Identity tile: the bundle's initial anchors the fixed-width
+                trigger the way workspace tiles do in Slack or VS Code. */}
+            <span className="switch-tile" aria-hidden="true">
+              {initialOf(state.bundle.name)}
+            </span>
             <span className="switch-trigger">
               <span className="switch-name" title={state.bundle.name}>
                 {state.bundle.name}
@@ -174,7 +199,6 @@ export function BundleSwitcher() {
                         bundle={b}
                         active={b.root === state.activeRoot}
                         folderLabel={folderLabel}
-                        dark={dark}
                         onSelect={() => {
                           void actions.selectBundle(b.root);
                           close();
@@ -189,13 +213,7 @@ export function BundleSwitcher() {
                 {pinned.length > 0 && (
                   <Group label="Pinned">
                     {pinned.map((r) => (
-                      <RecentRow
-                        key={r.root}
-                        entry={r}
-                        dark={dark}
-                        actions={actions}
-                        close={close}
-                      />
+                      <RecentRow key={r.root} entry={r} actions={actions} close={close} />
                     ))}
                   </Group>
                 )}
@@ -203,13 +221,7 @@ export function BundleSwitcher() {
                 <Group label="Recent bundles">
                   {recent.length ? (
                     recent.map((r) => (
-                      <RecentRow
-                        key={r.root}
-                        entry={r}
-                        dark={dark}
-                        actions={actions}
-                        close={close}
-                      />
+                      <RecentRow key={r.root} entry={r} actions={actions} close={close} />
                     ))
                   ) : (
                     <p className="switcher-empty muted">
@@ -266,21 +278,15 @@ function Group({
   );
 }
 
-function Dots({ types, dark }: { types: string[]; dark: boolean }) {
-  const palette = buildTypePalette(types, dark);
-  const dots = types.slice(0, MAX_DOTS);
-  const overflow = types.length - dots.length;
+/** The row's right column: two quiet, labeled lines that align with the
+ *  name/sub lines on the left ("45 concepts" over "20 types" or "2w ago"). */
+function RowMeta({ count, detail }: { count: number; detail: string }) {
   return (
-    <span className="switcher-dots" aria-hidden="true">
-      {dots.map((t) => (
-        <span
-          key={t}
-          className="switcher-dot"
-          style={{ background: palette.color(t) }}
-          title={t}
-        />
-      ))}
-      {overflow > 0 && <span className="switcher-dot-more">+{overflow}</span>}
+    <span className="switcher-row-meta">
+      <span className="switcher-count">
+        {count} concept{count === 1 ? "" : "s"}
+      </span>
+      <span className="switcher-meta-sub">{detail}</span>
     </span>
   );
 }
@@ -289,19 +295,18 @@ function FolderRow({
   bundle,
   active,
   folderLabel,
-  dark,
   onSelect,
 }: {
   bundle: BundleRoot;
   active: boolean;
   /** Basename of the picked folder — the sub for a bundle at its root. */
   folderLabel: string;
-  dark: boolean;
   onSelect: () => void;
 }) {
   // A bundle at the picked folder's root has an empty relPath; showing the
   // folder's own name beats a bare "." of punctuation.
   const sub = bundle.relPath || folderLabel;
+  const typeCount = bundle.types.length;
   return (
     <button
       type="button"
@@ -318,22 +323,17 @@ function FolderRow({
         <span className="switcher-row-name">{bundle.name}</span>
         <span className="switcher-row-sub">{sub}</span>
       </span>
-      <span className="switcher-row-meta">
-        <span className="switcher-count">{bundle.conceptCount}</span>
-        <Dots types={bundle.types} dark={dark} />
-      </span>
+      <RowMeta count={bundle.conceptCount} detail={`${typeCount} type${typeCount === 1 ? "" : "s"}`} />
     </button>
   );
 }
 
 function RecentRow({
   entry,
-  dark,
   actions,
   close,
 }: {
   entry: RecentBundle;
-  dark: boolean;
   actions: Actions;
   close: () => void;
 }) {
@@ -354,10 +354,7 @@ function RecentRow({
           <span className="switcher-row-name">{entry.name}</span>
           <span className="switcher-row-sub">{baseName(entry.folder)}</span>
         </span>
-        <span className="switcher-row-meta">
-          <span className="switcher-count">{entry.conceptCount}</span>
-          <Dots types={entry.types} dark={dark} />
-        </span>
+        <RowMeta count={entry.conceptCount} detail={relTime(entry.ts)} />
       </button>
       <span className="switcher-recent-actions">
         <button

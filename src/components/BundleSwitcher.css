@@ -67,6 +67,9 @@
 }
 .switch-chevron {
   flex: 0 0 auto;
+  /* Pinned to the trigger's right edge in both states (the empty trigger has
+     no growing middle section). */
+  margin-left: auto;
   color: var(--text-dim);
   font-size: var(--fs-sm);
 }

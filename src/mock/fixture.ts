@@ -427,6 +427,13 @@ export const MOCK_BUNDLE: Bundle = {
     {
       date: "2026-06-28",
       entries: [
+        "**Update**: Expanded the sample to 45 concepts across 20 types — foundations, components, and guidelines with live examples and design tokens.",
+        "**Fix**: The [Graph View](features/graph-view.md) sample now carries orphan and broken-link states, so defect surfacing renders off-Tauri.",
+      ],
+    },
+    {
+      date: "2026-06-27",
+      entries: [
         "**Creation**: Sample bundle for the viewer's empty-handed dev mode. Starts with the [Concept Reader](features/concept-reader.md) and the [OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog).",
       ],
     },

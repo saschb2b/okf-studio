@@ -25,10 +25,12 @@ function newestFirst(log: LogEntry[]): LogEntry[] {
   return [...log].sort((a, b) => b.date.localeCompare(a.date));
 }
 
-/** Render a date group's raw markdown lines as one sanitized HTML block so
- *  authored bullets / links / emphasis render as a proper list. */
-function renderEntries(entries: string[]): string {
-  return renderMarkdown(entries.join("\n"));
+/** The entry's conventional lead kind (log.md entries open with
+ *  "**Creation**: …" / "**Update**" / "**Fix**" / "**Deprecation**"), driving
+ *  the timeline dot's color. Compound leads ("Fix + Update") take the first
+ *  word; anything else falls back to the neutral dot. */
+function kindOf(entry: string): string | undefined {
+  return /^\*\*(Creation|Update|Fix|Deprecation)/.exec(entry.trim())?.[1].toLowerCase();
 }
 
 export function LogView() {
@@ -36,14 +38,19 @@ export function LogView() {
   const bundle = state.bundle;
 
   // Rendered once per log change, links classified against the bundle (log.md
-  // lives at the bundle root, so hrefs resolve from ""). The {__html} objects
-  // must keep a stable identity: React 19 diffs dangerouslySetInnerHTML by
-  // object identity and re-sets innerHTML whenever it changes.
+  // lives at the bundle root, so hrefs resolve from ""). Each entry renders
+  // separately so it is its own timeline item — joined, consecutive entries
+  // merge into one markdown paragraph blob. The {__html} objects must keep a
+  // stable identity: React 19 diffs dangerouslySetInnerHTML by object identity
+  // and re-sets innerHTML whenever it changes.
   const groups = useMemo(
     () =>
       newestFirst(bundle?.log ?? []).map((g) => ({
         date: g.date,
-        html: { __html: classifyBodyLinks(renderEntries(g.entries), "", bundle) },
+        entries: g.entries.map((e) => ({
+          kind: kindOf(e),
+          html: { __html: classifyBodyLinks(renderMarkdown(e), "", bundle) },
+        })),
       })),
     [bundle],
   );
@@ -106,13 +113,23 @@ export function LogView() {
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events -- delegated routing for in-entry <a>s, which are natively keyboard-accessible (Enter fires a bubbling click) */}
                 <ol className="log-timeline" onClick={onTimelineClick}>
                   {groups.map((g, i) => (
-                    <li key={`${g.date}-${i}`} className="log-entry">
+                    <li key={`${g.date}-${i}`} className="log-group">
                       <h3 className="log-date">{g.date}</h3>
-                      <div
-                        className="log-body markdown"
-                        // Sanitized in renderMarkdown via DOMPurify before injection.
-                        dangerouslySetInnerHTML={g.html}
-                      />
+                      <ul className="log-entries">
+                        {g.entries.map((entry, j) => (
+                          <li
+                            key={j}
+                            className="log-item"
+                            data-kind={entry.kind}
+                          >
+                            <div
+                              className="log-body markdown"
+                              // Sanitized in renderMarkdown via DOMPurify before injection.
+                              dangerouslySetInnerHTML={entry.html}
+                            />
+                          </li>
+                        ))}
+                      </ul>
                     </li>
                   ))}
                 </ol>

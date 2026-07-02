@@ -107,6 +107,21 @@ html, body, #root {
   touch-action: pan-x pan-y;
 }
 
+/* The document itself must never scroll — the app is a fixed shell whose panes
+   scroll internally. Without this, any sub-pixel overflow (WebKitGTK computes
+   one under fractional display scaling) makes the document a scroll container:
+   wheel-scrolling past a pane's end then chains to it and shifts the whole app
+   chrome out of the window, and scrollIntoView (outline jumps, heading
+   permalinks) scrolls it programmatically in WebKit and leaves it stuck there.
+   `clip` (not `hidden`) removes the scroll container entirely, so neither user
+   input nor programmatic scrolling can ever move it; the `hidden` line is the
+   fallback for engines without clip. */
+html, body {
+  overflow: hidden;
+  overflow: clip;
+  overscroll-behavior: none;
+}
+
 body {
   font-family: var(--ui);
   /* Transparent so the borderless window's rounded corners cut out; the opaque

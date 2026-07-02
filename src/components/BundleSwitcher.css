@@ -26,19 +26,13 @@
   border-color: var(--accent);
 }
 
-/* Identity tile — the bundle's initial on a quiet accent wash. */
+/* Brand tile — the app icon (its own rounded dark tile with the blue→violet
+   folder mark), scaled down; no extra chrome needed around it. */
 .switch-tile {
   flex: 0 0 auto;
   width: 26px;
   height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
-  font-size: var(--fs-sm);
-  font-weight: 700;
+  display: block;
 }
 
 .switch-trigger {

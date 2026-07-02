@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-timestamp: 2026-07-02T04:40:00Z
+timestamp: 2026-07-02T05:50:00Z
 ---
 
 # What it does
@@ -18,7 +18,7 @@ OKF's unit is the **bundle** ([glossary](../reference/glossary.md)), so the swit
 
 - A button at the **top-left of the top bar** whose label is the active bundle's name (its root `index.md` first `# Heading`, falling back to the directory name), with a chevron pinned to its right edge.
 - A smaller secondary line shows the **folder** the bundle lives in, since one folder can hold several bundles.
-- The trigger is **fixed-width** — switching bundles never reflows the chrome; long names ellipsize — and leads with an **identity tile** (the bundle's initial on a quiet accent wash, the workspace-tile pattern from Slack/VS Code) so the current context reads at a glance.
+- The trigger is **fixed-width** — switching bundles never reflows the chrome; long names ellipsize — and leads with the **app's brand tile** (the icon's dark rounded tile with the blue→violet folder mark): the classic app-icon-in-the-titlebar-corner, shown in both the loaded and the "Open a folder…" states, and the one deliberate spot of brand color in an otherwise quiet chrome.
 - With nothing open, the label reads **"Open a folder…"** and clicking goes straight to the OS picker (the [First Run](../ux/first-run.md) empty state).
 
 # The popover

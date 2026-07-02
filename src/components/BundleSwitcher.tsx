@@ -12,6 +12,7 @@ import { useApp } from "../store.tsx";
 import type { Actions } from "../store.tsx";
 import { modKey } from "../platform.ts";
 import type { BundleRoot, RecentBundle } from "../types.ts";
+import appIcon from "../assets/icon.svg";
 import "./baseui.css";
 import "./BundleSwitcher.css";
 
@@ -21,13 +22,6 @@ const mod = modKey;
 function baseName(p: string): string {
   const parts = p.split(/[/\\]/).filter(Boolean);
   return parts[parts.length - 1] || p;
-}
-
-/** First code point of a name, uppercased — the trigger tile's initial.
- *  codePointAt keeps surrogate pairs (emoji, CJK extensions) intact. */
-function initialOf(name: string): string {
-  const cp = name.trim().codePointAt(0);
-  return cp ? String.fromCodePoint(cp).toUpperCase() : "?";
 }
 
 /** Compact "how long ago" for a recent's last-opened timestamp. */
@@ -62,6 +56,7 @@ export function BundleSwitcher() {
         aria-label="Open folder"
         onClick={() => void actions.openFolder()}
       >
+        <img className="switch-tile" src={appIcon} alt="" aria-hidden="true" />
         <span className="switch-name">Open a folder…</span>
         <span className="switch-chevron" aria-hidden="true">
           ⌄
@@ -139,11 +134,10 @@ export function BundleSwitcher() {
       <Popover.Trigger
         render={
           <Toolbar.Button className="topbar-switch" aria-label="Switch bundle">
-            {/* Identity tile: the bundle's initial anchors the fixed-width
-                trigger the way workspace tiles do in Slack or VS Code. */}
-            <span className="switch-tile" aria-hidden="true">
-              {initialOf(state.bundle.name)}
-            </span>
+            {/* The app's brand tile anchors the fixed-width trigger — the
+                classic app-icon-in-the-titlebar-corner, and a spot of color
+                in an otherwise quiet chrome. */}
+            <img className="switch-tile" src={appIcon} alt="" aria-hidden="true" />
             <span className="switch-trigger">
               <span className="switch-name" title={state.bundle.name}>
                 {state.bundle.name}

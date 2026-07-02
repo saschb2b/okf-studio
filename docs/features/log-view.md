@@ -3,7 +3,7 @@ type: Feature
 title: Log View
 description: Render a bundle's reserved log.md as a readable, date-grouped timeline of changes, newest first.
 tags: [feature, log, timeline, history]
-timestamp: 2026-06-30T15:30:00Z
+timestamp: 2026-07-02T08:00:00Z
 ---
 
 # What it does
@@ -18,7 +18,9 @@ Renders a bundle's `log.md` — a [reserved OKF file](../reference/okf-spec-summ
 # Timeline
 
 - The [Rust core](../architecture/okf-parsing.md) parses `log.md` into dated entries — the `log: LogEntry[]` shape in the [data model](../architecture/data-model.md).
-- Entries render **grouped by their ISO `YYYY-MM-DD` date**, newest group first, each group a heading over its change lines.
+- Entries render **grouped by their ISO `YYYY-MM-DD` date**, newest group first. Each group is a small date heading over a **timeline**: entries hang off a hairline rail, one dot per entry, and **each entry renders separately** as its own block (joined, consecutive lines would merge into one markdown paragraph blob).
+- The dot takes the entry's **conventional kind color** — the log convention leads each entry with `**Creation**` / `**Update**` / `**Fix**` / `**Deprecation**`, mapped to the ok / accent / warn / error roles — so a scan of the rail shows *what kind* of change happened when; an unconventional lead falls back to a neutral dot. This is the one place those roles color the log: the entry text stays plain.
+- Entry **links behave like the [reader's](concept-reader.md)**: a log line naming the concepts it changed is navigation, so a concept or section link drives the shared selection (the panel stays open, the reader updates behind it), an external link opens in the system browser with the same outbound cues, and no click ever navigates the webview itself away from the app.
 - A date heading that is not ISO `YYYY-MM-DD` still renders, but is surfaced as a **non-blocking warning** by [Validation](validation.md) — reported, never fatal.
 
 # Empty state

@@ -2,38 +2,34 @@
    pane tracks light/dark; the type badge color is set inline from the palette. */
 
 .concept-reader {
-  /* Reading-layer variables — the content-scoped reading layer (not page zoom),
-     tunable via the "Aa" control and persisted in settings. Prose surfaces below
-     multiply their font-size by --reader-scale via calc(). */
-  --reader-scale: 1;
-  --reader-measure: 72ch;
-  --reader-leading: 1.7;
-  --reader-font: var(--ui);
-
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  /* Cap the line length to a comfortable measure and center the column with
-     balanced gutters instead of pinning it to the left edge of a wide pane. */
-  max-width: var(--reader-measure);
+  width: 100%;
   margin-inline: auto;
   padding: var(--space-20) var(--space-24) var(--space-40);
+}
+/* The reading layer, as a layout-breakouts content column: prose keeps the
+   chosen measure (long line lengths hurt reading — the classic 45–75ch band;
+   WCAG 1.4.8 draws the line at 80) and stays centered, while media that
+   *isn't* prose opts out below and uses the full column. */
+.concept-reader > * {
+  width: 100%;
+  max-width: var(--reader-measure);
+  margin-inline: auto;
+}
+/* Breakouts: design-system surfaces are figures, not prose. A live example
+   preview renders a real page — every pixel of width it can get is fidelity —
+   and token tables/swatch grids read better with room. */
+.concept-reader > .examples,
+.concept-reader > .token-viz {
+  max-width: none;
 }
 
 /* Reading aids (dyslexia-friendly): looser letter/word spacing in the body. */
 .concept-reader[data-aids="on"] .body.markdown {
   letter-spacing: 0.03em;
   word-spacing: 0.08em;
-}
-
-/* Base type badge (shape/size); .concept-reader .type-badge tints it. */
-.type-badge {
-  display: inline-block;
-  font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  background: var(--bg-sunken);
-  color: var(--text-dim);
 }
 
 .reader-empty {
@@ -85,51 +81,50 @@
   opacity: 0.6;
 }
 
-/* The base .type-badge sets shape/size; we tint it from the type palette and
-   make the border visible so the type color reads on either theme. */
-.concept-reader .type-badge {
-  margin-bottom: 0;
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  font-weight: 600;
-}
-
-/* A row of concept labels: type badge, design-system status, applies-to. */
+/* One quiet meta line above the title — plain text with · separators instead
+   of a row of pill chips (three competing pill treatments read as noise). The
+   type keeps its palette color as a small dot, the same encoding the Filter
+   lens and graph use; everything else is dim text. */
 .reader-labels {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-6);
-}
-
-/* Lifecycle status (ODSF): quiet by default, colored only to flag the
-   exception — experimental and (especially) deprecated. */
-.status-badge {
+  column-gap: var(--space-8);
+  row-gap: var(--space-2);
   font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-sunken);
   color: var(--text-dim);
+}
+.reader-labels > * + *::before {
+  content: "·";
+  margin-right: var(--space-8);
+  opacity: 0.6;
+}
+.type-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--text);
+  font-weight: 500;
+}
+.type-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+/* Lifecycle status (ODSF): quiet by default — colored text only to flag the
+   exception, experimental and (especially) deprecated. Stable is the expected
+   baseline and reads as plain text. */
+.status-label {
   text-transform: capitalize;
 }
-.status-badge[data-status="stable"] {
-  color: var(--ok);
-}
-.status-badge[data-status="experimental"] {
+.status-label[data-status="experimental"] {
   color: var(--warn);
+  font-weight: 500;
 }
-.status-badge[data-status="deprecated"] {
+.status-label[data-status="deprecated"] {
   color: var(--error);
-}
-.applies-badge {
-  font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-sunken);
-  color: var(--text-dim);
+  font-weight: 500;
 }
 
 .concept-reader h1 {
@@ -145,22 +140,21 @@
   font-size: calc(var(--fs-sm) * var(--reader-scale, 1));
 }
 
-.tag-chips {
+/* Tags as quiet #text — they are labels, not buttons, so no pill chrome
+   suggesting a click that goes nowhere. */
+.tag-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-6);
-}
-
-.tag-chip {
+  gap: var(--space-2) var(--space-10);
   font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-8);
-  border-radius: 999px;
-  background: var(--bg-sunken);
   color: var(--text-dim);
-  border: 1px solid var(--border);
+}
+.tag::before {
+  content: "#";
+  opacity: 0.55;
 }
 
 .reader-meta {
@@ -431,7 +425,7 @@
   text-decoration: none;
   opacity: 0;
 }
-.markdown :is(h2, h3):hover .heading-anchor,
+.markdown :is(h2, h3, h4, h5, h6):hover .heading-anchor,
 .markdown a.heading-anchor:focus-visible {
   opacity: 1;
 }
@@ -463,7 +457,7 @@
   font-size: 0.875em;
 }
 
-/* Copy affordance, injected into each code block at mount. */
+/* Copy affordance, baked into each code block's HTML (processBody). */
 .code-copy {
   position: absolute;
   top: var(--space-6);
@@ -542,6 +536,9 @@
   padding: var(--space-6) var(--space-10);
   text-align: left;
   font-variant-numeric: tabular-nums;
+  /* Long unbreakable values (token names, hashes) may wrap mid-token, so a
+     table can always shrink to the prose column instead of overflowing it. */
+  overflow-wrap: anywhere;
 }
 .markdown th {
   background: var(--bg-sunken);
@@ -564,8 +561,20 @@
 
 /* Layout: reading column + right context rail ----------------------------- */
 .reader-shell {
+  /* Reading-layer variables — the content-scoped reading layer (not page zoom),
+     tunable via the "Aa" control and persisted in settings (Reader.tsx sets
+     them inline here). On the shell, not the article, so the rail shares them.
+     Prose surfaces multiply their font-size by --reader-scale via calc(). */
+  --reader-scale: 1;
+  --reader-measure: 72ch;
+  --reader-leading: 1.7;
+  --reader-font: var(--ui);
   --reader-rail-w: 300px;
-  --reader-max: 1140px;
+  /* The shell's outer cap. Sized for big displays: the prose column stays at
+     its measure regardless, so the extra width all goes to the breakout
+     surfaces (live examples, token tables) and the rail — the reason this is
+     wider than a prose-only cap would be. */
+  --reader-max: 1480px;
   max-width: var(--reader-max);
   margin-inline: auto;
 }
@@ -574,6 +583,12 @@
   grid-template-columns: minmax(0, 1fr) var(--reader-rail-w);
   gap: var(--space-32);
   align-items: start;
+}
+/* Grid items refuse to shrink below their min-content by default; without
+   this, wide unbreakable content (a token table) overflows the prose column
+   and paints under the rail instead of the column just getting narrower. */
+.reader-shell[data-rail="side"] .reader-main {
+  min-width: 0;
 }
 
 /* Default rail = stacked below the article (split mode, or a narrow pane). */
@@ -600,12 +615,32 @@
   padding: var(--space-20) var(--space-8) var(--space-40) 0;
   border-top: 0;
 }
-/* Too narrow for two columns → collapse the side rail to the stacked form. */
+/* Too narrow for two columns → collapse the side rail to the stacked form.
+   The threshold tracks the chosen measure (data-measure, from the "Aa" width
+   preference): 900px fits the default 72ch column beside the rail; the Wide
+   88ch column needs ~1040px before the rail stops crowding the prose. */
 @container (max-width: 900px) {
   .reader-shell[data-rail="side"] {
     display: block;
   }
   .reader-shell[data-rail="side"] .reader-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-16) var(--space-24);
+    position: static;
+    max-height: none;
+    overflow: visible;
+    max-width: var(--reader-measure);
+    margin-inline: auto;
+    padding: var(--space-16) var(--space-24) var(--space-40);
+    border-top: 1px solid var(--border);
+  }
+}
+@container (max-width: 1040px) {
+  .reader-shell[data-measure="88"][data-rail="side"] {
+    display: block;
+  }
+  .reader-shell[data-measure="88"][data-rail="side"] .reader-rail {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: var(--space-16) var(--space-24);
@@ -628,6 +663,11 @@
 }
 @container (max-width: 900px) {
   .reader-shell[data-rail="side"] .rail-outline {
+    display: none;
+  }
+}
+@container (max-width: 1040px) {
+  .reader-shell[data-measure="88"][data-rail="side"] .rail-outline {
     display: none;
   }
 }

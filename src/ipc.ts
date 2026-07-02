@@ -4,7 +4,13 @@
 
 import type { Bundle, BundleRoot, RecentBundle, Settings } from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
-import { MOCK_ASSETS, MOCK_BUNDLE, MOCK_FOLDER, MOCK_ROOTS } from "./mock/fixture.ts";
+import {
+  MOCK_ASSETS,
+  MOCK_BUNDLE,
+  MOCK_FOLDER,
+  MOCK_RECENTS,
+  MOCK_ROOTS,
+} from "./mock/fixture.ts";
 
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -109,9 +115,27 @@ export async function saveSettings(settings: Settings): Promise<void> {
   await st.save();
 }
 
-export async function recentBundles(): Promise<RecentBundle[]> {
-  if (!isTauri()) return [];
+// Off-Tauri, recents live in memory, seeded from the fixture so the switcher's
+// recent rows (pins, hover actions) render in browser dev and tests too.
+let mockRecents: RecentBundle[] | null = null;
+
+async function readRecents(): Promise<RecentBundle[]> {
+  if (!isTauri()) return (mockRecents ??= MOCK_RECENTS.map((r) => ({ ...r })));
   return (await (await store()).get<RecentBundle[]>(RECENTS_KEY)) ?? [];
+}
+
+async function writeRecents(next: RecentBundle[]): Promise<void> {
+  if (!isTauri()) {
+    mockRecents = next;
+    return;
+  }
+  const st = await store();
+  await st.set(RECENTS_KEY, next);
+  await st.save();
+}
+
+export async function recentBundles(): Promise<RecentBundle[]> {
+  return readRecents();
 }
 
 /** Keep every pinned entry; cap the unpinned tail of a newest-first list. */
@@ -124,38 +148,29 @@ function capRecents(list: RecentBundle[]): RecentBundle[] {
 export async function pushRecentBundle(
   entry: Omit<RecentBundle, "ts" | "pinned">,
 ): Promise<RecentBundle[]> {
-  if (!isTauri()) return [];
-  const st = await store();
-  const prev = (await st.get<RecentBundle[]>(RECENTS_KEY)) ?? [];
+  const prev = await readRecents();
   const pinned = prev.find((r) => r.root === entry.root)?.pinned ?? false;
   const next = capRecents([
     { ...entry, ts: Date.now(), pinned },
     ...prev.filter((r) => r.root !== entry.root),
   ]);
-  await st.set(RECENTS_KEY, next);
-  await st.save();
+  await writeRecents(next);
   return next;
 }
 
 export async function pinBundle(root: string): Promise<RecentBundle[]> {
-  if (!isTauri()) return [];
-  const st = await store();
-  const prev = (await st.get<RecentBundle[]>(RECENTS_KEY)) ?? [];
+  const prev = await readRecents();
   const next = prev.map((r) =>
     r.root === root ? { ...r, pinned: !r.pinned } : r,
   );
-  await st.set(RECENTS_KEY, next);
-  await st.save();
+  await writeRecents(next);
   return next;
 }
 
 export async function forgetBundle(root: string): Promise<RecentBundle[]> {
-  if (!isTauri()) return [];
-  const st = await store();
-  const prev = (await st.get<RecentBundle[]>(RECENTS_KEY)) ?? [];
+  const prev = await readRecents();
   const next = prev.filter((r) => r.root !== root);
-  await st.set(RECENTS_KEY, next);
-  await st.save();
+  await writeRecents(next);
   return next;
 }
 

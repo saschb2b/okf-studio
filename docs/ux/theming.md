@@ -3,7 +3,7 @@ type: Reference
 title: Theming
 description: Light/dark theming that follows the OS, and the deterministic palette that colors concepts by type.
 tags: [ux, theme, color, accessibility]
-timestamp: 2026-06-29T16:00:00Z
+timestamp: 2026-07-02T05:20:00Z
 ---
 
 # Design tokens (one scale layer)
@@ -37,4 +37,4 @@ Concept `type` drives node and badge color across the [graph](../features/graph-
 
 # Native chrome
 
-The window runs **borderless** — native title-bar decorations are off and the [top bar](browsing-layout.md) is our own **custom title bar** (a drag region with minimize / maximize / close controls and edge resize handles), with **slightly rounded corners** (the window is transparent so the corners cut out softly; squared when maximized), so the frame is ours end to end. Smaller touches finish the native feel: scrollbars are themed to the token palette with `scrollbar-gutter: stable` (so layout doesn't shift when they appear), text selection is disabled on chrome but preserved on [reader](../features/concept-reader.md) prose, and the browser context menu and page-zoom — keyboard, ctrl+wheel, and trackpad/touch pinch (WebKit gesture events) — are suppressed. The text-size zoom this pairs with is content-scoped — see [Settings](settings.md).
+The window runs **borderless** — native title-bar decorations are off and the [top bar](browsing-layout.md) is our own **custom title bar** (a drag region with minimize / maximize / close controls and edge resize handles), with **slightly rounded corners** (the window is transparent so the corners cut out softly; squared when maximized), so the frame is ours end to end. Smaller touches finish the native feel: scrollbars are themed to the token palette with `scrollbar-gutter: stable` (so layout doesn't shift when they appear), text selection is disabled on chrome but preserved on [reader](../features/concept-reader.md) prose, and the browser context menu and page-zoom — keyboard, ctrl+wheel, and trackpad/touch pinch (WebKit gesture events) — are suppressed. The **document itself never scrolls** — the app is a fixed shell whose panes scroll internally, enforced with `overflow: clip` on the root so neither wheel chaining past a pane's end nor programmatic `scrollIntoView` can shift the whole chrome (WebKitGTK's sub-pixel viewport rounding under fractional display scaling otherwise leaves the document scrollable by a hair). The text-size zoom this pairs with is content-scoped — see [Settings](settings.md).

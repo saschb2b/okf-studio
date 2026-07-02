@@ -11,11 +11,11 @@
 // move between visible rows, Left/Right collapse/expand directories, Enter opens.
 // See docs/features/navigation.md.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { useApp } from "../../store.tsx";
 import { filteredConceptIds } from "../../selectors.ts";
-import type { IndexEntry, IndexNode } from "../../types.ts";
+import type { Bundle, IndexEntry, IndexNode } from "../../types.ts";
 
 /** Pick the root index: prefer the empty / "." dir, else the first node. */
 function rootNode(indexes: IndexNode[]): IndexNode | null {
@@ -35,6 +35,48 @@ function nodeFor(
 ): IndexNode | undefined {
   if (target === selfDir) return undefined;
   return indexes.find((n) => n.dir === target);
+}
+
+/** Concepts under each directory (every ancestor gets credit), so directory
+ *  rows can say how much bundle lives behind them. */
+function dirConceptCounts(bundle: Bundle): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const c of bundle.concepts) {
+    let slash = c.id.lastIndexOf("/");
+    while (slash > 0) {
+      const dir = c.id.slice(0, slash);
+      counts.set(dir, (counts.get(dir) ?? 0) + 1);
+      slash = dir.lastIndexOf("/");
+    }
+  }
+  return counts;
+}
+
+/**
+ * The chain of expand keys leading to `conceptId` in the index tree, mirroring
+ * flatten()'s key scheme — so a selection made anywhere (graph, launcher,
+ * reader links) can reveal itself in the tree. Null when the index never
+ * lists the concept.
+ */
+function expandPathTo(
+  indexes: IndexNode[],
+  node: IndexNode,
+  conceptId: string,
+  pathKey: string,
+): string[] | null {
+  for (const sec of node.sections) {
+    for (const entry of sec.entries) {
+      if (entry.kind === "concept" && entry.target === conceptId) return [];
+      if (entry.kind === "directory") {
+        const child = nodeFor(indexes, entry.target, node.dir);
+        if (!child) continue;
+        const key = `node:${pathKey}/${entry.target}`;
+        const sub = expandPathTo(indexes, child, conceptId, key);
+        if (sub) return [key, ...sub];
+      }
+    }
+  }
+  return null;
 }
 
 /** A single flattened, currently-visible row used for keyboard navigation. */
@@ -92,9 +134,59 @@ export function IndexTree() {
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Reveal the active concept: a selection made anywhere (graph node, launcher,
+  // reader link) expands the directory chain leading to it. Only ever expands —
+  // never fights a fold the user just made. The scroll happens in the paired
+  // effect below, once the expanded rows have actually rendered.
+  const activeId = state.activeConceptId;
+  const scrolledToRef = useRef<string | null>(null);
+  useEffect(() => {
+    scrolledToRef.current = null; // new selection → the scroll effect may fire
+    if (!activeId || !bundle) return;
+    const rootNode0 = rootNode(bundle.indexes);
+    if (!rootNode0) return;
+    const path = expandPathTo(bundle.indexes, rootNode0, activeId, "root");
+    if (path === null || path.length === 0) return;
+    // Reacting to an external selection is the point of this effect; the
+    // updater bails (returns prev) when the chain is already expanded.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setExpanded((prev) => {
+      if (path.every((k) => prev.has(k))) return prev;
+      return new Set([...prev, ...path]);
+    });
+  }, [activeId, bundle]);
+
+  // Scroll the active row into view once it exists. Runs after every commit
+  // (dep-less) because the row may only appear on the re-render *after* the
+  // expansion above — a one-shot rAF raced that commit and often missed it.
+  // The ref guards to one scroll per selection, so it never fights the user's
+  // own scrolling afterwards. An offscreen row centers (context above and
+  // below, VS Code's reveal); an already-visible row is left alone.
+  useEffect(() => {
+    if (!activeId || scrolledToRef.current === activeId) return;
+    const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-row-key]");
+    for (const row of rows ?? []) {
+      if (!row.dataset.rowKey?.endsWith(`:${activeId}`)) continue;
+      scrolledToRef.current = activeId;
+      const vp = row.closest(".ui-scrollarea-viewport");
+      const vr = vp?.getBoundingClientRect();
+      const rr = row.getBoundingClientRect();
+      // Zero-height rects mean the environment can't measure (jsdom) — fall
+      // back to a minimal scroll rather than skipping.
+      const measurable = !!vr && vr.height > 0;
+      const visible =
+        measurable && rr.top >= vr.top && rr.bottom <= vr.bottom;
+      if (!visible) {
+        row.scrollIntoView({ block: measurable ? "center" : "nearest" });
+      }
+      break;
+    }
+  });
+
   if (!bundle) return null;
   const root = rootNode(bundle.indexes);
   if (!root) return null;
+  const dirCounts = dirConceptCounts(bundle);
 
   const visibleIds = filteredConceptIds(bundle, {
     query: state.query,
@@ -103,6 +195,17 @@ export function IndexTree() {
   });
   const filtering =
     !!state.query || state.hiddenTypes.length > 0 || !!state.activeTag;
+
+  // Does anything listed in the index (expanded or not) survive the filter?
+  // When it doesn't, every row is dimmed and the tree reads as a dead end, so
+  // a notice explains it and routes to the launcher (the full-text search).
+  const indexHasMatch =
+    !filtering ||
+    bundle.indexes.some((n) =>
+      n.sections.some((s) =>
+        s.entries.some((e) => e.kind === "concept" && visibleIds.has(e.target)),
+      ),
+    );
 
   const rows: Row[] = [];
   flatten(bundle.indexes, root, expanded, 0, "root", rows);
@@ -204,6 +307,24 @@ export function IndexTree() {
   return (
     <section className="sb-section sb-tree-section" aria-label="Index">
       <h2 className="sb-section-title">Index</h2>
+      {!indexHasMatch && (
+        <div className="sb-tree-empty" role="status">
+          <p className="sb-tree-empty-line">
+            {visibleIds.size === 0
+              ? "No concepts match the current search and filters."
+              : `${visibleIds.size} concept${visibleIds.size === 1 ? "" : "s"} match, but none are listed in this index.`}
+          </p>
+          {visibleIds.size > 0 && (
+            <button
+              type="button"
+              className="sb-tree-empty-cta"
+              onClick={() => actions.setPalette(true, state.query)}
+            >
+              Open full search
+            </button>
+          )}
+        </div>
+      )}
       <div
         ref={listRef}
         className="sb-tree"
@@ -224,11 +345,18 @@ export function IndexTree() {
           activeId={state.activeConceptId}
           visibleIds={visibleIds}
           filtering={filtering}
+          dirCounts={dirCounts}
           onOpenConcept={(id) => actions.selectConcept(id)}
         />
       </div>
     </section>
   );
+}
+
+/** A quiet, right-aligned "how many concepts live in here" for directory rows. */
+function DirCount({ count }: { count: number | undefined }) {
+  if (!count) return null;
+  return <span className="sb-tree-count">{count}</span>;
 }
 
 function TreeNode({
@@ -243,6 +371,7 @@ function TreeNode({
   activeId,
   visibleIds,
   filtering,
+  dirCounts,
   onOpenConcept,
 }: {
   indexes: IndexNode[];
@@ -256,6 +385,7 @@ function TreeNode({
   activeId: string | null;
   visibleIds: Set<string>;
   filtering: boolean;
+  dirCounts: Map<string, number>;
   onOpenConcept: (id: string) => void;
 }) {
   const focusedKey = rows[focusIdx]?.key;
@@ -306,26 +436,40 @@ function TreeNode({
                           className="sb-synth"
                           title="Synthesized index (no index.md in this directory)"
                         >
-                          synth
+                          auto
                         </span>
                       )}
+                      <DirCount count={dirCounts.get(entry.target)} />
                     </button>
-                    {child && isOpen && (
-                      <TreeNode
-                        indexes={indexes}
-                        node={child}
-                        depth={depth + 1}
-                        pathKey={expandKey}
-                        expanded={expanded}
-                        toggle={toggle}
-                        rows={rows}
-                        focusIdx={focusIdx}
-                        activeId={activeId}
-                        visibleIds={visibleIds}
-                        filtering={filtering}
-                        onOpenConcept={onOpenConcept}
-                      />
-                    )}
+                    {child &&
+                      isOpen &&
+                      (child.sections.some((s) => s.entries.length > 0) ? (
+                        <TreeNode
+                          indexes={indexes}
+                          node={child}
+                          depth={depth + 1}
+                          pathKey={expandKey}
+                          expanded={expanded}
+                          toggle={toggle}
+                          rows={rows}
+                          focusIdx={focusIdx}
+                          activeId={activeId}
+                          visibleIds={visibleIds}
+                          filtering={filtering}
+                          dirCounts={dirCounts}
+                          onOpenConcept={onOpenConcept}
+                        />
+                      ) : (
+                        // A directory with no concepts (assets only, or empty):
+                        // expanding must say so, not silently add zero rows.
+                        <div
+                          className="sb-tree-empty-dir"
+                          role="none"
+                          style={indent(depth + 1)}
+                        >
+                          No concepts in this folder
+                        </div>
+                      ))}
                   </li>
                 );
               }

@@ -1,7 +1,7 @@
 // A tiny in-memory OKF bundle so the UI renders (and tests run) without the
 // Rust backend. Mirrors the shape the core produces; backlinks/degree derived.
 
-import type { Bundle, BundleRoot, Concept } from "../types.ts";
+import type { Bundle, BundleRoot, Concept, RecentBundle } from "../types.ts";
 
 export const MOCK_FOLDER = "/mock/workspace";
 
@@ -420,13 +420,94 @@ export const MOCK_BUNDLE: Bundle = {
             },
           ],
         },
+        {
+          heading: "Design system",
+          entries: [
+            {
+              title: "design/",
+              target: "design",
+              description: "The ODSF sample: tokens, components, guidelines.",
+              kind: "directory",
+            },
+            {
+              title: "styles/",
+              target: "styles",
+              description: "Companion stylesheets (assets, not concepts).",
+              kind: "directory",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      // An asset-only directory (the Primer bundle's styles/ case): the core
+      // synthesizes an index for it, but it holds no concepts — the tree must
+      // explain the empty expansion instead of silently adding zero rows.
+      dir: "styles",
+      title: "Styles",
+      synthesized: true,
+      sections: [],
+    },
+    {
+      // A synthesized per-directory index (no index.md in design/), so the
+      // tree's expandable directory rows, concept counts, and the synthesized
+      // marker all render off-Tauri.
+      dir: "design",
+      title: "Design",
+      synthesized: true,
+      sections: [
+        {
+          heading: "",
+          entries: [
+            {
+              title: "Button",
+              target: "design/button",
+              description: "Default, primary, and danger variants.",
+              kind: "concept",
+            },
+            {
+              title: "Color",
+              target: "design/color",
+              description: "Functional color roles.",
+              kind: "concept",
+            },
+            {
+              title: "Typography",
+              target: "design/typography",
+              description: "Type scale and faces.",
+              kind: "concept",
+            },
+          ],
+        },
       ],
     },
   ],
   log: [
-    { date: "2026-06-28", entries: ["**Creation**: Sample bundle for the viewer's empty-handed dev mode."] },
+    {
+      date: "2026-06-28",
+      entries: [
+        "**Update**: Expanded the sample to 45 concepts across 20 types — foundations, components, and guidelines with live examples and design tokens.",
+        "**Fix**: The [Graph View](features/graph-view.md) sample now carries orphan and broken-link states, so defect surfacing renders off-Tauri.",
+      ],
+    },
+    {
+      date: "2026-06-27",
+      entries: [
+        "**Creation**: Sample bundle for the viewer's empty-handed dev mode. Starts with the [Concept Reader](features/concept-reader.md) and the [OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog).",
+      ],
+    },
   ],
-  issues: [],
+  issues: [
+    // Mirrors what the core's validate() reports for this fixture's broken
+    // cross-link (see crates/okf-core/src/validate.rs), so the status bar's
+    // amber state and the validation panel render off-Tauri too.
+    {
+      conceptId: "features/concept-reader",
+      level: "warning",
+      message:
+        "features/concept-reader.md: link target not found -> features/does-not-exist",
+    },
+  ],
   confidence: "confident",
 };
 
@@ -508,5 +589,30 @@ export const MOCK_ROOTS: BundleRoot[] = [
     confidence: "confident",
     conceptCount: MOCK_BUNDLE.concepts.length,
     types: [...new Set(MOCK_BUNDLE.concepts.map((c) => c.type))].sort(),
+  },
+];
+
+/**
+ * Seed recents from *other* folders so the Bundle Switcher's recent rows —
+ * pins, hover actions, the Pinned group — render off-Tauri (browser + tests).
+ * One pinned and one plain entry; fixed timestamps keep runs deterministic.
+ */
+export const MOCK_RECENTS: RecentBundle[] = [
+  {
+    root: "/mock/primer/design-system",
+    folder: "/mock/primer",
+    name: "Primer design system",
+    conceptCount: 60,
+    types: ["Color", "Component", "Elevation", "Guideline", "Motion", "Pattern", "Shape", "Typography"],
+    ts: 1750000000000,
+    pinned: true,
+  },
+  {
+    root: "/mock/handbook",
+    folder: "/mock/handbook",
+    name: "Team Handbook",
+    conceptCount: 202,
+    types: ["Guide", "Policy", "Runbook", "Template"],
+    ts: 1749000000000,
   },
 ];

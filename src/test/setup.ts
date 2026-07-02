@@ -42,6 +42,11 @@ g.ResizeObserver ??= class {
   disconnect() {}
 };
 
+// jsdom lacks scrollIntoView; the index tree reveals the active concept with it.
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 // jsdom lacks Element.getAnimations; Base UI awaits it for open/close transitions.
 if (typeof Element !== "undefined" && !Element.prototype.getAnimations) {
   Element.prototype.getAnimations = function () {

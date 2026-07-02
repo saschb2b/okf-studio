@@ -100,6 +100,9 @@ export async function highlightCodeBlocks(root: ParentNode): Promise<void> {
   } catch {
     return; // highlighter unavailable → leave all blocks as-is
   }
+  // The lazy-load await can outlive the caller's environment (a test's DOM is
+  // torn down mid-flight); bail instead of touching a dead document.
+  if (typeof document === "undefined") return;
 
   for (const code of blocks) {
     const pre = code.parentElement;

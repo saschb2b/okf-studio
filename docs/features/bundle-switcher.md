@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-07-02T05:50:00Z
 ---
 
 # What it does
@@ -16,8 +16,9 @@ OKF's unit is the **bundle** ([glossary](../reference/glossary.md)), so the swit
 
 # The trigger
 
-- A button at the **top-left of the top bar** whose label is the active bundle's name (its root `index.md` first `# Heading`, falling back to the directory name), with a chevron.
+- A button at the **top-left of the top bar** whose label is the active bundle's name (its root `index.md` first `# Heading`, falling back to the directory name), with a chevron pinned to its right edge.
 - A smaller secondary line shows the **folder** the bundle lives in, since one folder can hold several bundles.
+- The trigger is **fixed-width** — switching bundles never reflows the chrome; long names ellipsize — and leads with the **app's brand tile** (the icon's dark rounded tile with the blue→violet folder mark): the classic app-icon-in-the-titlebar-corner, shown in both the loaded and the "Open a folder…" states, and the one deliberate spot of brand color in an otherwise quiet chrome.
 - With nothing open, the label reads **"Open a folder…"** and clicking goes straight to the OS picker (the [First Run](../ux/first-run.md) empty state).
 
 # The popover
@@ -25,9 +26,9 @@ OKF's unit is the **bundle** ([glossary](../reference/glossary.md)), so the swit
 Top to bottom, keyboard-first (a Base UI Popover with a filter input):
 
 - **Search field** — placeholder "Search bundles…"; fuzzy-filters the lists below while keeping the section headers as group labels. It is distinct from the [global launcher](command-palette.md): the launcher navigates *within* a bundle to concepts and actions; this only narrows the switcher's own lists.
-- **Bundles in this folder** — the bundles [autodetected](folder-autodetect.md) in the currently open folder, the active one marked ✓. Each row carries what the old browser showed: name, relative path, concept count and `type` dots (the [graph palette](../ux/theming.md)), and a [conformance badge](validation.md). Shown whenever a folder is open; a single-bundle folder shows one row.
+- **Bundles in this folder** — the bundles [autodetected](folder-autodetect.md) in the currently open folder, the active one marked ✓. Each row: name, relative path (a bundle at the folder's root shows the folder's own name, never a bare "."), and a right column of two **labeled** lines mirroring the pair on the left — "N concepts" over "M types". Earlier revisions showed per-`type` color dots here instead; they were dropped as decoration — the [palette](../ux/theming.md) assigns hues per bundle, so the same color means different types across rows, and an unlabeled count next to unlabeled dots explained neither. A full name + path tooltip covers what truncation hides. Shown whenever a folder is open; a single-bundle folder shows one row.
 - **Pinned** *(when any exist)* — bundles the user pinned, kept above recents so frequently-used contexts stay one click away. Pinning is a deliberate differentiator: the IDEs surveyed order recents by recency only.
-- **Recent bundles** — recently-opened bundles **not** already listed under the current folder, newest first, each showing the bundle name with its folder/path dimmed beneath. Per-row **pin** and **remove** (✕) on hover.
+- **Recent bundles** — recently-opened bundles **not** already listed under the current folder, newest first, each showing the bundle name with its folder/path dimmed beneath and, in the right column, "N concepts" over a **relative last-opened time** ("3d ago") so freshness reads at a glance. Per-row **pin** and **remove** (✕) on hover.
 - **Footer actions** — **Open folder…** (primary; the OS picker, `Ctrl/Cmd + O`) and **Open remote folder…**, the latter shown **disabled with a "coming soon" hint** because remote bundles are explicitly [post-v1](../product/scope-and-non-goals.md). Showing it inert reserves the slot and signals the roadmap without a dead end.
 
 # Behavior
@@ -39,9 +40,9 @@ Top to bottom, keyboard-first (a Base UI Popover with a filter input):
 
 # Empty states
 
-Following the [report-never-refuse stance](../ux/empty-and-error-states.md): nothing open → the trigger reads "Open a folder…" and the popover shows only the footer plus any recents; a folder with **zero bundles** → the inline "what an OKF bundle is" note with a [spec-summary](../reference/okf-spec-summary.md) link; **no recents yet** → "Bundles you open will show up here."
+Following the [report-never-refuse stance](../ux/empty-and-error-states.md): nothing open → the trigger reads "Open a folder…" and the popover shows only the footer plus any recents; a folder with **zero bundles** → the inline "what an OKF bundle is" note with a [spec-summary](../reference/okf-spec-summary.md) link; **no recents yet** → "Bundles you open will show up here." A **search with no matches** says "No matches." in each group — the onboarding copy appears only when there are genuinely no recents.
 
 # Keyboard
 
 - **`Ctrl/Cmd + P`** opens the switcher (mnemonic: pick a bundle); it does not collide with the [launcher](command-palette.md) (`Ctrl/Cmd + K` / `/`), **Open folder** (`Ctrl/Cmd + O`), or **Re-scan** (`R`). See [Keyboard Shortcuts](../ux/keyboard-shortcuts.md).
-- Inside the popover: type to filter, `↑` / `↓` to move, `Enter` to switch, `Esc` to dismiss — the same contract as the launcher.
+- Inside the popover: type to filter, `↑` / `↓` to move, `Enter` to switch, `Esc` to dismiss — the same contract as the launcher. `↓` from the search enters the list at its first row; `↑` from the first row returns to the search, so the loop never dead-ends.

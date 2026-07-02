@@ -110,6 +110,40 @@ describe("forceSim", () => {
     expect(T.vx).toBeGreaterThan(0);
   });
 
+  it("pulls same-cluster nodes toward their shared centroid (cluster gravity)", () => {
+    // Two 3-node communities far apart, no edges, all other forces off — only
+    // cluster gravity acts. Each community should contract around its own
+    // centroid while the two groups do not attract each other.
+    const mk = (i: number, x: number, y: number, cluster: number): SimNode => ({
+      ...makeNode(i, x, y),
+      cluster,
+    });
+    const nodes = [
+      mk(0, -500, -60, 0), mk(1, -400, 60, 0), mk(2, -300, 0, 0),
+      mk(3, 300, 0, 1), mk(4, 400, -60, 1), mk(5, 500, 60, 1),
+    ];
+    const params = {
+      ...DEFAULT_PARAMS,
+      repulsion: 0,
+      springK: 0,
+      centering: 0,
+      collision: 0,
+      clusterStrength: 0.2,
+    };
+    const spread = (ids: number[]) => {
+      const cx = ids.reduce((s, i) => s + nodes[i].x, 0) / ids.length;
+      return ids.reduce((s, i) => s + Math.abs(nodes[i].x - cx), 0);
+    };
+    const before0 = spread([0, 1, 2]);
+    const before1 = spread([3, 4, 5]);
+    const gapBefore = nodes[3].x - nodes[2].x;
+    for (let s = 0; s < 20; s++) step(nodes, [], params, 1);
+    expect(spread([0, 1, 2])).toBeLessThan(before0);
+    expect(spread([3, 4, 5])).toBeLessThan(before1);
+    // The two communities have no cross-pull; the gap must not shrink.
+    expect(nodes[3].x - nodes[2].x).toBeGreaterThanOrEqual(gapBefore * 0.99);
+  });
+
   it("scales to many nodes without blowing up (Barnes-Hut smoke test)", () => {
     const N = 1500;
     const nodes: SimNode[] = Array.from({ length: N }, (_, i) =>

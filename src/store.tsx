@@ -123,6 +123,9 @@ export interface State {
   paneSizes: PaneSizes;
   panels: Record<PanelName, boolean>;
   palette: boolean;
+  /** One-shot initial query for the next palette open (e.g. the sidebar's
+   *  "Open full search" hand-off); null means keep the palette's own value. */
+  paletteSeed: string | null;
   settingsOpen: boolean;
   help: boolean;
   settings: Settings;
@@ -154,6 +157,7 @@ const initialState: State = {
   paneSizes: persistedLayout.sizes,
   panels: { sidebar: true, reader: true, log: false, validation: false },
   palette: false,
+  paletteSeed: null,
   settingsOpen: false,
   help: false,
   settings: DEFAULT_SETTINGS,
@@ -182,7 +186,7 @@ type Msg =
   | { t: "cycleLayout" }
   | { t: "paneSize"; pane: "sidebar" | "reader"; v: number | null }
   | { t: "panel"; name: PanelName; v?: boolean }
-  | { t: "palette"; v: boolean }
+  | { t: "palette"; v: boolean; seed?: string }
   | { t: "settingsOpen"; v: boolean }
   | { t: "help"; v: boolean }
   | { t: "settings"; v: Settings };
@@ -317,7 +321,7 @@ function reducer(s: State, m: Msg): State {
         },
       };
     case "palette":
-      return { ...s, palette: m.v };
+      return { ...s, palette: m.v, paletteSeed: m.v ? (m.seed ?? null) : null };
     case "settingsOpen":
       return { ...s, settingsOpen: m.v };
     case "help":
@@ -351,7 +355,7 @@ export interface Actions {
   cycleLayout(): void;
   setPaneSize(pane: "sidebar" | "reader", value: number | null): void;
   togglePanel(name: PanelName, value?: boolean): void;
-  setPalette(open: boolean): void;
+  setPalette(open: boolean, seed?: string): void;
   setSettingsOpen(open: boolean): void;
   setHelp(open: boolean): void;
   updateSettings(patch: Partial<Settings>): void;
@@ -499,8 +503,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     togglePanel(name, value) {
       dispatch({ t: "panel", name, v: value });
     },
-    setPalette(open) {
-      dispatch({ t: "palette", v: open });
+    setPalette(open, seed) {
+      dispatch({ t: "palette", v: open, seed });
     },
     setSettingsOpen(open) {
       dispatch({ t: "settingsOpen", v: open });
@@ -519,12 +523,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // Load persisted settings once, and reopen the most recent folder if any
-  // (first-run.md: "can reopen the last one automatically").
+  // (first-run.md: "can reopen the last one automatically"). Auto-reopen is
+  // desktop-only: off-Tauri the recents are a seeded fixture for the switcher
+  // UI, and dev/tests should still boot into the first-run state.
   useEffect(() => {
     void ipc.loadSettings().then((s) => dispatch({ t: "settings", v: s }));
     void ipc.recentBundles().then((recents) => {
       dispatch({ t: "recents", v: recents });
-      if (recents.length > 0) void actions.openRecentBundle(recents[0]);
+      if (recents.length > 0 && ipc.isTauri()) {
+        void actions.openRecentBundle(recents[0]);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

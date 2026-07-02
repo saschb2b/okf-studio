@@ -129,6 +129,14 @@ export function CommandPalette() {
   // result set ourselves (Autocomplete's built-in collator filter can't
   // reproduce our prefix/word-boundary/subsequence scoring or grouping).
   const [query, setQuery] = useState("");
+  // One-shot seed hand-off (the sidebar's "Open full search" passes its query
+  // along): applied once per open, via the adjust-state-during-render pattern,
+  // so the user continues the same search instead of retyping it.
+  const [appliedSeed, setAppliedSeed] = useState<string | null>(null);
+  if (state.palette && state.paletteSeed != null && appliedSeed !== state.paletteSeed) {
+    setAppliedSeed(state.paletteSeed);
+    setQuery(state.paletteSeed);
+  }
 
   const close = () => actions.setPalette(false);
 
@@ -266,7 +274,10 @@ export function CommandPalette() {
       open={state.palette}
       onOpenChange={(open) => {
         actions.setPalette(open);
-        if (!open) setQuery(""); // clear the search when the palette closes
+        if (!open) {
+          setQuery(""); // clear the search when the palette closes
+          setAppliedSeed(null); // …so an identical seed can apply next time
+        }
       }}
     >
       <Dialog.Portal>

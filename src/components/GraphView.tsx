@@ -83,7 +83,10 @@ const COLOR_HINTS: Record<"cluster" | "type", string> = {
   type: "By concept type (Feature, Reference, …).",
 };
 // The force fields the controls panel exposes (the rest come from DEFAULT_PARAMS).
-type Forces = Pick<SimParams, "repulsion" | "springLength" | "springK" | "centering">;
+type Forces = Pick<
+  SimParams,
+  "repulsion" | "springLength" | "springK" | "centering" | "clusterStrength"
+>;
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
 
@@ -98,6 +101,10 @@ const GRAPH_FORCES: Forces = {
   springLength: 130, // unused under LinLog; kept for the spring fallback/controls
   springK: 0.12, // LinLog attraction is gentle (log), so it wants a higher gain
   centering: 0.015,
+  // Gentle pull toward each Louvain community's centroid (cosmos.gl's
+  // point-clustering force), so the geometry agrees with the detected
+  // clusters that also drive the default node coloring.
+  clusterStrength: 0.05,
 };
 // Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
 // that mirrors --ui in styles.css.
@@ -113,6 +120,9 @@ interface RenderData {
   /** Visible nodes (those passing the type/tag filter), in draw order. */
   nodes: SimNode[];
   edges: SimEdge[];
+  /** Citation direction per edge (backbone edges are undirected): bit 1 =
+   *  a cites b, bit 2 = b cites a. Drawn as arrowheads on highlighted edges. */
+  edgeDir: number[];
   /** Per-node concept metadata, index-aligned with `nodes`. */
   meta: {
     id: string;
@@ -178,6 +188,7 @@ export function GraphView() {
   const renderRef = useRef<RenderData>({
     nodes: [],
     edges: [],
+    edgeDir: [],
     meta: [],
     indexById: new Map(),
     neighbors: [],
@@ -187,6 +198,10 @@ export function GraphView() {
   const rafRef = useRef<number | null>(null);
   const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
+  // Screen-px label widths, cached per (font-size, title) across frames.
+  const labelWidthRef = useRef<Map<string, number>>(new Map());
+  // RAF id of the in-flight view tween (fit / zoom-button glide), if any.
+  const viewTweenRef = useRef<number | null>(null);
   const paramsRef = useRef<SimParams>({
     ...DEFAULT_PARAMS,
     ...GRAPH_FORCES,
@@ -247,10 +262,33 @@ export function GraphView() {
     const nodeStroke = cssVar("--bg") || "#fff";
     const warnColor = cssVar("--warn") || "#b8860b"; // orphan ring + broken-link marker
 
-    // Edges first, under the nodes.
+    // Edges first, under the nodes. Each edge carries its *source* node's
+    // color (the citing concept owns the link — Gephi's convention), so hub
+    // fans and cluster membership read from the wiring, not just the dots.
     const baseLW = disp.linkThickness / view.scale;
+    // Arrowhead into `to`, pulled back to its rim — drawn only on highlighted
+    // edges, so citation direction shows exactly where the user is looking.
+    const arrowInto = (from: SimNode, to: SimNode) => {
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return;
+      const ux = dx / len;
+      const uy = dy / len;
+      const rim = to.r * disp.nodeScale + 2 / view.scale;
+      const tipX = to.x - ux * rim;
+      const tipY = to.y - uy * rim;
+      const s = 6 / view.scale;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX - ux * s - uy * s * 0.45, tipY - uy * s + ux * s * 0.45);
+      ctx.lineTo(tipX - ux * s + uy * s * 0.45, tipY - uy * s - ux * s * 0.45);
+      ctx.closePath();
+      ctx.fill();
+    };
     ctx.lineWidth = baseLW;
-    for (const e of data.edges) {
+    for (let ei = 0; ei < data.edges.length; ei++) {
+      const e = data.edges[ei];
       const a = data.nodes[e.a];
       const b = data.nodes[e.b];
       const incident = hasFocus && (e.a === focusIdx || e.b === focusIdx);
@@ -263,12 +301,19 @@ export function GraphView() {
         ctx.strokeStyle = edgeColor;
       } else {
         ctx.globalAlpha = disp.linkOpacity;
-        ctx.strokeStyle = edgeColor;
+        const src = data.meta[e.a];
+        ctx.strokeStyle = disp.colorBy === "cluster" ? src.clusterColor : src.color;
       }
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
+      if (incident) {
+        const dir = data.edgeDir[ei] ?? 0;
+        ctx.fillStyle = accent;
+        if (dir & 1) arrowInto(a, b);
+        if (dir & 2) arrowInto(b, a);
+      }
       ctx.lineWidth = baseLW;
     }
     ctx.globalAlpha = 1;
@@ -329,26 +374,84 @@ export function GraphView() {
     }
     ctx.globalAlpha = 1;
 
-    // Labels: cull when zoomed out unless the node is selected, a neighbor of
-    // the selection, or hovered.
-    ctx.font = `${12 / view.scale}px ${LABEL_FONT}`;
+    // Labels, dataviz-style: sized by node importance, hubs surfacing first as
+    // you zoom out (each node's reveal threshold scales with its radius), and
+    // collision-culled by priority so dense regions stay legible instead of
+    // becoming a text smear. Selection/hover/neighbors always label.
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
+    const widths = labelWidthRef.current;
+    const baseReveal = LABEL_MIN_SCALE / disp.labelScale;
+    interface LabelCand {
+      i: number;
+      /** Label font size in *screen* px (importance-scaled). */
+      fontPx: number;
+      alwaysShow: boolean;
+    }
+    const cands: LabelCand[] = [];
     for (let i = 0; i < data.nodes.length; i++) {
       const node = data.nodes[i];
       const meta = data.meta[i];
       const isSel = i === selIdx;
       const isNeighbor = focusNeighbors?.has(i) ?? false;
       const isHover = i === hover;
-      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
-
       const alwaysShow = isSel || isNeighbor || isHover;
-      if (!alwaysShow && view.scale < LABEL_MIN_SCALE / disp.labelScale) continue;
+      // 0 for the smallest node, 1 for the biggest hub.
+      const t = (node.r - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
+      // Hubs reveal their labels well before leaves do.
+      if (!alwaysShow && view.scale < baseReveal * (1 - 0.75 * t)) continue;
       if (!alwaysShow && meta.dim) continue;
-
+      cands.push({ i, fontPx: 10 + 5 * t, alwaysShow });
+    }
+    // Priority: always-shown labels first, then bigger nodes.
+    cands.sort(
+      (a, b) =>
+        Number(b.alwaysShow) - Number(a.alwaysShow) ||
+        data.nodes[b.i].r - data.nodes[a.i].r,
+    );
+    // Greedy screen-space collision: a label is dropped when it overlaps one
+    // already kept — except always-shown labels, which draw regardless (but
+    // still claim their space so lower-priority neighbors yield).
+    const kept: { cx: number; x: number; y: number; w: number; h: number; cand: LabelCand }[] = [];
+    for (const cand of cands) {
+      const node = data.nodes[cand.i];
+      const meta = data.meta[cand.i];
+      // Measured at screen size and cached; world width follows the zoom.
+      const key = `${Math.round(cand.fontPx * 2)}|${meta.title}`;
+      let w = widths.get(key);
+      if (w === undefined) {
+        ctx.font = `${cand.fontPx}px ${LABEL_FONT}`;
+        w = ctx.measureText(meta.title).width;
+        if (widths.size > 8192) widths.clear();
+        widths.set(key, w);
+      }
+      const wWorld = w / view.scale;
+      const hWorld = (cand.fontPx * 1.25) / view.scale;
+      const rect = {
+        cx: node.x,
+        x: node.x - wWorld / 2,
+        y: node.y + node.r * disp.nodeScale + 2 / view.scale,
+        w: wWorld,
+        h: hWorld,
+        cand,
+      };
+      const collides = kept.some(
+        (k) =>
+          rect.x < k.x + k.w && k.x < rect.x + rect.w && rect.y < k.y + k.h && k.y < rect.y + rect.h,
+      );
+      if (collides && !cand.alwaysShow) continue;
+      kept.push(rect);
+    }
+    for (const { cx, y, cand } of kept) {
+      const meta = data.meta[cand.i];
+      const isSel = cand.i === selIdx;
+      const isNeighbor = focusNeighbors?.has(cand.i) ?? false;
+      const isHover = cand.i === hover;
+      const dimmedByFocus = dimOthers && cand.i !== focusIdx && !isNeighbor;
+      ctx.font = `${cand.fontPx / view.scale}px ${LABEL_FONT}`;
       ctx.globalAlpha = meta.dim || dimmedByFocus ? 0.25 : 1;
-      ctx.fillStyle = isSel ? textColor : isNeighbor || isHover ? textColor : textDim;
-      ctx.fillText(meta.title, node.x, node.y + node.r * disp.nodeScale + 2 / view.scale);
+      ctx.fillStyle = isSel || isNeighbor || isHover ? textColor : textDim;
+      ctx.fillText(meta.title, cx, y);
     }
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -535,6 +638,9 @@ export function GraphView() {
     // node a cluster color — kept on the full graph so cluster colors stay
     // stable regardless of the link-density (backbone) setting below.
     const comm = louvain(nodes.length, directed);
+    // The sim's cluster-gravity pass reads each node's community; assigned in
+    // both color modes so switching Color never reflows the layout.
+    for (let i = 0; i < nodes.length; i++) nodes[i].cluster = comm[i] ?? 0;
 
     // Draw and simulate a readable *backbone* rather than every edge: a dense
     // cross-link graph is otherwise an unreadable hairball (see graph/backbone).
@@ -551,6 +657,14 @@ export function GraphView() {
       neighbors[e.a].add(e.b);
       neighbors[e.b].add(e.a);
     }
+    // Recover citation direction for the (undirected) backbone edges, for the
+    // arrowheads on highlighted edges: bit 1 = a cites b, bit 2 = b cites a.
+    const dirSet = new Set(directed.map((e) => e.a * nodes.length + e.b));
+    const edgeDir = edges.map(
+      (e) =>
+        (dirSet.has(e.a * nodes.length + e.b) ? 1 : 0) |
+        (dirSet.has(e.b * nodes.length + e.a) ? 2 : 0),
+    );
     const clusterPalette = buildTypePalette(
       [...new Set(comm.map(String))],
       dark,
@@ -563,7 +677,7 @@ export function GraphView() {
       if (!bundleIds.has(id)) store.delete(id);
     }
 
-    renderRef.current = { nodes, edges, meta, indexById, neighbors };
+    renderRef.current = { nodes, edges, edgeDir, meta, indexById, neighbors };
     // The focus/isolate set changed (or this is the first build) — frame the new
     // subgraph so it is centered and readable.
     const restrictChanged = prevRestrictKey.current !== restrictKey;
@@ -573,6 +687,11 @@ export function GraphView() {
     // so the smaller set can spread out from its cached positions.
     alphaRef.current = spawnedNew ? 1 : restrictChanged ? Math.max(0.4, REHEAT_ALPHA) : 0.4;
     needsFitRef.current = spawnedNew || restrictChanged; // refit a fresh layout or a new focus set
+    // Frame the new node set right away from its cached/seeded positions — the
+    // sim can take seconds to settle, and until the post-settle refit the new
+    // subgraph could sit half out of view. (Skipped for a brand-new layout:
+    // seed positions on the spawn ring say nothing about the final shape.)
+    if (restrictChanged && !spawnedNew) fit();
     runLoop();
     // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
     // intentionally not in the dep list; this effect rebuilds only on data/filter
@@ -658,7 +777,40 @@ export function GraphView() {
   }, []);
 
   // Stop the loop on unmount.
-  useEffect(() => stopLoop, []);
+  // Unmount-only cleanup; both helpers only touch refs.
+  useEffect(
+    () => () => {
+      stopLoop();
+      cancelViewTween();
+    },
+    [],
+  );
+
+  // The graph shortcuts the shortcuts overlay promises: + / − zoom, F fit.
+  // Bound while the graph is mounted (reader-only layout unmounts it); bare
+  // keys only, so the reader's Ctrl/Cmd +/−/0 text sizing stays untouched.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        zoomBy(1.2);
+      } else if (e.key === "-") {
+        e.preventDefault();
+        zoomBy(1 / 1.2);
+      } else if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        fit();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // zoomBy/fit read refs; reduce-motion (read by applyView) re-binds via dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.settings.reduceMotion]);
+
 
   // ---- Coordinate helpers --------------------------------------------------
 
@@ -706,6 +858,7 @@ export function GraphView() {
       node.fy = node.y;
       dragRef.current = { kind: "node", index: idx, moved: false };
     } else {
+      cancelViewTween(); // direct panning takes over from any glide
       const view = viewRef.current;
       dragRef.current = {
         kind: "pan",
@@ -769,6 +922,7 @@ export function GraphView() {
 
   function onWheel(e: ReactWheelEvent<HTMLCanvasElement>) {
     e.preventDefault();
+    cancelViewTween(); // direct zooming takes over from any glide
     const view = viewRef.current;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -788,6 +942,56 @@ export function GraphView() {
 
   // ---- Overlay controls ----------------------------------------------------
 
+  function cancelViewTween() {
+    if (viewTweenRef.current != null) {
+      cancelAnimationFrame(viewTweenRef.current);
+      viewTweenRef.current = null;
+    }
+  }
+
+  /**
+   * Glide the view to `target` over a short ease-out, so a fit or zoom step
+   * reads as movement through the graph instead of a teleport. The world point
+   * under the viewport center travels linearly while scale interpolates
+   * geometrically (zoom *feels* linear that way). Direct input — wheel, pan —
+   * interrupts the glide; reduce-motion jumps instantly.
+   */
+  function applyView(target: View) {
+    cancelViewTween();
+    const v = viewRef.current;
+    if (state.settings.reduceMotion) {
+      v.scale = target.scale;
+      v.tx = target.tx;
+      v.ty = target.ty;
+      draw();
+      return;
+    }
+    const ms = 260;
+    const { w, h } = sizeRef.current;
+    const cx = w / 2;
+    const cy = h / 2;
+    const s0 = v.scale;
+    const s1 = target.scale;
+    const wc0x = (cx - v.tx) / s0;
+    const wc0y = (cy - v.ty) / s0;
+    const wc1x = (cx - target.tx) / s1;
+    const wc1y = (cy - target.ty) / s1;
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - t0) / ms);
+      const k = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      const s = s0 * Math.pow(s1 / s0, k);
+      const wcx = wc0x + (wc1x - wc0x) * k;
+      const wcy = wc0y + (wc1y - wc0y) * k;
+      v.scale = s;
+      v.tx = cx - wcx * s;
+      v.ty = cy - wcy * s;
+      if (rafRef.current == null) draw(); // when the sim loop is hot, it draws
+      viewTweenRef.current = t < 1 ? requestAnimationFrame(tick) : null;
+    };
+    viewTweenRef.current = requestAnimationFrame(tick);
+  }
+
   function zoomBy(factor: number) {
     const view = viewRef.current;
     const { w, h } = sizeRef.current;
@@ -796,10 +1000,7 @@ export function GraphView() {
     const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, view.scale * factor));
     const wx = (cx - view.tx) / view.scale;
     const wy = (cy - view.ty) / view.scale;
-    view.scale = next;
-    view.tx = cx - wx * next;
-    view.ty = cy - wy * next;
-    draw();
+    applyView({ scale: next, tx: cx - wx * next, ty: cy - wy * next });
   }
 
   function fit() {
@@ -819,14 +1020,10 @@ export function GraphView() {
     const pad = 40;
     const bw = Math.max(1, maxX - minX);
     const bh = Math.max(1, maxY - minY);
-    const scale = Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh);
-    const view = viewRef.current;
-    view.scale = Math.max(MIN_SCALE, scale);
+    const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh));
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    view.tx = w / 2 - cx * view.scale;
-    view.ty = h / 2 - cy * view.scale;
-    draw();
+    applyView({ scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale });
   }
 
   // ---- Render --------------------------------------------------------------
@@ -903,168 +1100,177 @@ export function GraphView() {
           onWheel={onWheel}
         />
       )}
-      <div className="graph-panel">
-        <Popover.Root>
-          <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Positioner
-              className="ui-popover-positioner"
-              side="bottom"
-              align="start"
-              sideOffset={6}
-            >
-              <Popover.Popup className="ui-popover graph-panel-body">
-                <Section title="Renderer" desc="How the graph is drawn.">
-                  <Segmented
-                    ariaLabel="Renderer"
-                    options={[
-                      { value: "canvas", text: "Canvas" },
-                      { value: "gpu", text: "GPU" },
-                    ]}
-                    value={renderer}
-                    onChange={setRenderer}
-                  />
-                  <p className="graph-hint">{RENDERER_HINTS[renderer]}</p>
-                </Section>
-                {renderer === "canvas" && (
-                  <>
-                <Section
-                  title="Connections"
-                  desc="A bundle can be densely cross-linked. Choose how many links to draw."
-                >
-                  <Segmented
-                    ariaLabel="Link density"
-                    options={[
-                      { value: "sparse", text: "Key" },
-                      { value: "balanced", text: "Balanced" },
-                      { value: "all", text: "All" },
-                    ]}
-                    value={state.linkDensity}
-                    onChange={(d) => {
-                      actions.setLinkDensity(d);
-                    }}
-                  />
-                  <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
-                </Section>
-                <Section title="Color" desc="What a node's color means.">
-                  <Segmented
-                    ariaLabel="Color nodes by"
-                    options={[
-                      { value: "cluster", text: "Cluster" },
-                      { value: "type", text: "Type" },
-                    ]}
-                    value={display.colorBy}
-                    onChange={(v) => setDisplay((d) => ({ ...d, colorBy: v }))}
-                  />
-                  <p className="graph-hint">{COLOR_HINTS[display.colorBy]}</p>
-                </Section>
-                <Section title="Appearance" desc="Size and emphasis of nodes and links.">
-                  <Slider
-                    label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
-                    format={(v) => `${v.toFixed(1)}×`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))}
-                  />
-                  <Slider
-                    label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
-                    format={(v) => `${v.toFixed(1)}×`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))}
-                  />
-                  <Slider
-                    label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
-                    format={(v) => `${Math.round(v * 100)}%`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))}
-                  />
-                  <Slider
-                    label="Label visibility"
-                    hint="How early titles appear as you zoom in."
-                    min={0.5} max={3} step={0.1} value={display.labelScale}
-                    format={(v) => `${v.toFixed(1)}×`}
-                    onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))}
-                  />
-                </Section>
-                <Section title="Layout" desc="Fine-tune how the graph arranges itself.">
-                  <Slider
-                    label="Spacing" hint="How strongly nodes push apart."
-                    min={0} max={6000} step={50} value={forces.repulsion}
-                    format={(v) => `${Math.round((v / 6000) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))}
-                  />
-                  <Slider
-                    label="Link length" hint="Resting distance between connected nodes."
-                    min={20} max={250} step={5} value={forces.springLength}
-                    format={(v) => `${Math.round(((v - 20) / 230) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, springLength: v }))}
-                  />
-                  <Slider
-                    label="Link pull" hint="How strongly links draw nodes together."
-                    min={0} max={0.3} step={0.01} value={forces.springK}
-                    format={(v) => `${Math.round((v / 0.3) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, springK: v }))}
-                  />
-                  <Slider
-                    label="Gravity" hint="Pull toward the center; keeps the graph compact."
-                    min={0} max={0.2} step={0.005} value={forces.centering}
-                    format={(v) => `${Math.round((v / 0.2) * 100)}%`}
-                    onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
-                  />
-                </Section>
-                <button
-                  type="button"
-                  className="graph-panel-reset"
-                  onClick={() => {
-                    setForces({ ...GRAPH_FORCES });
-                    setDisplay(DEFAULT_DISPLAY);
-                    actions.setLinkDensity("balanced");
-                  }}
-                >
-                  Reset to defaults
-                </button>
-                  </>
-                )}
-              </Popover.Popup>
-            </Popover.Positioner>
-          </Popover.Portal>
-        </Popover.Root>
-      </div>
-      <div className="graph-mode" role="group" aria-label="Graph mode">
-        <div className="graph-seg">
-          <button
-            type="button"
-            className="graph-seg-btn"
-            aria-label="Overview: show the whole graph"
-            aria-pressed={state.graphMode === "overview"}
-            onClick={() => actions.setGraphMode("overview")}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            className="graph-seg-btn"
-            aria-label="Focus: show the selected concept's neighborhood"
-            aria-pressed={state.graphMode === "focus"}
-            onClick={() => actions.setGraphMode("focus")}
-          >
-            Focus
-          </button>
-        </div>
-        {state.graphMode === "focus" && (
-          <div className="graph-depth" role="group" aria-label="Focus depth">
-            <span className="graph-depth-label">Depth</span>
-            {[1, 2, 3].map((d) => (
-              <button
-                key={d}
-                type="button"
-                className="graph-seg-btn"
-                aria-label={`Focus depth ${d}`}
-                aria-pressed={state.focusDepth === d}
-                onClick={() => actions.setFocusDepth(d)}
+      <div className="graph-toolbar">
+        <div className="graph-panel">
+          <Popover.Root>
+            <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Positioner
+                className="ui-popover-positioner"
+                side="bottom"
+                align="start"
+                sideOffset={6}
               >
-                {d}
-              </button>
-            ))}
+                <Popover.Popup className="ui-popover graph-panel-body">
+                  <Section title="Renderer" desc="How the graph is drawn.">
+                    <Segmented
+                      ariaLabel="Renderer"
+                      options={[
+                        { value: "canvas", text: "Canvas" },
+                        { value: "gpu", text: "GPU" },
+                      ]}
+                      value={renderer}
+                      onChange={setRenderer}
+                    />
+                    <p className="graph-hint">{RENDERER_HINTS[renderer]}</p>
+                  </Section>
+                  {renderer === "canvas" && (
+                    <>
+                  <Section
+                    title="Connections"
+                    desc="A bundle can be densely cross-linked. Choose how many links to draw."
+                  >
+                    <Segmented
+                      ariaLabel="Link density"
+                      options={[
+                        { value: "sparse", text: "Key" },
+                        { value: "balanced", text: "Balanced" },
+                        { value: "all", text: "All" },
+                      ]}
+                      value={state.linkDensity}
+                      onChange={(d) => {
+                        actions.setLinkDensity(d);
+                      }}
+                    />
+                    <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
+                  </Section>
+                  <Section title="Color" desc="What a node's color means.">
+                    <Segmented
+                      ariaLabel="Color nodes by"
+                      options={[
+                        { value: "cluster", text: "Cluster" },
+                        { value: "type", text: "Type" },
+                      ]}
+                      value={display.colorBy}
+                      onChange={(v) => setDisplay((d) => ({ ...d, colorBy: v }))}
+                    />
+                    <p className="graph-hint">{COLOR_HINTS[display.colorBy]}</p>
+                  </Section>
+                  <Section title="Appearance" desc="Size and emphasis of nodes and links.">
+                    <Slider
+                      label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
+                      format={(v) => `${v.toFixed(1)}×`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))}
+                    />
+                    <Slider
+                      label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
+                      format={(v) => `${v.toFixed(1)}×`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))}
+                    />
+                    <Slider
+                      label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
+                      format={(v) => `${Math.round(v * 100)}%`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))}
+                    />
+                    <Slider
+                      label="Label visibility"
+                      hint="How early titles appear as you zoom in."
+                      min={0.5} max={3} step={0.1} value={display.labelScale}
+                      format={(v) => `${v.toFixed(1)}×`}
+                      onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))}
+                    />
+                  </Section>
+                  <Section title="Layout" desc="Fine-tune how the graph arranges itself.">
+                    <Slider
+                      label="Spacing" hint="How strongly nodes push apart."
+                      min={0} max={6000} step={50} value={forces.repulsion}
+                      format={(v) => `${Math.round((v / 6000) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))}
+                    />
+                    <Slider
+                      label="Link length" hint="Resting distance between connected nodes."
+                      min={20} max={250} step={5} value={forces.springLength}
+                      format={(v) => `${Math.round(((v - 20) / 230) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, springLength: v }))}
+                    />
+                    <Slider
+                      label="Link pull" hint="How strongly links draw nodes together."
+                      min={0} max={0.3} step={0.01} value={forces.springK}
+                      format={(v) => `${Math.round((v / 0.3) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, springK: v }))}
+                    />
+                    <Slider
+                      label="Gravity" hint="Pull toward the center; keeps the graph compact."
+                      min={0} max={0.2} step={0.005} value={forces.centering}
+                      format={(v) => `${Math.round((v / 0.2) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
+                    />
+                    <Slider
+                      label="Cluster pull"
+                      hint="Gathers each detected community around its own center."
+                      min={0} max={0.25} step={0.01} value={forces.clusterStrength ?? 0}
+                      format={(v) => `${Math.round((v / 0.25) * 100)}%`}
+                      onChange={(v) => setForces((f) => ({ ...f, clusterStrength: v }))}
+                    />
+                  </Section>
+                  <button
+                    type="button"
+                    className="graph-panel-reset"
+                    onClick={() => {
+                      setForces({ ...GRAPH_FORCES });
+                      setDisplay(DEFAULT_DISPLAY);
+                      actions.setLinkDensity("balanced");
+                    }}
+                  >
+                    Reset to defaults
+                  </button>
+                    </>
+                  )}
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
+          </Popover.Root>
+        </div>
+        <div className="graph-mode" role="group" aria-label="Graph mode">
+          <div className="graph-seg">
+            <button
+              type="button"
+              className="graph-seg-btn"
+              aria-label="Overview: show the whole graph"
+              aria-pressed={state.graphMode === "overview"}
+              onClick={() => actions.setGraphMode("overview")}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              className="graph-seg-btn"
+              aria-label="Focus: show the selected concept's neighborhood"
+              aria-pressed={state.graphMode === "focus"}
+              onClick={() => actions.setGraphMode("focus")}
+            >
+              Focus
+            </button>
           </div>
-        )}
-        {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
+          {state.graphMode === "focus" && (
+            <div className="graph-depth" role="group" aria-label="Focus depth">
+              <span className="graph-depth-label">Depth</span>
+              {[1, 2, 3].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className="graph-seg-btn"
+                  aria-label={`Focus depth ${d}`}
+                  aria-pressed={state.focusDepth === d}
+                  onClick={() => actions.setFocusDepth(d)}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          )}
+          {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
+        </div>
       </div>
       {renderer === "canvas" && (hasDefects || isolate) && (
         <div className="graph-chips">

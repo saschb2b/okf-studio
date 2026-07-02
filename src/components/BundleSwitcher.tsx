@@ -11,12 +11,10 @@ import { Toolbar } from "@base-ui/react/toolbar";
 import { useApp } from "../store.tsx";
 import type { Actions } from "../store.tsx";
 import { modKey } from "../platform.ts";
-import { buildTypePalette, resolveDark } from "../theme.ts";
 import type { BundleRoot, RecentBundle } from "../types.ts";
+import appIcon from "../assets/icon.svg";
 import "./baseui.css";
 import "./BundleSwitcher.css";
-
-const MAX_DOTS = 5;
 
 const mod = modKey;
 
@@ -26,10 +24,28 @@ function baseName(p: string): string {
   return parts[parts.length - 1] || p;
 }
 
+/** Compact "how long ago" for a recent's last-opened timestamp. */
+function relTime(ts: number): string {
+  const s = Math.max(0, (Date.now() - ts) / 1000);
+  if (s < 60) return "just now";
+  const m = s / 60;
+  if (m < 60) return `${Math.round(m)}m ago`;
+  const h = m / 60;
+  if (h < 24) return `${Math.round(h)}h ago`;
+  const d = h / 24;
+  if (d < 7) return `${Math.round(d)}d ago`;
+  const w = d / 7;
+  if (w < 9) return `${Math.round(w)}w ago`;
+  const mo = d / 30.44;
+  if (mo < 12) return `${Math.round(mo)}mo ago`;
+  return `${Math.round(d / 365.25)}y ago`;
+}
+
 export function BundleSwitcher() {
   const { state, actions } = useApp();
   const [query, setQuery] = useState("");
   const popupRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   // Nothing open yet → the trigger is a direct "open a folder" button rather
   // than a popover (mirrors First Run; keeps an obvious entry point).
@@ -40,6 +56,7 @@ export function BundleSwitcher() {
         aria-label="Open folder"
         onClick={() => void actions.openFolder()}
       >
+        <img className="switch-tile" src={appIcon} alt="" aria-hidden="true" />
         <span className="switch-name">Open a folder…</span>
         <span className="switch-chevron" aria-hidden="true">
           ⌄
@@ -48,7 +65,6 @@ export function BundleSwitcher() {
     );
   }
 
-  const dark = resolveDark(state.settings.theme);
   const q = query.trim().toLowerCase();
 
   const matchRoot = (b: BundleRoot) =>
@@ -71,34 +87,39 @@ export function BundleSwitcher() {
   const close = () => actions.setSwitcher(false);
 
   // Lightweight roving: ArrowUp/Down move focus through the rows; the search
-  // input owns typing. Base UI handles Escape and focus restore.
+  // input owns typing (ArrowUp from the first row returns to it). Base UI
+  // handles Escape and focus restore. This single handler owns the arrows —
+  // handling them on the input too used to double-fire and skip the first row.
   function onPopupKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const rows = Array.from(
       popupRef.current?.querySelectorAll<HTMLElement>("[data-row]") ?? [],
     );
     if (!rows.length) return;
-    e.preventDefault();
     const i = rows.indexOf(document.activeElement as HTMLElement);
-    const next =
-      e.key === "ArrowDown" ? Math.min(rows.length - 1, i + 1) : Math.max(0, i - 1);
-    rows[next === -1 ? 0 : next]?.focus();
+    if (i === -1) {
+      // From the search input: only ArrowDown enters the list.
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        rows[0].focus();
+      }
+      return;
+    }
+    e.preventDefault();
+    if (e.key === "ArrowUp") {
+      if (i === 0) searchRef.current?.focus();
+      else rows[i - 1].focus();
+    } else {
+      rows[Math.min(rows.length - 1, i + 1)].focus();
+    }
   }
 
   function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    const first = () => popupRef.current?.querySelector<HTMLElement>("[data-row]");
-    if (e.key === "Enter") {
-      const el = first();
-      if (el) {
-        e.preventDefault();
-        el.click();
-      }
-    } else if (e.key === "ArrowDown") {
-      const el = first();
-      if (el) {
-        e.preventDefault();
-        el.focus();
-      }
+    if (e.key !== "Enter") return;
+    const first = popupRef.current?.querySelector<HTMLElement>("[data-row]");
+    if (first) {
+      e.preventDefault();
+      first.click();
     }
   }
 
@@ -113,6 +134,10 @@ export function BundleSwitcher() {
       <Popover.Trigger
         render={
           <Toolbar.Button className="topbar-switch" aria-label="Switch bundle">
+            {/* The app's brand tile anchors the fixed-width trigger — the
+                classic app-icon-in-the-titlebar-corner, and a spot of color
+                in an otherwise quiet chrome. */}
+            <img className="switch-tile" src={appIcon} alt="" aria-hidden="true" />
             <span className="switch-trigger">
               <span className="switch-name" title={state.bundle.name}>
                 {state.bundle.name}
@@ -147,6 +172,7 @@ export function BundleSwitcher() {
               onKeyDown={onPopupKeyDown}
             >
               <input
+                ref={searchRef}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 type="search"
@@ -166,7 +192,7 @@ export function BundleSwitcher() {
                         key={b.root}
                         bundle={b}
                         active={b.root === state.activeRoot}
-                        dark={dark}
+                        folderLabel={folderLabel}
                         onSelect={() => {
                           void actions.selectBundle(b.root);
                           close();
@@ -181,13 +207,7 @@ export function BundleSwitcher() {
                 {pinned.length > 0 && (
                   <Group label="Pinned">
                     {pinned.map((r) => (
-                      <RecentRow
-                        key={r.root}
-                        entry={r}
-                        dark={dark}
-                        actions={actions}
-                        close={close}
-                      />
+                      <RecentRow key={r.root} entry={r} actions={actions} close={close} />
                     ))}
                   </Group>
                 )}
@@ -195,17 +215,11 @@ export function BundleSwitcher() {
                 <Group label="Recent bundles">
                   {recent.length ? (
                     recent.map((r) => (
-                      <RecentRow
-                        key={r.root}
-                        entry={r}
-                        dark={dark}
-                        actions={actions}
-                        close={close}
-                      />
+                      <RecentRow key={r.root} entry={r} actions={actions} close={close} />
                     ))
                   ) : (
                     <p className="switcher-empty muted">
-                      Bundles you open will show up here.
+                      {q ? "No matches." : "Bundles you open will show up here."}
                     </p>
                   )}
                 </Group>
@@ -258,21 +272,15 @@ function Group({
   );
 }
 
-function Dots({ types, dark }: { types: string[]; dark: boolean }) {
-  const palette = buildTypePalette(types, dark);
-  const dots = types.slice(0, MAX_DOTS);
-  const overflow = types.length - dots.length;
+/** The row's right column: two quiet, labeled lines that align with the
+ *  name/sub lines on the left ("45 concepts" over "20 types" or "2w ago"). */
+function RowMeta({ count, detail }: { count: number; detail: string }) {
   return (
-    <span className="switcher-dots" aria-hidden="true">
-      {dots.map((t) => (
-        <span
-          key={t}
-          className="switcher-dot"
-          style={{ background: palette.color(t) }}
-          title={t}
-        />
-      ))}
-      {overflow > 0 && <span className="switcher-dot-more">+{overflow}</span>}
+    <span className="switcher-row-meta">
+      <span className="switcher-count">
+        {count} concept{count === 1 ? "" : "s"}
+      </span>
+      <span className="switcher-meta-sub">{detail}</span>
     </span>
   );
 }
@@ -280,20 +288,26 @@ function Dots({ types, dark }: { types: string[]; dark: boolean }) {
 function FolderRow({
   bundle,
   active,
-  dark,
+  folderLabel,
   onSelect,
 }: {
   bundle: BundleRoot;
   active: boolean;
-  dark: boolean;
+  /** Basename of the picked folder — the sub for a bundle at its root. */
+  folderLabel: string;
   onSelect: () => void;
 }) {
+  // A bundle at the picked folder's root has an empty relPath; showing the
+  // folder's own name beats a bare "." of punctuation.
+  const sub = bundle.relPath || folderLabel;
+  const typeCount = bundle.types.length;
   return (
     <button
       type="button"
       data-row
       className={`switcher-row${active ? " is-active" : ""}`}
       aria-current={active ? "true" : undefined}
+      title={`${bundle.name} — ${bundle.root}`}
       onClick={onSelect}
     >
       <span className="switcher-check" aria-hidden="true">
@@ -301,26 +315,19 @@ function FolderRow({
       </span>
       <span className="switcher-row-main">
         <span className="switcher-row-name">{bundle.name}</span>
-        <span className="switcher-row-sub" title={bundle.relPath}>
-          {bundle.relPath || "."}
-        </span>
+        <span className="switcher-row-sub">{sub}</span>
       </span>
-      <span className="switcher-row-meta">
-        <span className="switcher-count">{bundle.conceptCount}</span>
-        <Dots types={bundle.types} dark={dark} />
-      </span>
+      <RowMeta count={bundle.conceptCount} detail={`${typeCount} type${typeCount === 1 ? "" : "s"}`} />
     </button>
   );
 }
 
 function RecentRow({
   entry,
-  dark,
   actions,
   close,
 }: {
   entry: RecentBundle;
-  dark: boolean;
   actions: Actions;
   close: () => void;
 }) {
@@ -330,6 +337,7 @@ function RecentRow({
         type="button"
         data-row
         className="switcher-row"
+        title={`${entry.name} — ${entry.root}`}
         onClick={() => {
           void actions.openRecentBundle(entry);
           close();
@@ -338,14 +346,9 @@ function RecentRow({
         <span className="switcher-check" aria-hidden="true" />
         <span className="switcher-row-main">
           <span className="switcher-row-name">{entry.name}</span>
-          <span className="switcher-row-sub" title={entry.folder}>
-            {baseName(entry.folder)}
-          </span>
+          <span className="switcher-row-sub">{baseName(entry.folder)}</span>
         </span>
-        <span className="switcher-row-meta">
-          <span className="switcher-count">{entry.conceptCount}</span>
-          <Dots types={entry.types} dark={dark} />
-        </span>
+        <RowMeta count={entry.conceptCount} detail={relTime(entry.ts)} />
       </button>
       <span className="switcher-recent-actions">
         <button

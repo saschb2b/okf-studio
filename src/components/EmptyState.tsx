@@ -3,6 +3,7 @@
 // See docs/ux/empty-and-error-states.md.
 
 import { useApp } from "../store.tsx";
+import { modKey } from "../platform.ts";
 import "./chrome.css";
 import "./EmptyState.css";
 
@@ -57,9 +58,18 @@ export function EmptyState() {
       <p className="hero-tagline">
         Point it at a folder. Read your knowledge as a graph.
       </p>
-      <button className="btn primary lg" onClick={() => void actions.openFolder()}>
-        Open Folder…
-      </button>
+      <div className="hero-cta">
+        <button className="btn primary lg" onClick={() => void actions.openFolder()}>
+          Open Folder…
+        </button>
+        <p className="hero-hint">
+          or press <kbd>{modKey}</kbd> <kbd>O</kbd>
+        </p>
+      </div>
+      <p className="empty-line hero-what">
+        An OKF bundle is a folder of markdown concepts, cross-linked into a
+        graph. Pick a folder and the viewer finds every bundle inside.
+      </p>
     </div>
   );
 }

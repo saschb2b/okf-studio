@@ -28,29 +28,70 @@
   padding: var(--space-12) var(--space-12);
 }
 
+/* A dated timeline (the changelog convention): each date heads a group whose
+   entries hang off a hairline rail, one dot per entry. The dot takes the
+   entry's conventional kind color — creation/update/fix/deprecation — so a
+   scan of the rail shows *what kind* of change happened when. */
 .log-timeline {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-20);
+  gap: var(--space-24);
 }
 
-.log-entry {
+.log-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-8);
 }
 
 .log-date {
-  margin: 0 0 var(--space-4);
+  margin: 0;
   font-size: var(--fs-xs);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
   color: var(--text-dim);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--border);
+}
+
+/* Scoped under .log-panel to outrank the generic `.panel ul` reset. */
+.log-panel .log-entries {
+  list-style: none;
+  margin: 0 0 0 3px; /* rail sits under the dots' centers */
+  padding: var(--space-2) 0 var(--space-2) var(--space-16);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.log-item {
+  position: relative;
+}
+.log-item::before {
+  content: "";
+  position: absolute;
+  /* Centered on the 1px rail: padding (16) + half the rail, minus half the dot. */
+  left: calc(-1 * var(--space-16) - 3.5px);
+  top: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.log-item[data-kind="creation"]::before {
+  background: var(--ok);
+}
+.log-item[data-kind="update"]::before {
+  background: var(--accent);
+}
+.log-item[data-kind="fix"]::before {
+  background: var(--warn);
+}
+.log-item[data-kind="deprecation"]::before {
+  background: var(--error);
 }
 
 /* Rendered markdown change lines. */

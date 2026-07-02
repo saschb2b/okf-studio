@@ -8,8 +8,14 @@
   display: grid;
   /* The center column owns the command center's width — prominent and
      responsive (grows with the window, bounded) — while the equal 1fr side
-     columns keep it centered to the window. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, clamp(20rem, 44vw, 44rem)) minmax(0, 1fr);
+     columns keep it centered to the window. The sides' max-content floor
+     means a tight window shrinks the search instead of letting the side
+     controls overlap it (the sides are capped: the Bundle Switcher trigger
+     ellipsizes at 22rem, the right zone is fixed-size controls). */
+  grid-template-columns:
+    minmax(max-content, 1fr)
+    minmax(0, clamp(20rem, 44vw, 44rem))
+    minmax(max-content, 1fr);
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-8) var(--space-12);

@@ -35,6 +35,28 @@ describe("resolveAssetHref", () => {
   });
 });
 
+describe("renderMarkdown headings", () => {
+  it("demotes a body h1 to h2 (the concept title owns the page's h1) with a slug id", () => {
+    const html = renderMarkdown("# What it does\n\nBody.");
+    expect(html).not.toContain("<h1");
+    expect(html).toContain('<h2 id="what-it-does"');
+  });
+
+  it("bakes a hover permalink into each heading", () => {
+    const html = renderMarkdown("## Composition\n\nBody.");
+    expect(html).toContain('id="composition"');
+    expect(html).toContain('class="heading-anchor"');
+    expect(html).toContain('href="#composition"');
+    expect(html).toContain("Link to section: Composition");
+  });
+
+  it("dedupes ids across demoted and authored headings", () => {
+    const html = renderMarkdown("# Notes\n\n## Notes\n\nBody.");
+    expect(html).toContain('id="notes"');
+    expect(html).toContain('id="notes-2"');
+  });
+});
+
 describe("renderMarkdown color decoration", () => {
   it("prefixes a color-valued inline code with a swatch chip", () => {
     const html = renderMarkdown("The accent is `#0969da` today.");

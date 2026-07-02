@@ -65,6 +65,36 @@
   font-size: var(--fs-sm);
 }
 
+/* Primary action + its keyboard hint, read as one unit. */
+.hero-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+.hero-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+.hero-hint kbd {
+  min-width: 1.4em;
+  display: inline-block;
+  padding: var(--space-2) var(--space-6);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+
+/* One line of fine print: what a bundle is (see docs/ux/first-run.md). */
+.hero-what {
+  font-size: var(--fs-sm);
+  max-width: 52ch;
+}
+
 /* Spinner */
 .spinner {
   width: 28px;

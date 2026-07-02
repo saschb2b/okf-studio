@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-01T19:30:00Z
+timestamp: 2026-07-02T07:00:00Z
 ---
 
 # What it does
@@ -15,14 +15,15 @@ Selecting a node (in the [graph](graph-view.md) or [sidebar](navigation.md)) ope
 At a wide width the reader is a **centered content shell** holding two columns:
 
 - A **reading column** capped to a comfortable measure (~70 characters) via [reading-layer tokens](../ux/theming.md), centered with balanced gutters so the text never pins to one edge or sprawls edge-to-edge. Prose stays **flush-left** (centered body text harms readability — see [Accessibility](../ux/accessibility.md)).
+- **Media breaks out of the measure** (the layout-breakouts pattern from long-form editorial design): prose keeps its line length on any display — wide text hurts reading, per the classic 45–75ch band and WCAG 1.4.8's 80-character line — while the surfaces that *aren't* prose, the [design-system](design-system-rendering.md) **live example previews and token visualizations**, expand to the full content column. On a large display an example renders at near-real page width instead of squeezed into a text column, which is the whole point of a live preview; the shell's outer cap is sized accordingly (wider than any prose-only cap would be).
 - A **right context rail** (~300px), sticky, scrolling independently — quiet context only, never a second stream of prose.
 
-This is **responsive**: when the pane is narrow (or in the [split layout](../ux/browsing-layout.md) where the graph already supplies relationship context), the rail collapses and its modules fall back beneath the article; the rail shows in full in reader-only and wide windows. The rail always follows the `<article>` in document/focus order with its own landmark, so reading order stays correct.
+This is **responsive**: when the pane is narrow (or in the [split layout](../ux/browsing-layout.md) where the graph already supplies relationship context), the rail collapses and its modules fall back beneath the article; the rail shows in full in reader-only and wide windows. The collapse threshold **tracks the chosen text width** ([settings](../ux/settings.md)): a wider measure claims the rail's space for prose sooner, so the two never crowd or overlap each other. The rail always follows the `<article>` in document/focus order with its own landmark, so reading order stays correct.
 
 # Header
 
 - A **breadcrumb** of the concept's index path (e.g. `Architecture / Data Model`), orienting the reader in the bundle ([Navigation](navigation.md)).
-- A **type badge** colored to match the [graph palette](../ux/theming.md), the **title**, and a lead **description**. A design-system concept also shows its **status** and **applies_to** here — see [Design-System Rendering](design-system-rendering.md).
+- A single quiet **meta line** above the title — `● Type · status · applies-to` as plain dim text with dot separators, the type carrying its [palette color](../ux/theming.md) as a small dot (the same encoding the Filter lens and graph use). Status is colored **only when exceptional** (experimental / deprecated); stable is the baseline and reads as plain text. An earlier revision rendered each of these as its own bordered pill — three competing chip treatments read as noise, and the pills were dropped for the flat line. Tags render the same way beneath the description, as quiet `#tag` text: they are labels, not buttons, so no pill chrome suggesting a dead click. See [Design-System Rendering](design-system-rendering.md) for status/applies_to.
 - Technical metadata (Concept ID, timestamp, `resource`) lives in the rail's **Details** module rather than as a wall of labels above the prose.
 - A concept that carries design **tokens** renders them as a visualization (swatches, type specimens, scales, or a token table) between the header and the body — see [Design-System Rendering](design-system-rendering.md).
 
@@ -30,7 +31,7 @@ This is **responsive**: when the pane is narrow (or in the [split layout](../ux/
 
 Rendered for pleasant reading, sanitized before injection ([security](../architecture/ipc-and-security.md)):
 
-- A generous, readable base size and rhythm; a clear **heading hierarchy** (distinct h1–h4), with **anchored headings** (a hover permalink and a stable id) so sections can be linked and jumped to.
+- A generous, readable base size and rhythm; a clear **heading hierarchy** (distinct levels), with **anchored headings** (a hover permalink and a stable id) so sections can be linked and jumped to — in-page `#anchor` links in the body work too. A body's `# Section` headings (the OKF convention — `# Schema`, `# Examples`) are **demoted one step to h2**: the concept title owns the page's single h1, and left as h1 they would rival it and fall outside the outline and anchor pass. All of this — ids, permalinks, the code-copy affordance below — is **baked into the rendered HTML string**, never appended to the live DOM afterwards, so React re-applying the body can't wipe it.
 - **Callouts / admonitions** via GFM alert syntax (`> [!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]`), themed from the status [color roles](../ux/theming.md).
 - **Fenced code**, **syntax-highlighted** ([Shiki](../architecture/tech-stack.md), the engine behind VS Code) with a dual light/dark theme that follows the app, and a one-click **copy** affordance. Highlighting is offline and CSP-safe — Shiki's WASM-free JS engine and a curated grammar set, all lazy-loaded only when a concept has code; an unknown language degrades to a plain themed block. Also: **tables** styled for legibility (readable size, header weight, row hover, tabular numerals); blockquotes, lists, and the conventional [`# Schema` / `# Examples` / `# Citations`](../reference/okf-spec-summary.md) sections.
 - **Color values get a swatch.** A color value — inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), *or* a hex color written in plain prose (`borderColor-default (#d1d9e0)`) — is prefixed with a small chip, so a design-system role table or sentence *shows* its colors — see [Design-System Rendering](design-system-rendering.md). Bundle-agnostic; the chip's color is strictly validated before it is inlined, and code/link/pre text is left untouched.

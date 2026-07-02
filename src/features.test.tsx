@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
@@ -133,6 +133,29 @@ describe("OKF Viewer features", () => {
     expect(
       within(popover).getByText("OKF Viewer (sample)"),
     ).toBeInTheDocument();
+
+    // Seeded recents render, split into Pinned and Recent groups.
+    expect(
+      within(popover).getByText("Primer design system"),
+    ).toBeInTheDocument();
+    expect(within(popover).getByText(/pinned/i)).toBeInTheDocument();
+    expect(within(popover).getByText("Team Handbook")).toBeInTheDocument();
+
+    // ArrowDown from the search enters the list at the FIRST row (a double
+    // handler used to skip it); ArrowUp from there returns to the search.
+    const search = within(popover).getByRole("searchbox");
+    expect(search).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(
+      within(popover).getByRole("button", { name: /OKF Viewer \(sample\)/i }),
+    ).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(search).toHaveFocus();
+
+    // A query that matches nothing says so in both groups — not the
+    // "bundles you open will show up here" onboarding copy.
+    await user.type(search, "zzzz");
+    expect(within(popover).getAllByText("No matches.")).toHaveLength(2);
   });
 
   it("arrow-key navigation in the command palette steps through every result, not just the first two", async () => {
@@ -178,5 +201,113 @@ describe("OKF Viewer features", () => {
     const action = await screen.findByRole("option", { name: /re-scan folder/i });
     const allOptions = screen.getAllByRole("option");
     expect(allOptions.indexOf(action)).toBe(0);
+  });
+
+  it("bakes the code-copy affordance and heading permalinks into the body", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // The copy button is part of the processed body HTML (not a post-render
+    // DOM append, which React's innerHTML re-application used to wipe).
+    const copy = await screen.findByRole("button", { name: /copy code/i });
+    await user.click(copy);
+    // Re-query in the waiter: the body's innerHTML can be re-applied while the
+    // clipboard write is in flight, replacing the clicked node.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /copy code/i })).toHaveTextContent("Copied"),
+    );
+    expect(await window.navigator.clipboard.readText()).toContain("readBundle(root)");
+
+    // Heading permalinks are baked in too, with ids to jump to.
+    const anchor = screen.getByRole("link", { name: /link to section: what it is/i });
+    expect(anchor).toHaveAttribute("href", "#what-it-is");
+  });
+
+  it("routes concept links inside the change-log timeline instead of navigating", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle log panel/i }));
+    const panel = await screen.findByRole("dialog", { name: /change log/i });
+    const link = within(panel).getByRole("link", { name: /concept reader/i });
+    await user.click(link);
+
+    // The shared selection moved to the linked concept; the app didn't navigate.
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    expect(
+      await within(reader).findByRole("heading", { name: "Concept Reader" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reveals a concept selected elsewhere by expanding its index directory", async () => {
+    const user = userEvent.setup();
+    const scrollSpy = vi.spyOn(Element.prototype, "scrollIntoView");
+    renderApp();
+    await openBundle(user);
+
+    // design/button lives behind the collapsed design/ directory row.
+    expect(screen.queryByRole("treeitem", { name: /^button$/i })).not.toBeInTheDocument();
+
+    // Select it from the launcher (a selection made outside the tree).
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await user.type(combo, "Button");
+    await user.keyboard("{Enter}");
+
+    // The tree expanded the chain and the row is now present and current.
+    const row = await screen.findByRole("treeitem", { name: /^button$/i });
+    expect(row).toHaveAttribute("aria-current", "true");
+    // …and was scrolled into view AFTER it rendered (a one-shot rAF used to
+    // race the expansion commit and miss the row entirely).
+    await waitFor(() => {
+      expect(scrollSpy.mock.instances).toContain(row);
+    });
+    scrollSpy.mockRestore();
+  });
+
+  it("explains an expanded directory that holds no concepts", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // styles/ resolves to a synthesized index with zero entries (assets only).
+    await user.click(screen.getByRole("treeitem", { name: /^styles\// }));
+    expect(
+      await screen.findByText(/no concepts in this folder/i),
+    ).toBeInTheDocument();
+  });
+
+  it("explains an all-filtered index tree and routes to the full search", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    const search = screen.getByRole("searchbox", { name: /search concepts/i });
+
+    // Matches exist (the Revenue cluster) but none are index entries → the
+    // tree explains itself and offers the launcher.
+    await user.type(search, "Revenue");
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/none are listed in this index/i);
+    await user.click(screen.getByRole("button", { name: /open full search/i }));
+    // The launcher opens seeded with the sidebar's query, results ready.
+    const combo = await screen.findByRole("combobox");
+    expect(combo).toHaveValue("Revenue");
+    expect(
+      await screen.findAllByRole("option", { name: /revenue/i }),
+    ).not.toHaveLength(0);
+    await user.keyboard("{Escape}");
+
+    // Nothing matches at all → the notice says so, without the launcher CTA
+    // (it searches the same fields, so it cannot do better).
+    await user.clear(search);
+    await user.type(search, "zzzz");
+    const none = await screen.findByRole("status");
+    expect(none).toHaveTextContent(/no concepts match/i);
+    expect(
+      screen.queryByRole("button", { name: /open full search/i }),
+    ).not.toBeInTheDocument();
   });
 });

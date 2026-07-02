@@ -124,6 +124,12 @@
 .sb-search::placeholder {
   color: var(--text-dim);
 }
+/* WebKit draws its own clear ✕ in type="search" inputs; we render our own
+   themed one (.sb-search-clear), so hide the native double. */
+.sb-search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
 .sb-search-clear {
   position: absolute;
   top: 50%;
@@ -313,6 +319,34 @@
 .sb-tree-concept.is-dimmed {
   opacity: 0.4;
 }
+/* Every index entry filtered out → the tree is a dead end; say so and route
+   to the launcher for full-text search. */
+.sb-tree-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-6);
+  margin: var(--space-4) var(--space-8) var(--space-8);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.sb-tree-empty-line {
+  margin: 0;
+  line-height: 1.45;
+}
+.sb-tree-empty-cta {
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.sb-tree-empty-cta:hover {
+  background: var(--bg-sunken);
+}
 .sb-tree-dir {
   font-weight: 500;
 }
@@ -340,14 +374,32 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Synthesized-index marker: a quiet dim word, not a badge — the tooltip
+   carries the explanation. */
 .sb-synth {
   flex: 0 0 auto;
   font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-style: italic;
   color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--space-4);
+  opacity: 0.7;
+}
+
+/* Expanding a concept-less directory (assets only, or empty) explains itself
+   instead of silently adding zero rows. */
+.sb-tree-empty-dir {
+  padding: var(--space-2) var(--space-6) var(--space-4);
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+/* Right-aligned concept count on directory rows — how much bundle lives
+   behind the fold. */
+.sb-tree-count {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
   opacity: 0.8;
 }

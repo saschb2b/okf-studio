@@ -5,7 +5,7 @@
 // side in reader-only mode and falls below the article when space is tight (the
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "../store.tsx";
 import { titleOf, conceptById } from "../selectors.ts";
@@ -42,11 +42,12 @@ function appendSrOnly(a: HTMLAnchorElement, text: string): void {
 }
 
 /** What a body link points at, so the reader can both style and route it. */
-type LinkKind =
+export type LinkKind =
   | { kind: "external"; url: string }
   | { kind: "asset" }
   | { kind: "concept"; id: string }
   | { kind: "directory"; dir: string }
+  | { kind: "anchor"; id: string }
   | { kind: "unresolved" };
 
 /** True when `dir` is a real directory in the bundle (a concept lives under it). */
@@ -60,7 +61,10 @@ function firstConceptInDir(bundle: Bundle | null, dir: string): string | null {
 }
 
 /** Classify a body link against the bundle: where does clicking it lead? */
-function classifyLink(href: string, fromId: string, bundle: Bundle | null): LinkKind {
+export function classifyLink(href: string, fromId: string, bundle: Bundle | null): LinkKind {
+  // A pure in-page anchor jumps to a section of this concept (heading ids are
+  // baked into the body by renderMarkdown).
+  if (href.startsWith("#")) return { kind: "anchor", id: href.slice(1) };
   const r = resolveHref(href, fromId);
   if (r.kind === "external") return { kind: "external", url: r.url };
   // A companion asset (.html/.css/.svg) renders as a live preview, not a concept.
@@ -74,10 +78,12 @@ function classifyLink(href: string, fromId: string, bundle: Bundle | null): Link
  *  attributes (data-link, title, rel, screen-reader cue) into it. Doing this in
  *  the string — not by mutating the live DOM after render — keeps the cues from
  *  being wiped when React re-applies `dangerouslySetInnerHTML`. */
-function classifyBodyLinks(html: string, fromId: string, bundle: Bundle | null): string {
+export function classifyBodyLinks(html: string, fromId: string, bundle: Bundle | null): string {
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   for (const a of Array.from(tpl.content.querySelectorAll("a"))) {
+    // Heading permalinks carry their own styling and label (renderMarkdown).
+    if (a.classList.contains("heading-anchor")) continue;
     const href = a.getAttribute("href");
     if (!href) continue;
     const link = classifyLink(href, fromId, bundle);
@@ -99,6 +105,10 @@ function classifyBodyLinks(html: string, fromId: string, bundle: Bundle | null):
       case "directory":
         a.dataset.link = "directory";
         a.setAttribute("title", `Open section: ${link.dir}`);
+        break;
+      case "anchor":
+        a.dataset.link = "anchor";
+        a.setAttribute("title", "Jump to section");
         break;
       default:
         a.dataset.link = "unresolved";
@@ -156,6 +166,19 @@ async function processBody(html: string, conceptId: string, bundle: Bundle): Pro
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
   await highlightCodeBlocks(tpl.content);
+  // The await can outlive the environment (a test's DOM torn down mid-flight).
+  if (typeof document === "undefined") return html;
+  // A copy affordance on each fenced code block, baked into the string (the
+  // click is handled by the reader's delegated body handler).
+  for (const pre of Array.from(tpl.content.querySelectorAll("pre"))) {
+    if (pre.querySelector(".code-copy")) continue;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "code-copy";
+    btn.textContent = "Copy";
+    btn.setAttribute("aria-label", "Copy code");
+    pre.appendChild(btn);
+  }
   for (const img of Array.from(tpl.content.querySelectorAll("img"))) {
     const raw = img.getAttribute("data-mdsrc");
     if (!raw) {
@@ -227,10 +250,19 @@ export function Reader() {
   // Use the image-resolved html once it matches the current body; until then
   // (or when there are no images) render the body as-is.
   const displayHtml = processed?.src === bodyHtml ? processed.html : bodyHtml;
+  // Identity-stable {__html} wrapper — correctness, not perf (so the React
+  // Compiler convention of no manual memoization doesn't apply): React 19
+  // diffs the dangerouslySetInnerHTML prop by OBJECT identity, so an inline
+  // literal re-sets innerHTML on every host update of the div (e.g. when
+  // onClick's identity changes) even when the string is unchanged — killing
+  // the transient "Copied" feedback and detaching nodes mid-click.
+  const displayHtmlProp = useMemo(() => ({ __html: displayHtml }), [displayHtml]);
 
-  // After the body renders: assign heading anchors, build the outline, and wire
-  // scroll-spy. (Link routing/styling is baked into the body HTML string above,
-  // so it is not re-applied here.)
+  // After the body renders: build the outline and wire scroll-spy. Reads only —
+  // everything the body *shows* (link cues, heading ids and permalinks, copy
+  // buttons, images) is baked into the HTML string above, because anything
+  // merely appended to the live DOM here is wiped when React re-applies
+  // `dangerouslySetInnerHTML`.
   useEffect(() => {
     const el = bodyRef.current;
     if (!el || !c) {
@@ -240,49 +272,15 @@ export function Reader() {
 
     const heads = Array.from(el.querySelectorAll("h2, h3"));
     const items: OutlineItem[] = heads.map((h) => {
-      // Idempotent across StrictMode's double-invoke (and re-runs): drop any
-      // anchor we appended on a prior pass before reading the heading text.
-      h.querySelector(".heading-anchor")?.remove();
       const id = h.id; // baked into the HTML by renderMarkdown
-      const text = h.textContent;
-      // A hover permalink that scrolls to the section (never navigates the view).
-      const a = document.createElement("a");
-      a.className = "heading-anchor";
-      a.href = `#${id}`;
-      a.textContent = "#";
-      a.setAttribute("aria-label", `Link to section: ${text}`);
-      a.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        h.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-      });
-      h.appendChild(a);
+      // Heading text without the baked "#" permalink glyph.
+      const clone = h.cloneNode(true) as HTMLElement;
+      clone.querySelector(".heading-anchor")?.remove();
+      const text = clone.textContent;
       return { id, text, level: h.tagName === "H2" ? 2 : 3 };
     });
     setOutline(items);
     setActiveId(items[0]?.id ?? null);
-
-    // A copy affordance on each fenced code block.
-    for (const pre of Array.from(el.querySelectorAll("pre"))) {
-      if (pre.querySelector(".code-copy")) continue;
-      const text = pre.querySelector("code")?.textContent ?? pre.textContent;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "code-copy";
-      btn.textContent = "Copy";
-      btn.setAttribute("aria-label", "Copy code");
-      btn.addEventListener("click", () => {
-        // clipboard is undefined in insecure contexts despite the DOM lib type.
-        const clipboard = navigator.clipboard as Clipboard | undefined;
-        if (!clipboard) return;
-        void clipboard.writeText(text).then(() => {
-          btn.textContent = "Copied";
-          window.setTimeout(() => {
-            btn.textContent = "Copy";
-          }, 1200);
-        });
-      });
-      pre.appendChild(btn);
-    }
 
     if (heads.length === 0) return;
     // Scroll-spy: highlight the section currently being read. A scroll handler
@@ -390,9 +388,42 @@ export function Reader() {
 
   // Event delegation for body anchor clicks: route concept links in-app,
   // external links to the OS browser, and keep unresolved links inert.
+  // Declared before onBodyClick (which calls it): the React Compiler cannot
+  // yet rewrite hoisted function references.
+  function jumpTo(id: string) {
+    const el = bodyRef.current?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    setActiveId(id);
+  }
+
   function onBodyClick(e: MouseEvent<HTMLDivElement>) {
     if (!c) return;
     const target = e.target as HTMLElement;
+    // The copy affordance baked into each fenced code block.
+    const copyBtn = target.closest<HTMLButtonElement>("button.code-copy");
+    if (copyBtn) {
+      const text = copyBtn.closest("pre")?.querySelector("code")?.textContent ?? "";
+      // clipboard is undefined in insecure contexts despite the DOM lib type.
+      const clipboard = navigator.clipboard as Clipboard | undefined;
+      if (!clipboard) return;
+      const body = bodyRef.current;
+      const idx = body
+        ? Array.from(body.querySelectorAll("button.code-copy")).indexOf(copyBtn)
+        : -1;
+      void clipboard.writeText(text).then(() => {
+        // React may re-apply the body's innerHTML while the write is in
+        // flight, detaching the clicked node — flag the live button instead.
+        const live = copyBtn.isConnected
+          ? copyBtn
+          : (body?.querySelectorAll<HTMLButtonElement>("button.code-copy")[idx] ?? null);
+        if (!live) return;
+        live.textContent = "Copied";
+        window.setTimeout(() => {
+          live.textContent = "Copy";
+        }, 1200);
+      });
+      return;
+    }
     // A local image opens in the spotlight overlay.
     const zoomable = target.closest<HTMLImageElement>("img[data-lightbox]");
     if (zoomable) {
@@ -426,32 +457,36 @@ export function Reader() {
         ?.closest(".reader-main")
         ?.querySelector(".examples")
         ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    } else if (link.kind === "anchor") {
+      // In-page section jump — heading permalinks and authored #anchors alike.
+      jumpTo(link.id);
     }
     // "unresolved": inert (already de-emphasized and marked broken).
   }
 
-  function jumpTo(id: string) {
-    const el = bodyRef.current?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
-    el?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-    setActiveId(id);
-  }
-
   return (
-    <div className="reader-shell" data-rail={railSide ? "side" : "below"}>
+    <div
+      className="reader-shell"
+      data-rail={railSide ? "side" : "below"}
+      // The measure choice also feeds the side-rail collapse breakpoint: a
+      // wider prose column leaves less room for the rail (Reader.css).
+      data-measure={state.settings.readerMeasure}
+      // Reader-scoped reading layer (the content-scoped replacement for page
+      // zoom), driven by the "Aa" preferences and persisted in settings. Set
+      // on the shell, not the article, so the rail sees the vars too.
+      style={
+        {
+          "--reader-scale": readerScale,
+          "--reader-measure": `${state.settings.readerMeasure}ch`,
+          "--reader-leading": state.settings.readerLeading,
+          "--reader-font":
+            state.settings.readerFont === "serif" ? "var(--serif)" : "var(--ui)",
+        } as CSSProperties
+      }
+    >
       <article
         className="reader-main concept-reader"
-        // Reader-scoped reading layer (the content-scoped replacement for page
-        // zoom), driven by the "Aa" preferences and persisted in settings.
         data-aids={state.settings.readerAids ? "on" : undefined}
-        style={
-          {
-            "--reader-scale": readerScale,
-            "--reader-measure": `${state.settings.readerMeasure}ch`,
-            "--reader-leading": state.settings.readerLeading,
-            "--reader-font":
-              state.settings.readerFont === "serif" ? "var(--serif)" : "var(--ui)",
-          } as CSSProperties
-        }
       >
         <header className="reader-header">
           {/* Top row: breadcrumb at the left, reading-preferences ("Aa") at the
@@ -470,29 +505,34 @@ export function Reader() {
             )}
             <ReaderPrefs />
           </div>
+          {/* One quiet meta line, not a row of pills: the type carries its
+              palette color as a dot (the same encoding the Filter lens uses),
+              and status only speaks up when it is exceptional. */}
           <div className="reader-labels">
-            <span
-              className="type-badge"
-              style={{ color: typeColor, borderColor: typeColor }}
-            >
+            <span className="type-label">
+              <span
+                className="type-dot"
+                style={{ background: typeColor }}
+                aria-hidden="true"
+              />
               {c.type}
             </span>
             {status && (
-              <span className="status-badge" data-status={status}>
+              <span className="status-label" data-status={status}>
                 {status}
               </span>
             )}
             {appliesTo.length > 0 && (
-              <span className="applies-badge">{appliesTo.join(" · ")}</span>
+              <span className="applies-label">{appliesTo.join(" · ")}</span>
             )}
           </div>
           <h1>{c.title}</h1>
           {c.description && <p className="desc">{c.description}</p>}
 
           {c.tags.length > 0 && (
-            <ul className="tag-chips" aria-label="Tags">
+            <ul className="tag-list" aria-label="Tags">
               {c.tags.map((t) => (
-                <li key={t} className="tag-chip">
+                <li key={t} className="tag">
                   {t}
                 </li>
               ))}
@@ -516,7 +556,7 @@ export function Reader() {
           onClick={onBodyClick}
           // Sanitized in renderMarkdown via DOMPurify; images resolved (to local
           // data URLs / placeholders) by processBodyImages before injection.
-          dangerouslySetInnerHTML={{ __html: displayHtml }}
+          dangerouslySetInnerHTML={displayHtmlProp}
         />
       </article>
 

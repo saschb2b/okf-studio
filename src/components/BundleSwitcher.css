@@ -6,35 +6,47 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  max-width: 22rem;
+  /* Fixed width: the chrome stays put across bundle switches — long names
+     ellipsize, the chevron stays pinned to the right edge. */
+  width: 16rem;
   padding: var(--space-4) var(--space-8);
   border-radius: var(--radius);
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   cursor: pointer;
   font: inherit;
+  text-align: left;
 }
 .topbar-switch:hover,
 .topbar-switch[data-popup-open] {
   background: var(--bg-sunken);
-  border-color: var(--border);
 }
 .topbar-switch[data-popup-open] {
   border-color: var(--accent);
+}
+
+/* Brand tile — the app icon (its own rounded dark tile with the blue→violet
+   folder mark), scaled down; no extra chrome needed around it. */
+.switch-tile {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: block;
 }
 
 .switch-trigger {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  flex: 1;
   min-width: 0;
   line-height: var(--lh-tight);
 }
 .switch-name {
   font-weight: 600;
   font-size: var(--fs-sm);
-  max-width: 18rem;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -42,13 +54,16 @@
 .switch-folder {
   font-size: var(--fs-xs);
   color: var(--text-dim);
-  max-width: 18rem;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .switch-chevron {
   flex: 0 0 auto;
+  /* Pinned to the trigger's right edge in both states (the empty trigger has
+     no growing middle section). */
+  margin-left: auto;
   color: var(--text-dim);
   font-size: var(--fs-sm);
 }
@@ -60,7 +75,8 @@
 /* --- Popover --- */
 .switcher-popup {
   padding: 0;
-  width: 22rem;
+  /* Wide enough that typical bundle names survive beside the meta column. */
+  width: 25rem;
   max-width: 92vw;
 }
 .switcher-body {
@@ -151,38 +167,33 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The row's right column: two labeled lines ("45 concepts" / "20 types" or
+   "2w ago"), right-aligned so they mirror the name/sub pair on the left. */
 .switcher-row-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-6);
-  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: var(--lh-tight);
 }
 .switcher-count {
   font-size: var(--fs-xs);
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.switcher-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.switcher-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.switcher-dot-more {
+.switcher-meta-sub {
   font-size: var(--fs-xs);
   color: var(--text-dim);
+  opacity: 0.75;
+  white-space: nowrap;
 }
 
-/* Recent rows carry pin/remove actions revealed on hover/focus. */
+/* Recent rows carry pin/remove actions revealed on hover/focus. They overlay
+   the row's meta on an opaque chip (instead of reserving right padding, which
+   knocked recents' meta column out of line with the folder rows above), and
+   are click-through while hidden. */
 .switcher-recent {
   position: relative;
-}
-.switcher-recent .switcher-row {
-  padding-right: 3.5rem;
 }
 .switcher-recent-actions {
   position: absolute;
@@ -191,11 +202,18 @@
   transform: translateY(-50%);
   display: inline-flex;
   gap: 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
   opacity: 0;
+  pointer-events: none;
 }
 .switcher-recent:hover .switcher-recent-actions,
 .switcher-recent:focus-within .switcher-recent-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 .switcher-mini {
   padding: var(--space-4);

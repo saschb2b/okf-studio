@@ -161,6 +161,9 @@
   border-bottom: 1px solid var(--border);
   font-size: var(--fs-sm);
   vertical-align: top;
+  /* Token names and values are long unbreakable strings; let them wrap so the
+     table can shrink with the prose column instead of overflowing it. */
+  overflow-wrap: anywhere;
 }
 .token-table th {
   color: var(--text-dim);

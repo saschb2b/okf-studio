@@ -55,7 +55,7 @@ export function Sidebar() {
           data-search
           type="search"
           className="sb-search"
-          placeholder="Search concepts…   /"
+          placeholder="Search concepts…"
           aria-label="Search concepts"
           value={state.query}
           onChange={(e) => actions.setQuery(e.target.value)}

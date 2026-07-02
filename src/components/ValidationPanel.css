@@ -53,12 +53,11 @@
   color: var(--warn);
 }
 
+/* Plain count after the group label — no pill chrome. */
 .vp-count {
   font-size: var(--fs-xs);
-  padding: 1px var(--space-8);
-  border-radius: 999px;
-  background: var(--bg-sunken);
   color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 .vp-issues {
@@ -67,29 +66,21 @@
   padding: 0;
 }
 
-.vp-issue {
-  border-left: 3px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-4);
-  background: var(--bg-sunken);
-}
-.vp-issue.error {
-  border-left-color: var(--error);
-}
-.vp-issue.warning {
-  border-left-color: var(--warn);
-}
-
+/* Flat problems-list rows (the VS Code pattern): a severity dot, the message,
+   and the dim concept id beneath — no card fill, no borders, no per-row
+   severity word repeating the group heading right above it. Hover carries the
+   row affordance for clickable issues. */
 .vp-issue-body {
   font: inherit;
   text-align: left;
   width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-6);
-  padding: var(--space-8) var(--space-10);
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  column-gap: var(--space-8);
+  row-gap: var(--space-2);
+  padding: var(--space-6) var(--space-8);
   border: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
 }
@@ -97,38 +88,37 @@
   cursor: pointer;
 }
 .vp-issue-body.clickable:hover {
-  background: var(--bg);
+  background: var(--bg-sunken);
 }
 .vp-issue-body:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: -2px;
 }
 
-.vp-lvl {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 1px var(--space-6);
-  border-radius: var(--radius-sm);
-  flex: 0 0 auto;
+.vp-issue-dot {
+  grid-column: 1;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px; /* optically centers on the message's first line */
+  border-radius: 50%;
 }
-.vp-lvl.error {
-  color: var(--error);
+.vp-issue-dot.error {
+  background: var(--error);
 }
-.vp-lvl.warning {
-  color: var(--warn);
+.vp-issue-dot.warning {
+  background: var(--warn);
 }
 
 .vp-msg {
-  flex: 1 1 auto;
-  min-width: 60%;
+  grid-column: 2;
+  line-height: var(--lh-tight);
 }
 
 .vp-target {
+  grid-column: 2;
   font-family: var(--mono);
   font-size: var(--fs-xs);
   color: var(--text-dim);
-  flex: 0 0 auto;
 }
 
 .vp-conformant {

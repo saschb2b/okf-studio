@@ -2448,6 +2448,7 @@ name = "okf-viewer"
 version = "0.2.2"
 dependencies = [
  "flate2",
+ "gtk",
  "notify",
  "okf-core",
  "serde",

@@ -109,19 +109,31 @@ pub fn run() {
         .setup(|app| {
             app.manage(WatchState::default());
 
-            // Linux/WebKitGTK: trackpad pinch is applied as a native webview
-            // zoom-level change that never reaches JS as a preventable event —
-            // unlike WebView2 (ctrl+wheel) and WKWebView (gesture events), which
-            // src/native.ts already blocks. So pin the webview zoom to 1.0:
-            // whenever the gesture nudges it, snap it back. Page-zoom of the whole
-            // app isn't a native desktop behavior; reader text-size and graph zoom
-            // are the real affordances (see docs/ux/browsing-layout.md, native
-            // chrome). No-op on Windows/macOS.
+            // Linux/WebKitGTK: trackpad pinch is applied as a *native* webview
+            // zoom that never reaches JS as a preventable event — unlike WebView2
+            // (ctrl+wheel) and WKWebView (gesture events), which src/native.ts
+            // already blocks. WebKitGTK drives it from a GtkGestureZoom it stashes
+            // on the web view under the private qdata key "wk-view-zoom-gesture";
+            // destroying that gesture's signal handlers disables pinch-zoom at the
+            // source. (Desktop app — nothing relies on that touch gesture.) We also
+            // pin the zoom level to 1.0 as a belt-and-suspenders for any other path.
+            // Page-zoom of the whole app isn't a native desktop behavior; reader
+            // text-size and graph zoom are the real affordances (docs/ux/settings.md).
+            // No-op on Windows/macOS. Ref: tauri-apps/wry#544, tauri#3843.
             #[cfg(target_os = "linux")]
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.with_webview(|webview| {
+                    use gtk::glib::gobject_ffi;
+                    use gtk::glib::prelude::ObjectExt;
                     use webkit2gtk::WebViewExt;
                     let wv = webview.inner();
+                    // SAFETY: reading WebKitGTK's own qdata pointer for the zoom
+                    // gesture and destroying its handlers on the GTK main thread.
+                    unsafe {
+                        if let Some(gesture) = wv.data::<gtk::GestureZoom>("wk-view-zoom-gesture") {
+                            gobject_ffi::g_signal_handlers_destroy(gesture.as_ptr().cast());
+                        }
+                    }
                     wv.set_zoom_level(1.0);
                     wv.connect_zoom_level_notify(|wv| {
                         if (wv.zoom_level() - 1.0).abs() > f64::EPSILON {

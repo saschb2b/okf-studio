@@ -112,6 +112,19 @@
 .sb-search-wrap {
   position: relative;
 }
+/* Live result count for the current query + facets, with a clear-all. */
+.sb-result-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-top: var(--space-6);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.sb-result-count .sb-count-none {
+  color: var(--warn);
+}
 .sb-search {
   font: inherit;
   width: 100%;

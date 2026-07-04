@@ -290,7 +290,7 @@ describe("OKF Viewer features", () => {
     renderApp();
     await openBundle(user);
 
-    const search = screen.getByRole("searchbox", { name: /search concepts/i });
+    const search = screen.getByRole("searchbox", { name: /search and filter/i });
 
     // Matches exist (the Revenue cluster) but none are index entries → the
     // tree explains itself and offers the launcher.

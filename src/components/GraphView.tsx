@@ -244,7 +244,10 @@ export function GraphView() {
   function draw() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    // Opaque context: skip per-pixel alpha compositing with the page (a real win
+    // on the WebKitGTK webview). We paint the theme background ourselves each
+    // frame instead of clearing to transparent.
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
 
     const { w, h, dpr } = sizeRef.current;
@@ -254,10 +257,26 @@ export function GraphView() {
     const disp = displayRef.current;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = cssVar("--bg") || "#000";
+    ctx.fillRect(0, 0, w, h);
     ctx.save();
     ctx.translate(view.tx, view.ty);
     ctx.scale(view.scale, view.scale);
+
+    // Visible world rect — every pass culls to it, so a zoomed-in view only
+    // draws what's on screen regardless of total graph size (the dominant cost
+    // when zoomed into one cluster of a large bundle).
+    const invScale = 1 / view.scale;
+    const viewLeft = -view.tx * invScale;
+    const viewTop = -view.ty * invScale;
+    const viewRight = (w - view.tx) * invScale;
+    const viewBottom = (h - view.ty) * invScale;
+    // Cohen–Sutherland region code, for exact trivial-reject of off-screen edges.
+    const outcode = (x: number, y: number): number =>
+      (x < viewLeft ? 1 : 0) |
+      (x > viewRight ? 2 : 0) |
+      (y < viewTop ? 4 : 0) |
+      (y > viewBottom ? 8 : 0);
 
     const selIdx = selected != null ? (data.indexById.get(selected) ?? null) : null;
     const hover = hoverRef.current;
@@ -305,6 +324,9 @@ export function GraphView() {
       const e = data.edges[ei];
       const a = data.nodes[e.a];
       const b = data.nodes[e.b];
+      // Both endpoints share an off-screen half-plane → the segment can't cross
+      // the viewport, so skip it (exact; never culls a visible edge).
+      if ((outcode(a.x, a.y) & outcode(b.x, b.y)) !== 0) continue;
       const incident = hasFocus && (e.a === focusIdx || e.b === focusIdx);
       if (incident) {
         ctx.globalAlpha = 0.9;
@@ -342,6 +364,13 @@ export function GraphView() {
       const faded = meta.dim || dimmedByFocus;
 
       const rr = node.r * disp.nodeScale;
+      if (
+        node.x + rr < viewLeft ||
+        node.x - rr > viewRight ||
+        node.y + rr < viewTop ||
+        node.y - rr > viewBottom
+      )
+        continue; // fully off-screen
       ctx.globalAlpha = faded ? 0.18 : 1;
       ctx.beginPath();
       ctx.arc(node.x, node.y, rr, 0, Math.PI * 2);
@@ -372,6 +401,13 @@ export function GraphView() {
       const meta = data.meta[i];
       if (meta.broken <= 0) continue;
       const node = data.nodes[i];
+      if (
+        node.x < viewLeft ||
+        node.x > viewRight ||
+        node.y < viewTop ||
+        node.y > viewBottom
+      )
+        continue; // off-screen
       const isNeighbor = focusNeighbors?.has(i) ?? false;
       const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
       if (meta.dim || dimmedByFocus) continue;
@@ -402,15 +438,9 @@ export function GraphView() {
       fontPx: number;
       alwaysShow: boolean;
     }
-    // Visible world rect (+ slack for a label that hangs below/beside its node).
-    // A node outside it can't show a label, so it isn't a candidate — this is the
-    // dominant cost when zoomed in on a large graph, and skipping it keeps zoom
-    // cheap regardless of total node count.
-    const invScale = 1 / view.scale;
-    const viewLeft = -view.tx * invScale;
-    const viewTop = -view.ty * invScale;
-    const viewRight = (w - view.tx) * invScale;
-    const viewBottom = (h - view.ty) * invScale;
+    // Label slack: a label hangs below/beside its node, so a node just past the
+    // edge can still show one — widen the (shared) viewport rect by this much
+    // before culling label candidates.
     const labelSlack = 160 * invScale;
     const cands: LabelCand[] = [];
     for (let i = 0; i < data.nodes.length; i++) {

@@ -319,7 +319,14 @@ export function GraphView() {
       ctx.closePath();
       ctx.fill();
     };
-    ctx.lineWidth = baseLW;
+    // Batch edges by stroke color to cut per-edge state changes (a strokeStyle
+    // assignment + a stroke() call each — the dominant canvas cost on a large
+    // graph). Incident (highlighted) edges are collected and drawn individually
+    // last, on top, with arrowheads. Overlapping edges in a batch composite
+    // their opacity once rather than building up per segment — a hair cleaner,
+    // the only visible difference.
+    const edgeGroups = new Map<string, number[]>();
+    const incidentEdges: number[] = [];
     for (let ei = 0; ei < data.edges.length; ei++) {
       const e = data.edges[ei];
       const a = data.nodes[e.a];
@@ -327,42 +334,77 @@ export function GraphView() {
       // Both endpoints share an off-screen half-plane → the segment can't cross
       // the viewport, so skip it (exact; never culls a visible edge).
       if ((outcode(a.x, a.y) & outcode(b.x, b.y)) !== 0) continue;
-      const incident = hasFocus && (e.a === focusIdx || e.b === focusIdx);
-      if (incident) {
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = accent;
-        ctx.lineWidth = (disp.linkThickness * 1.6) / view.scale;
-      } else if (dimOthers) {
+      if (hasFocus && (e.a === focusIdx || e.b === focusIdx)) {
+        incidentEdges.push(ei);
+        continue;
+      }
+      // A single dim group while hovering, else grouped by the source's color.
+      const key = dimOthers
+        ? " dim"
+        : disp.colorBy === "cluster"
+          ? data.meta[e.a].clusterColor
+          : data.meta[e.a].color;
+      const group = edgeGroups.get(key);
+      if (group) group.push(ei);
+      else edgeGroups.set(key, [ei]);
+    }
+    ctx.lineWidth = baseLW;
+    for (const [key, eis] of edgeGroups) {
+      if (key === " dim") {
         ctx.globalAlpha = 0.06;
         ctx.strokeStyle = edgeColor;
       } else {
         ctx.globalAlpha = disp.linkOpacity;
-        const src = data.meta[e.a];
-        ctx.strokeStyle = disp.colorBy === "cluster" ? src.clusterColor : src.color;
+        ctx.strokeStyle = key;
       }
       ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-      if (incident) {
-        const dir = data.edgeDir[ei] ?? 0;
-        ctx.fillStyle = accent;
-        if (dir & 1) arrowInto(a, b);
-        if (dir & 2) arrowInto(b, a);
+      for (const ei of eis) {
+        const e = data.edges[ei];
+        ctx.moveTo(data.nodes[e.a].x, data.nodes[e.a].y);
+        ctx.lineTo(data.nodes[e.b].x, data.nodes[e.b].y);
       }
-      ctx.lineWidth = baseLW;
+      ctx.stroke();
+    }
+    // Incident edges on top: accent, thicker, with citation-direction arrowheads.
+    if (incidentEdges.length > 0) {
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = (disp.linkThickness * 1.6) / view.scale;
+      ctx.beginPath();
+      for (const ei of incidentEdges) {
+        const e = data.edges[ei];
+        ctx.moveTo(data.nodes[e.a].x, data.nodes[e.a].y);
+        ctx.lineTo(data.nodes[e.b].x, data.nodes[e.b].y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      for (const ei of incidentEdges) {
+        const e = data.edges[ei];
+        const dir = data.edgeDir[ei] ?? 0;
+        if (dir & 1) arrowInto(data.nodes[e.a], data.nodes[e.b]);
+        if (dir & 2) arrowInto(data.nodes[e.b], data.nodes[e.a]);
+      }
     }
     ctx.globalAlpha = 1;
 
-    // Nodes.
+    // Nodes — batched by (fade, color) to cut per-node state changes. Nodes never
+    // overlap (the collision pass guarantees a gap), so batched fills/strokes are
+    // pixel-identical to drawing them one at a time. The selected node's accent
+    // border and the orphan rings are their own small batches.
+    const arcPath = (n: SimNode, r: number) => {
+      ctx.moveTo(n.x + r, n.y); // start at angle 0 so arcs don't connect
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    };
+    const rOf = (i: number) => data.nodes[i].r * disp.nodeScale;
+    const fillGroups = new Map<string, number[]>(); // "f|color" / "b|color" -> ids
+    const strokeBright: number[] = [];
+    const strokeFaded: number[] = [];
+    const orphanRings: number[] = [];
+    let selVisible = -1;
+    let selFaded = false;
     for (let i = 0; i < data.nodes.length; i++) {
       const node = data.nodes[i];
       const meta = data.meta[i];
-      const isSel = i === selIdx;
-      const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
-      const faded = meta.dim || dimmedByFocus;
-
       const rr = node.r * disp.nodeScale;
       if (
         node.x + rr < viewLeft ||
@@ -371,26 +413,62 @@ export function GraphView() {
         node.y - rr > viewBottom
       )
         continue; // fully off-screen
-      ctx.globalAlpha = faded ? 0.18 : 1;
+      const isNeighbor = focusNeighbors?.has(i) ?? false;
+      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
+      const faded = meta.dim || dimmedByFocus;
+      const color = disp.colorBy === "cluster" ? meta.clusterColor : meta.color;
+      const key = (faded ? "f|" : "b|") + color;
+      const g = fillGroups.get(key);
+      if (g) g.push(i);
+      else fillGroups.set(key, [i]);
+      if (i === selIdx) {
+        selVisible = i;
+        selFaded = faded;
+      } else if (faded) strokeFaded.push(i);
+      else strokeBright.push(i);
+      if (meta.orphan && !faded) orphanRings.push(i);
+    }
+    // Fills, one path + one fill per (fade, color).
+    for (const [key, ids] of fillGroups) {
+      ctx.globalAlpha = key.startsWith("f|") ? 0.18 : 1;
+      ctx.fillStyle = key.slice(2);
       ctx.beginPath();
-      ctx.arc(node.x, node.y, rr, 0, Math.PI * 2);
-      ctx.fillStyle = disp.colorBy === "cluster" ? meta.clusterColor : meta.color;
+      for (const i of ids) arcPath(data.nodes[i], rOf(i));
       ctx.fill();
-      ctx.lineWidth = (isSel ? 3 : 1.2) / view.scale;
-      ctx.strokeStyle = isSel ? accent : nodeStroke;
+    }
+    // Non-selected borders (theme-bg stroke), one path per fade group.
+    ctx.strokeStyle = nodeStroke;
+    ctx.lineWidth = 1.2 / view.scale;
+    for (const [alpha, ids] of [
+      [1, strokeBright],
+      [0.18, strokeFaded],
+    ] as const) {
+      if (ids.length === 0) continue;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      for (const i of ids) arcPath(data.nodes[i], rOf(i));
       ctx.stroke();
-
-      // Orphan: a dashed warning ring just outside the node (degree 0).
-      if (meta.orphan && !faded) {
-        ctx.save();
-        ctx.setLineDash([4 / view.scale, 3 / view.scale]);
-        ctx.lineWidth = 1.5 / view.scale;
-        ctx.strokeStyle = warnColor;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, rr + 3 / view.scale, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
+    }
+    // Selected node's accent border (thicker), on top.
+    if (selVisible >= 0) {
+      ctx.globalAlpha = selFaded ? 0.18 : 1;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 3 / view.scale;
+      ctx.beginPath();
+      arcPath(data.nodes[selVisible], rOf(selVisible));
+      ctx.stroke();
+    }
+    // Orphan rings — a dashed warning ring just outside each degree-0 node.
+    if (orphanRings.length > 0) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([4 / view.scale, 3 / view.scale]);
+      ctx.lineWidth = 1.5 / view.scale;
+      ctx.strokeStyle = warnColor;
+      ctx.beginPath();
+      for (const i of orphanRings) arcPath(data.nodes[i], rOf(i) + 3 / view.scale);
+      ctx.stroke();
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
 

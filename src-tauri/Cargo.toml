@@ -41,3 +41,10 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+
+# Linux only: pin the WebKitGTK webview zoom so trackpad pinch can't page-zoom
+# the whole app (WebKitGTK applies pinch natively, bypassing the JS guards that
+# cover WebView2/WKWebView — see src/native.ts). Pinned to wry's exact version
+# so the WebView type unifies with the one Tauri hands us.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "=2.0.2"

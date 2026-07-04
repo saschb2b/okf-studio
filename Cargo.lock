@@ -2461,6 +2461,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-updater",
  "ureq",
+ "webkit2gtk",
  "zip 2.4.2",
 ]
 

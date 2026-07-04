@@ -108,6 +108,28 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(WatchState::default());
+
+            // Linux/WebKitGTK: trackpad pinch is applied as a native webview
+            // zoom-level change that never reaches JS as a preventable event —
+            // unlike WebView2 (ctrl+wheel) and WKWebView (gesture events), which
+            // src/native.ts already blocks. So pin the webview zoom to 1.0:
+            // whenever the gesture nudges it, snap it back. Page-zoom of the whole
+            // app isn't a native desktop behavior; reader text-size and graph zoom
+            // are the real affordances (see docs/ux/browsing-layout.md, native
+            // chrome). No-op on Windows/macOS.
+            #[cfg(target_os = "linux")]
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.with_webview(|webview| {
+                    use webkit2gtk::WebViewExt;
+                    let wv = webview.inner();
+                    wv.set_zoom_level(1.0);
+                    wv.connect_zoom_level_notify(|wv| {
+                        if (wv.zoom_level() - 1.0).abs() > f64::EPSILON {
+                            wv.set_zoom_level(1.0);
+                        }
+                    });
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

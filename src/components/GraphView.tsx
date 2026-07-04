@@ -205,6 +205,11 @@ export function GraphView() {
   const viewRef = useRef<View>({ scale: 1, tx: 0, ty: 0 });
   const sizeRef = useRef<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 });
   const rafRef = useRef<number | null>(null);
+  // Coalesces high-frequency direct-draw requests (wheel zoom, pan) into at most
+  // one draw per animation frame — a trackpad zoom can fire hundreds of wheel
+  // events a second, and a synchronous draw each would back up the main thread
+  // (a "freeze", worst on the slower WebKitGTK webview).
+  const drawReqRef = useRef<number | null>(null);
   const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
   // Screen-px label widths, cached per (font-size, title) across frames.
@@ -397,6 +402,16 @@ export function GraphView() {
       fontPx: number;
       alwaysShow: boolean;
     }
+    // Visible world rect (+ slack for a label that hangs below/beside its node).
+    // A node outside it can't show a label, so it isn't a candidate — this is the
+    // dominant cost when zoomed in on a large graph, and skipping it keeps zoom
+    // cheap regardless of total node count.
+    const invScale = 1 / view.scale;
+    const viewLeft = -view.tx * invScale;
+    const viewTop = -view.ty * invScale;
+    const viewRight = (w - view.tx) * invScale;
+    const viewBottom = (h - view.ty) * invScale;
+    const labelSlack = 160 * invScale;
     const cands: LabelCand[] = [];
     for (let i = 0; i < data.nodes.length; i++) {
       const node = data.nodes[i];
@@ -405,6 +420,15 @@ export function GraphView() {
       const isNeighbor = focusNeighbors?.has(i) ?? false;
       const isHover = i === hover;
       const alwaysShow = isSel || isNeighbor || isHover;
+      // Off-screen and not contextually pinned → not a label candidate.
+      if (
+        !alwaysShow &&
+        (node.x < viewLeft - labelSlack ||
+          node.x > viewRight + labelSlack ||
+          node.y < viewTop - labelSlack ||
+          node.y > viewBottom + labelSlack)
+      )
+        continue;
       // 0 for the smallest node, 1 for the biggest hub.
       const t = (node.r - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
       // Hubs reveal their labels well before leaves do.
@@ -467,6 +491,16 @@ export function GraphView() {
   }
 
   // ---- Animation loop ------------------------------------------------------
+
+  /** Request a single draw on the next frame, coalescing bursts. No-op while the
+   *  sim loop is running (it already draws every frame with the latest view). */
+  function scheduleDraw() {
+    if (drawReqRef.current != null || rafRef.current != null) return;
+    drawReqRef.current = requestAnimationFrame(() => {
+      drawReqRef.current = null;
+      draw();
+    });
+  }
 
   function stopLoop() {
     if (rafRef.current != null) {
@@ -795,6 +829,7 @@ export function GraphView() {
     () => () => {
       stopLoop();
       cancelViewTween();
+      if (drawReqRef.current != null) cancelAnimationFrame(drawReqRef.current);
     },
     [],
   );
@@ -901,7 +936,7 @@ export function GraphView() {
       const view = viewRef.current;
       view.tx = drag.tx0 + (e.clientX - drag.startX);
       view.ty = drag.ty0 + (e.clientY - drag.startY);
-      draw();
+      scheduleDraw();
     } else {
       const world = toWorld(e.clientX, e.clientY);
       const node = renderRef.current.nodes[drag.index];
@@ -950,7 +985,7 @@ export function GraphView() {
     view.scale = next;
     view.tx = px - wx * next;
     view.ty = py - wy * next;
-    draw();
+    scheduleDraw();
   }
 
   // Pull `id` and its direct neighbors into the explore set (seeding it on the

@@ -59,6 +59,13 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Tauri 2.0](reference/tauri-2.md) - Key facts about the framework and its plugins.
 * [Glossary](reference/glossary.md) - Terms used across this bundle.
 
+# Proposals
+
+* [Deep Knowledge Diving](proposals/deep-knowledge-diving.md) - Where the viewer is thin for going deep, and the big-data patterns worth borrowing.
+* [Bundle Overview & Health](proposals/bundle-overview.md) - A landing view that orients you in a bundle before you dive.
+* [Faceted Query Bar](proposals/faceted-search.md) - Structured field queries and facet rails that filter the workspace live.
+* [Lineage & Traversal](proposals/lineage-and-traversal.md) - Expand-on-click, upstream/downstream lineage, path-between, and unlinked mentions.
+
 # Subdirectories
 
 * [Product](product/) - Vision, audience, principles, and scope.
@@ -66,3 +73,4 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [UX](ux/) - Flows, layout, shortcuts, theming, accessibility, settings.
 * [Architecture](architecture/) - How it is built.
 * [Reference](reference/) - External specs, the OKF ecosystem, and a glossary.
+* [Proposals](proposals/) - Design directions not yet built.

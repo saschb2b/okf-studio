@@ -31,7 +31,7 @@ fn scan_detects_docs_as_confident_root() {
 
     assert_eq!(docs_root.confidence, Confidence::Confident);
     assert_eq!(docs_root.okf_version.as_deref(), Some("0.1"));
-    assert_eq!(docs_root.concept_count, 37, "docs/ has 37 concepts");
+    assert_eq!(docs_root.concept_count, 41, "docs/ has 41 concepts");
     assert!(
         !docs_root.types.is_empty(),
         "distinct concept types should be collected"
@@ -61,7 +61,7 @@ fn read_bundle_docs_full_shape() {
     let docs = docs_dir();
     let bundle = read_bundle(&docs);
 
-    assert_eq!(bundle.concepts.len(), 37, "37 concepts parsed");
+    assert_eq!(bundle.concepts.len(), 41, "41 concepts parsed");
     assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
     assert_eq!(bundle.confidence, Confidence::Confident);
 

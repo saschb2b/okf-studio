@@ -1,0 +1,39 @@
+---
+type: Proposal
+title: Bundle Overview & Health
+description: A landing view that orients you in a bundle before you dive — type distribution, hubs, orphans, broken links, and staleness — all from data already computed.
+tags: [proposal, ux, orientation, overview]
+timestamp: 2026-07-04T19:00:00Z
+---
+
+# Problem
+
+Opening a bundle drops you at the root concept next to a force-directed [graph](../features/graph-view.md). For a bundle you don't know, that answers neither "what's in here?" nor "where do I start?". Data catalogs never open on a raw graph — they open on a landing page that summarizes the asset. See [Deep Knowledge Diving](deep-knowledge-diving.md), stage 1.
+
+# What it is
+
+An **Overview** — a first-class view (alongside graph and reader) that summarizes the open bundle and links straight into it. It is the default landing for a freshly opened bundle; the graph/reader are one click away and remain the home once you've oriented.
+
+Sections, each a compact card, every item a link that selects the concept (or applies a filter):
+
+- **At a glance** — concept count, distinct [types](../ux/theming.md), tag count, `okf_version`/confidence, last-updated (newest concept `timestamp`).
+- **Composition** — type distribution as a small bar/treemap, each type a filter into the [faceted view](faceted-search.md).
+- **Hubs** — the most-connected concepts (highest `degree`), the natural entry points.
+- **Loose ends** — **orphans** (no links in or out) and near-orphans, the concepts the graph buries.
+- **Health** — [validation](../features/validation.md) issue counts, **broken links**, and **staleness** (oldest `timestamp`s), so a bundle's rough edges are visible before you trust it.
+- **Recently changed** *(optional)* — newest concepts by `timestamp`; pairs later with a [live-reload](../features/live-reload.md) change feed.
+
+# Why it's cheap
+
+Everything here already exists on the [data model](../architecture/data-model.md): `degree`, `type`, `tags`, `timestamp`, `links`/`citedBy`, `brokenLinks`, and bundle `issues`. The view is a read-side aggregation over the parsed bundle — no new backend, no new IPC. It is pure derived state, computed in the frontend.
+
+# UX shape
+
+- A third layout target next to the graph and reader (or a panel the sidebar's Index lens can toggle to). Reachable from the [command palette](../features/command-palette.md) and a shortcut.
+- Report-never-refuse: an empty or one-concept bundle still renders, saying so plainly.
+- Keyboard-first: every card's items are focusable links; numbers/arrows move through them.
+- Respects [reduce-motion](../ux/accessibility.md); the distribution chart follows the type [palette](../ux/theming.md) (see the [dataviz](../ux/theming.md) discipline for color).
+
+# Non-goals
+
+Not analytics-for-analytics' sake: every number is a **door** (a link or filter), not a vanity metric. No time-series, no external data. It summarizes what the bundle already says about itself.

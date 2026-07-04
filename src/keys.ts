@@ -67,6 +67,9 @@ export function useGlobalKeys() {
       } else if (!typing && !mod && k === "o" && state.bundle) {
         // Toggle the bundle Overview landing (orient before you dive).
         actions.setOverview(!state.overview);
+      } else if (!typing && !mod && k === "t" && state.bundle) {
+        // Toggle the Lineage panel — trace what depends on the active concept.
+        actions.togglePanel("lineage");
       } else if (!typing && !mod && k === "l") {
         actions.togglePanel("log");
       } else if (!typing && !mod && k === "r") {

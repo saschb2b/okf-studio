@@ -24,7 +24,7 @@ import { applyTheme } from "./theme.ts";
 import * as ipc from "./ipc.ts";
 import { isWindowMaximized, onWindowResized } from "./window.ts";
 
-export type PanelName = "sidebar" | "reader" | "log" | "validation";
+export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage";
 
 /**
  * Result of a remote open. `opened` — a single bundle was fetched and opened;
@@ -182,7 +182,7 @@ const initialState: State = {
   linkDensity: "balanced",
   layout: persistedLayout.mode,
   paneSizes: persistedLayout.sizes,
-  panels: { sidebar: true, reader: true, log: false, validation: false },
+  panels: { sidebar: true, reader: true, log: false, validation: false, lineage: false },
   palette: false,
   paletteSeed: null,
   settingsOpen: false,

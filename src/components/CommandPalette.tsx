@@ -171,6 +171,13 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:lineage",
+      label: "Trace lineage",
+      hint: "Action",
+      run: () => actions.togglePanel("lineage", true),
+    },
+    {
+      kind: "action",
       id: "act:log",
       label: "Toggle log",
       hint: "Action",

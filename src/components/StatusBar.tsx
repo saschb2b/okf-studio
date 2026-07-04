@@ -55,6 +55,21 @@ export function StatusBar() {
         {bundle && (
           <button
             type="button"
+            className={`status-item status-toggle${state.panels.lineage ? " is-active" : ""}`}
+            aria-label="Toggle lineage panel"
+            aria-pressed={state.panels.lineage}
+            title="Trace lineage (T)"
+            onClick={() => actions.togglePanel("lineage")}
+          >
+            <span className="status-icon" aria-hidden="true">
+              ⋔
+            </span>
+            <span>Lineage</span>
+          </button>
+        )}
+        {bundle && (
+          <button
+            type="button"
             className={`status-item status-toggle${state.panels.log ? " is-active" : ""}`}
             aria-label="Toggle log panel"
             aria-pressed={state.panels.log}

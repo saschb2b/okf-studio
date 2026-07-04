@@ -10,6 +10,7 @@ import { GraphView } from "./components/GraphView.tsx";
 import { Reader } from "./components/Reader.tsx";
 import { CommandPalette } from "./components/CommandPalette.tsx";
 import { ValidationPanel } from "./components/ValidationPanel.tsx";
+import { LineagePanel } from "./components/LineagePanel.tsx";
 import { LogView } from "./components/LogView.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { EmptyState } from "./components/EmptyState.tsx";
@@ -38,6 +39,7 @@ export function App() {
         <>
           <LogView />
           <ValidationPanel />
+          <LineagePanel />
           <CommandPalette />
         </>
       )}

@@ -47,6 +47,7 @@ const GROUPS: Group[] = [
     title: "Layout",
     items: [
       { combo: ["O"], label: "Bundle overview" },
+      { combo: ["T"], label: "Trace lineage" },
       { combo: [mod, "1"], label: "Graph only" },
       { combo: [mod, "2"], label: "Split" },
       { combo: [mod, "3"], label: "Reader only" },

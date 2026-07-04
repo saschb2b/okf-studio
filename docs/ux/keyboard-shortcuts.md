@@ -27,6 +27,7 @@ timestamp: 2026-07-04T20:00:00Z
 | `Ctrl/Cmd + +` `-` `0` | Reader text size: bigger / smaller / reset (content zoom, not page zoom) |
 | `[` `]` | Collapse / expand the sidebar and reader |
 | `O` | Toggle the [bundle overview](../proposals/bundle-overview.md) landing |
+| `T` | Toggle the [lineage](../proposals/lineage-and-traversal.md) panel — trace the active concept |
 | `L` | Toggle the `log.md` view |
 | `R` | Re-scan the folder |
 | `Ctrl/Cmd + ,` | [Settings](settings.md) (theme, reader text size, scan) |

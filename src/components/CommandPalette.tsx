@@ -157,6 +157,13 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:overview",
+      label: "Bundle overview",
+      hint: "Action",
+      run: () => actions.setOverview(true),
+    },
+    {
+      kind: "action",
       id: "act:rescan",
       label: "Re-scan folder",
       hint: "Action",

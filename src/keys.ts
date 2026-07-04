@@ -64,6 +64,9 @@ export function useGlobalKeys() {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {
         actions.forward();
+      } else if (!typing && !mod && k === "o" && state.bundle) {
+        // Toggle the bundle Overview landing (orient before you dive).
+        actions.setOverview(!state.overview);
       } else if (!typing && !mod && k === "l") {
         actions.togglePanel("log");
       } else if (!typing && !mod && k === "r") {

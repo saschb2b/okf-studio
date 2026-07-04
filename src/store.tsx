@@ -122,6 +122,8 @@ export interface State {
   bundles: BundleRoot[];
   recents: RecentBundle[];
   switcherOpen: boolean;
+  /** The bundle Overview/health landing view takes over the content area. */
+  overview: boolean;
   remoteOpen: boolean;
   /** One-shot URL to prefill (and auto-fetch) the next time the remote dialog
    *  opens — the first-run example cards hand their URL off this way. */
@@ -160,6 +162,7 @@ const initialState: State = {
   bundles: [],
   recents: [],
   switcherOpen: false,
+  overview: false,
   remoteOpen: false,
   remoteSeed: null,
   maximized: false,
@@ -193,6 +196,8 @@ type Msg =
   | { t: "openFolder"; folder: string; bundles: BundleRoot[] }
   | { t: "recents"; v: RecentBundle[] }
   | { t: "switcher"; v: boolean }
+  | { t: "overview"; v: boolean }
+  | { t: "showOnlyType"; v: string }
   | { t: "remoteOpen"; v: boolean; seed?: string }
   | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
@@ -238,6 +243,21 @@ function reducer(s: State, m: Msg): State {
       return { ...s, recents: m.v };
     case "switcher":
       return { ...s, switcherOpen: m.v };
+    case "overview":
+      return { ...s, overview: m.v };
+    case "showOnlyType": {
+      // Show only concepts of type `v` — hide every other type present. Leaves
+      // the overview and reveals the Filter lens so the applied filter is visible.
+      const all = [
+        ...new Set((s.bundle?.concepts ?? []).map((c) => c.type).filter(Boolean)),
+      ];
+      return {
+        ...s,
+        hiddenTypes: all.filter((t) => t !== m.v),
+        overview: false,
+        lens: "filter",
+      };
+    }
     case "remoteOpen":
       return { ...s, remoteOpen: m.v, remoteSeed: m.v ? (m.seed ?? null) : null };
     case "maximized":
@@ -264,13 +284,15 @@ function reducer(s: State, m: Msg): State {
       };
     }
     case "select":
-      if (m.id === s.activeConceptId) return s;
+      // Selecting a concept always leaves the Overview landing (you're diving in).
+      if (m.id === s.activeConceptId) return s.overview ? { ...s, overview: false } : s;
       return {
         ...s,
         activeConceptId: m.id,
         back: s.activeConceptId ? [...s.back, s.activeConceptId] : s.back,
         fwd: [],
         palette: false,
+        overview: false,
       };
     case "back": {
       if (!s.back.length) return s;
@@ -378,6 +400,8 @@ export interface Actions {
   pinBundle(root: string): Promise<void>;
   forgetBundle(root: string): Promise<void>;
   setSwitcher(open: boolean): void;
+  setOverview(open: boolean): void;
+  showOnlyType(type: string): void;
   setRemoteOpen(open: boolean, seed?: string): void;
   rescan(): Promise<void>;
   selectConcept(id: string | null): void;
@@ -539,6 +563,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setSwitcher(open) {
       dispatch({ t: "switcher", v: open });
+    },
+    setOverview(open) {
+      dispatch({ t: "overview", v: open });
+    },
+    showOnlyType(type) {
+      dispatch({ t: "showOnlyType", v: type });
     },
     setRemoteOpen(open, seed) {
       dispatch({ t: "remoteOpen", v: open, seed });

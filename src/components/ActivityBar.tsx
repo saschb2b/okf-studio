@@ -86,6 +86,14 @@ export function ActivityBar() {
           {state.bundle && (
             <>
               <ActivityButton
+                label={`Overview   O`}
+                ariaLabel="Bundle overview"
+                active={state.overview}
+                onClick={() => actions.setOverview(!state.overview)}
+              >
+                ▦
+              </ActivityButton>
+              <ActivityButton
                 label="Navigate"
                 active={sidebarOpen && state.lens === "navigate"}
                 onClick={() => selectLens("navigate")}

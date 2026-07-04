@@ -14,6 +14,7 @@ import { LogView } from "./components/LogView.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { EmptyState } from "./components/EmptyState.tsx";
 import { OpenRemoteDialog } from "./components/OpenRemoteDialog.tsx";
+import { OverviewView } from "./components/OverviewView.tsx";
 import { ResizeHandles } from "./components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "./components/ShortcutsHelp.tsx";
 
@@ -63,6 +64,37 @@ function Workspace() {
   const ref = useRef<HTMLDivElement>(null);
 
   const showSidebar = state.panels.sidebar;
+
+  // Overview takes over the content area: sidebar (if open) + the overview,
+  // which scrolls its own content. Selecting any concept dismisses it.
+  if (state.overview) {
+    const sidebarTrack =
+      showSidebar && state.paneSizes.sidebar !== null
+        ? `${state.paneSizes.sidebar}px`
+        : showSidebar
+          ? "var(--sidebar-default)"
+          : null;
+    return (
+      <div
+        ref={ref}
+        className="workspace"
+        data-layout="overview"
+        style={{
+          gridTemplateColumns: [sidebarTrack, "minmax(0, 1fr)"]
+            .filter(Boolean)
+            .join(" "),
+        }}
+      >
+        {showSidebar && (
+          <aside className="pane sidebar">
+            <Sidebar />
+          </aside>
+        )}
+        <OverviewView />
+      </div>
+    );
+  }
+
   // reader pane visible: in split (unless `]` collapsed it) and reader mode.
   const showReader =
     (state.layout === "split" && state.panels.reader) ||

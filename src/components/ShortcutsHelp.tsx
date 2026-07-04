@@ -26,6 +26,7 @@ const GROUPS: Group[] = [
     title: "General",
     items: [
       { combo: [mod, "O"], label: "Open folder" },
+      { combo: [mod, "⇧", "O"], label: "Open from URL" },
       { combo: [mod, "P"], label: "Bundle switcher" },
       { combo: [mod, "K"], alt: ["/"], label: "Search & commands" },
       { combo: [mod, ","], label: "Settings" },
@@ -45,6 +46,7 @@ const GROUPS: Group[] = [
   {
     title: "Layout",
     items: [
+      { combo: ["O"], label: "Bundle overview" },
       { combo: [mod, "1"], label: "Graph only" },
       { combo: [mod, "2"], label: "Split" },
       { combo: [mod, "3"], label: "Reader only" },

@@ -240,13 +240,14 @@ export function BundleSwitcher() {
                 </button>
                 <button
                   type="button"
-                  className="switcher-foot-btn is-disabled"
-                  disabled
-                  title="Remote bundles are coming in a later release"
+                  className="switcher-foot-btn"
+                  onClick={() => {
+                    actions.setRemoteOpen(true);
+                    close();
+                  }}
                 >
                   <span aria-hidden="true">🌐</span>
-                  <span className="switcher-foot-label">Open remote folder…</span>
-                  <span className="switcher-soon">soon</span>
+                  <span className="switcher-foot-label">Open from URL…</span>
                 </button>
               </div>
             </div>
@@ -331,13 +332,14 @@ function RecentRow({
   actions: Actions;
   close: () => void;
 }) {
+  const remote = entry.remote;
   return (
     <div className="switcher-recent">
       <button
         type="button"
         data-row
         className="switcher-row"
-        title={`${entry.name} — ${entry.root}`}
+        title={remote ? `${entry.name} — ${remote.input}` : `${entry.name} — ${entry.root}`}
         onClick={() => {
           void actions.openRecentBundle(entry);
           close();
@@ -345,12 +347,35 @@ function RecentRow({
       >
         <span className="switcher-check" aria-hidden="true" />
         <span className="switcher-row-main">
-          <span className="switcher-row-name">{entry.name}</span>
-          <span className="switcher-row-sub">{baseName(entry.folder)}</span>
+          <span className="switcher-row-name">
+            {remote && (
+              <span className="switcher-remote-badge" aria-label="Remote bundle" title="Fetched from a URL">
+                🌐
+              </span>
+            )}
+            {entry.name}
+          </span>
+          <span className="switcher-row-sub">
+            {remote ? remote.label : baseName(entry.folder)}
+          </span>
         </span>
         <RowMeta count={entry.conceptCount} detail={relTime(entry.ts)} />
       </button>
       <span className="switcher-recent-actions">
+        {remote && (
+          <button
+            type="button"
+            className="switcher-mini"
+            aria-label="Refresh from source"
+            title="Re-fetch the latest from its URL"
+            onClick={() => {
+              void actions.refreshRemote(entry);
+              close();
+            }}
+          >
+            ↻
+          </button>
+        )}
         <button
           type="button"
           className="switcher-mini"

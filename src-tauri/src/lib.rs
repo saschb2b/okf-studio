@@ -1,6 +1,7 @@
 //! Tauri layer: thin command/event wrappers over `okf-core`. The frontend never
 //! touches the filesystem; it calls these commands and listens for events.
 
+mod remote;
 mod watch;
 
 use okf_core::{Bundle, BundleRoot};
@@ -16,6 +17,21 @@ fn scan_bundles(folder: String, max_depth: usize) -> Vec<BundleRoot> {
 #[tauri::command]
 fn read_bundle(root: String) -> Bundle {
     okf_core::read_bundle(Path::new(&root))
+}
+
+/// Fetch a remote bundle (a GitHub repo tarball or a direct archive URL) into a
+/// local cache directory and return that directory's path, which the frontend
+/// then opens like any picked folder. The only non-updater network path, and it
+/// runs only on an explicit user action. Blocking I/O runs off the UI thread.
+/// See `remote.rs` and docs/architecture/ipc-and-security.md.
+#[tauri::command]
+async fn fetch_remote_bundle(
+    app: AppHandle,
+    source: remote::RemoteSource,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || remote::fetch(&app, source))
+        .await
+        .map_err(|e| format!("Fetch task failed: {e}"))?
 }
 
 /// Read one companion asset's text (an ODSF `*.example.html` or a `styles/*.css`
@@ -97,6 +113,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             scan_bundles,
             read_bundle,
+            fetch_remote_bundle,
             read_asset,
             read_asset_data_url,
             start_watch,

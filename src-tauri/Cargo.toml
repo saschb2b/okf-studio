@@ -27,6 +27,14 @@ serde_json = { workspace = true }
 okf-core = { path = "../crates/okf-core" }
 notify = "6"
 
+# Remote-bundle fetch (Open from URL). Lightweight and blocking — ureq brings
+# rustls TLS with no async runtime; flate2 + tar handle GitHub tarballs, zip
+# handles .zip archives. No git dependency by design (see src/remote.rs).
+ureq = "2"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
 # Opt-in update check against the latest GitHub release (see
 # docs/architecture/build-and-release.md). process is needed to relaunch after
 # an update. Desktop only.

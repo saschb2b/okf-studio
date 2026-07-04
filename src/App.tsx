@@ -13,6 +13,7 @@ import { ValidationPanel } from "./components/ValidationPanel.tsx";
 import { LogView } from "./components/LogView.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { EmptyState } from "./components/EmptyState.tsx";
+import { OpenRemoteDialog } from "./components/OpenRemoteDialog.tsx";
 import { ResizeHandles } from "./components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "./components/ShortcutsHelp.tsx";
 
@@ -39,9 +40,11 @@ export function App() {
           <CommandPalette />
         </>
       )}
-      {/* Settings and the shortcuts overlay work without a bundle; always mounted. */}
+      {/* Settings, the shortcuts overlay, and Open-from-URL work without a
+          bundle (Open-from-URL is a first-run entry point); always mounted. */}
       <Settings />
       <ShortcutsHelp />
+      <OpenRemoteDialog />
 
       {/* Borderless-window resize handles (Tauri only). */}
       <ResizeHandles />

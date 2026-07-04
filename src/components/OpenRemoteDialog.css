@@ -1,0 +1,222 @@
+/* Open-from-URL dialog. Uses the shared .ui-dialog / .btn chrome; this file only
+   adds the form, live preview, and examples. Tokens only — no literals. */
+
+/* Match the Settings dialog: an explicit surface padding and one gap rhythm on
+   the column, rather than content flush to the border with ad-hoc margins. */
+.remote-dialog {
+  width: 30rem;
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.remote-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Label + input + its live preview are one tight unit (the preview is feedback
+   about the input), set apart from the example group and footer by the form gap. */
+.remote-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.remote-label {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.remote-input {
+  font: inherit;
+  width: 100%;
+  padding: var(--space-10) var(--space-12); /* matches .remote-example */
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text);
+  line-height: var(--lh-tight);
+}
+.remote-input:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+.remote-input:disabled {
+  opacity: 0.6;
+}
+
+/* Preview area reserves two lines (the tallest state — the idle hint wraps to
+   two) so the dialog height doesn't jump as the content changes between the
+   hint, the source chip, and the fetching state. */
+.remote-preview {
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-sm);
+}
+
+.remote-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  max-width: 100%;
+}
+.remote-kind {
+  flex: none;
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-8);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  line-height: var(--lh-tight);
+}
+.remote-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.remote-hint {
+  line-height: var(--lh-snug);
+}
+.remote-hint code {
+  font-size: 0.9em;
+}
+
+.remote-busy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--text-dim);
+}
+/* Small inline spinner (the empty-state one is 28px; scale it down here). */
+.remote-busy .spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.remote-error {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--error);
+  line-height: var(--lh-snug);
+}
+
+/* "Fetched, but no bundle here" — a calm, informational result, not an error
+   (the download succeeded). A quiet surface, no alarming red. */
+.remote-notbundle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+.remote-notbundle-title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.remote-notbundle-body {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  line-height: var(--lh-snug);
+}
+.remote-notbundle-body code {
+  font-size: 0.9em;
+}
+
+/* Bundle picker — shown when a URL resolves to several bundles. Rows are the
+   open actions (there's no single "Open" target), styled like the examples. */
+.remote-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.remote-picker-title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.remote-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-height: 15rem;
+  overflow-y: auto;
+}
+.remote-picker-row {
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+}
+.remote-picker-row:hover {
+  background: var(--bg-sunken);
+}
+.remote-picker-row:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+.remote-picker-name {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.remote-picker-meta {
+  font-size: var(--fs-xs);
+}
+
+/* Examples — the cold-start "try it" affordance. */
+/* Grouped by its section label and the form gap, not a divider (Settings uses
+   no internal dividers either — spacing carries the structure). */
+.remote-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.remote-examples-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.remote-example {
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-12); /* matches .remote-input */
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+}
+.remote-example:hover {
+  background: var(--bg-sunken);
+}
+.remote-example:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+.remote-example-title {
+  font-size: var(--fs-sm);
+}
+.remote-example-blurb {
+  font-size: var(--fs-xs);
+}
+

@@ -11,13 +11,31 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { Bundle, BundleRoot, Concept, RecentBundle, Settings } from "./types.ts";
+import type {
+  Bundle,
+  BundleRoot,
+  Concept,
+  RecentBundle,
+  RemoteSource,
+  Settings,
+} from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
 import { applyTheme } from "./theme.ts";
 import * as ipc from "./ipc.ts";
 import { isWindowMaximized, onWindowResized } from "./window.ts";
 
 export type PanelName = "sidebar" | "reader" | "log" | "validation";
+
+/**
+ * Result of a remote open. `opened` — a single bundle was fetched and opened;
+ * `empty` — the URL was reachable but held no OKF bundle; `multiple` — the
+ * fetched folder holds several bundles, so the caller (the dialog) offers a
+ * picker rather than guessing which one to open. Fetch failures throw instead.
+ */
+export type RemoteOpenOutcome =
+  | { status: "opened" }
+  | { status: "empty" }
+  | { status: "multiple"; folder: string; bundles: BundleRoot[] };
 
 /** Which sidebar lens is showing: navigation (Index/Bundles) or filtering. */
 export type Lens = "navigate" | "filter";
@@ -104,6 +122,10 @@ export interface State {
   bundles: BundleRoot[];
   recents: RecentBundle[];
   switcherOpen: boolean;
+  remoteOpen: boolean;
+  /** One-shot URL to prefill (and auto-fetch) the next time the remote dialog
+   *  opens — the first-run example cards hand their URL off this way. */
+  remoteSeed: string | null;
   maximized: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
@@ -138,6 +160,8 @@ const initialState: State = {
   bundles: [],
   recents: [],
   switcherOpen: false,
+  remoteOpen: false,
+  remoteSeed: null,
   maximized: false,
   activeRoot: null,
   bundle: null,
@@ -169,6 +193,7 @@ type Msg =
   | { t: "openFolder"; folder: string; bundles: BundleRoot[] }
   | { t: "recents"; v: RecentBundle[] }
   | { t: "switcher"; v: boolean }
+  | { t: "remoteOpen"; v: boolean; seed?: string }
   | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
@@ -213,6 +238,8 @@ function reducer(s: State, m: Msg): State {
       return { ...s, recents: m.v };
     case "switcher":
       return { ...s, switcherOpen: m.v };
+    case "remoteOpen":
+      return { ...s, remoteOpen: m.v, remoteSeed: m.v ? (m.seed ?? null) : null };
     case "maximized":
       return { ...s, maximized: m.v };
     case "setBundle": {
@@ -333,12 +360,25 @@ function reducer(s: State, m: Msg): State {
 
 export interface Actions {
   openFolder(): Promise<void>;
-  openFolderPath(folder: string): Promise<void>;
-  selectBundle(root: string, folder?: string): Promise<void>;
+  openFolderPath(folder: string, remote?: RemoteSource): Promise<void>;
+  /** Fetch a remote bundle and report the outcome (see RemoteOpenOutcome);
+   *  throws on fetch failure. A single bundle opens directly; several defer to
+   *  the caller's picker via `openRemoteChoice`. */
+  openRemote(source: RemoteSource): Promise<RemoteOpenOutcome>;
+  /** Open one specific bundle from a already-fetched remote folder (the picker). */
+  openRemoteChoice(
+    root: string,
+    folder: string,
+    bundles: BundleRoot[],
+    source: RemoteSource,
+  ): Promise<void>;
+  refreshRemote(entry: RecentBundle): Promise<void>;
+  selectBundle(root: string, folder?: string, remote?: RemoteSource): Promise<void>;
   openRecentBundle(entry: RecentBundle): Promise<void>;
   pinBundle(root: string): Promise<void>;
   forgetBundle(root: string): Promise<void>;
   setSwitcher(open: boolean): void;
+  setRemoteOpen(open: boolean, seed?: string): void;
   rescan(): Promise<void>;
   selectConcept(id: string | null): void;
   back(): void;
@@ -380,7 +420,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!folder) return;
       await actions.openFolderPath(folder);
     },
-    async openFolderPath(folder) {
+    async openFolderPath(folder, remote) {
       dispatch({ t: "loading", v: true });
       try {
         const bundles = await ipc.scanBundles(
@@ -388,19 +428,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
           stateRef.current.settings.scanMaxDepth,
         );
         dispatch({ t: "openFolder", folder, bundles });
-        if (bundles.length >= 1) await actions.selectBundle(bundles[0].root, folder);
+        if (bundles.length >= 1)
+          await actions.selectBundle(bundles[0].root, folder, remote);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
       }
     },
-    async selectBundle(root, folder) {
+    async openRemote(source) {
+      // The detector runs in two phases, both surfaced by the dialog, and
+      // NOTHING is switched until we know there's a bundle to open:
+      //   1. Fetch — a network/HTTP failure throws (the dialog shows an error).
+      //   2. Scan the fetched cache. Zero bundles → return "empty": the URL was
+      //      reachable but holds no conformant OKF bundle (e.g. a repo of plain
+      //      files, or the wrong subpath). The dialog shows a distinct, calm
+      //      "not a bundle" explanation rather than silently leaving the
+      //      previous bundle in place.
+      const { folder } = await ipc.fetchRemoteBundle(source);
+      const bundles = await ipc.scanBundles(
+        folder,
+        stateRef.current.settings.scanMaxDepth,
+      );
+      if (bundles.length === 0) return { status: "empty" };
+      // Several bundles at that URL → let the user pick which one, rather than
+      // silently opening the first. The dialog renders the choices.
+      if (bundles.length > 1) return { status: "multiple", folder, bundles };
+      dispatch({ t: "remoteOpen", v: false });
+      dispatch({ t: "openFolder", folder, bundles });
+      // Tagged with its origin so the recent entry remembers where it came from.
+      await actions.selectBundle(bundles[0].root, folder, source);
+      return { status: "opened" };
+    },
+    async openRemoteChoice(root, folder, bundles, source) {
+      dispatch({ t: "remoteOpen", v: false });
+      dispatch({ t: "openFolder", folder, bundles });
+      await actions.selectBundle(root, folder, source);
+    },
+    async refreshRemote(entry) {
+      if (!entry.remote) return;
+      dispatch({ t: "loading", v: true });
+      try {
+        const { folder } = await ipc.fetchRemoteBundle(entry.remote);
+        await actions.openFolderPath(folder, entry.remote);
+      } catch (e) {
+        dispatch({ t: "error", v: String(e) });
+      }
+    },
+    async selectBundle(root, folder, remote) {
       dispatch({ t: "loading", v: true });
       try {
         const bundle = await ipc.readBundle(root);
         dispatch({ t: "setBundle", root, bundle });
         // Record this bundle in recents, keyed by root, with the folder that
-        // granted its read scope so it can be re-granted on reopen.
+        // granted its read scope so it can be re-granted on reopen. `remote`
+        // (when present) remembers the URL it was fetched from.
         const f = folder ?? stateRef.current.folder;
         if (f) {
           const types = [
@@ -412,6 +493,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             name: bundle.name,
             conceptCount: bundle.concepts.length,
             types,
+            remote,
           });
           dispatch({ t: "recents", v: recents });
         }
@@ -424,15 +506,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         // Re-grant the folder scope, then open the specific bundle (falling
         // back to the first if it has moved/disappeared inside the folder).
-        const bundles = await ipc.scanBundles(
-          entry.folder,
+        let folder = entry.folder;
+        let bundles = await ipc.scanBundles(
+          folder,
           stateRef.current.settings.scanMaxDepth,
         );
-        dispatch({ t: "openFolder", folder: entry.folder, bundles });
+        // A remote bundle's folder is a local cache that may have been evicted;
+        // if nothing's there, re-fetch from source (still explicit — the user
+        // clicked this recent) before giving up.
+        if (bundles.length === 0 && entry.remote) {
+          folder = (await ipc.fetchRemoteBundle(entry.remote)).folder;
+          bundles = await ipc.scanBundles(
+            folder,
+            stateRef.current.settings.scanMaxDepth,
+          );
+        }
+        dispatch({ t: "openFolder", folder, bundles });
         const root = bundles.some((b) => b.root === entry.root)
           ? entry.root
           : bundles[0]?.root;
-        if (root) await actions.selectBundle(root, entry.folder);
+        if (root) await actions.selectBundle(root, folder, entry.remote);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
@@ -446,6 +539,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setSwitcher(open) {
       dispatch({ t: "switcher", v: open });
+    },
+    setRemoteOpen(open, seed) {
+      dispatch({ t: "remoteOpen", v: open, seed });
     },
     async rescan() {
       const { folder, activeRoot } = stateRef.current;

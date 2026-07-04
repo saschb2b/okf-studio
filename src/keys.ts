@@ -23,6 +23,11 @@ export function useGlobalKeys() {
         // Cycle split -> reader -> graph (bare backslash, next to [ and ]).
         e.preventDefault();
         actions.cycleLayout();
+      } else if (mod && e.shiftKey && k === "o") {
+        // Open from URL (remote bundle). Shift distinguishes it from the local
+        // folder picker on Ctrl/Cmd+O.
+        e.preventDefault();
+        actions.setRemoteOpen(true);
       } else if (mod && k === "o") {
         e.preventDefault();
         void actions.openFolder();
@@ -54,6 +59,7 @@ export function useGlobalKeys() {
         actions.setSettingsOpen(false);
         actions.setSwitcher(false);
         actions.setHelp(false);
+        actions.setRemoteOpen(false);
       } else if (e.altKey && e.key === "ArrowLeft") {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {

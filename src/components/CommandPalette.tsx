@@ -150,6 +150,13 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:open-url",
+      label: "Open from URL…",
+      hint: "Action",
+      run: () => actions.setRemoteOpen(true),
+    },
+    {
+      kind: "action",
       id: "act:rescan",
       label: "Re-scan folder",
       hint: "Action",

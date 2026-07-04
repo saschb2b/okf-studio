@@ -4,7 +4,12 @@
 //!   - A directory whose `index.md` frontmatter declares `okf_version` is a
 //!     CONFIDENT root.
 //!   - Otherwise a directory that (recursively) contains ≥1 concept with a
-//!     non-empty `type` is a CANDIDATE root.
+//!     non-empty `type` is a CANDIDATE root. A typed concept belongs to the
+//!     nearest enclosing directory that has its own `index.md` (the top of a
+//!     contiguous `index.md` chain) — so a plain *container* folder that merely
+//!     holds several `index.md`-bearing bundle directories yields one candidate
+//!     PER bundle, not a single merged root. Loose concepts with no `index.md`
+//!     anywhere fall back to the scanned folder as one candidate.
 //!   - Overlaps resolve outermost-wins: a confident root absorbs nested
 //!     candidates/indexes; the outermost qualifying root is kept and the list
 //!     is de-duplicated.
@@ -94,32 +99,54 @@ pub fn scan(folder: &Path, max_depth: usize) -> Vec<BundleRoot> {
         .collect()
 }
 
-/// The outermost directories that contain (recursively) a typed concept.
+/// The candidate bundle roots implied by the typed-concept directories: each
+/// concept maps to its enclosing bundle root (see `bundle_root_for`), and the
+/// distinct roots are returned. This splits a container of several
+/// `index.md`-bearing bundles into one candidate each, instead of merging them.
 fn candidate_roots(folder: &Path, typed_concept_dirs: &[PathBuf]) -> Vec<PathBuf> {
-    // Every ancestor (up to the scanned folder) of a typed-concept directory is
-    // a potential candidate root; we keep only the outermost per branch.
-    let mut all: Vec<PathBuf> = Vec::new();
-    for dir in typed_concept_dirs {
-        let mut cur = dir.as_path();
-        loop {
-            all.push(cur.to_path_buf());
-            if cur == folder {
-                break;
-            }
-            match cur.parent() {
-                Some(p) if p.starts_with(folder) || p == folder => cur = p,
-                _ => break,
+    let mut roots: Vec<PathBuf> = typed_concept_dirs
+        .iter()
+        .map(|dir| bundle_root_for(dir, folder))
+        .collect();
+    roots.sort();
+    roots.dedup();
+    roots
+}
+
+/// The bundle root that owns a typed concept living in `concept_dir`: the
+/// nearest ancestor (inclusive, within `folder`) that has its own `index.md`
+/// and whose parent does NOT — i.e. the top of a contiguous `index.md` chain, a
+/// bundle boundary. When no ancestor carries an `index.md`, the concept is a
+/// loose file and its root is the scanned `folder` itself.
+fn bundle_root_for(concept_dir: &Path, folder: &Path) -> PathBuf {
+    let mut cur = concept_dir;
+    loop {
+        if has_index_md(cur) {
+            // A boundary is a directory whose parent (within the scanned folder)
+            // has no index.md — nothing above it in the same chain to absorb it.
+            let parent_has_index = cur != folder
+                && cur
+                    .parent()
+                    .filter(|p| p.starts_with(folder))
+                    .is_some_and(has_index_md);
+            if !parent_has_index {
+                return cur.to_path_buf();
             }
         }
+        if cur == folder {
+            break;
+        }
+        match cur.parent() {
+            Some(p) if p.starts_with(folder) => cur = p,
+            _ => break,
+        }
     }
-    all.sort();
-    all.dedup();
+    folder.to_path_buf()
+}
 
-    // Keep only the outermost: drop any path that has an ancestor also in `all`.
-    let set = all.clone();
-    all.into_iter()
-        .filter(|p| !set.iter().any(|a| a != p && is_ancestor_or_self(a, p)))
-        .collect()
+/// True if `dir` has its own `index.md` file (a bundle-root marker).
+fn has_index_md(dir: &Path) -> bool {
+    dir.join("index.md").is_file()
 }
 
 /// True if `index.md` in `dir` has frontmatter declaring a non-empty `okf_version`.

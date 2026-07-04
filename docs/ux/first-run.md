@@ -3,7 +3,7 @@ type: UX Flow
 title: First Run
 description: The flow from launching the app with nothing open to browsing a detected bundle.
 tags: [ux, flow, onboarding]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-07-04T18:00:00Z
 ---
 
 # Goal
@@ -12,7 +12,7 @@ A new user gets from "app just opened" to "reading a graph" in two clicks, with 
 
 # Flow
 
-1. **Launch → empty state.** A centered prompt explains the app in one line and offers a primary **Open Folder…** button (native OS dialog). The empty state also briefly says what an OKF bundle is, linking the [spec summary](../reference/okf-spec-summary.md). See [Empty & Error States](empty-and-error-states.md) for this and the other no-content states.
+1. **Launch → empty state.** A centered prompt explains the app in one line and offers a primary **Open Folder…** button (native OS dialog) beside a secondary **Open from URL…** (`Ctrl/Cmd + Shift + O`) for a [remote bundle](../features/bundle-switcher.md). Below, a one-click **example** card (this docs bundle) lets a brand-new user with no local bundle see the viewer work immediately — the remote-open path doubles as onboarding. The empty state also briefly says what an OKF bundle is, linking the [spec summary](../reference/okf-spec-summary.md). See [Empty & Error States](empty-and-error-states.md) for this and the other no-content states.
 2. **Pick a folder.** The OS folder picker opens (via the Tauri dialog plugin — see [IPC & Security](../architecture/ipc-and-security.md)). The chosen path becomes the read-only [scope](../architecture/ipc-and-security.md).
 3. **Scanning.** A brief progress indicator while the [Rust core](../architecture/bundle-detection.md) walks the folder. Large folders stay responsive; scanning is cancelable.
 4. **Result.**

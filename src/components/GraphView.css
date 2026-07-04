@@ -349,3 +349,14 @@
   background: var(--accent);
   opacity: 0.9;
 }
+
+/* Quiet, non-interactive affordance teaching the double-click gesture. Sits
+   where the chips do but stays out of the way (no pill, dim, fades on hover). */
+.graph-chip-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  padding: var(--space-6) 0;
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}

@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-07-02T03:10:00Z
+timestamp: 2026-07-05T12:00:00Z
 ---
 
 # What it does
@@ -19,7 +19,8 @@ The center of the workspace renders the active bundle as an interactive **force-
 
 # Interaction
 
-- Pan (drag background), zoom (wheel), drag nodes to reposition, **Fit** to reframe — all via [keyboard shortcuts](../ux/keyboard-shortcuts.md) too (`+`/`−` zoom, `F` fits). Switching the focus/isolate set reframes the new subgraph **immediately** from its cached positions (and again once the layout settles), so it never sits half out of view while the simulation runs.
+- Pan (drag background), zoom (wheel), drag nodes to reposition, **click** to open a concept, **Fit** to reframe — all via [keyboard shortcuts](../ux/keyboard-shortcuts.md) too (`+`/`−` zoom, `F` fits). Switching the focus/isolate set reframes the new subgraph **immediately** from its cached positions (and again once the layout settles), so it never sits half out of view while the simulation runs.
+- **Double-click a node to explore** — expand-on-click ([Neo4j Bloom's](../proposals/lineage-and-traversal.md) core interaction): the graph restricts to that concept and its neighbors, and each further double-click **pulls in another node's neighbors**, so you build a neighborhood outward a hop at a time instead of starting from the whole hairball. Cached positions mean the newly-revealed nodes animate in from where they were rather than re-spawning. An `Exploring N · exit` chip shows the set size and returns to the full graph; **Overview**/**Focus** also exit it. This is the incremental, additive complement to Focus mode's fixed-depth ego view.
 - **Fit and the zoom buttons glide** rather than teleport: a short ease-out where the point under the viewport center travels linearly and scale interpolates geometrically, so the step reads as movement through the graph. Direct input — wheel, pan — interrupts the glide and takes over; **reduce motion** ([settings](../ux/settings.md)) makes every transition instant.
 - Click a node to open it in the [Concept Reader](concept-reader.md) and recenter on it.
 - **Selecting** a node keeps the whole graph bright but rings it and accents its links, so the open concept's connections stand out without hiding the rest. **Hovering** a node dims everything except it and its neighbors, to trace one neighborhood at a time. Either way structure stays readable in a dense graph.

@@ -15,7 +15,11 @@
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from "react";
 import { Popover } from "@base-ui/react/popover";
 import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
@@ -175,6 +179,11 @@ export function GraphView() {
   // (plus their neighbors), overriding focus/overview. Driven by the defect
   // count chip. Read-only and tolerant — clearing it returns to normal.
   const [isolate, setIsolate] = useState<{ label: string; ids: string[] } | null>(null);
+  // Expand-on-click: an explicit, incrementally-grown set the graph restricts to.
+  // Seeded/grown by double-clicking a node (pulls in that node + its neighbors),
+  // so the user builds up a neighborhood a hop at a time — Neo4j Bloom's core
+  // interaction — instead of loading the whole graph. Null means not exploring.
+  const [explore, setExplore] = useState<Set<string> | null>(null);
   // Which renderer draws the graph: the bespoke canvas (default, full features)
   // or the GPU cosmos.gl renderer (scales to very large graphs). See
   // docs/features/graph-view.md.
@@ -547,11 +556,13 @@ export function GraphView() {
   // selection; otherwise null means "show the whole filtered graph". An active
   // isolate set wins over both. Computed as a stable string key so the rebuild
   // effect only fires when the *set* actually changes.
-  const restrictIds: Set<string> | null = isolate
-    ? expandWithNeighbors(state.bundle, isolate.ids)
-    : state.graphMode === "focus" && state.activeConceptId
-      ? egoIds(state.bundle, state.activeConceptId, state.focusDepth)
-      : null;
+  const restrictIds: Set<string> | null =
+    explore ??
+    (isolate
+      ? expandWithNeighbors(state.bundle, isolate.ids)
+      : state.graphMode === "focus" && state.activeConceptId
+        ? egoIds(state.bundle, state.activeConceptId, state.focusDepth)
+        : null);
   // A key that changes only when the restricted set's membership changes, so the
   // heavy rebuild + re-fit is skipped on pure selection moves in overview mode.
   const restrictKey = restrictIds ? [...restrictIds].sort().join(",") : "";
@@ -722,8 +733,10 @@ export function GraphView() {
   // Drop a stale isolate set when the bundle changes (its ids belong to the old
   // bundle). Keeps the view from going blank on bundle switch.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    /* eslint-disable react-hooks/set-state-in-effect */
     setIsolate(null);
+    setExplore(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [state.activeRoot]);
 
   // Live-tune forces from the controls panel: copy into the sim params ref and
@@ -940,6 +953,29 @@ export function GraphView() {
     draw();
   }
 
+  // Pull `id` and its direct neighbors into the explore set (seeding it on the
+  // first expand). The restrict machinery keeps cached positions, so the newly
+  // revealed neighbors animate in from where they were rather than re-spawning.
+  function expandNode(id: string) {
+    setIsolate(null); // explore takes over any active isolate
+    setExplore((cur) => {
+      const grown = expandWithNeighbors(state.bundle, [id]);
+      if (!cur) return grown;
+      const next = new Set(cur);
+      for (const x of grown) next.add(x);
+      return next;
+    });
+  }
+
+  function onDoubleClick(e: ReactMouseEvent<HTMLCanvasElement>) {
+    const world = toWorld(e.clientX, e.clientY);
+    const idx = hitTest(world.x, world.y);
+    if (idx == null) return;
+    const node = renderRef.current.nodes[idx];
+    actions.selectConcept(node.id);
+    expandNode(node.id);
+  }
+
   // ---- Overlay controls ----------------------------------------------------
 
   function cancelViewTween() {
@@ -1040,7 +1076,7 @@ export function GraphView() {
   // Focus mode is on but there is no selection (or an isolate overrides it): the
   // graph falls back to Overview, so tell the newcomer how to engage focus.
   const focusFallback =
-    state.graphMode === "focus" && state.activeConceptId == null && !isolate;
+    state.graphMode === "focus" && state.activeConceptId == null && !isolate && !explore;
 
   function isolateSet(label: string, ids: string[]) {
     // Toggle: clicking the active chip clears the isolate.
@@ -1097,6 +1133,7 @@ export function GraphView() {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onDoubleClick={onDoubleClick}
           onWheel={onWheel}
         />
       )}
@@ -1237,8 +1274,11 @@ export function GraphView() {
               type="button"
               className="graph-seg-btn"
               aria-label="Overview: show the whole graph"
-              aria-pressed={state.graphMode === "overview"}
-              onClick={() => actions.setGraphMode("overview")}
+              aria-pressed={state.graphMode === "overview" && !explore}
+              onClick={() => {
+                setExplore(null);
+                actions.setGraphMode("overview");
+              }}
             >
               Overview
             </button>
@@ -1246,8 +1286,11 @@ export function GraphView() {
               type="button"
               className="graph-seg-btn"
               aria-label="Focus: show the selected concept's neighborhood"
-              aria-pressed={state.graphMode === "focus"}
-              onClick={() => actions.setGraphMode("focus")}
+              aria-pressed={state.graphMode === "focus" && !explore}
+              onClick={() => {
+                setExplore(null);
+                actions.setGraphMode("focus");
+              }}
             >
               Focus
             </button>
@@ -1272,9 +1315,19 @@ export function GraphView() {
           {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
         </div>
       </div>
-      {renderer === "canvas" && (hasDefects || isolate) && (
+      {renderer === "canvas" && (
         <div className="graph-chips">
-          {isolate ? (
+          {explore ? (
+            <button
+              type="button"
+              className="graph-chip graph-chip-active"
+              aria-label={`Exploring ${explore.size} concepts. Click to exit and show the full graph.`}
+              title="Double-click any node to pull in its neighbors"
+              onClick={() => setExplore(null)}
+            >
+              Exploring {explore.size} &middot; exit &times;
+            </button>
+          ) : isolate ? (
             <button
               type="button"
               className="graph-chip graph-chip-active"
@@ -1283,7 +1336,7 @@ export function GraphView() {
             >
               {isolate.label} &times;
             </button>
-          ) : (
+          ) : hasDefects ? (
             <button
               type="button"
               className="graph-chip graph-chip-warn"
@@ -1297,6 +1350,10 @@ export function GraphView() {
             >
               {orphans.length} orphan{orphans.length === 1 ? "" : "s"} &middot; {brokenConceptIds.length} broken
             </button>
+          ) : (
+            <span className="graph-chip-hint muted" aria-hidden="true">
+              Double-click a node to explore
+            </span>
           )}
         </div>
       )}

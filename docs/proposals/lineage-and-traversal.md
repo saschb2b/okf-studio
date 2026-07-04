@@ -3,7 +3,7 @@ type: Proposal
 title: Lineage & Traversal
 description: Turn the graph from a picture into a tool — expand neighbors incrementally, trace upstream/downstream lineage, highlight the path between two concepts, and surface unlinked mentions.
 tags: [proposal, graph, traversal, lineage]
-timestamp: 2026-07-04T19:00:00Z
+timestamp: 2026-07-05T12:00:00Z
 ---
 
 # Problem
@@ -12,8 +12,8 @@ Following relationships is shallow: [focus mode](../features/graph-view.md) show
 
 # The pieces (in order of value)
 
-## Expand-on-click
-Start from one concept and pull in its neighbors a hop at a time, building the view you want instead of loading the whole graph. Neo4j Bloom's core interaction. Cheap given the existing focus machinery; the difference is *incremental and additive* rather than a fixed-depth ego view.
+## Expand-on-click *(shipped)*
+Start from one concept and pull in its neighbors a hop at a time, building the view you want instead of loading the whole graph. Neo4j Bloom's core interaction — **double-click a node** in the [graph](../features/graph-view.md) to restrict to it and its neighbors, then double-click any node to grow the set outward. It reuses the graph's existing restrict-set machinery (the same cached-position path as focus/isolate), so revealed nodes animate in rather than re-spawn; an `Exploring N · exit` chip returns to the full graph. The difference from Focus mode is that it is *incremental and additive* rather than a fixed-depth ego view.
 
 ## Upstream / downstream lineage
 Pick a concept and get two collapsible trees — what it links to (upstream) and what cites it (downstream), transitively. For a `datasets → tables → metrics → joins` catalog this is the feature. Both directions already exist as edges (`links` and `citedBy` on the [data model](../architecture/data-model.md)); this is a bounded traversal with cycle-guarding, rendered as a tree and as a graph highlight.

@@ -144,6 +144,37 @@ describe("forceSim", () => {
     expect(nodes[3].x - nodes[2].x).toBeGreaterThanOrEqual(gapBefore * 0.99);
   });
 
+  it("pushes overlapping communities apart (cluster separation)", () => {
+    // Two 4-node communities whose centroids start close together (interleaved).
+    // Only the cluster force is active; separation should grow the gap between
+    // the two centroids while gravity keeps each community tight.
+    const mk = (i: number, x: number, y: number, cluster: number): SimNode => ({
+      ...makeNode(i, x, y),
+      cluster,
+    });
+    const nodes = [
+      mk(0, -30, -20, 0), mk(1, -20, 20, 0), mk(2, -40, 0, 0), mk(3, -25, 5, 0),
+      mk(4, 30, -20, 1), mk(5, 20, 20, 1), mk(6, 40, 0, 1), mk(7, 25, 5, 1),
+    ];
+    const params = {
+      ...DEFAULT_PARAMS,
+      repulsion: 0,
+      springK: 0,
+      centering: 0,
+      collision: 0,
+      clusterStrength: 0.2,
+    };
+    const centroidX = (ids: number[]) =>
+      ids.reduce((s, i) => s + nodes[i].x, 0) / ids.length;
+    const gapBefore = centroidX([4, 5, 6, 7]) - centroidX([0, 1, 2, 3]);
+    for (let s = 0; s < 40; s++) step(nodes, [], params, 1);
+    const gapAfter = centroidX([4, 5, 6, 7]) - centroidX([0, 1, 2, 3]);
+    expect(gapAfter).toBeGreaterThan(gapBefore * 1.5);
+    for (const node of nodes) {
+      expect(Number.isFinite(node.x)).toBe(true);
+    }
+  });
+
   it("scales to many nodes without blowing up (Barnes-Hut smoke test)", () => {
     const N = 1500;
     const nodes: SimNode[] = Array.from({ length: N }, (_, i) =>

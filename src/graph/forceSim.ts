@@ -83,11 +83,11 @@ export interface SimParams {
    */
   linkModel?: "spring" | "linlog";
   /**
-   * Cluster gravity (cosmos.gl's point-clustering force): pull strength toward
-   * each node's detected-community centroid (see SimNode.cluster). Emergent
-   * layout only *approximates* the communities Louvain detects; this makes the
-   * geometry agree with them — tighter blobs, clearer separation. 0 (default)
-   * disables the pass entirely.
+   * Cluster force strength (see step 3). Drives two passes that make the layout
+   * geometry agree with the detected communities (see SimNode.cluster): gravity
+   * pulls each node toward its community centroid (tight blobs), and separation
+   * pushes overlapping community "bubbles" apart (distinct regions, no manual
+   * wiggle). 0 (default) disables both passes entirely.
    */
   clusterStrength?: number;
 }
@@ -111,6 +111,17 @@ export const ALPHA_DECAY = 0.0228;
 export const ALPHA_MIN = 0.001;
 /** Alpha to warm back up to on an interaction (e.g. a drag). */
 export const REHEAT_ALPHA = 0.3;
+
+// Cluster separation (step 3). Cluster gravity gathers each community toward its
+// own centroid; on its own that leaves communities free to sit on top of one
+// another (only the community-blind repulsion nudges them apart, so a clean
+// separation needs a manual wiggle). To fix that, each community also claims a
+// soft circular "bubble" whose radius grows with its size (∝ √members, so area
+// ∝ members); overlapping bubbles push apart, so communities settle into
+// distinct regions. Both are alpha- and clusterStrength-scaled, so separation
+// rides the same "Cluster pull" control and fades as the layout cools.
+const CLUSTER_BUBBLE_R = 55; // px per √member — a community's claimed radius
+const CLUSTER_SEPARATION = 6; // separation push strength relative to the gather
 
 // ---------------------------------------------------------------------------
 // Barnes-Hut quad-tree
@@ -582,30 +593,87 @@ export function step(
     b.vy -= fy;
   }
 
-  // 3. Cluster gravity: pull each node toward its detected community's
-  // centroid (unweighted mean, recomputed per step — O(n)). Linear in
-  // distance, like centering, and alpha-scaled so it fades as the layout
-  // cools. Skipped entirely at strength 0; singleton clusters cancel out.
+  // 3. Cluster forces (detected-community layout). Two passes, both O(n + k²)
+  // with k = number of communities (small), alpha-scaled so they fade as the
+  // layout cools, and skipped entirely at strength 0 / for singleton clusters:
+  //   (a) gravity — pull each node toward its community's centroid (tight blobs);
+  //   (b) separation — push overlapping community "bubbles" apart (distinct
+  //       regions), so the geometry agrees with the coloring without a wiggle.
   const clusterK = (params.clusterStrength ?? 0) * alpha;
   if (clusterK > 0) {
-    const sums = new Map<number, { x: number; y: number; n: number }>();
-    for (const node of nodes) {
-      if (node.cluster === undefined) continue;
-      const s = sums.get(node.cluster);
-      if (s) {
-        s.x += node.x;
-        s.y += node.y;
-        s.n++;
-      } else {
-        sums.set(node.cluster, { x: node.x, y: node.y, n: 1 });
+    // Group node indices by community; a community needs ≥ 2 members to have a
+    // meaningful centroid (singletons are left to the generic forces).
+    const groups = new Map<number, number[]>();
+    for (let i = 0; i < n; i++) {
+      const c = nodes[i].cluster;
+      if (c === undefined) continue;
+      const g = groups.get(c);
+      if (g) g.push(i);
+      else groups.set(c, [i]);
+    }
+    interface Cluster {
+      ids: number[];
+      x: number;
+      y: number;
+      r: number;
+    }
+    const clusters: Cluster[] = [];
+    for (const ids of groups.values()) {
+      if (ids.length < 2) continue;
+      let sx = 0;
+      let sy = 0;
+      for (const i of ids) {
+        sx += nodes[i].x;
+        sy += nodes[i].y;
+      }
+      clusters.push({
+        ids,
+        x: sx / ids.length,
+        y: sy / ids.length,
+        r: CLUSTER_BUBBLE_R * Math.sqrt(ids.length),
+      });
+    }
+
+    // (a) Gravity: pull each member toward its community centroid.
+    for (const cl of clusters) {
+      for (const i of cl.ids) {
+        nodes[i].vx += (cl.x - nodes[i].x) * clusterK;
+        nodes[i].vy += (cl.y - nodes[i].y) * clusterK;
       }
     }
-    for (const node of nodes) {
-      if (node.cluster === undefined) continue;
-      const s = sums.get(node.cluster);
-      if (!s || s.n < 2) continue;
-      node.vx += (s.x / s.n - node.x) * clusterK;
-      node.vy += (s.y / s.n - node.y) * clusterK;
+
+    // (b) Separation: where two community bubbles overlap, push them apart along
+    // the centroid axis (each cluster moves as a group). Bounded by the overlap
+    // and scaled by strength·alpha, so it settles rather than oscillates.
+    const sepK = clusterK * CLUSTER_SEPARATION;
+    for (let a = 0; a < clusters.length; a++) {
+      for (let b = a + 1; b < clusters.length; b++) {
+        const ca = clusters[a];
+        const cb = clusters[b];
+        let dx = ca.x - cb.x;
+        let dy = ca.y - cb.y;
+        const target = ca.r + cb.r;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= target * target) continue; // bubbles don't overlap
+        let dist = Math.sqrt(d2);
+        if (dist < 1e-6) {
+          // Coincident centroids: separate along a deterministic index axis.
+          dx = (a - b) % 7 || 1;
+          dy = (b - a) % 5 || 1;
+          dist = Math.sqrt(dx * dx + dy * dy);
+        }
+        const push = (sepK * (target - dist)) / 2;
+        const ux = (dx / dist) * push;
+        const uy = (dy / dist) * push;
+        for (const i of ca.ids) {
+          nodes[i].vx += ux;
+          nodes[i].vy += uy;
+        }
+        for (const i of cb.ids) {
+          nodes[i].vx -= ux;
+          nodes[i].vy -= uy;
+        }
+      }
     }
   }
 

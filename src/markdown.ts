@@ -243,6 +243,36 @@ function slugifyHeadings(html: string): string {
 }
 
 /**
+ * A plain-text excerpt of a markdown body for the reader's peek card — the
+ * first real prose, markdown syntax stripped, clamped to `max` characters at a
+ * word boundary. Pure string work (no DOM), so it runs anywhere and is cheap
+ * enough to compute on hover. See docs/proposals/multi-view.md.
+ */
+export function plainExcerpt(md: string, max = 280): string {
+  const text = md
+    // Fenced code blocks: drop wholesale — code is noise in a glimpse.
+    .replace(/```[\s\S]*?(```|$)/g, " ")
+    // Images (before links: same bracket syntax) and links → their alt/text.
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // Heading/blockquote/list markers at line starts, and table/rule lines.
+    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm, "")
+    .replace(/^\s*\|.*\|\s*$/gm, " ")
+    .replace(/^\s*([-=_*]\s*){3,}$/gm, " ")
+    // GFM alert markers ([!NOTE] etc.) read as noise without their styling.
+    .replace(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/gi, "")
+    // Inline emphasis/code tokens → bare text.
+    .replace(/(\*\*|__|[*_~`])/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= max) return text;
+  // Clamp at a word boundary, then signal the cut.
+  const cut = text.slice(0, max + 1);
+  const atWord = cut.slice(0, cut.lastIndexOf(" "));
+  return `${(atWord.length > max / 2 ? atWord : cut.slice(0, max)).trimEnd()}…`;
+}
+
+/**
  * Render markdown to sanitized, safe-to-inject HTML. When `tokenIndex` is given
  * (the reader passes the bundle's design-token index), `{group.name}` references
  * in inline code are resolved and annotated. See docs/features/design-system-rendering.md.

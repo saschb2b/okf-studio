@@ -6,7 +6,7 @@
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "../store.tsx";
 import { titleOf, conceptById } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
@@ -18,7 +18,14 @@ import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "../odsf.ts";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
 import { TokenViz } from "./TokenViz.tsx";
 import { ExamplePreview } from "./ExamplePreview.tsx";
+import { PeekCard } from "./PeekCard.tsx";
+import type { PeekTarget } from "./PeekCard.tsx";
 import "./Reader.css";
+
+/** Dwell before a hovered concept link shows its peek card (ms) — long enough
+ *  that scanning prose doesn't flash cards, short enough to answer "worth
+ *  opening?" without a click. Wikipedia's page previews use a similar dwell. */
+const PEEK_DELAY = 450;
 
 interface OutlineItem {
   id: string;
@@ -99,8 +106,9 @@ export function classifyBodyLinks(html: string, fromId: string, bundle: Bundle |
         a.setAttribute("title", `Companion asset: ${href}`);
         break;
       case "concept":
+        // No title attribute: the peek card (hover/focus preview) supersedes
+        // the native tooltip, and the two would race each other.
         a.dataset.link = "concept";
-        a.setAttribute("title", `Open in the reader: ${titleOf(bundle, link.id)}`);
         break;
       case "directory":
         a.dataset.link = "directory";
@@ -248,6 +256,12 @@ export function Reader() {
   const [activeId, setActiveId] = useState<string | null>(null);
   // The image currently shown in the spotlight overlay (a data URL), or null.
   const [lightbox, setLightbox] = useState<string | null>(null);
+  // Peek card: which concept to preview and where its trigger sits, or null.
+  const [peek, setPeek] = useState<PeekTarget | null>(null);
+  // The dwell timer and the body anchor currently owning it/the card, so
+  // pointer moves within one link don't restart the dwell.
+  const peekTimerRef = useRef<number | null>(null);
+  const peekAnchorRef = useRef<HTMLElement | null>(null);
   // Body HTML with images resolved, paired with the source html it derives from
   // (so a concept switch never renders the previous body while the new one loads).
   const [processed, setProcessed] = useState<{ src: string; html: string } | null>(null);
@@ -384,6 +398,66 @@ export function Reader() {
     };
   }, [lightbox]);
 
+  // ---- Peek card (hover/focus preview of a concept link) ------------------
+  // Declared before the no-concept early return: the effects below are hooks.
+  // The handler function declarations hoist, so the effects may call them.
+
+  function cancelPeekTimer() {
+    if (peekTimerRef.current != null) {
+      clearTimeout(peekTimerRef.current);
+      peekTimerRef.current = null;
+    }
+  }
+  function hidePeek() {
+    cancelPeekTimer();
+    peekAnchorRef.current = null;
+    setPeek(null);
+  }
+  /** After the dwell, show the card anchored to `el`'s current position. */
+  function schedulePeek(id: string, el: HTMLElement) {
+    cancelPeekTimer();
+    peekTimerRef.current = window.setTimeout(() => {
+      peekTimerRef.current = null;
+      // A navigation may have swapped the body while the dwell ran — a
+      // detached trigger means the peek is stale, not due.
+      if (!el.isConnected) return;
+      setPeek({ id, anchor: el.getBoundingClientRect() });
+    }, PEEK_DELAY);
+  }
+  /** Shared trigger for rail rows: peek `id` while hovered/focused. */
+  function peekStart(id: string, el: HTMLElement) {
+    if (!c || id === c.id) return;
+    peekAnchorRef.current = el;
+    schedulePeek(id, el);
+  }
+
+  // Dismiss on scroll (the anchor rect goes stale) and Escape while shown;
+  // cancel an in-flight dwell timer on unmount.
+  useEffect(() => {
+    if (!peek) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") hidePeek();
+    };
+    const scroller = bodyRef.current?.closest(".pane");
+    scroller?.addEventListener("scroll", hidePeek, { passive: true });
+    window.addEventListener("keydown", onKey);
+    return () => {
+      scroller?.removeEventListener("scroll", hidePeek);
+      window.removeEventListener("keydown", onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peek]);
+  useEffect(() => () => cancelPeekTimer(), []);
+  // Navigating away always drops the card — adjust-state-during-render (the
+  // palette's appliedSeed pattern), so no effect and no extra commit. A dwell
+  // timer that outlives the navigation is defused by the isConnected check in
+  // schedulePeek (the old body's anchors are detached by the swap).
+  const [peekFor, setPeekFor] = useState<string | null>(c?.id ?? null);
+  if (peekFor !== (c?.id ?? null)) {
+    setPeekFor(c?.id ?? null);
+    if (peek) setPeek(null);
+  }
+
   if (!c) {
     return (
       <div className="reader-empty">
@@ -391,6 +465,32 @@ export function Reader() {
         <p className="muted">Pick a node in the graph or the sidebar to read it here.</p>
       </div>
     );
+  }
+
+  // Body-link peek, delegated like the click routing: dwelling on (or
+  // focusing) a concept link previews its target.
+  function onBodyPeekOver(
+    e: MouseEvent<HTMLDivElement> | FocusEvent<HTMLDivElement>,
+  ) {
+    if (!c) return;
+    const a = (e.target as HTMLElement).closest("a");
+    if (a === peekAnchorRef.current) return; // still inside the same link
+    hidePeek();
+    const href = a?.getAttribute("href");
+    if (!a || !href) return;
+    const link = classifyLink(href, c.id, bundle);
+    if (link.kind !== "concept" || link.id === c.id) return;
+    peekAnchorRef.current = a;
+    schedulePeek(link.id, a);
+  }
+  function onBodyPeekOut(
+    e: MouseEvent<HTMLDivElement> | FocusEvent<HTMLDivElement>,
+  ) {
+    const a = peekAnchorRef.current;
+    if (!a) return;
+    const to = e.relatedTarget as Node | null;
+    if (to && a.contains(to)) return; // moving within the link
+    hidePeek();
   }
 
   const palette = buildTypePalette(
@@ -411,6 +511,7 @@ export function Reader() {
   // the current tab; Ctrl/Cmd+click opens a background tab (add Shift to also
   // switch) — the browser link gestures. See docs/proposals/multi-view.md.
   const select = (id: string, e?: MouseEvent<HTMLElement>) => {
+    hidePeek(); // the click answered the "worth opening?" question
     if (e && (e.ctrlKey || e.metaKey)) {
       actions.openInNewTab(id, { background: !e.shiftKey });
     } else {
@@ -430,6 +531,7 @@ export function Reader() {
 
   function onBodyClick(e: MouseEvent<HTMLDivElement>) {
     if (!c) return;
+    hidePeek(); // any click resolves the "worth opening?" question
     const target = e.target as HTMLElement;
     // The copy affordance baked into each fenced code block.
     const copyBtn = target.closest<HTMLButtonElement>("button.code-copy");
@@ -609,6 +711,10 @@ export function Reader() {
           onClick={onBodyClick}
           onMouseDown={onBodyMiddleDown}
           onMouseUp={onBodyMiddleUp}
+          onMouseOver={onBodyPeekOver}
+          onMouseOut={onBodyPeekOut}
+          onFocus={onBodyPeekOver}
+          onBlur={onBodyPeekOut}
           // Sanitized in renderMarkdown via DOMPurify; images resolved (to local
           // data URLs / placeholders) by processBodyImages before injection.
           dangerouslySetInnerHTML={displayHtmlProp}
@@ -642,19 +748,19 @@ export function Reader() {
 
         {c.citedBy.length > 0 && (
           <RailModule title="Cited by" count={c.citedBy.length}>
-            <RelRows bundle={bundle} ids={c.citedBy} onSelect={select} />
+            <RelRows bundle={bundle} ids={c.citedBy} onSelect={select} onPeek={peekStart} onPeekEnd={hidePeek} />
           </RailModule>
         )}
 
         {c.links.length > 0 && (
           <RailModule title="Links to" count={c.links.length}>
-            <RelRows bundle={bundle} ids={c.links} onSelect={select} />
+            <RelRows bundle={bundle} ids={c.links} onSelect={select} onPeek={peekStart} onPeekEnd={hidePeek} />
           </RailModule>
         )}
 
         {related.length > 0 && (
           <RailModule title="Related" count={related.length}>
-            <RelRows bundle={bundle} ids={related} onSelect={select} />
+            <RelRows bundle={bundle} ids={related} onSelect={select} onPeek={peekStart} onPeekEnd={hidePeek} />
           </RailModule>
         )}
 
@@ -706,6 +812,15 @@ export function Reader() {
         )}
       </aside>
 
+      {/* Peek card: a hover/focus preview of a concept link — see PeekCard. */}
+      {peek && (
+        <PeekCard
+          target={peek}
+          bundle={bundle}
+          dark={resolveDark(state.settings.theme)}
+        />
+      )}
+
       {/* Image spotlight. Click anywhere or the close button to dismiss; Escape
           is handled by an effect. Keyboard-accessible via the close button. */}
       {lightbox && (
@@ -754,15 +869,20 @@ function RailModule({
   );
 }
 
-/** A list of concept rows that navigate on click (Ctrl/Cmd+click → new tab). */
+/** A list of concept rows that navigate on click (Ctrl/Cmd+click → new tab)
+ *  and peek their target while hovered or focused. */
 function RelRows({
   bundle,
   ids,
   onSelect,
+  onPeek,
+  onPeekEnd,
 }: {
   bundle: Bundle | null;
   ids: string[];
   onSelect: (id: string, e?: MouseEvent<HTMLElement>) => void;
+  onPeek: (id: string, el: HTMLElement) => void;
+  onPeekEnd: () => void;
 }) {
   return (
     <ul className="rel-list">
@@ -772,6 +892,10 @@ function RelRows({
             type="button"
             className="rel-link"
             onClick={(e) => onSelect(id, e)}
+            onMouseEnter={(e) => onPeek(id, e.currentTarget)}
+            onMouseLeave={onPeekEnd}
+            onFocus={(e) => onPeek(id, e.currentTarget)}
+            onBlur={onPeekEnd}
           >
             {titleOf(bundle, id)}
           </button>

@@ -1,0 +1,76 @@
+/* Peek card — hover preview of a concept link (docs/proposals/multi-view.md).
+   A quiet elevated popover in the app's popover tier; non-interactive, so it
+   never traps the pointer. */
+
+.peek-card {
+  position: fixed;
+  z-index: 60; /* the popover tier (baseui.css) */
+  width: 340px;
+  padding: var(--space-12) var(--space-12) var(--space-8);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  /* Chrome, not content (and it sits inside no selectable scope anyway). */
+  -webkit-user-select: none;
+  user-select: none;
+  animation: peek-in var(--dur) ease-out;
+}
+
+@keyframes peek-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.peek-type {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-tight);
+  color: var(--text-dim);
+}
+
+.peek-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.peek-title {
+  margin-top: var(--space-4);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.peek-desc {
+  margin: var(--space-4) 0 0;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
+.peek-body {
+  margin: var(--space-6) 0 0;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  color: var(--text-dim);
+}
+
+.peek-hint {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-tight);
+  color: var(--text-dim);
+}

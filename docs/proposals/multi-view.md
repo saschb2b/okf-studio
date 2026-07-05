@@ -38,6 +38,14 @@ The reader pane grows a quiet **tab strip** (the VS Code placement — above the
 - **Middle-click closes a tab** (the VS Code gesture), handled as press+release on the tab rather than `auxclick`, which scrollable strips and webviews deliver unreliably.
 - **Bundle switch** resets tabs (a new bundle is a new browsing context); [live reload](../features/live-reload.md) of the same bundle keeps them, dropping only tabs whose concept vanished.
 
+## Peek before you open
+
+Tabs answer "keep this open"; the **peek card** answers the question *before* that one — "is this worth opening at all?" (owner request). Dwell on a concept link — a reader body link or a rail relationship row — for ~450 ms (or focus it by keyboard) and a small card previews the target: its type (palette dot), title, description, and the first lines of prose, plus a quiet hint teaching the open-in-tab gesture. The Wikipedia page-preview / Obsidian hover-card pattern, made trivial here because the whole bundle is already parsed in memory — the peek is instant and offline.
+
+- The card is **non-interactive** (`pointer-events: none`): it can never trap the pointer, so there are no hover-persistence states, and it dismisses on leave, click, scroll, Escape, or navigation.
+- The markdown body is reduced to a plain-text excerpt (`plainExcerpt`) — code fences and tables dropped, link text kept — because a glimpse wants prose, not markup.
+- Concept links lose their native `title` tooltip (the card supersedes it; the two would race). The index tree keeps its existing description tooltips instead of a second peek surface — its rows already answer "what is this?".
+
 ## Undocking — a tab into its own window
 
 *Move to new window* (a strip affordance + a [launcher](../features/command-palette.md) action) opens the concept in a **new OS window of the same app** — the browser tear-off model, and Obsidian's. The new window is not a stripped viewer: it boots the full app on the same bundle, landed on that concept in reader-only layout, and can do everything the main window can (switch layout, open its own tabs, dive). It's how two concepts land on two monitors, or a spec stays open beside the graph you're exploring.

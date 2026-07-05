@@ -543,6 +543,36 @@ describe("multi-view (tabs & windows)", () => {
     ).toBeInTheDocument();
   });
 
+  it("peeks a concept on hover (rail row and body link) before opening", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("radio", { name: /reader only/i }));
+
+    // Dwell on a rail row → the card previews the target: type, title,
+    // description, an excerpt, and the open-in-tab gesture hint.
+    const rail = container.querySelector<HTMLElement>(".reader-rail")!;
+    await user.hover(within(rail).getByRole("button", { name: "Graph View" }));
+    const card = await screen.findByRole("tooltip", { name: /preview: graph view/i });
+    expect(within(card).getByText("Graph View")).toBeInTheDocument();
+    expect(
+      within(card).getByText(/force-directed graph of concepts/i),
+    ).toBeInTheDocument();
+    expect(within(card).getByText(/renders the bundle as a/i)).toBeInTheDocument();
+    expect(within(card).getByText(/click: new tab/i)).toBeInTheDocument();
+
+    // Leaving the trigger dismisses it.
+    await user.unhover(within(rail).getByRole("button", { name: "Graph View" }));
+    expect(screen.queryByRole("tooltip", { name: /preview/i })).not.toBeInTheDocument();
+
+    // A body concept link peeks too; an external link never does.
+    const body = container.querySelector<HTMLElement>(".body.markdown")!;
+    await user.hover(body.querySelector<HTMLElement>('a[data-link="concept"]')!);
+    await screen.findByRole("tooltip", { name: /preview/i });
+    await user.unhover(body.querySelector<HTMLElement>('a[data-link="concept"]')!);
+    expect(screen.queryByRole("tooltip", { name: /preview/i })).not.toBeInTheDocument();
+  });
+
   it("middle-click closes a tab (the VS Code gesture)", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();

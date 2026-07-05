@@ -1,5 +1,40 @@
 import { describe, it, expect } from "vitest";
-import { renderMarkdown, resolveAssetHref } from "./markdown.ts";
+import { plainExcerpt, renderMarkdown, resolveAssetHref } from "./markdown.ts";
+
+describe("plainExcerpt", () => {
+  it("strips markdown syntax down to readable prose", () => {
+    const md =
+      "## What it does\n\n" +
+      "Renders an **interactive** [graph](graph-view.md) of `concepts`.\n\n" +
+      "> [!NOTE]\n> Everything is *offline*.\n\n" +
+      "- one\n- two\n";
+    expect(plainExcerpt(md)).toBe(
+      "What it does Renders an interactive graph of concepts. Everything is offline. one two",
+    );
+  });
+
+  it("drops code fences, tables, and rules; keeps image alt text", () => {
+    const md =
+      "```ts\nconst x = 1;\n```\n\n" +
+      "| a | b |\n| --- | --- |\n| 1 | 2 |\n\n" +
+      "---\n\n" +
+      "![alt text](pic.png) end.";
+    expect(plainExcerpt(md)).toBe("alt text end.");
+  });
+
+  it("clamps long text at a word boundary with an ellipsis", () => {
+    const md = "word ".repeat(100);
+    const out = plainExcerpt(md, 60);
+    expect(out.length).toBeLessThanOrEqual(61);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out).not.toContain("wor…"); // cut between words, not inside one
+  });
+
+  it("returns short text unchanged", () => {
+    expect(plainExcerpt("Just a line.")).toBe("Just a line.");
+    expect(plainExcerpt("")).toBe("");
+  });
+});
 
 describe("resolveAssetHref", () => {
   it("resolves a relative asset against the concept's directory", () => {

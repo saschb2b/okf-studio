@@ -223,6 +223,11 @@ export function GraphView() {
   });
   const displayRef = useRef<Display>(display);
   const needsFitRef = useRef(true); // auto-fit once a fresh layout settles
+  // Continuously re-frame a *fresh* layout while it blooms (instant, every
+  // frame), so it assembles in view instead of sprawling off-screen until the
+  // cooling schedule finally triggers one fit ~5s later. Cleared once settled,
+  // or the moment the user pans/zooms/drags (we never fight their view).
+  const trackFitRef = useRef(false);
   const prevRestrictKey = useRef<string | null>(null); // last focus/isolate set, to refit on change
 
   // Latest selection for the imperative draw, without re-binding the whole
@@ -628,6 +633,7 @@ export function GraphView() {
       }
       alphaRef.current = 0;
       syncPositions();
+      trackFitRef.current = false; // no animation to track — just fit the result
       maybeFit();
       draw();
       return;
@@ -640,9 +646,21 @@ export function GraphView() {
       // Cool toward zero; once cold, stop the loop and rest.
       alphaRef.current = alpha + (0 - alpha) * ALPHA_DECAY;
       syncPositions();
-      if (alphaRef.current < ALPHA_MIN) {
-        rafRef.current = null; // settled — idle until the next interaction/data change
+      const settled = alphaRef.current < ALPHA_MIN;
+      // Track a blooming fresh layout every frame so it stays framed as it
+      // organizes (no glide — it follows the motion). Otherwise fit only once,
+      // on the settle landing.
+      if (trackFitRef.current) {
+        fitInstant();
+        if (settled) {
+          trackFitRef.current = false;
+          needsFitRef.current = false;
+        }
+      } else if (settled) {
         maybeFit();
+      }
+      if (settled) {
+        rafRef.current = null; // settled — idle until the next interaction/data change
         draw();
         return;
       }
@@ -658,6 +676,13 @@ export function GraphView() {
       needsFitRef.current = false;
       fit();
     }
+  }
+
+  /** The user took over the view — cancel any pending or continuous auto-fit so
+   *  we never fight their pan/zoom. */
+  function cancelAutoFit() {
+    trackFitRef.current = false;
+    needsFitRef.current = false;
   }
 
   /** Persist current node positions back into the id-keyed ref. */
@@ -840,9 +865,14 @@ export function GraphView() {
     // so the smaller set can spread out from its cached positions.
     alphaRef.current = spawnedNew ? 1 : restrictChanged ? Math.max(0.4, REHEAT_ALPHA) : 0.4;
     needsFitRef.current = spawnedNew || restrictChanged; // refit a fresh layout or a new focus set
-    // Frame the new node set right away from its cached/seeded positions — the
-    // sim can take seconds to settle, and until the post-settle refit the new
-    // subgraph could sit half out of view. (Skipped for a brand-new layout:
+    // A brand-new layout blooms from the spawn ring over the whole cooling
+    // schedule; track-fit it every frame so it assembles in view rather than
+    // sprawling off-screen until one late fit. A restrict change instead has
+    // cached positions, so a single glide to the new set reads best.
+    trackFitRef.current = spawnedNew;
+    // Frame a restrict change right away from its cached positions — the sim can
+    // take seconds to settle, and until the post-settle refit the new subgraph
+    // could sit half out of view. (A brand-new layout is track-fit above instead;
     // seed positions on the spawn ring say nothing about the final shape.)
     if (restrictChanged && !spawnedNew) fit();
     runLoop();
@@ -1005,6 +1035,7 @@ export function GraphView() {
     if (e.button !== 0) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    cancelAutoFit(); // the user is taking control — stop auto-framing
     canvas.setPointerCapture(e.pointerId);
     const world = toWorld(e.clientX, e.clientY);
     const idx = hitTest(world.x, world.y);
@@ -1079,6 +1110,7 @@ export function GraphView() {
   function onWheel(e: ReactWheelEvent<HTMLCanvasElement>) {
     e.preventDefault();
     cancelViewTween(); // direct zooming takes over from any glide
+    cancelAutoFit(); // the user set their own zoom — stop auto-framing
     const view = viewRef.current;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1182,10 +1214,11 @@ export function GraphView() {
     applyView({ scale: next, tx: cx - wx * next, ty: cy - wy * next });
   }
 
-  function fit() {
+  /** The view that frames the whole graph, or null if there's nothing to frame. */
+  function computeFitView(): View | null {
     const data = renderRef.current;
     const { w, h } = sizeRef.current;
-    if (data.nodes.length === 0 || w === 0 || h === 0) return;
+    if (data.nodes.length === 0 || w === 0 || h === 0) return null;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -1202,7 +1235,24 @@ export function GraphView() {
     const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh));
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    applyView({ scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale });
+    return { scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale };
+  }
+
+  /** Frame the whole graph with a glide (the Fit button, and settle landings). */
+  function fit() {
+    const t = computeFitView();
+    if (t) applyView(t);
+  }
+
+  /** Frame the whole graph *instantly* (no glide) — used to track a blooming
+   *  layout each frame so it assembles in view instead of sprawling off-screen. */
+  function fitInstant() {
+    const t = computeFitView();
+    if (!t) return;
+    const v = viewRef.current;
+    v.scale = t.scale;
+    v.tx = t.tx;
+    v.ty = t.ty;
   }
 
   // ---- Render --------------------------------------------------------------

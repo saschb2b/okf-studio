@@ -70,8 +70,8 @@ const LABEL_MIN_SCALE = 1.1;
 // selection/hover set — labelled during motion, capped and collision-free (hubs
 // are few and cluster-separated). The fine leaf labels + full collision cull run
 // once on the settled landing, so the map stays labelled and only detail fills in.
-const ANIM_LABEL_MIN_T = 0.55;
-const ANIM_LABEL_CAP = 24;
+const ANIM_LABEL_MIN_T = 0.75;
+const ANIM_LABEL_CAP = 6;
 
 // Adjustable display options (rendering only — not physics).
 interface Display {

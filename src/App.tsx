@@ -104,16 +104,18 @@ function Workspace() {
   // graph pane visible: in split and graph mode.
   const showGraph = state.layout === "split" || state.layout === "graph";
 
-  // Build the grid template from visible panes + persisted sizes. A sidebar
-  // width of `null` falls back to its default token; the reader's `null` keeps
-  // its co-equal fractional weight so a fresh split favors content. The graph
-  // always takes the remaining 1fr.
-  const sidebarTrack = showSidebar
+  // Pane widths flow through CSS variables (not baked into the template string)
+  // so a divider drag can update the width imperatively — writing the variable
+  // on every pointermove instead of dispatching to the store, which would
+  // re-render every useApp() consumer 60×/s. A sidebar width of `null` falls
+  // back to its default token; the reader's `null` keeps its co-equal fractional
+  // weight so a fresh split favors content. The graph always takes the 1fr.
+  const sidebarWidth = showSidebar
     ? state.paneSizes.sidebar !== null
       ? `${state.paneSizes.sidebar}px`
       : "var(--sidebar-default)"
     : null;
-  const readerTrack = showReader
+  const readerWidth = showReader
     ? state.paneSizes.reader !== null
       ? `${state.paneSizes.reader}px`
       : "var(--reader-default)"
@@ -128,13 +130,13 @@ function Workspace() {
   // Interleave pane tracks and divider tracks so the grid template lists every
   // child's column (sidebar | div | graph | div | reader).
   const columns = [
-    sidebarTrack,
+    showSidebar ? "var(--pane-sidebar)" : null,
     sidebarDivider ? "var(--divider-w)" : null,
     showGraph ? "minmax(var(--graph-min), 1fr)" : null,
     readerDivider ? "var(--divider-w)" : null,
     // In reader-only mode the reader takes the elastic space; otherwise its
     // track sizes the pane and the graph flexes.
-    showReader ? (showGraph ? readerTrack : "minmax(0, 1fr)") : null,
+    showReader ? (showGraph ? "var(--pane-reader)" : "minmax(0, 1fr)") : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -144,7 +146,13 @@ function Workspace() {
       ref={ref}
       className="workspace"
       data-layout={state.layout}
-      style={{ gridTemplateColumns: columns }}
+      style={
+        {
+          gridTemplateColumns: columns,
+          "--pane-sidebar": sidebarWidth ?? undefined,
+          "--pane-reader": readerWidth ?? undefined,
+        } as React.CSSProperties
+      }
     >
       {showSidebar && (
         <aside className="pane sidebar">
@@ -225,14 +233,21 @@ function Divider({
     // Suppress the column-track transition during the drag so it tracks the
     // pointer 1:1 (the transition is only wanted for mode changes).
     gridRef.current?.classList.add("dragging");
+    // Drag imperatively: write the pane's CSS variable on each move instead of
+    // dispatching to the store, so the whole app doesn't re-render 60×/s. Commit
+    // the final width to the store once on release (persist + a single render).
+    let latest: number | null = null;
     const move = (ev: PointerEvent) => {
-      actions.setPaneSize(pane, widthFromPointer(ev.clientX));
+      const w = Math.min(clamp.max, Math.max(clamp.min, widthFromPointer(ev.clientX)));
+      latest = w;
+      gridRef.current?.style.setProperty(`--pane-${pane}`, `${w}px`);
     };
     const up = () => {
       gridRef.current?.classList.remove("dragging");
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       dragCleanupRef.current = null;
+      if (latest !== null) actions.setPaneSize(pane, latest);
     };
     dragCleanupRef.current = up;
     window.addEventListener("pointermove", move);

@@ -50,6 +50,15 @@ import "./GraphView.css";
 const MIN_RADIUS = 4;
 const MAX_RADIUS = 20;
 const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on
+// Cap the canvas backing-store resolution. On a HiDPI display (or Linux
+// fractional scaling) a large window's canvas balloons to many millions of
+// pixels — all repainted every frame while the layout settles — so a big window
+// went laggy while a small one stayed smooth. Rendering "a smaller canvas scaled
+// up" (MDN's HiDPI guidance) keeps fill/paint cheap: a graph stays crisp up to
+// 2x, and past a pixel budget the device-pixel-ratio scales down further so a
+// huge viewport never costs more than ~this many pixels a frame.
+const MAX_DPR = 2;
+const MAX_CANVAS_PIXELS = 3_500_000;
 // Base zoom below which free-floating labels hide (Obsidian-style: dots at
 // overview, labels as you zoom in; selection/hover/neighbors always labelled).
 const LABEL_MIN_SCALE = 1.1;
@@ -246,7 +255,10 @@ export function GraphView() {
     return getComputedStyle(el).getPropertyValue(name).trim();
   }
 
-  function draw() {
+  // `animating` skips the label pass — measuring + laying out text (the priciest
+  // per-frame work) is wasted while nodes are moving and the labels aren't
+  // readable; they render on the settle landing and every static redraw.
+  function draw(animating = false) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     // Opaque context: skip per-pixel alpha compositing with the page (a real win
@@ -510,7 +522,10 @@ export function GraphView() {
     // Labels, dataviz-style: sized by node importance, hubs surfacing first as
     // you zoom out (each node's reveal threshold scales with its radius), and
     // collision-culled by priority so dense regions stay legible instead of
-    // becoming a text smear. Selection/hover/neighbors always label.
+    // becoming a text smear. Selection/hover/neighbors always label. Skipped
+    // entirely while the layout animates (the priciest pass, and unreadable in
+    // motion) — they render on the settle landing and static redraws.
+    if (!animating) {
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     const widths = labelWidthRef.current;
@@ -600,6 +615,7 @@ export function GraphView() {
       ctx.fillText(meta.title, cx, y);
     }
     ctx.globalAlpha = 1;
+    } // end if (!animating) — label pass
     ctx.restore();
   }
 
@@ -664,10 +680,10 @@ export function GraphView() {
       }
       if (settled) {
         rafRef.current = null; // settled — idle until the next interaction/data change
-        draw();
+        draw(); // final frame renders labels
         return;
       }
-      draw();
+      draw(true); // animating — skip the (unreadable, expensive) label pass
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -984,9 +1000,15 @@ export function GraphView() {
 
     const apply = () => {
       const rect = container.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
       const w = Math.max(1, Math.floor(rect.width));
       const h = Math.max(1, Math.floor(rect.height));
+      // Cap the backing-store resolution: use the display's DPR up to 2x, but a
+      // large viewport scales it down so the canvas never exceeds the pixel
+      // budget (keeps a big window from repainting millions of extra pixels a
+      // frame). Small windows keep full DPR and stay crisp.
+      const rawDpr = window.devicePixelRatio || 1;
+      const budgetDpr = Math.sqrt(MAX_CANVAS_PIXELS / (w * h));
+      const dpr = Math.max(0.75, Math.min(rawDpr, MAX_DPR, budgetDpr));
       const first = sizeRef.current.w === 0 && sizeRef.current.h === 0;
       sizeRef.current = { w, h, dpr };
       canvas.width = Math.floor(w * dpr);

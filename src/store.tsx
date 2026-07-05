@@ -9,6 +9,7 @@ import {
   useEffect,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import type {
@@ -426,7 +427,12 @@ export interface Actions {
   openExternal(url: string): void;
 }
 
-const Ctx = createContext<{ state: State; actions: Actions } | null>(null);
+// Split the store into two contexts (the state/dispatch pattern): the data and
+// the (stable) action set. Keeping them apart means the ActionsCtx value never
+// changes, so an action-only consumer (useAppActions) never re-renders when the
+// data changes; and each context throws its own clear "outside provider" error.
+const StateCtx = createContext<State | null>(null);
+const ActionsCtx = createContext<Actions | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -438,11 +444,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stateRef.current = state;
   });
 
-  const actions: Actions = {
+  // Build the action set once (useState's lazy initializer): every action closes
+  // only over the stable `dispatch` and the always-fresh `stateRef`, so a single
+  // object stays correct forever — and a stable reference keeps the ActionsCtx
+  // value from ever changing, so action-only consumers don't re-render on data.
+  const [actions] = useState<Actions>(() => {
+    const a: Actions = {
     async openFolder() {
       const folder = await ipc.pickFolder();
       if (!folder) return;
-      await actions.openFolderPath(folder);
+      await a.openFolderPath(folder);
     },
     async openFolderPath(folder, remote) {
       dispatch({ t: "loading", v: true });
@@ -453,7 +464,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         dispatch({ t: "openFolder", folder, bundles });
         if (bundles.length >= 1)
-          await actions.selectBundle(bundles[0].root, folder, remote);
+          await a.selectBundle(bundles[0].root, folder, remote);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
@@ -480,20 +491,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ t: "remoteOpen", v: false });
       dispatch({ t: "openFolder", folder, bundles });
       // Tagged with its origin so the recent entry remembers where it came from.
-      await actions.selectBundle(bundles[0].root, folder, source);
+      await a.selectBundle(bundles[0].root, folder, source);
       return { status: "opened" };
     },
     async openRemoteChoice(root, folder, bundles, source) {
       dispatch({ t: "remoteOpen", v: false });
       dispatch({ t: "openFolder", folder, bundles });
-      await actions.selectBundle(root, folder, source);
+      await a.selectBundle(root, folder, source);
     },
     async refreshRemote(entry) {
       if (!entry.remote) return;
       dispatch({ t: "loading", v: true });
       try {
         const { folder } = await ipc.fetchRemoteBundle(entry.remote);
-        await actions.openFolderPath(folder, entry.remote);
+        await a.openFolderPath(folder, entry.remote);
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
       }
@@ -549,7 +560,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const root = bundles.some((b) => b.root === entry.root)
           ? entry.root
           : bundles[0]?.root;
-        if (root) await actions.selectBundle(root, folder, entry.remote);
+        if (root) await a.selectBundle(root, folder, entry.remote);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
@@ -582,7 +593,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       dispatch({ t: "openFolder", folder, bundles });
       const root = activeRoot ?? bundles[0]?.root;
-      if (root) await actions.selectBundle(root);
+      if (root) await a.selectBundle(root);
     },
     selectConcept(id) {
       dispatch({ t: "select", id });
@@ -646,7 +657,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     openExternal(url) {
       void ipc.openExternal(url);
     },
-  };
+    };
+    return a;
+  });
 
   // Load persisted settings once, and reopen the most recent folder if any
   // (first-run.md: "can reopen the last one automatically"). Auto-reopen is
@@ -723,18 +736,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [state.activeRoot]);
 
-  return <Ctx.Provider value={{ state, actions }}>{children}</Ctx.Provider>;
+  return (
+    <StateCtx.Provider value={state}>
+      <ActionsCtx.Provider value={actions}>{children}</ActionsCtx.Provider>
+    </StateCtx.Provider>
+  );
 }
 
+/** Subscribe to the store's state. Re-renders when the data changes. */
+export function useAppState(): State {
+  const s = useContext(StateCtx);
+  if (s === null) throw new Error("useAppState must be used within AppProvider");
+  return s;
+}
+
+/** The store's action set. A stable reference, so a component that reads only
+ *  actions (no state) never re-renders on a data change. */
+export function useAppActions(): Actions {
+  const a = useContext(ActionsCtx);
+  if (a === null) throw new Error("useAppActions must be used within AppProvider");
+  return a;
+}
+
+/** Convenience for the common case that a component needs both. Subscribes to
+ *  state (so it re-renders on data changes) — prefer useAppActions alone when a
+ *  component only dispatches. */
 export function useApp() {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useApp must be used within AppProvider");
-  return ctx;
+  return { state: useAppState(), actions: useAppActions() };
 }
 
 /** Convenience: the currently selected concept, or null. */
 export function useActiveConcept(): Concept | null {
-  const { state } = useApp();
+  const state = useAppState();
   if (!state.bundle || !state.activeConceptId) return null;
   return state.bundle.concepts.find((c) => c.id === state.activeConceptId) ?? null;
 }

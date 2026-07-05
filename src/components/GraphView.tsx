@@ -14,16 +14,12 @@
 // canvas/sim state lives in refs and effects.
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { Popover } from "@base-ui/react/popover";
-import { Slider as BaseSlider } from "@base-ui/react/slider";
 import { useApp } from "../store.tsx";
-import type { LinkDensity } from "../store.tsx";
 import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
@@ -34,7 +30,23 @@ const CosmosGraph = lazy(() =>
 );
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
-import type { Bundle, Concept } from "../types.ts";
+import { GraphControls } from "./GraphControls.tsx";
+import type { Concept } from "../types.ts";
+import { renderGraph } from "../graph/render.ts";
+import type {
+  Display,
+  Forces,
+  RenderData,
+  View,
+} from "../graph/renderModel.ts";
+import {
+  DEFAULT_DISPLAY,
+  expandWithNeighbors,
+  GRAPH_FORCES,
+  MAX_SCALE,
+  MIN_SCALE,
+  radiusForDegree,
+} from "../graph/renderModel.ts";
 import {
   ALPHA_DECAY,
   ALPHA_MIN,
@@ -47,8 +59,6 @@ import {
 } from "../graph/forceSim.ts";
 import "./GraphView.css";
 
-const MIN_RADIUS = 4;
-const MAX_RADIUS = 20;
 const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on
 // Cap the canvas backing-store resolution. On a HiDPI display (or Linux
 // fractional scaling) a large window's canvas balloons to many millions of
@@ -59,134 +69,6 @@ const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on
 // huge viewport never costs more than ~this many pixels a frame.
 const MAX_DPR = 2;
 const MAX_CANVAS_PIXELS = 3_500_000;
-// Base zoom below which free-floating labels hide (Obsidian-style: dots at
-// overview, labels as you zoom in; selection/hover/neighbors always labelled).
-const LABEL_MIN_SCALE = 1.1;
-// While the layout is *moving*, the full label pass (O(labels²) collision cull +
-// a fillText per label, both slow on WebKitGTK) is the per-frame bottleneck, and
-// it grows with the on-screen label count — so a big window/dense bundle went
-// laggy mid-settle. Rather than blink every label out (jarring), we keep only
-// the orientation anchors — hubs above this size fraction, plus the always-shown
-// selection/hover set — labelled during motion, capped and collision-free (hubs
-// are few and cluster-separated). The fine leaf labels + full collision cull run
-// once on the settled landing, so the map stays labelled and only detail fills in.
-const ANIM_LABEL_MIN_T = 0.75;
-const ANIM_LABEL_CAP = 6;
-
-// Adjustable display options (rendering only — not physics).
-interface Display {
-  nodeScale: number;
-  linkThickness: number;
-  linkOpacity: number;
-  labelScale: number; // >1 shows labels at lower zoom
-  /** Node color source: by concept `type`, or by detected `cluster` (Louvain). */
-  colorBy: "type" | "cluster";
-}
-const DEFAULT_DISPLAY: Display = {
-  nodeScale: 1,
-  linkThickness: 1,
-  linkOpacity: 0.5,
-  labelScale: 1,
-  colorBy: "cluster",
-};
-
-// Plain-language explanations of the *currently selected* option, shown under
-// each segmented control so the panel teaches instead of just labelling.
-const RENDERER_HINTS: Record<"canvas" | "gpu", string> = {
-  canvas: "Default renderer — crisp and full-featured.",
-  gpu: "WebGL — for very large graphs. Needs hardware support.",
-};
-const DENSITY_HINTS: Record<LinkDensity, string> = {
-  sparse: "Only each concept's strongest links — clearest structure.",
-  balanced: "A clean structural backbone. Recommended.",
-  all: "Every cross-link — dense bundles can tangle.",
-};
-const COLOR_HINTS: Record<"cluster" | "type", string> = {
-  cluster: "By detected community — groups of densely-linked concepts.",
-  type: "By concept type (Feature, Reference, …).",
-};
-// The force fields the controls panel exposes (the rest come from DEFAULT_PARAMS).
-type Forces = Pick<
-  SimParams,
-  "repulsion" | "springLength" | "springK" | "centering" | "clusterStrength"
->;
-const MIN_SCALE = 0.15;
-const MAX_SCALE = 4;
-
-// Tuned force defaults for the app's graph. The sim's DEFAULT_PARAMS stays the
-// neutral baseline (used by the sim tests); the graph wants a noticeably more
-// spread, organic layout — strong repulsion (amplified by the degree-weighted
-// mass), longer links so leaves fan out, and gentle centering so the core
-// doesn't compress into a blob. This is what produces the cluster-separated,
-// canvas-filling look rather than a tight clump.
-const GRAPH_FORCES: Forces = {
-  repulsion: 3200,
-  springLength: 130, // unused under LinLog; kept for the spring fallback/controls
-  springK: 0.12, // LinLog attraction is gentle (log), so it wants a higher gain
-  centering: 0.015,
-  // Gentle pull toward each Louvain community's centroid (cosmos.gl's
-  // point-clustering force), so the geometry agrees with the detected
-  // clusters that also drive the default node coloring.
-  clusterStrength: 0.05,
-};
-// Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
-// that mirrors --ui in styles.css.
-const LABEL_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-
-interface View {
-  scale: number;
-  tx: number;
-  ty: number;
-}
-
-interface RenderData {
-  /** Visible nodes (those passing the type/tag filter), in draw order. */
-  nodes: SimNode[];
-  edges: SimEdge[];
-  /** Citation direction per edge (backbone edges are undirected): bit 1 =
-   *  a cites b, bit 2 = b cites a. Drawn as arrowheads on highlighted edges. */
-  edgeDir: number[];
-  /** Per-node concept metadata, index-aligned with `nodes`. */
-  meta: {
-    id: string;
-    title: string;
-    type: string;
-    /** Color by concept type (the legend palette). */
-    color: string;
-    /** Color by detected community (Louvain) — used when Display.colorBy is "cluster". */
-    clusterColor: string;
-    dim: boolean;
-    /** True for a degree-0 concept (no links and no citedBy) — drawn with a ring. */
-    orphan: boolean;
-    /** Count of unresolved outbound hrefs — drawn as a warning marker when > 0. */
-    broken: number;
-  }[];
-  /** id -> index into `nodes`/`meta`. */
-  indexById: Map<string, number>;
-  /** Adjacency by node index, for selection highlighting. */
-  neighbors: Set<number>[];
-}
-
-function radiusForDegree(degree: number, maxDegree: number): number {
-  if (maxDegree <= 0) return MIN_RADIUS;
-  const t = Math.sqrt(degree / maxDegree); // sqrt so hubs grow but not wildly
-  return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS);
-}
-
-/** A set of `ids` plus their direct neighbors (links ∪ citedBy), for isolating
- *  a defect set into the view with enough context to see why it is one. */
-function expandWithNeighbors(bundle: Bundle | null, ids: string[]): Set<string> {
-  const out = new Set(ids);
-  if (!bundle) return out;
-  const byId = new Map(bundle.concepts.map((c) => [c.id, c] as const));
-  for (const id of ids) {
-    const c = byId.get(id);
-    if (!c) continue;
-    for (const nb of c.links) out.add(nb);
-    for (const nb of c.citedBy) out.add(nb);
-  }
-  return out;
-}
 
 export function GraphView() {
   const { state, actions } = useApp();
@@ -268,371 +150,36 @@ export function GraphView() {
   // `animating` (set while the layout is settling) renders only the hub +
   // always-shown labels, skipping the leaf labels and the O(labels²) collision
   // cull — the priciest per-frame work, and unnecessary detail while nodes move.
+  // The heavy lifting is renderGraph (../graph/render.ts); this wraps it with the
+  // ref reads and theme-color lookups, so the paint pass stays a pure function.
   function draw(animating = false) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     // Opaque context: skip per-pixel alpha compositing with the page (a real win
-    // on the WebKitGTK webview). We paint the theme background ourselves each
-    // frame instead of clearing to transparent.
+    // on the WebKitGTK webview). renderGraph paints the theme background itself
+    // each frame instead of clearing to transparent.
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
-
-    const { w, h, dpr } = sizeRef.current;
-    const view = viewRef.current;
-    const data = renderRef.current;
-    const selected = selectedRef.current;
-    const disp = displayRef.current;
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = cssVar("--bg") || "#000";
-    ctx.fillRect(0, 0, w, h);
-    ctx.save();
-    ctx.translate(view.tx, view.ty);
-    ctx.scale(view.scale, view.scale);
-
-    // Visible world rect — every pass culls to it, so a zoomed-in view only
-    // draws what's on screen regardless of total graph size (the dominant cost
-    // when zoomed into one cluster of a large bundle).
-    const invScale = 1 / view.scale;
-    const viewLeft = -view.tx * invScale;
-    const viewTop = -view.ty * invScale;
-    const viewRight = (w - view.tx) * invScale;
-    const viewBottom = (h - view.ty) * invScale;
-    // Cohen–Sutherland region code, for exact trivial-reject of off-screen edges.
-    const outcode = (x: number, y: number): number =>
-      (x < viewLeft ? 1 : 0) |
-      (x > viewRight ? 2 : 0) |
-      (y < viewTop ? 4 : 0) |
-      (y > viewBottom ? 8 : 0);
-
-    const selIdx = selected != null ? (data.indexById.get(selected) ?? null) : null;
-    const hover = hoverRef.current;
-    // Highlight the hovered node, else the selected one (so the open concept's
-    // links stay visible). Only a hover *dims* the rest of the graph — selection
-    // alone keeps the whole spread bright, so overview stays readable.
-    const focusIdx = hover ?? selIdx;
-    const hasFocus = focusIdx != null;
-    const focusNeighbors = hasFocus ? data.neighbors[focusIdx] : null;
-    const dimOthers = hover != null;
-
-    const edgeColor = cssVar("--text-dim") || "#888"; // visible links, not faint hairlines
-    const accent = cssVar("--accent") || "#2f6df6";
-    const textColor = cssVar("--text") || "#111";
-    const textDim = cssVar("--text-dim") || "#777";
-    const nodeStroke = cssVar("--bg") || "#fff";
-    const warnColor = cssVar("--warn") || "#b8860b"; // orphan ring + broken-link marker
-
-    // Edges first, under the nodes. Each edge carries its *source* node's
-    // color (the citing concept owns the link — Gephi's convention), so hub
-    // fans and cluster membership read from the wiring, not just the dots.
-    const baseLW = disp.linkThickness / view.scale;
-    // Arrowhead into `to`, pulled back to its rim — drawn only on highlighted
-    // edges, so citation direction shows exactly where the user is looking.
-    const arrowInto = (from: SimNode, to: SimNode) => {
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      const len = Math.hypot(dx, dy);
-      if (len < 1) return;
-      const ux = dx / len;
-      const uy = dy / len;
-      const rim = to.r * disp.nodeScale + 2 / view.scale;
-      const tipX = to.x - ux * rim;
-      const tipY = to.y - uy * rim;
-      const s = 6 / view.scale;
-      ctx.beginPath();
-      ctx.moveTo(tipX, tipY);
-      ctx.lineTo(tipX - ux * s - uy * s * 0.45, tipY - uy * s + ux * s * 0.45);
-      ctx.lineTo(tipX - ux * s + uy * s * 0.45, tipY - uy * s - ux * s * 0.45);
-      ctx.closePath();
-      ctx.fill();
-    };
-    // Batch edges by stroke color to cut per-edge state changes (a strokeStyle
-    // assignment + a stroke() call each — the dominant canvas cost on a large
-    // graph). Incident (highlighted) edges are collected and drawn individually
-    // last, on top, with arrowheads. Overlapping edges in a batch composite
-    // their opacity once rather than building up per segment — a hair cleaner,
-    // the only visible difference.
-    const edgeGroups = new Map<string, number[]>();
-    const incidentEdges: number[] = [];
-    for (let ei = 0; ei < data.edges.length; ei++) {
-      const e = data.edges[ei];
-      const a = data.nodes[e.a];
-      const b = data.nodes[e.b];
-      // Both endpoints share an off-screen half-plane → the segment can't cross
-      // the viewport, so skip it (exact; never culls a visible edge).
-      if ((outcode(a.x, a.y) & outcode(b.x, b.y)) !== 0) continue;
-      if (hasFocus && (e.a === focusIdx || e.b === focusIdx)) {
-        incidentEdges.push(ei);
-        continue;
-      }
-      // A single dim group while hovering, else grouped by the source's color.
-      const key = dimOthers
-        ? "__dim__"
-        : disp.colorBy === "cluster"
-          ? data.meta[e.a].clusterColor
-          : data.meta[e.a].color;
-      const group = edgeGroups.get(key);
-      if (group) group.push(ei);
-      else edgeGroups.set(key, [ei]);
-    }
-    ctx.lineWidth = baseLW;
-    for (const [key, eis] of edgeGroups) {
-      if (key === "__dim__") {
-        ctx.globalAlpha = 0.06;
-        ctx.strokeStyle = edgeColor;
-      } else {
-        ctx.globalAlpha = disp.linkOpacity;
-        ctx.strokeStyle = key;
-      }
-      ctx.beginPath();
-      for (const ei of eis) {
-        const e = data.edges[ei];
-        ctx.moveTo(data.nodes[e.a].x, data.nodes[e.a].y);
-        ctx.lineTo(data.nodes[e.b].x, data.nodes[e.b].y);
-      }
-      ctx.stroke();
-    }
-    // Incident edges on top: accent, thicker, with citation-direction arrowheads.
-    if (incidentEdges.length > 0) {
-      ctx.globalAlpha = 0.9;
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = (disp.linkThickness * 1.6) / view.scale;
-      ctx.beginPath();
-      for (const ei of incidentEdges) {
-        const e = data.edges[ei];
-        ctx.moveTo(data.nodes[e.a].x, data.nodes[e.a].y);
-        ctx.lineTo(data.nodes[e.b].x, data.nodes[e.b].y);
-      }
-      ctx.stroke();
-      ctx.fillStyle = accent;
-      for (const ei of incidentEdges) {
-        const e = data.edges[ei];
-        const dir = data.edgeDir[ei] ?? 0;
-        if (dir & 1) arrowInto(data.nodes[e.a], data.nodes[e.b]);
-        if (dir & 2) arrowInto(data.nodes[e.b], data.nodes[e.a]);
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    // Nodes — batched by (fade, color) to cut per-node state changes. Nodes never
-    // overlap (the collision pass guarantees a gap), so batched fills/strokes are
-    // pixel-identical to drawing them one at a time. The selected node's accent
-    // border and the orphan rings are their own small batches.
-    const arcPath = (n: SimNode, r: number) => {
-      ctx.moveTo(n.x + r, n.y); // start at angle 0 so arcs don't connect
-      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-    };
-    const rOf = (i: number) => data.nodes[i].r * disp.nodeScale;
-    const fillGroups = new Map<string, number[]>(); // "f|color" / "b|color" -> ids
-    const strokeBright: number[] = [];
-    const strokeFaded: number[] = [];
-    const orphanRings: number[] = [];
-    let selVisible = -1;
-    let selFaded = false;
-    for (let i = 0; i < data.nodes.length; i++) {
-      const node = data.nodes[i];
-      const meta = data.meta[i];
-      const rr = node.r * disp.nodeScale;
-      if (
-        node.x + rr < viewLeft ||
-        node.x - rr > viewRight ||
-        node.y + rr < viewTop ||
-        node.y - rr > viewBottom
-      )
-        continue; // fully off-screen
-      const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
-      const faded = meta.dim || dimmedByFocus;
-      const color = disp.colorBy === "cluster" ? meta.clusterColor : meta.color;
-      const key = (faded ? "f|" : "b|") + color;
-      const g = fillGroups.get(key);
-      if (g) g.push(i);
-      else fillGroups.set(key, [i]);
-      if (i === selIdx) {
-        selVisible = i;
-        selFaded = faded;
-      } else if (faded) strokeFaded.push(i);
-      else strokeBright.push(i);
-      if (meta.orphan && !faded) orphanRings.push(i);
-    }
-    // Fills, one path + one fill per (fade, color).
-    for (const [key, ids] of fillGroups) {
-      ctx.globalAlpha = key.startsWith("f|") ? 0.18 : 1;
-      ctx.fillStyle = key.slice(2);
-      ctx.beginPath();
-      for (const i of ids) arcPath(data.nodes[i], rOf(i));
-      ctx.fill();
-    }
-    // Non-selected borders (theme-bg stroke), one path per fade group.
-    ctx.strokeStyle = nodeStroke;
-    ctx.lineWidth = 1.2 / view.scale;
-    for (const [alpha, ids] of [
-      [1, strokeBright],
-      [0.18, strokeFaded],
-    ] as const) {
-      if (ids.length === 0) continue;
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      for (const i of ids) arcPath(data.nodes[i], rOf(i));
-      ctx.stroke();
-    }
-    // Selected node's accent border (thicker), on top.
-    if (selVisible >= 0) {
-      ctx.globalAlpha = selFaded ? 0.18 : 1;
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = 3 / view.scale;
-      ctx.beginPath();
-      arcPath(data.nodes[selVisible], rOf(selVisible));
-      ctx.stroke();
-    }
-    // Orphan rings — a dashed warning ring just outside each degree-0 node.
-    if (orphanRings.length > 0) {
-      ctx.save();
-      ctx.globalAlpha = 1;
-      ctx.setLineDash([4 / view.scale, 3 / view.scale]);
-      ctx.lineWidth = 1.5 / view.scale;
-      ctx.strokeStyle = warnColor;
-      ctx.beginPath();
-      for (const i of orphanRings) arcPath(data.nodes[i], rOf(i) + 3 / view.scale);
-      ctx.stroke();
-      ctx.restore();
-    }
-    ctx.globalAlpha = 1;
-
-    // Broken-link markers: a small warning dot at the node's upper-right for any
-    // node with unresolved outbound hrefs. Drawn after all nodes so it sits on
-    // top. Tolerant signal — never an error glyph, just a flag.
-    for (let i = 0; i < data.nodes.length; i++) {
-      const meta = data.meta[i];
-      if (meta.broken <= 0) continue;
-      const node = data.nodes[i];
-      if (
-        node.x < viewLeft ||
-        node.x > viewRight ||
-        node.y < viewTop ||
-        node.y > viewBottom
-      )
-        continue; // off-screen
-      const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
-      if (meta.dim || dimmedByFocus) continue;
-      const rr = node.r * disp.nodeScale;
-      const off = rr * 0.72;
-      const mr = Math.max(2.5, rr * 0.38) / 1; // marker radius in world units
-      ctx.beginPath();
-      ctx.arc(node.x + off, node.y - off, mr, 0, Math.PI * 2);
-      ctx.fillStyle = warnColor;
-      ctx.fill();
-      ctx.lineWidth = 1 / view.scale;
-      ctx.strokeStyle = nodeStroke;
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Labels, dataviz-style: sized by node importance, hubs surfacing first as
-    // you zoom out (each node's reveal threshold scales with its radius), and
-    // collision-culled by priority so dense regions stay legible instead of
-    // becoming a text smear. Selection/hover/neighbors always label.
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    const widths = labelWidthRef.current;
-    const baseReveal = LABEL_MIN_SCALE / disp.labelScale;
-    interface LabelCand {
-      i: number;
-      /** Label font size in *screen* px (importance-scaled). */
-      fontPx: number;
-      alwaysShow: boolean;
-    }
-    // Label slack: a label hangs below/beside its node, so a node just past the
-    // edge can still show one — widen the (shared) viewport rect by this much
-    // before culling label candidates.
-    const labelSlack = 160 * invScale;
-    const cands: LabelCand[] = [];
-    for (let i = 0; i < data.nodes.length; i++) {
-      const node = data.nodes[i];
-      const meta = data.meta[i];
-      const isSel = i === selIdx;
-      const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const isHover = i === hover;
-      const alwaysShow = isSel || isNeighbor || isHover;
-      // Off-screen and not contextually pinned → not a label candidate.
-      if (
-        !alwaysShow &&
-        (node.x < viewLeft - labelSlack ||
-          node.x > viewRight + labelSlack ||
-          node.y < viewTop - labelSlack ||
-          node.y > viewBottom + labelSlack)
-      )
-        continue;
-      // 0 for the smallest node, 1 for the biggest hub.
-      const t = (node.r - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
-      // Hubs reveal their labels well before leaves do.
-      if (!alwaysShow && view.scale < baseReveal * (1 - 0.75 * t)) continue;
-      if (!alwaysShow && meta.dim) continue;
-      // While moving, keep only the hub anchors (leaves fill in on settle).
-      if (animating && !alwaysShow && t < ANIM_LABEL_MIN_T) continue;
-      cands.push({ i, fontPx: 10 + 5 * t, alwaysShow });
-    }
-    // Priority: always-shown labels first, then bigger nodes.
-    cands.sort(
-      (a, b) =>
-        Number(b.alwaysShow) - Number(a.alwaysShow) ||
-        data.nodes[b.i].r - data.nodes[a.i].r,
-    );
-    // Greedy screen-space collision: a label is dropped when it overlaps one
-    // already kept — except always-shown labels, which draw regardless (but
-    // still claim their space so lower-priority neighbors yield).
-    const kept: { cx: number; x: number; y: number; w: number; h: number; cand: LabelCand }[] = [];
-    for (const cand of cands) {
-      // While moving: draw the hub anchors straight through (cands is already
-      // sorted hub-first), capped, without measuring or collision-testing.
-      if (animating && kept.length >= ANIM_LABEL_CAP) break;
-      const node = data.nodes[cand.i];
-      const meta = data.meta[cand.i];
-      const cy = node.y + node.r * disp.nodeScale + 2 / view.scale;
-      if (animating) {
-        kept.push({ cx: node.x, x: node.x, y: cy, w: 0, h: 0, cand });
-        continue;
-      }
-      // Measured at screen size and cached; world width follows the zoom.
-      const key = `${Math.round(cand.fontPx * 2)}|${meta.title}`;
-      let w = widths.get(key);
-      if (w === undefined) {
-        ctx.font = `${cand.fontPx}px ${LABEL_FONT}`;
-        w = ctx.measureText(meta.title).width;
-        if (widths.size > 8192) widths.clear();
-        widths.set(key, w);
-      }
-      const wWorld = w / view.scale;
-      const hWorld = (cand.fontPx * 1.25) / view.scale;
-      const rect = {
-        cx: node.x,
-        x: node.x - wWorld / 2,
-        y: cy,
-        w: wWorld,
-        h: hWorld,
-        cand,
-      };
-      const collides = kept.some(
-        (k) =>
-          rect.x < k.x + k.w && k.x < rect.x + rect.w && rect.y < k.y + k.h && k.y < rect.y + rect.h,
-      );
-      if (collides && !cand.alwaysShow) continue;
-      kept.push(rect);
-    }
-    for (const { cx, y, cand } of kept) {
-      const meta = data.meta[cand.i];
-      const isSel = cand.i === selIdx;
-      const isNeighbor = focusNeighbors?.has(cand.i) ?? false;
-      const isHover = cand.i === hover;
-      const dimmedByFocus = dimOthers && cand.i !== focusIdx && !isNeighbor;
-      ctx.font = `${cand.fontPx / view.scale}px ${LABEL_FONT}`;
-      ctx.globalAlpha = meta.dim || dimmedByFocus ? 0.25 : 1;
-      ctx.fillStyle = isSel || isNeighbor || isHover ? textColor : textDim;
-      ctx.fillText(meta.title, cx, y);
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
+    renderGraph({
+      ctx,
+      size: sizeRef.current,
+      view: viewRef.current,
+      data: renderRef.current,
+      display: displayRef.current,
+      selected: selectedRef.current,
+      hover: hoverRef.current,
+      animating,
+      labelWidths: labelWidthRef.current,
+      colors: {
+        bg: cssVar("--bg") || "#000",
+        edge: cssVar("--text-dim") || "#888",
+        accent: cssVar("--accent") || "#2f6df6",
+        text: cssVar("--text") || "#111",
+        textDim: cssVar("--text-dim") || "#777",
+        nodeStroke: cssVar("--bg") || "#fff",
+        warn: cssVar("--warn") || "#b8860b",
+      },
+    });
   }
 
   // ---- Animation loop ------------------------------------------------------
@@ -1445,136 +992,16 @@ export function GraphView() {
         />
       )}
       <div className="graph-toolbar">
-        <div className="graph-panel">
-          <Popover.Root>
-            <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
-            <Popover.Portal>
-              <Popover.Positioner
-                className="ui-popover-positioner"
-                side="bottom"
-                align="start"
-                sideOffset={6}
-              >
-                <Popover.Popup className="ui-popover graph-panel-body">
-                  <Section title="Renderer" desc="How the graph is drawn.">
-                    <Segmented
-                      ariaLabel="Renderer"
-                      options={[
-                        { value: "canvas", text: "Canvas" },
-                        { value: "gpu", text: "GPU" },
-                      ]}
-                      value={renderer}
-                      onChange={setRenderer}
-                    />
-                    <p className="graph-hint">{RENDERER_HINTS[renderer]}</p>
-                  </Section>
-                  {renderer === "canvas" && (
-                    <>
-                  <Section
-                    title="Connections"
-                    desc="A bundle can be densely cross-linked. Choose how many links to draw."
-                  >
-                    <Segmented
-                      ariaLabel="Link density"
-                      options={[
-                        { value: "sparse", text: "Key" },
-                        { value: "balanced", text: "Balanced" },
-                        { value: "all", text: "All" },
-                      ]}
-                      value={state.linkDensity}
-                      onChange={(d) => {
-                        actions.setLinkDensity(d);
-                      }}
-                    />
-                    <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
-                  </Section>
-                  <Section title="Color" desc="What a node's color means.">
-                    <Segmented
-                      ariaLabel="Color nodes by"
-                      options={[
-                        { value: "cluster", text: "Cluster" },
-                        { value: "type", text: "Type" },
-                      ]}
-                      value={display.colorBy}
-                      onChange={(v) => setDisplay((d) => ({ ...d, colorBy: v }))}
-                    />
-                    <p className="graph-hint">{COLOR_HINTS[display.colorBy]}</p>
-                  </Section>
-                  <Section title="Appearance" desc="Size and emphasis of nodes and links.">
-                    <Slider
-                      label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
-                      format={(v) => `${v.toFixed(1)}×`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))}
-                    />
-                    <Slider
-                      label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
-                      format={(v) => `${v.toFixed(1)}×`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))}
-                    />
-                    <Slider
-                      label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
-                      format={(v) => `${Math.round(v * 100)}%`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))}
-                    />
-                    <Slider
-                      label="Label visibility"
-                      hint="How early titles appear as you zoom in."
-                      min={0.5} max={3} step={0.1} value={display.labelScale}
-                      format={(v) => `${v.toFixed(1)}×`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))}
-                    />
-                  </Section>
-                  <Section title="Layout" desc="Fine-tune how the graph arranges itself.">
-                    <Slider
-                      label="Spacing" hint="How strongly nodes push apart."
-                      min={0} max={6000} step={50} value={forces.repulsion}
-                      format={(v) => `${Math.round((v / 6000) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))}
-                    />
-                    <Slider
-                      label="Link length" hint="Resting distance between connected nodes."
-                      min={20} max={250} step={5} value={forces.springLength}
-                      format={(v) => `${Math.round(((v - 20) / 230) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, springLength: v }))}
-                    />
-                    <Slider
-                      label="Link pull" hint="How strongly links draw nodes together."
-                      min={0} max={0.3} step={0.01} value={forces.springK}
-                      format={(v) => `${Math.round((v / 0.3) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, springK: v }))}
-                    />
-                    <Slider
-                      label="Gravity" hint="Pull toward the center; keeps the graph compact."
-                      min={0} max={0.2} step={0.005} value={forces.centering}
-                      format={(v) => `${Math.round((v / 0.2) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
-                    />
-                    <Slider
-                      label="Cluster pull"
-                      hint="Gathers each detected community around its own center."
-                      min={0} max={0.25} step={0.01} value={forces.clusterStrength ?? 0}
-                      format={(v) => `${Math.round((v / 0.25) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, clusterStrength: v }))}
-                    />
-                  </Section>
-                  <button
-                    type="button"
-                    className="graph-panel-reset"
-                    onClick={() => {
-                      setForces({ ...GRAPH_FORCES });
-                      setDisplay(DEFAULT_DISPLAY);
-                      actions.setLinkDensity("balanced");
-                    }}
-                  >
-                    Reset to defaults
-                  </button>
-                    </>
-                  )}
-                </Popover.Popup>
-              </Popover.Positioner>
-            </Popover.Portal>
-          </Popover.Root>
-        </div>
+        <GraphControls
+          renderer={renderer}
+          setRenderer={setRenderer}
+          linkDensity={state.linkDensity}
+          setLinkDensity={(d) => actions.setLinkDensity(d)}
+          display={display}
+          setDisplay={setDisplay}
+          forces={forces}
+          setForces={setForces}
+        />
         <div className="graph-mode" role="group" aria-label="Graph mode">
           <div className="graph-seg">
             <button
@@ -1682,102 +1109,6 @@ export function GraphView() {
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-/** A titled, optionally-described group of controls in the panel. */
-function Section({
-  title,
-  desc,
-  children,
-}: {
-  title: string;
-  desc?: string;
-  children: ReactNode;
-}) {
-  return (
-    <fieldset className="graph-section">
-      <legend>{title}</legend>
-      {desc && <p className="graph-section-desc">{desc}</p>}
-      {children}
-    </fieldset>
-  );
-}
-
-/** A full-width segmented (single-choice) control. */
-function Segmented<T extends string>({
-  ariaLabel,
-  options,
-  value,
-  onChange,
-}: {
-  ariaLabel: string;
-  options: { value: T; text: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="graph-seg graph-seg-full" role="group" aria-label={ariaLabel}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          className="graph-seg-btn"
-          aria-pressed={value === o.value}
-          onClick={() => onChange(o.value)}
-        >
-          {o.text}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/**
- * A labelled slider with its current value shown alongside (so the value stays
- * visible while dragging) and an optional one-line hint explaining what it does.
- */
-function Slider({
-  label,
-  hint,
-  min,
-  max,
-  step,
-  value,
-  format,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  format?: (v: number) => string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="graph-slider">
-      <div className="graph-slider-head">
-        <span className="graph-slider-label">{label}</span>
-        <span className="graph-slider-value">{format ? format(value) : String(value)}</span>
-      </div>
-      <BaseSlider.Root
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onValueChange={(v) => onChange(v)}
-      >
-        <BaseSlider.Control className="ui-slider-control">
-          <BaseSlider.Track className="ui-slider-track">
-            <BaseSlider.Indicator className="ui-slider-indicator" />
-            <BaseSlider.Thumb className="ui-slider-thumb" />
-          </BaseSlider.Track>
-        </BaseSlider.Control>
-      </BaseSlider.Root>
-      {hint && <p className="graph-slider-hint">{hint}</p>}
     </div>
   );
 }

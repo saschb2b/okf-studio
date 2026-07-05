@@ -23,6 +23,21 @@ export function useGlobalKeys() {
         // Cycle split -> reader -> graph (bare backslash, next to [ and ]).
         e.preventDefault();
         actions.cycleLayout();
+      } else if (e.ctrlKey && e.key === "Tab") {
+        // Cycle reader tabs (Ctrl even on mac — Cmd+Tab is the OS app switcher).
+        e.preventDefault();
+        actions.cycleTab(e.shiftKey ? -1 : 1);
+      } else if (mod && k === "t" && state.bundle) {
+        // New tab: opens empty and active; its empty state points at the
+        // graph/sidebar/launcher to pick a concept. (Deliberately does NOT
+        // auto-open the launcher — owner feedback.) docs/proposals/multi-view.md
+        e.preventDefault();
+        actions.openInNewTab(null);
+      } else if (mod && k === "w" && state.bundle) {
+        // Close the active tab (the last one never closes; the window's own
+        // close button owns closing the window).
+        e.preventDefault();
+        actions.closeTab();
       } else if (mod && e.shiftKey && k === "o") {
         // Open from URL (remote bundle). Shift distinguishes it from the local
         // folder picker on Ctrl/Cmd+O.

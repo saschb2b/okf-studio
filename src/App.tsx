@@ -8,6 +8,7 @@ import { StatusBar } from "./components/StatusBar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { GraphView } from "./components/GraphView.tsx";
 import { Reader } from "./components/Reader.tsx";
+import { TabStrip } from "./components/TabStrip.tsx";
 import { CommandPalette } from "./components/CommandPalette.tsx";
 import { ValidationPanel } from "./components/ValidationPanel.tsx";
 import { LineagePanel } from "./components/LineagePanel.tsx";
@@ -172,6 +173,8 @@ function Workspace() {
 
       {showReader && (
         <section className="pane reader">
+          {/* Sticky strip above the document; renders nothing below 2 tabs. */}
+          <TabStrip />
           <Reader />
         </section>
       )}

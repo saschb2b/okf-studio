@@ -217,9 +217,15 @@ body,
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* The opaque app surface; rounded so the borderless window has soft corners
+     (hidden and clip both cut children to the radius). `clip` — like the
+     document root above — removes the scroll container entirely, so a
+     programmatic scroll (e.g. a scrollIntoView aligning a sidebar row or an
+     outline jump, which scrolls every scrollable ancestor) can never shift
+     the app chrome out of the window; `hidden` is the older-engine fallback.
+     Squared off when maximized. */
   overflow: hidden;
-  /* The opaque app surface; rounded so the borderless window has soft corners.
-     overflow:hidden clips the panes to the radius. Squared off when maximized. */
+  overflow: clip;
   background: var(--bg);
   border-radius: var(--frame-radius);
 }

@@ -407,7 +407,16 @@ export function Reader() {
   // Breadcrumb: the concept's directory path (its place in the bundle).
   const crumbs = c.id.includes("/") ? c.id.split("/").slice(0, -1) : [];
 
-  const select = (id: string) => actions.selectConcept(id);
+  // Rail rows and body links route through one opener: plain click navigates
+  // the current tab; Ctrl/Cmd+click opens a background tab (add Shift to also
+  // switch) — the browser link gestures. See docs/proposals/multi-view.md.
+  const select = (id: string, e?: MouseEvent<HTMLElement>) => {
+    if (e && (e.ctrlKey || e.metaKey)) {
+      actions.openInNewTab(id, { background: !e.shiftKey });
+    } else {
+      actions.selectConcept(id);
+    }
+  };
 
   // Event delegation for body anchor clicks: route concept links in-app,
   // external links to the OS browser, and keep unresolved links inert.
@@ -471,11 +480,11 @@ export function Reader() {
     if (link.kind === "external") {
       actions.openExternal(link.url);
     } else if (link.kind === "concept") {
-      actions.selectConcept(link.id);
+      select(link.id, e);
     } else if (link.kind === "directory") {
       // Enter the section: open its first concept (the sidebar expands to it).
       const first = firstConceptInDir(bundle, link.dir);
-      if (first) actions.selectConcept(first);
+      if (first) select(first, e);
     } else if (link.kind === "asset") {
       // Scroll to the asset's rendered preview above the body, if one exists.
       bodyRef.current
@@ -487,6 +496,25 @@ export function Reader() {
       jumpTo(link.id);
     }
     // "unresolved": inert (already de-emphasized and marked broken).
+  }
+
+  // Middle-click on a concept link opens it in a background tab (the browser
+  // gesture). mousedown suppresses the default middle-button behaviors
+  // (autoscroll/paste, which can swallow auxclick); mouseup performs the open.
+  function onBodyMiddleDown(e: MouseEvent<HTMLDivElement>) {
+    if (e.button === 1 && (e.target as HTMLElement).closest("a")) {
+      e.preventDefault();
+    }
+  }
+  function onBodyMiddleUp(e: MouseEvent<HTMLDivElement>) {
+    if (!c || e.button !== 1) return;
+    const href = (e.target as HTMLElement).closest("a")?.getAttribute("href");
+    if (!href) return;
+    const link = classifyLink(href, c.id, bundle);
+    if (link.kind === "concept") {
+      e.preventDefault();
+      actions.openInNewTab(link.id, { background: true });
+    }
   }
 
   return (
@@ -579,6 +607,8 @@ export function Reader() {
           ref={bodyRef}
           className="body markdown"
           onClick={onBodyClick}
+          onMouseDown={onBodyMiddleDown}
+          onMouseUp={onBodyMiddleUp}
           // Sanitized in renderMarkdown via DOMPurify; images resolved (to local
           // data URLs / placeholders) by processBodyImages before injection.
           dangerouslySetInnerHTML={displayHtmlProp}
@@ -724,7 +754,7 @@ function RailModule({
   );
 }
 
-/** A list of concept rows that navigate on click. */
+/** A list of concept rows that navigate on click (Ctrl/Cmd+click → new tab). */
 function RelRows({
   bundle,
   ids,
@@ -732,13 +762,17 @@ function RelRows({
 }: {
   bundle: Bundle | null;
   ids: string[];
-  onSelect: (id: string) => void;
+  onSelect: (id: string, e?: MouseEvent<HTMLElement>) => void;
 }) {
   return (
     <ul className="rel-list">
       {ids.map((id) => (
         <li key={id}>
-          <button type="button" className="rel-link" onClick={() => onSelect(id)}>
+          <button
+            type="button"
+            className="rel-link"
+            onClick={(e) => onSelect(id, e)}
+          >
             {titleOf(bundle, id)}
           </button>
         </li>

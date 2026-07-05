@@ -3,7 +3,7 @@ type: Reference
 title: Keyboard Shortcuts
 description: The default keybindings; every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
-timestamp: 2026-07-04T20:00:00Z
+timestamp: 2026-07-06T12:00:00Z
 ---
 
 # Defaults
@@ -19,7 +19,11 @@ timestamp: 2026-07-04T20:00:00Z
 | `Esc` | Close the launcher / dialog / deselect |
 | `↑` `↓` | Move through results / the sidebar |
 | `Enter` | Open the highlighted concept |
-| `←` `→` (Alt) | Back / forward in [navigation history](../features/navigation.md) |
+| `←` `→` (Alt) | Back / forward in [navigation history](../features/navigation.md) (per tab) |
+| `Ctrl/Cmd + T` | New reader [tab](../features/navigation.md) (empty; pick its concept anywhere) |
+| `Ctrl/Cmd + W` | Close the active tab (the last tab never closes) |
+| `Ctrl + Tab` / `Ctrl + Shift + Tab` | Next / previous tab |
+| `Ctrl/Cmd + click` | Open a concept link in a new background tab (`+ Shift` to switch to it) |
 | `Ctrl/Cmd + 1` `2` `3` | Layout: graph-only / split / reader-only |
 | `\` | Cycle the [layout mode](browsing-layout.md) |
 | `+` `-` | Zoom the [graph](../features/graph-view.md) in / out |

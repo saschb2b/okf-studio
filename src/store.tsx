@@ -23,9 +23,54 @@ import type {
 import { DEFAULT_SETTINGS } from "./types.ts";
 import { applyTheme } from "./theme.ts";
 import * as ipc from "./ipc.ts";
-import { isWindowMaximized, onWindowResized } from "./window.ts";
+import {
+  isWindowMaximized,
+  onWindowResized,
+  openConceptWindow,
+} from "./window.ts";
 
 export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage";
+
+/**
+ * One open concept in the reader — a browser-style tab with its own
+ * back/forward history. The active tab's fields are mirrored into the
+ * top-level `activeConceptId`/`back`/`fwd` so every existing consumer of "the
+ * selection" keeps working; only tab-aware UI reads `tabs` directly. See
+ * docs/proposals/multi-view.md.
+ */
+export interface Tab {
+  /** Session-monotonic identity (from State.nextTabId) — stable across
+   *  reorders/closures, so React keys and close/activate actions can't hit
+   *  the wrong tab. */
+  id: number;
+  conceptId: string | null;
+  back: string[];
+  fwd: string[];
+}
+
+/**
+ * Boot target parsed from the window's query string. A popped-out tab opens a
+ * new OS window of the same app pointed at `?folder=…&root=…&concept=…`; when
+ * present, boot opens that bundle (instead of auto-reopening the most recent)
+ * and lands on the concept in reader-only layout. See
+ * docs/proposals/multi-view.md.
+ */
+interface BootTarget {
+  folder: string;
+  root: string;
+  concept: string | null;
+}
+
+function parseBootTarget(): BootTarget | null {
+  if (typeof location === "undefined") return null;
+  const q = new URLSearchParams(location.search);
+  const folder = q.get("folder");
+  const root = q.get("root");
+  if (!folder || !root) return null;
+  return { folder, root, concept: q.get("concept") };
+}
+
+const bootTarget = parseBootTarget();
 
 /**
  * Result of a remote open. `opened` — a single bundle was fetched and opened;
@@ -134,9 +179,16 @@ export interface State {
   bundle: Bundle | null;
   loading: boolean;
   error: string | null;
+  /** Mirror of the active tab's concept — the single shared selection. */
   activeConceptId: string | null;
+  /** Mirror of the active tab's history (per-tab, like a browser). */
   back: string[];
   fwd: string[];
+  /** Open reader tabs (always ≥ 1). See docs/proposals/multi-view.md. */
+  tabs: Tab[];
+  activeTabId: number;
+  /** Monotonic id source for new tabs (in state, so the reducer stays pure). */
+  nextTabId: number;
   query: string;
   hiddenTypes: string[];
   activeTag: string | null;
@@ -174,6 +226,9 @@ const initialState: State = {
   activeConceptId: null,
   back: [],
   fwd: [],
+  tabs: [{ id: 1, conceptId: null, back: [], fwd: [] }],
+  activeTabId: 1,
+  nextTabId: 2,
   query: "",
   hiddenTypes: [],
   activeTag: null,
@@ -181,9 +236,18 @@ const initialState: State = {
   graphMode: "focus",
   focusDepth: 1,
   linkDensity: "balanced",
-  layout: persistedLayout.mode,
+  // A pop-out window boots as a document window: reader-only, sidebar tucked
+  // away (both reversible from its own chrome). Not persisted — only a layout
+  // *action* saves, so the main window's saved layout is untouched.
+  layout: bootTarget ? "reader" : persistedLayout.mode,
   paneSizes: persistedLayout.sizes,
-  panels: { sidebar: true, reader: true, log: false, validation: false, lineage: false },
+  panels: {
+    sidebar: !bootTarget,
+    reader: true,
+    log: false,
+    validation: false,
+    lineage: false,
+  },
   palette: false,
   paletteSeed: null,
   settingsOpen: false,
@@ -205,6 +269,11 @@ type Msg =
   | { t: "select"; id: string | null }
   | { t: "back" }
   | { t: "fwd" }
+  | { t: "openTab"; id: string | null; background?: boolean }
+  | { t: "closeTab"; tabId: number }
+  | { t: "activateTab"; tabId: number }
+  | { t: "cycleTab"; dir: 1 | -1 }
+  | { t: "moveTab"; tabId: number; to: number }
   | { t: "query"; v: string }
   | { t: "toggleType"; v: string }
   | { t: "showAllTypes" }
@@ -221,6 +290,24 @@ type Msg =
   | { t: "settingsOpen"; v: boolean }
   | { t: "help"; v: boolean }
   | { t: "settings"; v: Settings };
+
+/**
+ * Re-derive the selection mirrors (`activeConceptId`/`back`/`fwd`) from the
+ * active tab. Every reducer branch that changes tabs or the active tab goes
+ * through here, so the mirrors — which the rest of the app reads — can never
+ * drift from the tab that owns them.
+ */
+function withTabs(s: State, tabs: Tab[], activeTabId: number): State {
+  const t = tabs.find((x) => x.id === activeTabId) ?? tabs[0];
+  return {
+    ...s,
+    tabs,
+    activeTabId: t.id,
+    activeConceptId: t.conceptId,
+    back: t.back,
+    fwd: t.fwd,
+  };
+}
 
 function defaultConcept(bundle: Bundle): string | null {
   for (const idx of bundle.indexes) {
@@ -264,56 +351,151 @@ function reducer(s: State, m: Msg): State {
     case "maximized":
       return { ...s, maximized: m.v };
     case "setBundle": {
-      const keep =
-        s.activeConceptId &&
-        m.bundle.concepts.some((c) => c.id === s.activeConceptId)
-          ? s.activeConceptId
-          : defaultConcept(m.bundle);
-      return {
-        ...s,
-        activeRoot: m.root,
-        bundle: m.bundle,
-        activeConceptId: keep,
-        loading: false,
-        error: null,
-        // reset view state when switching bundles (but not on live-reload of same root)
-        back: m.root === s.activeRoot ? s.back : [],
-        fwd: m.root === s.activeRoot ? s.fwd : [],
-        query: m.root === s.activeRoot ? s.query : "",
-        hiddenTypes: m.root === s.activeRoot ? s.hiddenTypes : [],
-        activeTag: m.root === s.activeRoot ? s.activeTag : null,
-      };
+      const exists = (id: string | null) =>
+        !!id && m.bundle.concepts.some((c) => c.id === id);
+      if (m.root !== s.activeRoot) {
+        // Switching bundles: a new browsing context — reset view state and the
+        // tabs down to a single tab. The active concept survives when the new
+        // root still has it (a remote refresh lands in a fresh cache folder but
+        // holds the same bundle); otherwise land on the entry concept.
+        const tab: Tab = {
+          id: s.nextTabId,
+          conceptId: exists(s.activeConceptId)
+            ? s.activeConceptId
+            : defaultConcept(m.bundle),
+          back: [],
+          fwd: [],
+        };
+        return withTabs(
+          {
+            ...s,
+            activeRoot: m.root,
+            bundle: m.bundle,
+            loading: false,
+            error: null,
+            nextTabId: s.nextTabId + 1,
+            query: "",
+            hiddenTypes: [],
+            activeTag: null,
+          },
+          [tab],
+          tab.id,
+        );
+      }
+      // Live reload of the same root: keep the tabs. The active tab falls back
+      // to the bundle's entry concept if its concept vanished (the previous
+      // single-selection behavior); a background tab whose concept vanished
+      // empties out and says so when revisited.
+      const tabs = s.tabs.map((t) => {
+        if (exists(t.conceptId)) return t;
+        return {
+          ...t,
+          conceptId: t.id === s.activeTabId ? defaultConcept(m.bundle) : null,
+        };
+      });
+      return withTabs(
+        { ...s, activeRoot: m.root, bundle: m.bundle, loading: false, error: null },
+        tabs,
+        s.activeTabId,
+      );
     }
-    case "select":
+    case "select": {
       // Selecting a concept always leaves the Overview landing (you're diving in).
       if (m.id === s.activeConceptId) return s.overview ? { ...s, overview: false } : s;
+      // Navigation happens in the active tab (a browser's current tab).
+      const tabs = s.tabs.map((t) =>
+        t.id === s.activeTabId
+          ? {
+              ...t,
+              conceptId: m.id,
+              back: t.conceptId ? [...t.back, t.conceptId] : t.back,
+              fwd: [],
+            }
+          : t,
+      );
       return {
-        ...s,
-        activeConceptId: m.id,
-        back: s.activeConceptId ? [...s.back, s.activeConceptId] : s.back,
-        fwd: [],
+        ...withTabs(s, tabs, s.activeTabId),
         palette: false,
         overview: false,
       };
+    }
     case "back": {
       if (!s.back.length) return s;
-      const prev = s.back[s.back.length - 1];
-      return {
-        ...s,
-        back: s.back.slice(0, -1),
-        fwd: s.activeConceptId ? [s.activeConceptId, ...s.fwd] : s.fwd,
-        activeConceptId: prev,
-      };
+      const tabs = s.tabs.map((t) =>
+        t.id === s.activeTabId
+          ? {
+              ...t,
+              back: t.back.slice(0, -1),
+              fwd: t.conceptId ? [t.conceptId, ...t.fwd] : t.fwd,
+              conceptId: t.back[t.back.length - 1],
+            }
+          : t,
+      );
+      return withTabs(s, tabs, s.activeTabId);
     }
     case "fwd": {
       if (!s.fwd.length) return s;
-      const next = s.fwd[0];
+      const tabs = s.tabs.map((t) =>
+        t.id === s.activeTabId
+          ? {
+              ...t,
+              fwd: t.fwd.slice(1),
+              back: t.conceptId ? [...t.back, t.conceptId] : t.back,
+              conceptId: t.fwd[0],
+            }
+          : t,
+      );
+      return withTabs(s, tabs, s.activeTabId);
+    }
+    case "openTab": {
+      // Insert after the active tab (the browser convention: children sit
+      // beside their opener). Background keeps the current tab active.
+      const tab: Tab = { id: s.nextTabId, conceptId: m.id, back: [], fwd: [] };
+      const idx = s.tabs.findIndex((t) => t.id === s.activeTabId);
+      const tabs = [...s.tabs.slice(0, idx + 1), tab, ...s.tabs.slice(idx + 1)];
+      const grown = { ...s, nextTabId: s.nextTabId + 1 };
+      if (m.background) return withTabs(grown, tabs, s.activeTabId);
       return {
-        ...s,
-        fwd: s.fwd.slice(1),
-        back: s.activeConceptId ? [...s.back, s.activeConceptId] : s.back,
-        activeConceptId: next,
+        ...withTabs(grown, tabs, tab.id),
+        palette: false,
+        overview: false,
       };
+    }
+    case "closeTab": {
+      // The last tab never closes — the reader pane always has a subject
+      // (closing "the window" is the OS close button's job, not the strip's).
+      if (s.tabs.length <= 1) return s;
+      const idx = s.tabs.findIndex((t) => t.id === m.tabId);
+      if (idx < 0) return s;
+      const tabs = s.tabs.filter((t) => t.id !== m.tabId);
+      // Closing the active tab activates its right neighbor (else the new last).
+      const active =
+        m.tabId === s.activeTabId
+          ? tabs[Math.min(idx, tabs.length - 1)].id
+          : s.activeTabId;
+      return withTabs(s, tabs, active);
+    }
+    case "activateTab": {
+      if (!s.tabs.some((t) => t.id === m.tabId)) return s;
+      if (m.tabId === s.activeTabId) return s;
+      return { ...withTabs(s, s.tabs, m.tabId), overview: false };
+    }
+    case "cycleTab": {
+      if (s.tabs.length < 2) return s;
+      const idx = s.tabs.findIndex((t) => t.id === s.activeTabId);
+      const next = s.tabs[(idx + m.dir + s.tabs.length) % s.tabs.length];
+      return { ...withTabs(s, s.tabs, next.id), overview: false };
+    }
+    case "moveTab": {
+      // Reorder only — the active tab (and so the selection) is unchanged.
+      const idx = s.tabs.findIndex((t) => t.id === m.tabId);
+      if (idx < 0) return s;
+      const to = Math.max(0, Math.min(s.tabs.length - 1, m.to));
+      if (to === idx) return s;
+      const tabs = [...s.tabs];
+      const [tab] = tabs.splice(idx, 1);
+      tabs.splice(to, 0, tab);
+      return withTabs(s, tabs, s.activeTabId);
     }
     case "query":
       return { ...s, query: m.v };
@@ -406,6 +588,19 @@ export interface Actions {
   setRemoteOpen(open: boolean, seed?: string): void;
   rescan(): Promise<void>;
   selectConcept(id: string | null): void;
+  /** Open a concept in a new tab beside the active one. `background` (the
+   *  Ctrl/Cmd+click default) keeps the current tab active, like a browser. */
+  openInNewTab(id: string | null, opts?: { background?: boolean }): void;
+  /** Close a tab (default: the active one). The last tab never closes. */
+  closeTab(tabId?: number): void;
+  activateTab(tabId: number): void;
+  cycleTab(dir: 1 | -1): void;
+  /** Reorder a tab to a new index (drag-to-reorder in the strip). */
+  moveTab(tabId: number, to: number): void;
+  /** Undock a tab (default: the active one) into its own OS window — the
+   *  browser tear-off. The local tab closes once the window exists, unless it
+   *  is the only one. */
+  popOutTab(tabId?: number): Promise<void>;
   back(): void;
   forward(): void;
   setQuery(q: string): void;
@@ -598,6 +793,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     selectConcept(id) {
       dispatch({ t: "select", id });
     },
+    openInNewTab(id, opts) {
+      dispatch({ t: "openTab", id, background: opts?.background });
+    },
+    closeTab(tabId) {
+      dispatch({ t: "closeTab", tabId: tabId ?? stateRef.current.activeTabId });
+    },
+    activateTab(tabId) {
+      dispatch({ t: "activateTab", tabId });
+    },
+    cycleTab(dir) {
+      dispatch({ t: "cycleTab", dir });
+    },
+    moveTab(tabId, to) {
+      dispatch({ t: "moveTab", tabId, to });
+    },
+    async popOutTab(tabId) {
+      const s = stateRef.current;
+      const id = tabId ?? s.activeTabId;
+      const tab = s.tabs.find((t) => t.id === id);
+      if (!tab || !s.folder || !s.activeRoot) return;
+      const ok = await openConceptWindow(s.folder, s.activeRoot, tab.conceptId);
+      // Tear-off semantics: the tab moves, it isn't copied — but only once the
+      // window actually exists, and never below one tab.
+      if (ok && stateRef.current.tabs.length > 1)
+        dispatch({ t: "closeTab", tabId: id });
+    },
     back() {
       dispatch({ t: "back" });
     },
@@ -673,6 +894,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // render, and openRecentBundle reads the ref synchronously here.
       stateRef.current = { ...stateRef.current, settings: s };
       dispatch({ t: "settings", v: s });
+      // A pop-out window boots straight onto its target bundle + concept
+      // (passed in the query string by the opener) instead of the recents flow.
+      if (bootTarget) {
+        const bundles = await ipc.scanBundles(bootTarget.folder, s.scanMaxDepth);
+        dispatch({ t: "openFolder", folder: bootTarget.folder, bundles });
+        const root = bundles.some((b) => b.root === bootTarget.root)
+          ? bootTarget.root
+          : bundles[0]?.root;
+        // Select first, then load: setBundle keeps a pre-selected concept that
+        // exists in the incoming bundle, so the window lands on its target
+        // with an empty history (no phantom Back entry).
+        if (bootTarget.concept) actions.selectConcept(bootTarget.concept);
+        if (root) await actions.selectBundle(root, bootTarget.folder);
+        return;
+      }
       const recents = await ipc.recentBundles();
       dispatch({ t: "recents", v: recents });
       if (recents.length > 0 && ipc.isTauri()) {

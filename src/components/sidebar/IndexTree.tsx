@@ -16,6 +16,7 @@ import type {
   CSSProperties,
   Dispatch,
   KeyboardEvent,
+  MouseEvent as ReactMouseEvent,
   RefObject,
   SetStateAction,
 } from "react";
@@ -193,7 +194,17 @@ function useRevealActiveRow(
       const measurable = !!vr && vr.height > 0;
       const visible = measurable && rr.top >= vr.top && rr.bottom <= vr.bottom;
       if (!visible) {
-        row.scrollIntoView({ block: measurable ? "center" : "nearest" });
+        if (measurable && vp) {
+          // Center by scrolling ONLY the tree's own viewport. scrollIntoView
+          // also scrolls every scrollable ancestor to satisfy the alignment —
+          // including the app shell (overflow:hidden still scrolls
+          // programmatically) — which shifted the whole chrome up and cut off
+          // the title bar (owner-reported, on tab/selection changes).
+          vp.scrollTop += rr.top - vr.top - (vr.height - rr.height) / 2;
+        } else {
+          // Unmeasurable (jsdom): a minimal reveal is all we can ask for.
+          row.scrollIntoView({ block: "nearest" });
+        }
       }
       break;
     }
@@ -373,7 +384,15 @@ export function IndexTree() {
           visibleIds={visibleIds}
           filtering={filtering}
           dirCounts={dirCounts}
-          onOpenConcept={(id) => actions.selectConcept(id)}
+          // Plain click selects; Ctrl/Cmd+click opens a background tab (Shift
+          // to also switch) — the browser gesture. docs/proposals/multi-view.md
+          onOpenConcept={(id, e) => {
+            if (e && (e.ctrlKey || e.metaKey)) {
+              actions.openInNewTab(id, { background: !e.shiftKey });
+            } else {
+              actions.selectConcept(id);
+            }
+          }}
         />
       </div>
     </section>
@@ -413,7 +432,7 @@ function TreeNode({
   visibleIds: Set<string>;
   filtering: boolean;
   dirCounts: Map<string, number>;
-  onOpenConcept: (id: string) => void;
+  onOpenConcept: (id: string, e?: ReactMouseEvent<HTMLElement>) => void;
 }) {
   const focusedKey = rows[focusIdx]?.key;
 
@@ -519,7 +538,7 @@ function TreeNode({
                     }${dimmed ? " is-dimmed" : ""}`}
                     style={indent(depth)}
                     title={entry.description || entry.title}
-                    onClick={() => onOpenConcept(entry.target)}
+                    onClick={(e) => onOpenConcept(entry.target, e)}
                   >
                     <span className="sb-twisty sb-leaf" aria-hidden="true" />
                     <span className="sb-tree-label">{entry.title}</span>

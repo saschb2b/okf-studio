@@ -733,7 +733,13 @@ export function GraphView() {
       node.fx = null;
       node.fy = null;
       if (!drag.moved) {
-        actions.selectConcept(node.id);
+        // Ctrl/Cmd+click opens the node in a background reader tab (Shift to
+        // also switch); plain click keeps the shared-selection behavior.
+        if (e.ctrlKey || e.metaKey) {
+          actions.openInNewTab(node.id, { background: !e.shiftKey });
+        } else {
+          actions.selectConcept(node.id);
+        }
       } else {
         reheat();
       }

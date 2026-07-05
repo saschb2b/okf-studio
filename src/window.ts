@@ -49,6 +49,54 @@ export async function startWindowResize(dir: ResizeDir): Promise<void> {
   await (await win()).startResizeDragging(dir);
 }
 
+/**
+ * Undock a concept into its own OS window — the browser tear-off (see
+ * docs/proposals/multi-view.md). The new window runs the *full app*, booted via
+ * query params onto the same bundle (`folder` re-grants the read scope, `root`
+ * names the bundle) and landed on `concept` in reader-only layout; windows are
+ * otherwise independent. On Tauri it's a real WebviewWindow (its `pop-*` label
+ * is covered by the capability file); in a browser it degrades to window.open
+ * with the same params, so the flow works in dev and tests. Resolves false when
+ * the window could not be created, so the caller keeps the local tab.
+ */
+export async function openConceptWindow(
+  folder: string,
+  root: string,
+  concept: string | null,
+): Promise<boolean> {
+  const qs = new URLSearchParams({ folder, root });
+  if (concept) qs.set("concept", concept);
+  if (!isTauri()) {
+    const w = window.open(
+      `${location.pathname}?${qs}`,
+      "_blank",
+      "noopener,width=980,height=760",
+    );
+    return w !== null;
+  }
+  const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+  // Unique label per pop-out; the timestamp+counter can't collide in-session.
+  const label = `pop-${Date.now().toString(36)}-${popCounter++}`;
+  const win = new WebviewWindow(label, {
+    url: `index.html?${qs}`,
+    title: "OKF Viewer",
+    width: 980,
+    height: 760,
+    minWidth: 560,
+    minHeight: 400,
+    // Same borderless frame as the main window (tauri.conf.json); the app's
+    // own chrome (TopBar/WindowControls/ResizeHandles) runs in every window.
+    decorations: false,
+    transparent: true,
+  });
+  return new Promise((resolve) => {
+    void win.once("tauri://created", () => resolve(true));
+    void win.once("tauri://error", () => resolve(false));
+  });
+}
+
+let popCounter = 0;
+
 /** Subscribe to size/maximize changes; returns an unsubscribe (no-op off-Tauri). */
 export async function onWindowResized(cb: () => void): Promise<() => void> {
   if (!isTauri())

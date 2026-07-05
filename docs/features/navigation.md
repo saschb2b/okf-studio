@@ -3,7 +3,7 @@ type: Feature
 title: Navigation
 description: Move through a bundle by progressive disclosure — the index tree, link following, and back/forward history.
 tags: [feature, navigation]
-timestamp: 2026-07-02T09:10:00Z
+timestamp: 2026-07-06T12:00:00Z
 ---
 
 # What it does
@@ -22,8 +22,17 @@ Provides the ways to move through a bundle that complement the [graph](graph-vie
 # Link following & history
 
 - Clicking any intra-bundle link (in the [reader](concept-reader.md), the index, or the relationship lists) navigates to that concept and recenters the [graph](graph-view.md).
-- Back / forward history (with [keyboard shortcuts](../ux/keyboard-shortcuts.md)) retraces the path through the graph, like a browser.
+- Back / forward history (with [keyboard shortcuts](../ux/keyboard-shortcuts.md)) retraces the path through the graph, like a browser — **per tab** (below).
 - The [global launcher](command-palette.md) resolves a concept by id, title, or body text and jumps to it.
+
+# Tabs & windows (multi-view)
+
+Reading is no longer one-concept-at-a-time (see the [multi-view proposal](../proposals/multi-view.md) for the design rationale):
+
+- **`Ctrl/Cmd+click` any concept target** — a reader body link, a rail relationship row, an index-tree row, a graph node, a launcher result — to open it in a **new background tab** (add `Shift` to also switch); middle-click does the same on body links. Each tab owns its **own back/forward history**. A tab strip appears above the reader at two or more tabs and stays out of the way otherwise (see [Browsing Layout](../ux/browsing-layout.md)).
+- Plain clicks keep today's behavior exactly: they navigate the **current tab**, and selection stays one shared state per window.
+- **Move to new window** (the strip's trailing control, or the launcher action) undocks a tab into its **own OS window** running the full app on the same bundle — the browser tear-off. Windows are independent; [live reload](live-reload.md) reaches all of them.
+- `Ctrl/Cmd+T` opens a new empty tab, `Ctrl/Cmd+W` closes, `Ctrl+Tab` cycles; middle-click closes a tab. Switching bundles resets the tabs; a live reload keeps them.
 
 # Breadcrumb
 

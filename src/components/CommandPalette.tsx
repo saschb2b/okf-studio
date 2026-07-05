@@ -13,6 +13,7 @@
 // result to Autocomplete via `filteredItems`, so the scoring/order survives.
 
 import { useState } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useApp } from "../store.tsx";
@@ -185,6 +186,13 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:popout",
+      label: "Move concept to new window",
+      hint: "Action",
+      run: () => void actions.popOutTab(),
+    },
+    {
+      kind: "action",
       id: "act:settings",
       label: "Settings",
       hint: "Action",
@@ -280,9 +288,15 @@ export function CommandPalette() {
   if (conceptHits.length) groups.push({ value: "Concepts", items: conceptHits });
   if (textHits.length) groups.push({ value: "In text", items: textHits });
 
-  function activate(item: Item) {
+  function activate(item: Item, e?: ReactMouseEvent) {
     if (item.kind === "concept") {
-      actions.selectConcept(item.id); // store also closes the palette
+      // Ctrl/Cmd+click opens the result in a background tab (Shift to also
+      // switch) — the browser gesture. See docs/proposals/multi-view.md.
+      if (e && (e.ctrlKey || e.metaKey)) {
+        actions.openInNewTab(item.id, { background: !e.shiftKey });
+      } else {
+        actions.selectConcept(item.id); // store also closes the palette
+      }
       close();
     } else {
       close();
@@ -347,7 +361,7 @@ export function CommandPalette() {
                         key={`${item.kind}:${item.id}`}
                         value={item}
                         className="palette-item"
-                        onClick={() => activate(item)}
+                        onClick={(e) => activate(item, e)}
                       >
                         {item.kind === "concept" ? (
                           <ConceptRow item={item} />

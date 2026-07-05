@@ -44,6 +44,15 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    title: "Tabs",
+    items: [
+      { combo: [mod, "T"], label: "New tab" },
+      { combo: [mod, "W"], label: "Close tab" },
+      { combo: ["Ctrl", "Tab"], alt: ["Ctrl", "⇧", "Tab"], label: "Next / previous tab" },
+      { combo: [mod, "click"], label: "Open link in new tab" },
+    ],
+  },
+  {
     title: "Layout",
     items: [
       { combo: ["O"], label: "Bundle overview" },

@@ -127,10 +127,19 @@ export function CosmosGraph() {
       simulationLinkDistance: 10,
       simulationFriction: 0.85,
       simulationDecay: 1000,
-      onClick: (index: number | undefined) => {
-        actionsRef.current.selectConcept(
-          index != null ? (dataRef.current.ids[index] ?? null) : null,
-        );
+      onClick: (
+        index: number | undefined,
+        _pos: [number, number] | undefined,
+        event: MouseEvent,
+      ) => {
+        const id = index != null ? (dataRef.current.ids[index] ?? null) : null;
+        // Ctrl/Cmd+click opens the node in a background reader tab (Shift to
+        // also switch); plain click keeps the shared-selection behavior.
+        if (id && (event.ctrlKey || event.metaKey)) {
+          actionsRef.current.openInNewTab(id, { background: !event.shiftKey });
+        } else {
+          actionsRef.current.selectConcept(id);
+        }
       },
       onPointMouseOver: (index: number) => {
         hoverRef.current = index;

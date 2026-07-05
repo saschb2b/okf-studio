@@ -65,6 +65,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Bundle Overview & Health](proposals/bundle-overview.md) - A landing view that orients you in a bundle before you dive.
 * [Faceted Query Bar](proposals/faceted-search.md) - Structured field queries and facet rails that filter the workspace live.
 * [Lineage & Traversal](proposals/lineage-and-traversal.md) - Expand-on-click, upstream/downstream lineage, path-between, and unlinked mentions.
+* [Multi-View — Tabs & Windows](proposals/multi-view.md) - Reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own window.
 
 # Subdirectories
 

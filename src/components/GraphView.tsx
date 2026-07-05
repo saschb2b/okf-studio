@@ -765,6 +765,40 @@ export function GraphView() {
     // before the loop below populates the cache.
     const spawnedNew = visible.some((c) => !store.has(c.id));
 
+    // Centre + footprint of the already-positioned (cached) nodes. On a *focus/
+    // isolate* change that pulls in NEW nodes (deeper depth, wider set), seed
+    // those near the existing set instead of on the far global ring — otherwise
+    // they fly in from the edge and the auto-fit zooms way out then back in (the
+    // laggy excursion). This applies ONLY to a restricted view: entering the
+    // whole-graph Overview (restrictIds === null) genuinely needs its nodes to
+    // fly apart into clusters, so it keeps the ring + a full warm-up (cramming
+    // them into a footprint and warming gently would spread far too slowly). A
+    // brand-new layout has no cached nodes and keeps the ring too.
+    const restricted = restrictIds !== null;
+    let cachedN = 0;
+    let cSumX = 0;
+    let cSumY = 0;
+    for (const c of visible) {
+      const p = store.get(c.id);
+      if (p) {
+        cachedN++;
+        cSumX += p.x;
+        cSumY += p.y;
+      }
+    }
+    const footprintSeed = restricted && cachedN > 0;
+    const cCx = footprintSeed ? cSumX / cachedN : 0;
+    const cCy = footprintSeed ? cSumY / cachedN : 0;
+    let cExtent = radius;
+    if (footprintSeed) {
+      let m = 0;
+      for (const c of visible) {
+        const p = store.get(c.id);
+        if (p) m = Math.max(m, Math.hypot(p.x - cCx, p.y - cCy));
+      }
+      cExtent = Math.max(60, m);
+    }
+
     visible.forEach((c: Concept, i) => {
       const existing = store.get(c.id);
       let x: number;
@@ -773,10 +807,19 @@ export function GraphView() {
         x = existing.x;
         y = existing.y;
       } else {
-        // Fresh node: seed on a ring so the sim has something to spread out.
         const angle = (i / Math.max(1, visible.length)) * Math.PI * 2;
-        x = Math.cos(angle) * radius * (0.4 + Math.random() * 0.6);
-        y = Math.sin(angle) * radius * (0.4 + Math.random() * 0.6);
+        if (footprintSeed) {
+          // Joining an existing restricted set: seed within its footprint (around
+          // its centre) so the frame doesn't lurch while this node settles in.
+          const rr = cExtent * (0.3 + ((i % 5) / 5) * 0.7);
+          x = cCx + Math.cos(angle) * rr;
+          y = cCy + Math.sin(angle) * rr;
+        } else {
+          // Brand-new layout, or entering Overview: an even ring so the sim
+          // spreads it into clusters.
+          x = Math.cos(angle) * radius * (0.4 + Math.random() * 0.6);
+          y = Math.sin(angle) * radius * (0.4 + Math.random() * 0.6);
+        }
         store.set(c.id, { x, y });
       }
       indexById.set(c.id, nodes.length);
@@ -866,7 +909,12 @@ export function GraphView() {
     // Warm up fully for a brand-new layout; otherwise a gentle nudge so kept
     // positions do not visibly jump. A focus/isolate change reheats a touch more
     // so the smaller set can spread out from its cached positions.
-    alphaRef.current = spawnedNew ? 1 : restrictChanged ? Math.max(0.4, REHEAT_ALPHA) : 0.4;
+    // New nodes joining a cached *restricted* set warm up only gently (0.6) so
+    // the settled core stays put and just the newcomers slot in — a focus/depth
+    // change doesn't re-explode, and its auto-fit doesn't lurch. A brand-new
+    // layout and entering Overview both warm up fully (alpha 1) to spread from
+    // the ring into clusters; an all-cached change is a light nudge (0.4).
+    alphaRef.current = spawnedNew ? (footprintSeed ? 0.6 : 1) : 0.4;
     needsFitRef.current = spawnedNew || restrictChanged; // refit a fresh layout or a new focus set
     // Track-fit both a brand-new layout (blooming from the spawn ring) and a
     // focus/isolate re-settle (spreading from cached positions): the view eases
@@ -1265,11 +1313,16 @@ export function GraphView() {
     if (!t) return;
     const v = viewRef.current;
     const { w, h } = sizeRef.current;
-    const k = 0.22; // ease factor per frame
     const cx0 = (w / 2 - v.tx) / v.scale;
     const cy0 = (h / 2 - v.ty) / v.scale;
     const cx1 = (w / 2 - t.tx) / t.scale;
     const cy1 = (h / 2 - t.ty) / t.scale;
+    // Deadzone: ignore tiny fit changes (a node jittering at the bbox edge as it
+    // settles), so once framed the view rests instead of twitching every frame.
+    const scaleOff = Math.abs(t.scale / v.scale - 1);
+    const centreOffPx = Math.hypot(cx1 - cx0, cy1 - cy0) * v.scale;
+    if (scaleOff < 0.015 && centreOffPx < 3) return;
+    const k = 0.22; // ease factor per frame
     const s = v.scale * Math.pow(t.scale / v.scale, k);
     const cx = cx0 + (cx1 - cx0) * k;
     const cy = cy0 + (cy1 - cy0) * k;

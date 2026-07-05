@@ -653,13 +653,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // desktop-only: off-Tauri the recents are a seeded fixture for the switcher
   // UI, and dev/tests should still boot into the first-run state.
   useEffect(() => {
-    void ipc.loadSettings().then((s) => dispatch({ t: "settings", v: s }));
-    void ipc.recentBundles().then((recents) => {
+    void (async () => {
+      const s = await ipc.loadSettings();
+      // Seed the ref before the auto-reopen so its scan reads the *persisted*
+      // scanMaxDepth, not the default — dispatch only reaches stateRef next
+      // render, and openRecentBundle reads the ref synchronously here.
+      stateRef.current = { ...stateRef.current, settings: s };
+      dispatch({ t: "settings", v: s });
+      const recents = await ipc.recentBundles();
       dispatch({ t: "recents", v: recents });
       if (recents.length > 0 && ipc.isTauri()) {
-        void actions.openRecentBundle(recents[0]);
+        await actions.openRecentBundle(recents[0]);
       }
-    });
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -693,17 +699,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = state.activeRoot;
     if (!root) return;
+    let cancelled = false; // true once this effect (this root) is torn down
     let dispose: (() => void) | undefined;
     void ipc
       .startWatch(root, () => {
-        void ipc.readBundle(root).then((bundle) =>
-          dispatch({ t: "setBundle", root, bundle }),
-        );
+        void ipc.readBundle(root).then((bundle) => {
+          // Drop a read that resolves after the user already switched roots —
+          // otherwise a late callback dispatches setBundle for the *old* root
+          // and clobbers the now-active bundle.
+          if (!cancelled) dispatch({ t: "setBundle", root, bundle });
+        });
       })
       .then((d) => {
-        dispose = d;
+        // If the effect was already torn down before startWatch resolved,
+        // dispose immediately (the returned cleanup ran with dispose still
+        // undefined) so the backend watch isn't leaked.
+        if (cancelled) d();
+        else dispose = d;
       });
-    return () => dispose?.();
+    return () => {
+      cancelled = true;
+      dispose?.();
+    };
   }, [state.activeRoot]);
 
   return <Ctx.Provider value={{ state, actions }}>{children}</Ctx.Provider>;

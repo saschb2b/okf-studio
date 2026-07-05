@@ -647,14 +647,17 @@ export function GraphView() {
       alphaRef.current = alpha + (0 - alpha) * ALPHA_DECAY;
       syncPositions();
       const settled = alphaRef.current < ALPHA_MIN;
-      // Track a blooming fresh layout every frame so it stays framed as it
-      // organizes (no glide — it follows the motion). Otherwise fit only once,
-      // on the settle landing.
+      // Track a settling layout every frame so it stays framed as it organizes —
+      // easing toward the fit (glides in on entry, follows the spread), then
+      // landing exactly once settled. Covers a fresh bloom and a focus/isolate
+      // re-settle alike.
       if (trackFitRef.current) {
-        fitInstant();
         if (settled) {
+          fitInstant();
           trackFitRef.current = false;
           needsFitRef.current = false;
+        } else {
+          fitFollow();
         }
       } else if (settled) {
         maybeFit();
@@ -865,16 +868,13 @@ export function GraphView() {
     // so the smaller set can spread out from its cached positions.
     alphaRef.current = spawnedNew ? 1 : restrictChanged ? Math.max(0.4, REHEAT_ALPHA) : 0.4;
     needsFitRef.current = spawnedNew || restrictChanged; // refit a fresh layout or a new focus set
-    // A brand-new layout blooms from the spawn ring over the whole cooling
-    // schedule; track-fit it every frame so it assembles in view rather than
-    // sprawling off-screen until one late fit. A restrict change instead has
-    // cached positions, so a single glide to the new set reads best.
-    trackFitRef.current = spawnedNew;
-    // Frame a restrict change right away from its cached positions — the sim can
-    // take seconds to settle, and until the post-settle refit the new subgraph
-    // could sit half out of view. (A brand-new layout is track-fit above instead;
-    // seed positions on the spawn ring say nothing about the final shape.)
-    if (restrictChanged && !spawnedNew) fit();
+    // Track-fit both a brand-new layout (blooming from the spawn ring) and a
+    // focus/isolate re-settle (spreading from cached positions): the view eases
+    // toward the fit every frame — gliding in on entry, following the spread —
+    // so the graph stays framed as it organizes instead of drifting until one
+    // late fit. A same-set data refresh (live reload) is neither, so its view is
+    // left untouched.
+    trackFitRef.current = spawnedNew || restrictChanged;
     runLoop();
     // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
     // intentionally not in the dep list; this effect rebuilds only on data/filter
@@ -1244,8 +1244,8 @@ export function GraphView() {
     if (t) applyView(t);
   }
 
-  /** Frame the whole graph *instantly* (no glide) — used to track a blooming
-   *  layout each frame so it assembles in view instead of sprawling off-screen. */
+  /** Frame the whole graph *instantly* (no glide) — the exact landing once a
+   *  tracked layout has settled. */
   function fitInstant() {
     const t = computeFitView();
     if (!t) return;
@@ -1253,6 +1253,29 @@ export function GraphView() {
     v.scale = t.scale;
     v.tx = t.tx;
     v.ty = t.ty;
+  }
+
+  /** Ease the view one step toward the current fit — called every frame while a
+   *  layout settles (fresh bloom or a focus/isolate re-settle), so the view both
+   *  glides to the new frame on entry and tracks the moving target as it spreads,
+   *  staying framed without a snap. Geometric on scale, linear on the world point
+   *  under the viewport centre (so zoom reads linear), mirroring `applyView`. */
+  function fitFollow() {
+    const t = computeFitView();
+    if (!t) return;
+    const v = viewRef.current;
+    const { w, h } = sizeRef.current;
+    const k = 0.22; // ease factor per frame
+    const cx0 = (w / 2 - v.tx) / v.scale;
+    const cy0 = (h / 2 - v.ty) / v.scale;
+    const cx1 = (w / 2 - t.tx) / t.scale;
+    const cy1 = (h / 2 - t.ty) / t.scale;
+    const s = v.scale * Math.pow(t.scale / v.scale, k);
+    const cx = cx0 + (cx1 - cx0) * k;
+    const cy = cy0 + (cy1 - cy0) * k;
+    v.scale = s;
+    v.tx = w / 2 - cx * s;
+    v.ty = h / 2 - cy * s;
   }
 
   // ---- Render --------------------------------------------------------------

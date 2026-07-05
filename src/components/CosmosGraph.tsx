@@ -146,11 +146,17 @@ export function CosmosGraph() {
       onSimulationTick: () => positionLabels(),
     });
     graphRef.current = graph;
+    // Keep the HTML label overlay aligned with the canvas when the window (and
+    // so the graph container) resizes — otherwise, once the simulation settles,
+    // labels drift from their points until the next hover/zoom re-runs layout.
+    const ro = new ResizeObserver(() => positionLabels());
+    ro.observe(div);
     return () => {
+      ro.disconnect();
       graph.destroy();
       graphRef.current = null;
     };
-     
+
   }, []);
 
   // Rebuild graph data when the bundle, filters, focus, or theme change.
@@ -237,9 +243,11 @@ export function CosmosGraph() {
     graph.render(1);
     graph.fitView(400);
     positionLabels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    state.activeRoot,
+    // Depend on the bundle object, not activeRoot: a same-root live-reload/re-scan
+    // swaps in a new bundle while activeRoot is unchanged, and keying on the root
+    // would leave the GPU graph rendering the stale concept/link set.
+    state.bundle,
     state.hiddenTypes,
     state.activeTag,
     state.graphMode,

@@ -14,12 +14,12 @@
 // canvas/sim state lives in refs and effects.
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from "react";
-import { Popover } from "@base-ui/react/popover";
-import { Slider as BaseSlider } from "@base-ui/react/slider";
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from "react";
 import { useApp } from "../store.tsx";
-import type { LinkDensity } from "../store.tsx";
 import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
@@ -30,7 +30,23 @@ const CosmosGraph = lazy(() =>
 );
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
-import type { Bundle, Concept } from "../types.ts";
+import { GraphControls } from "./GraphControls.tsx";
+import type { Concept } from "../types.ts";
+import { renderGraph } from "../graph/render.ts";
+import type {
+  Display,
+  Forces,
+  RenderData,
+  View,
+} from "../graph/renderModel.ts";
+import {
+  DEFAULT_DISPLAY,
+  expandWithNeighbors,
+  GRAPH_FORCES,
+  MAX_SCALE,
+  MIN_SCALE,
+  radiusForDegree,
+} from "../graph/renderModel.ts";
 import {
   ALPHA_DECAY,
   ALPHA_MIN,
@@ -43,127 +59,16 @@ import {
 } from "../graph/forceSim.ts";
 import "./GraphView.css";
 
-const MIN_RADIUS = 4;
-const MAX_RADIUS = 20;
 const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on
-// Base zoom below which free-floating labels hide (Obsidian-style: dots at
-// overview, labels as you zoom in; selection/hover/neighbors always labelled).
-const LABEL_MIN_SCALE = 1.1;
-
-// Adjustable display options (rendering only — not physics).
-interface Display {
-  nodeScale: number;
-  linkThickness: number;
-  linkOpacity: number;
-  labelScale: number; // >1 shows labels at lower zoom
-  /** Node color source: by concept `type`, or by detected `cluster` (Louvain). */
-  colorBy: "type" | "cluster";
-}
-const DEFAULT_DISPLAY: Display = {
-  nodeScale: 1,
-  linkThickness: 1,
-  linkOpacity: 0.5,
-  labelScale: 1,
-  colorBy: "cluster",
-};
-
-// Plain-language explanations of the *currently selected* option, shown under
-// each segmented control so the panel teaches instead of just labelling.
-const RENDERER_HINTS: Record<"canvas" | "gpu", string> = {
-  canvas: "Default renderer — crisp and full-featured.",
-  gpu: "WebGL — for very large graphs. Needs hardware support.",
-};
-const DENSITY_HINTS: Record<LinkDensity, string> = {
-  sparse: "Only each concept's strongest links — clearest structure.",
-  balanced: "A clean structural backbone. Recommended.",
-  all: "Every cross-link — dense bundles can tangle.",
-};
-const COLOR_HINTS: Record<"cluster" | "type", string> = {
-  cluster: "By detected community — groups of densely-linked concepts.",
-  type: "By concept type (Feature, Reference, …).",
-};
-// The force fields the controls panel exposes (the rest come from DEFAULT_PARAMS).
-type Forces = Pick<
-  SimParams,
-  "repulsion" | "springLength" | "springK" | "centering" | "clusterStrength"
->;
-const MIN_SCALE = 0.15;
-const MAX_SCALE = 4;
-
-// Tuned force defaults for the app's graph. The sim's DEFAULT_PARAMS stays the
-// neutral baseline (used by the sim tests); the graph wants a noticeably more
-// spread, organic layout — strong repulsion (amplified by the degree-weighted
-// mass), longer links so leaves fan out, and gentle centering so the core
-// doesn't compress into a blob. This is what produces the cluster-separated,
-// canvas-filling look rather than a tight clump.
-const GRAPH_FORCES: Forces = {
-  repulsion: 3200,
-  springLength: 130, // unused under LinLog; kept for the spring fallback/controls
-  springK: 0.12, // LinLog attraction is gentle (log), so it wants a higher gain
-  centering: 0.015,
-  // Gentle pull toward each Louvain community's centroid (cosmos.gl's
-  // point-clustering force), so the geometry agrees with the detected
-  // clusters that also drive the default node coloring.
-  clusterStrength: 0.05,
-};
-// Canvas ctx.font cannot resolve CSS custom properties, so spell out a stack
-// that mirrors --ui in styles.css.
-const LABEL_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-
-interface View {
-  scale: number;
-  tx: number;
-  ty: number;
-}
-
-interface RenderData {
-  /** Visible nodes (those passing the type/tag filter), in draw order. */
-  nodes: SimNode[];
-  edges: SimEdge[];
-  /** Citation direction per edge (backbone edges are undirected): bit 1 =
-   *  a cites b, bit 2 = b cites a. Drawn as arrowheads on highlighted edges. */
-  edgeDir: number[];
-  /** Per-node concept metadata, index-aligned with `nodes`. */
-  meta: {
-    id: string;
-    title: string;
-    type: string;
-    /** Color by concept type (the legend palette). */
-    color: string;
-    /** Color by detected community (Louvain) — used when Display.colorBy is "cluster". */
-    clusterColor: string;
-    dim: boolean;
-    /** True for a degree-0 concept (no links and no citedBy) — drawn with a ring. */
-    orphan: boolean;
-    /** Count of unresolved outbound hrefs — drawn as a warning marker when > 0. */
-    broken: number;
-  }[];
-  /** id -> index into `nodes`/`meta`. */
-  indexById: Map<string, number>;
-  /** Adjacency by node index, for selection highlighting. */
-  neighbors: Set<number>[];
-}
-
-function radiusForDegree(degree: number, maxDegree: number): number {
-  if (maxDegree <= 0) return MIN_RADIUS;
-  const t = Math.sqrt(degree / maxDegree); // sqrt so hubs grow but not wildly
-  return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS);
-}
-
-/** A set of `ids` plus their direct neighbors (links ∪ citedBy), for isolating
- *  a defect set into the view with enough context to see why it is one. */
-function expandWithNeighbors(bundle: Bundle | null, ids: string[]): Set<string> {
-  const out = new Set(ids);
-  if (!bundle) return out;
-  const byId = new Map(bundle.concepts.map((c) => [c.id, c] as const));
-  for (const id of ids) {
-    const c = byId.get(id);
-    if (!c) continue;
-    for (const nb of c.links) out.add(nb);
-    for (const nb of c.citedBy) out.add(nb);
-  }
-  return out;
-}
+// Cap the canvas backing-store resolution. On a HiDPI display (or Linux
+// fractional scaling) a large window's canvas balloons to many millions of
+// pixels — all repainted every frame while the layout settles — so a big window
+// went laggy while a small one stayed smooth. Rendering "a smaller canvas scaled
+// up" (MDN's HiDPI guidance) keeps fill/paint cheap: a graph stays crisp up to
+// 2x, and past a pixel budget the device-pixel-ratio scales down further so a
+// huge viewport never costs more than ~this many pixels a frame.
+const MAX_DPR = 2;
+const MAX_CANVAS_PIXELS = 3_500_000;
 
 export function GraphView() {
   const { state, actions } = useApp();
@@ -175,6 +80,11 @@ export function GraphView() {
   // (plus their neighbors), overriding focus/overview. Driven by the defect
   // count chip. Read-only and tolerant — clearing it returns to normal.
   const [isolate, setIsolate] = useState<{ label: string; ids: string[] } | null>(null);
+  // Expand-on-click: an explicit, incrementally-grown set the graph restricts to.
+  // Seeded/grown by double-clicking a node (pulls in that node + its neighbors),
+  // so the user builds up a neighborhood a hop at a time — Neo4j Bloom's core
+  // interaction — instead of loading the whole graph. Null means not exploring.
+  const [explore, setExplore] = useState<Set<string> | null>(null);
   // Which renderer draws the graph: the bespoke canvas (default, full features)
   // or the GPU cosmos.gl renderer (scales to very large graphs). See
   // docs/features/graph-view.md.
@@ -196,6 +106,11 @@ export function GraphView() {
   const viewRef = useRef<View>({ scale: 1, tx: 0, ty: 0 });
   const sizeRef = useRef<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 });
   const rafRef = useRef<number | null>(null);
+  // Coalesces high-frequency direct-draw requests (wheel zoom, pan) into at most
+  // one draw per animation frame — a trackpad zoom can fire hundreds of wheel
+  // events a second, and a synchronous draw each would back up the main thread
+  // (a "freeze", worst on the slower WebKitGTK webview).
+  const drawReqRef = useRef<number | null>(null);
   const alphaRef = useRef(1); // simulation cooling factor; decays to ALPHA_MIN then rests
   const hoverRef = useRef<number | null>(null);
   // Screen-px label widths, cached per (font-size, title) across frames.
@@ -209,6 +124,11 @@ export function GraphView() {
   });
   const displayRef = useRef<Display>(display);
   const needsFitRef = useRef(true); // auto-fit once a fresh layout settles
+  // Continuously re-frame a *fresh* layout while it blooms (instant, every
+  // frame), so it assembles in view instead of sprawling off-screen until the
+  // cooling schedule finally triggers one fit ~5s later. Cleared once settled,
+  // or the moment the user pans/zooms/drags (we never fight their view).
+  const trackFitRef = useRef(false);
   const prevRestrictKey = useRef<string | null>(null); // last focus/isolate set, to refit on change
 
   // Latest selection for the imperative draw, without re-binding the whole
@@ -227,237 +147,52 @@ export function GraphView() {
     return getComputedStyle(el).getPropertyValue(name).trim();
   }
 
-  function draw() {
+  // `animating` (set while the layout is settling) renders only the hub +
+  // always-shown labels, skipping the leaf labels and the O(labels²) collision
+  // cull — the priciest per-frame work, and unnecessary detail while nodes move.
+  // The heavy lifting is renderGraph (../graph/render.ts); this wraps it with the
+  // ref reads and theme-color lookups, so the paint pass stays a pure function.
+  function draw(animating = false) {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    // Opaque context: skip per-pixel alpha compositing with the page (a real win
+    // on the WebKitGTK webview). renderGraph paints the theme background itself
+    // each frame instead of clearing to transparent.
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
-
-    const { w, h, dpr } = sizeRef.current;
-    const view = viewRef.current;
-    const data = renderRef.current;
-    const selected = selectedRef.current;
-    const disp = displayRef.current;
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    ctx.save();
-    ctx.translate(view.tx, view.ty);
-    ctx.scale(view.scale, view.scale);
-
-    const selIdx = selected != null ? (data.indexById.get(selected) ?? null) : null;
-    const hover = hoverRef.current;
-    // Highlight the hovered node, else the selected one (so the open concept's
-    // links stay visible). Only a hover *dims* the rest of the graph — selection
-    // alone keeps the whole spread bright, so overview stays readable.
-    const focusIdx = hover ?? selIdx;
-    const hasFocus = focusIdx != null;
-    const focusNeighbors = hasFocus ? data.neighbors[focusIdx] : null;
-    const dimOthers = hover != null;
-
-    const edgeColor = cssVar("--text-dim") || "#888"; // visible links, not faint hairlines
-    const accent = cssVar("--accent") || "#2f6df6";
-    const textColor = cssVar("--text") || "#111";
-    const textDim = cssVar("--text-dim") || "#777";
-    const nodeStroke = cssVar("--bg") || "#fff";
-    const warnColor = cssVar("--warn") || "#b8860b"; // orphan ring + broken-link marker
-
-    // Edges first, under the nodes. Each edge carries its *source* node's
-    // color (the citing concept owns the link — Gephi's convention), so hub
-    // fans and cluster membership read from the wiring, not just the dots.
-    const baseLW = disp.linkThickness / view.scale;
-    // Arrowhead into `to`, pulled back to its rim — drawn only on highlighted
-    // edges, so citation direction shows exactly where the user is looking.
-    const arrowInto = (from: SimNode, to: SimNode) => {
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      const len = Math.hypot(dx, dy);
-      if (len < 1) return;
-      const ux = dx / len;
-      const uy = dy / len;
-      const rim = to.r * disp.nodeScale + 2 / view.scale;
-      const tipX = to.x - ux * rim;
-      const tipY = to.y - uy * rim;
-      const s = 6 / view.scale;
-      ctx.beginPath();
-      ctx.moveTo(tipX, tipY);
-      ctx.lineTo(tipX - ux * s - uy * s * 0.45, tipY - uy * s + ux * s * 0.45);
-      ctx.lineTo(tipX - ux * s + uy * s * 0.45, tipY - uy * s - ux * s * 0.45);
-      ctx.closePath();
-      ctx.fill();
-    };
-    ctx.lineWidth = baseLW;
-    for (let ei = 0; ei < data.edges.length; ei++) {
-      const e = data.edges[ei];
-      const a = data.nodes[e.a];
-      const b = data.nodes[e.b];
-      const incident = hasFocus && (e.a === focusIdx || e.b === focusIdx);
-      if (incident) {
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = accent;
-        ctx.lineWidth = (disp.linkThickness * 1.6) / view.scale;
-      } else if (dimOthers) {
-        ctx.globalAlpha = 0.06;
-        ctx.strokeStyle = edgeColor;
-      } else {
-        ctx.globalAlpha = disp.linkOpacity;
-        const src = data.meta[e.a];
-        ctx.strokeStyle = disp.colorBy === "cluster" ? src.clusterColor : src.color;
-      }
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-      if (incident) {
-        const dir = data.edgeDir[ei] ?? 0;
-        ctx.fillStyle = accent;
-        if (dir & 1) arrowInto(a, b);
-        if (dir & 2) arrowInto(b, a);
-      }
-      ctx.lineWidth = baseLW;
-    }
-    ctx.globalAlpha = 1;
-
-    // Nodes.
-    for (let i = 0; i < data.nodes.length; i++) {
-      const node = data.nodes[i];
-      const meta = data.meta[i];
-      const isSel = i === selIdx;
-      const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
-      const faded = meta.dim || dimmedByFocus;
-
-      const rr = node.r * disp.nodeScale;
-      ctx.globalAlpha = faded ? 0.18 : 1;
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, rr, 0, Math.PI * 2);
-      ctx.fillStyle = disp.colorBy === "cluster" ? meta.clusterColor : meta.color;
-      ctx.fill();
-      ctx.lineWidth = (isSel ? 3 : 1.2) / view.scale;
-      ctx.strokeStyle = isSel ? accent : nodeStroke;
-      ctx.stroke();
-
-      // Orphan: a dashed warning ring just outside the node (degree 0).
-      if (meta.orphan && !faded) {
-        ctx.save();
-        ctx.setLineDash([4 / view.scale, 3 / view.scale]);
-        ctx.lineWidth = 1.5 / view.scale;
-        ctx.strokeStyle = warnColor;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, rr + 3 / view.scale, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    // Broken-link markers: a small warning dot at the node's upper-right for any
-    // node with unresolved outbound hrefs. Drawn after all nodes so it sits on
-    // top. Tolerant signal — never an error glyph, just a flag.
-    for (let i = 0; i < data.nodes.length; i++) {
-      const meta = data.meta[i];
-      if (meta.broken <= 0) continue;
-      const node = data.nodes[i];
-      const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const dimmedByFocus = dimOthers && i !== focusIdx && !isNeighbor;
-      if (meta.dim || dimmedByFocus) continue;
-      const rr = node.r * disp.nodeScale;
-      const off = rr * 0.72;
-      const mr = Math.max(2.5, rr * 0.38) / 1; // marker radius in world units
-      ctx.beginPath();
-      ctx.arc(node.x + off, node.y - off, mr, 0, Math.PI * 2);
-      ctx.fillStyle = warnColor;
-      ctx.fill();
-      ctx.lineWidth = 1 / view.scale;
-      ctx.strokeStyle = nodeStroke;
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Labels, dataviz-style: sized by node importance, hubs surfacing first as
-    // you zoom out (each node's reveal threshold scales with its radius), and
-    // collision-culled by priority so dense regions stay legible instead of
-    // becoming a text smear. Selection/hover/neighbors always label.
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    const widths = labelWidthRef.current;
-    const baseReveal = LABEL_MIN_SCALE / disp.labelScale;
-    interface LabelCand {
-      i: number;
-      /** Label font size in *screen* px (importance-scaled). */
-      fontPx: number;
-      alwaysShow: boolean;
-    }
-    const cands: LabelCand[] = [];
-    for (let i = 0; i < data.nodes.length; i++) {
-      const node = data.nodes[i];
-      const meta = data.meta[i];
-      const isSel = i === selIdx;
-      const isNeighbor = focusNeighbors?.has(i) ?? false;
-      const isHover = i === hover;
-      const alwaysShow = isSel || isNeighbor || isHover;
-      // 0 for the smallest node, 1 for the biggest hub.
-      const t = (node.r - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
-      // Hubs reveal their labels well before leaves do.
-      if (!alwaysShow && view.scale < baseReveal * (1 - 0.75 * t)) continue;
-      if (!alwaysShow && meta.dim) continue;
-      cands.push({ i, fontPx: 10 + 5 * t, alwaysShow });
-    }
-    // Priority: always-shown labels first, then bigger nodes.
-    cands.sort(
-      (a, b) =>
-        Number(b.alwaysShow) - Number(a.alwaysShow) ||
-        data.nodes[b.i].r - data.nodes[a.i].r,
-    );
-    // Greedy screen-space collision: a label is dropped when it overlaps one
-    // already kept — except always-shown labels, which draw regardless (but
-    // still claim their space so lower-priority neighbors yield).
-    const kept: { cx: number; x: number; y: number; w: number; h: number; cand: LabelCand }[] = [];
-    for (const cand of cands) {
-      const node = data.nodes[cand.i];
-      const meta = data.meta[cand.i];
-      // Measured at screen size and cached; world width follows the zoom.
-      const key = `${Math.round(cand.fontPx * 2)}|${meta.title}`;
-      let w = widths.get(key);
-      if (w === undefined) {
-        ctx.font = `${cand.fontPx}px ${LABEL_FONT}`;
-        w = ctx.measureText(meta.title).width;
-        if (widths.size > 8192) widths.clear();
-        widths.set(key, w);
-      }
-      const wWorld = w / view.scale;
-      const hWorld = (cand.fontPx * 1.25) / view.scale;
-      const rect = {
-        cx: node.x,
-        x: node.x - wWorld / 2,
-        y: node.y + node.r * disp.nodeScale + 2 / view.scale,
-        w: wWorld,
-        h: hWorld,
-        cand,
-      };
-      const collides = kept.some(
-        (k) =>
-          rect.x < k.x + k.w && k.x < rect.x + rect.w && rect.y < k.y + k.h && k.y < rect.y + rect.h,
-      );
-      if (collides && !cand.alwaysShow) continue;
-      kept.push(rect);
-    }
-    for (const { cx, y, cand } of kept) {
-      const meta = data.meta[cand.i];
-      const isSel = cand.i === selIdx;
-      const isNeighbor = focusNeighbors?.has(cand.i) ?? false;
-      const isHover = cand.i === hover;
-      const dimmedByFocus = dimOthers && cand.i !== focusIdx && !isNeighbor;
-      ctx.font = `${cand.fontPx / view.scale}px ${LABEL_FONT}`;
-      ctx.globalAlpha = meta.dim || dimmedByFocus ? 0.25 : 1;
-      ctx.fillStyle = isSel || isNeighbor || isHover ? textColor : textDim;
-      ctx.fillText(meta.title, cx, y);
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
+    renderGraph({
+      ctx,
+      size: sizeRef.current,
+      view: viewRef.current,
+      data: renderRef.current,
+      display: displayRef.current,
+      selected: selectedRef.current,
+      hover: hoverRef.current,
+      animating,
+      labelWidths: labelWidthRef.current,
+      colors: {
+        bg: cssVar("--bg") || "#000",
+        edge: cssVar("--text-dim") || "#888",
+        accent: cssVar("--accent") || "#2f6df6",
+        text: cssVar("--text") || "#111",
+        textDim: cssVar("--text-dim") || "#777",
+        nodeStroke: cssVar("--bg") || "#fff",
+        warn: cssVar("--warn") || "#b8860b",
+      },
+    });
   }
 
   // ---- Animation loop ------------------------------------------------------
+
+  /** Request a single draw on the next frame, coalescing bursts. No-op while the
+   *  sim loop is running (it already draws every frame with the latest view). */
+  function scheduleDraw() {
+    if (drawReqRef.current != null || rafRef.current != null) return;
+    drawReqRef.current = requestAnimationFrame(() => {
+      drawReqRef.current = null;
+      draw();
+    });
+  }
 
   function stopLoop() {
     if (rafRef.current != null) {
@@ -477,6 +212,7 @@ export function GraphView() {
       }
       alphaRef.current = 0;
       syncPositions();
+      trackFitRef.current = false; // no animation to track — just fit the result
       maybeFit();
       draw();
       return;
@@ -489,13 +225,28 @@ export function GraphView() {
       // Cool toward zero; once cold, stop the loop and rest.
       alphaRef.current = alpha + (0 - alpha) * ALPHA_DECAY;
       syncPositions();
-      if (alphaRef.current < ALPHA_MIN) {
-        rafRef.current = null; // settled — idle until the next interaction/data change
+      const settled = alphaRef.current < ALPHA_MIN;
+      // Track a settling layout every frame so it stays framed as it organizes —
+      // easing toward the fit (glides in on entry, follows the spread), then
+      // landing exactly once settled. Covers a fresh bloom and a focus/isolate
+      // re-settle alike.
+      if (trackFitRef.current) {
+        if (settled) {
+          fitInstant();
+          trackFitRef.current = false;
+          needsFitRef.current = false;
+        } else {
+          fitFollow();
+        }
+      } else if (settled) {
         maybeFit();
-        draw();
+      }
+      if (settled) {
+        rafRef.current = null; // settled — idle until the next interaction/data change
+        draw(); // landing frame: full label pass (leaves + collision cull)
         return;
       }
-      draw();
+      draw(true); // moving: hub anchors only, no collision cull
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -507,6 +258,13 @@ export function GraphView() {
       needsFitRef.current = false;
       fit();
     }
+  }
+
+  /** The user took over the view — cancel any pending or continuous auto-fit so
+   *  we never fight their pan/zoom. */
+  function cancelAutoFit() {
+    trackFitRef.current = false;
+    needsFitRef.current = false;
   }
 
   /** Persist current node positions back into the id-keyed ref. */
@@ -547,11 +305,13 @@ export function GraphView() {
   // selection; otherwise null means "show the whole filtered graph". An active
   // isolate set wins over both. Computed as a stable string key so the rebuild
   // effect only fires when the *set* actually changes.
-  const restrictIds: Set<string> | null = isolate
-    ? expandWithNeighbors(state.bundle, isolate.ids)
-    : state.graphMode === "focus" && state.activeConceptId
-      ? egoIds(state.bundle, state.activeConceptId, state.focusDepth)
-      : null;
+  const restrictIds: Set<string> | null =
+    explore ??
+    (isolate
+      ? expandWithNeighbors(state.bundle, isolate.ids)
+      : state.graphMode === "focus" && state.activeConceptId
+        ? egoIds(state.bundle, state.activeConceptId, state.focusDepth)
+        : null);
   // A key that changes only when the restricted set's membership changes, so the
   // heavy rebuild + re-fit is skipped on pure selection moves in overview mode.
   const restrictKey = restrictIds ? [...restrictIds].sort().join(",") : "";
@@ -584,6 +344,40 @@ export function GraphView() {
     // before the loop below populates the cache.
     const spawnedNew = visible.some((c) => !store.has(c.id));
 
+    // Centre + footprint of the already-positioned (cached) nodes. On a *focus/
+    // isolate* change that pulls in NEW nodes (deeper depth, wider set), seed
+    // those near the existing set instead of on the far global ring — otherwise
+    // they fly in from the edge and the auto-fit zooms way out then back in (the
+    // laggy excursion). This applies ONLY to a restricted view: entering the
+    // whole-graph Overview (restrictIds === null) genuinely needs its nodes to
+    // fly apart into clusters, so it keeps the ring + a full warm-up (cramming
+    // them into a footprint and warming gently would spread far too slowly). A
+    // brand-new layout has no cached nodes and keeps the ring too.
+    const restricted = restrictIds !== null;
+    let cachedN = 0;
+    let cSumX = 0;
+    let cSumY = 0;
+    for (const c of visible) {
+      const p = store.get(c.id);
+      if (p) {
+        cachedN++;
+        cSumX += p.x;
+        cSumY += p.y;
+      }
+    }
+    const footprintSeed = restricted && cachedN > 0;
+    const cCx = footprintSeed ? cSumX / cachedN : 0;
+    const cCy = footprintSeed ? cSumY / cachedN : 0;
+    let cExtent = radius;
+    if (footprintSeed) {
+      let m = 0;
+      for (const c of visible) {
+        const p = store.get(c.id);
+        if (p) m = Math.max(m, Math.hypot(p.x - cCx, p.y - cCy));
+      }
+      cExtent = Math.max(60, m);
+    }
+
     visible.forEach((c: Concept, i) => {
       const existing = store.get(c.id);
       let x: number;
@@ -592,10 +386,19 @@ export function GraphView() {
         x = existing.x;
         y = existing.y;
       } else {
-        // Fresh node: seed on a ring so the sim has something to spread out.
         const angle = (i / Math.max(1, visible.length)) * Math.PI * 2;
-        x = Math.cos(angle) * radius * (0.4 + Math.random() * 0.6);
-        y = Math.sin(angle) * radius * (0.4 + Math.random() * 0.6);
+        if (footprintSeed) {
+          // Joining an existing restricted set: seed within its footprint (around
+          // its centre) so the frame doesn't lurch while this node settles in.
+          const rr = cExtent * (0.3 + ((i % 5) / 5) * 0.7);
+          x = cCx + Math.cos(angle) * rr;
+          y = cCy + Math.sin(angle) * rr;
+        } else {
+          // Brand-new layout, or entering Overview: an even ring so the sim
+          // spreads it into clusters.
+          x = Math.cos(angle) * radius * (0.4 + Math.random() * 0.6);
+          y = Math.sin(angle) * radius * (0.4 + Math.random() * 0.6);
+        }
         store.set(c.id, { x, y });
       }
       indexById.set(c.id, nodes.length);
@@ -685,13 +488,20 @@ export function GraphView() {
     // Warm up fully for a brand-new layout; otherwise a gentle nudge so kept
     // positions do not visibly jump. A focus/isolate change reheats a touch more
     // so the smaller set can spread out from its cached positions.
-    alphaRef.current = spawnedNew ? 1 : restrictChanged ? Math.max(0.4, REHEAT_ALPHA) : 0.4;
+    // New nodes joining a cached *restricted* set warm up only gently (0.6) so
+    // the settled core stays put and just the newcomers slot in — a focus/depth
+    // change doesn't re-explode, and its auto-fit doesn't lurch. A brand-new
+    // layout and entering Overview both warm up fully (alpha 1) to spread from
+    // the ring into clusters; an all-cached change is a light nudge (0.4).
+    alphaRef.current = spawnedNew ? (footprintSeed ? 0.6 : 1) : 0.4;
     needsFitRef.current = spawnedNew || restrictChanged; // refit a fresh layout or a new focus set
-    // Frame the new node set right away from its cached/seeded positions — the
-    // sim can take seconds to settle, and until the post-settle refit the new
-    // subgraph could sit half out of view. (Skipped for a brand-new layout:
-    // seed positions on the spawn ring say nothing about the final shape.)
-    if (restrictChanged && !spawnedNew) fit();
+    // Track-fit both a brand-new layout (blooming from the spawn ring) and a
+    // focus/isolate re-settle (spreading from cached positions): the view eases
+    // toward the fit every frame — gliding in on entry, following the spread —
+    // so the graph stays framed as it organizes instead of drifting until one
+    // late fit. A same-set data refresh (live reload) is neither, so its view is
+    // left untouched.
+    trackFitRef.current = spawnedNew || restrictChanged;
     runLoop();
     // Imperative helpers (draw/runLoop/syncPositions) read from refs, so they are
     // intentionally not in the dep list; this effect rebuilds only on data/filter
@@ -722,8 +532,10 @@ export function GraphView() {
   // Drop a stale isolate set when the bundle changes (its ids belong to the old
   // bundle). Keeps the view from going blank on bundle switch.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    /* eslint-disable react-hooks/set-state-in-effect */
     setIsolate(null);
+    setExplore(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [state.activeRoot]);
 
   // Live-tune forces from the controls panel: copy into the sim params ref and
@@ -751,9 +563,15 @@ export function GraphView() {
 
     const apply = () => {
       const rect = container.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
       const w = Math.max(1, Math.floor(rect.width));
       const h = Math.max(1, Math.floor(rect.height));
+      // Cap the backing-store resolution: use the display's DPR up to 2x, but a
+      // large viewport scales it down so the canvas never exceeds the pixel
+      // budget (keeps a big window from repainting millions of extra pixels a
+      // frame). Small windows keep full DPR and stay crisp.
+      const rawDpr = window.devicePixelRatio || 1;
+      const budgetDpr = Math.sqrt(MAX_CANVAS_PIXELS / (w * h));
+      const dpr = Math.max(0.75, Math.min(rawDpr, MAX_DPR, budgetDpr));
       const first = sizeRef.current.w === 0 && sizeRef.current.h === 0;
       sizeRef.current = { w, h, dpr };
       canvas.width = Math.floor(w * dpr);
@@ -782,6 +600,7 @@ export function GraphView() {
     () => () => {
       stopLoop();
       cancelViewTween();
+      if (drawReqRef.current != null) cancelAnimationFrame(drawReqRef.current);
     },
     [],
   );
@@ -849,6 +668,7 @@ export function GraphView() {
     if (e.button !== 0) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    cancelAutoFit(); // the user is taking control — stop auto-framing
     canvas.setPointerCapture(e.pointerId);
     const world = toWorld(e.clientX, e.clientY);
     const idx = hitTest(world.x, world.y);
@@ -888,7 +708,7 @@ export function GraphView() {
       const view = viewRef.current;
       view.tx = drag.tx0 + (e.clientX - drag.startX);
       view.ty = drag.ty0 + (e.clientY - drag.startY);
-      draw();
+      scheduleDraw();
     } else {
       const world = toWorld(e.clientX, e.clientY);
       const node = renderRef.current.nodes[drag.index];
@@ -923,6 +743,7 @@ export function GraphView() {
   function onWheel(e: ReactWheelEvent<HTMLCanvasElement>) {
     e.preventDefault();
     cancelViewTween(); // direct zooming takes over from any glide
+    cancelAutoFit(); // the user set their own zoom — stop auto-framing
     const view = viewRef.current;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -937,7 +758,30 @@ export function GraphView() {
     view.scale = next;
     view.tx = px - wx * next;
     view.ty = py - wy * next;
-    draw();
+    scheduleDraw();
+  }
+
+  // Pull `id` and its direct neighbors into the explore set (seeding it on the
+  // first expand). The restrict machinery keeps cached positions, so the newly
+  // revealed neighbors animate in from where they were rather than re-spawning.
+  function expandNode(id: string) {
+    setIsolate(null); // explore takes over any active isolate
+    setExplore((cur) => {
+      const grown = expandWithNeighbors(state.bundle, [id]);
+      if (!cur) return grown;
+      const next = new Set(cur);
+      for (const x of grown) next.add(x);
+      return next;
+    });
+  }
+
+  function onDoubleClick(e: ReactMouseEvent<HTMLCanvasElement>) {
+    const world = toWorld(e.clientX, e.clientY);
+    const idx = hitTest(world.x, world.y);
+    if (idx == null) return;
+    const node = renderRef.current.nodes[idx];
+    actions.selectConcept(node.id);
+    expandNode(node.id);
   }
 
   // ---- Overlay controls ----------------------------------------------------
@@ -1003,10 +847,11 @@ export function GraphView() {
     applyView({ scale: next, tx: cx - wx * next, ty: cy - wy * next });
   }
 
-  function fit() {
+  /** The view that frames the whole graph, or null if there's nothing to frame. */
+  function computeFitView(): View | null {
     const data = renderRef.current;
     const { w, h } = sizeRef.current;
-    if (data.nodes.length === 0 || w === 0 || h === 0) return;
+    if (data.nodes.length === 0 || w === 0 || h === 0) return null;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -1023,7 +868,52 @@ export function GraphView() {
     const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh));
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    applyView({ scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale });
+    return { scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale };
+  }
+
+  /** Frame the whole graph with a glide (the Fit button, and settle landings). */
+  function fit() {
+    const t = computeFitView();
+    if (t) applyView(t);
+  }
+
+  /** Frame the whole graph *instantly* (no glide) — the exact landing once a
+   *  tracked layout has settled. */
+  function fitInstant() {
+    const t = computeFitView();
+    if (!t) return;
+    const v = viewRef.current;
+    v.scale = t.scale;
+    v.tx = t.tx;
+    v.ty = t.ty;
+  }
+
+  /** Ease the view one step toward the current fit — called every frame while a
+   *  layout settles (fresh bloom or a focus/isolate re-settle), so the view both
+   *  glides to the new frame on entry and tracks the moving target as it spreads,
+   *  staying framed without a snap. Geometric on scale, linear on the world point
+   *  under the viewport centre (so zoom reads linear), mirroring `applyView`. */
+  function fitFollow() {
+    const t = computeFitView();
+    if (!t) return;
+    const v = viewRef.current;
+    const { w, h } = sizeRef.current;
+    const cx0 = (w / 2 - v.tx) / v.scale;
+    const cy0 = (h / 2 - v.ty) / v.scale;
+    const cx1 = (w / 2 - t.tx) / t.scale;
+    const cy1 = (h / 2 - t.ty) / t.scale;
+    // Deadzone: ignore tiny fit changes (a node jittering at the bbox edge as it
+    // settles), so once framed the view rests instead of twitching every frame.
+    const scaleOff = Math.abs(t.scale / v.scale - 1);
+    const centreOffPx = Math.hypot(cx1 - cx0, cy1 - cy0) * v.scale;
+    if (scaleOff < 0.015 && centreOffPx < 3) return;
+    const k = 0.22; // ease factor per frame
+    const s = v.scale * Math.pow(t.scale / v.scale, k);
+    const cx = cx0 + (cx1 - cx0) * k;
+    const cy = cy0 + (cy1 - cy0) * k;
+    v.scale = s;
+    v.tx = w / 2 - cx * s;
+    v.ty = h / 2 - cy * s;
   }
 
   // ---- Render --------------------------------------------------------------
@@ -1040,7 +930,7 @@ export function GraphView() {
   // Focus mode is on but there is no selection (or an isolate overrides it): the
   // graph falls back to Overview, so tell the newcomer how to engage focus.
   const focusFallback =
-    state.graphMode === "focus" && state.activeConceptId == null && !isolate;
+    state.graphMode === "focus" && state.activeConceptId == null && !isolate && !explore;
 
   function isolateSet(label: string, ids: string[]) {
     // Toggle: clicking the active chip clears the isolate.
@@ -1097,148 +987,32 @@ export function GraphView() {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onDoubleClick={onDoubleClick}
           onWheel={onWheel}
         />
       )}
       <div className="graph-toolbar">
-        <div className="graph-panel">
-          <Popover.Root>
-            <Popover.Trigger className="graph-panel-toggle">Controls</Popover.Trigger>
-            <Popover.Portal>
-              <Popover.Positioner
-                className="ui-popover-positioner"
-                side="bottom"
-                align="start"
-                sideOffset={6}
-              >
-                <Popover.Popup className="ui-popover graph-panel-body">
-                  <Section title="Renderer" desc="How the graph is drawn.">
-                    <Segmented
-                      ariaLabel="Renderer"
-                      options={[
-                        { value: "canvas", text: "Canvas" },
-                        { value: "gpu", text: "GPU" },
-                      ]}
-                      value={renderer}
-                      onChange={setRenderer}
-                    />
-                    <p className="graph-hint">{RENDERER_HINTS[renderer]}</p>
-                  </Section>
-                  {renderer === "canvas" && (
-                    <>
-                  <Section
-                    title="Connections"
-                    desc="A bundle can be densely cross-linked. Choose how many links to draw."
-                  >
-                    <Segmented
-                      ariaLabel="Link density"
-                      options={[
-                        { value: "sparse", text: "Key" },
-                        { value: "balanced", text: "Balanced" },
-                        { value: "all", text: "All" },
-                      ]}
-                      value={state.linkDensity}
-                      onChange={(d) => {
-                        actions.setLinkDensity(d);
-                      }}
-                    />
-                    <p className="graph-hint">{DENSITY_HINTS[state.linkDensity]}</p>
-                  </Section>
-                  <Section title="Color" desc="What a node's color means.">
-                    <Segmented
-                      ariaLabel="Color nodes by"
-                      options={[
-                        { value: "cluster", text: "Cluster" },
-                        { value: "type", text: "Type" },
-                      ]}
-                      value={display.colorBy}
-                      onChange={(v) => setDisplay((d) => ({ ...d, colorBy: v }))}
-                    />
-                    <p className="graph-hint">{COLOR_HINTS[display.colorBy]}</p>
-                  </Section>
-                  <Section title="Appearance" desc="Size and emphasis of nodes and links.">
-                    <Slider
-                      label="Node size" min={0.4} max={2.5} step={0.1} value={display.nodeScale}
-                      format={(v) => `${v.toFixed(1)}×`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, nodeScale: v }))}
-                    />
-                    <Slider
-                      label="Link thickness" min={0.5} max={4} step={0.5} value={display.linkThickness}
-                      format={(v) => `${v.toFixed(1)}×`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, linkThickness: v }))}
-                    />
-                    <Slider
-                      label="Link opacity" min={0.05} max={1} step={0.05} value={display.linkOpacity}
-                      format={(v) => `${Math.round(v * 100)}%`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, linkOpacity: v }))}
-                    />
-                    <Slider
-                      label="Label visibility"
-                      hint="How early titles appear as you zoom in."
-                      min={0.5} max={3} step={0.1} value={display.labelScale}
-                      format={(v) => `${v.toFixed(1)}×`}
-                      onChange={(v) => setDisplay((d) => ({ ...d, labelScale: v }))}
-                    />
-                  </Section>
-                  <Section title="Layout" desc="Fine-tune how the graph arranges itself.">
-                    <Slider
-                      label="Spacing" hint="How strongly nodes push apart."
-                      min={0} max={6000} step={50} value={forces.repulsion}
-                      format={(v) => `${Math.round((v / 6000) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, repulsion: v }))}
-                    />
-                    <Slider
-                      label="Link length" hint="Resting distance between connected nodes."
-                      min={20} max={250} step={5} value={forces.springLength}
-                      format={(v) => `${Math.round(((v - 20) / 230) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, springLength: v }))}
-                    />
-                    <Slider
-                      label="Link pull" hint="How strongly links draw nodes together."
-                      min={0} max={0.3} step={0.01} value={forces.springK}
-                      format={(v) => `${Math.round((v / 0.3) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, springK: v }))}
-                    />
-                    <Slider
-                      label="Gravity" hint="Pull toward the center; keeps the graph compact."
-                      min={0} max={0.2} step={0.005} value={forces.centering}
-                      format={(v) => `${Math.round((v / 0.2) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, centering: v }))}
-                    />
-                    <Slider
-                      label="Cluster pull"
-                      hint="Gathers each detected community around its own center."
-                      min={0} max={0.25} step={0.01} value={forces.clusterStrength ?? 0}
-                      format={(v) => `${Math.round((v / 0.25) * 100)}%`}
-                      onChange={(v) => setForces((f) => ({ ...f, clusterStrength: v }))}
-                    />
-                  </Section>
-                  <button
-                    type="button"
-                    className="graph-panel-reset"
-                    onClick={() => {
-                      setForces({ ...GRAPH_FORCES });
-                      setDisplay(DEFAULT_DISPLAY);
-                      actions.setLinkDensity("balanced");
-                    }}
-                  >
-                    Reset to defaults
-                  </button>
-                    </>
-                  )}
-                </Popover.Popup>
-              </Popover.Positioner>
-            </Popover.Portal>
-          </Popover.Root>
-        </div>
+        <GraphControls
+          renderer={renderer}
+          setRenderer={setRenderer}
+          linkDensity={state.linkDensity}
+          setLinkDensity={(d) => actions.setLinkDensity(d)}
+          display={display}
+          setDisplay={setDisplay}
+          forces={forces}
+          setForces={setForces}
+        />
         <div className="graph-mode" role="group" aria-label="Graph mode">
           <div className="graph-seg">
             <button
               type="button"
               className="graph-seg-btn"
               aria-label="Overview: show the whole graph"
-              aria-pressed={state.graphMode === "overview"}
-              onClick={() => actions.setGraphMode("overview")}
+              aria-pressed={state.graphMode === "overview" && !explore}
+              onClick={() => {
+                setExplore(null);
+                actions.setGraphMode("overview");
+              }}
             >
               Overview
             </button>
@@ -1246,8 +1020,11 @@ export function GraphView() {
               type="button"
               className="graph-seg-btn"
               aria-label="Focus: show the selected concept's neighborhood"
-              aria-pressed={state.graphMode === "focus"}
-              onClick={() => actions.setGraphMode("focus")}
+              aria-pressed={state.graphMode === "focus" && !explore}
+              onClick={() => {
+                setExplore(null);
+                actions.setGraphMode("focus");
+              }}
             >
               Focus
             </button>
@@ -1272,9 +1049,19 @@ export function GraphView() {
           {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
         </div>
       </div>
-      {renderer === "canvas" && (hasDefects || isolate) && (
+      {renderer === "canvas" && (
         <div className="graph-chips">
-          {isolate ? (
+          {explore ? (
+            <button
+              type="button"
+              className="graph-chip graph-chip-active"
+              aria-label={`Exploring ${explore.size} concepts. Click to exit and show the full graph.`}
+              title="Double-click any node to pull in its neighbors"
+              onClick={() => setExplore(null)}
+            >
+              Exploring {explore.size} &middot; exit &times;
+            </button>
+          ) : isolate ? (
             <button
               type="button"
               className="graph-chip graph-chip-active"
@@ -1283,7 +1070,7 @@ export function GraphView() {
             >
               {isolate.label} &times;
             </button>
-          ) : (
+          ) : hasDefects ? (
             <button
               type="button"
               className="graph-chip graph-chip-warn"
@@ -1297,6 +1084,10 @@ export function GraphView() {
             >
               {orphans.length} orphan{orphans.length === 1 ? "" : "s"} &middot; {brokenConceptIds.length} broken
             </button>
+          ) : (
+            <span className="graph-chip-hint muted" aria-hidden="true">
+              Double-click a node to explore
+            </span>
           )}
         </div>
       )}
@@ -1318,102 +1109,6 @@ export function GraphView() {
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-/** A titled, optionally-described group of controls in the panel. */
-function Section({
-  title,
-  desc,
-  children,
-}: {
-  title: string;
-  desc?: string;
-  children: ReactNode;
-}) {
-  return (
-    <fieldset className="graph-section">
-      <legend>{title}</legend>
-      {desc && <p className="graph-section-desc">{desc}</p>}
-      {children}
-    </fieldset>
-  );
-}
-
-/** A full-width segmented (single-choice) control. */
-function Segmented<T extends string>({
-  ariaLabel,
-  options,
-  value,
-  onChange,
-}: {
-  ariaLabel: string;
-  options: { value: T; text: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="graph-seg graph-seg-full" role="group" aria-label={ariaLabel}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          className="graph-seg-btn"
-          aria-pressed={value === o.value}
-          onClick={() => onChange(o.value)}
-        >
-          {o.text}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/**
- * A labelled slider with its current value shown alongside (so the value stays
- * visible while dragging) and an optional one-line hint explaining what it does.
- */
-function Slider({
-  label,
-  hint,
-  min,
-  max,
-  step,
-  value,
-  format,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  format?: (v: number) => string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="graph-slider">
-      <div className="graph-slider-head">
-        <span className="graph-slider-label">{label}</span>
-        <span className="graph-slider-value">{format ? format(value) : String(value)}</span>
-      </div>
-      <BaseSlider.Root
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onValueChange={(v) => onChange(v)}
-      >
-        <BaseSlider.Control className="ui-slider-control">
-          <BaseSlider.Track className="ui-slider-track">
-            <BaseSlider.Indicator className="ui-slider-indicator" />
-            <BaseSlider.Thumb className="ui-slider-thumb" />
-          </BaseSlider.Track>
-        </BaseSlider.Control>
-      </BaseSlider.Root>
-      {hint && <p className="graph-slider-hint">{hint}</p>}
     </div>
   );
 }

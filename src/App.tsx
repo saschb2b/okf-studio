@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type * as React from "react";
 import { useApp, PANE_CLAMPS } from "./store.tsx";
 import { useGlobalKeys } from "./keys.ts";
@@ -10,9 +10,12 @@ import { GraphView } from "./components/GraphView.tsx";
 import { Reader } from "./components/Reader.tsx";
 import { CommandPalette } from "./components/CommandPalette.tsx";
 import { ValidationPanel } from "./components/ValidationPanel.tsx";
+import { LineagePanel } from "./components/LineagePanel.tsx";
 import { LogView } from "./components/LogView.tsx";
 import { Settings } from "./components/Settings.tsx";
 import { EmptyState } from "./components/EmptyState.tsx";
+import { OpenRemoteDialog } from "./components/OpenRemoteDialog.tsx";
+import { OverviewView } from "./components/OverviewView.tsx";
 import { ResizeHandles } from "./components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "./components/ShortcutsHelp.tsx";
 
@@ -36,12 +39,15 @@ export function App() {
         <>
           <LogView />
           <ValidationPanel />
+          <LineagePanel />
           <CommandPalette />
         </>
       )}
-      {/* Settings and the shortcuts overlay work without a bundle; always mounted. */}
+      {/* Settings, the shortcuts overlay, and Open-from-URL work without a
+          bundle (Open-from-URL is a first-run entry point); always mounted. */}
       <Settings />
       <ShortcutsHelp />
+      <OpenRemoteDialog />
 
       {/* Borderless-window resize handles (Tauri only). */}
       <ResizeHandles />
@@ -60,6 +66,37 @@ function Workspace() {
   const ref = useRef<HTMLDivElement>(null);
 
   const showSidebar = state.panels.sidebar;
+
+  // Overview takes over the content area: sidebar (if open) + the overview,
+  // which scrolls its own content. Selecting any concept dismisses it.
+  if (state.overview) {
+    const sidebarTrack =
+      showSidebar && state.paneSizes.sidebar !== null
+        ? `${state.paneSizes.sidebar}px`
+        : showSidebar
+          ? "var(--sidebar-default)"
+          : null;
+    return (
+      <div
+        ref={ref}
+        className="workspace"
+        data-layout="overview"
+        style={{
+          gridTemplateColumns: [sidebarTrack, "minmax(0, 1fr)"]
+            .filter(Boolean)
+            .join(" "),
+        }}
+      >
+        {showSidebar && (
+          <aside className="pane sidebar">
+            <Sidebar />
+          </aside>
+        )}
+        <OverviewView />
+      </div>
+    );
+  }
+
   // reader pane visible: in split (unless `]` collapsed it) and reader mode.
   const showReader =
     (state.layout === "split" && state.panels.reader) ||
@@ -67,16 +104,18 @@ function Workspace() {
   // graph pane visible: in split and graph mode.
   const showGraph = state.layout === "split" || state.layout === "graph";
 
-  // Build the grid template from visible panes + persisted sizes. A sidebar
-  // width of `null` falls back to its default token; the reader's `null` keeps
-  // its co-equal fractional weight so a fresh split favors content. The graph
-  // always takes the remaining 1fr.
-  const sidebarTrack = showSidebar
+  // Pane widths flow through CSS variables (not baked into the template string)
+  // so a divider drag can update the width imperatively — writing the variable
+  // on every pointermove instead of dispatching to the store, which would
+  // re-render every useApp() consumer 60×/s. A sidebar width of `null` falls
+  // back to its default token; the reader's `null` keeps its co-equal fractional
+  // weight so a fresh split favors content. The graph always takes the 1fr.
+  const sidebarWidth = showSidebar
     ? state.paneSizes.sidebar !== null
       ? `${state.paneSizes.sidebar}px`
       : "var(--sidebar-default)"
     : null;
-  const readerTrack = showReader
+  const readerWidth = showReader
     ? state.paneSizes.reader !== null
       ? `${state.paneSizes.reader}px`
       : "var(--reader-default)"
@@ -91,13 +130,13 @@ function Workspace() {
   // Interleave pane tracks and divider tracks so the grid template lists every
   // child's column (sidebar | div | graph | div | reader).
   const columns = [
-    sidebarTrack,
+    showSidebar ? "var(--pane-sidebar)" : null,
     sidebarDivider ? "var(--divider-w)" : null,
     showGraph ? "minmax(var(--graph-min), 1fr)" : null,
     readerDivider ? "var(--divider-w)" : null,
     // In reader-only mode the reader takes the elastic space; otherwise its
     // track sizes the pane and the graph flexes.
-    showReader ? (showGraph ? readerTrack : "minmax(0, 1fr)") : null,
+    showReader ? (showGraph ? "var(--pane-reader)" : "minmax(0, 1fr)") : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -107,7 +146,13 @@ function Workspace() {
       ref={ref}
       className="workspace"
       data-layout={state.layout}
-      style={{ gridTemplateColumns: columns }}
+      style={
+        {
+          gridTemplateColumns: columns,
+          "--pane-sidebar": sidebarWidth ?? undefined,
+          "--pane-reader": readerWidth ?? undefined,
+        } as React.CSSProperties
+      }
     >
       {showSidebar && (
         <aside className="pane sidebar">
@@ -177,20 +222,34 @@ function Divider({
       : rect.right - clientX;
   }
 
+  // Teardown for an in-flight drag, so window listeners can't outlive the
+  // divider if it unmounts mid-drag (a layout-mode change removing the track).
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     // Suppress the column-track transition during the drag so it tracks the
     // pointer 1:1 (the transition is only wanted for mode changes).
     gridRef.current?.classList.add("dragging");
+    // Drag imperatively: write the pane's CSS variable on each move instead of
+    // dispatching to the store, so the whole app doesn't re-render 60×/s. Commit
+    // the final width to the store once on release (persist + a single render).
+    let latest: number | null = null;
     const move = (ev: PointerEvent) => {
-      actions.setPaneSize(pane, widthFromPointer(ev.clientX));
+      const w = Math.min(clamp.max, Math.max(clamp.min, widthFromPointer(ev.clientX)));
+      latest = w;
+      gridRef.current?.style.setProperty(`--pane-${pane}`, `${w}px`);
     };
     const up = () => {
       gridRef.current?.classList.remove("dragging");
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      dragCleanupRef.current = null;
+      if (latest !== null) actions.setPaneSize(pane, latest);
     };
+    dragCleanupRef.current = up;
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   }

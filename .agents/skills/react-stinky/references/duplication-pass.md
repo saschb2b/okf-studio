@@ -9,7 +9,7 @@ timestamp: 2026-06-16T00:00:00Z
 
 A sweep-level pass for cross-file duplication, the DRY smells a single-file scan cannot see. Run it in folder and repo-sweep scope, after the per-file catalog pass. Skip it for single-file or fragment scope and say so plainly rather than implying the code is unique.
 
-It produces findings under one category, `duplicate-implementation` (catalog category 44). Duplicated hook logic is category 30; duplicated JSX inside one file is category 36.
+It produces findings under one category, `duplicate-implementation` (catalog category 57). Duplicated hook logic is category 35; duplicated JSX inside one file is category 43.
 
 ## What it finds
 

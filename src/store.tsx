@@ -9,15 +9,34 @@ import {
   useEffect,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
-import type { Bundle, BundleRoot, Concept, RecentBundle, Settings } from "./types.ts";
+import type {
+  Bundle,
+  BundleRoot,
+  Concept,
+  RecentBundle,
+  RemoteSource,
+  Settings,
+} from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
 import { applyTheme } from "./theme.ts";
 import * as ipc from "./ipc.ts";
 import { isWindowMaximized, onWindowResized } from "./window.ts";
 
-export type PanelName = "sidebar" | "reader" | "log" | "validation";
+export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage";
+
+/**
+ * Result of a remote open. `opened` — a single bundle was fetched and opened;
+ * `empty` — the URL was reachable but held no OKF bundle; `multiple` — the
+ * fetched folder holds several bundles, so the caller (the dialog) offers a
+ * picker rather than guessing which one to open. Fetch failures throw instead.
+ */
+export type RemoteOpenOutcome =
+  | { status: "opened" }
+  | { status: "empty" }
+  | { status: "multiple"; folder: string; bundles: BundleRoot[] };
 
 /** Which sidebar lens is showing: navigation (Index/Bundles) or filtering. */
 export type Lens = "navigate" | "filter";
@@ -104,6 +123,12 @@ export interface State {
   bundles: BundleRoot[];
   recents: RecentBundle[];
   switcherOpen: boolean;
+  /** The bundle Overview/health landing view takes over the content area. */
+  overview: boolean;
+  remoteOpen: boolean;
+  /** One-shot URL to prefill (and auto-fetch) the next time the remote dialog
+   *  opens — the first-run example cards hand their URL off this way. */
+  remoteSeed: string | null;
   maximized: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
@@ -138,6 +163,9 @@ const initialState: State = {
   bundles: [],
   recents: [],
   switcherOpen: false,
+  overview: false,
+  remoteOpen: false,
+  remoteSeed: null,
   maximized: false,
   activeRoot: null,
   bundle: null,
@@ -155,7 +183,7 @@ const initialState: State = {
   linkDensity: "balanced",
   layout: persistedLayout.mode,
   paneSizes: persistedLayout.sizes,
-  panels: { sidebar: true, reader: true, log: false, validation: false },
+  panels: { sidebar: true, reader: true, log: false, validation: false, lineage: false },
   palette: false,
   paletteSeed: null,
   settingsOpen: false,
@@ -169,6 +197,9 @@ type Msg =
   | { t: "openFolder"; folder: string; bundles: BundleRoot[] }
   | { t: "recents"; v: RecentBundle[] }
   | { t: "switcher"; v: boolean }
+  | { t: "overview"; v: boolean }
+  | { t: "showOnlyType"; v: string }
+  | { t: "remoteOpen"; v: boolean; seed?: string }
   | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
@@ -213,6 +244,23 @@ function reducer(s: State, m: Msg): State {
       return { ...s, recents: m.v };
     case "switcher":
       return { ...s, switcherOpen: m.v };
+    case "overview":
+      return { ...s, overview: m.v };
+    case "showOnlyType": {
+      // Show only concepts of type `v` — hide every other type present. Leaves
+      // the overview and reveals the Filter lens so the applied filter is visible.
+      const all = [
+        ...new Set((s.bundle?.concepts ?? []).map((c) => c.type).filter(Boolean)),
+      ];
+      return {
+        ...s,
+        hiddenTypes: all.filter((t) => t !== m.v),
+        overview: false,
+        lens: "filter",
+      };
+    }
+    case "remoteOpen":
+      return { ...s, remoteOpen: m.v, remoteSeed: m.v ? (m.seed ?? null) : null };
     case "maximized":
       return { ...s, maximized: m.v };
     case "setBundle": {
@@ -237,13 +285,15 @@ function reducer(s: State, m: Msg): State {
       };
     }
     case "select":
-      if (m.id === s.activeConceptId) return s;
+      // Selecting a concept always leaves the Overview landing (you're diving in).
+      if (m.id === s.activeConceptId) return s.overview ? { ...s, overview: false } : s;
       return {
         ...s,
         activeConceptId: m.id,
         back: s.activeConceptId ? [...s.back, s.activeConceptId] : s.back,
         fwd: [],
         palette: false,
+        overview: false,
       };
     case "back": {
       if (!s.back.length) return s;
@@ -333,12 +383,27 @@ function reducer(s: State, m: Msg): State {
 
 export interface Actions {
   openFolder(): Promise<void>;
-  openFolderPath(folder: string): Promise<void>;
-  selectBundle(root: string, folder?: string): Promise<void>;
+  openFolderPath(folder: string, remote?: RemoteSource): Promise<void>;
+  /** Fetch a remote bundle and report the outcome (see RemoteOpenOutcome);
+   *  throws on fetch failure. A single bundle opens directly; several defer to
+   *  the caller's picker via `openRemoteChoice`. */
+  openRemote(source: RemoteSource): Promise<RemoteOpenOutcome>;
+  /** Open one specific bundle from a already-fetched remote folder (the picker). */
+  openRemoteChoice(
+    root: string,
+    folder: string,
+    bundles: BundleRoot[],
+    source: RemoteSource,
+  ): Promise<void>;
+  refreshRemote(entry: RecentBundle): Promise<void>;
+  selectBundle(root: string, folder?: string, remote?: RemoteSource): Promise<void>;
   openRecentBundle(entry: RecentBundle): Promise<void>;
   pinBundle(root: string): Promise<void>;
   forgetBundle(root: string): Promise<void>;
   setSwitcher(open: boolean): void;
+  setOverview(open: boolean): void;
+  showOnlyType(type: string): void;
+  setRemoteOpen(open: boolean, seed?: string): void;
   rescan(): Promise<void>;
   selectConcept(id: string | null): void;
   back(): void;
@@ -362,7 +427,12 @@ export interface Actions {
   openExternal(url: string): void;
 }
 
-const Ctx = createContext<{ state: State; actions: Actions } | null>(null);
+// Split the store into two contexts (the state/dispatch pattern): the data and
+// the (stable) action set. Keeping them apart means the ActionsCtx value never
+// changes, so an action-only consumer (useAppActions) never re-renders when the
+// data changes; and each context throws its own clear "outside provider" error.
+const StateCtx = createContext<State | null>(null);
+const ActionsCtx = createContext<Actions | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -374,13 +444,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stateRef.current = state;
   });
 
-  const actions: Actions = {
+  // Build the action set once (useState's lazy initializer): every action closes
+  // only over the stable `dispatch` and the always-fresh `stateRef`, so a single
+  // object stays correct forever — and a stable reference keeps the ActionsCtx
+  // value from ever changing, so action-only consumers don't re-render on data.
+  const [actions] = useState<Actions>(() => {
+    const a: Actions = {
     async openFolder() {
       const folder = await ipc.pickFolder();
       if (!folder) return;
-      await actions.openFolderPath(folder);
+      await a.openFolderPath(folder);
     },
-    async openFolderPath(folder) {
+    async openFolderPath(folder, remote) {
       dispatch({ t: "loading", v: true });
       try {
         const bundles = await ipc.scanBundles(
@@ -388,19 +463,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
           stateRef.current.settings.scanMaxDepth,
         );
         dispatch({ t: "openFolder", folder, bundles });
-        if (bundles.length >= 1) await actions.selectBundle(bundles[0].root, folder);
+        if (bundles.length >= 1)
+          await a.selectBundle(bundles[0].root, folder, remote);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
       }
     },
-    async selectBundle(root, folder) {
+    async openRemote(source) {
+      // The detector runs in two phases, both surfaced by the dialog, and
+      // NOTHING is switched until we know there's a bundle to open:
+      //   1. Fetch — a network/HTTP failure throws (the dialog shows an error).
+      //   2. Scan the fetched cache. Zero bundles → return "empty": the URL was
+      //      reachable but holds no conformant OKF bundle (e.g. a repo of plain
+      //      files, or the wrong subpath). The dialog shows a distinct, calm
+      //      "not a bundle" explanation rather than silently leaving the
+      //      previous bundle in place.
+      const { folder } = await ipc.fetchRemoteBundle(source);
+      const bundles = await ipc.scanBundles(
+        folder,
+        stateRef.current.settings.scanMaxDepth,
+      );
+      if (bundles.length === 0) return { status: "empty" };
+      // Several bundles at that URL → let the user pick which one, rather than
+      // silently opening the first. The dialog renders the choices.
+      if (bundles.length > 1) return { status: "multiple", folder, bundles };
+      dispatch({ t: "remoteOpen", v: false });
+      dispatch({ t: "openFolder", folder, bundles });
+      // Tagged with its origin so the recent entry remembers where it came from.
+      await a.selectBundle(bundles[0].root, folder, source);
+      return { status: "opened" };
+    },
+    async openRemoteChoice(root, folder, bundles, source) {
+      dispatch({ t: "remoteOpen", v: false });
+      dispatch({ t: "openFolder", folder, bundles });
+      await a.selectBundle(root, folder, source);
+    },
+    async refreshRemote(entry) {
+      if (!entry.remote) return;
+      dispatch({ t: "loading", v: true });
+      try {
+        const { folder } = await ipc.fetchRemoteBundle(entry.remote);
+        await a.openFolderPath(folder, entry.remote);
+      } catch (e) {
+        dispatch({ t: "error", v: String(e) });
+      }
+    },
+    async selectBundle(root, folder, remote) {
       dispatch({ t: "loading", v: true });
       try {
         const bundle = await ipc.readBundle(root);
         dispatch({ t: "setBundle", root, bundle });
         // Record this bundle in recents, keyed by root, with the folder that
-        // granted its read scope so it can be re-granted on reopen.
+        // granted its read scope so it can be re-granted on reopen. `remote`
+        // (when present) remembers the URL it was fetched from.
         const f = folder ?? stateRef.current.folder;
         if (f) {
           const types = [
@@ -412,6 +528,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             name: bundle.name,
             conceptCount: bundle.concepts.length,
             types,
+            remote,
           });
           dispatch({ t: "recents", v: recents });
         }
@@ -424,15 +541,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         // Re-grant the folder scope, then open the specific bundle (falling
         // back to the first if it has moved/disappeared inside the folder).
-        const bundles = await ipc.scanBundles(
-          entry.folder,
+        let folder = entry.folder;
+        let bundles = await ipc.scanBundles(
+          folder,
           stateRef.current.settings.scanMaxDepth,
         );
-        dispatch({ t: "openFolder", folder: entry.folder, bundles });
+        // A remote bundle's folder is a local cache that may have been evicted;
+        // if nothing's there, re-fetch from source (still explicit — the user
+        // clicked this recent) before giving up.
+        if (bundles.length === 0 && entry.remote) {
+          folder = (await ipc.fetchRemoteBundle(entry.remote)).folder;
+          bundles = await ipc.scanBundles(
+            folder,
+            stateRef.current.settings.scanMaxDepth,
+          );
+        }
+        dispatch({ t: "openFolder", folder, bundles });
         const root = bundles.some((b) => b.root === entry.root)
           ? entry.root
           : bundles[0]?.root;
-        if (root) await actions.selectBundle(root, entry.folder);
+        if (root) await a.selectBundle(root, folder, entry.remote);
         else dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
@@ -447,6 +575,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSwitcher(open) {
       dispatch({ t: "switcher", v: open });
     },
+    setOverview(open) {
+      dispatch({ t: "overview", v: open });
+    },
+    showOnlyType(type) {
+      dispatch({ t: "showOnlyType", v: type });
+    },
+    setRemoteOpen(open, seed) {
+      dispatch({ t: "remoteOpen", v: open, seed });
+    },
     async rescan() {
       const { folder, activeRoot } = stateRef.current;
       if (!folder) return;
@@ -456,7 +593,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
       dispatch({ t: "openFolder", folder, bundles });
       const root = activeRoot ?? bundles[0]?.root;
-      if (root) await actions.selectBundle(root);
+      if (root) await a.selectBundle(root);
     },
     selectConcept(id) {
       dispatch({ t: "select", id });
@@ -520,20 +657,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     openExternal(url) {
       void ipc.openExternal(url);
     },
-  };
+    };
+    return a;
+  });
 
   // Load persisted settings once, and reopen the most recent folder if any
   // (first-run.md: "can reopen the last one automatically"). Auto-reopen is
   // desktop-only: off-Tauri the recents are a seeded fixture for the switcher
   // UI, and dev/tests should still boot into the first-run state.
   useEffect(() => {
-    void ipc.loadSettings().then((s) => dispatch({ t: "settings", v: s }));
-    void ipc.recentBundles().then((recents) => {
+    void (async () => {
+      const s = await ipc.loadSettings();
+      // Seed the ref before the auto-reopen so its scan reads the *persisted*
+      // scanMaxDepth, not the default — dispatch only reaches stateRef next
+      // render, and openRecentBundle reads the ref synchronously here.
+      stateRef.current = { ...stateRef.current, settings: s };
+      dispatch({ t: "settings", v: s });
+      const recents = await ipc.recentBundles();
       dispatch({ t: "recents", v: recents });
       if (recents.length > 0 && ipc.isTauri()) {
-        void actions.openRecentBundle(recents[0]);
+        await actions.openRecentBundle(recents[0]);
       }
-    });
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -567,31 +712,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = state.activeRoot;
     if (!root) return;
+    let cancelled = false; // true once this effect (this root) is torn down
     let dispose: (() => void) | undefined;
     void ipc
       .startWatch(root, () => {
-        void ipc.readBundle(root).then((bundle) =>
-          dispatch({ t: "setBundle", root, bundle }),
-        );
+        void ipc.readBundle(root).then((bundle) => {
+          // Drop a read that resolves after the user already switched roots —
+          // otherwise a late callback dispatches setBundle for the *old* root
+          // and clobbers the now-active bundle.
+          if (!cancelled) dispatch({ t: "setBundle", root, bundle });
+        });
       })
       .then((d) => {
-        dispose = d;
+        // If the effect was already torn down before startWatch resolved,
+        // dispose immediately (the returned cleanup ran with dispose still
+        // undefined) so the backend watch isn't leaked.
+        if (cancelled) d();
+        else dispose = d;
       });
-    return () => dispose?.();
+    return () => {
+      cancelled = true;
+      dispose?.();
+    };
   }, [state.activeRoot]);
 
-  return <Ctx.Provider value={{ state, actions }}>{children}</Ctx.Provider>;
+  return (
+    <StateCtx.Provider value={state}>
+      <ActionsCtx.Provider value={actions}>{children}</ActionsCtx.Provider>
+    </StateCtx.Provider>
+  );
 }
 
+/** Subscribe to the store's state. Re-renders when the data changes. */
+export function useAppState(): State {
+  const s = useContext(StateCtx);
+  if (s === null) throw new Error("useAppState must be used within AppProvider");
+  return s;
+}
+
+/** The store's action set. A stable reference, so a component that reads only
+ *  actions (no state) never re-renders on a data change. */
+export function useAppActions(): Actions {
+  const a = useContext(ActionsCtx);
+  if (a === null) throw new Error("useAppActions must be used within AppProvider");
+  return a;
+}
+
+/** Convenience for the common case that a component needs both. Subscribes to
+ *  state (so it re-renders on data changes) — prefer useAppActions alone when a
+ *  component only dispatches. */
 export function useApp() {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useApp must be used within AppProvider");
-  return ctx;
+  return { state: useAppState(), actions: useAppActions() };
 }
 
 /** Convenience: the currently selected concept, or null. */
 export function useActiveConcept(): Concept | null {
-  const { state } = useApp();
+  const state = useAppState();
   if (!state.bundle || !state.activeConceptId) return null;
   return state.bundle.concepts.find((c) => c.id === state.activeConceptId) ?? null;
 }

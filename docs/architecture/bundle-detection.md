@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Bundle Detection
 description: The algorithm that walks a chosen folder and decides which directories are OKF bundle roots.
 tags: [architecture, decision, discovery, algorithm]
-timestamp: 2026-06-29T12:00:00Z
+timestamp: 2026-07-04T18:30:00Z
 ---
 
 # Problem
@@ -13,7 +13,7 @@ Given one folder, find every OKF bundle inside it (the [Folder Autodetect](../fe
 # Signals (strongest first)
 
 1. **Root `index.md` with `okf_version`.** The spec says a bundle root *may* declare `okf_version` in its `index.md` frontmatter — the only place that frontmatter is allowed. A directory whose `index.md` carries `okf_version` is a bundle root with high confidence.
-2. **A tree of typed concepts.** Otherwise, a directory is a candidate root if it (recursively) contains one or more non-reserved `.md` files whose frontmatter has a non-empty `type` (the one hard [conformance rule](../reference/okf-spec-summary.md)).
+2. **A tree of typed concepts, bounded by `index.md`.** Otherwise, a directory is a candidate root if it (recursively) contains one or more non-reserved `.md` files whose frontmatter has a non-empty `type` (the one hard [conformance rule](../reference/okf-spec-summary.md)). A typed concept belongs to the **nearest enclosing directory that has its own `index.md`** — the top of a contiguous `index.md` chain, a bundle boundary. So a plain *container* folder that merely holds several `index.md`-bearing bundle directories (none declaring `okf_version`) yields **one candidate per bundle**, not a single merged root. Loose concepts with no `index.md` anywhere fall back to the scanned folder as one candidate.
 
 # Algorithm
 
@@ -23,8 +23,10 @@ scan(folder):
   skip ignored dirs: .git, node_modules, target, dist, build, .venv
   for each directory D (cycle-safe on symlinks):
     if D/index.md has okf_version  -> mark D as bundle root (confident)
-    else if D contains >=1 typed concept .md (recursively)
-                                   -> mark D as candidate root
+  for each typed concept .md file:
+    candidate root = nearest ancestor dir with its own index.md whose parent has
+                     none (the top of a contiguous index.md chain); else the
+                     scanned folder      -> mark as candidate root
   resolve overlaps:
     a confident root absorbs nested candidate dirs (their index.md are sub-indexes,
     not separate bundles)
@@ -34,7 +36,8 @@ scan(folder):
 
 # Rules & edge cases
 
-- **Nesting:** the outermost qualifying root wins; inner `index.md` directories are parts of that bundle (sub-directory indexes), not separate bundles.
+- **Nesting within a bundle:** inside a confident (or candidate) root, inner `index.md` directories are parts of that bundle (sub-directory indexes), not separate bundles — the boundary rule stops at the *top* of the `index.md` chain, so nested section indexes never split a bundle.
+- **A container of bundles is not a bundle:** point at a folder that itself has no `index.md` but holds several bundle directories that do (e.g. `GoogleCloudPlatform/knowledge-catalog`'s `okf/bundles`, whose sub-bundles omit `okf_version`), and detection returns each sub-bundle separately rather than merging their concepts under the container. The [Bundle Switcher](../features/bundle-switcher.md) then lists them (and the [Open-from-URL](../features/bundle-switcher.md) dialog offers a picker).
 - **The chosen folder may itself be a bundle root** — detection includes the root, not just descendants.
 - **Bound the walk** (depth + ignore list) so pointing at a big monorepo stays [fast](../product/principles.md).
 - **Confidence is recorded** and shown in the [Bundle Switcher](../features/bundle-switcher.md); low-confidence candidates are still offered, since the app is a [tolerant consumer](../product/principles.md).

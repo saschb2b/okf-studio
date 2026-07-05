@@ -12,11 +12,9 @@
 // Dual light/dark themes are emitted as CSS variables and switched by the app's
 // `data-theme` (see Reader.css). See docs/features/concept-reader.md.
 
-// Shiki's highlighter type is heavy to import; we only need the call shape.
-interface Highlighter {
-  getLoadedLanguages: () => string[];
-  codeToHtml: (code: string, options: Record<string, unknown>) => string;
-}
+// Type-only import (erased at build, so no bundle cost) of Shiki's real
+// highlighter type — the runtime `createHighlighterCore` is still dynamic.
+import type { HighlighterCore } from "shiki/core";
 
 const THEMES = { light: "github-light", dark: "github-dark" } as const;
 
@@ -54,11 +52,11 @@ const ALIASES: Record<string, string> = {
   rs: "rust",
 };
 
-let highlighterPromise: Promise<Highlighter> | null = null;
+let highlighterPromise: Promise<HighlighterCore> | null = null;
 
 /** Lazily create (once) a fine-grained Shiki highlighter with the WASM-free JS
  *  engine and only the curated grammars/themes — all dynamically imported. */
-async function getHighlighter(): Promise<Highlighter> {
+async function getHighlighter(): Promise<HighlighterCore> {
   highlighterPromise ??= (async () => {
     const [{ createHighlighterCore }, { createJavaScriptRegexEngine }, light, dark, ...langs] =
       await Promise.all([
@@ -73,7 +71,7 @@ async function getHighlighter(): Promise<Highlighter> {
       langs: langs as Parameters<typeof createHighlighterCore>[0]["langs"],
       engine: createJavaScriptRegexEngine(),
     });
-    return hl as unknown as Highlighter;
+    return hl;
   })();
   return highlighterPromise;
 }
@@ -94,7 +92,7 @@ function langOf(code: Element): string {
 export async function highlightCodeBlocks(root: ParentNode): Promise<void> {
   const blocks = Array.from(root.querySelectorAll("pre > code"));
   if (blocks.length === 0) return;
-  let hl: Highlighter;
+  let hl: HighlighterCore;
   try {
     hl = await getHighlighter();
   } catch {
@@ -117,7 +115,7 @@ export async function highlightCodeBlocks(root: ParentNode): Promise<void> {
 }
 
 /** Highlight one block, falling back to a plain themed block, then to null. */
-function renderBlock(hl: Highlighter, text: string, lang: string): string | null {
+function renderBlock(hl: HighlighterCore, text: string, lang: string): string | null {
   const opts = { themes: THEMES, defaultColor: false } as const;
   if (lang && hl.getLoadedLanguages().includes(lang)) {
     try {

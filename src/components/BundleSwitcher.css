@@ -284,10 +284,8 @@
   background: var(--bg-sunken);
   color: var(--text-dim);
 }
-.switcher-soon {
-  padding: 0 var(--space-6);
-  font-size: var(--fs-xs);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: 999px;
+/* Marks a recent that was fetched from a URL (its sub-line shows the origin). */
+.switcher-remote-badge {
+  margin-right: var(--space-4);
+  font-size: 0.85em;
 }

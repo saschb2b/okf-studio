@@ -150,10 +150,31 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:open-url",
+      label: "Open from URL…",
+      hint: "Action",
+      run: () => actions.setRemoteOpen(true),
+    },
+    {
+      kind: "action",
+      id: "act:overview",
+      label: "Bundle overview",
+      hint: "Action",
+      run: () => actions.setOverview(true),
+    },
+    {
+      kind: "action",
       id: "act:rescan",
       label: "Re-scan folder",
       hint: "Action",
       run: () => void actions.rescan(),
+    },
+    {
+      kind: "action",
+      id: "act:lineage",
+      label: "Trace lineage",
+      hint: "Action",
+      run: () => actions.togglePanel("lineage", true),
     },
     {
       kind: "action",

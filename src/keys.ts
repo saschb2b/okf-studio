@@ -23,6 +23,11 @@ export function useGlobalKeys() {
         // Cycle split -> reader -> graph (bare backslash, next to [ and ]).
         e.preventDefault();
         actions.cycleLayout();
+      } else if (mod && e.shiftKey && k === "o") {
+        // Open from URL (remote bundle). Shift distinguishes it from the local
+        // folder picker on Ctrl/Cmd+O.
+        e.preventDefault();
+        actions.setRemoteOpen(true);
       } else if (mod && k === "o") {
         e.preventDefault();
         void actions.openFolder();
@@ -54,10 +59,17 @@ export function useGlobalKeys() {
         actions.setSettingsOpen(false);
         actions.setSwitcher(false);
         actions.setHelp(false);
+        actions.setRemoteOpen(false);
       } else if (e.altKey && e.key === "ArrowLeft") {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {
         actions.forward();
+      } else if (!typing && !mod && k === "o" && state.bundle) {
+        // Toggle the bundle Overview landing (orient before you dive).
+        actions.setOverview(!state.overview);
+      } else if (!typing && !mod && k === "t" && state.bundle) {
+        // Toggle the Lineage panel — trace what depends on the active concept.
+        actions.togglePanel("lineage");
       } else if (!typing && !mod && k === "l") {
         actions.togglePanel("log");
       } else if (!typing && !mod && k === "r") {

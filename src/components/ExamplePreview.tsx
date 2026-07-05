@@ -77,16 +77,22 @@ export function ExamplePreview({ concept, bundle }: { concept: Concept; bundle: 
       const root = bundle.root;
       void (async () => {
         const loaded: PreviewItem[] = [];
-        for (const path of exampleAssetPaths(concept)) {
-          const raw = await readAsset(root, path);
-          if (raw == null) continue;
-          if (/\.css$/i.test(path)) {
-            // A linked stylesheet has no rendered form; show it as code.
-            loaded.push({ path, kind: "example", raw, doc: "", codeOnly: true });
-          } else {
-            const doc = await inlineStylesheets(raw, path, root);
-            loaded.push({ path, kind: exampleKind(path), raw, doc, codeOnly: false });
+        try {
+          for (const path of exampleAssetPaths(concept)) {
+            const raw = await readAsset(root, path);
+            if (raw == null) continue;
+            if (/\.css$/i.test(path)) {
+              // A linked stylesheet has no rendered form; show it as code.
+              loaded.push({ path, kind: "example", raw, doc: "", codeOnly: true });
+            } else {
+              const doc = await inlineStylesheets(raw, path, root);
+              loaded.push({ path, kind: exampleKind(path), raw, doc, codeOnly: false });
+            }
           }
+        } catch {
+          // One asset's read *rejected* (vs. was merely absent → null) — fall
+          // through and commit whatever loaded, so a single IPC error can't
+          // blank the whole Examples section.
         }
         if (live.current) setItems(loaded);
       })();

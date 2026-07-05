@@ -143,6 +143,20 @@ function remoteImage(url: string, alt: string | null): HTMLButtonElement {
   return btn;
 }
 
+/** Wrap a resolved image in a real `<button>` so the spotlight is reachable by
+ *  keyboard (Enter/Space), not just a mouse click on the bare `<img>`. The body
+ *  click delegation routes the click via the button's `data-lightbox` marker. */
+function makeZoomable(img: HTMLImageElement): void {
+  img.classList.add("md-img");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "md-img-zoom";
+  btn.dataset.lightbox = "1";
+  btn.setAttribute("aria-label", "View image full size");
+  img.replaceWith(btn);
+  btn.appendChild(img);
+}
+
 /** A quiet placeholder for a local image that could not be read. */
 function brokenImage(raw: string): HTMLSpanElement {
   const span = document.createElement("span");
@@ -184,8 +198,7 @@ async function processBody(html: string, conceptId: string, bundle: Bundle): Pro
     if (!raw) {
       // An author-inlined data: image — just make it zoomable.
       if (img.getAttribute("src")?.startsWith("data:")) {
-        img.classList.add("md-img");
-        img.setAttribute("data-lightbox", "1");
+        makeZoomable(img);
       }
       continue;
     }
@@ -195,8 +208,7 @@ async function processBody(html: string, conceptId: string, bundle: Bundle): Pro
       if (url) {
         img.setAttribute("src", url);
         img.removeAttribute("data-mdsrc");
-        img.classList.add("md-img");
-        img.setAttribute("data-lightbox", "1");
+        makeZoomable(img);
       } else {
         img.replaceWith(brokenImage(raw));
       }
@@ -208,8 +220,6 @@ async function processBody(html: string, conceptId: string, bundle: Bundle): Pro
   }
   return tpl.innerHTML;
 }
-
-/** A url-safe slug for a heading's text, used as its anchor id. */
 
 /** Concepts sharing a tag with `c`, excluding itself and its direct relations. */
 function relatedByTag(bundle: Bundle | null, c: Concept): string[] {
@@ -233,6 +243,7 @@ export function Reader() {
   const reduceMotion = state.settings.reduceMotion;
 
   const bodyRef = useRef<HTMLDivElement>(null);
+  const lightboxCloseRef = useRef<HTMLButtonElement>(null);
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   // The image currently shown in the spotlight overlay (a data URL), or null.
@@ -330,7 +341,7 @@ export function Reader() {
     };
     // `c` is tracked via c?.id; the effect only needs to re-run on concept change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [c?.id, displayHtml, bundle, reduceMotion]);
+  }, [c?.id, displayHtml, bundle]);
 
   // Post-process the body into the HTML *string* (not by mutating the live DOM):
   // syntax-highlight code blocks and resolve images (local → inline data URL,
@@ -351,14 +362,26 @@ export function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c?.id, bodyHtml, bundle?.root]);
 
-  // Close the image spotlight on Escape (click/close-button handle the rest).
+  // Image spotlight focus management: move focus into the dialog on open, trap
+  // Tab (the close button is the only focusable element), close on Escape, and
+  // restore focus to the trigger on close — the aria-modal contract.
   useEffect(() => {
     if (!lightbox) return;
+    const returnTo = document.activeElement as HTMLElement | null;
+    lightboxCloseRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightbox(null);
+      if (e.key === "Escape") {
+        setLightbox(null);
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        lightboxCloseRef.current?.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      returnTo?.focus();
+    };
   }, [lightbox]);
 
   if (!c) {
@@ -424,10 +447,12 @@ export function Reader() {
       });
       return;
     }
-    // A local image opens in the spotlight overlay.
-    const zoomable = target.closest<HTMLImageElement>("img[data-lightbox]");
-    if (zoomable) {
-      setLightbox(zoomable.src);
+    // A local image opens in the spotlight overlay — the click lands on the
+    // wrapping button (also reachable by keyboard) whose img carries the src.
+    const zoomBtn = target.closest<HTMLElement>("button[data-lightbox]");
+    if (zoomBtn) {
+      const src = zoomBtn.querySelector("img")?.getAttribute("src");
+      if (src) setLightbox(src);
       return;
     }
     // A remote-image placeholder opens the original in the system browser.
@@ -664,6 +689,7 @@ export function Reader() {
         >
           <img className="lightbox-img" src={lightbox} alt="" />
           <button
+            ref={lightboxCloseRef}
             type="button"
             className="lightbox-close"
             aria-label="Close image preview"

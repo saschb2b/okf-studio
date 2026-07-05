@@ -1,0 +1,133 @@
+/* Lineage panel. Inherits the base .panel docking (styles.css) and the shared
+   .panel-head (ValidationPanel.css). This file styles the trees, path, and rows. */
+
+.ln-empty {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.ln-scroll {
+  /* Fill the panel below its header. */
+  position: absolute;
+  inset: 44px var(--space-8) var(--space-8) var(--space-12);
+}
+
+.ln-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  padding-right: var(--space-8);
+}
+
+.ln-context {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.ln-context strong {
+  color: var(--text);
+}
+
+.ln-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.ln-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.ln-count {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.ln-none {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+/* Rows — the doors. */
+.ln-row {
+  font: inherit;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.ln-row:hover {
+  background: var(--bg-sunken);
+}
+.ln-row:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -1px;
+}
+.ln-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.ln-row-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+.ln-trunc {
+  flex: none;
+}
+
+/* Trees — nested lists with a hairline rail per level. */
+.ln-tree {
+  display: flex;
+  flex-direction: column;
+}
+.ln-tree .ln-tree {
+  margin-left: var(--space-10);
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--border);
+}
+
+/* Path — an ordered list read as steps down a rail. */
+.ln-path {
+  margin: var(--space-4) 0 0;
+  padding-left: var(--space-6);
+  border-left: 2px solid var(--accent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ln-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Path target picker. */
+.ln-select {
+  font: inherit;
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+.ln-select:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}

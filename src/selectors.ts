@@ -2,6 +2,7 @@
 // components call these in render and the results are auto-memoized.
 
 import type { Bundle, Concept, GraphEdge } from "./types.ts";
+import { parseQuery, matchesCompiled, type CompiledQuery } from "./query.ts";
 
 /** Distinct concept types present in a bundle, sorted. */
 export function distinctTypes(bundle: Bundle | null): string[] {
@@ -39,18 +40,23 @@ export interface Filter {
   activeTag: string | null;
 }
 
-/** Does a concept match the current text query (title, description, type, tags, body)? */
+// One-entry compile cache: a query string is parsed once, then tested against
+// every concept in the render. The same string flows to all consumers in a
+// frame, so a single slot hits ~100%.
+let queryCache: { q: string; compiled: CompiledQuery } | null = null;
+function compile(q: string): CompiledQuery {
+  if (queryCache?.q !== q) queryCache = { q, compiled: parseQuery(q) };
+  return queryCache.compiled;
+}
+
+/**
+ * Does a concept match the query? The query is the [faceted grammar](./query.ts)
+ * — `type:`, `tag:`, `degree>N`, `is:orphan`, `has:broken`, and full-text —
+ * falling back to plain substring for bare words.
+ */
 export function matchesQuery(c: Concept, q: string): boolean {
   if (!q) return true;
-  const needle = q.toLowerCase();
-  return (
-    c.title.toLowerCase().includes(needle) ||
-    c.description.toLowerCase().includes(needle) ||
-    c.type.toLowerCase().includes(needle) ||
-    c.id.toLowerCase().includes(needle) ||
-    c.tags.some((t) => t.toLowerCase().includes(needle)) ||
-    c.body.toLowerCase().includes(needle)
-  );
+  return matchesCompiled(c, compile(q));
 }
 
 /** Is a concept visible under the current type filter and tag selection? */

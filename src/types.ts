@@ -75,6 +75,34 @@ export interface Bundle {
   confidence: Confidence;
 }
 
+/** Where a remote bundle was fetched from — the kind drives how it's fetched.
+ *  Deliberately narrow: a GitHub repo (via its tarball, no git needed) or a
+ *  direct archive download. Cloning arbitrary git hosts is out of scope — that's
+ *  a local `git clone` away, and pulling in libgit2 would drag pull/sync flows
+ *  the viewer has no business owning. */
+export type RemoteKind = "github" | "archive";
+
+/**
+ * A parsed remote bundle source. Produced network-free by `parseRemoteSource`
+ * (so the Open-from-URL dialog previews it live) and handed to the backend to
+ * fetch into a local cache dir that then becomes the read scope. See
+ * docs/features/bundle-switcher.md and docs/architecture/ipc-and-security.md.
+ */
+export interface RemoteSource {
+  /** The raw URL the user entered (kept verbatim for display and re-fetch). */
+  input: string;
+  kind: RemoteKind;
+  host: string;
+  owner?: string;
+  repo?: string;
+  /** Git ref (branch/tag/commit) when the URL names one. */
+  ref?: string;
+  /** Subpath within the fetched tree to scope scanning to (e.g. "docs"). */
+  subpath?: string;
+  /** Compact human label, e.g. "owner/repo · main · /docs". */
+  label: string;
+}
+
 /**
  * One entry in the Bundle Switcher's recent list. Recents are per-BUNDLE
  * (OKF's unit); `folder` is the picked directory that granted the read scope
@@ -88,6 +116,8 @@ export interface RecentBundle {
   types: string[];
   ts: number; // last-opened epoch ms; recents are newest-first
   pinned?: boolean;
+  /** Set when the folder was fetched from a URL rather than picked locally. */
+  remote?: RemoteSource;
 }
 
 export type ThemeMode = "system" | "light" | "dark";

@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
+import * as ipc from "./ipc.ts";
 
 // Regression coverage for the major interactive features (bundle switcher,
 // layout modes, reader rail, shortcuts overlay), driven over the mock backend.
@@ -10,6 +11,11 @@ import { AppProvider } from "./store.tsx";
 beforeEach(() => {
   // Layout mode persists to localStorage; isolate each test.
   localStorage.clear();
+});
+
+afterEach(() => {
+  // Some tests spy on the IPC layer; restore so the mock backend is intact.
+  vi.restoreAllMocks();
 });
 
 function renderApp() {
@@ -165,13 +171,13 @@ describe("OKF Viewer features", () => {
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
 
     await screen.findByRole("combobox");
-    // Zero-query state: Recent (1: Overview) + Actions (5) — six navigable
+    // Zero-query state: Recent (1: Overview) + Actions (8) — nine navigable
     // results spanning two groups, reproducing the bug where the combobox's
     // `items` and `filteredItems` props disagreed on whether the list was
     // grouped, so keyboard navigation only ever toggled between the first
     // two results instead of walking the full list.
     const options = await screen.findAllByRole("option");
-    expect(options).toHaveLength(6);
+    expect(options).toHaveLength(9);
 
     for (const option of options) {
       await user.keyboard("{ArrowDown}");
@@ -284,7 +290,7 @@ describe("OKF Viewer features", () => {
     renderApp();
     await openBundle(user);
 
-    const search = screen.getByRole("searchbox", { name: /search concepts/i });
+    const search = screen.getByRole("searchbox", { name: /search and filter/i });
 
     // Matches exist (the Revenue cluster) but none are index entries → the
     // tree explains itself and offers the launcher.
@@ -309,5 +315,57 @@ describe("OKF Viewer features", () => {
     expect(
       screen.queryByRole("button", { name: /open full search/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("explains a URL that fetches successfully but holds no OKF bundle", async () => {
+    const user = userEvent.setup();
+    // The URL is reachable (fetch resolves) but the folder has no bundle.
+    vi.spyOn(ipc, "fetchRemoteBundle").mockResolvedValue({ folder: "/tmp/empty" });
+    vi.spyOn(ipc, "scanBundles").mockResolvedValue([]);
+    renderApp();
+
+    // Open the remote dialog from the first-run empty state.
+    await user.click(screen.getByRole("button", { name: /open from url/i }));
+    const dialog = await screen.findByRole("dialog", { name: /open from url/i });
+    await user.type(
+      within(dialog).getByLabelText(/paste a github url/i),
+      "https://github.com/owner/repo/tree/main/samples/x",
+    );
+    await user.click(within(dialog).getByRole("button", { name: /^open$/i }));
+
+    // The dialog stays open and explains the outcome — no bundle ever opened,
+    // so the app is still on the first-run empty state, not a workspace.
+    await within(dialog).findByText(/no okf bundle at that url/i);
+    expect(screen.queryByText("OKF Viewer (sample)")).not.toBeInTheDocument();
+  });
+
+  it("offers a picker when a URL resolves to several bundles", async () => {
+    const user = userEvent.setup();
+    const roots = [
+      { root: "/r/alpha", name: "Alpha", relPath: "alpha", okfVersion: null, confidence: "candidate", conceptCount: 5, types: ["Note"] },
+      { root: "/r/beta", name: "Beta", relPath: "beta", okfVersion: null, confidence: "candidate", conceptCount: 11, types: ["Note", "Table"] },
+    ] as const;
+    vi.spyOn(ipc, "fetchRemoteBundle").mockResolvedValue({ folder: "/r" });
+    vi.spyOn(ipc, "scanBundles").mockResolvedValue(roots as never);
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /open from url/i }));
+    const dialog = await screen.findByRole("dialog", { name: /open from url/i });
+    await user.type(
+      within(dialog).getByLabelText(/paste a github url/i),
+      "https://github.com/owner/repo/tree/main/bundles",
+    );
+    await user.click(within(dialog).getByRole("button", { name: /^open$/i }));
+
+    // A picker lists both bundles rather than auto-opening the first.
+    await within(dialog).findByText(/2 bundles here/i);
+    expect(within(dialog).getByRole("button", { name: /Alpha/ })).toBeInTheDocument();
+    const beta = within(dialog).getByRole("button", { name: /Beta/ });
+
+    // Picking one opens it (the mock backend serves the sample bundle) and the
+    // dialog closes.
+    await user.click(beta);
+    await screen.findByText("OKF Viewer (sample)");
+    expect(screen.queryByRole("dialog", { name: /open from url/i })).not.toBeInTheDocument();
   });
 });

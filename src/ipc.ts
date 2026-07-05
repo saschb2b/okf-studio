@@ -2,7 +2,13 @@
 // window it calls Rust commands and plugins; in a browser or test it falls back
 // to an in-memory mock, so the UI runs and tests pass without the backend.
 
-import type { Bundle, BundleRoot, RecentBundle, Settings } from "./types.ts";
+import type {
+  Bundle,
+  BundleRoot,
+  RecentBundle,
+  RemoteSource,
+  Settings,
+} from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
 import {
   MOCK_ASSETS,
@@ -25,6 +31,26 @@ export async function pickFolder(): Promise<string | null> {
     title: "Open a folder of OKF bundles",
   });
   return typeof picked === "string" ? picked : null;
+}
+
+/**
+ * Fetch a remote bundle source into a local cache directory and return that
+ * directory's path — which the caller then treats exactly like a picked folder
+ * (scan → open → watch → recents). This is a *user-initiated* network call (the
+ * app makes no automatic ones); the Rust command applies https-only, size-cap,
+ * and archive-extraction containment guards. Off-Tauri it resolves to the mock
+ * folder after a short delay, so the dialog's fetch progress is exercised in dev.
+ */
+export async function fetchRemoteBundle(
+  source: RemoteSource,
+): Promise<{ folder: string }> {
+  if (!isTauri()) {
+    await new Promise((r) => setTimeout(r, 600));
+    return { folder: MOCK_FOLDER };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const folder = await invoke<string>("fetch_remote_bundle", { source });
+  return { folder };
 }
 
 export async function scanBundles(

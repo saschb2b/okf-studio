@@ -65,15 +65,16 @@
   font-size: var(--fs-sm);
 }
 
-/* Primary action + its keyboard hint, read as one unit. */
+/* The two primary actions — open a local folder, or fetch from a URL. */
 .hero-cta {
   display: flex;
-  flex-direction: column;
+  flex-flow: row wrap;
   align-items: center;
-  gap: var(--space-6);
+  justify-content: center;
+  gap: var(--space-10);
 }
 .hero-hint {
-  margin: 0;
+  margin: var(--space-8) 0 0;
   font-size: var(--fs-xs);
 }
 .hero-hint kbd {
@@ -93,6 +94,49 @@
 .hero-what {
   font-size: var(--fs-sm);
   max-width: 52ch;
+}
+
+/* First-run "try one" example cards — the cold-start payoff: a brand-new user
+   with no local bundle can load a real remote one in a single click. */
+.hero-examples {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+  max-width: 52ch;
+}
+.hero-examples-label {
+  align-self: center;
+  font-size: var(--fs-xs);
+}
+.hero-example {
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  color: var(--text);
+  cursor: pointer;
+}
+.hero-example:hover {
+  background: var(--bg-sunken);
+}
+.hero-example:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+.hero-example-title {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.hero-example-blurb {
+  font-size: var(--fs-xs);
 }
 
 /* Spinner */

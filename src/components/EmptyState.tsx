@@ -4,6 +4,7 @@
 
 import { useApp } from "../store.tsx";
 import { modKey } from "../platform.ts";
+import { REMOTE_EXAMPLES } from "../remoteSource.ts";
 import "./chrome.css";
 import "./EmptyState.css";
 
@@ -62,14 +63,36 @@ export function EmptyState() {
         <button className="btn primary lg" onClick={() => void actions.openFolder()}>
           Open Folder…
         </button>
-        <p className="hero-hint">
-          or press <kbd>{modKey}</kbd> <kbd>O</kbd>
-        </p>
+        <button className="btn lg" onClick={() => actions.setRemoteOpen(true)}>
+          Open from URL…
+        </button>
       </div>
+      <p className="hero-hint">
+        <kbd>{modKey}</kbd> <kbd>O</kbd> for a folder ·{" "}
+        <kbd>{modKey}</kbd> <kbd>⇧</kbd> <kbd>O</kbd> for a URL
+      </p>
       <p className="empty-line hero-what">
         An OKF bundle is a folder of markdown concepts, cross-linked into a
-        graph. Pick a folder and the viewer finds every bundle inside.
+        graph. Point at a local folder, or fetch one from a URL — it's read only
+        either way.
       </p>
+
+      {REMOTE_EXAMPLES.length > 0 && (
+        <div className="hero-examples">
+          <span className="hero-examples-label muted">New here? Try one:</span>
+          {REMOTE_EXAMPLES.map((ex) => (
+            <button
+              key={ex.url}
+              type="button"
+              className="hero-example"
+              onClick={() => actions.setRemoteOpen(true, ex.url)}
+            >
+              <span className="hero-example-title">🌐 {ex.title}</span>
+              <span className="hero-example-blurb muted">{ex.blurb}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

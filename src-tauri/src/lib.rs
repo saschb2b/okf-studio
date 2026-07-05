@@ -1,6 +1,7 @@
 //! Tauri layer: thin command/event wrappers over `okf-core`. The frontend never
 //! touches the filesystem; it calls these commands and listens for events.
 
+mod remote;
 mod watch;
 
 use okf_core::{Bundle, BundleRoot};
@@ -16,6 +17,21 @@ fn scan_bundles(folder: String, max_depth: usize) -> Vec<BundleRoot> {
 #[tauri::command]
 fn read_bundle(root: String) -> Bundle {
     okf_core::read_bundle(Path::new(&root))
+}
+
+/// Fetch a remote bundle (a GitHub repo tarball or a direct archive URL) into a
+/// local cache directory and return that directory's path, which the frontend
+/// then opens like any picked folder. The only non-updater network path, and it
+/// runs only on an explicit user action. Blocking I/O runs off the UI thread.
+/// See `remote.rs` and docs/architecture/ipc-and-security.md.
+#[tauri::command]
+async fn fetch_remote_bundle(
+    app: AppHandle,
+    source: remote::RemoteSource,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || remote::fetch(&app, source))
+        .await
+        .map_err(|e| format!("Fetch task failed: {e}"))?
 }
 
 /// Read one companion asset's text (an ODSF `*.example.html` or a `styles/*.css`
@@ -92,11 +108,46 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(WatchState::default());
+
+            // Linux/WebKitGTK: trackpad pinch is applied as a *native* webview
+            // zoom that never reaches JS as a preventable event — unlike WebView2
+            // (ctrl+wheel) and WKWebView (gesture events), which src/native.ts
+            // already blocks. WebKitGTK drives it from a GtkGestureZoom it stashes
+            // on the web view under the private qdata key "wk-view-zoom-gesture";
+            // destroying that gesture's signal handlers disables pinch-zoom at the
+            // source. (Desktop app — nothing relies on that touch gesture.) We also
+            // pin the zoom level to 1.0 as a belt-and-suspenders for any other path.
+            // Page-zoom of the whole app isn't a native desktop behavior; reader
+            // text-size and graph zoom are the real affordances (docs/ux/settings.md).
+            // No-op on Windows/macOS. Ref: tauri-apps/wry#544, tauri#3843.
+            #[cfg(target_os = "linux")]
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.with_webview(|webview| {
+                    use gtk::glib::gobject_ffi;
+                    use gtk::glib::prelude::ObjectExt;
+                    use webkit2gtk::WebViewExt;
+                    let wv = webview.inner();
+                    // SAFETY: reading WebKitGTK's own qdata pointer for the zoom
+                    // gesture and destroying its handlers on the GTK main thread.
+                    unsafe {
+                        if let Some(gesture) = wv.data::<gtk::GestureZoom>("wk-view-zoom-gesture") {
+                            gobject_ffi::g_signal_handlers_destroy(gesture.as_ptr().cast());
+                        }
+                    }
+                    wv.set_zoom_level(1.0);
+                    wv.connect_zoom_level_notify(|wv| {
+                        if (wv.zoom_level() - 1.0).abs() > f64::EPSILON {
+                            wv.set_zoom_level(1.0);
+                        }
+                    });
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             scan_bundles,
             read_bundle,
+            fetch_remote_bundle,
             read_asset,
             read_asset_data_url,
             start_watch,

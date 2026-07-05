@@ -3,7 +3,7 @@ type: Feature
 title: Search & Filter
 description: Type filters and tag browsing that persistently narrow the view, plus full-text concept search through the global launcher.
 tags: [feature, search, filter]
-timestamp: 2026-06-29T10:00:00Z
+timestamp: 2026-07-04T20:30:00Z
 ---
 
 # What it does
@@ -14,6 +14,17 @@ Lets the user narrow a bundle quickly by text, by `type`, or by `tag`.
 
 - **Full-text concept search** lives in the [global launcher](command-palette.md): the header search field (or `Ctrl/Cmd + K` / `/`) matches each concept's `title`, `description`, `type`, `tags`, and **body text**, case-insensitively, surfacing body matches under an *In text* group with a snippet. Enter opens the best match.
 - Keeping text lookup in one transient overlay leaves the filters below as a separate, *persistent* narrowing of the view — the two never fight over the same box.
+
+# Faceted query grammar
+
+The sidebar's filter field speaks a small [field grammar](../proposals/faceted-search.md), so filtering goes beyond substring:
+
+- `type:Table` (repeat to OR: `type:Table type:View`), `tag:revenue` — facets, case-insensitive.
+- `degree>5`, `links<=2`, `citedBy=0` — numeric comparisons on connectivity.
+- `is:orphan` (no links in or out), `has:broken` (broken links) — computed predicates.
+- `"exact phrase"` and bare words — full-text; unknown fields fall back to full-text rather than erroring (the [tolerant-consumer](../product/principles.md) stance).
+
+Terms are ANDed; the field parses to one predicate that the [graph](graph-view.md), the index tree, and a live **result count** (`N of M concepts`, with a Clear) all share — one filter state, one working set. The type/tag facet rails below AND in alongside it. Saved named queries and facet counts that reflect the current result set are the next steps ([proposal](../proposals/faceted-search.md)).
 
 # Type filters
 

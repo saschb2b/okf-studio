@@ -1,28 +1,29 @@
 ---
 name: react-stinky
-description: Detect React and TypeScript maintainability smells across the whole component, hook, and module, not just its props, then explain the cost of each and propose a concrete fix with a source link. Covers prop and API design (naming, boolean and callback conventions, variants over flags, controlled state, generics, refs, styling, accessibility props, server-component boundaries, JSDoc), plus state and data flow, effects and lifecycle, component structure and hooks, rendering correctness, accessibility in markup, TypeScript discipline, and a cross-file duplication pass. Defers memoization to the react-compiler skill and color literals to theme-colors. Use when reviewing or writing a React component, hook, or module, auditing a codebase for maintainability, or when asked to sniff, smell-check, lint, or clean up a whole codebase, a folder, a file, a function, or a pasted snippet. Respects native HTML attribute names, established library conventions, and intentional patterns instead of nitpicking them.
+description: Detect React and TypeScript maintainability smells across the whole component, hook, and module, explain the cost of each, and propose a fix with a source link. Covers prop and API design (naming, booleans, callbacks, variants, controlled state, generics, refs, styling, JSDoc), state and data flow (redundant state, stale closures, context and ref misuse), effects and lifecycle, component structure and hooks, rendering correctness (keys, mutation, impure renders, hydration, the leaked 0 from &&), accessibility and focus management, async handlers, error boundaries, unsafe HTML, TypeScript discipline (any, casts, untyped catch, exhaustiveness), and a cross-file duplication pass. Defers memoization and re-render performance to react-compiler and color literals to theme-colors. Use when reviewing or writing React components or hooks, auditing for maintainability, or asked to sniff, smell-check, lint, or clean up a codebase, folder, file, or pasted snippet. Respects native HTML attributes and library conventions.
 tags: [frontend, react, typescript, review]
-date: 2026-06-16
+date: 2026-07-03
 ---
 
 # React Stinky
 
-A holistic code-smell detector for React and TypeScript. It finds the patterns that make a component, a hook, or a module hard to read, reason about, and change, explains the cost of each, and proposes a concrete fix. Coverage spans prop and API design, state and data flow, effects and lifecycle, component structure, rendering correctness, accessibility, and TypeScript discipline. The full catalog with detection signals, fixes, exceptions, and sources is in [catalog.md](./references/catalog.md); read it before running a scan.
+A holistic code-smell detector for React and TypeScript. It finds the patterns that make a component, a hook, or a module hard to read, reason about, and change, explains the cost of each, and proposes a concrete fix. Coverage spans prop and API design, state and data flow, effects and lifecycle, component structure, rendering correctness, accessibility, async and error handling, and TypeScript discipline. The full catalog with detection signals, fixes, exceptions, and sources is in [catalog.md](./references/catalog.md); read it before running a scan.
 
 It defers two neighboring concerns to sibling skills so it does not duplicate them: memoization (`useMemo`, `useCallback`, `React.memo`) to `react-compiler`, and color literals to `theme-colors`. If those are not installed, note the finding in one line and move on. Everything else about day-to-day React maintainability is in scope.
 
 ## What it sniffs for
 
-Seven pillars. The categories under each, with detection signals and sources, are in [catalog.md](./references/catalog.md).
+Nine pillars. The categories under each, with detection signals and sources, are in [catalog.md](./references/catalog.md).
 
 1. **Component API and props** (the backbone, 18 categories). Component and prop naming, boolean and callback conventions, string-union variants over boolean flags, discriminated unions, controlled and uncontrolled state, children and slot composition, render props, generics, extending HTML, refs, styling APIs, accessibility props, server-component boundaries, JSDoc.
-2. **State and data flow.** Derivable values held in `useState`, props copied into state, two sources of truth for one fact, prop drilling through layers that ignore the prop.
-3. **Effects and lifecycle.** Effects that compute derived data or run logic that belongs in an event handler, fetches and subscriptions and timers with no cleanup (races and leaks), dependency arrays that do not match what the effect reads, state reset by an effect instead of `key`.
-4. **Component structure and hooks.** God components doing fetching, logic, and presentation at once; a component defined inside another (remounts every render); stateful logic that wants a custom hook; conditional hooks; positional-parameter sprawl on a hook or util.
-5. **Rendering correctness.** Array index as `key` on a list that reorders or edits, direct mutation of state or props, nested ternaries in JSX, copy-pasted JSX blocks that want one parameterized helper.
-6. **Accessibility in markup.** `onClick` on a non-interactive element with no `role`, `tabIndex`, or keyboard handler; div soup where semantic elements belong; form controls with no associated label.
-7. **TypeScript discipline.** `any` and `as any` and `@ts-ignore`, lying `as` casts and non-null `!`, loose internal types (`object`, `Function`, stringly-typed enums).
-8. **Cross-file duplication** (folder and repo scope only). A component re-implemented inline where a reusable one exists, the same hook or utility copied across files, a type declared in two places. Method in [duplication-pass.md](./references/duplication-pass.md).
+2. **State and data flow.** Derivable values held in `useState`, props copied into state, two sources of truth for one fact, prop drilling, stale closures in timers and async continuations, `useState`/`useRef` role confusion, god contexts and unstable provider values.
+3. **Effects and lifecycle.** Effects that compute derived data, replace an event handler, or push data up to the parent; fetches and subscriptions and timers with no cleanup (races and leaks); dependency arrays that do not match what the effect reads; state reset by an effect instead of `key`.
+4. **Component structure and hooks.** God components (and god hooks) doing fetching, logic, and presentation at once; views coupled to their environment, with data access and domain rules that belong a layer up and should arrive as behavior-named props (the test is whether it renders in Storybook without mocks); a component defined inside another (remounts every render); stateful logic that wants a custom hook; conditional hooks; positional-parameter sprawl on a hook or util.
+5. **Rendering correctness.** Array index as `key` on a list that reorders or edits, direct mutation of state or props, impure renders (randomness and clock reads, `setState` during render, hydration-unsafe browser reads), the stray `0` leaked by `&&`, nested ternaries, copy-pasted JSX blocks.
+6. **Accessibility in markup.** `onClick` on a non-interactive element with no `role`, `tabIndex`, or keyboard handler; div soup where semantic elements belong; form controls with no associated label; broken focus management in hand-rolled modals and menus.
+7. **Async, events, and error handling.** Async handlers that swallow failures or allow double submits, missing error boundaries around risky subtrees, unsanitized HTML and URL sinks (`dangerouslySetInnerHTML`, `javascript:` hrefs).
+8. **TypeScript discipline.** `any` and `as any` and `@ts-ignore`, lying `as` casts and non-null `!`, loose internal types (`object`, `Function`, stringly-typed enums), untyped catch blocks, unions switched on without an exhaustiveness check.
+9. **Cross-file duplication** (folder and repo scope only). A component re-implemented inline where a reusable one exists, the same hook or utility copied across files, a type declared in two places. Method in [duplication-pass.md](./references/duplication-pass.md).
 
 ## Scope modes
 
@@ -40,17 +41,18 @@ Folder and repo-sweep scope additionally run a cross-file duplication pass ([dup
 ## Workflow per target
 
 1. Locate the components, hooks, prop interfaces, and modules in scope.
-2. Walk each against the catalog's per-file pillars (1 to 7).
+2. Walk each against the catalog's per-file pillars (1 to 8).
 3. Run the matching "Don't flag" line before reporting. If it applies, suppress the finding.
 4. Rate the smell (see ratings below).
 5. Emit a finding with location, the cost, and a before to after fix.
-6. In folder or repo scope, run the cross-file duplication pass (Pillar 8, [duplication-pass.md](./references/duplication-pass.md)) after the per-file pass and fold its findings in.
-7. End with a summary count. If nothing survives the guard, say it smells fresh.
+6. In folder or repo scope, run the cross-file duplication pass (Pillar 9, [duplication-pass.md](./references/duplication-pass.md)) after the per-file pass and fold its findings in.
+7. When findings cluster on the structural smells (duplicated state, prop drilling, effect data to parent, god component, coupled view), or the request is to restructure, decouple, or make a component reusable, plan the fix with the dependency-graph method in [restructure-pass.md](./references/restructure-pass.md): map every relation as a labeled edge, then rewire to the fewest one-layer edges before proposing code.
+8. End with a summary count. If nothing survives the guard, say it smells fresh.
 
 ## Stink ratings
 
-- **Rancid.** A bug or a break in correctness, accessibility, or the server boundary. Fix now. (A missing `aria-label` or keyboard handler on a control, a function across the RSC boundary, `value || 50` eating `value={0}`, a mutated state array, conditional hooks, props copied into state that then drift.)
-- **Funky.** A genuine maintainability drag, not a bug. Should fix. (A boolean explosion that wants one union, a god component, an effect computing derived data, a config array that wants compound components.)
+- **Rancid.** A bug or a break in correctness, accessibility, or the server boundary. Fix now. (A missing `aria-label` or keyboard handler on a control, a function across the RSC boundary, `value || 50` eating `value={0}`, a mutated state array, conditional hooks, props copied into state that then drift, a stray `0` rendered by `{count && ...}`, `Date.now()` ids that break hydration, unsanitized `dangerouslySetInnerHTML`.)
+- **Funky.** A genuine maintainability drag, not a bug. Should fix. (A boolean explosion that wants one union, a god component, an effect computing derived data, an async save with no pending or error state, a config array that wants compound components.)
 - **Whiff.** Minor or stylistic. Optional. (A bare `loading` on a custom prop, a loose `Record<string, unknown>` sx type, JSDoc that restates the name.)
 
 ## Don't flag (the guard that keeps this useful)
@@ -94,4 +96,4 @@ When the scope is clean, say so plainly: "Smells fresh. No maintainability smell
 
 ## Source
 
-The 18 component-API categories (Pillar 1) are distilled from the `cant-maintain` React API-design challenge set, each traced to its React, TypeScript, MDN, Next.js, or MUI source. The six holistic pillars extend the same maintainability lens to state, effects, structure, rendering, accessibility, and types, each sourced to the canonical React docs, MDN, or TypeScript handbook in [catalog.md](./references/catalog.md).
+The 18 component-API categories (Pillar 1) are distilled from the `cant-maintain` React API-design challenge set, each traced to its React, TypeScript, MDN, Next.js, or MUI source. The remaining pillars extend the same maintainability lens to state, effects, structure, rendering, accessibility, async and error handling, and types, each sourced to the canonical React docs, MDN, or TypeScript handbook in [catalog.md](./references/catalog.md).

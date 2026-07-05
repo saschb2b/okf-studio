@@ -31,7 +31,7 @@ fn scan_detects_docs_as_confident_root() {
 
     assert_eq!(docs_root.confidence, Confidence::Confident);
     assert_eq!(docs_root.okf_version.as_deref(), Some("0.1"));
-    assert_eq!(docs_root.concept_count, 37, "docs/ has 37 concepts");
+    assert_eq!(docs_root.concept_count, 41, "docs/ has 41 concepts");
     assert!(
         !docs_root.types.is_empty(),
         "distinct concept types should be collected"
@@ -61,7 +61,7 @@ fn read_bundle_docs_full_shape() {
     let docs = docs_dir();
     let bundle = read_bundle(&docs);
 
-    assert_eq!(bundle.concepts.len(), 37, "37 concepts parsed");
+    assert_eq!(bundle.concepts.len(), 41, "41 concepts parsed");
     assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
     assert_eq!(bundle.confidence, Confidence::Confident);
 
@@ -371,6 +371,45 @@ fn candidate_root_without_okf_version() {
 }
 
 #[test]
+fn container_of_index_bundles_splits_into_one_root_each() {
+    // A plain container folder (no index.md of its own) holding several bundle
+    // directories that each carry their own index.md but no okf_version — like
+    // GoogleCloudPlatform/knowledge-catalog's okf/bundles. Detection must yield
+    // one candidate PER bundle, not a single merged root over all their concepts.
+    let dir = temp_bundle("container");
+    for b in ["alpha", "beta", "gamma"] {
+        write(&dir, &format!("{b}/index.md"), "# Bundle\n* [x](x.md)\n");
+        write(&dir, &format!("{b}/x.md"), "---\ntype: Note\n---\n# X\n");
+    }
+    let roots = scan_bundles(&dir);
+    assert_eq!(roots.len(), 3, "each index.md-bearing subdir is its own bundle");
+    assert!(roots.iter().all(|r| r.confidence == Confidence::Candidate));
+    let paths: std::collections::BTreeSet<&str> =
+        roots.iter().map(|r| r.rel_path.as_str()).collect();
+    assert_eq!(paths, ["alpha", "beta", "gamma"].into_iter().collect());
+
+    fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn nested_index_sections_do_not_split_a_single_bundle() {
+    // One candidate bundle whose section subdir also carries an index.md must
+    // stay a single root — the boundary rule stops at the top of the contiguous
+    // index.md chain (here `mybundle`, whose container has none), not every
+    // index.md below it.
+    let dir = temp_bundle("sections");
+    write(&dir, "mybundle/index.md", "# My bundle\n");
+    write(&dir, "mybundle/note.md", "---\ntype: Note\n---\n# Root note\n");
+    write(&dir, "mybundle/section/index.md", "# Section\n");
+    write(&dir, "mybundle/section/deep.md", "---\ntype: Note\n---\n# Deep\n");
+    let roots = scan_bundles(&dir);
+    assert_eq!(roots.len(), 1, "nested index.md sections don't split the bundle");
+    assert_eq!(roots[0].rel_path, "mybundle");
+
+    fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
 fn scan_respects_max_depth() {
     let dir = temp_bundle("depth");
     // A typed concept nested three directories below the chosen folder.
@@ -390,3 +429,4 @@ fn scan_respects_max_depth() {
 
     fs::remove_dir_all(&dir).ok();
 }
+

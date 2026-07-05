@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-timestamp: 2026-07-02T05:50:00Z
+timestamp: 2026-07-04T18:00:00Z
 ---
 
 # What it does
@@ -29,12 +29,25 @@ Top to bottom, keyboard-first (a Base UI Popover with a filter input):
 - **Bundles in this folder** — the bundles [autodetected](folder-autodetect.md) in the currently open folder, the active one marked ✓. Each row: name, relative path (a bundle at the folder's root shows the folder's own name, never a bare "."), and a right column of two **labeled** lines mirroring the pair on the left — "N concepts" over "M types". Earlier revisions showed per-`type` color dots here instead; they were dropped as decoration — the [palette](../ux/theming.md) assigns hues per bundle, so the same color means different types across rows, and an unlabeled count next to unlabeled dots explained neither. A full name + path tooltip covers what truncation hides. Shown whenever a folder is open; a single-bundle folder shows one row.
 - **Pinned** *(when any exist)* — bundles the user pinned, kept above recents so frequently-used contexts stay one click away. Pinning is a deliberate differentiator: the IDEs surveyed order recents by recency only.
 - **Recent bundles** — recently-opened bundles **not** already listed under the current folder, newest first, each showing the bundle name with its folder/path dimmed beneath and, in the right column, "N concepts" over a **relative last-opened time** ("3d ago") so freshness reads at a glance. Per-row **pin** and **remove** (✕) on hover.
-- **Footer actions** — **Open folder…** (primary; the OS picker, `Ctrl/Cmd + O`) and **Open remote folder…**, the latter shown **disabled with a "coming soon" hint** because remote bundles are explicitly [post-v1](../product/scope-and-non-goals.md). Showing it inert reserves the slot and signals the roadmap without a dead end.
+- **Footer actions** — **Open folder…** (primary; the OS picker, `Ctrl/Cmd + O`) and **Open from URL…** (`Ctrl/Cmd + Shift + O`), which opens the [remote-bundle dialog](#opening-from-a-url): paste a GitHub URL (a repo, or a `tree`/`blob` subpath) or a direct archive link and the viewer fetches it into a local cache, then opens it exactly like a picked folder.
+
+# Opening from a URL
+
+A **remote bundle** is fetched, never streamed: the viewer downloads it once into a local cache directory, then opens that directory exactly like a [picked folder](folder-autodetect.md) — scan, read, [live-reload](live-reload.md), recents all unchanged. This keeps the [read-only, local-first stance](../product/principles.md) intact; the only new thing is *how the folder got there*.
+
+- **Scope, deliberately narrow.** A **GitHub** repo (fetched as a tarball via GitHub's own archive endpoint — no git binary, no clone/pull/sync surface) or a **direct archive** URL (`.tar.gz`/`.tgz`/`.tar`/`.zip`). GitHub URLs may name a `tree`/`blob` **subpath**, so you can open a bundle that lives in a repo subdirectory (this very docs bundle is `…/okf-viewer/tree/main/docs`). Cloning arbitrary git hosts is **out of scope** — that's a local `git clone` away, and libgit2 would drag in sync flows the viewer has no business owning. See [Scope & Non-Goals](../product/scope-and-non-goals.md).
+- **The dialog** parses the URL **network-free as you type** and previews exactly what it will fetch — a `GitHub · owner/repo · ref · /subpath` chip, or an "unrecognized URL" note — so nothing is fetched until you confirm with **Open**. It carries a first-run **example** card (this docs bundle) so a new user with no local bundle can see the viewer work in one step; the example **prefills** the field rather than auto-fetching, keeping the "no network without a click" contract. See [First Run](../ux/first-run.md).
+- **The open runs in two phases — fetch, then [scan](folder-autodetect.md) the cache — and nothing is switched until the result is known.** The scan drives one of three outcomes:
+  - **No bundle.** A URL that downloads fine but holds no bundle ([detection](../architecture/bundle-detection.md) found no `index.md` with `okf_version` and no typed concept — a repo of plain files, or the wrong subpath) keeps the dialog open with a **calm "No OKF bundle at that URL"** panel — distinct from a red fetch/network error, since the download *succeeded* — that names what was fetched and what a bundle is, and (when no subpath was given) hints it may live in a subfolder. The previous bundle stays put rather than being silently swapped for nothing ([report, never refuse](../ux/empty-and-error-states.md)).
+  - **One bundle.** Opens directly and the dialog closes.
+  - **Several bundles** (e.g. a URL pointing at a folder-of-bundles like `okf/bundles`): the dialog shows a **picker** — one row per bundle with its name and `N concepts · M types` — instead of guessing which to open. Picking a row opens that bundle; the fetched copy is shared, so switching between them later is instant. This is why a folder-of-bundles URL never merges into one giant view.
+- **Fetch guards** live in the [Rust core](../architecture/ipc-and-security.md): https-only, request timeouts, a download size cap, and archive extraction that refuses any entry escaping the destination (no zip-slip / `../` traversal). This is the app's only non-updater network path, and it runs **only** on an explicit user action.
+- **Remote recents** are first-class: a remote entry carries its origin URL (a 🌐 badge and the `owner/repo` origin as its sub-line) and a **Refresh from source** action that re-fetches the latest — always an explicit click, never silent. Reopening a remote recent reuses the local cache instantly, and re-fetches only if the cache is gone.
 
 # Behavior
 
 - Selecting a bundle drives the single shared selection the rest of the app uses, loading it into the [Graph View](graph-view.md) and [Reader](concept-reader.md); switching is instant because parsed bundles are cached per root by the [core](../architecture/performance.md).
-- Selecting a **recent** bundle re-grants its folder's read scope, re-detects if needed, and reopens the bundle — returning to its last-active concept where possible.
+- Selecting a **recent** bundle re-grants its folder's read scope, re-detects if needed, and reopens the bundle — returning to its last-active concept where possible. A **remote** recent whose cache has been evicted transparently re-fetches from its origin first.
 - **Recents persist** (bundle root + granting folder scope + timestamp) via the [store plugin](../architecture/ipc-and-security.md), recency-ordered, with the current folder's bundles excluded; per-entry **remove**, and **pin** to keep one above the recency churn.
 - A folder that no longer exists fails into the recoverable ["path is gone"](../ux/empty-and-error-states.md) prompt, offering to forget the stale entry rather than erroring.
 

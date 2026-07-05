@@ -12,7 +12,13 @@
 // See docs/features/navigation.md.
 
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent } from "react";
+import type {
+  CSSProperties,
+  Dispatch,
+  KeyboardEvent,
+  RefObject,
+  SetStateAction,
+} from "react";
 import { useApp } from "../../store.tsx";
 import { filteredConceptIds } from "../../selectors.ts";
 import type { Bundle, IndexEntry, IndexNode } from "../../types.ts";
@@ -52,11 +58,23 @@ function dirConceptCounts(bundle: Bundle): Map<string, number> {
   return counts;
 }
 
+// The row/expand key formulas live here so flatten(), the render (TreeNode), and
+// expandPathTo() all derive keys identically — drift between them would silently
+// break keyboard nav and reveal-scroll, with no type error to catch it.
+/** The stable DOM/nav key for an entry row. */
+function rowKeyOf(pathKey: string, si: number, ei: number, target: string): string {
+  return `${pathKey}/${si}.${ei}:${target}`;
+}
+/** The expand-set key for a directory entry's child node. */
+function expandKeyOf(pathKey: string, target: string): string {
+  return `node:${pathKey}/${target}`;
+}
+
 /**
- * The chain of expand keys leading to `conceptId` in the index tree, mirroring
- * flatten()'s key scheme — so a selection made anywhere (graph, launcher,
- * reader links) can reveal itself in the tree. Null when the index never
- * lists the concept.
+ * The chain of expand keys leading to `conceptId` in the index tree, using the
+ * shared key scheme — so a selection made anywhere (graph, launcher, reader
+ * links) can reveal itself in the tree. Null when the index never lists the
+ * concept.
  */
 function expandPathTo(
   indexes: IndexNode[],
@@ -70,7 +88,7 @@ function expandPathTo(
       if (entry.kind === "directory") {
         const child = nodeFor(indexes, entry.target, node.dir);
         if (!child) continue;
-        const key = `node:${pathKey}/${entry.target}`;
+        const key = expandKeyOf(pathKey, entry.target);
         const sub = expandPathTo(indexes, child, conceptId, key);
         if (sub) return [key, ...sub];
       }
@@ -103,10 +121,10 @@ function flatten(
     const sec = node.sections[si];
     for (let ei = 0; ei < sec.entries.length; ei++) {
       const entry = sec.entries[ei];
-      const key = `${pathKey}/${si}.${ei}:${entry.target}`;
+      const key = rowKeyOf(pathKey, si, ei, entry.target);
       if (entry.kind === "directory") {
         const child = nodeFor(indexes, entry.target, node.dir);
-        const expandKey = child ? `node:${pathKey}/${entry.target}` : undefined;
+        const expandKey = child ? expandKeyOf(pathKey, entry.target) : undefined;
         const isOpen = !!expandKey && expanded.has(expandKey);
         out.push({
           key,
@@ -126,42 +144,41 @@ function flatten(
   }
 }
 
-export function IndexTree() {
-  const { state, actions } = useApp();
-  const bundle = state.bundle;
-
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const [focusKey, setFocusKey] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  // Reveal the active concept: a selection made anywhere (graph node, launcher,
-  // reader link) expands the directory chain leading to it. Only ever expands —
-  // never fights a fold the user just made. The scroll happens in the paired
-  // effect below, once the expanded rows have actually rendered.
-  const activeId = state.activeConceptId;
+/**
+ * Reveal the active concept in the tree: expand the directory chain leading to a
+ * selection made anywhere (graph node, launcher, reader link), then scroll its
+ * row into view once it renders. Only ever expands — never fights a fold the
+ * user just made — and scrolls once per selection, so it doesn't fight the
+ * user's own scrolling afterwards.
+ */
+function useRevealActiveRow(
+  bundle: Bundle | null,
+  activeId: string | null,
+  listRef: RefObject<HTMLDivElement | null>,
+  setExpanded: Dispatch<SetStateAction<Set<string>>>,
+): void {
   const scrolledToRef = useRef<string | null>(null);
+
   useEffect(() => {
     scrolledToRef.current = null; // new selection → the scroll effect may fire
     if (!activeId || !bundle) return;
-    const rootNode0 = rootNode(bundle.indexes);
-    if (!rootNode0) return;
-    const path = expandPathTo(bundle.indexes, rootNode0, activeId, "root");
+    const root = rootNode(bundle.indexes);
+    if (!root) return;
+    const path = expandPathTo(bundle.indexes, root, activeId, "root");
     if (path === null || path.length === 0) return;
     // Reacting to an external selection is the point of this effect; the
     // updater bails (returns prev) when the chain is already expanded.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setExpanded((prev) => {
       if (path.every((k) => prev.has(k))) return prev;
       return new Set([...prev, ...path]);
     });
-  }, [activeId, bundle]);
+  }, [activeId, bundle, setExpanded]);
 
   // Scroll the active row into view once it exists. Runs after every commit
   // (dep-less) because the row may only appear on the re-render *after* the
   // expansion above — a one-shot rAF raced that commit and often missed it.
-  // The ref guards to one scroll per selection, so it never fights the user's
-  // own scrolling afterwards. An offscreen row centers (context above and
-  // below, VS Code's reveal); an already-visible row is left alone.
+  // An offscreen row centers (context above and below, VS Code's reveal); an
+  // already-visible row is left alone.
   useEffect(() => {
     if (!activeId || scrolledToRef.current === activeId) return;
     const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-row-key]");
@@ -174,14 +191,24 @@ export function IndexTree() {
       // Zero-height rects mean the environment can't measure (jsdom) — fall
       // back to a minimal scroll rather than skipping.
       const measurable = !!vr && vr.height > 0;
-      const visible =
-        measurable && rr.top >= vr.top && rr.bottom <= vr.bottom;
+      const visible = measurable && rr.top >= vr.top && rr.bottom <= vr.bottom;
       if (!visible) {
         row.scrollIntoView({ block: measurable ? "center" : "nearest" });
       }
       break;
     }
   });
+}
+
+export function IndexTree() {
+  const { state, actions } = useApp();
+  const bundle = state.bundle;
+
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useRevealActiveRow(bundle, state.activeConceptId, listRef, setExpanded);
 
   if (!bundle) return null;
   const root = rootNode(bundle.indexes);
@@ -401,11 +428,11 @@ function TreeNode({
           )}
           <ul className="sb-tree-entries" role="group">
             {sec.entries.map((entry, ei) => {
-              const key = `${pathKey}/${si}.${ei}:${entry.target}`;
+              const key = rowKeyOf(pathKey, si, ei, entry.target);
               if (entry.kind === "directory") {
                 const child = nodeFor(indexes, entry.target, node.dir);
                 const expandKey = child
-                  ? `node:${pathKey}/${entry.target}`
+                  ? expandKeyOf(pathKey, entry.target)
                   : undefined;
                 const isOpen = !!expandKey && expanded.has(expandKey);
                 return (

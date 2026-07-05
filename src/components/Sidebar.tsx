@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import "./baseui.css";
 import "./Sidebar.css";
 import { useApp } from "../store.tsx";
+import { filteredConceptIds } from "../selectors.ts";
 import { TypeFilters } from "./sidebar/TypeFilters.tsx";
 import { TagBrowser } from "./sidebar/TagBrowser.tsx";
 import { IndexTree } from "./sidebar/IndexTree.tsx";
@@ -48,6 +49,27 @@ export function Sidebar() {
   const { state, actions } = useApp();
   if (!state.bundle) return null;
 
+  // The one filter state, shown as a live result count. The search field speaks
+  // the faceted grammar (query.ts); type/tag facets AND in via the Filter lens.
+  const total = state.bundle.concepts.length;
+  const filtering =
+    state.query.trim() !== "" ||
+    state.hiddenTypes.length > 0 ||
+    state.activeTag !== null;
+  const shown = filtering
+    ? filteredConceptIds(state.bundle, {
+        query: state.query,
+        hiddenTypes: state.hiddenTypes,
+        activeTag: state.activeTag,
+      }).size
+    : total;
+
+  function clearAll() {
+    actions.setQuery("");
+    actions.showAllTypes();
+    actions.setTag(null);
+  }
+
   return (
     <nav className="sb" aria-label="Bundle navigation">
       <div className="sb-search-wrap">
@@ -55,8 +77,9 @@ export function Sidebar() {
           data-search
           type="search"
           className="sb-search"
-          placeholder="Search concepts…"
-          aria-label="Search concepts"
+          placeholder="Search, or filter: type: tag: degree>…"
+          aria-label="Search and filter concepts"
+          title="Filter with fields: type:Table tag:revenue degree>5 is:orphan has:broken — or plain text"
           value={state.query}
           onChange={(e) => actions.setQuery(e.target.value)}
         />
@@ -71,6 +94,17 @@ export function Sidebar() {
           </button>
         )}
       </div>
+
+      {filtering && (
+        <div className="sb-result-count" aria-live="polite">
+          <span className={shown === 0 ? "sb-count-none" : undefined}>
+            {shown} of {total} concepts
+          </span>
+          <button type="button" className="sb-link-btn" onClick={clearAll}>
+            Clear
+          </button>
+        </div>
+      )}
 
       <div className="sb-body">
         <ScrollArea.Root className="ui-scrollarea sb-scroll">

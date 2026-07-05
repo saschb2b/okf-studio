@@ -25,9 +25,13 @@ export function ResizeHandles() {
   return (
     <>
       {HANDLES.map((h) => (
+        // Invisible OS window-resize strips: pointer-only (the native frame's
+        // own resize affordance), no keyboard equivalent, so hidden from
+        // assistive tech rather than exposed as nameless controls.
         <div
           key={h.cls}
           className={`rz ${h.cls}`}
+          aria-hidden="true"
           onPointerDown={(e) => {
             if (e.button !== 0) return;
             e.preventDefault();

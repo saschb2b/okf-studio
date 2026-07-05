@@ -62,6 +62,16 @@ const MAX_CANVAS_PIXELS = 3_500_000;
 // Base zoom below which free-floating labels hide (Obsidian-style: dots at
 // overview, labels as you zoom in; selection/hover/neighbors always labelled).
 const LABEL_MIN_SCALE = 1.1;
+// While the layout is *moving*, the full label pass (O(labels²) collision cull +
+// a fillText per label, both slow on WebKitGTK) is the per-frame bottleneck, and
+// it grows with the on-screen label count — so a big window/dense bundle went
+// laggy mid-settle. Rather than blink every label out (jarring), we keep only
+// the orientation anchors — hubs above this size fraction, plus the always-shown
+// selection/hover set — labelled during motion, capped and collision-free (hubs
+// are few and cluster-separated). The fine leaf labels + full collision cull run
+// once on the settled landing, so the map stays labelled and only detail fills in.
+const ANIM_LABEL_MIN_T = 0.55;
+const ANIM_LABEL_CAP = 24;
 
 // Adjustable display options (rendering only — not physics).
 interface Display {
@@ -255,9 +265,9 @@ export function GraphView() {
     return getComputedStyle(el).getPropertyValue(name).trim();
   }
 
-  // `animating` skips the label pass — measuring + laying out text (the priciest
-  // per-frame work) is wasted while nodes are moving and the labels aren't
-  // readable; they render on the settle landing and every static redraw.
+  // `animating` (set while the layout is settling) renders only the hub +
+  // always-shown labels, skipping the leaf labels and the O(labels²) collision
+  // cull — the priciest per-frame work, and unnecessary detail while nodes move.
   function draw(animating = false) {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -522,10 +532,7 @@ export function GraphView() {
     // Labels, dataviz-style: sized by node importance, hubs surfacing first as
     // you zoom out (each node's reveal threshold scales with its radius), and
     // collision-culled by priority so dense regions stay legible instead of
-    // becoming a text smear. Selection/hover/neighbors always label. Skipped
-    // entirely while the layout animates (the priciest pass, and unreadable in
-    // motion) — they render on the settle landing and static redraws.
-    if (!animating) {
+    // becoming a text smear. Selection/hover/neighbors always label.
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     const widths = labelWidthRef.current;
@@ -562,6 +569,8 @@ export function GraphView() {
       // Hubs reveal their labels well before leaves do.
       if (!alwaysShow && view.scale < baseReveal * (1 - 0.75 * t)) continue;
       if (!alwaysShow && meta.dim) continue;
+      // While moving, keep only the hub anchors (leaves fill in on settle).
+      if (animating && !alwaysShow && t < ANIM_LABEL_MIN_T) continue;
       cands.push({ i, fontPx: 10 + 5 * t, alwaysShow });
     }
     // Priority: always-shown labels first, then bigger nodes.
@@ -575,8 +584,16 @@ export function GraphView() {
     // still claim their space so lower-priority neighbors yield).
     const kept: { cx: number; x: number; y: number; w: number; h: number; cand: LabelCand }[] = [];
     for (const cand of cands) {
+      // While moving: draw the hub anchors straight through (cands is already
+      // sorted hub-first), capped, without measuring or collision-testing.
+      if (animating && kept.length >= ANIM_LABEL_CAP) break;
       const node = data.nodes[cand.i];
       const meta = data.meta[cand.i];
+      const cy = node.y + node.r * disp.nodeScale + 2 / view.scale;
+      if (animating) {
+        kept.push({ cx: node.x, x: node.x, y: cy, w: 0, h: 0, cand });
+        continue;
+      }
       // Measured at screen size and cached; world width follows the zoom.
       const key = `${Math.round(cand.fontPx * 2)}|${meta.title}`;
       let w = widths.get(key);
@@ -591,7 +608,7 @@ export function GraphView() {
       const rect = {
         cx: node.x,
         x: node.x - wWorld / 2,
-        y: node.y + node.r * disp.nodeScale + 2 / view.scale,
+        y: cy,
         w: wWorld,
         h: hWorld,
         cand,
@@ -615,7 +632,6 @@ export function GraphView() {
       ctx.fillText(meta.title, cx, y);
     }
     ctx.globalAlpha = 1;
-    } // end if (!animating) — label pass
     ctx.restore();
   }
 
@@ -680,10 +696,10 @@ export function GraphView() {
       }
       if (settled) {
         rafRef.current = null; // settled — idle until the next interaction/data change
-        draw(); // final frame renders labels
+        draw(); // landing frame: full label pass (leaves + collision cull)
         return;
       }
-      draw(true); // animating — skip the (unreadable, expensive) label pass
+      draw(true); // moving: hub anchors only, no collision cull
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);

@@ -340,7 +340,7 @@ export function GraphView() {
       }
       // A single dim group while hovering, else grouped by the source's color.
       const key = dimOthers
-        ? " dim"
+        ? "__dim__"
         : disp.colorBy === "cluster"
           ? data.meta[e.a].clusterColor
           : data.meta[e.a].color;
@@ -350,7 +350,7 @@ export function GraphView() {
     }
     ctx.lineWidth = baseLW;
     for (const [key, eis] of edgeGroups) {
-      if (key === " dim") {
+      if (key === "__dim__") {
         ctx.globalAlpha = 0.06;
         ctx.strokeStyle = edgeColor;
       } else {

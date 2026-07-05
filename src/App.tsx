@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type * as React from "react";
 import { useApp, PANE_CLAMPS } from "./store.tsx";
 import { useGlobalKeys } from "./keys.ts";
@@ -214,6 +214,11 @@ function Divider({
       : rect.right - clientX;
   }
 
+  // Teardown for an in-flight drag, so window listeners can't outlive the
+  // divider if it unmounts mid-drag (a layout-mode change removing the track).
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -227,7 +232,9 @@ function Divider({
       gridRef.current?.classList.remove("dragging");
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      dragCleanupRef.current = null;
     };
+    dragCleanupRef.current = up;
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   }

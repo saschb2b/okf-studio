@@ -15,7 +15,9 @@
 import type { Concept } from "./types.ts";
 
 type NumField = "degree" | "links" | "citedBy";
-type Op = ">" | "<" | ">=" | "<=" | "=";
+const OPS = [">", "<", ">=", "<=", "="] as const;
+type Op = (typeof OPS)[number];
+const isOp = (s: string): s is Op => (OPS as readonly string[]).includes(s);
 
 interface NumericTerm {
   field: NumField;
@@ -100,8 +102,9 @@ export function parseQuery(q: string): CompiledQuery {
     const num = /^([a-zA-Z]+)(>=|<=|>|<|=)(\d+)$/.exec(tok);
     if (num) {
       const nf = NUM_FIELDS[num[1].toLowerCase()];
-      if (nf) {
-        out.numeric.push({ field: nf, op: num[2] as Op, value: Number(num[3]) });
+      const op = num[2];
+      if (nf && isOp(op)) {
+        out.numeric.push({ field: nf, op, value: Number(num[3]) });
         continue;
       }
     }

@@ -4,7 +4,7 @@ title: Spacing
 description: A px-named spacing scale for padding, gaps, and section rhythm; generous by default.
 tags: [foundations, spacing, tokens]
 status: stable
-timestamp: 2026-07-01T16:29:01Z
+timestamp: 2026-07-06T15:20:00Z
 tokens:
   space:
     "4": "4px"
@@ -22,11 +22,12 @@ tokens:
     "128": "128px"
   size:
     container: "1120px"
+    canvas: "1680px"
     measure: "42rem"
 ---
 
 # Tokens
-The scale is named by its pixel value (`space.16` = 16px). `size.container` caps page width; `size.measure` caps prose line length for readability.
+The scale is named by its pixel value (`space.16` = 16px). `size.container` caps page width; `size.canvas` caps the full-bleed contained surfaces (the hero canvas) so they don't stretch without limit on ultrawide displays while their content stays at `size.container`; `size.measure` caps prose line length for readability.
 
 # Usage
 Component padding uses `space.12`–`space.24`; section vertical rhythm uses `space.96`/`space.128`. Card and grid gaps use `space.16`/`space.24`.

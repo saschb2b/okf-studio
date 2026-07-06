@@ -92,7 +92,11 @@ svg {
    download band at the page foot mirrors the shape. */
 .canvas {
   position: relative;
-  margin: var(--space-12) var(--space-16) 0;
+  /* Inset from the viewport, but capped on ultrawide displays: the content
+     inside stays at size-container, so an unbounded canvas reads as empty
+     acreage and drifts away from the pill's width family. */
+  width: min(100% - 2 * var(--space-16), var(--size-canvas));
+  margin: var(--space-12) auto 0;
   border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-xl);
   background:
@@ -129,7 +133,8 @@ svg {
 }
 @media (max-width: 860px) {
   .canvas {
-    margin: var(--space-8) var(--space-8) 0;
+    width: calc(100% - 2 * var(--space-8));
+    margin: var(--space-8) auto 0;
   }
 }
 

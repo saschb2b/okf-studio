@@ -21,25 +21,6 @@ body {
   text-rendering: optimizeLegibility;
   position: relative;
 }
-/* Decorative backdrop: a faint node grid (dots that nod to the graph), anchored
-   to the top of the page and masked so it fades out below the hero. */
-body::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1300px;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(
-    rgba(255, 255, 255, 0.05) 1px,
-    transparent 1.6px
-  );
-  background-size: 26px 26px;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
-}
 a {
   color: inherit;
 }
@@ -80,43 +61,90 @@ svg {
   font-size: var(--text-lg);
 }
 
-/* --- Top bar (sticky application of the nav component) --- */
+/* --- The opening canvas -----------------------------------------------------
+   One rounded, tinted surface bundling the nav, the hero copy, and the product
+   shot (Gestalt common region): the above-the-fold reads as a single object
+   instead of three stacked strips. Inset from the viewport so the page
+   background frames it; the brand tints and the node-grid backdrop live INSIDE
+   it (clipped to the radius) rather than floating over the whole page. The
+   download band at the page foot mirrors the shape. */
+.canvas {
+  position: relative;
+  margin: var(--space-12) var(--space-16) 0;
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(
+      58% 46% at 48% 20%,
+      color-mix(in oklab, var(--colors-secondary) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      46% 42% at 74% 8%,
+      color-mix(in oklab, var(--colors-primary) 12%, transparent),
+      transparent 72%
+    ),
+    var(--colors-surface);
+  overflow: hidden;
+}
+/* The node grid (dots that nod to the graph), scoped to the canvas and fading
+   toward its foot so the screenshot sits on quiet ground. */
+.canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--colors-text) 6%, transparent) 1px,
+    transparent 1.6px
+  );
+  background-size: 26px 26px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 48%, transparent 92%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 48%, transparent 92%);
+}
+.canvas > * {
+  position: relative; /* keep content above the ::before backdrop */
+}
+@media (max-width: 860px) {
+  .canvas {
+    margin: var(--space-8) var(--space-8) 0;
+  }
+}
+
+/* --- Top bar: the floating pill nav (visuals come from .site-nav). Sticky
+   with a small offset so the primary Download action stays reachable while
+   scrolling; the pill hovers over content instead of reintroducing a
+   page-wide bordered strip. --- */
 .topbar {
   position: sticky;
-  top: 0;
+  top: var(--space-12);
   z-index: 20;
-  border-bottom: var(--border-width) solid var(--colors-border);
-  background: color-mix(in oklab, var(--colors-bg) 78%, transparent);
-  backdrop-filter: saturate(140%) blur(12px);
+  padding-inline: var(--space-16);
 }
 .topbar__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-24);
-  padding-block: var(--space-16);
+  max-width: var(--size-container);
+  margin: 0 auto;
+}
+@media (max-width: 860px) {
+  .topbar {
+    padding-inline: var(--space-8);
+  }
+}
+/* Narrow screens: the anchor links crammed the bar and wrapped the brand.
+   Everything they point at is one scroll away on a one-pager, so keep only
+   the brand and the primary Download action. */
+@media (max-width: 640px) {
+  .topbar__inner .site-nav__link {
+    display: none;
+  }
 }
 
 /* --- Hero --- */
 .hero {
   position: relative;
   text-align: center;
-  padding-block: var(--space-96) var(--space-64);
-  overflow: hidden;
-}
-.hero::before {
-  /* brand color blend behind the headline: a violet core with a blue offset */
-  content: "";
-  position: absolute;
-  inset: -26% 0 auto 0;
-  height: 640px;
-  margin: 0 auto;
-  max-width: 1100px;
-  background:
-    radial-gradient(58% 52% at 48% 26%, rgba(122, 107, 255, 0.22), transparent 70%),
-    radial-gradient(46% 48% at 72% 16%, rgba(91, 140, 255, 0.16), transparent 72%);
-  pointer-events: none;
-  z-index: -1;
+  /* No bottom padding: the product shot runs to the canvas edge. */
+  padding-block: var(--space-80) 0;
 }
 .hero__eyebrow {
   display: inline-block;
@@ -124,7 +152,8 @@ svg {
 }
 .hero__title {
   margin: 0 auto var(--space-24);
-  max-width: 16ch;
+  /* The authored <br> owns the two-line break; a ch cap on top of it forced a
+     third line on desktop ("Read your / knowledge / as a graph."). */
   font-size: var(--text-display);
   font-weight: var(--font-weight-bold);
   line-height: var(--leading-tight);
@@ -154,12 +183,16 @@ svg {
   font-size: var(--text-xs);
   color: var(--colors-text-dim);
 }
+/* The product shot is grounded: flush against the canvas foot with only its
+   top corners rounded (the app "rising from the surface"), bordered but not
+   glowing — the tinted canvas supplies the atmosphere. */
 .hero__art {
   margin: var(--space-64) auto 0;
   width: min(1000px, 100%);
-  border: var(--border-width) solid var(--colors-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), var(--glow-brand);
+  border: var(--border-width) solid var(--colors-border-strong);
+  border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   background: var(--colors-surface);
 }
@@ -273,6 +306,25 @@ svg {
 }
 
 /* --- Download --- */
+/* The closing band: the canvas shape again, so the page opens and closes on
+   the same contained surface (an intentional bookend, not another flat strip). */
+.band {
+  position: relative;
+  padding: var(--space-64) var(--space-24);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(
+      60% 70% at 50% 0%,
+      color-mix(in oklab, var(--colors-secondary) 12%, transparent),
+      transparent 72%
+    ),
+    var(--colors-surface);
+  overflow: hidden;
+}
+.band .section__head {
+  margin-bottom: var(--space-32);
+}
 .download__row {
   display: flex;
   gap: var(--space-16);

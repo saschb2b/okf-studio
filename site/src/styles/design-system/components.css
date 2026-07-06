@@ -94,15 +94,24 @@
   color: var(--colors-primary);
 }
 
-/* --- Site nav --- */
+/* --- Site nav: a floating pill, not a page-wide strip. Translucent with a
+   backdrop blur so content scrolls under it legibly; the page applies sticky
+   positioning (the pill itself only owns its shape). --- */
 .site-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-24);
-  padding: var(--space-16) var(--space-24);
-  border-bottom: var(--border-width) solid var(--colors-border);
-  background: color-mix(in oklab, var(--colors-bg) 80%, transparent);
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-20);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--colors-surface) 84%, transparent);
+  backdrop-filter: saturate(140%) blur(14px);
+  box-shadow: var(--shadow-sm);
+}
+/* Actions inside the pill take its curvature. */
+.site-nav .btn {
+  border-radius: var(--radius-pill);
 }
 .site-nav__brand {
   display: flex;

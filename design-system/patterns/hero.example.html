@@ -8,23 +8,42 @@
   <link rel="stylesheet" href="../styles/components.css">
   <style>
     body{background:var(--colors-bg);color:var(--colors-text);font-family:var(--font-sans);margin:0}
-    .hero{max-width:var(--size-container);margin:0 auto;padding:var(--space-96) var(--space-24);text-align:center;position:relative}
+    /* The nav pill floats above the canvas; sticky is the page's job. */
+    .topbar{position:sticky;top:var(--space-12);z-index:20;padding-inline:var(--space-16)}
+    /* The canvas: one rounded, tinted surface bundling copy and art. */
+    .canvas{position:relative;margin:var(--space-12) var(--space-16) 0;border:var(--border-width) solid var(--colors-border);border-radius:var(--radius-xl);overflow:hidden;background:radial-gradient(58% 46% at 48% 20%,color-mix(in oklab,var(--colors-secondary) 16%,transparent),transparent 70%),radial-gradient(46% 42% at 74% 8%,color-mix(in oklab,var(--colors-primary) 12%,transparent),transparent 72%),var(--colors-surface)}
+    .canvas::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(color-mix(in oklab,var(--colors-text) 6%,transparent) 1px,transparent 1.6px);background-size:26px 26px;-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 48%,transparent 92%);mask-image:linear-gradient(180deg,#000 0%,#000 48%,transparent 92%)}
+    .canvas>*{position:relative}
+    .hero{max-width:var(--size-container);margin:0 auto;padding:var(--space-80) var(--space-24) 0;text-align:center}
     .hero__title{font-size:var(--text-display);line-height:var(--leading-tight);letter-spacing:var(--tracking-tight);font-weight:var(--font-weight-bold);margin:var(--space-16) 0}
     .hero__sub{font-size:var(--text-lg);color:var(--colors-text-muted);max-width:var(--size-measure);margin:0 auto var(--space-32);line-height:var(--leading-normal)}
     .hero__cta{display:flex;gap:var(--space-16);justify-content:center;flex-wrap:wrap}
-    .hero__art{width:160px;height:160px;margin:var(--space-64) auto 0;border-radius:var(--radius-xl);background:var(--colors-gradient-tile);box-shadow:var(--glow-brand-strong)}
+    /* The product shot, grounded flush against the canvas foot. */
+    .hero__art{width:min(640px,100%);height:200px;margin:var(--space-64) auto 0;border:var(--border-width) solid var(--colors-border-strong);border-bottom:none;border-radius:var(--radius-lg) var(--radius-lg) 0 0;box-shadow:var(--shadow-lg);background:var(--colors-gradient-tile)}
   </style>
 </head>
 <body>
-  <section class="hero">
-    <span class="eyebrow">OKF Viewer · v0.2</span>
-    <h1 class="hero__title">Read your knowledge<br>as a graph.</h1>
-    <p class="hero__sub">A fast, native desktop reader for Open Knowledge Format bundles. Point it at a folder to explore concepts, links, and structure.</p>
-    <div class="hero__cta">
-      <a class="btn btn--primary" href="#download">↓ Download for free</a>
-      <a class="btn btn--secondary" href="#">View on GitHub</a>
-    </div>
-    <div class="hero__art" aria-hidden="true"></div>
-  </section>
+  <header class="topbar">
+    <nav class="site-nav" aria-label="Primary">
+      <span class="site-nav__brand">OKF Viewer</span>
+      <span class="site-nav__links">
+        <a class="site-nav__link" href="#">Features</a>
+        <a class="site-nav__link" href="#">Download</a>
+        <a class="btn btn--primary" href="#">↓ Download</a>
+      </span>
+    </nav>
+  </header>
+  <div class="canvas">
+    <section class="hero">
+      <span class="eyebrow">OKF Viewer · v0.2</span>
+      <h1 class="hero__title">Read your knowledge<br>as a graph.</h1>
+      <p class="hero__sub">A fast, native desktop reader for Open Knowledge Format bundles. Point it at a folder to explore concepts, links, and structure.</p>
+      <div class="hero__cta">
+        <a class="btn btn--primary" href="#download">↓ Download for free</a>
+        <a class="btn btn--secondary" href="#">View on GitHub</a>
+      </div>
+      <div class="hero__art" aria-hidden="true"></div>
+    </section>
+  </div>
 </body>
 </html>

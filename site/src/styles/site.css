@@ -204,16 +204,22 @@ svg {
   height: auto;
 }
 
-/* --- Showcase (alternating image + copy) --- */
+/* --- Showcase (alternating image + copy) ---
+   Each row is a contained surface panel (the canvas family) with the
+   screenshot bleeding flush to the panel's edge — the hero's grounded-media
+   motif applied sideways. The media was the page's last floating slab. */
 .showcase {
   padding-block: var(--space-64);
 }
 .showcase__row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-48);
-  align-items: center;
-  margin-bottom: var(--space-96);
+  align-items: stretch;
+  margin-bottom: var(--space-32);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-xl);
+  background: var(--colors-surface);
+  overflow: hidden;
 }
 .showcase__row:last-child {
   margin-bottom: 0;
@@ -221,16 +227,23 @@ svg {
 .showcase__row--reverse .showcase__media {
   order: -1;
 }
+.showcase__text {
+  align-self: center;
+  padding: var(--space-48);
+}
 .showcase__media {
-  /* Tighter than the hero: at half-width these read too round at radius-lg. */
-  border: var(--border-width) solid var(--colors-border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
+  position: relative;
+  margin: 0; /* a <figure>: without this its UA margin insets the bleed */
+  /* A hairline where the flush media meets the panel; the outer sides are
+     clipped by the row's radius, so only the seam shows. */
+  box-shadow: 0 0 0 var(--border-width) var(--colors-border);
 }
 .showcase__media img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
 }
 .showcase__eyebrow {
   margin-bottom: var(--space-12);
@@ -250,11 +263,18 @@ svg {
 @media (max-width: 860px) {
   .showcase__row {
     grid-template-columns: 1fr;
-    gap: var(--space-24);
-    margin-bottom: var(--space-64);
+    margin-bottom: var(--space-32);
   }
   .showcase__row--reverse .showcase__media {
     order: 0;
+  }
+  .showcase__text {
+    padding: var(--space-24);
+  }
+  /* Single column: the media flows below the text at its natural height. */
+  .showcase__media img {
+    position: static;
+    height: auto;
   }
 }
 

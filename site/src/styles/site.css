@@ -34,6 +34,25 @@ svg {
   outline-offset: 2px;
 }
 
+/* Keyboard users shouldn't have to tab the whole pill nav on every visit:
+   visually hidden until focused, then a small pill above everything. */
+.skip-link {
+  position: fixed;
+  top: var(--space-12);
+  left: var(--space-16);
+  z-index: 30;
+  padding: var(--space-8) var(--space-16);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-pill);
+  background: var(--colors-surface);
+  color: var(--colors-text);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--space-16)));
+}
+.skip-link:focus-visible {
+  transform: none;
+}
+
 .container {
   width: 100%;
   max-width: var(--size-container);

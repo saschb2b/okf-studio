@@ -21,11 +21,12 @@ Dark-first, zed.dev-inspired visual language for the OKF Viewer marketing and do
 # Components
 * [Button](components/button.md) - Action control; primary uses the brand gradient. ([example](components/button.example.html))
 * [Download button](components/download-button.md) - OS-specific download CTA. ([example](components/download-button.example.html))
-* [Site nav](components/nav.md) - Sticky top bar. ([example](components/nav.example.html))
+* [Site nav](components/nav.md) - Floating pill bar. ([example](components/nav.example.html))
 * [Feature card](components/feature-card.md) - Glyph + title + line. ([example](components/feature-card.example.html))
 
 # Patterns
 * [Hero](patterns/hero.md) - Above-the-fold composition. ([example](patterns/hero.example.html))
+* [Showcase panel](patterns/showcase.md) - Feature row as a contained surface with flush media. ([example](patterns/showcase.example.html))
 * [Download grid](patterns/download.md) - Per-OS download section. ([example](patterns/download.example.html))
 
 # Guidelines

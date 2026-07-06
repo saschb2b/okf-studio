@@ -42,6 +42,9 @@ svg {
 }
 .section {
   padding-block: var(--space-96);
+  /* Anchor jumps must clear the sticky pill nav (its height + top offset),
+     or the target section's eyebrow lands hidden beneath it. */
+  scroll-margin-top: var(--space-80);
 }
 .section__head {
   max-width: var(--size-measure);

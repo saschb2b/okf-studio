@@ -14,6 +14,7 @@ import { renderMarkdown, resolveAssetHref, resolveHref } from "../markdown.ts";
 import { readAssetDataUrl } from "../ipc.ts";
 import { highlightCodeBlocks } from "../highlight.ts";
 import { renderMathBlocks } from "../math.ts";
+import { renderMermaidBlocks } from "../mermaid.ts";
 import type { Bundle, Concept } from "../types.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "../odsf.ts";
 import { ReaderPrefs } from "./ReaderPrefs.tsx";
@@ -177,19 +178,21 @@ function brokenImage(raw: string): HTMLSpanElement {
 /**
  * Post-process a (already-sanitized) body HTML string and return the rewritten
  * string, baked once so it survives React re-applying dangerouslySetInnerHTML:
- * - **syntax-highlight** code blocks (Shiki, lazy + offline);
+ * - render **mermaid diagrams** (before highlighting, which would eat the block);
+ * - **syntax-highlight** the remaining code blocks (Shiki, lazy + offline);
  * - **typeset math** placeholders (KaTeX, equally lazy + offline);
  * - resolve every `<img>` — a local bundle image becomes an inline `data:` URL
  *   (offline-safe, zoomable), a remote one an open-in-browser placeholder, an
  *   unresolvable one a quiet "missing" note.
- * Operates on a detached template; the highlighter/typesetter output, the
- * trusted core's data URL, and the constructed placeholders need no
+ * Operates on a detached template; the diagram/highlighter/typesetter output,
+ * the trusted core's data URL, and the constructed placeholders need no
  * re-sanitizing.
  */
 async function processBody(html: string, conceptId: string, bundle: Bundle): Promise<string> {
   if (typeof document === "undefined") return html;
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
+  await renderMermaidBlocks(tpl.content);
   await highlightCodeBlocks(tpl.content);
   await renderMathBlocks(tpl.content);
   // The await can outlive the environment (a test's DOM torn down mid-flight).

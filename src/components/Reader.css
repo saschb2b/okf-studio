@@ -524,6 +524,29 @@
   color: var(--text-dim);
 }
 
+/* Mermaid diagrams (```mermaid fences), rendered in processBody. Each figure
+   holds a light and a dark render; data-theme picks one (Mermaid bakes theme
+   colors into the SVG, so the string can't be re-themed in place). */
+.markdown .mermaid-diagram {
+  margin: 1em 0;
+  /* A wide diagram scrolls in place rather than breaking the measure. */
+  overflow-x: auto;
+  text-align: center;
+}
+.markdown .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.markdown .mermaid-dark {
+  display: none;
+}
+:root[data-theme="dark"] .markdown .mermaid-light {
+  display: none;
+}
+:root[data-theme="dark"] .markdown .mermaid-dark {
+  display: inline;
+}
+
 /* GFM alert callouts (> [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]). */
 .markdown .callout {
   margin: 1em 0;

@@ -582,6 +582,43 @@
   --c: var(--error);
 }
 
+/* Embedded-HTML elements (authors may write raw HTML in a body — see
+   docs/features/concept-reader.md). Themed so they read as native, both modes. */
+.markdown kbd {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 1px var(--space-4);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+.markdown mark {
+  /* The browser default (opaque yellow, inherited dark text) breaks in dark
+     mode; a warn-tinted wash keeps the text color and works in both themes. */
+  background: color-mix(in srgb, var(--warn) 28%, transparent);
+  color: inherit;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.markdown details {
+  margin: 1em 0;
+  padding: var(--space-10) var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+.markdown summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.markdown details[open] > summary {
+  margin-bottom: var(--space-8);
+}
+.markdown details > :last-child {
+  margin-bottom: 0;
+}
+
 .markdown blockquote {
   margin: 0.8em 0;
   padding: var(--space-2) var(--space-16);

@@ -225,6 +225,67 @@ describe("plainExcerpt math", () => {
   });
 });
 
+describe("renderMarkdown embedded HTML", () => {
+  it("keeps semantic inline elements", () => {
+    const html = renderMarkdown(
+      'Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, <mark>marked</mark>, <abbr title="HyperText">HTML</abbr>, x<sup>2</sup>, H<sub>2</sub>O.',
+    );
+    for (const tag of ["<kbd>", "<mark>", "<abbr", "<sup>", "<sub>"]) {
+      expect(html).toContain(tag);
+    }
+  });
+
+  it("keeps details/summary and processes the markdown inside", () => {
+    const html = renderMarkdown("<details>\n<summary>More</summary>\n\nSome **bold**.\n\n</details>");
+    expect(html).toContain("<details>");
+    expect(html).toContain("<summary>More</summary>");
+    expect(html).toContain("<strong>bold</strong>");
+  });
+
+  it("keeps styled spans/divs but drops out-of-flow positioning", () => {
+    const styled = renderMarkdown('<span style="color: #1f883d">green</span>');
+    expect(styled).toContain("color:");
+    const escape = renderMarkdown(
+      '<div style="position: fixed; top: 0; color: red">overlay</div>',
+    );
+    expect(escape).not.toContain("position");
+    expect(escape).toContain("color:"); // the rest of the style survives
+  });
+
+  it("routes a raw-HTML heading through the outline pass", () => {
+    const html = renderMarkdown("<h2>Raw Section</h2>");
+    expect(html).toContain('id="raw-section"');
+    expect(html).toContain("heading-anchor");
+  });
+
+  it("strips script, event handlers, iframes, and comments", () => {
+    expect(renderMarkdown("<script>alert(1)</script>safe")).not.toContain("script");
+    expect(renderMarkdown('<a href="x.md" onclick="alert(1)">x</a>')).not.toContain("onclick");
+    expect(renderMarkdown('<iframe src="https://e.com"></iframe>ok')).not.toContain("iframe");
+    expect(renderMarkdown("a <!-- secret --> b")).not.toContain("secret");
+  });
+
+  it("neutralizes every fetching attribute on embedded media", () => {
+    const img = renderMarkdown('<img src="a.png" srcset="a-2x.png 2x" alt="x">');
+    expect(img).toContain('data-mdsrc="a.png"');
+    expect(img).not.toContain("srcset");
+    const video = renderMarkdown('<video src="v.mp4" poster="p.png" controls></video>');
+    expect(video).not.toContain("v.mp4");
+    expect(video).not.toContain("p.png");
+    const source = renderMarkdown("<audio><source src='https://e.com/a.mp3'></audio>");
+    expect(source).not.toContain("e.com");
+  });
+});
+
+describe("plainExcerpt embedded HTML", () => {
+  it("drops tags but keeps their text; comments vanish; prose < survives", () => {
+    expect(plainExcerpt("Press <kbd>Ctrl</kbd>+<kbd>K</kbd> <!-- note --> to search.")).toBe(
+      "Press Ctrl+K to search.",
+    );
+    expect(plainExcerpt("proves a < b holds")).toBe("proves a < b holds");
+  });
+});
+
 describe("renderMarkdown image neutralization", () => {
   it("moves a non-data src to data-mdsrc so nothing auto-loads", () => {
     const html = renderMarkdown("![Diagram](diagram.svg)");

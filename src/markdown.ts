@@ -234,23 +234,49 @@ function decorateColorValues(html: string, tokenIndex?: Record<string, string>):
     }
   }
   decorateHexInText(tpl.content);
-  neutralizeImages(tpl.content);
+  neutralizeMedia(tpl.content);
+  containInlineStyles(tpl.content);
   return tpl.innerHTML;
 }
 
 /**
- * Defuse `<img>` loading at render time: move a non-`data:` `src` to `data-mdsrc`
- * and drop `src`, so the webview never auto-fetches a remote image (the offline
- * stance) or flashes a broken local one. The reader then resolves each image —
- * inlining a local bundle file, or offering a remote one as an external link.
- * An inline `data:` image is left to render as-is.
+ * Defuse media loading at render time — the offline stance: nothing in a body
+ * may auto-fetch. For `<img>` (markdown or embedded HTML alike), a non-`data:`
+ * `src` moves to `data-mdsrc` and `srcset` is dropped; the reader then resolves
+ * each image — inlining a local bundle file, or offering a remote one as an
+ * external link. Embedded `<video>`/`<audio>`/`<source>`/`<track>` have no
+ * offline resolver, so their fetching attributes are simply removed and the
+ * players render inert. Inline `data:` sources are left as-is.
  */
-function neutralizeImages(root: DocumentFragment): void {
+function neutralizeMedia(root: DocumentFragment): void {
   for (const img of Array.from(root.querySelectorAll("img"))) {
     const src = img.getAttribute("src");
     if (src && !/^data:/i.test(src)) {
       img.setAttribute("data-mdsrc", src);
       img.removeAttribute("src");
+    }
+    img.removeAttribute("srcset");
+  }
+  for (const el of Array.from(root.querySelectorAll("video, audio, source, track"))) {
+    for (const attr of ["src", "srcset", "poster"]) {
+      const value = el.getAttribute(attr);
+      if (value && !/^data:/i.test(value)) el.removeAttribute(attr);
+    }
+  }
+}
+
+/**
+ * Contain embedded HTML's inline styles to the prose flow. `style` attributes
+ * survive sanitization (embedded HTML legitimately uses them for color and
+ * alignment), but bundle content must never escape its box and overlay the
+ * app's UI — so out-of-flow positioning is dropped. `relative` stays: it can't
+ * leave the reader column.
+ */
+function containInlineStyles(root: DocumentFragment): void {
+  for (const el of Array.from(root.querySelectorAll<HTMLElement>("[style]"))) {
+    const position = el.style.getPropertyValue("position");
+    if (/^(fixed|sticky|absolute)$/i.test(position.trim())) {
+      el.style.removeProperty("position");
     }
   }
 }
@@ -321,6 +347,11 @@ export function plainExcerpt(md: string, max = 280): string {
     // Display math likewise; inline math keeps its TeX minus the delimiters.
     .replace(/\$\$[\s\S]*?(\$\$|$)/g, " ")
     .replace(/\$(\S(?:[^$\n]*?\S)?)\$/g, "$1")
+    // Embedded HTML: comments vanish, tags drop but keep their text content
+    // (`<kbd>Ctrl</kbd>` reads as `Ctrl`). Prose like "a < b" is untouched —
+    // the tag pattern requires a letter (or /) right after the bracket.
+    .replace(/<!--[\s\S]*?(-->|$)/g, " ")
+    .replace(/<\/?[a-zA-Z][^>\n]*>/g, "")
     // Images (before links: same bracket syntax) and links → their alt/text.
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")

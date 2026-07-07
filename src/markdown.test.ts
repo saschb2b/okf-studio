@@ -225,6 +225,84 @@ describe("plainExcerpt math", () => {
   });
 });
 
+describe("renderMarkdown task lists", () => {
+  it("renders GFM checkboxes, disabled, with checked state preserved", () => {
+    const html = renderMarkdown("- [x] done\n- [ ] open\n");
+    expect(html.match(/type="checkbox"/g)).toHaveLength(2);
+    expect(html.match(/disabled/g)).toHaveLength(2);
+    expect(html.match(/checked/g)).toHaveLength(1);
+  });
+});
+
+describe("renderMarkdown footnotes", () => {
+  const MD = "A claim.[^1]\n\nPlain text.\n\n[^1]: The **evidence**.";
+
+  it("links a [^ref] to a footnotes section and back", () => {
+    const html = renderMarkdown(MD);
+    expect(html).toContain('href="#footnote-1"');
+    expect(html).toContain('id="footnote-1"');
+    expect(html).toContain("data-footnote-backref");
+    expect(html).toContain("<strong>evidence</strong>");
+  });
+
+  it("keeps the section heading's aria contract out of the outline pass", () => {
+    const html = renderMarkdown(MD);
+    // The id every ref's aria-describedby points at survives un-slugged…
+    expect(html).toContain('id="footnote-label"');
+    // …visible (no sr-only), and without a baked permalink.
+    expect(html).not.toContain("sr-only");
+    expect(html).not.toContain('href="#footnotes"');
+  });
+
+  it("leaves plain [bracketed] text alone", () => {
+    expect(renderMarkdown("see [ref] and [^]")).not.toContain("footnote");
+  });
+});
+
+describe("renderMarkdown definition lists", () => {
+  it("renders term/definition groups as dl/dt/dd with inline markdown", () => {
+    const html = renderMarkdown("Bundle\n: A **directory** of concepts.\n: Portable too.\nConcept\n: One `.md` file.\n");
+    expect(html).toContain("<dl>");
+    expect(html).toContain("<dt>Bundle</dt>");
+    expect(html.match(/<dd>/g)).toHaveLength(3);
+    expect(html).toContain("<strong>directory</strong>");
+    expect(html).toContain("<dt>Concept</dt>");
+  });
+
+  it("does not fire on plain paragraphs or mid-line colons", () => {
+    expect(renderMarkdown("Ratio is 3:1 today.\n\nNext line.")).not.toContain("<dl>");
+    expect(renderMarkdown("No definitions here.")).not.toContain("<dl>");
+  });
+});
+
+describe("renderMarkdown emoji shortcodes", () => {
+  it("replaces known shortcodes with unicode", () => {
+    const html = renderMarkdown("Ship it :rocket: with :+1:");
+    expect(html).toContain("🚀");
+    expect(html).toContain("👍");
+  });
+
+  it("leaves unknown names, code spans, and bare colons literal", () => {
+    expect(renderMarkdown("a :not_an_emoji_xyz: b")).toContain(":not_an_emoji_xyz:");
+    expect(renderMarkdown("`:rocket:`")).not.toContain("🚀");
+    expect(renderMarkdown("at 10:30 sharp")).toContain("10:30");
+  });
+});
+
+describe("plainExcerpt advanced syntax", () => {
+  it("strips footnote refs and definition markers, keeps prose", () => {
+    expect(plainExcerpt("A claim.[^1]\n\n[^1]: Fine print.")).toBe("A claim. Fine print.");
+  });
+
+  it("drops task-list checkboxes with their markers", () => {
+    expect(plainExcerpt("- [x] shipped\n- [ ] pending")).toBe("shipped pending");
+  });
+
+  it("unwraps definition lists and converts emoji", () => {
+    expect(plainExcerpt("Bundle\n: A folder :rocket:")).toBe("Bundle A folder 🚀");
+  });
+});
+
 describe("renderMarkdown embedded HTML", () => {
   it("keeps semantic inline elements", () => {
     const html = renderMarkdown(

@@ -8,8 +8,19 @@
 // See docs/features/concept-reader.md and docs/architecture/okf-parsing.md.
 
 import { marked } from "marked";
-import type { TokenizerAndRendererExtension } from "marked";
+import type { Token, TokenizerAndRendererExtension, Tokens } from "marked";
+import markedFootnote from "marked-footnote";
+import { markedEmoji } from "marked-emoji";
+import { gemoji } from "gemoji";
 import DOMPurify from "dompurify";
+
+// GitHub's emoji shortcode set (:rocket: → 🚀), name → unicode char. Plain
+// text output — no image sprites, nothing to fetch, per the offline stance.
+const EMOJIS: Record<string, string> = {};
+for (const entry of gemoji) {
+  for (const name of entry.names) EMOJIS[name] = entry.emoji;
+}
+const EMOJI_RE = /:([a-z0-9_+-]+):/g;
 
 // ---------------------------------------------------------------------------
 // Math ($…$ inline, $$…$$ display), the syntax GitHub/Pandoc popularized.
@@ -73,7 +84,66 @@ const inlineMath: TokenizerAndRendererExtension = {
   },
 };
 
-marked.use({ extensions: [blockMath, inlineMath] });
+// ---------------------------------------------------------------------------
+// Definition lists (PHP Markdown Extra syntax): a term line followed by one or
+// more `: definition` lines; consecutive groups form one <dl>. marked has no
+// built-in for this — the extension follows the descriptionList pattern from
+// marked's own extension docs (child tokens inline-lexed, then parseInline'd).
+
+// One or more term/definitions groups. A term line must not itself look like
+// a definition, a blank line, or another block's marker (heading, quote,
+// list bullet, ordered-list number).
+const DEF_LIST_RE = /^(?:(?!(?:[:\s#>*+-]|\d+\.[ \t]))[^\n]+\n(?::[ \t][^\n]*(?:\n|$))+\n?)+/;
+const DEF_LINE_RE = /^:[ \t]+/;
+
+interface DefListToken extends Tokens.Generic {
+  items: { term: Token[]; defs: Token[][] }[];
+}
+
+const defList: TokenizerAndRendererExtension = {
+  name: "defList",
+  level: "block",
+  start(src) {
+    const m = /(^|\n)(?!(?:[:\s#>*+-]|\d+\.[ \t]))[^\n]+\n:[ \t]/.exec(src);
+    return m ? m.index + m[1].length : undefined;
+  },
+  tokenizer(src) {
+    const m = DEF_LIST_RE.exec(src);
+    if (!m) return undefined;
+    const token: DefListToken = { type: "defList", raw: m[0], items: [] };
+    for (const line of m[0].trimEnd().split("\n")) {
+      if (DEF_LINE_RE.test(line)) {
+        const def: Token[] = [];
+        this.lexer.inline(line.replace(DEF_LINE_RE, ""), def);
+        token.items[token.items.length - 1]?.defs.push(def);
+      } else if (line.trim()) {
+        const term: Token[] = [];
+        this.lexer.inline(line, term);
+        token.items.push({ term, defs: [] });
+      }
+    }
+    return token;
+  },
+  renderer(token) {
+    const { items } = token as DefListToken;
+    let out = "<dl>\n";
+    for (const item of items) {
+      out += `<dt>${this.parser.parseInline(item.term)}</dt>\n`;
+      for (const def of item.defs) {
+        out += `<dd>${this.parser.parseInline(def)}</dd>\n`;
+      }
+    }
+    return `${out}</dl>\n`;
+  },
+};
+
+marked.use(
+  // Footnotes ([^1] refs + [^1]: definitions → a linked end-of-body section).
+  markedFootnote(),
+  // Emoji shortcodes; the renderer emits the bare unicode char.
+  markedEmoji({ emojis: EMOJIS, renderer: (token) => token.emoji }),
+  { extensions: [blockMath, inlineMath, defList] },
+);
 
 // GFM "alert" callouts: a blockquote whose first line is [!NOTE] / [!TIP] /
 // [!IMPORTANT] / [!WARNING] / [!CAUTION] becomes a titled, themed callout.
@@ -318,6 +388,14 @@ function slugifyHeadings(html: string): string {
   }
   const used = new Set<string>();
   for (const h of Array.from(tpl.content.querySelectorAll("h2, h3, h4, h5, h6"))) {
+    // The footnotes section's heading keeps its `footnote-label` id (every
+    // ref's aria-describedby points at it) and gets no permalink; dropping
+    // the extension's sr-only class shows it as a normal section heading.
+    if (h.closest("[data-footnotes]")) {
+      h.classList.remove("sr-only");
+      if (!h.classList.length) h.removeAttribute("class");
+      continue;
+    }
     const base = slugify(h.textContent);
     let id = base;
     let n = 2;
@@ -355,12 +433,17 @@ export function plainExcerpt(md: string, max = 280): string {
     // Images (before links: same bracket syntax) and links → their alt/text.
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    // Heading/blockquote/list markers at line starts, and table/rule lines.
-    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm, "")
+    // Footnotes: a [^ref] marker vanishes; a definition keeps only its prose.
+    .replace(/\[\^[^\]\s]+\]:?/g, "")
+    // Heading/blockquote/list/definition markers at line starts, and
+    // table/rule lines. The task-list checkbox goes with its list marker.
+    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+(\[[ xX]\]\s+)?|\d+\.\s+|:\s+)/gm, "")
     .replace(/^\s*\|.*\|\s*$/gm, " ")
     .replace(/^\s*([-=_*]\s*){3,}$/gm, " ")
     // GFM alert markers ([!NOTE] etc.) read as noise without their styling.
     .replace(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/gi, "")
+    // Emoji shortcodes read as their character (unknown names stay literal).
+    .replace(EMOJI_RE, (m, name: string) => EMOJIS[name] ?? m)
     // Inline emphasis/code tokens → bare text.
     .replace(/(\*\*|__|[*_~`])/g, "")
     .replace(/\s+/g, " ")

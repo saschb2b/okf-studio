@@ -619,6 +619,47 @@
   margin-bottom: 0;
 }
 
+/* Task lists (- [ ] / - [x]): the checkbox replaces the bullet. */
+.markdown li:has(> input[type="checkbox"]) {
+  list-style: none;
+}
+.markdown li > input[type="checkbox"] {
+  margin: 0 var(--space-6) 0 calc(-1 * var(--space-16));
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+
+/* Definition lists (Term / `: definition`). */
+.markdown dl {
+  margin: 0.8em 0;
+}
+.markdown dt {
+  font-weight: 600;
+  margin-top: var(--space-8);
+}
+.markdown dd {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-16);
+  color: var(--text-dim);
+}
+
+/* Footnotes ([^1]) — a quiet end-of-body section; refs/backrefs jump in-page. */
+.markdown .footnotes {
+  margin-top: var(--space-24);
+  border-top: 1px solid var(--border);
+  font-size: 0.88em;
+  color: var(--text-dim);
+}
+.markdown .footnotes h2 {
+  font-size: 0.95em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.markdown [data-footnote-ref] {
+  /* Underlined like every link (WCAG 1.4.1); just breathing room in the sup. */
+  padding: 0 var(--space-2);
+}
+
 .markdown blockquote {
   margin: 0.8em 0;
   padding: var(--space-2) var(--space-16);

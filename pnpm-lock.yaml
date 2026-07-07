@@ -35,12 +35,21 @@ importers:
       dompurify:
         specifier: ^3
         version: 3.4.11
+      gemoji:
+        specifier: ^8.1.0
+        version: 8.1.0
       katex:
         specifier: ^0.17.0
         version: 0.17.0
       marked:
         specifier: ^15
         version: 15.0.12
+      marked-emoji:
+        specifier: ^2.0.3
+        version: 2.0.3(marked@15.0.12)
+      marked-footnote:
+        specifier: ^1.4.0
+        version: 1.4.0(marked@15.0.12)
       mermaid:
         specifier: ^11.16.0
         version: 11.16.0
@@ -1683,6 +1692,9 @@ packages:
   functions-have-names@1.2.3:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==}
 
+  gemoji@8.1.0:
+    resolution: {integrity: sha512-HA4Gx59dw2+tn+UAa7XEV4ufUKI4fH1KgcbenVA9YKSj1QJTT0xh5Mwv5HMFNN3l2OtUe3ZIfuRwSyZS5pLIWw==}
+
   generator-function@2.0.1:
     resolution: {integrity: sha512-SFdFmIJi+ybC0vjlHN0ZGVGHc3lgE0DxPAT0djjVg+kjOnSqclqmj0KQ7ykTOLP6YxoqOvuAODGdcHJn+43q3g==}
     engines: {node: '>= 0.4'}
@@ -2027,6 +2039,16 @@ packages:
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
+
+  marked-emoji@2.0.3:
+    resolution: {integrity: sha512-fChW/AfUqCHgoEC1nFDgiw3OR/qsi71/QXH/HTo05yd6B5+T+VHh1SqCpn/HpeGLDxkA+MK4+hr4eULB2/A8Jw==}
+    peerDependencies:
+      marked: '>=4 <19'
+
+  marked-footnote@1.4.0:
+    resolution: {integrity: sha512-fZTxAhI1TcLEs5UOjCfYfTHpyKGaWQevbxaGTEA68B51l7i87SctPFtHETYqPkEN0ka5opvy4Dy1l/yXVC+hmg==}
+    peerDependencies:
+      marked: '>=7.0.0'
 
   marked@15.0.12:
     resolution: {integrity: sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA==}
@@ -4392,6 +4414,8 @@ snapshots:
 
   functions-have-names@1.2.3: {}
 
+  gemoji@8.1.0: {}
+
   generator-function@2.0.1: {}
 
   gensync@1.0.0-beta.2: {}
@@ -4751,6 +4775,14 @@ snapshots:
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  marked-emoji@2.0.3(marked@15.0.12):
+    dependencies:
+      marked: 15.0.12
+
+  marked-footnote@1.4.0(marked@15.0.12):
+    dependencies:
+      marked: 15.0.12
 
   marked@15.0.12: {}
 

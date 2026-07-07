@@ -269,6 +269,15 @@ describe("renderMarkdown definition lists", () => {
     expect(html).toContain("<dt>Concept</dt>");
   });
 
+  it("folds a lazily-continued (indented) line into its definition", () => {
+    const html = renderMarkdown(
+      "Lifetime value\n: A customer's summed totals\n  over [orders](orders.md).\nOrder\n: A completed checkout.\n",
+    );
+    expect(html.match(/<dl>/g)).toHaveLength(1); // one list, not split by the wrap
+    expect(html).toContain("summed totals over");
+    expect(html).toContain("<dt>Order</dt>");
+  });
+
   it("does not fire on plain paragraphs or mid-line colons", () => {
     expect(renderMarkdown("Ratio is 3:1 today.\n\nNext line.")).not.toContain("<dl>");
     expect(renderMarkdown("No definitions here.")).not.toContain("<dl>");

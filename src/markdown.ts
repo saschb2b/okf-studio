@@ -92,8 +92,10 @@ const inlineMath: TokenizerAndRendererExtension = {
 
 // One or more term/definitions groups. A term line must not itself look like
 // a definition, a blank line, or another block's marker (heading, quote,
-// list bullet, ordered-list number).
-const DEF_LIST_RE = /^(?:(?!(?:[:\s#>*+-]|\d+\.[ \t]))[^\n]+\n(?::[ \t][^\n]*(?:\n|$))+\n?)+/;
+// list bullet, ordered-list number). A definition may lazily continue on
+// following indented lines (the PHP Markdown Extra convention).
+const DEF_LIST_RE =
+  /^(?:(?!(?:[:\s#>*+-]|\d+\.[ \t]))[^\n]+\n(?::[ \t][^\n]*(?:\n|$)(?:[ \t]+\S[^\n]*(?:\n|$))*)+\n?)+/;
 const DEF_LINE_RE = /^:[ \t]+/;
 
 interface DefListToken extends Tokens.Generic {
@@ -110,17 +112,31 @@ const defList: TokenizerAndRendererExtension = {
   tokenizer(src) {
     const m = DEF_LIST_RE.exec(src);
     if (!m) return undefined;
-    const token: DefListToken = { type: "defList", raw: m[0], items: [] };
+    // Assemble raw term/definition strings first (folding lazily-continued
+    // indented lines into their definition), then inline-lex each whole one.
+    const items: { term: string; defs: string[] }[] = [];
     for (const line of m[0].trimEnd().split("\n")) {
+      const last = items.at(-1);
       if (DEF_LINE_RE.test(line)) {
-        const def: Token[] = [];
-        this.lexer.inline(line.replace(DEF_LINE_RE, ""), def);
-        token.items[token.items.length - 1]?.defs.push(def);
+        last?.defs.push(line.replace(DEF_LINE_RE, ""));
+      } else if (/^[ \t]/.test(line)) {
+        if (last && last.defs.length > 0) {
+          last.defs[last.defs.length - 1] += ` ${line.trim()}`;
+        }
       } else if (line.trim()) {
-        const term: Token[] = [];
-        this.lexer.inline(line, term);
-        token.items.push({ term, defs: [] });
+        items.push({ term: line, defs: [] });
       }
+    }
+    const token: DefListToken = { type: "defList", raw: m[0], items: [] };
+    for (const item of items) {
+      const term: Token[] = [];
+      this.lexer.inline(item.term, term);
+      const defs = item.defs.map((d) => {
+        const def: Token[] = [];
+        this.lexer.inline(d, def);
+        return def;
+      });
+      token.items.push({ term, defs });
     }
     return token;
   },

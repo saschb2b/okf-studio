@@ -503,6 +503,27 @@
   border-color: var(--accent);
 }
 
+/* Math ($…$ inline, $$…$$ display), typeset by KaTeX in processBody. */
+.markdown .math-block {
+  /* A span (valid mid-paragraph) styled as its own block. */
+  display: block;
+  margin: 1em 0;
+  /* A wide equation scrolls in place rather than breaking the measure. */
+  overflow-x: auto;
+  padding: var(--space-2) 0;
+}
+.markdown .math-block .katex-display {
+  /* The outer wrapper owns the rhythm; KaTeX's own margin would double it. */
+  margin: 0;
+}
+/* Until the lazy KaTeX chunk lands (or if it never does), the placeholder
+   shows the raw TeX — style it as quiet code so it reads as source, not prose. */
+.markdown .math:not(:has(.katex)) {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--text-dim);
+}
+
 /* GFM alert callouts (> [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]). */
 .markdown .callout {
   margin: 1em 0;

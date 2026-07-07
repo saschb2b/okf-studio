@@ -57,7 +57,7 @@ const raw: RawConcept[] = [
     timestamp: "2026-06-28T00:00:00Z",
     resource: null,
     extra: {},
-    body: "# What it does\n\nRenders a concept's markdown body alongside its frontmatter and its `Cited by` backlinks, so you always know what points here. Links show where they lead: an [in-bundle link](graph-view.md) opens in the reader, a [section link](../architecture/) opens that part of the bundle, an [external link](https://github.com/GoogleCloudPlatform/knowledge-catalog) opens in your browser, and a [broken link](does-not-exist.md) is marked unresolved. Code blocks and tables are styled to match the surrounding theme.",
+    body: "# What it does\n\nRenders a concept's markdown body alongside its frontmatter and its `Cited by` backlinks, so you always know what points here. Links show where they lead: an [in-bundle link](graph-view.md) opens in the reader, a [section link](../architecture/) opens that part of the bundle, an [external link](https://github.com/GoogleCloudPlatform/knowledge-catalog) opens in your browser, and a [broken link](does-not-exist.md) is marked unresolved. Code blocks and tables are styled to match the surrounding theme.\n\n# Math\n\nInline math like $e^{i\\pi} + 1 = 0$ sits in the prose, subscripts $x_1, x_2$ stay literal, and currency ($5 and $10) is left alone. Display math gets its own block:\n\n$$\n\\operatorname{softmax}(z)_i = \\frac{e^{z_i}}{\\sum_{j=1}^{K} e^{z_j}}\n$$",
     links: ["features/graph-view"],
     externalLinks: ["https://github.com/GoogleCloudPlatform/knowledge-catalog"],
     brokenLinks: ["features/does-not-exist"],

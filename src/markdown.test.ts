@@ -165,6 +165,66 @@ describe("renderMarkdown token-reference resolution", () => {
   });
 });
 
+describe("renderMarkdown math placeholders", () => {
+  it("wraps inline $…$ in a math placeholder, TeX shielded from markdown", () => {
+    const html = renderMarkdown("Euler: $e^{i\\pi} + 1 = 0$ done.");
+    expect(html).toContain('class="math math-inline"');
+    expect(html).toContain("e^{i\\pi} + 1 = 0");
+  });
+
+  it("keeps TeX subscripts literal (underscores never become <em>)", () => {
+    const html = renderMarkdown("$a_i + b_j$ and $x_1 x_2$");
+    expect(html).not.toContain("<em>");
+  });
+
+  it("renders a $$ block as display math", () => {
+    const html = renderMarkdown("Before.\n\n$$\n\\frac{a}{b} = c\n$$\n\nAfter.");
+    expect(html).toContain('class="math math-block"');
+    expect(html).toContain("\\frac{a}{b} = c");
+  });
+
+  it("treats mid-paragraph $$…$$ as display math too", () => {
+    const html = renderMarkdown("The identity $$e^{i\\pi} = -1$$ holds.");
+    expect(html).toContain('class="math math-block"');
+  });
+
+  it("leaves currency amounts and spaced dollars alone", () => {
+    expect(renderMarkdown("It costs $5 and $10 today.")).not.toContain("math");
+    expect(renderMarkdown("pay $ 20 $ now")).not.toContain("math");
+  });
+
+  it("leaves $ inside code spans and fences alone", () => {
+    expect(renderMarkdown("`$x$`")).not.toContain("math-inline");
+    expect(renderMarkdown("```\n$x$\n```")).not.toContain("math-inline");
+  });
+
+  it("escapes HTML metacharacters inside TeX", () => {
+    const html = renderMarkdown("$a<b$");
+    expect(html).toContain("a&lt;b");
+    expect(html).not.toContain("<b$");
+  });
+
+  it("does not decorate a hex color inside TeX with a swatch", () => {
+    const html = renderMarkdown("$\\color{#ff0000}{x}$");
+    expect(html).not.toContain("color-chip");
+  });
+
+  it("renders an escaped \\$ as a literal dollar, not math", () => {
+    expect(renderMarkdown("a \\$5 bill and \\$10 more")).not.toContain("math");
+  });
+});
+
+describe("plainExcerpt math", () => {
+  it("drops display math and unwraps inline math delimiters", () => {
+    const md = "Energy: $E = mc^2$.\n\n$$\n\\int_0^1 x\\,dx\n$$\n\nDone.";
+    expect(plainExcerpt(md)).toBe("Energy: E = mc^2. Done.");
+  });
+
+  it("leaves currency untouched", () => {
+    expect(plainExcerpt("It costs $5 and $10 today.")).toBe("It costs $5 and $10 today.");
+  });
+});
+
 describe("renderMarkdown image neutralization", () => {
   it("moves a non-data src to data-mdsrc so nothing auto-loads", () => {
     const html = renderMarkdown("![Diagram](diagram.svg)");

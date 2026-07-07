@@ -8,7 +8,72 @@
 // See docs/features/concept-reader.md and docs/architecture/okf-parsing.md.
 
 import { marked } from "marked";
+import type { TokenizerAndRendererExtension } from "marked";
 import DOMPurify from "dompurify";
+
+// ---------------------------------------------------------------------------
+// Math ($…$ inline, $$…$$ display), the syntax GitHub/Pandoc popularized.
+//
+// The extensions below only *fence off* the TeX from markdown processing (so
+// `_` never becomes <em> and `\\` survives) and emit a placeholder whose text
+// content is the raw TeX. The placeholder is plain markup that passes through
+// DOMPurify untouched; KaTeX itself is heavy, so actual typesetting happens
+// lazily in the reader's processBody pass (src/math.ts), exactly like Shiki
+// highlighting. Until then — and anywhere that pass doesn't run, like the log
+// view — the TeX source shows as readable text, never lost.
+
+/** Escape text for safe embedding as HTML text content. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// `$$ … $$` at block level, optionally spanning lines.
+const BLOCK_MATH_RE = /^ {0,3}\$\$([\s\S]+?)\$\$[ \t]*(?:\n|$)/;
+// `$…$` inline: no `$` or newline inside; `\x` escapes pass through. The
+// closing `$` must not be followed by a digit, so "$5 and $10" stays currency.
+const INLINE_MATH_RE = /^\$((?:\\.|[^\\$\n])+?)\$(?!\d)/;
+// `$$…$$` written mid-paragraph still means display math.
+const INLINE_BLOCK_MATH_RE = /^\$\$([^$]+?)\$\$/;
+
+const blockMath: TokenizerAndRendererExtension = {
+  name: "blockMath",
+  level: "block",
+  start: (src) => src.indexOf("$$"),
+  tokenizer(src) {
+    const m = BLOCK_MATH_RE.exec(src);
+    if (!m) return undefined;
+    return { type: "blockMath", raw: m[0], text: m[1].trim() };
+  },
+  renderer(token) {
+    // A span (styled display:block), not a div: display math can also occur
+    // mid-paragraph, and a div inside <p> would make the parser split the
+    // paragraph. KaTeX's own display wrapper is a span for the same reason.
+    return `<span class="math math-block">${escapeHtml(String(token.text))}</span>\n`;
+  },
+};
+
+const inlineMath: TokenizerAndRendererExtension = {
+  name: "inlineMath",
+  level: "inline",
+  start: (src) => src.indexOf("$"),
+  tokenizer(src) {
+    const display = INLINE_BLOCK_MATH_RE.exec(src);
+    if (display) {
+      return { type: "inlineMath", raw: display[0], text: display[1].trim(), display: true };
+    }
+    const m = INLINE_MATH_RE.exec(src);
+    // Pandoc's guard: the TeX must hug its delimiters ($x$, never $ x $),
+    // which keeps a stray "cost $5 … paid $ later" from becoming math.
+    if (!m || /^\s|\s$/.test(m[1])) return undefined;
+    return { type: "inlineMath", raw: m[0], text: m[1], display: false };
+  },
+  renderer(token) {
+    const cls = token.display ? "math math-block" : "math math-inline";
+    return `<span class="${cls}">${escapeHtml(String(token.text))}</span>`;
+  },
+};
+
+marked.use({ extensions: [blockMath, inlineMath] });
 
 // GFM "alert" callouts: a blockquote whose first line is [!NOTE] / [!TIP] /
 // [!IMPORTANT] / [!WARNING] / [!CAUTION] becomes a titled, themed callout.
@@ -104,7 +169,8 @@ function decorateHexInText(root: DocumentFragment): void {
     let el = text.parentElement;
     let skip = false;
     while (el) {
-      if (SKIP_TEXT_ANCESTORS.has(el.tagName)) {
+      // Math placeholders hold raw TeX (`\color{#ff0000}`) — never rewrite it.
+      if (SKIP_TEXT_ANCESTORS.has(el.tagName) || el.classList.contains("math")) {
         skip = true;
         break;
       }
@@ -252,6 +318,9 @@ export function plainExcerpt(md: string, max = 280): string {
   const text = md
     // Fenced code blocks: drop wholesale — code is noise in a glimpse.
     .replace(/```[\s\S]*?(```|$)/g, " ")
+    // Display math likewise; inline math keeps its TeX minus the delimiters.
+    .replace(/\$\$[\s\S]*?(\$\$|$)/g, " ")
+    .replace(/\$(\S(?:[^$\n]*?\S)?)\$/g, "$1")
     // Images (before links: same bracket syntax) and links → their alt/text.
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")

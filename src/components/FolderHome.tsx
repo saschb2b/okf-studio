@@ -110,7 +110,7 @@ export function FolderHome({ node }: { node: IndexNode }) {
         node.sections.map((sec, si) => (
           <section className="fh-section" key={si}>
             {sec.heading && <h2 className="fh-section-title">{sec.heading}</h2>}
-            <ul className="fh-cards">
+            <ul className="fh-list">
               {sec.entries.map((entry, ei) => {
                 const isDir = entry.kind === "directory";
                 const concept = isDir ? null : conceptById(bundle, entry.target);
@@ -122,10 +122,10 @@ export function FolderHome({ node }: { node: IndexNode }) {
                   <li key={ei}>
                     <button
                       type="button"
-                      className={`fh-card${isDir ? " is-dir" : ""}`}
+                      className={`fh-row${isDir ? " is-dir" : ""}`}
                       onClick={(e) => openEntry(entry, e)}
                     >
-                      <span className="fh-card-mark" aria-hidden="true">
+                      <span className="fh-mark" aria-hidden="true">
                         {isDir ? (
                           "▸"
                         ) : (
@@ -135,9 +135,9 @@ export function FolderHome({ node }: { node: IndexNode }) {
                           />
                         )}
                       </span>
-                      <span className="fh-card-text">
-                        <span className="fh-card-title">{entry.title}</span>
-                        {desc && <span className="fh-card-desc muted">{desc}</span>}
+                      <span className="fh-row-text">
+                        <span className="fh-row-title">{entry.title}</span>
+                        {desc && <span className="fh-row-desc">{desc}</span>}
                       </span>
                     </button>
                   </li>

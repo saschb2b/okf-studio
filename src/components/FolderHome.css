@@ -69,79 +69,98 @@
   margin-bottom: 0;
 }
 
+/* Sections mirror the index's own headings, styled like the command palette's
+   group labels so grouped lists read the same everywhere. */
 .fh-section {
   max-width: 60rem;
-  margin: 0 auto var(--space-20);
+  margin: 0 auto var(--space-16);
 }
 .fh-section-title {
-  margin: 0 0 var(--space-10);
-  font-size: var(--fs-sm);
+  margin: 0 0 var(--space-4);
+  padding: 0 var(--space-10);
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--text-dim);
 }
 
-.fh-cards {
+/* Entries are the app's borderless "concept door" rows (cf. .ov-row /
+   .palette-item): a leading type dot, a title, and a one-line description —
+   no per-item border, so a long list scans cleanly instead of reading as a
+   grid of boxes. */
+.fh-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
-  gap: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
-
-.fh-card {
+.fh-row {
+  font: inherit;
+  width: 100%;
   display: flex;
   align-items: flex-start;
-  gap: var(--space-10);
-  width: 100%;
-  text-align: left;
-  padding: var(--space-12) var(--space-14);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-elev);
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-10);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+  text-align: left;
 }
-.fh-card:hover {
-  border-color: var(--accent, var(--text-dim));
-  background: var(--bg-hover, var(--bg-elev));
+.fh-row:hover {
+  background: var(--bg-sunken);
+}
+.fh-row:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -1px;
 }
 
-.fh-card-mark {
+/* A fixed-width mark column so titles share a left edge and the dot centers on
+   the title's line box (row is top-aligned for the two-line body). */
+.fh-mark {
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.1em;
-  height: 1.4em;
+  width: 1em;
+  height: 1.5em;
   color: var(--text-dim);
-}
-.fh-card.is-dir .fh-card-mark {
   font-size: var(--fs-sm);
 }
 .fh-dot {
-  width: 0.6em;
-  height: 0.6em;
-  border-radius: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
 }
 
-.fh-card-text {
+.fh-row-text {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   min-width: 0;
 }
-.fh-card-title {
-  font-weight: 500;
-}
-.fh-card-desc {
+.fh-row-title {
   font-size: var(--fs-sm);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-row-desc {
+  font-size: var(--fs-xs);
   line-height: var(--lh-snug);
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fh-empty {
   max-width: 60rem;
   margin: 0 auto;
+  padding: 0 var(--space-10);
 }

@@ -2435,7 +2435,7 @@ dependencies = [
 
 [[package]]
 name = "okf-core"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "regex",
  "serde",
@@ -2445,7 +2445,7 @@ dependencies = [
 
 [[package]]
 name = "okf-viewer"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "flate2",
  "gtk",

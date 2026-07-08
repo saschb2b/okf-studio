@@ -408,6 +408,27 @@ describe("OKF Viewer features", () => {
     ).toBeInTheDocument();
   });
 
+  it("hides a Subdirectories listing that only duplicates folder-door headings", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
+    // The fixture's root index has a "Subdirectories" section whose only entry
+    // (product/) is already the clickable "Product" heading — the sidebar drops
+    // the whole redundant section (the source index.md still lists it).
+    expect(within(sidebar).queryByText("Subdirectories")).not.toBeInTheDocument();
+    expect(
+      within(sidebar).queryByRole("treeitem", { name: /^product\// }),
+    ).not.toBeInTheDocument();
+    // …but the door it duplicated is still there.
+    expect(within(sidebar).getByRole("treeitem", { name: "Product" })).toBeInTheDocument();
+    // A non-redundant directory listing (design/ has no section heading) stays.
+    expect(
+      within(sidebar).getByRole("treeitem", { name: /^design\// }),
+    ).toBeInTheDocument();
+  });
+
   it("explains a URL that fetches successfully but holds no OKF bundle", async () => {
     const user = userEvent.setup();
     // The URL is reachable (fetch resolves) but the folder has no bundle.

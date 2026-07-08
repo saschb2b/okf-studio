@@ -63,6 +63,40 @@ function sectionFolderDir(indexes: IndexNode[], sec: IndexSection): string | nul
   return indexes.some((n) => n.dir === dir) ? dir : null;
 }
 
+/** Directories already reachable as a clickable section heading in this node —
+ *  so the sidebar can drop a redundant duplicate listing (e.g. a hand-written
+ *  "Subdirectories" section) *in the view only*, never touching the source. */
+function redundantDirTargets(indexes: IndexNode[], node: IndexNode): Set<string> {
+  const dirs = new Set<string>();
+  for (const sec of node.sections) {
+    if (!sec.heading) continue;
+    const d = sectionFolderDir(indexes, sec);
+    if (d) dirs.add(d);
+  }
+  return dirs;
+}
+
+/**
+ * A node's sections as the sidebar renders them: a directory entry that merely
+ * duplicates a folder-door heading is dropped, and a section left empty by that
+ * (a pure "Subdirectories" list) is dropped whole. flatten(), expandPathTo(),
+ * and TreeNode all read through this so their row keys stay in lockstep. The
+ * parsed model is never mutated — this is a rendering concern.
+ */
+function renderableSections(indexes: IndexNode[], node: IndexNode): IndexSection[] {
+  const redundant = redundantDirTargets(indexes, node);
+  if (redundant.size === 0) return node.sections;
+  const out: IndexSection[] = [];
+  for (const sec of node.sections) {
+    const entries = sec.entries.filter(
+      (e) => !(e.kind === "directory" && redundant.has(e.target)),
+    );
+    if (entries.length === 0) continue; // fully redundant → hide the section
+    out.push(entries.length === sec.entries.length ? sec : { ...sec, entries });
+  }
+  return out;
+}
+
 /** Concepts under each directory (every ancestor gets credit), so directory
  *  rows can say how much bundle lives behind them. */
 function dirConceptCounts(bundle: Bundle): Map<string, number> {
@@ -106,7 +140,7 @@ function expandPathTo(
   conceptId: string,
   pathKey: string,
 ): string[] | null {
-  for (const sec of node.sections) {
+  for (const sec of renderableSections(indexes, node)) {
     for (const entry of sec.entries) {
       if (entry.kind === "concept" && entry.target === conceptId) return [];
       if (entry.kind === "directory") {
@@ -141,8 +175,9 @@ function flatten(
   pathKey: string,
   out: Row[],
 ): void {
-  for (let si = 0; si < node.sections.length; si++) {
-    const sec = node.sections[si];
+  const sections = renderableSections(indexes, node);
+  for (let si = 0; si < sections.length; si++) {
+    const sec = sections[si];
     // A folder-door heading is a treeitem in its own right — modeled as a
     // synthetic concept row targeting the folder-home id, so the existing
     // roving-tabindex / open-on-Enter machinery carries it for free.
@@ -500,7 +535,7 @@ function TreeNode({
 
   return (
     <ul className="sb-tree-group" role="group">
-      {node.sections.map((sec, si) => (
+      {renderableSections(indexes, node).map((sec, si) => (
         <li key={`sec:${si}`} className="sb-tree-sec" role="none">
           {sec.heading && (
             <SectionHeading

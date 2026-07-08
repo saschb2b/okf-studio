@@ -441,6 +441,20 @@ export const MOCK_BUNDLE: Bundle = {
             },
           ],
         },
+        {
+          // A hand-written "Subdirectories" listing whose only entry (product/)
+          // is already a clickable section heading — the viewer drops this whole
+          // section as redundant, without touching the source bundle.
+          heading: "Subdirectories",
+          entries: [
+            {
+              title: "product/",
+              target: "product",
+              description: "Vision, audience, principles, and scope.",
+              kind: "directory",
+            },
+          ],
+        },
       ],
     },
     {

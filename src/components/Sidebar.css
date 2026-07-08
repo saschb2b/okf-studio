@@ -478,19 +478,25 @@
 .sb-leaf {
   /* spacer to align concept labels under directory labels; holds the type dot */
 }
-/* Type-color dot on a concept row — the same encoding as the graph/overview,
-   so the tree scans by type. Sits centered in the leaf's twisty-width slot. */
+/* A quiet type cue, not a bead: a small dot, muted at rest so a long index
+   stays calm, coming to full strength only on the hovered or selected row.
+   Same palette as the graph/overview, so the type still reads. */
 .sb-tree-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 5px;
+  height: 5px;
   border-radius: 999px;
   vertical-align: middle;
+  opacity: 0.45;
 }
-/* On a selected (solid-accent) row the dot would fight the fill; a soft ring in
-   the contrast color keeps it legible without a jarring hue clash. */
+.sb-tree-item:hover .sb-tree-dot {
+  opacity: 0.9;
+}
+/* On a selected (solid-accent) row the dot goes full and gets a thin ring in
+   the contrast color so it stays legible on the fill. */
 .sb-tree-concept.is-active .sb-tree-dot {
-  box-shadow: 0 0 0 1.5px var(--accent-contrast);
+  opacity: 1;
+  box-shadow: 0 0 0 1px var(--accent-contrast);
 }
 .sb-tree-label {
   flex: 1 1 auto;

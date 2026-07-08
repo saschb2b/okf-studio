@@ -66,8 +66,9 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    title: "Graph",
+    title: "Visualizations",
     items: [
+      { combo: ["V"], label: "Next visualization" },
       { combo: ["+", "−"], label: "Zoom graph in / out" },
       { combo: ["F"], label: "Fit graph to view" },
     ],

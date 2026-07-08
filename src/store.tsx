@@ -116,15 +116,32 @@ export const PANE_CLAMPS = {
 
 const LAYOUT_KEY = "okf-viewer:layout";
 
+/**
+ * Which visualization the graph pane renders. "graph" is the force-directed
+ * network (the default); the rest are space-filling hierarchy views built from
+ * concept id paths and bundle indexes (src/viz/hierarchy.ts). Persisted with
+ * the layout so a chosen view survives a relaunch. See
+ * docs/features/viz-views.md.
+ */
+export type VizView = "graph" | "treemap" | "sunburst" | "pack";
+export const VIZ_VIEWS: readonly VizView[] = [
+  "graph",
+  "treemap",
+  "sunburst",
+  "pack",
+];
+
 interface PersistedLayout {
   mode: LayoutMode;
   sizes: PaneSizes;
+  viz: VizView;
 }
 
 function loadLayout(): PersistedLayout {
   const fallback: PersistedLayout = {
     mode: "split",
     sizes: { sidebar: null, reader: null },
+    viz: "graph",
   };
   if (typeof localStorage === "undefined") return fallback;
   try {
@@ -137,16 +154,19 @@ function loadLayout(): PersistedLayout {
       sidebar: typeof p.sizes?.sidebar === "number" ? p.sizes.sidebar : null,
       reader: typeof p.sizes?.reader === "number" ? p.sizes.reader : null,
     };
-    return { mode, sizes };
+    // An old blob (no viz) or an unknown value falls back to the graph.
+    const viz: VizView =
+      p.viz !== undefined && VIZ_VIEWS.includes(p.viz) ? p.viz : "graph";
+    return { mode, sizes, viz };
   } catch {
     return fallback;
   }
 }
 
-function saveLayout(mode: LayoutMode, sizes: PaneSizes): void {
+function saveLayout(mode: LayoutMode, sizes: PaneSizes, viz: VizView): void {
   if (typeof localStorage === "undefined") return;
   try {
-    localStorage.setItem(LAYOUT_KEY, JSON.stringify({ mode, sizes }));
+    localStorage.setItem(LAYOUT_KEY, JSON.stringify({ mode, sizes, viz }));
   } catch {
     // Persistence is best-effort; ignore quota/serialization errors.
   }
@@ -193,6 +213,8 @@ export interface State {
   hiddenTypes: string[];
   activeTag: string | null;
   lens: Lens;
+  /** Which visualization the graph pane renders (persisted with the layout). */
+  vizView: VizView;
   graphMode: GraphMode;
   focusDepth: number;
   linkDensity: LinkDensity;
@@ -208,9 +230,13 @@ export interface State {
   settings: Settings;
 }
 
-const persistedLayout = loadLayout();
-
-const initialState: State = {
+// Built per AppProvider mount (useReducer's lazy initializer) rather than at
+// module load, so the persisted layout/viz is read when the window actually
+// boots — and a re-mounted provider (tests, future multi-window) sees fresh
+// storage.
+function makeInitialState(): State {
+  const persistedLayout = loadLayout();
+  return {
   folder: null,
   bundles: [],
   recents: [],
@@ -233,6 +259,7 @@ const initialState: State = {
   hiddenTypes: [],
   activeTag: null,
   lens: "navigate",
+  vizView: persistedLayout.viz,
   graphMode: "focus",
   focusDepth: 1,
   linkDensity: "balanced",
@@ -253,7 +280,8 @@ const initialState: State = {
   settingsOpen: false,
   help: false,
   settings: DEFAULT_SETTINGS,
-};
+  };
+}
 
 type Msg =
   | { t: "loading"; v: boolean }
@@ -279,6 +307,8 @@ type Msg =
   | { t: "showAllTypes" }
   | { t: "tag"; v: string | null }
   | { t: "lens"; v: Lens }
+  | { t: "vizView"; v: VizView }
+  | { t: "cycleViz" }
   | { t: "graphMode"; v: GraphMode }
   | { t: "focusDepth"; v: number }
   | { t: "linkDensity"; v: LinkDensity }
@@ -512,6 +542,17 @@ function reducer(s: State, m: Msg): State {
       return { ...s, activeTag: m.v };
     case "lens":
       return { ...s, lens: m.v };
+    case "vizView": {
+      if (m.v === s.vizView) return s;
+      saveLayout(s.layout, s.paneSizes, m.v);
+      return { ...s, vizView: m.v };
+    }
+    case "cycleViz": {
+      const next =
+        VIZ_VIEWS[(VIZ_VIEWS.indexOf(s.vizView) + 1) % VIZ_VIEWS.length];
+      saveLayout(s.layout, s.paneSizes, next);
+      return { ...s, vizView: next };
+    }
     case "graphMode":
       return { ...s, graphMode: m.v };
     case "focusDepth":
@@ -521,13 +562,13 @@ function reducer(s: State, m: Msg): State {
       return { ...s, linkDensity: m.v };
     case "layout": {
       if (m.v === s.layout) return s;
-      saveLayout(m.v, s.paneSizes);
+      saveLayout(m.v, s.paneSizes, s.vizView);
       return { ...s, layout: m.v };
     }
     case "cycleLayout": {
       const order: LayoutMode[] = ["split", "reader", "graph"];
       const next = order[(order.indexOf(s.layout) + 1) % order.length];
-      saveLayout(next, s.paneSizes);
+      saveLayout(next, s.paneSizes, s.vizView);
       return { ...s, layout: next };
     }
     case "paneSize": {
@@ -541,7 +582,7 @@ function reducer(s: State, m: Msg): State {
               ),
             );
       const paneSizes = { ...s.paneSizes, [m.pane]: v };
-      saveLayout(s.layout, paneSizes);
+      saveLayout(s.layout, paneSizes, s.vizView);
       return { ...s, paneSizes };
     }
     case "panel":
@@ -608,6 +649,9 @@ export interface Actions {
   showAllTypes(): void;
   setTag(tag: string | null): void;
   setLens(lens: Lens): void;
+  setVizView(view: VizView): void;
+  /** Advance to the next visualization (the bare `V` shortcut). */
+  cycleViz(): void;
   setGraphMode(mode: GraphMode): void;
   setFocusDepth(depth: number): void;
   setLinkDensity(density: LinkDensity): void;
@@ -630,7 +674,7 @@ const StateCtx = createContext<State | null>(null);
 const ActionsCtx = createContext<Actions | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, makeInitialState);
   // Latest state for async actions to read. Updated in an effect (not during
   // render) so it never mutates a ref while rendering; actions run from event
   // handlers/effects after commit, so they always see the current value.
@@ -839,6 +883,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setLens(lens) {
       dispatch({ t: "lens", v: lens });
+    },
+    setVizView(view) {
+      dispatch({ t: "vizView", v: view });
+    },
+    cycleViz() {
+      dispatch({ t: "cycleViz" });
     },
     setGraphMode(mode) {
       dispatch({ t: "graphMode", v: mode });

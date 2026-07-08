@@ -79,6 +79,10 @@ export function useGlobalKeys() {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {
         actions.forward();
+      } else if (!typing && !mod && k === "v" && state.bundle && state.layout !== "reader") {
+        // Cycle the graph pane's visualization (graph → treemap → sunburst →
+        // pack). Skipped in reader-only layout where the pane is hidden.
+        actions.cycleViz();
       } else if (!typing && !mod && k === "o" && state.bundle) {
         // Toggle the bundle Overview landing (orient before you dive).
         actions.setOverview(!state.overview);

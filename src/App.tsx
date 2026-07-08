@@ -6,7 +6,7 @@ import { TopBar } from "./components/TopBar.tsx";
 import { ActivityBar } from "./components/ActivityBar.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
-import { GraphView } from "./components/GraphView.tsx";
+import { VizPane } from "./components/VizPane.tsx";
 import { Reader } from "./components/Reader.tsx";
 import { TabStrip } from "./components/TabStrip.tsx";
 import { CommandPalette } from "./components/CommandPalette.tsx";
@@ -165,7 +165,7 @@ function Workspace() {
 
       {showGraph && (
         <main className="pane graph">
-          <GraphView />
+          <VizPane />
         </main>
       )}
 

@@ -1,0 +1,98 @@
+/* VizPane — shared chrome for the hierarchy visualizations (Treemap, Sunburst,
+   Circle Packing). Reuses the graph pane's toolbar/segment styles; this file
+   only adds what those views need on top. Colors come from the role variables. */
+
+/* Left toolbar cell: the viz switcher first, then the active view's controls. */
+.graph-toolbar-left {
+  display: flex;
+  gap: var(--space-6);
+  align-items: start;
+  justify-self: start;
+}
+
+.viz-seg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) var(--space-6);
+}
+
+/* Breadcrumb (toolbar center cell): the drill trail. */
+.viz-crumbs {
+  justify-self: center;
+  align-items: center;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.viz-crumb-current {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+  padding: var(--space-6) var(--space-10);
+  color: var(--text);
+}
+
+.viz-crumb-close {
+  min-width: 22px;
+}
+
+/* Long names in the trail truncate instead of wrapping the pill (the × on its
+   own line read as a stray). */
+.viz-crumbs .graph-seg-btn,
+.viz-crumb-current {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tooltip card for the hierarchy views — the peek-card surface tier (its own
+   elevated window), so hover info never reads as raw text over a bright fill.
+   Sized to its content (a name fits on one line up to the cap) rather than
+   shrink-wrapped, so titles don't wrap word-by-word into a tall sliver. */
+.viz-tooltip {
+  width: max-content;
+  max-width: 320px;
+  padding: var(--space-8) var(--space-12);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  pointer-events: none;
+}
+
+.viz-tooltip-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+}
+
+.viz-tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.viz-tooltip-meta {
+  margin-top: var(--space-4);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-tight);
+  color: var(--text-dim);
+}
+
+/* The chart fills the pane below the floating chrome. */
+.viz-chart {
+  position: absolute;
+  inset: 0;
+}
+
+/* Nivo renders inline SVG; make sure it never paints over the toolbar. */
+.viz-chart svg {
+  display: block;
+}

@@ -172,13 +172,13 @@ describe("OKF Viewer features", () => {
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
 
     await screen.findByRole("combobox");
-    // Zero-query state: Recent (1: Overview) + Actions (9) — ten navigable
-    // results spanning two groups, reproducing the bug where the combobox's
-    // `items` and `filteredItems` props disagreed on whether the list was
-    // grouped, so keyboard navigation only ever toggled between the first
-    // two results instead of walking the full list.
+    // Zero-query state: Recent (1: Overview) + Actions (13) — fourteen
+    // navigable results spanning two groups, reproducing the bug where the
+    // combobox's `items` and `filteredItems` props disagreed on whether the
+    // list was grouped, so keyboard navigation only ever toggled between the
+    // first two results instead of walking the full list.
     const options = await screen.findAllByRole("option");
-    expect(options).toHaveLength(10);
+    expect(options).toHaveLength(14);
 
     for (const option of options) {
       await user.keyboard("{ArrowDown}");

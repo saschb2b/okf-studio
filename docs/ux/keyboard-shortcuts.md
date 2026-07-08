@@ -3,7 +3,7 @@ type: Reference
 title: Keyboard Shortcuts
 description: The default keybindings; every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
-timestamp: 2026-07-06T12:00:00Z
+timestamp: 2026-07-08T12:00:00Z
 ---
 
 # Defaults
@@ -26,6 +26,7 @@ timestamp: 2026-07-06T12:00:00Z
 | `Ctrl/Cmd + click` | Open a concept link in a new background tab (`+ Shift` to switch to it) |
 | `Ctrl/Cmd + 1` `2` `3` | Layout: graph-only / split / reader-only |
 | `\` | Cycle the [layout mode](browsing-layout.md) |
+| `V` | Cycle the [visualization](../features/viz-views.md): graph / treemap / sunburst / circle packing |
 | `+` `-` | Zoom the [graph](../features/graph-view.md) in / out |
 | `F` | Fit graph to view |
 | `Ctrl/Cmd + +` `-` `0` | Reader text size: bigger / smaller / reset (content zoom, not page zoom) |

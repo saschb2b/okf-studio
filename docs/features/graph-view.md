@@ -3,12 +3,12 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-07-05T14:00:00Z
+timestamp: 2026-07-08T12:00:00Z
 ---
 
 # What it does
 
-The center of the workspace renders the active bundle as an interactive **force-directed graph**: one node per concept, one edge per cross-link. This makes the relationship structure — implicit in the markdown links — visible and navigable.
+The center of the workspace renders the active bundle as an interactive **force-directed graph**: one node per concept, one edge per cross-link. This makes the relationship structure — implicit in the markdown links — visible and navigable. The graph is the default of the pane's four [visualization views](viz-views.md); a switcher in the pane's toolbar swaps it for a treemap, sunburst, or circle packing of the same bundle.
 
 # Visual encoding
 

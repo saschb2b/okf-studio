@@ -5,6 +5,7 @@ One concept per user-facing capability. Together these define the v1 read loop (
 * [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.
 * [Graph View](graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
+* [Visualization Views](viz-views.md) - Treemap, sunburst, and circle packing of the bundle hierarchy, with a persisted switcher.
 * [Concept Reader](concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
 * [Design-System Rendering](design-system-rendering.md) - Render an ODSF bundle's tokens (swatches, specimens, scales) and example assets natively.
 * [Search & Filter](search-and-filter.md) - Full-text search, type filters, and tag browsing.

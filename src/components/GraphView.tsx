@@ -31,6 +31,7 @@ const CosmosGraph = lazy(() =>
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { GraphControls } from "./GraphControls.tsx";
+import { VizSwitcher } from "./VizSwitcher.tsx";
 import type { Concept } from "../types.ts";
 import { renderGraph } from "../graph/render.ts";
 import type {
@@ -998,16 +999,19 @@ export function GraphView() {
         />
       )}
       <div className="graph-toolbar">
-        <GraphControls
-          renderer={renderer}
-          setRenderer={setRenderer}
-          linkDensity={state.linkDensity}
-          setLinkDensity={(d) => actions.setLinkDensity(d)}
-          display={display}
-          setDisplay={setDisplay}
-          forces={forces}
-          setForces={setForces}
-        />
+        <div className="graph-toolbar-left">
+          <VizSwitcher />
+          <GraphControls
+            renderer={renderer}
+            setRenderer={setRenderer}
+            linkDensity={state.linkDensity}
+            setLinkDensity={(d) => actions.setLinkDensity(d)}
+            display={display}
+            setDisplay={setDisplay}
+            forces={forces}
+            setForces={setForces}
+          />
+        </div>
         <div className="graph-mode" role="group" aria-label="Graph mode">
           <div className="graph-seg">
             <button

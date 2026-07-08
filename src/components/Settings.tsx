@@ -3,6 +3,7 @@
 // Select / Checkbox / NumberField. Appearance is our design tokens. Opens with
 // Ctrl/Cmd+, . See docs/ux/settings.md.
 
+import { Check, ChevronDown, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Select } from "@base-ui/react/select";
@@ -107,7 +108,7 @@ export function Settings() {
           <header className="ui-dialog-head">
             <Dialog.Title className="ui-dialog-title">Settings</Dialog.Title>
             <Dialog.Close className="btn ghost icon" aria-label="Close settings">
-              <span aria-hidden="true">×</span>
+              <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </header>
 
@@ -124,7 +125,7 @@ export function Settings() {
                   {(value) => THEME_LABELS[(value as ThemeMode | null) ?? "system"]}
                 </Select.Value>
                 <Select.Icon className="ui-select-icon" aria-hidden="true">
-                  ▾
+                  <ChevronDown size={14} />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -134,7 +135,7 @@ export function Settings() {
                       <Select.Item key={mode} value={mode} className="ui-select-item">
                         <Select.ItemText>{THEME_LABELS[mode]}</Select.ItemText>
                         <Select.ItemIndicator className="ui-select-check">
-                          ✓
+                          <Check size={13} />
                         </Select.ItemIndicator>
                       </Select.Item>
                     ))}
@@ -153,7 +154,7 @@ export function Settings() {
               }
             >
               <Checkbox.Indicator className="ui-checkbox-indicator" aria-hidden="true">
-                ✓
+                <Check size={13} />
               </Checkbox.Indicator>
             </Checkbox.Root>
             <span className="field-label">Reduce motion</span>
@@ -172,7 +173,7 @@ export function Settings() {
                   {(value) => scaleLabel((value as number | null) ?? 1)}
                 </Select.Value>
                 <Select.Icon className="ui-select-icon" aria-hidden="true">
-                  ▾
+                  <ChevronDown size={14} />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -186,7 +187,7 @@ export function Settings() {
                       >
                         <Select.ItemText>{scaleLabel(scale)}</Select.ItemText>
                         <Select.ItemIndicator className="ui-select-check">
-                          ✓
+                          <Check size={13} />
                         </Select.ItemIndicator>
                       </Select.Item>
                     ))}

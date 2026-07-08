@@ -5,6 +5,7 @@
 // dragging one sideways reorders it (the VS Code live swap), and the trailing
 // control undocks the active tab into its own OS window.
 
+import { SquareArrowOutUpRight, X } from "lucide-react";
 import { useRef } from "react";
 import type { MouseEvent, PointerEvent } from "react";
 import { useApp } from "../store.tsx";
@@ -161,7 +162,7 @@ export function TabStrip() {
                 aria-label={`Close tab: ${title}`}
                 onClick={() => actions.closeTab(t.id)}
               >
-                ×
+                <X size={13} aria-hidden="true" />
               </button>
             </div>
           );
@@ -174,25 +175,7 @@ export function TabStrip() {
         title="Move tab to new window"
         onClick={() => void actions.popOutTab()}
       >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <rect
-            x="1.5"
-            y="4.5"
-            width="8"
-            height="8"
-            rx="1.5"
-            stroke="currentColor"
-            strokeWidth="1.3"
-          />
-          <path
-            d="M5 1.5h7.5V9"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-        </svg>
+        <SquareArrowOutUpRight size={14} aria-hidden="true" />
       </button>
     </div>
   );

@@ -7,6 +7,7 @@
 // driven by the `open` prop from app state; App mounts this component
 // unconditionally. Escape and the × button close it via onOpenChange.
 
+import { X } from "lucide-react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp } from "../store.tsx";
@@ -88,7 +89,7 @@ export function ValidationPanel() {
               className="btn ghost icon"
               aria-label="Close validation panel"
             >
-              <span aria-hidden="true">×</span>
+              <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </header>
 

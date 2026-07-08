@@ -2,6 +2,7 @@
 // every state explains what happened and offers a way forward.
 // See docs/ux/empty-and-error-states.md.
 
+import { Globe } from "lucide-react";
 import { useApp } from "../store.tsx";
 import { modKey } from "../platform.ts";
 import { REMOTE_EXAMPLES } from "../remoteSource.ts";
@@ -87,7 +88,9 @@ export function EmptyState() {
               className="hero-example"
               onClick={() => actions.setRemoteOpen(true, ex.url)}
             >
-              <span className="hero-example-title">🌐 {ex.title}</span>
+              <span className="hero-example-title">
+                <Globe size={14} aria-hidden="true" /> {ex.title}
+              </span>
               <span className="hero-example-blurb muted">{ex.blurb}</span>
             </button>
           ))}

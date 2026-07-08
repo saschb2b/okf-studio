@@ -6,6 +6,7 @@
 // index tree, and the default landing for a freshly opened bundle. The synthetic
 // selection id is "index" (root) or "<dir>/index"; see selectors.ts.
 
+import { ChevronRight } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useApp } from "../store.tsx";
 import { conceptById, indexIdForDir } from "../selectors.ts";
@@ -127,7 +128,7 @@ export function FolderHome({ node }: { node: IndexNode }) {
                     >
                       <span className="fh-mark" aria-hidden="true">
                         {isDir ? (
-                          "▸"
+                          <ChevronRight size={15} />
                         ) : (
                           <span
                             className="fh-dot"

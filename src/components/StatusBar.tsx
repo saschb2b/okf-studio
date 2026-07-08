@@ -7,6 +7,8 @@
 // Colour and weight are reserved for the exception: amber for warnings, red for
 // errors, where they actually draw the eye. See docs/features/validation.md.
 
+import { Check, History, TriangleAlert, Waypoints, X as XIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { useApp } from "../store.tsx";
 import "./StatusBar.css";
 
@@ -19,15 +21,15 @@ export function StatusBar() {
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
   let kind: "ok" | "warn" | "error" = "ok";
-  let icon = "✓";
+  let icon: ReactNode = <Check size={14} aria-hidden="true" />;
   let label = "Conformant";
   if (errors > 0) {
     kind = "error";
-    icon = "✕";
+    icon = <XIcon size={14} aria-hidden="true" />;
     label = warns > 0 ? `${plural(errors, "error")}, ${plural(warns, "warning")}` : plural(errors, "error");
   } else if (warns > 0) {
     kind = "warn";
-    icon = "⚠";
+    icon = <TriangleAlert size={14} aria-hidden="true" />;
     label = plural(warns, "warning");
   }
   const aria =
@@ -62,7 +64,7 @@ export function StatusBar() {
             onClick={() => actions.togglePanel("lineage")}
           >
             <span className="status-icon" aria-hidden="true">
-              ⋔
+              <Waypoints size={14} />
             </span>
             <span>Lineage</span>
           </button>
@@ -77,7 +79,7 @@ export function StatusBar() {
             onClick={() => actions.togglePanel("log")}
           >
             <span className="status-icon" aria-hidden="true">
-              ≣
+              <History size={14} />
             </span>
             <span>Log</span>
           </button>

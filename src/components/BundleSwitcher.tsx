@@ -4,6 +4,7 @@
 // Recents are per-bundle; the folder underneath is the read scope. Opens with
 // Ctrl/Cmd+P. See docs/features/bundle-switcher.md.
 
+import { Check, Globe } from "lucide-react";
 import { useRef, useState } from "react";
 import type * as React from "react";
 import { Popover } from "@base-ui/react/popover";
@@ -246,7 +247,7 @@ export function BundleSwitcher() {
                     close();
                   }}
                 >
-                  <span aria-hidden="true">🌐</span>
+                  <Globe size={15} aria-hidden="true" />
                   <span className="switcher-foot-label">Open from URL…</span>
                 </button>
               </div>
@@ -312,7 +313,7 @@ function FolderRow({
       onClick={onSelect}
     >
       <span className="switcher-check" aria-hidden="true">
-        {active ? "✓" : ""}
+        {active && <Check size={14} />}
       </span>
       <span className="switcher-row-main">
         <span className="switcher-row-name">{bundle.name}</span>
@@ -350,7 +351,7 @@ function RecentRow({
           <span className="switcher-row-name">
             {remote && (
               <span className="switcher-remote-badge" aria-label="Remote bundle" title="Fetched from a URL">
-                🌐
+                <Globe size={12} aria-hidden="true" />
               </span>
             )}
             {entry.name}

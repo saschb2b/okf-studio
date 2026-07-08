@@ -20,6 +20,7 @@ import type {
   RefObject,
   SetStateAction,
 } from "react";
+import { ChevronDown, ChevronRight, House } from "lucide-react";
 import { useApp } from "../../store.tsx";
 import { conceptById, distinctTypes, filteredConceptIds, indexIdForDir } from "../../selectors.ts";
 import { buildTypePalette, resolveDark } from "../../theme.ts";
@@ -449,9 +450,7 @@ export function IndexTree() {
           }
         }}
       >
-        <span className="sb-home-glyph" aria-hidden="true">
-          ⌂
-        </span>
+        <House className="sb-home-glyph" size={15} aria-hidden="true" />
         <span className="sb-tree-label">{bundle.name}</span>
       </button>
       {!indexHasMatch && (
@@ -607,7 +606,13 @@ function TreeNode({
                       }}
                     >
                       <span className="sb-twisty" aria-hidden="true">
-                        {child ? (isOpen ? "▾" : "▸") : "·"}
+                        {child ? (
+                          isOpen ? (
+                            <ChevronDown size={14} />
+                          ) : (
+                            <ChevronRight size={14} />
+                          )
+                        ) : null}
                       </span>
                       <span className="sb-tree-label">{entry.title}</span>
                       {child?.synthesized && (
@@ -744,9 +749,7 @@ function SectionHeading({
       <span className="sb-tree-label">{sec.heading}</span>
       {/* A persistent, quiet "open folder" cue so the heading reads as a door,
           not an inert label — brightens on hover and when its home is active. */}
-      <span className="sb-heading-go" aria-hidden="true">
-        ›
-      </span>
+      <ChevronRight className="sb-heading-go" size={13} aria-hidden="true" />
     </button>
   );
 }

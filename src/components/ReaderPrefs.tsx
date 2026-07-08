@@ -4,6 +4,7 @@
 // (Ctrl/Cmd +/-/0) drives the same text-size value. See
 // docs/features/concept-reader.md.
 
+import { Check } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { useApp } from "../store.tsx";
@@ -118,7 +119,7 @@ export function ReaderPrefs() {
                   className="ui-checkbox-indicator"
                   aria-hidden="true"
                 >
-                  ✓
+                  <Check size={13} />
                 </Checkbox.Indicator>
               </Checkbox.Root>
               <span className="prefs-label">Reading aids</span>

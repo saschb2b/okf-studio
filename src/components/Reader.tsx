@@ -5,6 +5,7 @@
 // side in reader-only mode and falls below the article when space is tight (the
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
+import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "../store.tsx";
@@ -848,7 +849,7 @@ export function Reader() {
             aria-label="Close image preview"
             onClick={() => setLightbox(null)}
           >
-            ×
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
       )}

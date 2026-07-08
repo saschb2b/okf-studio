@@ -5,6 +5,7 @@
 // unlinked mentions (titles named in its text but not linked). Every row selects
 // its concept. See docs/proposals/lineage-and-traversal.md.
 
+import { X } from "lucide-react";
 import { useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
@@ -141,7 +142,7 @@ export function LineagePanel() {
           <header className="panel-head">
             <Dialog.Title render={<b />}>Lineage</Dialog.Title>
             <Dialog.Close className="btn ghost icon" aria-label="Close lineage panel">
-              <span aria-hidden="true">×</span>
+              <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </header>
 

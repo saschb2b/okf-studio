@@ -8,6 +8,7 @@
 
 import { Collapsible } from "@base-ui/react/collapsible";
 import { ScrollArea } from "@base-ui/react/scroll-area";
+import { ChevronRight, X } from "lucide-react";
 import type { ReactNode } from "react";
 import "./baseui.css";
 import "./Sidebar.css";
@@ -34,7 +35,7 @@ function Section({
     >
       <Collapsible.Trigger className="ui-collapsible-trigger">
         <span className="ui-collapsible-chevron" aria-hidden="true">
-          ▸
+          <ChevronRight size={14} />
         </span>
         {title}
       </Collapsible.Trigger>
@@ -90,7 +91,7 @@ export function Sidebar() {
             aria-label="Clear search"
             onClick={() => actions.setQuery("")}
           >
-            ×
+            <X size={14} aria-hidden="true" />
           </button>
         )}
       </div>

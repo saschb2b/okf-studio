@@ -31,6 +31,7 @@
     "dompurify": "^3",
     "gemoji": "^8.1.0",
     "katex": "^0.17.0",
+    "lucide-react": "^1.23.0",
     "marked": "^15",
     "marked-emoji": "^2.0.3",
     "marked-footnote": "^1.4.0",

@@ -2,6 +2,7 @@
 // docs/ux/keyboard-shortcuts.md. Toggled with `?` (and from the command
 // palette), built on Base UI's Dialog. Mirrors the documented keymap.
 
+import { X } from "lucide-react";
 import { Dialog } from "@base-ui/react/dialog";
 import { useApp } from "../store.tsx";
 import { modKey } from "../platform.ts";
@@ -110,7 +111,7 @@ export function ShortcutsHelp() {
           <header className="ui-dialog-head">
             <Dialog.Title className="ui-dialog-title">Keyboard shortcuts</Dialog.Title>
             <Dialog.Close className="btn ghost icon" aria-label="Close shortcuts">
-              <span aria-hidden="true">×</span>
+              <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </header>
 

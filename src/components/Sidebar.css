@@ -306,7 +306,7 @@
    row. */
 .sb-tree-heading-link {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-4);
   width: 100%;
   margin: 0;
@@ -339,9 +339,6 @@
 /* The trailing "open folder" cue: dim at rest so it doesn't shout, brighter on
    hover, accent when the folder is the active view. */
 .sb-heading-go {
-  flex: 0 0 auto;
-  font-size: 1.15em;
-  line-height: 1;
   color: var(--text-dim);
   opacity: 0.4;
 }
@@ -456,21 +453,15 @@
   color: var(--accent);
 }
 .sb-home-glyph {
-  flex: 0 0 auto;
-  width: 12px;
-  text-align: center;
   color: var(--text-dim);
-}
-.sb-tree-home.is-active .sb-home-glyph {
-  color: var(--accent-contrast);
 }
 .sb-twisty {
-  flex: 0 0 auto;
-  width: 12px;
-  text-align: center;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
   color: var(--text-dim);
-  font-size: var(--fs-xs);
-  line-height: 1;
 }
 .sb-tree-concept.is-active .sb-twisty {
   color: var(--accent-contrast);

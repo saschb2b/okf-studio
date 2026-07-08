@@ -7,6 +7,7 @@
 // driven by the `open` prop from app state; App mounts this component
 // unconditionally. Escape and the × button close it via onOpenChange.
 
+import { X } from "lucide-react";
 import { useMemo } from "react";
 import type { MouseEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
@@ -96,7 +97,7 @@ export function LogView() {
               className="btn ghost icon"
               aria-label="Close log"
             >
-              <span aria-hidden="true">×</span>
+              <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </header>
 

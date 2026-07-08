@@ -98,6 +98,17 @@
   border: 0;
 }
 
+/* Lucide icons — the app's icon set. A lighter stroke than Lucide's default 2
+   (≈1.2px on screen at these sizes) matches the hand-drawn chrome SVGs, and
+   flex:none + block keep them from stretching or sitting on the text baseline.
+   Size is set per use via the component's `size` prop. */
+.lucide {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+  stroke-width: 1.75;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;

@@ -9,6 +9,7 @@
 // See docs/ux/browsing-layout.md.
 
 import { Tooltip } from "@base-ui/react/tooltip";
+import { Filter, Keyboard, LayoutDashboard, ListTree, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { useApp } from "../store.tsx";
 import type { Lens } from "../store.tsx";
@@ -91,14 +92,14 @@ export function ActivityBar() {
                 active={state.overview}
                 onClick={() => actions.setOverview(!state.overview)}
               >
-                ▦
+                <LayoutDashboard size={18} />
               </ActivityButton>
               <ActivityButton
                 label="Navigate"
                 active={sidebarOpen && state.lens === "navigate"}
                 onClick={() => selectLens("navigate")}
               >
-                ☰
+                <ListTree size={18} />
               </ActivityButton>
               <ActivityButton
                 label="Filter"
@@ -106,7 +107,7 @@ export function ActivityBar() {
                 badge={filterActive}
                 onClick={() => selectLens("filter")}
               >
-                ⚲
+                <Filter size={18} />
               </ActivityButton>
             </>
           )}
@@ -118,14 +119,14 @@ export function ActivityBar() {
             ariaLabel="Keyboard shortcuts"
             onClick={() => actions.setHelp(true)}
           >
-            ⌨
+            <Keyboard size={18} />
           </ActivityButton>
           <ActivityButton
             label={`Settings   ${modKey} ,`}
             ariaLabel="Open settings"
             onClick={() => actions.setSettingsOpen(true)}
           >
-            ⚙
+            <Settings size={18} />
           </ActivityButton>
         </div>
       </nav>

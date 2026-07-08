@@ -7,6 +7,7 @@
 
 import { useRef } from "react";
 import type { CSSProperties, MouseEvent, ReactElement } from "react";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "../store.tsx";
@@ -139,7 +140,7 @@ export function TopBar() {
                     disabled={!canBack}
                     onClick={() => actions.back()}
                   >
-                    ←
+                    <ArrowLeft size={17} aria-hidden="true" />
                   </Toolbar.Button>
                 }
               />
@@ -159,7 +160,7 @@ export function TopBar() {
                     disabled={!canForward}
                     onClick={() => actions.forward()}
                   >
-                    →
+                    <ArrowRight size={17} aria-hidden="true" />
                   </Toolbar.Button>
                 }
               />
@@ -180,9 +181,7 @@ export function TopBar() {
                   aria-keyshortcuts="Control+K Meta+K"
                   onClick={() => actions.setPalette(true)}
                 >
-                  <span className="topbar-search-icon" aria-hidden="true">
-                    ⌕
-                  </span>
+                  <Search className="topbar-search-icon" size={15} aria-hidden="true" />
                   <span className="topbar-search-label">Search…</span>
                   <kbd className="topbar-search-kbd" aria-hidden="true">
                     {searchHint}

@@ -339,6 +339,18 @@ svg {
   gap: var(--space-24);
 }
 
+/* --- Visualizations (four views of one bundle; cards from .viz-card) --- */
+.vizzes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-24);
+}
+@media (max-width: 860px) {
+  .vizzes {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* --- Spec explainer (what is OKF / ODSF) --- */
 .specs {
   display: grid;

@@ -164,6 +164,49 @@
   line-height: var(--leading-normal);
 }
 
+/* --- Viz card --- */
+/* A screenshot with its caption on one surface: media bleeds to the card's
+   edge (the hero's grounded-media motif at card scale), text sits below. */
+.viz-card {
+  display: flex;
+  flex-direction: column;
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-lg);
+  background: var(--colors-surface);
+  overflow: hidden;
+  transition: border-color var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+.viz-card:hover {
+  border-color: var(--colors-border-strong);
+  transform: translateY(-2px);
+}
+.viz-card__media {
+  margin: 0; /* a <figure>: UA margin would inset the bleed */
+  border-bottom: var(--border-width) solid var(--colors-border);
+  aspect-ratio: 1760 / 1117;
+}
+.viz-card__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.viz-card__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-semibold);
+  color: var(--colors-text);
+}
+.viz-card__text {
+  padding: var(--space-20) var(--space-24);
+}
+.viz-card__body {
+  margin: 0;
+  color: var(--colors-text-muted);
+  line-height: var(--leading-normal);
+}
+
 /* --- Layout helpers used by the pattern examples --- */
 .stack { display: flex; flex-direction: column; }
 .cluster { display: flex; flex-wrap: wrap; align-items: center; }

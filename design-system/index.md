@@ -23,6 +23,7 @@ Dark-first, zed.dev-inspired visual language for the OKF Viewer marketing and do
 * [Download button](components/download-button.md) - OS-specific download CTA. ([example](components/download-button.example.html))
 * [Site nav](components/nav.md) - Floating pill bar. ([example](components/nav.example.html))
 * [Feature card](components/feature-card.md) - Glyph + title + line. ([example](components/feature-card.example.html))
+* [Viz card](components/viz-card.md) - Screenshot + caption on one surface. ([example](components/viz-card.example.html))
 
 # Patterns
 * [Hero](patterns/hero.md) - Above-the-fold composition. ([example](patterns/hero.example.html))

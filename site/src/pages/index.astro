@@ -19,7 +19,7 @@ const features = [
   {
     glyph: "◱",
     title: "Knowledge as a graph",
-    body: "Explore concepts, links, and structure visually, not a wall of files. Double-click a node to expand its neighborhood a hop at a time.",
+    body: "Explore concepts, links, and structure visually, not a wall of files: a force-directed graph, a zoomable treemap, a sunburst, or nested circles. Your pick is remembered.",
   },
   {
     glyph: "⬡",
@@ -60,6 +60,34 @@ const features = [
     glyph: "❯",
     title: "A real reader",
     body: "The whole extended markdown set: highlighted code, math, Mermaid diagrams, footnotes, task lists, emoji, embedded HTML. Plus zoomable images, live reload, and keyboard-first navigation.",
+  },
+];
+
+// The four visualizations of one bundle (the viewer's own docs, as shipped).
+const vizzes = [
+  {
+    src: `${base}screenshot-viz-graph.webp`,
+    title: "Graph",
+    body: "The force-directed network: what cites what, hubs and clusters at a glance. Double-click a node to expand its neighborhood.",
+    alt: "OKF Viewer's force-directed graph of a documentation bundle, nodes colored by concept type",
+  },
+  {
+    src: `${base}screenshot-viz-treemap.webp`,
+    title: "Treemap",
+    body: "Nested rectangles sized by how much is written: what's big, what's inside what. Click a group to drill in.",
+    alt: "OKF Viewer's treemap view: nested rectangles grouped by section, sized by content",
+  },
+  {
+    src: `${base}screenshot-viz-sunburst.webp`,
+    title: "Sunburst",
+    body: "The whole hierarchy as concentric rings. Click a sector to re-root on it; the center takes you back up.",
+    alt: "OKF Viewer's sunburst view: the bundle hierarchy as labeled concentric rings",
+  },
+  {
+    src: `${base}screenshot-viz-pack.webp`,
+    title: "Circle packing",
+    body: "Groups within groups as nested circles, with a smooth zoom as you drill down and out.",
+    alt: "OKF Viewer's circle-packing view: concepts as nested circles grouped by section",
   },
 ];
 
@@ -184,6 +212,45 @@ const downloads = [
                 <span class="feature-card__glyph" aria-hidden="true">{f.glyph}</span>
                 <h3 class="feature-card__title">{f.title}</h3>
                 <p class="feature-card__body">{f.body}</p>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="visualizations">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">Four ways to see it</span>
+          <h2 class="section__title">Pick the view that fits the question.</h2>
+          <p class="section__sub">
+            The same bundle as a network, a treemap, a sunburst, or nested
+            circles. Switch with one click, and it opens that way next time.
+          </p>
+        </div>
+        <div class="vizzes">
+          {
+            vizzes.map((v) => (
+              <article class="viz-card">
+                <figure class="viz-card__media">
+                  <img
+                    class="zoomable"
+                    data-spotlight
+                    role="button"
+                    tabindex="0"
+                    src={v.src}
+                    alt={v.alt}
+                    width="1760"
+                    height="1117"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </figure>
+                <div class="viz-card__text">
+                  <h3 class="viz-card__title">{v.title}</h3>
+                  <p class="viz-card__body">{v.body}</p>
+                </div>
               </article>
             ))
           }

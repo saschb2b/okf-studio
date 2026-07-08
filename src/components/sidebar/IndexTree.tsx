@@ -723,7 +723,12 @@ function SectionHeading({
       title={`Open the ${sec.heading} folder`}
       onClick={(e) => onOpen(target, e)}
     >
-      {sec.heading}
+      <span className="sb-tree-label">{sec.heading}</span>
+      {/* A persistent, quiet "open folder" cue so the heading reads as a door,
+          not an inert label — brightens on hover and when its home is active. */}
+      <span className="sb-heading-go" aria-hidden="true">
+        ›
+      </span>
     </button>
   );
 }

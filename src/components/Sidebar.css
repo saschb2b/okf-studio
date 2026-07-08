@@ -305,7 +305,9 @@
    live in one indexed directory). Looks like the label; hovers/activates like a
    row. */
 .sb-tree-heading-link {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
   width: 100%;
   margin: 0;
   padding: var(--space-6) var(--space-6) var(--space-2);
@@ -321,12 +323,35 @@
   color: var(--text-dim);
   cursor: pointer;
 }
+.sb-tree-heading-link .sb-tree-label {
+  flex: 1 1 auto;
+}
 .sb-tree-heading-link:hover {
   color: var(--text);
   background: var(--bg-sunken);
 }
+/* Active = its folder home is open: a quiet accent wash reads as "you are here"
+   without turning an all-caps header into a loud solid block. */
 .sb-tree-heading-link.is-active {
   color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+/* The trailing "open folder" cue: dim at rest so it doesn't shout, brighter on
+   hover, accent when the folder is the active view. */
+.sb-heading-go {
+  flex: 0 0 auto;
+  font-size: 1.15em;
+  line-height: 1;
+  color: var(--text-dim);
+  opacity: 0.4;
+}
+.sb-tree-heading-link:hover .sb-heading-go {
+  color: var(--text);
+  opacity: 0.75;
+}
+.sb-tree-heading-link.is-active .sb-heading-go {
+  color: var(--accent);
+  opacity: 1;
 }
 .sb-tree-li {
   margin: 0;

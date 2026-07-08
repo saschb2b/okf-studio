@@ -152,6 +152,16 @@ export function orphanIds(bundle: Bundle | null): string[] {
     .map((c) => c.id);
 }
 
+/** Concept ids living under directory `dir` (its whole subtree) — the folder's
+ *  subgraph, used to zoom a visualization to a folder home. Empty for "". */
+export function conceptIdsUnderDir(bundle: Bundle | null, dir: string): Set<string> {
+  const ids = new Set<string>();
+  if (!bundle || !dir) return ids;
+  const prefix = `${dir}/`;
+  for (const c of bundle.concepts) if (c.id.startsWith(prefix)) ids.add(c.id);
+  return ids;
+}
+
 /** Look up a concept by id. */
 export function conceptById(bundle: Bundle | null, id: string | null): Concept | null {
   if (!bundle || !id) return null;

@@ -74,6 +74,26 @@ describe("visualization switcher", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("zooms the hierarchy view to a folder when its folder home is opened", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // Switch to a hierarchy view first, then open a subfolder's home: the
+    // selection change drills the view into that folder's group (the same
+    // recenter-on-select the views already do for a concept).
+    await user.click(within(switcher()).getByRole("button", { name: /^treemap:/i }));
+    // No drill trail at the whole-bundle root.
+    expect(
+      screen.queryByRole("navigation", { name: /drill-down path/i }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("treeitem", { name: /^design\// }));
+
+    const crumbs = await screen.findByRole("navigation", { name: /drill-down path/i });
+    expect(within(crumbs).getByText("Design")).toBeInTheDocument();
+  });
+
   it("persists the chosen view and restores it on next launch", async () => {
     const user = userEvent.setup();
     const first = renderApp();

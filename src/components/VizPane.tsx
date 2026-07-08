@@ -11,9 +11,9 @@
 
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useApp, type VizView } from "../store.tsx";
-import { isVisible, matchesQuery } from "../selectors.ts";
+import { dirForIndexId, isVisible, matchesQuery } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
-import { buildVizTreeAuto, vizPath, type VizNode } from "../viz/hierarchy.ts";
+import { buildVizTreeAuto, findVizNode, vizPath, type VizNode } from "../viz/hierarchy.ts";
 import { readVizColors, type VizColors } from "../viz/nivoTheme.ts";
 import type { HierarchyVizProps } from "../viz/props.ts";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
@@ -91,9 +91,17 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
     if (prevSelectedRef.current === selected) return;
     prevSelectedRef.current = selected;
     if (!selected) return;
+    // A folder home (index.md) zooms straight into that folder's group node —
+    // its group id is the directory path; root ("") returns to the whole tree.
+    const homeDir = dirForIndexId(selected);
+    if (homeDir !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reactive drill on external selection, mirroring the graph's folder zoom
+      setRootId(homeDir && findVizNode(tree, homeDir) ? homeDir : "");
+      return;
+    }
     const selPath = vizPath(tree, selected);
     if (!selPath) return; // filtered away, or a group id — nothing to reveal
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reactive drill on external selection, mirroring the graph's focus re-root
+    // (the set-state-in-effect disable above covers this second branch too)
     setRootId(selPath.length >= 2 ? selPath[selPath.length - 2].id : "");
   }, [selected, tree]);
 

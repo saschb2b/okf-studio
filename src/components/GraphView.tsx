@@ -20,7 +20,16 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { useApp } from "../store.tsx";
-import { buildEdges, conceptById, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
+import {
+  buildEdges,
+  conceptById,
+  conceptIdsUnderDir,
+  dirForIndexId,
+  egoIds,
+  isVisible,
+  matchesQuery,
+  orphanIds,
+} from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
 // Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
@@ -307,19 +316,25 @@ export function GraphView() {
   const focusConceptId = conceptById(state.bundle, state.activeConceptId)
     ? state.activeConceptId
     : null;
+  // A folder home (index.md) zooms the graph to that folder's subgraph — the
+  // reader↔graph coupling, the same recenter-on-select the views already do.
+  // Root ("") stays the whole graph; clears when you open a concept.
+  const homeDir = dirForIndexId(state.activeConceptId);
 
-  // The node set the focus/isolate logic restricts to. In focus mode with a
-  // selection (and no active isolate), this is the ego neighborhood of the
-  // selection; otherwise null means "show the whole filtered graph". An active
-  // isolate set wins over both. Computed as a stable string key so the rebuild
-  // effect only fires when the *set* actually changes.
+  // The node set the focus/isolate logic restricts to. Precedence: an explicit
+  // explore/isolate wins; then a folder home zooms to its subgraph; then focus
+  // mode with a concept selection is the ego neighborhood; otherwise null means
+  // "show the whole filtered graph". Computed as a stable string key so the
+  // rebuild effect only fires when the *set* actually changes.
   const restrictIds: Set<string> | null =
     explore ??
     (isolate
       ? expandWithNeighbors(state.bundle, isolate.ids)
-      : state.graphMode === "focus" && focusConceptId
-        ? egoIds(state.bundle, focusConceptId, state.focusDepth)
-        : null);
+      : homeDir
+        ? conceptIdsUnderDir(state.bundle, homeDir)
+        : state.graphMode === "focus" && focusConceptId
+          ? egoIds(state.bundle, focusConceptId, state.focusDepth)
+          : null);
   // A key that changes only when the restricted set's membership changes, so the
   // heavy rebuild + re-fit is skipped on pure selection moves in overview mode.
   const restrictKey = restrictIds ? [...restrictIds].sort().join(",") : "";
@@ -944,7 +959,11 @@ export function GraphView() {
   // Focus mode is on but there is no selection (or an isolate overrides it): the
   // graph falls back to Overview, so tell the newcomer how to engage focus.
   const focusFallback =
-    state.graphMode === "focus" && focusConceptId == null && !isolate && !explore;
+    state.graphMode === "focus" &&
+    focusConceptId == null &&
+    !isolate &&
+    !explore &&
+    !homeDir;
 
   function isolateSet(label: string, ids: string[]) {
     // Toggle: clicking the active chip clears the isolate.

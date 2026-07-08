@@ -45,7 +45,7 @@ All three space-filling views consume one tree, built per render from the same f
 
 - **Click a leaf** (a concept) to open it in the [Concept Reader](concept-reader.md), the same shared selection as everywhere else; the selected concept carries an accent ring in the view.
 - **Selection focuses the view**: picking a concept anywhere (sidebar, palette, a reader link) drills the active view to that concept's parent group, the graph's recenter-on-select translated to hierarchies.
-- **Click a group** to drill in (treemap/sunburst re-root; circle packing zooms).
+- **Click a group** to drill in (treemap/sunburst re-root; circle packing zooms). The centered **breadcrumb** (`All › Design › Tokens`, collapsing a deep trail to `All › … › Tokens`) steps back to any ancestor, and **Alt+↑** drills up one level without reaching for it.
 - **Hover** for a tooltip card (name, type, and size as "~N words") on its own elevated surface, clamped inside the pane so it never clips at an edge.
 - Transitions animate (drill push-in, zoom glide) and respect **reduce motion** ([settings](../ux/settings.md)).
 

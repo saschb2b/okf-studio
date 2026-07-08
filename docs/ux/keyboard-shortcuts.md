@@ -27,6 +27,7 @@ timestamp: 2026-07-08T12:00:00Z
 | `Ctrl/Cmd + 1` `2` `3` | Layout: graph-only / split / reader-only |
 | `\` | Cycle the [layout mode](browsing-layout.md) |
 | `V` | Cycle the [visualization](../features/viz-views.md): graph / treemap / sunburst / circle packing |
+| `Alt + ↑` | Drill up one level in the treemap / sunburst / circle-packing [views](../features/viz-views.md) |
 | `+` `-` | Zoom the [graph](../features/graph-view.md) in / out |
 | `F` | Fit graph to view |
 | `Ctrl/Cmd + +` `-` `0` | Reader text size: bigger / smaller / reset (content zoom, not page zoom) |

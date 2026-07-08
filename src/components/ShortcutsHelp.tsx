@@ -69,6 +69,7 @@ const GROUPS: Group[] = [
     title: "Visualizations",
     items: [
       { combo: ["V"], label: "Next visualization" },
+      { combo: ["Alt", "↑"], label: "Up a level (treemap / sunburst / circles)" },
       { combo: ["+", "−"], label: "Zoom graph in / out" },
       { combo: ["F"], label: "Fit graph to view" },
     ],

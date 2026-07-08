@@ -9,7 +9,7 @@
 //
 // React Compiler is enabled: no manual useMemo/useCallback/memo.
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useApp, type VizView } from "../store.tsx";
 import { isVisible, matchesQuery } from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
@@ -97,6 +97,25 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
     setRootId(selPath.length >= 2 ? selPath[selPath.length - 2].id : "");
   }, [selected, tree]);
 
+  // Alt+↑ drills up one level (the file-manager parent-directory gesture), a
+  // fast alternative to reaching for the breadcrumb. Bound only while a
+  // hierarchy view is mounted; Alt+←/→ stay history navigation, and the bare
+  // graph keys don't apply here.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "ArrowUp" || !e.altKey || e.ctrlKey || e.metaKey || e.shiftKey)
+        return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const p = vizPath(tree, rootId);
+      if (!p || p.length < 2) return; // already at the whole bundle
+      e.preventDefault();
+      setRootId(p[p.length - 2].id);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tree, rootId]);
+
   if (empty) {
     return (
       <div className="graph-view viz-view">
@@ -109,7 +128,7 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
           </small>
         </div>
         <div className="graph-toolbar">
-          <div className="graph-toolbar-left">
+          <div className="graph-toolbar-right">
             <VizSwitcher />
           </div>
         </div>
@@ -175,10 +194,12 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
         </Suspense>
       </ErrorBoundary>
       <div className="graph-toolbar">
-        <div className="graph-toolbar-left">
+        {/* Left cell reserved for per-view controls (parity with the graph's
+            Controls popover); the hierarchy views have none yet. */}
+        <VizBreadcrumb path={path} onDrill={setRootId} />
+        <div className="graph-toolbar-right">
           <VizSwitcher />
         </div>
-        <VizBreadcrumb path={path} onDrill={setRootId} />
       </div>
       {grouping !== "path" && (
         <div className="graph-chips">
@@ -194,9 +215,12 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
 }
 
 /**
- * The drill trail (toolbar center cell): `Bundle › design › tokens ×`. Each
- * segment re-roots to that ancestor; × returns to the top. Hidden at the root,
- * like the graph's depth stepper outside focus mode.
+ * The drill trail (toolbar center region): `All › Design › Tokens`. Each
+ * segment re-roots to that ancestor (the compact "All" returns to the whole
+ * bundle); the current group is the bold tail. Hidden at the root, like the
+ * graph's depth stepper outside focus mode. A deep trail collapses its middle
+ * to a "…" that steps back into the hidden levels, so the centered breadcrumb
+ * stays narrow enough to clear the Controls and switcher on either side.
  */
 function VizBreadcrumb({
   path,
@@ -206,33 +230,72 @@ function VizBreadcrumb({
   onDrill: (id: string) => void;
 }) {
   if (path.length < 2) return null;
+
+  // The root shows as a compact "All"; the rest keep their names.
+  const crumbs = path.map((n, i) => ({
+    id: n.id,
+    label: i === 0 ? "All" : n.name,
+    current: i === path.length - 1,
+  }));
+
+  // Keep at most the root + last two; a deeper trail hides its middle behind a
+  // "…" that drills to the level just above the visible tail.
+  const rendered: (
+    | (typeof crumbs)[number]
+    | { ellipsisTo: string }
+  )[] =
+    crumbs.length > 3
+      ? [crumbs[0], { ellipsisTo: crumbs[crumbs.length - 3].id }, ...crumbs.slice(-2)]
+      : crumbs;
+
   return (
-    <nav className="graph-seg viz-crumbs" aria-label="Drill-down path">
-      {path.map((n, i) =>
-        i === path.length - 1 ? (
-          <span key={n.id} className="viz-crumb-current" aria-current="location">
-            {n.name}
-          </span>
-        ) : (
-          <button
-            key={n.id}
-            type="button"
-            className="graph-seg-btn"
-            aria-label={`Back to ${n.name}`}
-            onClick={() => onDrill(n.id)}
-          >
-            {n.name}
-          </button>
-        ),
-      )}
-      <button
-        type="button"
-        className="graph-seg-btn viz-crumb-close"
-        aria-label="Back to the whole bundle"
-        onClick={() => onDrill("")}
-      >
-        &times;
-      </button>
+    <nav
+      className="graph-seg viz-crumbs"
+      aria-label="Drill-down path"
+      title="Alt+↑ to go up a level"
+    >
+      {rendered.map((c, i) => {
+        const sep =
+          i > 0 ? (
+            <span className="viz-crumb-sep" aria-hidden="true">
+              ›
+            </span>
+          ) : null;
+        if ("ellipsisTo" in c) {
+          return (
+            <Fragment key="ellipsis">
+              {sep}
+              <button
+                type="button"
+                className="graph-seg-btn viz-crumb-ellipsis"
+                aria-label="Back up one level"
+                onClick={() => onDrill(c.ellipsisTo)}
+              >
+                …
+              </button>
+            </Fragment>
+          );
+        }
+        return (
+          <Fragment key={c.id}>
+            {sep}
+            {c.current ? (
+              <span className="viz-crumb-current" aria-current="location">
+                {c.label}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="graph-seg-btn"
+                aria-label={`Back to ${c.label}`}
+                onClick={() => onDrill(c.id)}
+              >
+                {c.label}
+              </button>
+            )}
+          </Fragment>
+        );
+      })}
     </nav>
   );
 }

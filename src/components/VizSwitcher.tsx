@@ -82,7 +82,7 @@ export function VizSwitcher() {
   const { state, actions } = useApp();
   return (
     <Tooltip.Provider delay={400}>
-      <div className="graph-seg" role="group" aria-label="Visualization">
+      <div className="graph-seg viz-switch" role="group" aria-label="Visualization">
         {VIZ_VIEWS.map((v) => (
           <Tooltip.Root key={v}>
             <Tooltip.Trigger

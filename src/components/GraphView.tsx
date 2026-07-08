@@ -1000,7 +1000,6 @@ export function GraphView() {
       )}
       <div className="graph-toolbar">
         <div className="graph-toolbar-left">
-          <VizSwitcher />
           <GraphControls
             renderer={renderer}
             setRenderer={setRenderer}
@@ -1057,6 +1056,9 @@ export function GraphView() {
             </div>
           )}
           {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
+        </div>
+        <div className="graph-toolbar-right">
+          <VizSwitcher />
         </div>
       </div>
       {renderer === "canvas" && (

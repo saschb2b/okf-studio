@@ -2,27 +2,48 @@
    Circle Packing). Reuses the graph pane's toolbar/segment styles; this file
    only adds what those views need on top. Colors come from the role variables. */
 
-/* Left toolbar cell: the viz switcher first, then the active view's controls. */
+/* The three toolbar regions, positioned independently (see .graph-toolbar):
+   Controls pinned left, variant actions dead-centered, switcher pinned right,
+   so an empty region never shifts the others. */
 .graph-toolbar-left {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   gap: var(--space-6);
   align-items: start;
-  justify-self: start;
 }
 
-.viz-seg-btn {
+.graph-toolbar-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* The switcher is icon-only, so its buttons stay compact — a bulky pill would
+   crowd the centered variant controls on a narrow split pane. Scoped under
+   .viz-switch to outrank the shared .graph-seg-btn padding. */
+.viz-switch {
+  gap: var(--space-2);
+}
+
+.viz-switch .viz-seg-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-4);
 }
 
-/* Breadcrumb (toolbar center cell): the drill trail. */
+/* Breadcrumb (toolbar center region): the drill trail, pane-centered. Sized to
+   its content (each crumb capped + ellipsised below); a deep trail stays a
+   single centered row rather than wrapping the × onto its own line. */
 .viz-crumbs {
-  justify-self: center;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
   align-items: center;
-  max-width: 100%;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .viz-crumb-current {
@@ -33,15 +54,23 @@
   color: var(--text);
 }
 
-.viz-crumb-close {
+/* Path separator between crumbs: a dim chevron, not interactive. */
+.viz-crumb-sep {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  padding: 0 var(--space-2);
+  user-select: none;
+}
+
+.viz-crumb-ellipsis {
   min-width: 22px;
 }
 
-/* Long names in the trail truncate instead of wrapping the pill (the × on its
-   own line read as a stray). */
+/* Each crumb truncates rather than widening the centered trail into the side
+   regions; the deep-trail collapse keeps the whole thing to root + last two. */
 .viz-crumbs .graph-seg-btn,
 .viz-crumb-current {
-  max-width: 140px;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

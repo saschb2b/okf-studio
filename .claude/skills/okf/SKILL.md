@@ -47,10 +47,25 @@ Apply OKF without being asked whenever knowledge is being shaped for an agent to
 A concept is frontmatter plus a markdown body. Its identity is its path with the `.md` removed, so `tables/orders.md` is the concept `tables/orders`.
 
 - **Frontmatter.** `type` is required. Recommended, in priority order: `title`, `description` (one sentence), `resource` (canonical URI for the underlying asset), `tags` (a YAML list), `timestamp` (ISO 8601). Producers may add any other keys, and consumers preserve unknown keys rather than rejecting them.
-- **Body.** Favor structural markdown (headings, lists, tables, fenced code) over freeform prose. Conventional headings, used when they apply, are `# Schema`, `# Examples`, `# Citations`.
+- **Body.** Favor structural markdown (headings, lists, tables, fenced code) over freeform prose. Conventional headings, used when they apply, are `# Schema`, `# Examples`, `# Citations`. For each fact, pick the sharpest form the extended set offers (next section).
 - **Reserved filenames**, never a concept. `index.md` is a directory listing and carries no frontmatter, except the bundle-root `index.md`, which may declare `okf_version`. `log.md` is a dated change history.
 - **Links.** Prefer bundle-absolute links like `/tables/customers.md` (stable when files move). Relative links such as `tables/customers.md` are also valid. A link asserts a relationship whose meaning lives in the surrounding prose, not in the link.
 - **External material.** A webpage or doc you pull in becomes an ordinary concept under `references/<slug>.md` with `type: Reference` and its URL in `resource`. That is how a bundle absorbs outside sources (see `/okf export`).
+
+## Pick the sharpest markdown form
+
+"Favor structural markdown" extends past headings and tables. For a fact with inherent structure, the extended-markdown form is both more machine-readable than prose (an agent parses an edge list or a formula, not a paragraph about one) and renders richly where bundles are actually read (GitHub, OKF viewers). Where a consumer renders none of it, the source still reads as plain markdown, so there is no portability cost.
+
+| The fact | Write it as | Not as |
+| --- | --- | --- |
+| Topology: joins, lineage, pipeline flow, states | A ` ```mermaid ` fence (`erDiagram`, `flowchart`, `sequenceDiagram`); the edges are the data | A prose paragraph describing arrows |
+| A formal definition: metric formula, threshold, window | TeX, `$…$` inline or `$$…$$` display | Pseudo-math in prose ("count divided by the window") |
+| Term meanings: a glossary, enum values, status codes | A definition list (`Term` then `: definition`) | Bullets shaped like "X - means Y" |
+| A checklist with state: rollout or migration progress | A task list (`- [x]` / `- [ ]`) | Prose like "steps 1 to 3 are done" |
+| A caveat or provenance note too small for `# Citations` | A footnote (`[^1]`) | A parenthetical that derails the sentence |
+| Field-by-field facts: schemas, parameters | A markdown table (already the convention) | Key-value prose |
+
+Keep prose for meaning and reasoning; reach for these forms when the fact has shape. The worked examples in [templates.md](./templates.md) show each in place.
 
 ## Validate
 

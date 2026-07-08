@@ -20,7 +20,7 @@ Add a single concept document. Resist documenting ten assets at once; one good c
 1. Pick the path. The path is the identity, so `tables/orders.md` is the orders table. Never name a concept file `index.md` or `log.md`.
 2. Pick a descriptive `type` (`BigQuery Table`, `Metric`, `Runbook`). Self-explanatory beats clever; there is no registry.
 3. Fill the recommended frontmatter you can stand behind: `title`, a one-sentence `description`, the canonical `resource` URI, `tags`, and a `timestamp` of now. Add domain-specific keys freely.
-4. Body it with structural markdown. Use `# Schema` for a column or field table, `# Examples` for a query or request, `# Citations` for sources.
+4. Body it with structural markdown. Use `# Schema` for a column or field table, `# Examples` for a query or request, `# Citations` for sources. Give each fact its sharpest form (the table in [SKILL.md](./SKILL.md)): a ` ```mermaid ` fence for joins, lineage, and flows; TeX for a formula; a definition list for term meanings; a task list for a stateful checklist; a footnote for a caveat.
 5. Link out to the concepts this one relates to (see `link`), and add it to the directory's `index.md` (see `index`).
 6. Append a `log.md` `Creation` entry.
 
@@ -97,7 +97,7 @@ The producer role: turn an existing source into a bundle. The source can be stru
 
 1. Fetch the page with your agent's web-fetch tool (for a set of URLs, drive it from `enrich`'s web pass). One page becomes one concept; a large doc or doc site becomes several linked concepts, the way a wiki space does.
 2. Place it the canonical way. Mirrored external material lives at `references/<slug>.md` with `type: Reference` (other descriptive types like `Web Page` or `API Reference` are fine). Set `resource` to the canonical URL and `timestamp` to when you fetched it. If the page is documentation for a concept you already have, enrich that concept instead of, or in addition to, minting a new `references/` doc.
-3. Transform, do not paste. Re-express the page as structural markdown (headings, lists, tables, code), not raw HTML-to-markdown noise. A bundle is curated knowledge, not a scrape.
+3. Transform, do not paste. Re-express the page as structural markdown (headings, lists, tables, code), not raw HTML-to-markdown noise. A bundle is curated knowledge, not a scrape. Transforming includes upgrading form: a paragraph describing a flow becomes a ` ```mermaid ` fence, a formula written out in words becomes TeX, a terms section becomes a definition list.
 4. Cite the source URL under `# Citations`, and link related pages to each other so the result is a graph, not a pile.
 5. Generate indexes and a `log.md`, then validate.
 

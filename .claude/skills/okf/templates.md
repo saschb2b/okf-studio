@@ -1,6 +1,6 @@
 # OKF templates
 
-Copy, fill, validate. Every example uses bundle-absolute links (beginning with `/`) because the spec recommends them for stability. Relative links like `customers.md` are equally valid. Rules behind these shapes are in [spec.md](./spec.md).
+Copy, fill, validate. Every example uses bundle-absolute links (beginning with `/`) because the spec recommends them for stability. Relative links like `customers.md` are equally valid. Rules behind these shapes are in [spec.md](./spec.md); the form-per-fact table they follow (diagrams for topology, TeX for formulas, definition lists for terms, task lists for stateful checklists, footnotes for caveats) is in [SKILL.md](./SKILL.md).
 
 ## Concept document
 
@@ -99,6 +99,11 @@ timestamp: 2026-05-28T14:30:00Z
 # Joins
 Joined with [customers](/tables/customers.md) on `customer_id`. One customer has many orders.
 
+\`\`\`mermaid
+erDiagram
+  customers ||--o{ orders : "customer_id"
+\`\`\`
+
 # Examples
 \`\`\`sql
 SELECT customer_id, SUM(amount_usd) AS lifetime_value
@@ -125,8 +130,14 @@ timestamp: 2026-06-01T09:00:00Z
 
 # Definition
 A user is "active" on a day if they emit at least one event in [events](/tables/events.md)
-whose `event_name` is in the qualifying set. WAU on date D is the count of distinct
-`user_id` active on any day in the inclusive window `[D-6, D]`.
+whose `event_name` is in the qualifying set. WAU on date D counts users active anywhere
+in the trailing window:
+
+$$
+\mathrm{WAU}(D) = \left|\{\, u \mid \exists\, d \in [D-6,\, D] : \mathrm{active}(u, d) \,\}\right|
+$$
+
+The formula is the contract; the prose above says what "active" means.
 
 # Examples
 \`\`\`sql
@@ -160,14 +171,51 @@ timestamp: 2026-06-10T17:45:00Z
 The `orders_daily_load` job reports a non-zero exit, or [orders](/tables/orders.md)
 is missing yesterday's partition.
 
+# Preflight
+Confirm before touching anything:
+
+- [ ] The job logs identify the failing stage
+- [ ] The source export for yesterday actually completed
+- [ ] No schema-change PR merged since the last green run
+
 # Steps
-1. Check the job logs for the failing stage.
-2. If the source export is late, wait and re-run; do not backfill by hand.
-3. If the schema changed, update [orders](/tables/orders.md) and the load config together.
-4. Re-run `orders_daily_load` for the missing partition only.
+1. If the source export is late, wait and re-run; do not backfill by hand[^backfill].
+2. If the schema changed, update [orders](/tables/orders.md) and the load config together.
+3. Re-run `orders_daily_load` for the missing partition only.
 
 # Escalation
 Page the data-platform on-call if the partition is still missing after one re-run.
+
+[^backfill]: Hand backfills bypass the dedupe stage and have produced double-counted revenue twice; see the 2026-03 incident review.
+```
+
+## Worked example: a glossary
+
+`glossary.md`. Term meanings are definition lists, not bullet prose; a caveat too small for `# Citations` is a footnote.
+
+```markdown
+---
+type: Glossary
+title: Sales terms
+description: What the sales bundle's recurring terms mean, in one place.
+tags: [sales, terminology]
+timestamp: 2026-06-12T08:00:00Z
+---
+
+# Terms
+
+Order
+: A completed checkout. Draft carts are not orders[^carts].
+
+Lifetime value
+: A customer's summed order totals, $\mathrm{LTV} = \sum_i \mathrm{amount\_usd}_i$,
+  over [orders](/tables/orders.md).
+
+Active user
+: Defined by [weekly active users](/metrics/weekly_active_users.md); do not redefine
+  per report.
+
+[^carts]: Carts live in the app database and never reach the warehouse export.
 ```
 
 ## Worked example: an external page mirrored as a reference

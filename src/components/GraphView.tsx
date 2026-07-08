@@ -20,7 +20,7 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { useApp } from "../store.tsx";
-import { buildEdges, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
+import { buildEdges, conceptById, egoIds, isVisible, matchesQuery, orphanIds } from "../selectors.ts";
 import { louvain } from "../graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
 // Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
@@ -301,6 +301,13 @@ export function GraphView() {
   const concepts = state.bundle?.concepts ?? null;
   const filterKey = `${state.hiddenTypes.join(",")}|${state.activeTag ?? ""}`;
 
+  // The selection to focus on, but only when it is a real graph node: a folder
+  // home (index.md) is a valid selection with no node, so it must not collapse
+  // the graph to an empty ego — it falls back to the whole-graph Overview.
+  const focusConceptId = conceptById(state.bundle, state.activeConceptId)
+    ? state.activeConceptId
+    : null;
+
   // The node set the focus/isolate logic restricts to. In focus mode with a
   // selection (and no active isolate), this is the ego neighborhood of the
   // selection; otherwise null means "show the whole filtered graph". An active
@@ -310,8 +317,8 @@ export function GraphView() {
     explore ??
     (isolate
       ? expandWithNeighbors(state.bundle, isolate.ids)
-      : state.graphMode === "focus" && state.activeConceptId
-        ? egoIds(state.bundle, state.activeConceptId, state.focusDepth)
+      : state.graphMode === "focus" && focusConceptId
+        ? egoIds(state.bundle, focusConceptId, state.focusDepth)
         : null);
   // A key that changes only when the restricted set's membership changes, so the
   // heavy rebuild + re-fit is skipped on pure selection moves in overview mode.
@@ -937,7 +944,7 @@ export function GraphView() {
   // Focus mode is on but there is no selection (or an isolate overrides it): the
   // graph falls back to Overview, so tell the newcomer how to engage focus.
   const focusFallback =
-    state.graphMode === "focus" && state.activeConceptId == null && !isolate && !explore;
+    state.graphMode === "focus" && focusConceptId == null && !isolate && !explore;
 
   function isolateSet(label: string, ids: string[]) {
     // Toggle: clicking the active chip clears the isolate.

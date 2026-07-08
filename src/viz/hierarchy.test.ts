@@ -59,7 +59,7 @@ describe("buildVizTree", () => {
   it("labels directories from index titles, falling back to the segment", () => {
     const b = bundle([concept("design/color"), concept("misc-notes/one")], {
       indexes: [
-        { dir: "design", title: "Design System", synthesized: false, sections: [] },
+        { dir: "design", title: "Design System", intro: "", synthesized: false, sections: [] },
       ],
     });
     const root = buildVizTree(b, b.concepts);

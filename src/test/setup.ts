@@ -20,6 +20,8 @@ if (typeof HTMLCanvasElement !== "undefined") {
       fill: noop,
       save: noop,
       restore: noop,
+      setLineDash: noop,
+      getLineDash: () => [],
       measureText: () => ({ width: 0 }),
       fillText: noop,
       closePath: noop,

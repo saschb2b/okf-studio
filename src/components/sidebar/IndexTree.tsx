@@ -21,7 +21,7 @@ import type {
   SetStateAction,
 } from "react";
 import { useApp } from "../../store.tsx";
-import { filteredConceptIds } from "../../selectors.ts";
+import { filteredConceptIds, indexIdForDir } from "../../selectors.ts";
 import type { Bundle, IndexEntry, IndexNode } from "../../types.ts";
 
 /** Pick the root index: prefer the empty / "." dir, else the first node. */
@@ -273,8 +273,11 @@ export function IndexTree() {
   function openRow(row: Row) {
     if (row.entry.kind === "concept") {
       actions.selectConcept(row.entry.target);
-    } else if (row.expandKey) {
-      toggle(row.expandKey);
+    } else {
+      // A directory is an openable root: open its folder home and reveal its
+      // contents. Left/Right still collapse/expand without navigating.
+      actions.selectConcept(indexIdForDir(row.entry.target));
+      if (row.expandKey && !row.expanded) toggle(row.expandKey);
     }
   }
 
@@ -345,6 +348,28 @@ export function IndexTree() {
   return (
     <section className="sb-section sb-tree-section" aria-label="Index">
       <h2 className="sb-section-title">Index</h2>
+      {/* The bundle root's own folder home (index.md landing) — a door back to
+          the top, above the tree it structures. */}
+      <button
+        type="button"
+        className={`sb-tree-home${
+          state.activeConceptId === indexIdForDir("") ? " is-active" : ""
+        }`}
+        aria-current={state.activeConceptId === indexIdForDir("") ? "true" : undefined}
+        title={`${bundle.name} — folder home`}
+        onClick={(e) => {
+          if (e.ctrlKey || e.metaKey) {
+            actions.openInNewTab(indexIdForDir(""), { background: !e.shiftKey });
+          } else {
+            actions.selectConcept(indexIdForDir(""));
+          }
+        }}
+      >
+        <span className="sb-home-glyph" aria-hidden="true">
+          ⌂
+        </span>
+        <span className="sb-tree-label">{bundle.name}</span>
+      </button>
       {!indexHasMatch && (
         <div className="sb-tree-empty" role="status">
           <p className="sb-tree-empty-line">
@@ -454,23 +479,37 @@ function TreeNode({
                   ? expandKeyOf(pathKey, entry.target)
                   : undefined;
                 const isOpen = !!expandKey && expanded.has(expandKey);
+                const dirActive = activeId === indexIdForDir(entry.target);
                 return (
                   <li key={key} role="none" className="sb-tree-li">
                     <button
                       type="button"
                       role="treeitem"
-                      aria-selected={false}
+                      aria-selected={dirActive}
+                      aria-current={dirActive ? "true" : undefined}
                       aria-expanded={child ? isOpen : undefined}
                       aria-level={depth + 1}
                       data-row-key={key}
                       tabIndex={key === focusedKey ? 0 : -1}
                       className={`sb-tree-item sb-tree-dir${
                         child ? "" : " is-missing"
-                      }`}
+                      }${dirActive ? " is-active" : ""}`}
                       style={indent(depth)}
                       title={entry.description || entry.title}
-                      onClick={() => {
+                      // A directory is an openable root: open its folder home.
+                      // A plain click also expands it (to reveal contents); a
+                      // click that collapses does not navigate. Ctrl/Cmd+click
+                      // opens the home in a background tab.
+                      onClick={(e) => {
+                        if (e.ctrlKey || e.metaKey) {
+                          onOpenConcept(indexIdForDir(entry.target), e);
+                          return;
+                        }
+                        const willExpand = !!expandKey && !isOpen;
                         if (expandKey) toggle(expandKey);
+                        if (!expandKey || willExpand) {
+                          onOpenConcept(indexIdForDir(entry.target), e);
+                        }
                       }}
                     >
                       <span className="sb-twisty" aria-hidden="true">

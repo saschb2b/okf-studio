@@ -82,6 +82,11 @@ pub struct IndexNode {
     /// Directory path relative to root ("" = bundle root).
     pub dir: String,
     pub title: String,
+    /// The directory's authored `index.md` prose — the body with its `# H1`
+    /// title and the navigation link-bullets (which are the tree) stripped, so
+    /// the folder-home view can render the orientation text without re-showing
+    /// the lists. Empty for a synthesized index or a bare list with no prose.
+    pub intro: String,
     /// True if no index.md existed and the core built one.
     pub synthesized: bool,
     pub sections: Vec<IndexSection>,

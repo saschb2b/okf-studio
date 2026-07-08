@@ -18,8 +18,9 @@ function renderApp() {
 
 async function openFolder(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
-  // Wait for the bundle to load (name reaches the top bar).
-  await screen.findByText("OKF Viewer (sample)");
+  // Wait for the bundle to load. The name now appears in several places (top
+  // bar, sidebar home, folder-home landing), so gate on the switcher button.
+  await screen.findByRole("button", { name: /switch bundle/i });
 }
 
 describe("OKF Viewer app", () => {
@@ -40,16 +41,20 @@ describe("OKF Viewer app", () => {
     expect(within(sidebar).getByRole("treeitem", { name: /Graph View/i })).toBeInTheDocument();
   });
 
-  it("selects the default concept and syncs selection into the reader", async () => {
+  it("lands on the bundle's folder home and syncs selection into the reader", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
     await openFolder(user);
 
     const reader = container.querySelector<HTMLElement>(".reader")!;
-    // Default selection is the first index concept (Overview).
-    expect(within(reader).getByRole("heading", { name: "Overview" })).toBeInTheDocument();
+    // Default landing is the bundle root's folder home (its index.md), not a
+    // concept — its title is the bundle name and its authored intro renders.
+    expect(
+      within(reader).getByRole("heading", { name: "OKF Viewer (sample)" }),
+    ).toBeInTheDocument();
+    expect(container.querySelector(".folder-home")).not.toBeNull();
 
-    // Selecting another concept in the sidebar updates the reader.
+    // Selecting a concept in the sidebar updates the reader.
     const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
     await user.click(within(sidebar).getByRole("treeitem", { name: /Graph View/i }));
     expect(

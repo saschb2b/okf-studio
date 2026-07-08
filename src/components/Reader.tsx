@@ -8,7 +8,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "../store.tsx";
-import { titleOf, conceptById } from "../selectors.ts";
+import { titleOf, conceptById, indexIdForDir, indexNodeForId } from "../selectors.ts";
+import { FolderHome } from "./FolderHome.tsx";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { renderMarkdown, resolveAssetHref, resolveHref } from "../markdown.ts";
 import { readAssetDataUrl } from "../ipc.ts";
@@ -62,11 +63,6 @@ export type LinkKind =
 /** True when `dir` is a real directory in the bundle (a concept lives under it). */
 function dirHasConcepts(bundle: Bundle | null, dir: string): boolean {
   return bundle?.concepts.some((x) => x.id.startsWith(`${dir}/`)) ?? false;
-}
-
-/** The first concept under a directory, so a section link can "enter" it. */
-function firstConceptInDir(bundle: Bundle | null, dir: string): string | null {
-  return bundle?.concepts.find((x) => x.id.startsWith(`${dir}/`))?.id ?? null;
 }
 
 /** Classify a body link against the bundle: where does clicking it lead? */
@@ -468,6 +464,10 @@ export function Reader() {
   }
 
   if (!c) {
+    // A directory's index.md is never a concept, but it can still be opened as a
+    // "folder home" (default landing, or a directory row in the tree).
+    const home = indexNodeForId(bundle, state.activeConceptId);
+    if (home) return <FolderHome node={home} />;
     return (
       <div className="reader-empty">
         <p>No concept selected.</p>
@@ -593,9 +593,8 @@ export function Reader() {
     } else if (link.kind === "concept") {
       select(link.id, e);
     } else if (link.kind === "directory") {
-      // Enter the section: open its first concept (the sidebar expands to it).
-      const first = firstConceptInDir(bundle, link.dir);
-      if (first) select(first, e);
+      // Enter the section: open its folder home (index.md landing).
+      select(indexIdForDir(link.dir), e);
     } else if (link.kind === "asset") {
       // Scroll to the asset's rendered preview above the body, if one exists.
       bodyRef.current

@@ -47,6 +47,10 @@ export interface IndexSection {
 export interface IndexNode {
   dir: string;
   title: string;
+  /** The directory's authored index.md prose (body minus the H1 title and the
+   *  navigation link-bullets), for the folder-home view. Empty for a synthesized
+   *  index or a bare list with no prose. */
+  intro: string;
   synthesized: boolean;
   sections: IndexSection[];
 }

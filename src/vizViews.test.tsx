@@ -27,7 +27,7 @@ function renderApp() {
 
 async function openBundle(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
-  await screen.findByText("OKF Viewer (sample)");
+  await screen.findByRole("button", { name: /switch bundle/i });
 }
 
 function switcher() {

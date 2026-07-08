@@ -110,9 +110,72 @@ fn parse_index(dir: &str, text: &str, ids: &HashSet<String>) -> IndexNode {
     IndexNode {
         dir: dir.to_string(),
         title,
+        intro: extract_intro(body, dir, ids),
         synthesized: false,
         sections,
     }
+}
+
+/// The folder-home prose for an `index.md` body: the narrative an author writes
+/// around the navigation lists. Drops the leading `# H1` (shown as the title),
+/// every link-bullet line (those *are* the tree/graph, so re-showing them is
+/// noise), and any heading orphaned by that removal (no prose of its own left).
+/// Blank runs collapse; leading/trailing blanks trim. Empty when nothing but
+/// lists remains.
+fn extract_intro(body: &str, dir: &str, ids: &HashSet<String>) -> String {
+    // Pass 1: keep non-bullet lines, dropping only the first `# H1` (the title).
+    let mut kept: Vec<&str> = Vec::new();
+    let mut dropped_title = false;
+    for raw in body.lines() {
+        let line = raw.trim_end_matches('\r');
+        let trimmed = line.trim_start();
+        if !dropped_title && trimmed.starts_with("# ") {
+            dropped_title = true;
+            continue;
+        }
+        if parse_bullet(trimmed, dir, ids).is_some() {
+            continue;
+        }
+        kept.push(line);
+    }
+
+    // Pass 2: drop ATX headings with no prose before the next heading or EOF.
+    let mut out: Vec<&str> = Vec::new();
+    let mut i = 0;
+    while i < kept.len() {
+        if is_atx_heading(kept[i].trim_start()) {
+            let has_prose = kept[i + 1..]
+                .iter()
+                .take_while(|l| !is_atx_heading(l.trim_start()))
+                .any(|l| !l.trim().is_empty());
+            if has_prose {
+                out.push(kept[i]);
+            }
+        } else {
+            out.push(kept[i]);
+        }
+        i += 1;
+    }
+
+    // Collapse blank runs and trim the ends.
+    let mut result: Vec<&str> = Vec::new();
+    for line in out {
+        let blank = line.trim().is_empty();
+        if blank && result.last().map(|l: &&str| l.trim().is_empty()).unwrap_or(true) {
+            continue; // no leading blanks, no double blanks
+        }
+        result.push(line);
+    }
+    while result.last().map(|l| l.trim().is_empty()).unwrap_or(false) {
+        result.pop();
+    }
+    result.join("\n")
+}
+
+/// A markdown ATX heading line: 1–6 `#` then a space (`# `, `## `, …).
+fn is_atx_heading(trimmed: &str) -> bool {
+    let hashes = trimmed.bytes().take_while(|&b| b == b'#').count();
+    (1..=6).contains(&hashes) && trimmed.as_bytes().get(hashes) == Some(&b' ')
 }
 
 /// `* [Title](href) - description` / `- [Title](href)`, description optional.
@@ -223,6 +286,7 @@ fn synthesize(dir: &str, concepts: &[Concept]) -> IndexNode {
     IndexNode {
         dir: dir.to_string(),
         title: dir_title(dir),
+        intro: String::new(),
         synthesized: true,
         sections,
     }
@@ -295,6 +359,39 @@ mod tests {
         assert_eq!(all[0].target, "architecture/tech-stack");
         assert_eq!(all[0].description, "Tauri and why.");
         assert_eq!(all[1].description, ""); // missing description tolerated
+        // The lead prose is retained; the title H1 and the link-bullets are not.
+        assert_eq!(node.intro, "Intro prose.");
+    }
+
+    #[test]
+    fn intro_drops_title_bullets_and_orphaned_headings() {
+        // A root-index shape: title, lead prose, then heading-only sections whose
+        // bullets are the tree. The intro keeps only the narrative.
+        let text = "# Bundle\n\nWhat this is.\nSecond line.\n\n# Product\n\n* [Overview](product/overview.md) - the pitch.\n\n# Subdirectories\n\n* [Product](product/) - vision.\n";
+        let node = parse_index("", text, &ids(&[]));
+        assert_eq!(node.intro, "What this is.\nSecond line.");
+    }
+
+    #[test]
+    fn intro_keeps_prose_under_a_heading() {
+        // A heading that still has prose after its bullets are stripped survives.
+        let text = "# Top\n\nLead.\n\n# Notes\n\nWhy these live together.\n\n* [A](a.md)\n";
+        let node = parse_index("d", text, &ids(&[]));
+        assert_eq!(node.intro, "Lead.\n\n# Notes\n\nWhy these live together.");
+    }
+
+    #[test]
+    fn intro_empty_for_bare_list() {
+        let text = "# Top\n\n* [A](a.md)\n* [B](b.md)\n";
+        let node = parse_index("d", text, &ids(&[]));
+        assert_eq!(node.intro, "");
+    }
+
+    #[test]
+    fn synthesized_node_has_no_intro() {
+        let node = synthesize("features", &[]);
+        assert!(node.synthesized);
+        assert_eq!(node.intro, "");
     }
 
     #[test]

@@ -367,6 +367,49 @@
   color: var(--text-dim);
   cursor: default;
 }
+/* A directory row is an openable root; when its folder home is the active
+   selection it reads as selected, like an active concept. */
+.sb-tree-dir.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.sb-tree-dir.is-active .sb-twisty {
+  color: var(--accent-contrast);
+}
+
+/* The bundle root's folder home, sitting above the tree. */
+.sb-tree-home {
+  width: 100%;
+  font: inherit;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.sb-tree-home:hover {
+  background: var(--bg-sunken);
+}
+.sb-tree-home.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.sb-home-glyph {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  color: var(--text-dim);
+}
+.sb-tree-home.is-active .sb-home-glyph {
+  color: var(--accent-contrast);
+}
 .sb-twisty {
   flex: 0 0 auto;
   width: 12px;

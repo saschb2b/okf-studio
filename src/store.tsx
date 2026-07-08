@@ -21,6 +21,7 @@ import type {
   Settings,
 } from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
+import { indexIdForDir, indexNodeForId } from "./selectors.ts";
 import { applyTheme } from "./theme.ts";
 import * as ipc from "./ipc.ts";
 import {
@@ -340,6 +341,11 @@ function withTabs(s: State, tabs: Tab[], activeTabId: number): State {
 }
 
 function defaultConcept(bundle: Bundle): string | null {
+  // Land on the bundle root's folder home (its index.md) — OKF's progressive-
+  // disclosure entry point — so the authored orientation shows first. Falls back
+  // to the first listed concept, then the first concept, for a bundle that has
+  // no root index node at all.
+  if (bundle.indexes.some((n) => n.dir === "" || n.dir === ".")) return indexIdForDir("");
   for (const idx of bundle.indexes) {
     for (const sec of idx.sections) {
       const e = sec.entries.find((x) => x.kind === "concept");
@@ -382,7 +388,9 @@ function reducer(s: State, m: Msg): State {
       return { ...s, maximized: m.v };
     case "setBundle": {
       const exists = (id: string | null) =>
-        !!id && m.bundle.concepts.some((c) => c.id === id);
+        !!id &&
+        (m.bundle.concepts.some((c) => c.id === id) ||
+          indexNodeForId(m.bundle, id) !== null);
       if (m.root !== s.activeRoot) {
         // Switching bundles: a new browsing context — reset view state and the
         // tabs down to a single tab. The active concept survives when the new

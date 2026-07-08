@@ -29,7 +29,18 @@ function renderApp() {
 
 async function openBundle(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
-  await screen.findByText("OKF Viewer (sample)");
+  // The bundle name now appears in several places once open (top bar, sidebar
+  // home, folder-home landing); gate on the singular switcher button instead.
+  await screen.findByRole("button", { name: /switch bundle/i });
+}
+
+/** Open the bundle and select the Overview concept. The default landing is now
+ *  the bundle's folder home (index.md), so tests that exercise a concept's
+ *  reader — its rail, body, or the palette's "recent" — start from here. */
+async function openBundleAtOverview(user: ReturnType<typeof userEvent.setup>) {
+  await openBundle(user);
+  await user.click(screen.getByRole("treeitem", { name: "Overview" }));
+  await screen.findByRole("heading", { name: "Overview", level: 1 });
 }
 
 describe("OKF Viewer features", () => {
@@ -48,11 +59,15 @@ describe("OKF Viewer features", () => {
     const user = userEvent.setup();
     const { container } = renderApp();
     await openBundle(user);
+    // The default landing is the folder home, which has no rail; open a concept
+    // (Overview, which has links and headings) to exercise the rail.
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
+    await user.click(within(sidebar).getByRole("treeitem", { name: /Overview/i }));
     // Reader-only puts the rail to the side and shows the outline.
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
     const reader = container.querySelector<HTMLElement>(".reader")!;
-    expect(within(reader).getByText("Links to")).toBeInTheDocument();
+    expect(await within(reader).findByText("Links to")).toBeInTheDocument();
     expect(
       within(reader).getByRole("navigation", { name: /on this page/i }),
     ).toBeInTheDocument();
@@ -168,7 +183,7 @@ describe("OKF Viewer features", () => {
   it("arrow-key navigation in the command palette steps through every result, not just the first two", async () => {
     const user = userEvent.setup();
     renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
 
     await screen.findByRole("combobox");
@@ -213,7 +228,7 @@ describe("OKF Viewer features", () => {
   it("bakes the code-copy affordance and heading permalinks into the body", async () => {
     const user = userEvent.setup();
     renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
 
     // The copy button is part of the processed body HTML (not a post-render
     // DOM append, which React's innerHTML re-application used to wipe).
@@ -318,6 +333,65 @@ describe("OKF Viewer features", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("lands on the root folder home, showing its index.md prose and entry cards", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    // The default landing is the bundle root's folder home (index.md), not a
+    // concept: its authored intro renders, and its entries are navigation cards.
+    const home = container.querySelector<HTMLElement>(".folder-home")!;
+    expect(home).not.toBeNull();
+    expect(
+      within(home).getByRole("heading", { name: "OKF Viewer (sample)", level: 1 }),
+    ).toBeInTheDocument();
+    expect(home).toHaveTextContent(/built-in\s+sample bundle/i);
+    // A card opens the concept it lists.
+    await user.click(within(home).getByRole("button", { name: /Overview/i }));
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    expect(
+      await within(reader).findByRole("heading", { name: "Overview", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens a directory as a folder home from its index-tree row", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    // Clicking a directory row opens that folder's home (and reveals its rows).
+    await user.click(screen.getByRole("treeitem", { name: /^design\// }));
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    const home = await within(reader).findByRole("article", { name: /Design folder home/i });
+    // The directory row reads as selected once its home is the active view.
+    expect(screen.getByRole("treeitem", { name: /^design\// })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    // Its children are cards (title + description); picking one opens the concept.
+    await user.click(within(home).getByRole("button", { name: /^Button\b/ }));
+    expect(
+      await within(reader).findByRole("heading", { name: "Button", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
+  it("returns to the root folder home from the sidebar Home row", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    // Dive into a concept, then use the sidebar Home row to come back.
+    await user.click(screen.getByRole("treeitem", { name: "Graph View" }));
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    await within(reader).findByRole("heading", { name: "Graph View", level: 1 });
+
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
+    await user.click(within(sidebar).getByRole("button", { name: "OKF Viewer (sample)" }));
+    expect(
+      await within(reader).findByRole("article", { name: /OKF Viewer \(sample\) folder home/i }),
+    ).toBeInTheDocument();
+  });
+
   it("explains a URL that fetches successfully but holds no OKF bundle", async () => {
     const user = userEvent.setup();
     // The URL is reachable (fetch resolves) but the folder has no bundle.
@@ -366,7 +440,7 @@ describe("OKF Viewer features", () => {
     // Picking one opens it (the mock backend serves the sample bundle) and the
     // dialog closes.
     await user.click(beta);
-    await screen.findByText("OKF Viewer (sample)");
+    await screen.findByRole("button", { name: /switch bundle/i });
     expect(screen.queryByRole("dialog", { name: /open from url/i })).not.toBeInTheDocument();
   });
 });
@@ -376,7 +450,7 @@ describe("multi-view (tabs & windows)", () => {
   it("opens a background tab with Ctrl+click and switches on activate", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
     // Quiet chrome: no strip while a single tab is open.
@@ -413,7 +487,7 @@ describe("multi-view (tabs & windows)", () => {
   it("keeps history per tab, cycles with Ctrl+Tab, closes with Ctrl+W", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
     const rail = () => container.querySelector<HTMLElement>(".reader-rail")!;
     const article = () => container.querySelector<HTMLElement>(".reader-main")!;
@@ -459,7 +533,7 @@ describe("multi-view (tabs & windows)", () => {
   it("Ctrl+T opens an empty active tab (no launcher), which the launcher can then fill", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
     await user.keyboard("{Control>}t{/Control}");
@@ -504,7 +578,7 @@ describe("multi-view (tabs & windows)", () => {
   it("drags a tab to a new position without changing the selection", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
     const rail = container.querySelector<HTMLElement>(".reader-rail")!;
@@ -546,7 +620,7 @@ describe("multi-view (tabs & windows)", () => {
   it("peeks a concept on hover (rail row and body link) before opening", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
     // Dwell on a rail row → the card previews the target: type, title,
@@ -576,7 +650,7 @@ describe("multi-view (tabs & windows)", () => {
   it("middle-click closes a tab (the VS Code gesture)", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
     const rail = container.querySelector<HTMLElement>(".reader-rail")!;
@@ -602,7 +676,7 @@ describe("multi-view (tabs & windows)", () => {
       .spyOn(window, "open")
       .mockReturnValue({} as ReturnType<typeof window.open>);
     const { container } = renderApp();
-    await openBundle(user);
+    await openBundleAtOverview(user);
     await user.click(screen.getByRole("radio", { name: /reader only/i }));
 
     // Two tabs so the tear-off may close the local one.

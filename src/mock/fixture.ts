@@ -390,6 +390,10 @@ export const MOCK_BUNDLE: Bundle = {
     {
       dir: "",
       title: "OKF Viewer (sample)",
+      intro:
+        "This is the built-in **sample bundle** — the viewer dogfooding itself. " +
+        "It renders the [OKF](reference/glossary.md) concepts in this folder as a graph you can browse, " +
+        "search, and read. Start anywhere: the sidebar mirrors this index, and every folder is a door.",
       synthesized: false,
       sections: [
         {
@@ -445,6 +449,7 @@ export const MOCK_BUNDLE: Bundle = {
       // explain the empty expansion instead of silently adding zero rows.
       dir: "styles",
       title: "Styles",
+      intro: "",
       synthesized: true,
       sections: [],
     },
@@ -454,6 +459,7 @@ export const MOCK_BUNDLE: Bundle = {
       // marker all render off-Tauri.
       dir: "design",
       title: "Design",
+      intro: "",
       synthesized: true,
       sections: [
         {

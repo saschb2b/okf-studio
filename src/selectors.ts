@@ -1,8 +1,36 @@
 // Pure derivations over the parsed data model. With the React Compiler enabled,
 // components call these in render and the results are auto-memoized.
 
-import type { Bundle, Concept, GraphEdge } from "./types.ts";
+import type { Bundle, Concept, GraphEdge, IndexNode } from "./types.ts";
 import { parseQuery, matchesCompiled, type CompiledQuery } from "./query.ts";
+
+// ---- Folder homes -------------------------------------------------------
+// A directory's index.md is never a concept (OKF reserves it), so it has no
+// place in `concepts` or the graph. We still let the reader open it as a
+// "folder home" using a synthetic selection id that mirrors the anchor scheme
+// the core uses: "index" for the bundle root, "<dir>/index" for a subdirectory.
+// No real concept id can collide (index.md files are excluded at parse time).
+
+/** The folder-home selection id for a directory ("" = bundle root). */
+export function indexIdForDir(dir: string): string {
+  return dir ? `${dir}/index` : "index";
+}
+
+/** If `id` is a folder-home id, the directory it lands on ("" = root); else null. */
+export function dirForIndexId(id: string | null): string | null {
+  if (!id) return null;
+  if (id === "index") return "";
+  return id.endsWith("/index") ? id.slice(0, -"/index".length) : null;
+}
+
+/** The IndexNode a folder-home id resolves to, or null when it is not one. */
+export function indexNodeForId(bundle: Bundle | null, id: string | null): IndexNode | null {
+  const dir = dirForIndexId(id);
+  if (dir === null || !bundle) return null;
+  // The root node's dir may be "" or "." depending on how it was produced.
+  if (dir === "") return bundle.indexes.find((n) => n.dir === "" || n.dir === ".") ?? null;
+  return bundle.indexes.find((n) => n.dir === dir) ?? null;
+}
 
 /** Distinct concept types present in a bundle, sorted. */
 export function distinctTypes(bundle: Bundle | null): string[] {

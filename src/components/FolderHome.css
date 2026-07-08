@@ -1,0 +1,147 @@
+/* Folder Home — a directory's index.md landing: intro prose over a grid of
+   child-entry cards. A centered reading column, tokens only. */
+
+.folder-home {
+  height: 100%;
+  min-height: 0; /* scroll own content, not the workspace */
+  overflow-y: auto;
+  padding: var(--space-24) var(--space-32);
+}
+
+.fh-header {
+  max-width: 60rem;
+  margin: 0 auto var(--space-20);
+}
+
+.fh-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+  font-size: var(--fs-sm);
+}
+.fh-crumb {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.fh-crumb:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.fh-crumb + .fh-crumb::before {
+  content: "/";
+  margin: 0 var(--space-6) 0 var(--space-2);
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.fh-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--fs-xl);
+}
+.fh-synth {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fh-intro {
+  max-width: 60rem;
+  margin: 0 auto var(--space-24);
+  line-height: var(--lh-relaxed, 1.65);
+}
+.fh-intro > :first-child {
+  margin-top: 0;
+}
+.fh-intro > :last-child {
+  margin-bottom: 0;
+}
+
+.fh-section {
+  max-width: 60rem;
+  margin: 0 auto var(--space-20);
+}
+.fh-section-title {
+  margin: 0 0 var(--space-10);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.fh-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(22rem, 100%), 1fr));
+  gap: var(--space-8);
+}
+
+.fh-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elev);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.fh-card:hover {
+  border-color: var(--accent, var(--text-dim));
+  background: var(--bg-hover, var(--bg-elev));
+}
+
+.fh-card-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.4em;
+  color: var(--text-dim);
+}
+.fh-card.is-dir .fh-card-mark {
+  font-size: var(--fs-sm);
+}
+.fh-dot {
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+}
+
+.fh-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.fh-card-title {
+  font-weight: 500;
+}
+.fh-card-desc {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.fh-empty {
+  max-width: 60rem;
+  margin: 0 auto;
+}

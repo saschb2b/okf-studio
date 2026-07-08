@@ -11,7 +11,13 @@
 
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useApp, type VizView } from "../store.tsx";
-import { dirForIndexId, isVisible, matchesQuery } from "../selectors.ts";
+import {
+  dirForIndexId,
+  indexIdForDir,
+  indexNodeForId,
+  isVisible,
+  matchesQuery,
+} from "../selectors.ts";
 import { buildTypePalette, resolveDark } from "../theme.ts";
 import { buildVizTreeAuto, findVizNode, vizPath, type VizNode } from "../viz/hierarchy.ts";
 import { readVizColors, type VizColors } from "../viz/nivoTheme.ts";
@@ -164,12 +170,26 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
   const path = vizPath(tree, rootId) ?? [tree];
   const effectiveRootId = path[path.length - 1].id;
 
+  // Clicking a group tile: if it's a real directory, select its folder home so
+  // the whole app follows (sidebar highlights it, reader shows its index.md) —
+  // the reactive effect above then drills the view in. A non-directory group
+  // (the type-grouped fallback) has no home, so it just drills locally.
+  const drillTo = (id: string) => {
+    const home = indexIdForDir(id);
+    if (indexNodeForId(state.bundle, home)) actions.selectConcept(home);
+    else setRootId(id);
+  };
+
+  // Ring the selection: a folder-home selection accents its directory *group*
+  // tile (its id is the dir), a concept selection accents the leaf.
+  const selectedVizId = dirForIndexId(state.activeConceptId) ?? state.activeConceptId;
+
   const vizProps: HierarchyVizProps = {
     tree,
     rootId: effectiveRootId,
-    onDrill: setRootId,
+    onDrill: drillTo,
     onSelect: (id) => actions.selectConcept(id),
-    selectedId: state.activeConceptId,
+    selectedId: selectedVizId,
     dimmedIds,
     colorForType: (t) => palette.color(t),
     colors,

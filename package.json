@@ -6,11 +6,11 @@
   "description": "Point it at a folder. Read your knowledge as a graph.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsgo --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri"
@@ -48,6 +48,7 @@
     "@types/dompurify": "^3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@vitejs/plugin-react": "^5",
     "axe-core": "^4.12.1",
     "babel-plugin-react-compiler": "^1",
@@ -57,7 +58,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
     "jsdom": "^25",
-    "typescript": "^5",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.62.1",
     "vite": "^6",
     "vitest": "^3"

@@ -68,9 +68,14 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
 
   // Drill position, shared across the three views. Reset on bundle switch
   // (ids belong to the old bundle); clamped below if filters remove the node.
+  // Guarded by a ref so it fires only on an *actual* root change — never on
+  // mount, where it would race (and, under StrictMode's double-invoke, beat)
+  // the selection-drill effect below and drop a view-switch back to the root.
   const [rootId, setRootId] = useState("");
+  const prevRootRef = useRef(state.activeRoot);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on bundle switch, same pattern as GraphView's isolate/explore
+    if (prevRootRef.current === state.activeRoot) return;
+    prevRootRef.current = state.activeRoot;
     setRootId("");
   }, [state.activeRoot]);
 
@@ -90,9 +95,12 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
   // Selecting a concept anywhere (sidebar, palette, a reader link) focuses
   // the view on it — the graph's recenter-on-select, translated: drill to the
   // selected leaf's parent group so the accent-ringed concept is on screen.
-  // Keyed on selection *changes* only, so it never fights manual drilling.
+  // The ref seeds to null (not the current selection) so a fresh mount — e.g.
+  // switching in from the graph — also drills to what's already selected
+  // instead of landing on the root. After that it fires on *changes* only, so
+  // it never fights manual drilling within the hierarchy views.
   const selected = state.activeConceptId;
-  const prevSelectedRef = useRef(selected);
+  const prevSelectedRef = useRef<string | null>(null);
   useEffect(() => {
     if (prevSelectedRef.current === selected) return;
     prevSelectedRef.current = selected;

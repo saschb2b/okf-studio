@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
 
@@ -89,6 +90,30 @@ describe("visualization switcher", () => {
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("treeitem", { name: /^design\// }));
+
+    const crumbs = await screen.findByRole("navigation", { name: /drill-down path/i });
+    expect(within(crumbs).getByText("Design")).toBeInTheDocument();
+  });
+
+  it("keeps the selected section when switching into a hierarchy view", async () => {
+    const user = userEvent.setup();
+    // StrictMode on purpose: the mount-drill vs. reset-on-root effects race, and
+    // only StrictMode's double-invoke exposed the reset winning (the app runs in
+    // StrictMode). A plain render would pass even with the bug present.
+    render(
+      <StrictMode>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </StrictMode>,
+    );
+    await openBundle(user);
+
+    // Select a folder while on the default graph view (the graph zooms to it).
+    await user.click(screen.getByRole("treeitem", { name: /^design\// }));
+    // Switching to the treemap must mount already drilled into that section,
+    // not reset to the whole-bundle root.
+    await user.click(within(switcher()).getByRole("button", { name: /^treemap:/i }));
 
     const crumbs = await screen.findByRole("navigation", { name: /drill-down path/i });
     expect(within(crumbs).getByText("Design")).toBeInTheDocument();

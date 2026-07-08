@@ -111,9 +111,10 @@ export function Sidebar() {
           <ScrollArea.Viewport className="ui-scrollarea-viewport sb-scroll-viewport">
             <div className="sb-sections">
               {state.lens === "navigate" ? (
-                <Section title="Index" className="sb-collapsible-tree">
-                  <IndexTree />
-                </Section>
+                // The navigate lens is only the index tree, so it needs no
+                // collapsible "Index" section around it — the tree (with its
+                // folder-home header row) is the whole content.
+                <IndexTree />
               ) : (
                 <>
                   <Section title="Types">

@@ -44,10 +44,6 @@
   /* Body content spacing lives on the inner .sb-section wrappers. */
   padding-top: var(--space-2);
 }
-/* The Index tree section should be able to grow when expanded. */
-.sb-collapsible-tree {
-  min-height: 0;
-}
 
 /* The inner components keep their own <section><h2> markup; the collapsible
    trigger now provides the visible heading, so suppress the redundant title. */

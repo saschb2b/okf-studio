@@ -419,7 +419,10 @@ export function IndexTree() {
 
   return (
     <section className="sb-section sb-tree-section" aria-label="Index">
-      <h2 className="sb-section-title">Index</h2>
+      {/* The section is self-evident (the navigate lens is the index) and the
+          folder-home row below is the visible header, so the heading is a
+          screen-reader label only. */}
+      <h2 className="sb-section-title sr-only">Index</h2>
       {/* The bundle root's own folder home (index.md landing) — a door back to
           the top, above the tree it structures. */}
       <button

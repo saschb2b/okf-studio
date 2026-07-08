@@ -21,7 +21,8 @@ import type {
   SetStateAction,
 } from "react";
 import { useApp } from "../../store.tsx";
-import { filteredConceptIds, indexIdForDir } from "../../selectors.ts";
+import { conceptById, distinctTypes, filteredConceptIds, indexIdForDir } from "../../selectors.ts";
+import { buildTypePalette, resolveDark } from "../../theme.ts";
 import type { Bundle, IndexEntry, IndexNode, IndexSection } from "../../types.ts";
 
 /** Pick the root index: prefer the empty / "." dir, else the first node. */
@@ -298,6 +299,14 @@ export function IndexTree() {
   if (!root) return null;
   const dirCounts = dirConceptCounts(bundle);
 
+  // Per-concept type color — the same encoding the graph, overview, and reader
+  // use — so a leaf row carries a small dot and the tree scans by type.
+  const palette = buildTypePalette(distinctTypes(bundle), resolveDark(state.settings.theme));
+  const dotFor = (id: string): string | null => {
+    const t = conceptById(bundle, id)?.type;
+    return t ? palette.color(t) : null;
+  };
+
   const visibleIds = filteredConceptIds(bundle, {
     query: state.query,
     hiddenTypes: state.hiddenTypes,
@@ -484,6 +493,7 @@ export function IndexTree() {
           visibleIds={visibleIds}
           filtering={filtering}
           dirCounts={dirCounts}
+          dotFor={dotFor}
           // Plain click selects; Ctrl/Cmd+click opens a background tab (Shift
           // to also switch) — the browser gesture. docs/proposals/multi-view.md
           onOpenConcept={(id, e) => {
@@ -518,6 +528,7 @@ function TreeNode({
   visibleIds,
   filtering,
   dirCounts,
+  dotFor,
   onOpenConcept,
 }: {
   indexes: IndexNode[];
@@ -532,6 +543,7 @@ function TreeNode({
   visibleIds: Set<string>;
   filtering: boolean;
   dirCounts: Map<string, number>;
+  dotFor: (id: string) => string | null;
   onOpenConcept: (id: string, e?: ReactMouseEvent<HTMLElement>) => void;
 }) {
   const focusedKey = rows[focusIdx]?.key;
@@ -624,6 +636,7 @@ function TreeNode({
                           visibleIds={visibleIds}
                           filtering={filtering}
                           dirCounts={dirCounts}
+                          dotFor={dotFor}
                           onOpenConcept={onOpenConcept}
                         />
                       ) : (
@@ -644,6 +657,7 @@ function TreeNode({
               // concept entry
               const active = entry.target === activeId;
               const dimmed = filtering && !visibleIds.has(entry.target);
+              const dot = dotFor(entry.target);
               return (
                 <li key={key} role="none" className="sb-tree-li">
                   <button
@@ -661,7 +675,11 @@ function TreeNode({
                     title={entry.description || entry.title}
                     onClick={(e) => onOpenConcept(entry.target, e)}
                   >
-                    <span className="sb-twisty sb-leaf" aria-hidden="true" />
+                    <span className="sb-twisty sb-leaf" aria-hidden="true">
+                      {dot && (
+                        <span className="sb-tree-dot" style={{ background: dot }} />
+                      )}
+                    </span>
                     <span className="sb-tree-label">{entry.title}</span>
                   </button>
                 </li>

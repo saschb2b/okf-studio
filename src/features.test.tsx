@@ -392,6 +392,22 @@ describe("OKF Viewer features", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens a folder home from a clickable section heading", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    // The "Product" section groups product/* concepts and product/ has an
+    // index, so its heading is a treeitem door to that folder home, not just a
+    // label.
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
+    await user.click(within(sidebar).getByRole("treeitem", { name: "Product" }));
+    const reader = container.querySelector<HTMLElement>(".reader")!;
+    expect(
+      await within(reader).findByRole("article", { name: /Product folder home/i }),
+    ).toBeInTheDocument();
+  });
+
   it("explains a URL that fetches successfully but holds no OKF bundle", async () => {
     const user = userEvent.setup();
     // The URL is reachable (fetch resolves) but the folder has no bundle.

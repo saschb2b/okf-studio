@@ -305,6 +305,33 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+/* A section heading that is also a door to its folder's home (its concepts all
+   live in one indexed directory). Looks like the label; hovers/activates like a
+   row. */
+.sb-tree-heading-link {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-6) var(--space-6) var(--space-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.sb-tree-heading-link:hover {
+  color: var(--text);
+  background: var(--bg-sunken);
+}
+.sb-tree-heading-link.is-active {
+  color: var(--accent);
+}
 .sb-tree-li {
   margin: 0;
 }

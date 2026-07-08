@@ -444,6 +444,27 @@ export const MOCK_BUNDLE: Bundle = {
       ],
     },
     {
+      // A real subfolder index (docs/product/index.md) with its own prose, so
+      // the root "Product" section heading becomes a door to this folder home.
+      dir: "product",
+      title: "Product",
+      intro: "Vision, audience, principles, and scope for OKF Viewer.",
+      synthesized: false,
+      sections: [
+        {
+          heading: "",
+          entries: [
+            {
+              title: "Overview",
+              target: "product/overview",
+              description: "What OKF Viewer is and who it's for.",
+              kind: "concept",
+            },
+          ],
+        },
+      ],
+    },
+    {
       // An asset-only directory (the Primer bundle's styles/ case): the core
       // synthesizes an index for it, but it holds no concepts — the tree must
       // explain the empty expansion instead of silently adding zero rows.

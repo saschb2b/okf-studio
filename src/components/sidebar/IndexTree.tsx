@@ -22,7 +22,7 @@ import type {
 } from "react";
 import { useApp } from "../../store.tsx";
 import { filteredConceptIds, indexIdForDir } from "../../selectors.ts";
-import type { Bundle, IndexEntry, IndexNode } from "../../types.ts";
+import type { Bundle, IndexEntry, IndexNode, IndexSection } from "../../types.ts";
 
 /** Pick the root index: prefer the empty / "." dir, else the first node. */
 function rootNode(indexes: IndexNode[]): IndexNode | null {
@@ -42,6 +42,25 @@ function nodeFor(
 ): IndexNode | undefined {
   if (target === selfDir) return undefined;
   return indexes.find((n) => n.dir === target);
+}
+
+/**
+ * The subfolder a section is a door to: its concept entries all live under one
+ * directory that has an index node. Null when the section mixes folders, holds
+ * directory entries, or its directory has no index. This lets a section heading
+ * like "Product" open the product/ folder home, not just the entries below it.
+ */
+function sectionFolderDir(indexes: IndexNode[], sec: IndexSection): string | null {
+  const dirs = new Set<string>();
+  for (const e of sec.entries) {
+    if (e.kind !== "concept") return null;
+    const slash = e.target.lastIndexOf("/");
+    dirs.add(slash > 0 ? e.target.slice(0, slash) : "");
+  }
+  if (dirs.size !== 1) return null;
+  const dir = [...dirs][0];
+  if (!dir) return null; // root-level concepts are not a subfolder
+  return indexes.some((n) => n.dir === dir) ? dir : null;
 }
 
 /** Concepts under each directory (every ancestor gets credit), so directory
@@ -69,6 +88,10 @@ function rowKeyOf(pathKey: string, si: number, ei: number, target: string): stri
 /** The expand-set key for a directory entry's child node. */
 function expandKeyOf(pathKey: string, target: string): string {
   return `node:${pathKey}/${target}`;
+}
+/** The nav key for a folder-door section heading (a treeitem, not an entry). */
+function headingKeyOf(pathKey: string, si: number, target: string): string {
+  return `${pathKey}/h${si}:${target}`;
 }
 
 /**
@@ -120,6 +143,20 @@ function flatten(
 ): void {
   for (let si = 0; si < node.sections.length; si++) {
     const sec = node.sections[si];
+    // A folder-door heading is a treeitem in its own right — modeled as a
+    // synthetic concept row targeting the folder-home id, so the existing
+    // roving-tabindex / open-on-Enter machinery carries it for free.
+    const folderDir = sec.heading ? sectionFolderDir(indexes, sec) : null;
+    if (folderDir) {
+      const target = indexIdForDir(folderDir);
+      out.push({
+        key: headingKeyOf(pathKey, si, target),
+        entry: { title: sec.heading, target, description: "", kind: "concept" },
+        depth,
+        hasChildren: false,
+        expanded: false,
+      });
+    }
     for (let ei = 0; ei < sec.entries.length; ei++) {
       const entry = sec.entries[ei];
       const key = rowKeyOf(pathKey, si, ei, entry.target);
@@ -466,9 +503,16 @@ function TreeNode({
       {node.sections.map((sec, si) => (
         <li key={`sec:${si}`} className="sb-tree-sec" role="none">
           {sec.heading && (
-            <div className="sb-tree-heading" role="none" style={indent(depth)}>
-              {sec.heading}
-            </div>
+            <SectionHeading
+              indexes={indexes}
+              sec={sec}
+              si={si}
+              pathKey={pathKey}
+              depth={depth}
+              activeId={activeId}
+              focusedKey={focusedKey}
+              onOpen={onOpenConcept}
+            />
           )}
           <ul className="sb-tree-entries" role="group">
             {sec.entries.map((entry, ei) => {
@@ -589,6 +633,60 @@ function TreeNode({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** A section label. Plain text, unless the section's concepts all live in one
+ *  folder that has an index — then it's a treeitem door to that folder's home
+ *  (like the directory rows), opening its index.md and zooming the viz to that
+ *  section. As a treeitem it stays valid inside role="tree" and joins the
+ *  roving-tabindex keyboard nav (its row comes from flatten()). */
+function SectionHeading({
+  indexes,
+  sec,
+  si,
+  pathKey,
+  depth,
+  activeId,
+  focusedKey,
+  onOpen,
+}: {
+  indexes: IndexNode[];
+  sec: IndexSection;
+  si: number;
+  pathKey: string;
+  depth: number;
+  activeId: string | null;
+  focusedKey: string | undefined;
+  onOpen: (id: string, e?: ReactMouseEvent<HTMLElement>) => void;
+}) {
+  const folderDir = sectionFolderDir(indexes, sec);
+  if (!folderDir) {
+    return (
+      <div className="sb-tree-heading" role="none" style={indent(depth)}>
+        {sec.heading}
+      </div>
+    );
+  }
+  const target = indexIdForDir(folderDir);
+  const key = headingKeyOf(pathKey, si, target);
+  const active = activeId === target;
+  return (
+    <button
+      type="button"
+      role="treeitem"
+      aria-level={depth + 1}
+      aria-selected={active}
+      aria-current={active ? "true" : undefined}
+      data-row-key={key}
+      tabIndex={key === focusedKey ? 0 : -1}
+      className={`sb-tree-heading sb-tree-heading-link${active ? " is-active" : ""}`}
+      style={indent(depth)}
+      title={`Open the ${sec.heading} folder`}
+      onClick={(e) => onOpen(target, e)}
+    >
+      {sec.heading}
+    </button>
   );
 }
 

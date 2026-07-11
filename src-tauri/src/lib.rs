@@ -4,6 +4,7 @@
 mod agent_catalog;
 mod agent_custom;
 mod agent_install;
+mod agent_mcp;
 mod agent_protocol;
 mod agent_runtime;
 mod remote;
@@ -13,6 +14,10 @@ use okf_core::{Bundle, BundleRoot};
 use std::path::Path;
 use tauri::{AppHandle, Manager, State};
 use watch::WatchState;
+
+pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
+    agent_mcp::run(bundle_root)
+}
 
 #[tauri::command]
 fn scan_bundles(folder: String, max_depth: usize) -> Vec<BundleRoot> {

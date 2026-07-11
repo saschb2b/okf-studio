@@ -1,8 +1,9 @@
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthenticateRequest, CancelNotification, ClientCapabilities, ContentBlock,
     ContentChunk, EmbeddedResource, EmbeddedResourceResource, FileSystemCapabilities,
-    Implementation, InitializeRequest, InitializeResponse, NewSessionRequest, PermissionOptionKind,
-    PromptRequest, ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
+    Implementation, InitializeRequest, InitializeResponse, McpServer, McpServerStdio,
+    NewSessionRequest, PermissionOptionKind, PromptRequest, ReadTextFileRequest, ReadTextFileResponse,
+    RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents,
 };
@@ -1236,8 +1237,10 @@ async fn create_session(
     connection_id: &str,
     bundle_root: PathBuf,
 ) -> Result<AgentSessionInfo, String> {
+    let request = NewSessionRequest::new(&bundle_root)
+        .mcp_servers(vec![okf_mcp_server(&bundle_root)?]);
     let response = connection
-        .send_request(NewSessionRequest::new(&bundle_root))
+        .send_request(request)
         .block_task()
         .await
         .map_err(|error| format!("Agent session creation failed: {error}"))?;
@@ -1246,6 +1249,18 @@ async fn create_session(
         session_id: response.session_id.to_string(),
         bundle_root,
     })
+}
+
+fn okf_mcp_server(bundle_root: &std::path::Path) -> Result<McpServer, String> {
+    let executable = std::env::current_exe()
+        .map_err(|_| "OKF Studio could not locate its MCP executable.".to_string())?;
+    let root = bundle_root
+        .to_str()
+        .ok_or_else(|| "OKF Studio MCP requires a Unicode bundle path.".to_string())?;
+    Ok(McpServer::Stdio(
+        McpServerStdio::new("OKF Studio", executable)
+            .args(vec!["--okf-mcp".to_string(), root.to_string()]),
+    ))
 }
 
 async fn initialize_connection(
@@ -1609,6 +1624,14 @@ mod tests {
                             _connection: ConnectionTo<Client>| {
                     assert_eq!(request.cwd, expected_root);
                     assert!(request.additional_directories.is_empty());
+                    let [McpServer::Stdio(server)] = request.mcp_servers.as_slice() else {
+                        panic!("session should receive one stdio OKF tool server");
+                    };
+                    assert_eq!(server.name, "OKF Studio");
+                    assert!(server.command.is_absolute());
+                    assert_eq!(server.args[0], "--okf-mcp");
+                    assert_eq!(server.args[1], request.cwd.to_string_lossy());
+                    assert!(server.env.is_empty());
                     responder.respond(NewSessionResponse::new("session-1"))
                 },
                 agent_client_protocol::on_receive_request!(),

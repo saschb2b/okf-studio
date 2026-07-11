@@ -13,6 +13,7 @@ pub mod links;
 pub mod logfile;
 pub mod model;
 pub mod parse;
+pub mod query;
 pub mod validate;
 
 pub use model::*;

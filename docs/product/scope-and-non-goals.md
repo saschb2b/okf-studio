@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What ships in v1, what is deferred, and what OKF Viewer deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-04T18:00:00Z
+timestamp: 2026-07-11T04:15:00Z
 ---
 
 # v1 scope (the MVP)
@@ -30,7 +30,7 @@ The first release must deliver the full read loop end to end:
 
 # Non-goals
 
-- **Not an editor (in v1).** OKF Viewer reads bundles; it does not author or mutate them. (Authoring belongs to a producer such as the `okf` skill.) Editing may be revisited later, but read-only is the default forever.
+- **Not an unreviewed editor.** Opening a bundle remains read-only. Studio authoring happens only through an explicit thread write grant, staged changes, conformance validation, diff review, and atomic apply. See [Agent System](../architecture/agent-system.md).
 - **Not a general markdown wiki.** It renders markdown, but it is organized around OKF concepts, types, and links — not arbitrary note-taking.
 - **Not a cloud / sync product.** No backend, no accounts, no telemetry. Software updates are **opt-in** (a user-initiated "Check for updates"), never silent or automatic. See [Design Principles](principles.md).
 - **Not a git client.** [Open-from-URL](../features/bundle-switcher.md) fetches a GitHub repo **tarball** or a direct archive — a one-shot download, read-only. It deliberately does **not** clone arbitrary git hosts: that would drag in libgit2 and invite pull/sync/branch flows the viewer has no business owning. Cloning is a local `git clone` away; the viewer just reads what's on disk.

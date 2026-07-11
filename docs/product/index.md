@@ -1,5 +1,7 @@
 # Product
 
+* [OKF Studio Transformation](studio-roadmap.md) - Sequenced work packages for creation, curation, querying, and reviewed agent edits.
+
 Vision, audience, principles, and scope for OKF Viewer.
 
 * [Overview](overview.md) - What OKF Viewer is, who it's for, and the one-line pitch.

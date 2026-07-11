@@ -1,5 +1,7 @@
 # Features
 
+* [Agent Panel](agent-panel.md) - Connect agents, attach OKF context, approve tools, and review proposed knowledge changes.
+
 One concept per user-facing capability. Together these define the v1 read loop (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
 
 * [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.

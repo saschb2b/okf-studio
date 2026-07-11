@@ -1,0 +1,54 @@
+---
+type: Feature
+title: Agent Panel
+description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
+tags: [feature, agents, panel, authoring, research]
+timestamp: 2026-07-11T04:15:00Z
+---
+
+# Entry and first open
+
+The opener is the final icon button at the bottom-right of the [status bar](../ux/browsing-layout.md). It toggles the panel, reports active state, and remains available without an open bundle. `Ctrl/Cmd+Shift+A` and the [Command Palette](command-palette.md) offer the same action.
+
+First open makes no account or network request. It explains three paths and offers **Connect an agent**:
+
+- **Subscription agent:** Claude Agent, Codex, or another ACP agent owns login and billing.
+- **Studio Agent:** an API key in the OS credential store or a local compatible endpoint.
+- **Custom/local agent:** an ACP command with explicit executable, arguments, and environment names.
+
+# Layout and focus
+
+The panel docks right and reduces workspace width. It does not cover the graph or reader. Width and visibility persist. At narrow widths it becomes the active center surface with a direct route back.
+
+Keyboard opening focuses the first useful control. Closing returns focus to the opener. Pointer opening does not steal focus until the user activates a panel control.
+
+# Thread anatomy
+
+- toolbar: title, agent, connection state, new thread, history, actions;
+- conversation: plans, messages, tools, permissions, citations, and errors;
+- change summary above the composer when edits are staged;
+- composer: attachments, `@` context, agent/model, capability status, send, queue, stop;
+- later thread list for parallel work.
+
+Only advertised capabilities appear. Unsupported restore, model, usage, retry, or logout actions are not implied.
+
+# Context, tools, and writes
+
+The active bundle is the default scope. Explicit context may include a concept, directory, selection, validation issue, source, previous thread, or URL. Attachments remain visible and removable before send.
+
+Tool calls show pending, permission, running, completed, failed, or cancelled state. Opening a bundle grants no writes. A thread receives a separate write grant; Studio-owned writes become a staged, validated diff with per-hunk accept/reject and checkpoint restore.
+
+# Required states
+
+- no connections: explain paths and show Connect an agent;
+- installing: agent/version/source/progress/cancel/disk impact;
+- authentication required: only advertised methods and clear credential owner;
+- offline: retain installed local paths and identify network-dependent actions;
+- crashed: preserve transcript, bounded redacted diagnostics, restart;
+- no bundle: allow setup and offer Open folder for bundle tools;
+- read-only thread: research works and write attempts explain the grant.
+
+# Accessibility
+
+The panel is a labelled complementary region. Streaming uses restrained live regions and never moves focus. Tool, diff, attachment, and permission actions are real controls with visible focus. The composer supports multiline input without ambiguous submission.
+

@@ -1,5 +1,7 @@
 # Reference
 
+* [Zed Agent System Research](zed-agent-system.md) - Primary-source patterns and constraints adopted for OKF Studio.
+
 External specifications the viewer must honor, the OKF ecosystem it builds on, and a glossary of terms.
 
 * [OKF Spec Summary](okf-spec-summary.md) - The OKF v0.1 rules that constrain the viewer.

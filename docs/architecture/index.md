@@ -1,5 +1,7 @@
 # Architecture
 
+* [Agent System](agent-system.md) - ACP agents, the native Studio Agent, credentials, scoped tools, permissions, and reviewed writes.
+
 How OKF Viewer is built. Enough decisions and contracts to start implementing without re-deriving them.
 
 * [Tech Stack](tech-stack.md) - Tauri 2.0, the Rust core, the frontend, and why.

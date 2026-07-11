@@ -26,11 +26,11 @@ pub struct CustomAgentInput {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomAgentProfile {
-    id: String,
-    name: String,
-    executable: String,
-    arguments: Vec<String>,
-    environment: Vec<String>,
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) executable: String,
+    pub(crate) arguments: Vec<String>,
+    pub(crate) environment: Vec<String>,
 }
 
 pub fn list(app: &AppHandle) -> Result<Vec<CustomAgentProfile>, String> {
@@ -43,6 +43,14 @@ pub fn save(app: &AppHandle, input: CustomAgentInput) -> Result<CustomAgentProfi
 
 pub fn remove(app: &AppHandle, profile_id: &str) -> Result<bool, String> {
     remove_in(&profile_file(app)?, profile_id)
+}
+
+pub fn find(app: &AppHandle, profile_id: &str) -> Result<CustomAgentProfile, String> {
+    validate_id(profile_id)?;
+    list(app)?
+        .into_iter()
+        .find(|profile| profile.id == profile_id)
+        .ok_or_else(|| "Custom agent profile was not found.".to_string())
 }
 
 fn profile_file(app: &AppHandle) -> Result<PathBuf, String> {

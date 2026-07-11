@@ -4,6 +4,7 @@
 mod agent_catalog;
 mod agent_custom;
 mod agent_install;
+mod agent_protocol;
 mod agent_runtime;
 mod remote;
 mod watch;
@@ -42,8 +43,30 @@ fn save_custom_agent(
 }
 
 #[tauri::command]
-fn remove_custom_agent(app: AppHandle, profile_id: String) -> Result<bool, String> {
+fn remove_custom_agent(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    profile_id: String,
+) -> Result<bool, String> {
+    agent_protocol::disconnect_profile(state.inner(), &profile_id)?;
     agent_custom::remove(&app, &profile_id)
+}
+
+#[tauri::command]
+async fn connect_custom_agent(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    profile_id: String,
+) -> Result<agent_protocol::AgentConnectionInfo, String> {
+    agent_protocol::connect_custom(&app, state.inner(), &profile_id).await
+}
+
+#[tauri::command]
+fn disconnect_agent(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+) -> Result<bool, String> {
+    agent_protocol::disconnect(state.inner(), &connection_id)
 }
 
 #[tauri::command]
@@ -175,6 +198,7 @@ pub fn run() {
         .setup(|app| {
             app.manage(WatchState::default());
             app.manage(agent_install::AgentInstallState::default());
+            app.manage(agent_protocol::AgentHostState::default());
 
             // Linux/WebKitGTK: trackpad pinch is applied as a *native* webview
             // zoom that never reaches JS as a preventable event — unlike WebView2
@@ -218,6 +242,8 @@ pub fn run() {
             custom_agents,
             save_custom_agent,
             remove_custom_agent,
+            connect_custom_agent,
+            disconnect_agent,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

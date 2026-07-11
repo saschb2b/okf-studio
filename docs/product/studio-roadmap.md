@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T13:00:00Z
+timestamp: 2026-07-11T14:00:00Z
 ---
 
 # Outcome
@@ -82,11 +82,11 @@ Gate: mocked offline, corrupt, unsupported-platform, cancel, retry, and update t
 
 ## WP4: ACP runtime
 
-- [ ] Add a Rust boundary using the official `agent-client-protocol` client.
-- [ ] Start agents on demand over stdin/stdout JSON-RPC; keep bounded redacted stderr diagnostics.
+- [x] Add a Rust boundary using the official `agent-client-protocol` client.
+- [x] Start agents on demand over stdin/stdout JSON-RPC; keep bounded redacted stderr diagnostics.
 - [ ] Negotiate capabilities before enabling actions; scope sessions to the absolute bundle root.
 - [ ] Expose typed Tauri commands/events for connection, streaming, permission, and cancellation.
-- [ ] Stop children on disconnect, removal, and app exit.
+- [x] Stop children on disconnect, removal, and app exit.
 
 Gate: a fake agent covers initialize, auth, session/new, streaming, permission, cancellation, crash, and reconnect.
 

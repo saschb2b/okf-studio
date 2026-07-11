@@ -28,6 +28,10 @@ sha2 = "0.10"
 base64 = "0.22"
 okf-core = { path = "../crates/okf-core" }
 notify = "6"
+agent-client-protocol = "=1.2.0"
+tokio = { version = "1", features = ["io-util", "macros", "process", "rt", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+uuid = { version = "1", features = ["v4"] }
 
 # Remote-bundle fetch (Open from URL). Lightweight and blocking — ureq brings
 # rustls TLS with no async runtime; flate2 + tar handle GitHub tarballs, zip

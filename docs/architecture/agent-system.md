@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-11T13:00:00Z
+timestamp: 2026-07-11T14:00:00Z
 ---
 
 # Decision
@@ -57,7 +57,7 @@ Registry membership is not a sandbox. Studio shows publisher, repository, licens
 
 The first catalog is a versioned JSON manifest bundled into both builds from one source file. React reads it through a generic IPC function; the desktop command parses it into Rust structs before returning it. Browser development uses the same manifest directly. Provider names, authentication methods, runtime kind, package coordinates, and pinned versions remain catalog data rather than brand-specific UI or process branches. Updating the bundled snapshot is explicit and reviewable; later remote refresh must verify a signed or pinned registry response before replacing it.
 
-Custom ACP profiles are separate user data. Rust validates and stores a display name, absolute executable path, argv array, and an allowlist of environment variable names in the app-data directory. It rejects relative paths, shell strings in the executable field, environment assignments, invalid variable names, and oversized fields. Environment values are neither accepted by IPC nor persisted. The future ACP host may inherit only the named variables when it starts the executable directly, without a shell.
+Custom ACP profiles are separate user data. Rust validates and stores a display name, absolute executable path, argv array, and an allowlist of environment variable names in the app-data directory. It rejects relative paths, shell strings in the executable field, environment assignments, invalid variable names, and oversized fields. Environment values are neither accepted by IPC nor persisted. The ACP host inherits only the named variables when it starts the executable directly, without a shell.
 
 Package installation is a Rust-owned transaction. The bundled catalog pins the npm tarball URL, compressed byte count, unpacked byte count, and SHA-512 Subresource Integrity value. An explicit install request streams into an app-cache staging file with timeouts, a 64 MB hard cap, progress events, and cancellation checks. Studio rejects a size or digest mismatch, archive links, unsupported entry kinds, and every path outside the npm `package/` root. It extracts into a staging directory and renames that directory into its versioned destination only after verification. A receipt records the agent ID, version, cache path, and integrity value. Repeated requests return the matching receipt; stale or corrupt destinations are replaced. Installation does not execute package scripts or start the agent.
 
@@ -69,6 +69,14 @@ The React catalog calls preflight before enabling installation. It presents the 
 
 UI/provider settings use the existing store; credentials use the OS credential store; thread/change metadata uses a Rust-owned local store selected during implementation. Local bundle reading remains network-free. Network begins only after an explicit install, auth, remote provider prompt, URL attachment, or update action.
 
+# ACP process host
+
+Studio pins the official Rust SDK at `agent-client-protocol` 1.2.0 with schema artifact 1.4.0. Artifact versions describe the Rust API and generated schema; wire compatibility is negotiated separately. Studio requests ACP protocol v1 and rejects any response that selects another version.
+
+The host starts a custom agent only through the typed `connect_custom_agent` command. It uses the stored absolute executable and argv array, clears the child environment, then restores only the variable names the profile allowlists. The process receives piped stdin/stdout for JSON-RPC and a separate stderr reader. Initialization has a 15-second deadline and sends the Studio implementation name and version. The response is reduced to typed implementation, authentication, and capability fields before crossing IPC; arbitrary agent metadata does not cross.
+
+Permission requests default to **Cancelled** until the permission UI owns them. Stderr retains at most the latest 64 KiB, removes control characters, and redacts inherited values before it can enter an error. Disconnect aborts the connection future; `kill_on_drop` terminates its child. Removing a profile aborts every connection that uses it, and dropping the app-owned host state aborts all remaining children. A fake in-process agent covers initialization, advertised capability/auth capture, timeout, bounded diagnostic redaction, and profile-wide shutdown.
+
 # IPC
 
-Commands cover list/install/connect/authenticate/session/prompt/cancel/permission/context/review/apply/restore. Events carry install progress, connection state, session updates, permission requests, and change sets. Stable IDs let the frontend accept late cancellation updates without reopening completed requests.
+Implemented connection commands cover custom-agent connect and disconnect with stable UUID connection IDs. Planned commands cover catalog-agent connect, authenticate, session, prompt, cancellation, permission, context, review, apply, and restore. Events will carry connection state, session updates, permission requests, and change sets; install progress is already event-based. Stable IDs let the frontend accept late cancellation updates without reopening completed requests.

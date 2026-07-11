@@ -66,7 +66,7 @@ describe("OKF Studio app", () => {
 
     await user.click(await within(card).findByRole("button", { name: "Install" }));
 
-    expect(await within(card).findByRole("button", { name: "Installed" })).toBeDisabled();
+    expect(await within(card).findByRole("button", { name: "Connect Claude Agent" })).toBeEnabled();
     expect(within(card).getByText(/No agent has been started/i)).toBeInTheDocument();
   });
 
@@ -85,6 +85,35 @@ describe("OKF Studio app", () => {
 
     expect(await within(card).findByText(/Installation cancelled/i)).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Install" })).toBeEnabled();
+  });
+
+  it("connects an installed catalog agent through its advertised authentication", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    const card = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    if (!card) throw new Error("Codex card was not rendered.");
+    await user.click(await within(card).findByRole("button", { name: "Install" }));
+    vi.spyOn(ipc, "connectCatalogAgent").mockRejectedValueOnce(new Error("Handshake rejected"));
+    await user.click(await within(card).findByRole("button", { name: "Connect Codex" }));
+    expect(await within(card).findByRole("alert")).toHaveTextContent(
+      "Connection failed. Handshake rejected",
+    );
+    await user.click(within(card).getByRole("button", { name: "Connect Codex" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Authentication required" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    const connectedCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
+    if (!connectedCard) throw new Error("Connected Codex card was not rendered.");
+    await user.click(await within(connectedCard).findByRole("button", { name: "Disconnect" }));
   });
 
   it("registers and removes a custom ACP argv profile without starting it", async () => {

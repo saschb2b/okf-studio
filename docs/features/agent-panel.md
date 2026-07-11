@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T20:00:00Z
+timestamp: 2026-07-11T21:00:00Z
 ---
 
 # Entry and first open
@@ -18,7 +18,9 @@ First open makes no account or network request. It explains three paths and offe
 
 The connection catalog distinguishes external ACP agents from Studio-managed runtimes and lists each path's credential owner. Claude Agent and Codex are the featured ACP choices. Studio API and local-model paths are visible as planned native runtimes. A bundled, versioned manifest supplies the choices through Rust IPC on desktop and the same data in browser development. Loading and retryable catalog errors have explicit states.
 
-Browsing the catalog never downloads or starts a process. For an installable agent, a platform preflight checks the cache and discloses the exact remaining managed Node and package download before enabling **Install**. Installation reports its current runtime or package phase, remains cancellable, and exposes a retry after failure. Completion says **Installed** and explicitly states that no agent has started; connection and authentication are later, separate actions.
+Browsing the catalog never downloads or starts a process. For an installable agent, a platform preflight checks the cache and discloses the exact remaining pinned Node and root-package archives before enabling **Install**. It also states that npm-resolved production dependencies are additional because their platform-specific size is not known before resolution. Installation reports its current runtime, package, or dependency phase, remains cancellable, and exposes a retry after failure. Completion says **Installed** and explicitly states that no agent has started.
+
+An installed Claude Agent or Codex card has a separate **Connect** action. Studio starts the catalog entry with its managed Node runtime and package-relative entry point, never a shell, `npx`, or system Node. The card reports negotiation and connection failures, prevents a second connection for the same agent, and offers **Disconnect** while the process is live. A successful connection opens the same authentication and conversation surface used by custom agents.
 
 Custom ACP profiles accept a display name, an absolute executable path, arguments as an argv list, and names of environment variables to inherit. Studio stores these profiles through Rust in its app-data directory. It never accepts a shell command string or environment values. Arguments are plain-text settings and must not contain secrets. Saving registers the profile without running it.
 
@@ -42,7 +44,7 @@ Keyboard opening focuses the first useful control. Closing returns focus to the 
 
 Only advertised capabilities appear. Unsupported restore, model, usage, retry, or logout actions are not implied.
 
-The first conversation slice activates after a custom ACP connection returns from the catalog. It names the agent and active bundle, creates a bundle-scoped session on the first send, renders user and streamed agent text, and replaces **Send** with **Stop** while one turn is active. The composer is text-only and allows one live turn. A connection without an open bundle offers **Open folder**. An agent that advertises authentication shows only those methods and keeps the composer unavailable. Selecting one sends its ID to the agent, which owns the sign-in flow and all credentials. Failure stays visible for retry. Changing agents returns to the catalog without losing the live process. Connection state comes from a `useSyncExternalStore` subscription so React Compiler memoization cannot freeze a mutable module snapshot.
+The first conversation slice activates after a catalog or custom ACP connection returns. It names the agent and active bundle, creates a bundle-scoped session on the first send, renders user and streamed agent text, and replaces **Send** with **Stop** while one turn is active. The composer is text-only and allows one live turn. A connection without an open bundle offers **Open folder**. An agent that advertises authentication shows only those methods and keeps the composer unavailable. Selecting one sends its ID to the agent, which owns the sign-in flow and all credentials. Failure stays visible for retry. Changing agents returns to the catalog without losing the live process. Connection state comes from a `useSyncExternalStore` subscription so React Compiler memoization cannot freeze a mutable module snapshot.
 
 When the agent pauses for ACP permission, an in-thread card shows its bounded human title and exactly the choices it advertised. The card never exposes raw tool arguments or arbitrary metadata. Choosing an option disables the card while the response is sent and leaves a retryable error in place if sending fails. If no reject choice was advertised, Studio adds **Cancel**, which returns ACP `cancelled` rather than inventing a choice. **Stop** cancels every pending permission for that session before cancelling the turn. Agent switching stays disabled until the active turn ends, preventing an approval from being detached from its transcript.
 

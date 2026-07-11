@@ -1,11 +1,13 @@
-import { Cpu, RefreshCw, TerminalSquare } from "lucide-react";
+import { Cpu, Plug, RefreshCw, TerminalSquare, Unplug } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   authMethodLabel,
+  catalogProfileId,
   runtimeLabel,
   type AgentCatalogEntry,
   type AgentDistribution,
 } from "../agent/catalog.ts";
+import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import type {
   AgentInstallPreflight,
   AgentInstallProgress,
@@ -13,7 +15,10 @@ import type {
 import {
   agentInstallPreflight,
   cancelAgentInstall,
+  connectCatalogAgent,
+  disconnectAgent,
   installAgent,
+  onAgentConnectionState,
   onAgentInstallProgress,
 } from "../ipc.ts";
 
@@ -39,6 +44,7 @@ const phaseLabels = {
   "runtime-extracting": "Installing managed Node",
   "package-downloading": "Downloading agent package",
   "package-extracting": "Installing agent package",
+  "dependencies-installing": "Installing verified dependencies",
   complete: "Verifying installation",
   cancelled: "Cancelling installation",
 } satisfies Record<AgentInstallProgress["phase"], string>;
@@ -60,9 +66,9 @@ function formatBytes(bytes: number): string {
 function installDisclosure(preflight: AgentInstallPreflight): string {
   if (preflight.packageInstalled) return `Installed v${preflight.agentVersion}.`;
   if (preflight.runtimeInstalled) {
-    return `Downloads ${formatBytes(preflight.packageDownloadSize)} for the agent package.`;
+    return `Downloads a ${formatBytes(preflight.packageDownloadSize)} pinned agent archive, then its production dependencies from npm. Dependency size is determined during installation.`;
   }
-  return `Downloads ${formatBytes(preflight.totalDownloadSize)}: managed Node ${preflight.runtimeVersion} (${formatBytes(preflight.runtimeDownloadSize)}) and the agent package (${formatBytes(preflight.packageDownloadSize)}).`;
+  return `Downloads ${formatBytes(preflight.totalDownloadSize)} in pinned archives: managed Node ${preflight.runtimeVersion} (${formatBytes(preflight.runtimeDownloadSize)}) and the agent package (${formatBytes(preflight.packageDownloadSize)}). Production dependencies are additional and resolved from npm during installation.`;
 }
 
 function newInstallId(agentId: string): string {
@@ -73,9 +79,15 @@ function isInstallable(entry: AgentCatalogEntry): entry is InstallableEntry {
   return entry.availability === "installable" && entry.distribution !== null;
 }
 
-export function AgentCatalogCard({ entry }: { entry: AgentCatalogEntry }) {
+export function AgentCatalogCard({
+  entry,
+  onConnected,
+}: {
+  entry: AgentCatalogEntry;
+  onConnected: () => void;
+}) {
   return isInstallable(entry) ? (
-    <InstallableAgentCard entry={entry} />
+    <InstallableAgentCard entry={entry} onConnected={onConnected} />
   ) : (
     <AgentCardFrame entry={entry}>
       <button type="button" className="btn agent-catalog-card__action" disabled>
@@ -85,8 +97,21 @@ export function AgentCatalogCard({ entry }: { entry: AgentCatalogEntry }) {
   );
 }
 
-function InstallableAgentCard({ entry }: { entry: InstallableEntry }) {
+function InstallableAgentCard({
+  entry,
+  onConnected,
+}: {
+  entry: InstallableEntry;
+  onConnected: () => void;
+}) {
   const [state, setState] = useState<InstallState>({ status: "preflighting" });
+  const [connectionState, setConnectionState] = useState<
+    { status: "idle" } | { status: "connecting" } | { status: "disconnecting" } | { status: "error"; message: string }
+  >({ status: "idle" });
+  const connections = useAgentConnections();
+  const connection = connections.find(
+    (candidate) => candidate.profileId === catalogProfileId(entry.id),
+  );
   const requestVersion = useRef(0);
   const isMounted = useRef(true);
   const wasCancelled = useRef<boolean>(false);
@@ -111,6 +136,33 @@ function InstallableAgentCard({ entry }: { entry: InstallableEntry }) {
     return () => {
       isMounted.current = false;
       requestVersion.current += 1;
+    };
+  }, [entry.id]);
+
+  useEffect(() => {
+    let stopListening: (() => void) | undefined;
+    let isDisposed = false;
+    void onAgentConnectionState((event) => {
+      if (event.profileId !== catalogProfileId(entry.id)) return;
+      setConnectionState(
+        event.status === "failed"
+          ? { status: "error", message: event.message }
+          : { status: "idle" },
+      );
+    }).then(
+      (stop) => {
+        if (isDisposed) stop();
+        else stopListening = stop;
+      },
+      (error: unknown) => {
+        if (!isDisposed) {
+          setConnectionState({ status: "error", message: errorMessage(error) });
+        }
+      },
+    );
+    return () => {
+      isDisposed = true;
+      stopListening?.();
     };
   }, [entry.id]);
 
@@ -192,6 +244,28 @@ function InstallableAgentCard({ entry }: { entry: InstallableEntry }) {
     }
   }
 
+  async function connect() {
+    setConnectionState({ status: "connecting" });
+    try {
+      await connectCatalogAgent(entry.id);
+      setConnectionState({ status: "idle" });
+      onConnected();
+    } catch (error: unknown) {
+      setConnectionState({ status: "error", message: errorMessage(error) });
+    }
+  }
+
+  async function disconnect() {
+    if (!connection) return;
+    setConnectionState({ status: "disconnecting" });
+    try {
+      await disconnectAgent(connection.connectionId);
+      setConnectionState({ status: "idle" });
+    } catch (error: unknown) {
+      setConnectionState({ status: "error", message: errorMessage(error) });
+    }
+  }
+
   return (
     <AgentCardFrame entry={entry}>
       {state.status === "preflighting" && (
@@ -238,11 +312,37 @@ function InstallableAgentCard({ entry }: { entry: InstallableEntry }) {
       {state.status === "installed" && (
         <div className="agent-catalog-card__install-controls">
           <p className="agent-catalog-card__installed" role="status">
-            Installed v{state.version}. No agent has been started.
+            {connection
+              ? `Connected over ACP v${connection.protocolVersion}.`
+              : `Installed v${state.version}. No agent has been started.`}
           </p>
-          <button type="button" className="btn agent-catalog-card__action" disabled>
-            Installed
-          </button>
+          {connectionState.status === "error" && (
+            <p className="agent-catalog-card__error" role="alert">
+              Connection failed. {connectionState.message}
+            </p>
+          )}
+          {connection ? (
+            <button
+              type="button"
+              className="btn ghost agent-catalog-card__action"
+              disabled={connectionState.status === "disconnecting"}
+              onClick={() => void disconnect()}
+            >
+              <Unplug size={16} aria-hidden="true" />
+              {connectionState.status === "disconnecting" ? "Disconnecting..." : "Disconnect"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn agent-catalog-card__action"
+              aria-label={`Connect ${entry.name}`}
+              disabled={connectionState.status === "connecting"}
+              onClick={() => void connect()}
+            >
+              <Plug size={16} aria-hidden="true" />
+              {connectionState.status === "connecting" ? "Connecting..." : "Connect"}
+            </button>
+          )}
         </div>
       )}
 

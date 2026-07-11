@@ -28,7 +28,13 @@ async function loadCatalog(): Promise<CatalogState> {
   }
 }
 
-export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
+export function AgentConnectionCatalog({
+  onBack,
+  onConnected,
+}: {
+  onBack: () => void;
+  onConnected: () => void;
+}) {
   const [state, setState] = useState<CatalogState>({ status: "loading" });
   const requestVersion = useRef(0);
 
@@ -109,7 +115,7 @@ export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
       {state.status === "ready" && (
         <div className="agent-catalog__list">
           {state.entries.map((entry) => (
-            <AgentCatalogCard entry={entry} key={entry.id} />
+            <AgentCatalogCard entry={entry} key={entry.id} onConnected={onConnected} />
           ))}
         </div>
       )}

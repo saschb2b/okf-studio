@@ -17,7 +17,7 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
-use crate::agent_custom;
+use crate::{agent_custom, agent_install};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -236,8 +236,33 @@ pub async fn connect_custom(
     profile_id: &str,
 ) -> Result<AgentConnectionInfo, String> {
     let profile = agent_custom::find(app, profile_id)?;
-    let connection_id = format!("connection-{}", uuid::Uuid::new_v4());
     let spec = ProcessSpec::from_profile(&profile);
+    connect_process(app, state, profile_id, spec, "custom agent profile").await
+}
+
+pub async fn connect_catalog(
+    app: &AppHandle,
+    state: &AgentHostState,
+    agent_id: &str,
+) -> Result<AgentConnectionInfo, String> {
+    let profile_id = format!("catalog-{agent_id}");
+    let command = agent_install::installed_command(app, agent_id)?;
+    let spec = ProcessSpec {
+        executable: command.executable,
+        arguments: command.arguments,
+        environment: command.environment,
+    };
+    connect_process(app, state, &profile_id, spec, "catalog agent").await
+}
+
+async fn connect_process(
+    app: &AppHandle,
+    state: &AgentHostState,
+    profile_id: &str,
+    spec: ProcessSpec,
+    source_label: &str,
+) -> Result<AgentConnectionInfo, String> {
+    let connection_id = format!("connection-{}", uuid::Uuid::new_v4());
     let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
     let (command_tx, command_rx) = tokio::sync::mpsc::channel(8);
     let handshake_tx = Arc::new(Mutex::new(Some(handshake_tx)));
@@ -308,7 +333,9 @@ pub async fn connect_custom(
             .any(|worker| worker.profile_id == profile_id)
         {
             worker.abort();
-            return Err("This custom agent profile already has an active connection.".to_string());
+            return Err(format!(
+                "This {source_label} already has an active connection."
+            ));
         }
         active.insert(
             connection_id.clone(),

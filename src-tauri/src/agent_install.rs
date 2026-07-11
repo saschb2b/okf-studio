@@ -4,11 +4,14 @@ use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha512};
+use sha2::{Digest, Sha256, Sha512};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::agent_catalog::{self, AgentDistribution};
@@ -17,6 +20,8 @@ use crate::agent_runtime;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const READ_TIMEOUT: Duration = Duration::from_secs(120);
 const MAX_PACKAGE_BYTES: u64 = 64 * 1024 * 1024;
+const DEPENDENCY_INSTALL_TIMEOUT: Duration = Duration::from_secs(10 * 60);
+const MAX_INSTALL_DIAGNOSTIC_BYTES: usize = 16 * 1024;
 const USER_AGENT: &str = concat!("okf-studio/", env!("CARGO_PKG_VERSION"));
 
 #[derive(Default)]
@@ -79,7 +84,15 @@ pub struct AgentInstallReceipt {
     pub version: String,
     pub package_dir: String,
     pub integrity: String,
+    pub dependency_lock_sha256: String,
+    pub entrypoint_sha256: String,
     pub already_installed: bool,
+}
+
+pub(crate) struct InstalledAgentCommand {
+    pub(crate) executable: PathBuf,
+    pub(crate) arguments: Vec<String>,
+    pub(crate) environment: Vec<(String, String)>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -134,11 +147,7 @@ pub fn preflight(app: &AppHandle, agent_id: &str) -> Result<AgentInstallPrefligh
     let cache = agent_cache(app)?;
     let package_destination = cache.join("packages").join(agent_id).join(&package.version);
     let package_installed = installed_receipt(&package_destination, package)?.is_some();
-    let runtime_destination = cache
-        .join("runtime")
-        .join("node")
-        .join(&catalog.node_runtime.version);
-    let runtime_installed = managed_node_binary(&runtime_destination).is_file();
+    let runtime_installed = agent_runtime::installed(app, &catalog.node_runtime, runtime).is_ok();
     let runtime_download_size = if runtime_installed {
         0
     } else {
@@ -192,7 +201,7 @@ pub fn install(
                 std::env::consts::ARCH
             )
         })?;
-    agent_runtime::ensure(
+    let runtime_receipt = agent_runtime::ensure(
         app,
         &catalog.node_runtime,
         runtime_distribution,
@@ -248,16 +257,25 @@ pub fn install(
             .map_err(|error| format!("Studio could not create the staging directory: {error}"))?;
         extract_package(&archive, &staging, distribution.unpacked_size, &cancelled)?;
         check_cancelled(&cancelled)?;
+        emit_progress(app, install_id, agent_id, "dependencies-installing", 0, 1);
+        install_dependencies(&runtime_receipt, &staging.join("package"), &cancelled)?;
+        check_cancelled(&cancelled)?;
 
         remove_path(&destination)?;
         fs::rename(&staging, &destination)
             .map_err(|error| format!("Studio could not finish the installation: {error}"))?;
 
+        let dependency_lock_sha256 =
+            file_sha256(&destination.join("package").join("package-lock.json"))?;
+        let entrypoint_sha256 =
+            file_sha256(&destination.join("package").join(&distribution.entrypoint))?;
         let receipt = AgentInstallReceipt {
             agent_id: agent_id.to_string(),
             version: distribution.version.clone(),
             package_dir: destination.to_string_lossy().into_owned(),
             integrity: distribution.integrity.clone(),
+            dependency_lock_sha256,
+            entrypoint_sha256,
             already_installed: false,
         };
         let marker = serde_json::to_vec_pretty(&receipt)
@@ -290,6 +308,207 @@ pub fn install(
         }
     }
     result
+}
+
+pub(crate) fn installed_command(
+    app: &AppHandle,
+    agent_id: &str,
+) -> Result<InstalledAgentCommand, String> {
+    safe_id(agent_id, "agent")?;
+    let catalog = agent_catalog::load()?;
+    let entry = catalog
+        .entries
+        .iter()
+        .find(|entry| entry.id == agent_id)
+        .ok_or_else(|| "The selected agent is not in the bundled catalog.".to_string())?;
+    let distribution = entry
+        .distribution
+        .as_ref()
+        .filter(|distribution| distribution.kind == "npm")
+        .ok_or_else(|| "This agent is not installable yet.".to_string())?;
+    validate_distribution(distribution)?;
+    let runtime_distribution = catalog
+        .node_runtime
+        .distribution_for(std::env::consts::OS, std::env::consts::ARCH)
+        .ok_or_else(|| {
+            format!(
+                "Managed Node is not available for {}-{}.",
+                std::env::consts::OS,
+                std::env::consts::ARCH
+            )
+        })?;
+    let runtime = agent_runtime::installed(app, &catalog.node_runtime, runtime_distribution)?;
+    let destination = agent_cache(app)?
+        .join("packages")
+        .join(agent_id)
+        .join(&distribution.version);
+    installed_receipt(&destination, distribution)?
+        .ok_or_else(|| "Install this agent before connecting it.".to_string())?;
+
+    let package_root = destination
+        .join("package")
+        .canonicalize()
+        .map_err(|error| format!("The installed agent package is unavailable: {error}"))?;
+    let entrypoint = package_root
+        .join(&distribution.entrypoint)
+        .canonicalize()
+        .map_err(|error| format!("The installed agent entry point is unavailable: {error}"))?;
+    if !entrypoint.starts_with(&package_root) || !entrypoint.is_file() {
+        return Err("The installed agent entry point escapes its package.".to_string());
+    }
+
+    let mut arguments = vec![entrypoint.to_string_lossy().into_owned()];
+    arguments.extend(distribution.arguments.clone());
+    Ok(InstalledAgentCommand {
+        executable: runtime.node_path(),
+        arguments,
+        environment: catalog_environment(&distribution.environment),
+    })
+}
+
+fn install_dependencies(
+    runtime: &agent_runtime::NodeRuntimeReceipt,
+    package_root: &Path,
+    cancelled: &AtomicBool,
+) -> Result<(), String> {
+    let environment = catalog_environment(&[]);
+    let redactions = environment
+        .iter()
+        .map(|(_, value)| value.clone())
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    let mut command = std::process::Command::new(runtime.node_path());
+    command
+        .arg(runtime.npm_cli_path()?)
+        .args([
+            "install",
+            "--ignore-scripts",
+            "--omit=dev",
+            "--no-audit",
+            "--no-fund",
+            "--package-lock=true",
+            "--registry=https://registry.npmjs.org/",
+        ])
+        .current_dir(package_root)
+        .env_clear()
+        .envs(environment)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+    #[cfg(windows)]
+    command.creation_flags(0x0800_0000);
+    let mut child = command
+        .spawn()
+        .map_err(|error| format!("Studio could not start dependency installation: {error}"))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| "Studio could not capture dependency installation errors.".to_string())?;
+    let diagnostics =
+        std::thread::spawn(move || read_process_diagnostics(stderr, &redactions));
+    let started = Instant::now();
+    let status = loop {
+        if cancelled.load(Ordering::Acquire) {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = diagnostics.join();
+            return Err("Installation cancelled.".to_string());
+        }
+        if started.elapsed() >= DEPENDENCY_INSTALL_TIMEOUT {
+            let _ = child.kill();
+            let _ = child.wait();
+            let _ = diagnostics.join();
+            return Err("Agent dependency installation timed out.".to_string());
+        }
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| format!("Studio could not monitor dependency installation: {error}"))?
+        {
+            break status;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    };
+    let diagnostics = diagnostics.join().unwrap_or_default();
+    if !status.success() {
+        let detail = diagnostics.trim();
+        return Err(if detail.is_empty() {
+            format!("Agent dependency installation exited with {status}.")
+        } else {
+            format!("Agent dependency installation exited with {status}: {detail}")
+        });
+    }
+    if !package_root.join("node_modules").is_dir()
+        || !package_root.join("package-lock.json").is_file()
+    {
+        return Err(
+            "Agent dependency installation did not produce a complete package.".to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn read_process_diagnostics(mut reader: impl Read, redactions: &[String]) -> String {
+    let mut retained = Vec::new();
+    let mut chunk = [0_u8; 4096];
+    loop {
+        match reader.read(&mut chunk) {
+            Ok(0) | Err(_) => break,
+            Ok(count) => {
+                retained.extend_from_slice(&chunk[..count]);
+                if retained.len() > MAX_INSTALL_DIAGNOSTIC_BYTES {
+                    retained.drain(..retained.len() - MAX_INSTALL_DIAGNOSTIC_BYTES);
+                }
+            }
+        }
+    }
+    let mut text = String::from_utf8_lossy(&retained)
+        .chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .collect::<String>();
+    for secret in redactions {
+        text = text.replace(secret, "[REDACTED]");
+    }
+    text
+}
+
+fn file_sha256(path: &Path) -> Result<String, String> {
+    let bytes = fs::read(path)
+        .map_err(|error| format!("Studio could not read the dependency lock: {error}"))?;
+    Ok(format!("{:x}", Sha256::digest(bytes)))
+}
+
+fn catalog_environment(names: &[String]) -> Vec<(String, String)> {
+    const BASE: &[&str] = &[
+        "ALL_PROXY",
+        "APPDATA",
+        "HOME",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "LANG",
+        "LC_ALL",
+        "LOCALAPPDATA",
+        "NODE_EXTRA_CA_CERTS",
+        "NO_PROXY",
+        "NPM_CONFIG_CAFILE",
+        "PATH",
+        "PATHEXT",
+        "SHELL",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+        "USERPROFILE",
+        "XDG_CACHE_HOME",
+        "XDG_CONFIG_HOME",
+        "XDG_DATA_HOME",
+    ];
+    BASE.iter()
+        .copied()
+        .chain(names.iter().map(String::as_str))
+        .filter_map(|name| {
+            std::env::var(name)
+                .ok()
+                .map(|value| (name.to_string(), value))
+        })
+        .collect()
 }
 
 fn download(
@@ -445,6 +664,41 @@ fn validate_distribution(distribution: &AgentDistribution) -> Result<(), String>
     if distribution.unpacked_size < distribution.download_size {
         return Err("The catalog package has an invalid unpacked size.".to_string());
     }
+    validate_package_path(&distribution.entrypoint)?;
+    if distribution.arguments.len() > 32
+        || distribution
+            .arguments
+            .iter()
+            .any(|argument| argument.len() > 4096)
+    {
+        return Err("The catalog package has invalid launch arguments.".to_string());
+    }
+    if distribution.environment.len() > 32
+        || distribution.environment.iter().any(|name| {
+            name.is_empty()
+                || name.len() > 128
+                || !name.chars().enumerate().all(|(index, character)| {
+                    character == '_'
+                        || character.is_ascii_alphanumeric()
+                            && (index > 0 || character.is_ascii_alphabetic())
+                })
+        })
+    {
+        return Err("The catalog package has invalid environment names.".to_string());
+    }
+    Ok(())
+}
+
+fn validate_package_path(path: &str) -> Result<(), String> {
+    let path = Path::new(path);
+    if path.is_absolute()
+        || path.as_os_str().is_empty()
+        || path
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err("The catalog package has an invalid entry point.".to_string());
+    }
     Ok(())
 }
 
@@ -463,6 +717,18 @@ fn installed_receipt(
     if receipt.version != distribution.version || receipt.integrity != distribution.integrity {
         return Ok(None);
     }
+    let package_root = destination.join("package");
+    let lock = package_root.join("package-lock.json");
+    if receipt.dependency_lock_sha256.is_empty()
+        || receipt.entrypoint_sha256.is_empty()
+        || !package_root.join("node_modules").is_dir()
+        || !package_root.join(&distribution.entrypoint).is_file()
+        || !lock.is_file()
+        || file_sha256(&lock)? != receipt.dependency_lock_sha256
+        || file_sha256(&package_root.join(&distribution.entrypoint))? != receipt.entrypoint_sha256
+    {
+        return Ok(None);
+    }
     receipt.already_installed = true;
     Ok(Some(receipt))
 }
@@ -472,14 +738,6 @@ fn agent_cache(app: &AppHandle) -> Result<PathBuf, String> {
         .app_cache_dir()
         .map_err(|error| format!("No cache directory is available: {error}"))
         .map(|path| path.join("agents"))
-}
-
-fn managed_node_binary(destination: &Path) -> PathBuf {
-    if cfg!(windows) {
-        destination.join("node.exe")
-    } else {
-        destination.join("bin").join("node")
-    }
 }
 
 fn emit_progress(
@@ -604,11 +862,42 @@ mod tests {
     }
 
     #[test]
+    fn dependency_diagnostics_are_bounded_and_redacted() {
+        let secret = "proxy-password".to_string();
+        let input = format!("{} {secret}", "x".repeat(MAX_INSTALL_DIAGNOSTIC_BYTES + 32));
+        let diagnostics = read_process_diagnostics(Cursor::new(input), &[secret]);
+        assert!(diagnostics.len() <= MAX_INSTALL_DIAGNOSTIC_BYTES);
+        assert!(!diagnostics.contains("proxy-password"));
+        assert!(diagnostics.contains("[REDACTED]"));
+    }
+
+    #[test]
     fn archive_paths_stay_under_package() {
         assert!(validate_archive_path(Path::new("package/package.json")).is_ok());
         assert!(validate_archive_path(Path::new("other/file")).is_err());
         assert!(validate_archive_path(Path::new("../outside")).is_err());
         assert!(validate_archive_path(Path::new("/absolute")).is_err());
+    }
+
+    #[test]
+    fn catalog_launch_metadata_rejects_traversal_and_invalid_environment_names() {
+        let catalog = agent_catalog::load().expect("catalog should load");
+        let mut distribution = catalog.entries[0]
+            .distribution
+            .clone()
+            .expect("catalog agent should have a distribution");
+        assert!(validate_distribution(&distribution).is_ok());
+
+        distribution.entrypoint = "../outside.js".to_string();
+        assert!(validate_distribution(&distribution)
+            .unwrap_err()
+            .contains("entry point"));
+
+        distribution.entrypoint = "dist/index.js".to_string();
+        distribution.environment = vec!["OPENAI_API_KEY=value".to_string()];
+        assert!(validate_distribution(&distribution)
+            .unwrap_err()
+            .contains("environment"));
     }
 
     #[test]

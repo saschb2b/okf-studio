@@ -67,7 +67,10 @@ export function AgentPanel() {
           </button>
         </header>
         {view === "catalog" ? (
-          <AgentConnectionCatalog onBack={closeCatalog} />
+          <AgentConnectionCatalog
+            onBack={closeCatalog}
+            onConnected={() => setView("conversation")}
+          />
         ) : view === "conversation" && connection ? (
           <AgentConversation
             key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}

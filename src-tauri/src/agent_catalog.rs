@@ -69,6 +69,9 @@ pub(crate) struct AgentDistribution {
     pub(crate) integrity: String,
     pub(crate) download_size: u64,
     pub(crate) unpacked_size: u64,
+    pub(crate) entrypoint: String,
+    pub(crate) arguments: Vec<String>,
+    pub(crate) environment: Vec<String>,
 }
 
 pub fn load() -> Result<AgentCatalog, String> {
@@ -95,6 +98,15 @@ mod tests {
         ids.sort_unstable();
         ids.dedup();
         assert_eq!(ids.len(), catalog.entries.len());
+        for entry in catalog
+            .entries
+            .iter()
+            .filter(|entry| entry.distribution.is_some())
+        {
+            let distribution = entry.distribution.as_ref().expect("distribution exists");
+            assert_eq!(distribution.entrypoint, "dist/index.js");
+            assert!(distribution.arguments.is_empty());
+        }
     }
 
     #[test]

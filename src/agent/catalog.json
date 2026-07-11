@@ -61,7 +61,10 @@
         "tarball": "https://registry.npmjs.org/@agentclientprotocol/claude-agent-acp/-/claude-agent-acp-0.58.1.tgz",
         "integrity": "sha512-F1/W6EJdoYbrEUluRUknx0Nn0MAKDOkn2C/9YcP/joVkmdFUGTAxlGDpwdYu239TOkpc8Qm4+ffGsQjPZdryTg==",
         "downloadSize": 97611,
-        "unpackedSize": 375083
+        "unpackedSize": 375083,
+        "entrypoint": "dist/index.js",
+        "arguments": [],
+        "environment": ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"]
       }
     },
     {
@@ -79,7 +82,10 @@
         "tarball": "https://registry.npmjs.org/@agentclientprotocol/codex-acp/-/codex-acp-1.1.2.tgz",
         "integrity": "sha512-qE/R1WdqJJ9OFHsHGvbmVmS2j9iCMZzpWT3g2XIViXrGHu1fLOALLINBIlW+WzKDllCh131aB6cqcIWSt0otbw==",
         "downloadSize": 180958,
-        "unpackedSize": 1094529
+        "unpackedSize": 1094529,
+        "entrypoint": "dist/index.js",
+        "arguments": [],
+        "environment": ["CODEX_API_KEY", "OPENAI_API_KEY"]
       }
     },
     {

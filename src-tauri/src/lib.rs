@@ -62,6 +62,15 @@ async fn connect_custom_agent(
 }
 
 #[tauri::command]
+async fn connect_catalog_agent(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    agent_id: String,
+) -> Result<agent_protocol::AgentConnectionInfo, String> {
+    agent_protocol::connect_catalog(&app, state.inner(), &agent_id).await
+}
+
+#[tauri::command]
 fn disconnect_agent(
     app: AppHandle,
     state: State<'_, agent_protocol::AgentHostState>,
@@ -297,6 +306,7 @@ pub fn run() {
             save_custom_agent,
             remove_custom_agent,
             connect_custom_agent,
+            connect_catalog_agent,
             disconnect_agent,
             authenticate_agent,
             new_agent_session,

@@ -127,6 +127,9 @@
 }
 
 .agent-catalog-card__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
   align-self: flex-start;
   justify-self: start;
   margin-top: auto;

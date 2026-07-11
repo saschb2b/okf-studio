@@ -19,6 +19,9 @@ export interface AgentDistribution {
   integrity: `sha512-${string}`;
   downloadSize: number;
   unpackedSize: number;
+  entrypoint: string;
+  arguments: readonly string[];
+  environment: readonly string[];
 }
 
 export interface AgentCatalogRecord {
@@ -83,4 +86,8 @@ export function authMethodLabel(method: AgentAuthMethod): string {
 
 export function runtimeLabel(runtime: AgentRuntime): string {
   return runtime === "external-acp" ? "External ACP agent" : "Studio runtime";
+}
+
+export function catalogProfileId(agentId: string): string {
+  return `catalog-${agentId}`;
 }

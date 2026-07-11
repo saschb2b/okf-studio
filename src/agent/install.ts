@@ -15,6 +15,8 @@ export interface AgentInstallReceipt {
   version: string;
   packageDir: string;
   integrity: string;
+  dependencyLockSha256: string;
+  entrypointSha256: string;
   alreadyInstalled: boolean;
 }
 
@@ -26,6 +28,7 @@ export interface AgentInstallProgress {
     | "runtime-extracting"
     | "package-downloading"
     | "package-extracting"
+    | "dependencies-installing"
     | "complete"
     | "cancelled";
   downloadedBytes: number;

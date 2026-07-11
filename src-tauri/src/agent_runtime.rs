@@ -27,6 +27,57 @@ pub struct NodeRuntimeReceipt {
     already_installed: bool,
 }
 
+impl NodeRuntimeReceipt {
+    pub(crate) fn node_path(&self) -> PathBuf {
+        PathBuf::from(&self.node_path)
+    }
+
+    pub(crate) fn npm_cli_path(&self) -> Result<PathBuf, String> {
+        let node = self.node_path();
+        let runtime_root = if cfg!(windows) {
+            node.parent()
+        } else {
+            node.parent().and_then(Path::parent)
+        }
+        .ok_or_else(|| "The managed Node path has no runtime root.".to_string())?;
+        let npm_cli = if cfg!(windows) {
+            runtime_root
+                .join("node_modules")
+                .join("npm")
+                .join("bin")
+                .join("npm-cli.js")
+        } else {
+            runtime_root
+                .join("lib")
+                .join("node_modules")
+                .join("npm")
+                .join("bin")
+                .join("npm-cli.js")
+        };
+        if !npm_cli.is_file() {
+            return Err("The managed Node runtime is missing npm-cli.js.".to_string());
+        }
+        Ok(npm_cli)
+    }
+}
+
+pub(crate) fn installed(
+    app: &AppHandle,
+    runtime: &AgentNodeRuntime,
+    distribution: &AgentNodeDistribution,
+) -> Result<NodeRuntimeReceipt, String> {
+    let destination = app
+        .path()
+        .app_cache_dir()
+        .map_err(|error| format!("No cache directory is available: {error}"))?
+        .join("agents")
+        .join("runtime")
+        .join("node")
+        .join(&runtime.version);
+    installed_receipt(&destination, runtime, distribution)?
+        .ok_or_else(|| "Install the managed Node runtime before connecting this agent.".to_string())
+}
+
 pub fn ensure(
     app: &AppHandle,
     runtime: &AgentNodeRuntime,
@@ -363,9 +414,12 @@ fn installed_receipt(
         .map_err(|error| format!("Studio could not read the Node install record: {error}"))?;
     let mut receipt: NodeRuntimeReceipt = serde_json::from_slice(&bytes)
         .map_err(|error| format!("The Node install record is invalid: {error}"))?;
+    let (node, npm) = runtime_paths(destination);
     if receipt.version != runtime.version
         || receipt.target != distribution.target
         || receipt.sha256 != distribution.sha256
+        || Path::new(&receipt.node_path) != node
+        || Path::new(&receipt.npm_path) != npm
         || validate_runtime_files(destination).is_err()
     {
         return Ok(None);

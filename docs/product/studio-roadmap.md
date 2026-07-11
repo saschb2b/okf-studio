@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T18:00:00Z
+timestamp: 2026-07-11T21:00:00Z
 ---
 
 # Outcome
@@ -77,6 +77,7 @@ Gate: keyboard, focus return, axe, 24px targets, and screenshots at narrow and w
 - [x] Support custom ACP commands.
 - [x] Install in Rust with pinned versions, integrity checks, cancellation, and app-cache isolation.
 - [x] Manage an app-scoped Node runtime for registry `npx` packages and disclose download size before install.
+- [x] Install production dependencies without lifecycle scripts and record the dependency lock before activation.
 
 Gate: mocked offline, corrupt, unsupported-platform, cancel, retry, and update tests. Discovery never starts an agent.
 
@@ -87,6 +88,7 @@ Gate: mocked offline, corrupt, unsupported-platform, cancel, retry, and update t
 - [x] Negotiate a typed capability set during initialization.
 - [x] Scope each new session to one canonical absolute bundle root.
 - [x] Expose typed Tauri commands and terminal lifecycle events for custom connections.
+- [x] Launch installed catalog agents through managed Node and the same ACP actor.
 - [x] Expose typed Tauri commands/events for text prompts, streaming, and cancellation.
 - [x] Expose typed permission requests and responses with deny-by-default cancellation.
 - [x] Stop children on disconnect, removal, and app exit.

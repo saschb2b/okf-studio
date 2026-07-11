@@ -138,6 +138,52 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
   return info;
 }
 
+export async function connectCatalogAgent(agentId: string): Promise<AgentConnectionInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const info = await invoke<AgentConnectionInfo>("connect_catalog_agent", { agentId });
+    activeAgentConnectionsById.set(info.connectionId, info);
+    publishAgentConnections();
+    return info;
+  }
+  if (!mockInstalledAgents.has(agentId)) throw new Error("Install this agent before connecting it.");
+  const entry = (catalog as AgentCatalogDocument).entries.find(
+    (candidate) => candidate.id === agentId,
+  );
+  if (!entry?.distribution) throw new Error("This agent is not installable yet.");
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const profileId = `catalog-${agentId}`;
+  if ([...activeAgentConnectionsById.values()].some((info) => info.profileId === profileId)) {
+    throw new Error("This catalog agent already has an active connection.");
+  }
+  const info: AgentConnectionInfo = {
+    connectionId: `connection-${crypto.randomUUID()}`,
+    profileId,
+    protocolVersion: "1",
+    agent: { name: agentId, title: entry.name, version: entry.distribution.version },
+    authMethods: [{
+      id: "browser-login",
+      name: "Sign in with browser",
+      description: "The agent opens its own sign-in flow.",
+    }],
+    authenticated: false,
+    capabilities: {
+      loadSession: false,
+      promptImage: false,
+      promptAudio: false,
+      promptEmbeddedContext: false,
+      mcpHttp: false,
+      mcpSse: false,
+      sessionList: false,
+      sessionResume: false,
+      sessionClose: false,
+    },
+  };
+  activeAgentConnectionsById.set(info.connectionId, info);
+  publishAgentConnections();
+  return info;
+}
+
 export function activeAgentConnections(): readonly AgentConnectionInfo[] {
   return activeAgentConnectionSnapshot;
 }
@@ -417,7 +463,7 @@ export async function agentInstallPreflight(
     packageDownloadSize: entry.distribution.downloadSize,
     runtimeDownloadSize: runtime.downloadSize,
     totalDownloadSize: entry.distribution.downloadSize + runtime.downloadSize,
-    packageInstalled: false,
+    packageInstalled: mockInstalledAgents.has(agentId),
     runtimeInstalled: false,
   };
 }
@@ -426,6 +472,7 @@ type AgentInstallProgressHandler = (progress: AgentInstallProgress) => void;
 
 const mockInstallProgressHandlers = new Set<AgentInstallProgressHandler>();
 const mockCancelledInstalls = new Set<string>();
+const mockInstalledAgents = new Set<string>();
 
 export async function onAgentInstallProgress(
   handler: AgentInstallProgressHandler,
@@ -456,6 +503,7 @@ export async function installAgent(
     "runtime-extracting",
     "package-downloading",
     "package-extracting",
+    "dependencies-installing",
     "complete",
   ];
   mockCancelledInstalls.delete(installId);
@@ -485,11 +533,14 @@ export async function installAgent(
     (candidate) => candidate.id === agentId,
   );
   if (!entry?.distribution) throw new Error("This agent is not installable yet.");
+  mockInstalledAgents.add(agentId);
   return {
     agentId,
     version: entry.distribution.version,
     packageDir: `mock-agent-cache/${agentId}/${entry.distribution.version}`,
     integrity: entry.distribution.integrity,
+    dependencyLockSha256: "mock-dependency-lock-sha256",
+    entrypointSha256: "mock-entrypoint-sha256",
     alreadyInstalled: false,
   };
 }

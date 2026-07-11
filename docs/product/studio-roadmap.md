@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T17:00:00Z
+timestamp: 2026-07-11T18:00:00Z
 ---
 
 # Outcome
@@ -66,7 +66,7 @@ Gate: no visible Viewer branding remains; updater identity is unchanged; app and
 - [x] Put the Agent opener last at the bottom-right of the status bar.
 - [x] Toggle a resizable right dock that reduces the workspace instead of covering it.
 - [x] Persist visibility and width; add `Ctrl/Cmd+Shift+A` and a command-palette action.
-- [ ] Ship no-connection, loading, connection-error, no-bundle, and narrow-window states.
+- [x] Ship no-connection, loading, connection-error, no-bundle, and narrow-window states.
 
 Gate: keyboard, focus return, axe, 24px targets, and screenshots at narrow and wide widths.
 
@@ -104,6 +104,7 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 
 ## WP6: Threads and conversation
 
+- [x] Ship the first bundle-scoped text conversation with streamed output and Stop.
 - [ ] Implement active, waiting, running, cancelled, failed, archived, and restorable thread states.
 - [ ] Stream messages, plans, tool cards, locations, diffs, usage, and stop reasons.
 - [ ] Support send, queue, stop, supported retry, titles, history, and Markdown export.

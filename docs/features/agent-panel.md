@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T15:00:00Z
+timestamp: 2026-07-11T18:00:00Z
 ---
 
 # Entry and first open
@@ -41,6 +41,10 @@ Keyboard opening focuses the first useful control. Closing returns focus to the 
 - later thread list for parallel work.
 
 Only advertised capabilities appear. Unsupported restore, model, usage, retry, or logout actions are not implied.
+
+The first conversation slice activates after a custom ACP connection returns from the catalog. It names the agent and active bundle, creates a bundle-scoped session on the first send, renders user and streamed agent text, and replaces **Send** with **Stop** while one turn is active. The composer is text-only and allows one live turn. A connection without an open bundle offers **Open folder**; an agent that advertises authentication shows that requirement and keeps the composer unavailable until Studio implements the advertised flow. Changing agents returns to the catalog without losing the live process. Connection state comes from a `useSyncExternalStore` subscription so React Compiler memoization cannot freeze a mutable module snapshot.
+
+This slice does not yet persist threads, render Markdown, expose tool/plan cards, or claim write access. Those arrive with the remaining [Threads and conversation](../product/studio-roadmap.md) and [OKF context and tools](../product/studio-roadmap.md) packages.
 
 # Context, tools, and writes
 

@@ -2,14 +2,17 @@ import { ArrowLeft, PanelRightClose, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type * as React from "react";
 import { AGENT_PANEL_CLAMP, useApp } from "../store.tsx";
+import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import { focusAgentPanelOpener } from "../agentPanelFocus.ts";
 import { AgentConnectionCatalog } from "./AgentConnectionCatalog.tsx";
+import { AgentConversation } from "./AgentConversation.tsx";
 import "./AgentPanel.css";
 
 export function AgentPanel() {
   const { state, actions } = useApp();
+  const connections = useAgentConnections();
   const panelRef = useRef<HTMLElement>(null);
-  const [view, setView] = useState<"empty" | "catalog">("empty");
+  const [view, setView] = useState<"empty" | "catalog" | "conversation">("empty");
   if (!state.panels.agent) return null;
 
   const width =
@@ -30,11 +33,13 @@ export function AgentPanel() {
   }
 
   function closeCatalog() {
-    setView("empty");
+    setView(connections.length > 0 ? "conversation" : "empty");
     requestAnimationFrame(() => {
       document.querySelector<HTMLElement>("[data-agent-initial-focus]")?.focus();
     });
   }
+
+  const connection = connections.at(0);
 
   return (
     <>
@@ -63,6 +68,16 @@ export function AgentPanel() {
         </header>
         {view === "catalog" ? (
           <AgentConnectionCatalog onBack={closeCatalog} />
+        ) : view === "conversation" && connection ? (
+          <AgentConversation
+            key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
+            connection={connection}
+            bundleRoot={state.activeRoot}
+            bundleName={state.bundle?.name ?? null}
+            onChangeAgent={openCatalog}
+            onConnectionEnd={() => setView("empty")}
+            onOpenFolder={() => actions.openFolder()}
+          />
         ) : (
           <div className="agent-panel__empty">
             <span className="agent-panel__mark" aria-hidden="true">

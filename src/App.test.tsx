@@ -125,12 +125,45 @@ describe("OKF Studio app", () => {
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Back" }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    expect(await screen.findByRole("heading", { name: "Local Harness" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Open a bundle to start" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Change" }));
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     expect(await screen.findByText("Not connected.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remove Local Harness" }));
+  });
+
+  it("creates a bundle-scoped session and renders streamed agent text", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Research Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\research.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Research Harness" }));
+    await screen.findByText(/Connected to Research Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Summarize the bundle")).toBeInTheDocument();
+    expect(await screen.findByText("Browser ACP received: Summarize the bundle")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
+
+    await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await user.click(await screen.findByRole("button", { name: "Stop" }));
+    expect(await screen.findByText("Turn cancelled.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
   });
 
   it("keeps a custom ACP connection failure visible and retryable", async () => {

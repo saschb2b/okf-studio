@@ -27,6 +27,14 @@ fn agent_catalog() -> Result<agent_catalog::AgentCatalog, String> {
 }
 
 #[tauri::command]
+fn agent_install_preflight(
+    app: AppHandle,
+    agent_id: String,
+) -> Result<agent_install::AgentInstallPreflight, String> {
+    agent_install::preflight(&app, &agent_id)
+}
+
+#[tauri::command]
 async fn install_agent(
     app: AppHandle,
     state: State<'_, agent_install::AgentInstallState>,
@@ -187,6 +195,7 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             agent_catalog,
+            agent_install_preflight,
             install_agent,
             cancel_agent_install,
             fetch_remote_bundle,

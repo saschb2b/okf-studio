@@ -34,7 +34,27 @@ export interface AgentCatalogRecord {
 
 export interface AgentCatalogDocument {
   version: number;
+  nodeRuntime: AgentNodeRuntime;
   entries: readonly AgentCatalogRecord[];
+}
+
+export interface AgentNodeRuntime {
+  version: string;
+  distributions: readonly AgentNodeDistribution[];
+}
+
+export interface AgentNodeDistribution {
+  target:
+    | "windows-x86_64"
+    | "linux-x86_64"
+    | "linux-aarch64"
+    | "macos-x86_64"
+    | "macos-aarch64";
+  archive: "zip" | "tar-gz";
+  url: string;
+  sha256: string;
+  downloadSize: number;
+  root: string;
 }
 
 export interface AgentCatalogEntry extends AgentCatalogRecord {

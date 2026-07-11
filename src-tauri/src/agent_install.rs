@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -83,12 +83,83 @@ pub struct AgentInstallReceipt {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AgentInstallPreflight {
+    agent_id: String,
+    agent_version: String,
+    target: String,
+    runtime_version: String,
+    package_download_size: u64,
+    runtime_download_size: u64,
+    total_download_size: u64,
+    package_installed: bool,
+    runtime_installed: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct AgentInstallProgress {
     install_id: String,
     agent_id: String,
     phase: &'static str,
     downloaded_bytes: u64,
     total_bytes: u64,
+}
+
+pub fn preflight(app: &AppHandle, agent_id: &str) -> Result<AgentInstallPreflight, String> {
+    safe_id(agent_id, "agent")?;
+    let catalog = agent_catalog::load()?;
+    let entry = catalog
+        .entries
+        .iter()
+        .find(|entry| entry.id == agent_id)
+        .ok_or_else(|| "The selected agent is not in the bundled catalog.".to_string())?;
+    let package = entry
+        .distribution
+        .as_ref()
+        .filter(|distribution| distribution.kind == "npm")
+        .ok_or_else(|| "This agent is not installable yet.".to_string())?;
+    validate_distribution(package)?;
+
+    let runtime = catalog
+        .node_runtime
+        .distribution_for(std::env::consts::OS, std::env::consts::ARCH)
+        .ok_or_else(|| {
+            format!(
+                "Managed Node is not available for {}-{}.",
+                std::env::consts::OS,
+                std::env::consts::ARCH
+            )
+        })?;
+    let cache = agent_cache(app)?;
+    let package_destination = cache.join("packages").join(agent_id).join(&package.version);
+    let package_installed = installed_receipt(&package_destination, package)?.is_some();
+    let runtime_destination = cache
+        .join("runtime")
+        .join("node")
+        .join(&catalog.node_runtime.version);
+    let runtime_installed = managed_node_binary(&runtime_destination).is_file();
+    let runtime_download_size = if runtime_installed {
+        0
+    } else {
+        runtime.download_size
+    };
+    let package_download_size = if package_installed {
+        0
+    } else {
+        package.download_size
+    };
+
+    Ok(AgentInstallPreflight {
+        agent_id: agent_id.to_string(),
+        agent_version: package.version.clone(),
+        target: runtime.target.clone(),
+        runtime_version: catalog.node_runtime.version,
+        package_download_size,
+        runtime_download_size,
+        total_download_size: package_download_size.saturating_add(runtime_download_size),
+        package_installed,
+        runtime_installed,
+    })
 }
 
 pub fn install(
@@ -111,13 +182,7 @@ pub fn install(
         .ok_or_else(|| "This agent is not installable yet.".to_string())?;
     validate_distribution(distribution)?;
 
-    let root = app
-        .path()
-        .app_cache_dir()
-        .map_err(|error| format!("No cache directory is available: {error}"))?
-        .join("agents")
-        .join("packages")
-        .join(agent_id);
+    let root = agent_cache(app)?.join("packages").join(agent_id);
     fs::create_dir_all(&root)
         .map_err(|error| format!("Studio could not create the agent cache: {error}"))?;
 
@@ -378,6 +443,21 @@ fn installed_receipt(
     }
     receipt.already_installed = true;
     Ok(Some(receipt))
+}
+
+fn agent_cache(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_cache_dir()
+        .map_err(|error| format!("No cache directory is available: {error}"))
+        .map(|path| path.join("agents"))
+}
+
+fn managed_node_binary(destination: &Path) -> PathBuf {
+    if cfg!(windows) {
+        destination.join("node.exe")
+    } else {
+        destination.join("bin").join("node")
+    }
 }
 
 fn emit_progress(

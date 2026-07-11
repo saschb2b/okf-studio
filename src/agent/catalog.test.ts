@@ -14,6 +14,13 @@ describe("agent connection catalog", () => {
     expect(entries.filter((entry) => entry.runtime === "external-acp")).toHaveLength(2);
     expect(entries.filter((entry) => entry.runtime === "studio-native")).toHaveLength(2);
     expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(2);
+    expect(catalog.nodeRuntime.version).toBe("v24.11.0");
+    expect(catalog.nodeRuntime.distributions).toHaveLength(5);
+    for (const distribution of catalog.nodeRuntime.distributions) {
+      expect(distribution.url).toMatch(/^https:\/\/nodejs\.org\/dist\//);
+      expect(distribution.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(distribution.downloadSize).toBeGreaterThan(30_000_000);
+    }
   });
 
   it("labels authentication and runtime choices for display", () => {

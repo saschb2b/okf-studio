@@ -12,6 +12,7 @@ import type {
 import { DEFAULT_SETTINGS } from "./types.ts";
 import catalog from "./agent/catalog.json";
 import type { AgentCatalogDocument } from "./agent/catalog.ts";
+import type { AgentInstallPreflight } from "./agent/install.ts";
 import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
@@ -28,6 +29,46 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
   if (!isTauri()) return catalog as AgentCatalogDocument;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentCatalogDocument>("agent_catalog");
+}
+
+export async function agentInstallPreflight(
+  agentId: string,
+): Promise<AgentInstallPreflight> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentInstallPreflight>("agent_install_preflight", { agentId });
+  }
+
+  const document = catalog as AgentCatalogDocument;
+  const entry = document.entries.find((candidate) => candidate.id === agentId);
+  if (!entry?.distribution) throw new Error("This agent is not installable yet.");
+  const runtime = document.nodeRuntime.distributions.find(
+    (distribution) => distribution.target === browserTarget(),
+  );
+  if (!runtime) throw new Error("Managed Node is not available on this platform.");
+  return {
+    agentId,
+    agentVersion: entry.distribution.version,
+    target: runtime.target,
+    runtimeVersion: document.nodeRuntime.version,
+    packageDownloadSize: entry.distribution.downloadSize,
+    runtimeDownloadSize: runtime.downloadSize,
+    totalDownloadSize: entry.distribution.downloadSize + runtime.downloadSize,
+    packageInstalled: false,
+    runtimeInstalled: false,
+  };
+}
+
+function browserTarget(): string {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const arch = userAgent.includes("arm64") || userAgent.includes("aarch64")
+    ? "aarch64"
+    : "x86_64";
+  if (userAgent.includes("windows")) return `windows-${arch}`;
+  if (userAgent.includes("macintosh") || userAgent.includes("mac os")) {
+    return `macos-${arch}`;
+  }
+  return `linux-${arch}`;
 }
 
 export async function pickFolder(): Promise<string | null> {

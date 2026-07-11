@@ -2,6 +2,7 @@
 //! touches the filesystem; it calls these commands and listens for events.
 
 mod agent_catalog;
+mod agent_install;
 mod remote;
 mod watch;
 
@@ -23,6 +24,37 @@ fn read_bundle(root: String) -> Bundle {
 #[tauri::command]
 fn agent_catalog() -> Result<agent_catalog::AgentCatalog, String> {
     agent_catalog::load()
+}
+
+#[tauri::command]
+async fn install_agent(
+    app: AppHandle,
+    state: State<'_, agent_install::AgentInstallState>,
+    agent_id: String,
+    install_id: String,
+) -> Result<agent_install::AgentInstallReceipt, String> {
+    let cancelled = state.start(&install_id, &agent_id)?;
+    let task_app = app.clone();
+    let task_agent_id = agent_id.clone();
+    let task_install_id = install_id.clone();
+    let result = match tauri::async_runtime::spawn_blocking(move || {
+        agent_install::install(&task_app, &task_agent_id, &task_install_id, cancelled)
+    })
+    .await
+    {
+        Ok(result) => result,
+        Err(error) => Err(format!("Install task failed: {error}")),
+    };
+    state.finish(&install_id);
+    result
+}
+
+#[tauri::command]
+fn cancel_agent_install(
+    state: State<'_, agent_install::AgentInstallState>,
+    install_id: String,
+) -> Result<bool, String> {
+    state.cancel(&install_id)
 }
 
 /// Fetch a remote bundle (a GitHub repo tarball or a direct archive URL) into a
@@ -114,6 +146,7 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(WatchState::default());
+            app.manage(agent_install::AgentInstallState::default());
 
             // Linux/WebKitGTK: trackpad pinch is applied as a *native* webview
             // zoom that never reaches JS as a preventable event — unlike WebView2
@@ -154,6 +187,8 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             agent_catalog,
+            install_agent,
+            cancel_agent_install,
             fetch_remote_bundle,
             read_asset,
             read_asset_data_url,

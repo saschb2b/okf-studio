@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-11T04:15:00Z
+timestamp: 2026-07-11T09:00:00Z
 ---
 
 # Adopted patterns
@@ -29,7 +29,7 @@ timestamp: 2026-07-11T04:15:00Z
 - Zed combines permissions with OS sandboxing. Native Windows terminal isolation currently requires WSL and Bubblewrap.
 - Zed stores provider keys in the system keychain.
 - Zed Skills apply to its native agent, not automatically to external agents.
-- The ACP Registry currently distributes Claude Agent and Codex as pinned `npx` packages, so a self-contained client needs an app-managed runtime or declared prerequisite.
+- The ACP Registry snapshot checked on 2026-07-11 distributes Claude Agent as `@agentclientprotocol/claude-agent-acp@0.58.1` and Codex as `@agentclientprotocol/codex-acp@1.1.2`. Both are pinned `npx` packages, so a self-contained client needs an app-managed runtime or declared prerequisite.
 - Zed separates `agent_ui`, `agent_servers`, `acp_thread`, native agent logic, and project registry/process stores. The UI consumes connection traits and stores rather than implementing the protocol.
 
 # Citations
@@ -51,4 +51,3 @@ timestamp: 2026-07-11T04:15:00Z
 - [ACP tools and permissions](https://agentclientprotocol.com/protocol/v1/tool-calls)
 - [ACP filesystem](https://agentclientprotocol.com/protocol/v1/file-system)
 - [ACP Rust library](https://agentclientprotocol.com/libraries/rust)
-

@@ -15,6 +15,10 @@ export interface AgentDistribution {
   kind: "npm";
   package: string;
   version: string;
+  tarball: string;
+  integrity: `sha512-${string}`;
+  downloadSize: number;
+  unpackedSize: number;
 }
 
 export interface AgentCatalogRecord {

@@ -4,27 +4,32 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct AgentCatalog {
     version: u32,
-    entries: Vec<AgentCatalogEntry>,
+    pub(crate) entries: Vec<AgentCatalogEntry>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct AgentCatalogEntry {
-    id: String,
-    name: String,
-    summary: String,
-    runtime: String,
-    auth_methods: Vec<String>,
-    source: String,
-    availability: String,
-    distribution: Option<AgentDistribution>,
+pub(crate) struct AgentCatalogEntry {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) summary: String,
+    pub(crate) runtime: String,
+    pub(crate) auth_methods: Vec<String>,
+    pub(crate) source: String,
+    pub(crate) availability: String,
+    pub(crate) distribution: Option<AgentDistribution>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct AgentDistribution {
-    kind: String,
-    package: String,
-    version: String,
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentDistribution {
+    pub(crate) kind: String,
+    pub(crate) package: String,
+    pub(crate) version: String,
+    pub(crate) tarball: String,
+    pub(crate) integrity: String,
+    pub(crate) download_size: u64,
+    pub(crate) unpacked_size: u64,
 }
 
 pub fn load() -> Result<AgentCatalog, String> {

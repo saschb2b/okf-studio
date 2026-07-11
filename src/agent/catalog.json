@@ -11,8 +11,12 @@
       "availability": "installable",
       "distribution": {
         "kind": "npm",
-        "package": "@zed-industries/claude-agent-acp",
-        "version": "0.58.1"
+        "package": "@agentclientprotocol/claude-agent-acp",
+        "version": "0.58.1",
+        "tarball": "https://registry.npmjs.org/@agentclientprotocol/claude-agent-acp/-/claude-agent-acp-0.58.1.tgz",
+        "integrity": "sha512-F1/W6EJdoYbrEUluRUknx0Nn0MAKDOkn2C/9YcP/joVkmdFUGTAxlGDpwdYu239TOkpc8Qm4+ffGsQjPZdryTg==",
+        "downloadSize": 97611,
+        "unpackedSize": 375083
       }
     },
     {
@@ -25,8 +29,12 @@
       "availability": "installable",
       "distribution": {
         "kind": "npm",
-        "package": "@zed-industries/codex-acp",
-        "version": "1.1.2"
+        "package": "@agentclientprotocol/codex-acp",
+        "version": "1.1.2",
+        "tarball": "https://registry.npmjs.org/@agentclientprotocol/codex-acp/-/codex-acp-1.1.2.tgz",
+        "integrity": "sha512-qE/R1WdqJJ9OFHsHGvbmVmS2j9iCMZzpWT3g2XIViXrGHu1fLOALLINBIlW+WzKDllCh131aB6cqcIWSt0otbw==",
+        "downloadSize": 180958,
+        "unpackedSize": 1094529
       }
     },
     {

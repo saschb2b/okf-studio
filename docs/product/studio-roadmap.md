@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T08:00:00Z
+timestamp: 2026-07-11T09:00:00Z
 ---
 
 # Outcome
@@ -75,7 +75,7 @@ Gate: keyboard, focus return, axe, 24px targets, and screenshots at narrow and w
 - [x] Model available, installing, installed, connecting, auth-required, ready, update, and failed states.
 - [x] Read the curated ACP Registry and feature Claude Agent, Codex, and local choices without brand-specific domain logic.
 - [ ] Support custom ACP commands.
-- [ ] Install in Rust with pinned versions, integrity checks, cancellation, and app-cache isolation.
+- [x] Install in Rust with pinned versions, integrity checks, cancellation, and app-cache isolation.
 - [ ] Manage an app-scoped Node runtime for registry `npx` packages and disclose download size before install.
 
 Gate: mocked offline, corrupt, unsupported-platform, cancel, retry, and update tests. Discovery never starts an agent.

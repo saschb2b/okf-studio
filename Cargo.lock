@@ -2447,12 +2447,14 @@ dependencies = [
 name = "okf-viewer"
 version = "0.2.7"
 dependencies = [
+ "base64 0.22.1",
  "flate2",
  "gtk",
  "notify",
  "okf-core",
  "serde",
  "serde_json",
+ "sha2",
  "tar",
  "tauri",
  "tauri-build",

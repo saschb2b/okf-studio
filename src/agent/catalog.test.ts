@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_CATALOG, authMethodLabel, runtimeLabel } from "./catalog.ts";
+import catalog from "./catalog.json";
+import {
+  authMethodLabel,
+  catalogEntries,
+  runtimeLabel,
+  type AgentCatalogDocument,
+} from "./catalog.ts";
 
 describe("agent connection catalog", () => {
   it("keeps featured providers unique and explicit about their runtime", () => {
-    expect(new Set(AGENT_CATALOG.map((entry) => entry.id)).size).toBe(
-      AGENT_CATALOG.length,
-    );
-    expect(AGENT_CATALOG.filter((entry) => entry.runtime === "external-acp")).toHaveLength(2);
-    expect(AGENT_CATALOG.filter((entry) => entry.runtime === "studio-native")).toHaveLength(2);
+    const entries = catalogEntries(catalog as AgentCatalogDocument);
+    expect(new Set(entries.map((entry) => entry.id)).size).toBe(entries.length);
+    expect(entries.filter((entry) => entry.runtime === "external-acp")).toHaveLength(2);
+    expect(entries.filter((entry) => entry.runtime === "studio-native")).toHaveLength(2);
+    expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(2);
   });
 
   it("labels authentication and runtime choices for display", () => {

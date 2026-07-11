@@ -1,21 +1,53 @@
-import { ArrowLeft, Box, Cpu, KeyRound, TerminalSquare } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowLeft, Cpu, RefreshCw, TerminalSquare } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import {
-  AGENT_CATALOG,
   authMethodLabel,
+  catalogEntries,
   runtimeLabel,
   type AgentCatalogEntry,
 } from "../agent/catalog.ts";
+import { agentCatalog } from "../ipc.ts";
 import "./AgentConnectionCatalog.css";
 
-const icons: Record<AgentCatalogEntry["id"], ReactNode> = {
-  "claude-agent": <TerminalSquare size={20} aria-hidden="true" />,
-  codex: <Box size={20} aria-hidden="true" />,
-  "studio-api": <KeyRound size={20} aria-hidden="true" />,
-  "local-model": <Cpu size={20} aria-hidden="true" />,
-};
+type CatalogState =
+  | { status: "loading" }
+  | { status: "ready"; entries: readonly AgentCatalogEntry[] }
+  | { status: "error"; message: string };
+
+async function loadCatalog(): Promise<CatalogState> {
+  try {
+    const document = await agentCatalog();
+    return { status: "ready", entries: catalogEntries(document) };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
 
 export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
+  const [state, setState] = useState<CatalogState>({ status: "loading" });
+  const requestVersion = useRef(0);
+
+  useEffect(() => {
+    const version = ++requestVersion.current;
+    void loadCatalog().then((next) => {
+      if (requestVersion.current === version) setState(next);
+    });
+    return () => {
+      requestVersion.current += 1;
+    };
+  }, []);
+
+  function retry() {
+    setState({ status: "loading" });
+    const version = ++requestVersion.current;
+    void loadCatalog().then((next) => {
+      if (requestVersion.current === version) setState(next);
+    });
+  }
+
   return (
     <section className="agent-catalog" aria-labelledby="agent-catalog-title">
       <div className="agent-catalog__intro">
@@ -35,45 +67,73 @@ export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
         </p>
       </div>
 
-      <div className="agent-catalog__list">
-        {AGENT_CATALOG.map((entry) => (
-          <article className="agent-catalog-card" key={entry.id}>
-            <div className="agent-catalog-card__icon">{icons[entry.id]}</div>
-            <div className="agent-catalog-card__body">
-              <div className="agent-catalog-card__title-row">
-                <h3>{entry.name}</h3>
-                <span className="badge">
-                  {entry.availability === "installable" ? "ACP" : "Planned"}
-                </span>
-              </div>
-              <p>{entry.summary}</p>
-              <dl>
-                <div>
-                  <dt>Runs as</dt>
-                  <dd>{runtimeLabel(entry.runtime)}</dd>
-                </div>
-                <div>
-                  <dt>Sign in</dt>
-                  <dd>{entry.authMethods.map(authMethodLabel).join(" or ")}</dd>
-                </div>
-              </dl>
-            </div>
-            <button
-              type="button"
-              className="btn agent-catalog-card__action"
-              disabled
-              title="Installation is added in the next Studio work package"
-            >
-              {entry.availability === "installable" ? "Install" : "Not available yet"}
-            </button>
-          </article>
-        ))}
-      </div>
+      {state.status === "loading" && (
+        <div className="agent-catalog__state" role="status">
+          <RefreshCw size={20} aria-hidden="true" />
+          <span>Loading connection catalog…</span>
+        </div>
+      )}
 
-      <p className="agent-catalog__notice">
-        Catalog browsing does not download or start an agent. Installation is
-        disabled until Studio can verify packages and isolate its agent cache.
-      </p>
+      {state.status === "error" && (
+        <div className="agent-catalog__state" role="alert">
+          <p>Studio could not load the connection catalog. {state.message}</p>
+          <button type="button" className="btn" onClick={retry}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {state.status === "ready" && (
+        <div className="agent-catalog__list">
+          {state.entries.map((entry) => (
+            <article className="agent-catalog-card" key={entry.id}>
+              <div className="agent-catalog-card__icon">
+                {entry.runtime === "external-acp" ? (
+                  <TerminalSquare size={20} aria-hidden="true" />
+                ) : (
+                  <Cpu size={20} aria-hidden="true" />
+                )}
+              </div>
+              <div className="agent-catalog-card__body">
+                <div className="agent-catalog-card__title-row">
+                  <h3>{entry.name}</h3>
+                  <span className="badge">
+                    {entry.availability === "installable" ? "ACP" : "Planned"}
+                  </span>
+                </div>
+                <p>{entry.summary}</p>
+                <dl>
+                  <div>
+                    <dt>Runs as</dt>
+                    <dd>{runtimeLabel(entry.runtime)}</dd>
+                  </div>
+                  <div>
+                    <dt>Sign in</dt>
+                    <dd>{entry.authMethods.map(authMethodLabel).join(" or ")}</dd>
+                  </div>
+                </dl>
+              </div>
+              <button
+                type="button"
+                className="btn agent-catalog-card__action"
+                disabled
+                title="Installation is added in the next Studio work package"
+              >
+                {entry.availability === "installable"
+                  ? "Install"
+                  : "Not available yet"}
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {state.status === "ready" && (
+        <p className="agent-catalog__notice">
+          Catalog browsing does not download or start an agent. Installation is
+          disabled until Studio can verify packages and isolate its agent cache.
+        </p>
+      )}
     </section>
   );
 }

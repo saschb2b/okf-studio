@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-11T04:15:00Z
+timestamp: 2026-07-11T08:00:00Z
 ---
 
 # Decision
@@ -55,9 +55,10 @@ Permission precedence is: non-overridable security rules, deny, confirm, allow, 
 
 Registry membership is not a sandbox. Studio shows publisher, repository, license, exact version, distribution, and runtime before install. Binary archives require verified digests. `npx` agents use an isolated app-managed Node runtime/cache. Installation never starts the agent.
 
+The first catalog is a versioned JSON manifest bundled into both builds from one source file. React reads it through a generic IPC function; the desktop command parses it into Rust structs before returning it. Browser development uses the same manifest directly. Provider names, authentication methods, runtime kind, package coordinates, and pinned versions remain catalog data rather than brand-specific UI or process branches. Updating the bundled snapshot is explicit and reviewable; later remote refresh must verify a signed or pinned registry response before replacing it.
+
 UI/provider settings use the existing store; credentials use the OS credential store; thread/change metadata uses a Rust-owned local store selected during implementation. Local bundle reading remains network-free. Network begins only after an explicit install, auth, remote provider prompt, URL attachment, or update action.
 
 # IPC
 
 Commands cover list/install/connect/authenticate/session/prompt/cancel/permission/context/review/apply/restore. Events carry install progress, connection state, session updates, permission requests, and change sets. Stable IDs let the frontend accept late cancellation updates without reopening completed requests.
-

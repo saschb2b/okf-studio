@@ -1,6 +1,7 @@
 //! Tauri layer: thin command/event wrappers over `okf-core`. The frontend never
 //! touches the filesystem; it calls these commands and listens for events.
 
+mod agent_catalog;
 mod remote;
 mod watch;
 
@@ -17,6 +18,11 @@ fn scan_bundles(folder: String, max_depth: usize) -> Vec<BundleRoot> {
 #[tauri::command]
 fn read_bundle(root: String) -> Bundle {
     okf_core::read_bundle(Path::new(&root))
+}
+
+#[tauri::command]
+fn agent_catalog() -> Result<agent_catalog::AgentCatalog, String> {
+    agent_catalog::load()
 }
 
 /// Fetch a remote bundle (a GitHub repo tarball or a direct archive URL) into a
@@ -147,6 +153,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             scan_bundles,
             read_bundle,
+            agent_catalog,
             fetch_remote_bundle,
             read_asset,
             read_asset_data_url,

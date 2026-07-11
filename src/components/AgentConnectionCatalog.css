@@ -47,6 +47,23 @@
   gap: var(--space-8);
 }
 
+.agent-catalog__state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 80px;
+  padding: var(--space-12);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-catalog__state p {
+  margin: 0;
+  line-height: var(--lh-normal);
+}
+
 .agent-catalog-card {
   display: flex;
   flex-direction: column;

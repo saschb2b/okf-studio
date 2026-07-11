@@ -10,6 +10,8 @@ import type {
   Settings,
 } from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
+import catalog from "./agent/catalog.json";
+import type { AgentCatalogDocument } from "./agent/catalog.ts";
 import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
@@ -20,6 +22,12 @@ import {
 
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+export async function agentCatalog(): Promise<AgentCatalogDocument> {
+  if (!isTauri()) return catalog as AgentCatalogDocument;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCatalogDocument>("agent_catalog");
 }
 
 export async function pickFolder(): Promise<string | null> {

@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-11
+* **Update**: Moved Agent provider identities, authentication methods, runtime kinds, and pinned ACP package versions into one versioned catalog manifest. A typed Rust command parses and returns that manifest on desktop, while browser development reads the same source. The catalog UI now has real loading and retryable error states; discovery still downloads and starts nothing.
 * **Creation**: Added the typed Agent connection catalog and its first selection screen. It distinguishes external ACP agents from Studio-managed runtimes, features Claude Agent and Codex alongside planned Studio API and local-model paths, models the complete install-to-ready lifecycle, and keeps install controls disabled until verified Rust installation exists. Opening the catalog makes no network request and starts no process.
 * **Update**: Made the Agent Panel width and visibility persistent, added pointer and keyboard resizing, transferred focus for the global shortcut, and made the panel replace the center workspace at narrow window widths with a direct return control.
 * **Creation**: Added the first [Agent Panel](features/agent-panel.md) shell: a persistent bottom-right status-bar opener, `Ctrl/Cmd+Shift+A`, and command-palette action toggle a right-docked panel beside the workspace. Its explicit disconnected state offers **Connect an agent** and makes no network or account request. The connection action is intentionally inert until the catalog package supplies a safe path.

@@ -1,8 +1,9 @@
-import { beforeEach, describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
+import * as ipc from "./ipc.ts";
 
 // End-to-end-ish: render the real app, drive the mock backend (the IPC layer
 // falls back to the in-memory fixture outside a Tauri window), and assert the
@@ -17,6 +18,7 @@ function renderApp() {
 }
 
 beforeEach(() => localStorage.clear());
+afterEach(() => vi.restoreAllMocks());
 
 async function openFolder(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
@@ -48,6 +50,18 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("heading", { name: "Codex" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Install" })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: "Install" })[0]).toBeDisabled();
+  });
+
+  it("shows a retryable error when the connection catalog cannot load", async () => {
+    vi.spyOn(ipc, "agentCatalog").mockRejectedValueOnce(new Error("Catalog unavailable"));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Catalog unavailable");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("moves focus into and out of the agent panel with its shortcut", async () => {

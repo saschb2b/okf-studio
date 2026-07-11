@@ -2,6 +2,7 @@
 //! touches the filesystem; it calls these commands and listens for events.
 
 mod agent_catalog;
+mod agent_custom;
 mod agent_install;
 mod agent_runtime;
 mod remote;
@@ -25,6 +26,24 @@ fn read_bundle(root: String) -> Bundle {
 #[tauri::command]
 fn agent_catalog() -> Result<agent_catalog::AgentCatalog, String> {
     agent_catalog::load()
+}
+
+#[tauri::command]
+fn custom_agents(app: AppHandle) -> Result<Vec<agent_custom::CustomAgentProfile>, String> {
+    agent_custom::list(&app)
+}
+
+#[tauri::command]
+fn save_custom_agent(
+    app: AppHandle,
+    input: agent_custom::CustomAgentInput,
+) -> Result<agent_custom::CustomAgentProfile, String> {
+    agent_custom::save(&app, input)
+}
+
+#[tauri::command]
+fn remove_custom_agent(app: AppHandle, profile_id: String) -> Result<bool, String> {
+    agent_custom::remove(&app, &profile_id)
 }
 
 #[tauri::command]
@@ -196,6 +215,9 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             agent_catalog,
+            custom_agents,
+            save_custom_agent,
+            remove_custom_agent,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

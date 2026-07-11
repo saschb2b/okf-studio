@@ -12,6 +12,7 @@ import type {
 import { DEFAULT_SETTINGS } from "./types.ts";
 import catalog from "./agent/catalog.json";
 import type { AgentCatalogDocument } from "./agent/catalog.ts";
+import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
 import type {
   AgentInstallPreflight,
   AgentInstallProgress,
@@ -33,6 +34,36 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
   if (!isTauri()) return catalog as AgentCatalogDocument;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentCatalogDocument>("agent_catalog");
+}
+
+let mockCustomAgents: CustomAgentProfile[] = [];
+
+export async function customAgents(): Promise<readonly CustomAgentProfile[]> {
+  if (!isTauri()) return mockCustomAgents;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<CustomAgentProfile[]>("custom_agents");
+}
+
+export async function saveCustomAgent(
+  input: CustomAgentInput,
+): Promise<CustomAgentProfile> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<CustomAgentProfile>("save_custom_agent", { input });
+  }
+  const profile = { ...input, id: `custom-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}` };
+  mockCustomAgents = [...mockCustomAgents, profile];
+  return profile;
+}
+
+export async function removeCustomAgent(profileId: string): Promise<boolean> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<boolean>("remove_custom_agent", { profileId });
+  }
+  const previousLength = mockCustomAgents.length;
+  mockCustomAgents = mockCustomAgents.filter((profile) => profile.id !== profileId);
+  return mockCustomAgents.length !== previousLength;
 }
 
 export async function agentInstallPreflight(

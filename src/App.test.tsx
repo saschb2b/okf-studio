@@ -87,6 +87,28 @@ describe("OKF Studio app", () => {
     expect(within(card).getByRole("button", { name: "Install" })).toBeEnabled();
   });
 
+  it("registers and removes a custom ACP argv profile without starting it", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Local Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\agent.exe");
+    await user.type(screen.getByLabelText("Arguments, one per line"), "--stdio");
+    await user.type(
+      screen.getByLabelText("Inherited environment variable names, one per line"),
+      "MODEL_PATH",
+    );
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+
+    expect(await screen.findByText("Local Harness")).toBeInTheDocument();
+    expect(screen.getByText(/Not connected/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remove Local Harness" }));
+    expect(screen.queryByText("Local Harness")).not.toBeInTheDocument();
+  });
+
   it("shows a retryable error when the connection catalog cannot load", async () => {
     vi.spyOn(ipc, "agentCatalog").mockRejectedValueOnce(new Error("Catalog unavailable"));
     const user = userEvent.setup();

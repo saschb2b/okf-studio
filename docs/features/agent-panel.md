@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T12:00:00Z
+timestamp: 2026-07-11T13:00:00Z
 ---
 
 # Entry and first open
@@ -19,6 +19,8 @@ First open makes no account or network request. It explains three paths and offe
 The connection catalog distinguishes external ACP agents from Studio-managed runtimes and lists each path's credential owner. Claude Agent and Codex are the featured ACP choices. Studio API and local-model paths are visible as planned native runtimes. A bundled, versioned manifest supplies the choices through Rust IPC on desktop and the same data in browser development. Loading and retryable catalog errors have explicit states.
 
 Browsing the catalog never downloads or starts a process. For an installable agent, a platform preflight checks the cache and discloses the exact remaining managed Node and package download before enabling **Install**. Installation reports its current runtime or package phase, remains cancellable, and exposes a retry after failure. Completion says **Installed** and explicitly states that no agent has started; connection and authentication are later, separate actions.
+
+Custom ACP profiles accept a display name, an absolute executable path, arguments as an argv list, and names of environment variables to inherit later. Studio stores these profiles through Rust in its app-data directory. It never accepts a shell command string or environment values. Arguments are plain-text settings and must not contain secrets. Saving a profile registers it only; the ACP runtime starts it in a later work package.
 
 # Layout and focus
 

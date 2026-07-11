@@ -1,19 +1,25 @@
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { catalogEntries, type AgentCatalogEntry } from "../agent/catalog.ts";
-import { agentCatalog } from "../ipc.ts";
+import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
+import { agentCatalog, customAgents, removeCustomAgent, saveCustomAgent } from "../ipc.ts";
 import { AgentCatalogCard } from "./AgentCatalogCard.tsx";
+import { CustomAgentProfiles } from "./CustomAgentProfiles.tsx";
 import "./AgentConnectionCatalog.css";
 
 type CatalogState =
   | { status: "loading" }
-  | { status: "ready"; entries: readonly AgentCatalogEntry[] }
+  | {
+      status: "ready";
+      entries: readonly AgentCatalogEntry[];
+      customProfiles: readonly CustomAgentProfile[];
+    }
   | { status: "error"; message: string };
 
 async function loadCatalog(): Promise<CatalogState> {
   try {
-    const document = await agentCatalog();
-    return { status: "ready", entries: catalogEntries(document) };
+    const [document, customProfiles] = await Promise.all([agentCatalog(), customAgents()]);
+    return { status: "ready", entries: catalogEntries(document), customProfiles };
   } catch (error: unknown) {
     return {
       status: "error",
@@ -42,6 +48,27 @@ export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
     void loadCatalog().then((next) => {
       if (requestVersion.current === version) setState(next);
     });
+  }
+
+  async function saveProfile(input: CustomAgentInput) {
+    const profile = await saveCustomAgent(input);
+    setState((current) =>
+      current.status === "ready"
+        ? { ...current, customProfiles: [...current.customProfiles, profile] }
+        : current,
+    );
+  }
+
+  async function removeProfile(profileId: string) {
+    await removeCustomAgent(profileId);
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            ...current,
+            customProfiles: current.customProfiles.filter((profile) => profile.id !== profileId),
+          }
+        : current,
+    );
   }
 
   return (
@@ -88,10 +115,17 @@ export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
       )}
 
       {state.status === "ready" && (
-        <p className="agent-catalog__notice">
-          Catalog browsing does not download or start an agent. Install runs only
-          when you choose it; connecting and authentication remain separate.
-        </p>
+        <>
+          <CustomAgentProfiles
+            profiles={state.customProfiles}
+            onProfileSave={saveProfile}
+            onProfileRemove={removeProfile}
+          />
+          <p className="agent-catalog__notice">
+            Catalog browsing and custom-command setup do not start an agent. Install runs only
+            when you choose it; connecting and authentication remain separate.
+          </p>
+        </>
       )}
     </section>
   );

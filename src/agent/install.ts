@@ -21,7 +21,13 @@ export interface AgentInstallReceipt {
 export interface AgentInstallProgress {
   installId: string;
   agentId: string;
-  phase: "downloading" | "extracting" | "complete" | "cancelled";
+  phase:
+    | "runtime-downloading"
+    | "runtime-extracting"
+    | "package-downloading"
+    | "package-extracting"
+    | "complete"
+    | "cancelled";
   downloadedBytes: number;
   totalBytes: number;
 }

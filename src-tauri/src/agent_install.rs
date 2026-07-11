@@ -12,6 +12,7 @@ use sha2::{Digest, Sha512};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::agent_catalog::{self, AgentDistribution};
+use crate::agent_runtime;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const READ_TIMEOUT: Duration = Duration::from_secs(120);
@@ -181,6 +182,27 @@ pub fn install(
         .filter(|distribution| distribution.kind == "npm")
         .ok_or_else(|| "This agent is not installable yet.".to_string())?;
     validate_distribution(distribution)?;
+    let runtime_distribution = catalog
+        .node_runtime
+        .distribution_for(std::env::consts::OS, std::env::consts::ARCH)
+        .ok_or_else(|| {
+            format!(
+                "Managed Node is not available for {}-{}.",
+                std::env::consts::OS,
+                std::env::consts::ARCH
+            )
+        })?;
+    agent_runtime::ensure(
+        app,
+        &catalog.node_runtime,
+        runtime_distribution,
+        install_id,
+        &cancelled,
+        |phase, downloaded, total| {
+            emit_progress(app, install_id, agent_id, phase, downloaded, total);
+        },
+    )?;
+    check_cancelled(&cancelled)?;
 
     let root = agent_cache(app)?.join("packages").join(agent_id);
     fs::create_dir_all(&root)
@@ -201,7 +223,7 @@ pub fn install(
             app,
             install_id,
             agent_id,
-            "downloading",
+            "package-downloading",
             0,
             distribution.download_size,
         );
@@ -218,7 +240,7 @@ pub fn install(
             app,
             install_id,
             agent_id,
-            "extracting",
+            "package-extracting",
             distribution.download_size,
             distribution.download_size,
         );
@@ -300,7 +322,7 @@ fn download(
                 app,
                 install_id,
                 agent_id,
-                "downloading",
+                "package-downloading",
                 downloaded,
                 distribution.download_size,
             );

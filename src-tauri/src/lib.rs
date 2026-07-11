@@ -3,6 +3,7 @@
 
 mod agent_catalog;
 mod agent_install;
+mod agent_runtime;
 mod remote;
 mod watch;
 

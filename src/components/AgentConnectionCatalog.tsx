@@ -122,8 +122,8 @@ export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
             onProfileRemove={removeProfile}
           />
           <p className="agent-catalog__notice">
-            Catalog browsing and custom-command setup do not start an agent. Install runs only
-            when you choose it; connecting and authentication remain separate.
+            Browsing and saving do not start an agent. Installation, connection, and
+            authentication each require a separate explicit action.
           </p>
         </>
       )}

@@ -109,6 +109,50 @@ describe("OKF Studio app", () => {
     expect(screen.queryByText("Local Harness")).not.toBeInTheDocument();
   });
 
+  it("connects and disconnects a custom ACP profile on explicit actions", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Local Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\agent.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect Local Harness" }));
+    expect(screen.getByRole("button", { name: "Connect Local Harness" })).toBeDisabled();
+    expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(await screen.findByText("Not connected.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remove Local Harness" }));
+  });
+
+  it("keeps a custom ACP connection failure visible and retryable", async () => {
+    vi.spyOn(ipc, "connectCustomAgent").mockRejectedValueOnce(new Error("Handshake rejected"));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Broken Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\broken.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect Broken Harness" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Connection failed. Handshake rejected",
+    );
+    expect(screen.getByRole("button", { name: "Connect Broken Harness" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Remove Broken Harness" }));
+  });
+
   it("shows a retryable error when the connection catalog cannot load", async () => {
     vi.spyOn(ipc, "agentCatalog").mockRejectedValueOnce(new Error("Catalog unavailable"));
     const user = userEvent.setup();

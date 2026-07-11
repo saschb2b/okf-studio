@@ -1,6 +1,13 @@
-import { Plus, TerminalSquare, Trash2 } from "lucide-react";
-import { useActionState, useState } from "react";
+import { Plug, Plus, TerminalSquare, Trash2, Unplug } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import type { AgentConnectionEvent, AgentConnectionInfo } from "../agent/connection.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
+import {
+  activeAgentConnections,
+  connectCustomAgent,
+  disconnectAgent,
+  onAgentConnectionState,
+} from "../ipc.ts";
 
 interface CustomAgentProfilesProps {
   profiles: readonly CustomAgentProfile[];
@@ -9,6 +16,14 @@ interface CustomAgentProfilesProps {
 }
 
 type FormState = { status: "idle" } | { status: "error"; message: string };
+type ProfileConnection =
+  | { status: "disconnected" }
+  | { status: "connecting" }
+  | { status: "ready"; info: AgentConnectionInfo }
+  | { status: "disconnecting"; info: AgentConnectionInfo }
+  | { status: "error"; message: string; info?: AgentConnectionInfo };
+
+const DISCONNECTED = { status: "disconnected" } as const satisfies ProfileConnection;
 
 function text(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value : "";
@@ -43,6 +58,74 @@ export function CustomAgentProfiles({
   const [removeState, setRemoveState] = useState<
     { status: "idle" } | { status: "removing"; profileId: string } | { status: "error"; message: string }
   >({ status: "idle" });
+  const [connections, setConnections] = useState<Partial<Record<string, ProfileConnection>>>(() =>
+    Object.fromEntries(
+      activeAgentConnections().map((info) => [info.profileId, { status: "ready", info }]),
+    ),
+  );
+  const [listenerError, setListenerError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stopListening: (() => void) | undefined;
+    let isDisposed = false;
+    void onAgentConnectionState((event) => {
+      setConnections((current) => applyConnectionEvent(current, event));
+    }).then(
+      (stop) => {
+        if (isDisposed) stop();
+        else stopListening = stop;
+      },
+      (error: unknown) => {
+        if (!isDisposed) {
+          setListenerError(error instanceof Error ? error.message : String(error));
+        }
+      },
+    );
+    return () => {
+      isDisposed = true;
+      stopListening?.();
+    };
+  }, []);
+
+  async function connect(profileId: string) {
+    setConnections((current) => ({ ...current, [profileId]: { status: "connecting" } }));
+    try {
+      const info = await connectCustomAgent(profileId);
+      setConnections((current) =>
+        current[profileId]?.status === "connecting"
+          ? { ...current, [profileId]: { status: "ready", info } }
+          : current,
+      );
+    } catch (error: unknown) {
+      setConnections((current) => ({
+        ...current,
+        [profileId]: {
+          status: "error",
+          message: error instanceof Error ? error.message : String(error),
+        },
+      }));
+    }
+  }
+
+  async function disconnect(info: AgentConnectionInfo) {
+    setConnections((current) => ({
+      ...current,
+      [info.profileId]: { status: "disconnecting", info },
+    }));
+    try {
+      await disconnectAgent(info.connectionId);
+      setConnections((current) => ({ ...current, [info.profileId]: DISCONNECTED }));
+    } catch (error: unknown) {
+      setConnections((current) => ({
+        ...current,
+        [info.profileId]: {
+          status: "error",
+          message: error instanceof Error ? error.message : String(error),
+          info,
+        },
+      }));
+    }
+  }
 
   async function remove(profileId: string) {
     setRemoveState({ status: "removing", profileId });
@@ -73,29 +156,74 @@ export function CustomAgentProfiles({
       </div>
 
       {profiles.length > 0 && (
+        <p className="custom-agents__execution-notice">
+          Connecting launches the saved executable as an external process. It is not sandboxed;
+          Studio limits only its inherited environment and ACP permissions.
+        </p>
+      )}
+
+      {profiles.length > 0 && (
         <ul className="custom-agents__list">
-          {profiles.map((profile) => (
-            <li key={profile.id}>
-              <TerminalSquare size={18} aria-hidden="true" />
-              <div>
-                <strong>{profile.name}</strong>
-                <code title={profile.executable}>{profile.executable}</code>
-                <span>
-                  {profile.arguments.length} argument(s), {profile.environment.length} inherited variable(s). Not connected.
-                </span>
-              </div>
-              <button
-                type="button"
-                className="btn ghost icon"
-                aria-label={`Remove ${profile.name}`}
-                disabled={removeState.status === "removing"}
-                onClick={() => void remove(profile.id)}
-              >
-                <Trash2 size={16} aria-hidden="true" />
-              </button>
-            </li>
-          ))}
+          {profiles.map((profile) => {
+            const connection = connections[profile.id] ?? DISCONNECTED;
+            const connectedInfo = activeConnectionInfo(connection);
+            return (
+              <li key={profile.id}>
+                <TerminalSquare size={18} aria-hidden="true" />
+                <div className="custom-agents__details">
+                  <strong>{profile.name}</strong>
+                  <code title={profile.executable}>{profile.executable}</code>
+                  <span>
+                    {profile.arguments.length} argument(s), {profile.environment.length} inherited
+                    variable(s).
+                  </span>
+                  <ConnectionStatus connection={connection} />
+                </div>
+                <div className="custom-agents__actions">
+                  {connectedInfo ? (
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      disabled={connection.status === "disconnecting"}
+                      onClick={() => void disconnect(connectedInfo)}
+                    >
+                      <Unplug size={16} aria-hidden="true" />
+                      {connection.status === "disconnecting" ? "Disconnecting..." : "Disconnect"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn"
+                      aria-label={`Connect ${profile.name}`}
+                      disabled={connection.status === "connecting"}
+                      onClick={() => void connect(profile.id)}
+                    >
+                      <Plug size={16} aria-hidden="true" />
+                      {connection.status === "connecting" ? "Connecting..." : "Connect"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn ghost icon"
+                    aria-label={`Remove ${profile.name}`}
+                    disabled={
+                      removeState.status === "removing" || connection.status === "connecting"
+                    }
+                    onClick={() => void remove(profile.id)}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
+      )}
+
+      {listenerError && (
+        <p className="custom-agents__error" role="alert">
+          Studio cannot report agent process exits. {listenerError}
+        </p>
       )}
 
       {removeState.status === "error" && (
@@ -114,6 +242,70 @@ export function CustomAgentProfiles({
         />
       )}
     </section>
+  );
+}
+
+function activeConnectionInfo(connection: ProfileConnection): AgentConnectionInfo | undefined {
+  if (connection.status === "ready" || connection.status === "disconnecting") {
+    return connection.info;
+  }
+  return connection.status === "error" ? connection.info : undefined;
+}
+
+function applyConnectionEvent(
+  current: Partial<Record<string, ProfileConnection>>,
+  event: AgentConnectionEvent,
+): Partial<Record<string, ProfileConnection>> {
+  const existing = current[event.profileId];
+  if (
+    existing &&
+    (existing.status === "ready" || existing.status === "disconnecting") &&
+    existing.info.connectionId !== event.connectionId
+  ) {
+    return current;
+  }
+  return {
+    ...current,
+    [event.profileId]:
+      event.status === "failed"
+        ? { status: "error", message: event.message }
+        : DISCONNECTED,
+  };
+}
+
+function ConnectionStatus({ connection }: { connection: ProfileConnection }) {
+  if (connection.status === "disconnected") {
+    return <span className="custom-agents__connection">Not connected.</span>;
+  }
+  if (connection.status === "connecting") {
+    return (
+      <span className="custom-agents__connection" role="status">
+        Starting process and negotiating ACP...
+      </span>
+    );
+  }
+  if (connection.status === "error") {
+    return (
+      <span className="custom-agents__connection custom-agents__error" role="alert">
+        Connection failed. {connection.message}
+      </span>
+    );
+  }
+  if (connection.status === "disconnecting") {
+    return (
+      <span className="custom-agents__connection" role="status">
+        Stopping agent process...
+      </span>
+    );
+  }
+  const agentName = connection.info.agent?.title ?? connection.info.agent?.name ?? "agent";
+  const authNotice = connection.info.authMethods.length > 0
+    ? " Authentication is required but is not available in Studio yet."
+    : "";
+  return (
+    <span className="custom-agents__connection custom-agents__connection--ready" role="status">
+      Connected to {agentName} over ACP v{connection.info.protocolVersion}.{authNotice}
+    </span>
   );
 }
 

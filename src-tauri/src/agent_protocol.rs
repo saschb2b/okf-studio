@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
@@ -19,6 +19,8 @@ use crate::agent_custom;
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
+const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
+const CONNECTION_EVENT: &str = "agent-connection-state";
 type HandshakeResult = Result<AgentConnectionInfo, String>;
 type HandshakeSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<HandshakeResult>>>>;
 
@@ -31,6 +33,22 @@ pub struct AgentConnectionInfo {
     agent: Option<AgentImplementationInfo>,
     auth_methods: Vec<AgentAuthMethodInfo>,
     capabilities: AgentCapabilityInfo,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentConnectionEvent {
+    connection_id: String,
+    profile_id: String,
+    status: AgentConnectionStatus,
+    message: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentConnectionStatus {
+    Disconnected,
+    Failed,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -99,6 +117,7 @@ pub async fn connect_custom(
     let worker_profile_id = profile_id.to_string();
     let workers = Arc::clone(&state.workers);
     let worker_handshake = Arc::clone(&handshake_tx);
+    let worker_app = app.clone();
     let (start_tx, start_rx) = tokio::sync::oneshot::channel();
 
     let worker = tokio::spawn(async move {
@@ -108,7 +127,7 @@ pub async fn connect_custom(
         let result = run_connection(
             ProcessAgent::new(spec),
             worker_id.clone(),
-            worker_profile_id,
+            worker_profile_id.clone(),
             Arc::clone(&worker_handshake),
         )
         .await;
@@ -117,42 +136,65 @@ pub async fn connect_custom(
                 .err()
                 .unwrap_or_else(|| "Agent connection ended before initialization.".to_string());
             let _ = sender.send(Err(message));
+        } else if let Err(error) = result {
+            emit_connection_event(
+                &worker_app,
+                AgentConnectionEvent {
+                    connection_id: worker_id.clone(),
+                    profile_id: worker_profile_id,
+                    status: AgentConnectionStatus::Failed,
+                    message: Some(connection_message(&error)),
+                },
+            );
         }
         if let Ok(mut active) = workers.lock() {
             active.remove(&worker_id);
         }
     });
-    state
-        .workers
-        .lock()
-        .map_err(|_| "Agent host state is unavailable.".to_string())?
-        .insert(
+    {
+        let mut active = state
+            .workers
+            .lock()
+            .map_err(|_| "Agent host state is unavailable.".to_string())?;
+        if active
+            .values()
+            .any(|worker| worker.profile_id == profile_id)
+        {
+            worker.abort();
+            return Err("This custom agent profile already has an active connection.".to_string());
+        }
+        active.insert(
             connection_id.clone(),
             AgentWorker {
                 profile_id: profile_id.to_string(),
                 abort: worker.abort_handle(),
             },
         );
+    }
     let _ = start_tx.send(());
 
     match tokio::time::timeout(INITIALIZE_TIMEOUT, handshake_rx).await {
         Ok(Ok(Ok(info))) => Ok(info),
         Ok(Ok(Err(error))) => {
-            disconnect(state, &connection_id)?;
+            disconnect(app, state, &connection_id)?;
             Err(error)
         }
         Ok(Err(_)) => {
-            disconnect(state, &connection_id)?;
+            disconnect(app, state, &connection_id)?;
             Err("Agent connection ended before initialization.".to_string())
         }
         Err(_) => {
-            disconnect(state, &connection_id)?;
+            disconnect(app, state, &connection_id)?;
             Err("Agent initialization timed out.".to_string())
         }
     }
 }
 
-pub fn disconnect(state: &AgentHostState, connection_id: &str) -> Result<bool, String> {
+pub fn disconnect(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+) -> Result<bool, String> {
     let worker = state
         .workers
         .lock()
@@ -160,28 +202,81 @@ pub fn disconnect(state: &AgentHostState, connection_id: &str) -> Result<bool, S
         .remove(connection_id);
     if let Some(worker) = worker {
         worker.abort.abort();
+        emit_connection_event(
+            app,
+            AgentConnectionEvent {
+                connection_id: connection_id.to_string(),
+                profile_id: worker.profile_id,
+                status: AgentConnectionStatus::Disconnected,
+                message: None,
+            },
+        );
         Ok(true)
     } else {
         Ok(false)
     }
 }
 
-pub fn disconnect_profile(state: &AgentHostState, profile_id: &str) -> Result<usize, String> {
-    let mut workers = state
-        .workers
-        .lock()
-        .map_err(|_| "Agent host state is unavailable.".to_string())?;
-    let connection_ids = workers
-        .iter()
-        .filter(|(_, worker)| worker.profile_id == profile_id)
-        .map(|(connection_id, _)| connection_id.clone())
-        .collect::<Vec<_>>();
-    for connection_id in &connection_ids {
-        if let Some(worker) = workers.remove(connection_id) {
-            worker.abort.abort();
-        }
+pub fn disconnect_profile(
+    app: &AppHandle,
+    state: &AgentHostState,
+    profile_id: &str,
+) -> Result<usize, String> {
+    disconnect_profile_workers(state, profile_id, |connection_id, worker| {
+        emit_connection_event(
+            app,
+            AgentConnectionEvent {
+                connection_id: connection_id.to_string(),
+                profile_id: worker.profile_id.clone(),
+                status: AgentConnectionStatus::Disconnected,
+                message: None,
+            },
+        );
+    })
+}
+
+fn disconnect_profile_workers(
+    state: &AgentHostState,
+    profile_id: &str,
+    mut on_disconnect: impl FnMut(&str, &AgentWorker),
+) -> Result<usize, String> {
+    let removed = {
+        let mut workers = state
+            .workers
+            .lock()
+            .map_err(|_| "Agent host state is unavailable.".to_string())?;
+        let connection_ids = workers
+            .iter()
+            .filter(|(_, worker)| worker.profile_id == profile_id)
+            .map(|(connection_id, _)| connection_id.clone())
+            .collect::<Vec<_>>();
+        connection_ids
+            .into_iter()
+            .filter_map(|connection_id| {
+                workers
+                    .remove(&connection_id)
+                    .map(|worker| (connection_id, worker))
+            })
+            .collect::<Vec<_>>()
+    };
+    let count = removed.len();
+    for (connection_id, worker) in removed {
+        worker.abort.abort();
+        on_disconnect(&connection_id, &worker);
     }
-    Ok(connection_ids.len())
+    Ok(count)
+}
+
+fn emit_connection_event(app: &AppHandle, event: AgentConnectionEvent) {
+    let _ = app.emit(CONNECTION_EVENT, event);
+}
+
+fn connection_message(message: &str) -> String {
+    message
+        .chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .take(MAX_CONNECTION_MESSAGE_CHARS)
+        .collect()
 }
 
 fn take_sender(sender: &HandshakeSender) -> Option<tokio::sync::oneshot::Sender<HandshakeResult>> {
@@ -530,6 +625,24 @@ mod tests {
         assert!(!diagnostics.contains('\0'));
     }
 
+    #[test]
+    fn caps_and_serializes_terminal_connection_failures() {
+        let message = connection_message(&format!("failed\0{}", "x".repeat(4096)));
+        assert_eq!(message.chars().count(), MAX_CONNECTION_MESSAGE_CHARS);
+        assert!(!message.contains('\0'));
+
+        let event = AgentConnectionEvent {
+            connection_id: "connection-1".to_string(),
+            profile_id: "profile-1".to_string(),
+            status: AgentConnectionStatus::Failed,
+            message: Some(message),
+        };
+        let value = serde_json::to_value(event).expect("event should serialize");
+        assert_eq!(value["status"], "failed");
+        assert_eq!(value["connectionId"], "connection-1");
+        assert_eq!(value["profileId"], "profile-1");
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn disconnecting_a_profile_aborts_all_of_its_workers() {
         let state = AgentHostState::default();
@@ -551,7 +664,7 @@ mod tests {
         );
 
         assert_eq!(
-            disconnect_profile(&state, "profile-a").expect("disconnect"),
+            disconnect_profile_workers(&state, "profile-a", |_, _| {}).expect("disconnect"),
             2
         );
         assert!(first.await.expect_err("first should abort").is_cancelled());

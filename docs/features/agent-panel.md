@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T13:00:00Z
+timestamp: 2026-07-11T15:00:00Z
 ---
 
 # Entry and first open
@@ -20,7 +20,9 @@ The connection catalog distinguishes external ACP agents from Studio-managed run
 
 Browsing the catalog never downloads or starts a process. For an installable agent, a platform preflight checks the cache and discloses the exact remaining managed Node and package download before enabling **Install**. Installation reports its current runtime or package phase, remains cancellable, and exposes a retry after failure. Completion says **Installed** and explicitly states that no agent has started; connection and authentication are later, separate actions.
 
-Custom ACP profiles accept a display name, an absolute executable path, arguments as an argv list, and names of environment variables to inherit later. Studio stores these profiles through Rust in its app-data directory. It never accepts a shell command string or environment values. Arguments are plain-text settings and must not contain secrets. Saving a profile registers it only; the ACP runtime starts it in a later work package.
+Custom ACP profiles accept a display name, an absolute executable path, arguments as an argv list, and names of environment variables to inherit. Studio stores these profiles through Rust in its app-data directory. It never accepts a shell command string or environment values. Arguments are plain-text settings and must not contain secrets. Saving registers the profile without running it.
+
+Each saved custom profile has an explicit **Connect** action and at most one active connection. Before the action, the catalog states that the executable runs as an external, unsandboxed process and that Studio limits only the inherited environment and ACP permission responses. While connecting, the row reports process startup and protocol negotiation. A successful handshake names the agent and selected ACP version; advertised authentication methods remain visible as a limitation until Studio implements their flow. **Disconnect** stops the child. Typed lifecycle events move a connected row to disconnected or failed when the process stops, with bounded diagnostics on failure. Removing a profile also stops its connections. Leaving and reopening the catalog preserves the live state instead of starting a duplicate process.
 
 # Layout and focus
 

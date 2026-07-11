@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS } from "./types.ts";
 import catalog from "./agent/catalog.json";
 import type { AgentCatalogDocument } from "./agent/catalog.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
+import type { AgentConnectionEvent, AgentConnectionInfo } from "./agent/connection.ts";
 import type {
   AgentInstallPreflight,
   AgentInstallProgress,
@@ -37,6 +38,10 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
 }
 
 let mockCustomAgents: CustomAgentProfile[] = [];
+const activeAgentConnectionsById = new Map<string, AgentConnectionInfo>();
+type AgentConnectionHandler = (event: AgentConnectionEvent) => void;
+const agentConnectionHandlers = new Set<AgentConnectionHandler>();
+let agentConnectionListener: Promise<() => void> | undefined;
 
 export async function customAgents(): Promise<readonly CustomAgentProfile[]> {
   if (!isTauri()) return mockCustomAgents;
@@ -59,11 +64,116 @@ export async function saveCustomAgent(
 export async function removeCustomAgent(profileId: string): Promise<boolean> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
-    return invoke<boolean>("remove_custom_agent", { profileId });
+    const removed = await invoke<boolean>("remove_custom_agent", { profileId });
+    if (removed) forgetProfileConnections(profileId);
+    return removed;
+  }
+  for (const [connectionId, info] of activeAgentConnectionsById) {
+    if (info.profileId !== profileId) continue;
+    activeAgentConnectionsById.delete(connectionId);
+    emitMockAgentConnection({
+      connectionId,
+      profileId,
+      status: "disconnected",
+      message: null,
+    });
   }
   const previousLength = mockCustomAgents.length;
   mockCustomAgents = mockCustomAgents.filter((profile) => profile.id !== profileId);
   return mockCustomAgents.length !== previousLength;
+}
+
+export async function connectCustomAgent(profileId: string): Promise<AgentConnectionInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const info = await invoke<AgentConnectionInfo>("connect_custom_agent", { profileId });
+    activeAgentConnectionsById.set(info.connectionId, info);
+    return info;
+  }
+  const profile = mockCustomAgents.find((candidate) => candidate.id === profileId);
+  if (!profile) throw new Error("Custom agent profile was not found.");
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const info: AgentConnectionInfo = {
+    connectionId: `connection-${crypto.randomUUID()}`,
+    profileId,
+    protocolVersion: "1",
+    agent: { name: "browser-acp", title: profile.name, version: "0.0.0-dev" },
+    authMethods: [],
+    capabilities: {
+      loadSession: false,
+      promptImage: false,
+      promptAudio: false,
+      promptEmbeddedContext: false,
+      mcpHttp: false,
+      mcpSse: false,
+      sessionList: false,
+      sessionResume: false,
+      sessionClose: false,
+    },
+  };
+  activeAgentConnectionsById.set(info.connectionId, info);
+  return info;
+}
+
+export function activeAgentConnections(): readonly AgentConnectionInfo[] {
+  return [...activeAgentConnectionsById.values()];
+}
+
+export async function disconnectAgent(connectionId: string): Promise<boolean> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const disconnected = await invoke<boolean>("disconnect_agent", { connectionId });
+    if (disconnected) activeAgentConnectionsById.delete(connectionId);
+    return disconnected;
+  }
+  const info = activeAgentConnectionsById.get(connectionId);
+  if (!info) return false;
+  activeAgentConnectionsById.delete(connectionId);
+  emitMockAgentConnection({
+    connectionId,
+    profileId: info.profileId,
+    status: "disconnected",
+    message: null,
+  });
+  return true;
+}
+
+export async function onAgentConnectionState(
+  handler: AgentConnectionHandler,
+): Promise<() => void> {
+  if (!isTauri()) {
+    agentConnectionHandlers.add(handler);
+    return () => agentConnectionHandlers.delete(handler);
+  }
+  agentConnectionHandlers.add(handler);
+  agentConnectionListener ??= import("@tauri-apps/api/event").then(({ listen }) =>
+    listen<AgentConnectionEvent>("agent-connection-state", (event) => {
+      receiveAgentConnectionEvent(event.payload);
+    }),
+  );
+  try {
+    await agentConnectionListener;
+  } catch (error: unknown) {
+    agentConnectionListener = undefined;
+    agentConnectionHandlers.delete(handler);
+    throw error;
+  }
+  return () => agentConnectionHandlers.delete(handler);
+}
+
+function emitMockAgentConnection(event: AgentConnectionEvent): void {
+  receiveAgentConnectionEvent(event);
+}
+
+function receiveAgentConnectionEvent(event: AgentConnectionEvent): void {
+  activeAgentConnectionsById.delete(event.connectionId);
+  for (const handler of agentConnectionHandlers) handler(event);
+}
+
+function forgetProfileConnections(profileId: string): void {
+  for (const [connectionId, info] of activeAgentConnectionsById) {
+    if (info.profileId === profileId) activeAgentConnectionsById.delete(connectionId);
+  }
 }
 
 export async function agentInstallPreflight(

@@ -48,7 +48,7 @@ fn remove_custom_agent(
     state: State<'_, agent_protocol::AgentHostState>,
     profile_id: String,
 ) -> Result<bool, String> {
-    agent_protocol::disconnect_profile(state.inner(), &profile_id)?;
+    agent_protocol::disconnect_profile(&app, state.inner(), &profile_id)?;
     agent_custom::remove(&app, &profile_id)
 }
 
@@ -63,10 +63,11 @@ async fn connect_custom_agent(
 
 #[tauri::command]
 fn disconnect_agent(
+    app: AppHandle,
     state: State<'_, agent_protocol::AgentHostState>,
     connection_id: String,
 ) -> Result<bool, String> {
-    agent_protocol::disconnect(state.inner(), &connection_id)
+    agent_protocol::disconnect(&app, state.inner(), &connection_id)
 }
 
 #[tauri::command]

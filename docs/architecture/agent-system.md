@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-11T14:00:00Z
+timestamp: 2026-07-11T15:00:00Z
 ---
 
 # Decision
@@ -79,4 +79,4 @@ Permission requests default to **Cancelled** until the permission UI owns them. 
 
 # IPC
 
-Implemented connection commands cover custom-agent connect and disconnect with stable UUID connection IDs. Planned commands cover catalog-agent connect, authenticate, session, prompt, cancellation, permission, context, review, apply, and restore. Events will carry connection state, session updates, permission requests, and change sets; install progress is already event-based. Stable IDs let the frontend accept late cancellation updates without reopening completed requests.
+Implemented connection commands cover custom-agent connect and disconnect with stable UUID connection IDs; Rust rejects a second active connection for the same profile. A typed terminal lifecycle event reports spontaneous failure and explicit disconnection with the connection and profile IDs; the frontend ignores an event for an older connection on the same profile. The IPC module retains active connection identity and one app-lifetime event listener so catalog remounts do not lose live process state. Failure messages remove controls and are capped before IPC. Planned commands cover catalog-agent connect, authenticate, session, prompt, cancellation, permission, context, review, apply, and restore. Events will also carry session updates, permission requests, and change sets; install progress is already event-based. Stable IDs let the frontend accept late cancellation updates without reopening completed requests.

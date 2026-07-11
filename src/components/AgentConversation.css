@@ -203,6 +203,8 @@
   display: flex;
   min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
 }
 
 .agent-context-attach {
@@ -214,6 +216,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-8);
@@ -253,10 +256,90 @@
   outline-offset: 1px;
 }
 
-.agent-context-empty {
+.agent-context-picker {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(340px, calc(100vw - 2 * var(--space-16)));
+  max-height: min(420px, calc(100vh - 2 * var(--space-16)));
+  gap: var(--space-8);
+  padding: var(--space-8);
+}
+
+.agent-context-picker > input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-8);
+  color: var(--text);
+  font: inherit;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-context-picker > input:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.agent-context-picker__results {
+  display: grid;
+  min-height: 0;
+  gap: var(--space-4);
+  overflow: auto;
+}
+
+.agent-context-picker__results > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  color: var(--text);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.agent-context-picker__results > button:hover,
+.agent-context-picker__results > button:focus-visible {
+  background: var(--bg-hover);
+}
+
+.agent-context-picker__results > button:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
+}
+
+.agent-context-picker__results > button > span {
+  display: grid;
+  min-width: 0;
+}
+
+.agent-context-picker__results strong,
+.agent-context-picker__results small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-context-picker__results small,
+.agent-context-picker__results em,
+.agent-context-picker__results p {
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
+}
+
+.agent-context-picker__results em {
+  font-style: normal;
+}
+
+.agent-context-picker__results p {
+  margin: 0;
+  padding: var(--space-12);
+  text-align: center;
 }
 
 .agent-composer textarea {

@@ -81,6 +81,7 @@ export function AgentPanel() {
             bundleRoot={state.activeRoot}
             bundleName={state.bundle?.name ?? null}
             activeConcept={activeConcept}
+            concepts={state.bundle?.concepts ?? []}
             onChangeAgent={openCatalog}
             onConnectionEnd={() => setView("empty")}
             onOpenFolder={() => actions.openFolder()}

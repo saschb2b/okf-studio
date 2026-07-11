@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-11T23:00:00Z
+timestamp: 2026-07-11T23:30:00Z
 ---
 
 # Decision
@@ -87,7 +87,7 @@ After initialization, each connection becomes a small Rust-owned actor. Typed co
 
 Studio advertises ACP `fs/read_text_file` and leaves `fs/write_text_file` false. A read is accepted only for an active session and an absolute path whose canonical target remains under that session's canonical bundle root. Canonicalizing the target before the root check rejects `..` traversal and symbolic-link escape. Directories, missing files, non-UTF-8 content, zero-based line requests, and text above 1 MiB are rejected. Valid requests preserve line endings and apply ACP's 1-based `line` and maximum-line `limit` fields. The bridge reads only; opening a bundle or approving a generic ACP permission does not enable an ACP write method. Fake-agent tests cover the advertised capability and a ranged read, while boundary tests cover outside-root, binary, and oversized files.
 
-Prompt context is an explicit list of bundle-relative file paths, capped at eight bounded entries. The first UI control snapshots the concept open beside the panel and shows it as a removable chip. Rust resolves each attachment against the session's canonical bundle root, rejects absolute paths, traversal, symbolic-link escape, directories, and missing files, then sends a file resource link before the unchanged user message. The webview never reads the concept body. An accepted turn clears the chip; a rejected prompt leaves it available for correction or retry.
+Prompt context is an ordered list of bundle-relative file paths, capped at eight bounded entries. A searchable picker exposes the bundle inventory, prioritizes the concept open beside the panel, suppresses duplicates, and shows each chosen concept as a removable chip. Rust resolves every attachment against the session's canonical bundle root, rejects absolute paths, traversal, symbolic-link escape, directories, and missing files, then sends the file resource links in picker order before the unchanged user message. The webview never reads a concept body. An accepted turn clears the attachments; a rejected prompt leaves them available for correction or retry.
 
 Prompt submission accepts non-empty text capped at 128 KiB and returns a stable turn ID as soon as the actor accepts it. One turn may run per session. Prompt work runs in a child task so the actor can process cancellation concurrently; disconnect aborts the task set. `session/update` notifications are reduced to text chunks for the matching active turn. Each chunk drops arbitrary metadata, strips controls, and is capped at 64 KiB before the `agent-turn-update` event. Completion reports a closed stop-reason vocabulary; failures carry the existing capped diagnostic message. Cancellation sends ACP `session/cancel` only when connection, session, and turn IDs match the active turn, then waits for the agent's `cancelled` stop reason. Fake-agent tests cover text streaming, successful completion, and cooperative cancellation.
 

@@ -1,4 +1,5 @@
 import { Bot, FileText, Paperclip, Send, ShieldQuestion, Square, User, X } from "lucide-react";
+import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type {
@@ -27,6 +28,7 @@ interface AgentConversationProps {
   bundleRoot: string | null;
   bundleName: string | null;
   activeConcept: { id: string; title: string } | null;
+  concepts: readonly { id: string; title: string; type: string }[];
   onChangeAgent: () => void;
   onConnectionEnd: (event: AgentConnectionEvent) => void;
   onOpenFolder: () => Promise<void>;
@@ -56,6 +58,7 @@ export function AgentConversation({
   bundleRoot,
   bundleName,
   activeConcept,
+  concepts,
   onChangeAgent,
   onConnectionEnd,
   onOpenFolder,
@@ -65,7 +68,11 @@ export function AgentConversation({
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
-  const [attachedConcept, setAttachedConcept] = useState<{ id: string; title: string } | null>(null);
+  const [attachedConcepts, setAttachedConcepts] = useState<
+    { id: string; title: string; type: string }[]
+  >([]);
+  const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
+  const [contextQuery, setContextQuery] = useState("");
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const completedTurnsRef = useRef(new Set<string>());
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -146,9 +153,9 @@ export function AgentConversation({
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
         }
-        const contextPaths = attachedConcept ? [`${attachedConcept.id}.md`] : [];
+        const contextPaths = attachedConcepts.map((concept) => `${concept.id}.md`);
         const turn = await promptAgent(connection.connectionId, session.sessionId, text, contextPaths);
-        setAttachedConcept(null);
+        setAttachedConcepts([]);
         if (!completedTurnsRef.current.delete(turn.turnId)) setActiveTurn(turn);
         return { status: "idle" };
       } catch (error: unknown) {
@@ -285,32 +292,42 @@ export function AgentConversation({
           </div>
           <form className="agent-composer" action={submitPrompt}>
             <div className="agent-composer__context">
-              {attachedConcept ? (
-                <span className="agent-context-chip">
+              {attachedConcepts.map((concept) => (
+                <span key={concept.id} className="agent-context-chip">
                   <FileText size={14} aria-hidden="true" />
-                  <span title={attachedConcept.title}>{attachedConcept.title}</span>
+                  <span title={concept.title}>{concept.title}</span>
                   <button
                     type="button"
-                    aria-label={`Remove ${attachedConcept.title} from context`}
+                    aria-label={`Remove ${concept.title} from context`}
                     disabled={isSubmitting || activeTurn !== null}
-                    onClick={() => setAttachedConcept(null)}
+                    onClick={() =>
+                      setAttachedConcepts((current) =>
+                        current.filter((candidate) => candidate.id !== concept.id),
+                      )
+                    }
                   >
                     <X size={14} aria-hidden="true" />
                   </button>
                 </span>
-              ) : activeConcept ? (
-                <button
-                  type="button"
-                  className="btn ghost agent-context-attach"
-                  disabled={isSubmitting || activeTurn !== null}
-                  onClick={() => setAttachedConcept(activeConcept)}
-                >
-                  <Paperclip size={14} aria-hidden="true" />
-                  Attach current concept
-                </button>
-              ) : (
-                <span className="agent-context-empty">Open a concept to attach it</span>
-              )}
+              ))}
+              <ContextPicker
+                concepts={concepts}
+                activeConceptId={activeConcept?.id ?? null}
+                attachedConcepts={attachedConcepts}
+                isOpen={isContextPickerOpen}
+                query={contextQuery}
+                disabled={isSubmitting || activeTurn !== null}
+                onOpenChange={(open) => {
+                  setIsContextPickerOpen(open);
+                  if (!open) setContextQuery("");
+                }}
+                onQueryChange={setContextQuery}
+                onAttach={(concept) => {
+                  setAttachedConcepts((current) => [...current, concept]);
+                  setIsContextPickerOpen(false);
+                  setContextQuery("");
+                }}
+              />
             </div>
             <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
             <textarea
@@ -342,6 +359,106 @@ export function AgentConversation({
         </>
       )}
     </section>
+  );
+}
+
+interface ContextPickerProps {
+  concepts: readonly { id: string; title: string; type: string }[];
+  activeConceptId: string | null;
+  attachedConcepts: readonly { id: string; title: string; type: string }[];
+  isOpen: boolean;
+  query: string;
+  disabled: boolean;
+  onOpenChange: (open: boolean) => void;
+  onQueryChange: (query: string) => void;
+  onAttach: (concept: { id: string; title: string; type: string }) => void;
+}
+
+function ContextPicker({
+  concepts,
+  activeConceptId,
+  attachedConcepts,
+  isOpen,
+  query,
+  disabled,
+  onOpenChange,
+  onQueryChange,
+  onAttach,
+}: ContextPickerProps) {
+  const attachedIds = new Set(attachedConcepts.map((concept) => concept.id));
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const matches = concepts
+    .filter((concept) => !attachedIds.has(concept.id))
+    .filter((concept) =>
+      normalizedQuery.length === 0
+        ? true
+        : `${concept.title} ${concept.id} ${concept.type}`
+            .toLocaleLowerCase()
+            .includes(normalizedQuery),
+    )
+    .sort((left, right) => {
+      if (left.id === activeConceptId) return -1;
+      if (right.id === activeConceptId) return 1;
+      return left.title.localeCompare(right.title);
+    });
+  const isAtLimit = attachedConcepts.length >= 8;
+
+  return (
+    <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
+      <Popover.Trigger
+        render={
+          <button
+            type="button"
+            className="btn ghost agent-context-attach"
+            disabled={disabled || isAtLimit}
+          >
+            <Paperclip size={14} aria-hidden="true" />
+            {isAtLimit ? "Context limit reached" : "Attach context"}
+          </button>
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner
+          className="ui-popover-positioner"
+          side="top"
+          align="start"
+          sideOffset={6}
+        >
+          <Popover.Popup className="ui-popover agent-context-picker" aria-label="Attach concept context">
+            <input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- opening this explicit picker should focus its search field
+              autoFocus
+              type="search"
+              aria-label="Search concepts to attach"
+              placeholder="Search concepts..."
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+            />
+            <div className="agent-context-picker__results">
+              {matches.length > 0 ? (
+                matches.map((concept) => (
+                  <button
+                    key={concept.id}
+                    type="button"
+                    onClick={() => onAttach(concept)}
+                    aria-label={`Add ${concept.title} to context`}
+                  >
+                    <FileText size={14} aria-hidden="true" />
+                    <span>
+                      <strong>{concept.title}</strong>
+                      <small>{concept.id}.md</small>
+                    </span>
+                    {concept.id === activeConceptId && <em>Current</em>}
+                  </button>
+                ))
+              ) : (
+                <p>No matching concepts.</p>
+              )}
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 

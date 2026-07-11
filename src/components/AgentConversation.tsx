@@ -1,4 +1,4 @@
-import { Bot, FileText, Paperclip, Send, ShieldQuestion, Square, User, X } from "lucide-react";
+import { Bot, FilePlus2, FileText, Paperclip, Send, ShieldQuestion, Square, User, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -18,9 +18,11 @@ import {
   onAgentConnectionState,
   onAgentPermissionUpdate,
   onAgentTurnUpdate,
+  pickAgentTextSources,
   promptAgent,
   respondAgentPermission,
 } from "../ipc.ts";
+import type { AgentSourceInput } from "../ipc.ts";
 import { renderMarkdown } from "../markdown.ts";
 import "./AgentConversation.css";
 
@@ -73,8 +75,10 @@ export function AgentConversation({
     { id: string; title: string; type: string }[]
   >([]);
   const [attachedSources, setAttachedSources] = useState<
-    { id: string; title: string; content: string }[]
+    (AgentSourceInput & { id: string })[]
   >([]);
+  const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
+  const [isPickingSources, setIsPickingSources] = useState(false);
   const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
   const [contextQuery, setContextQuery] = useState("");
   const sessionRef = useRef<AgentSessionInfo | null>(null);
@@ -158,7 +162,11 @@ export function AgentConversation({
           sessionRef.current = session;
         }
         const contextPaths = attachedConcepts.map((concept) => `${concept.id}.md`);
-        const sources = attachedSources.map(({ title, content }) => ({ title, content }));
+        const sources = attachedSources.map(({ title, content, origin }) => ({
+          title,
+          content,
+          ...(origin ? { origin } : {}),
+        }));
         const turn = await promptAgent(
           connection.connectionId,
           session.sessionId,
@@ -215,6 +223,25 @@ export function AgentConversation({
       }
     } catch (error: unknown) {
       setAuthentication({ status: "error", methodId, message: errorMessage(error) });
+    }
+  }
+
+  async function attachTextFiles() {
+    setIsPickingSources(true);
+    setSourcePickerError(null);
+    try {
+      const sources = await pickAgentTextSources(8 - attachedSources.length);
+      setAttachedSources((current) => [
+        ...current,
+        ...sources.slice(0, 8 - current.length).map((source) => ({
+          id: crypto.randomUUID(),
+          ...source,
+        })),
+      ]);
+    } catch (error: unknown) {
+      setSourcePickerError(errorMessage(error));
+    } finally {
+      setIsPickingSources(false);
     }
   }
 
@@ -371,6 +398,20 @@ export function AgentConversation({
                   ])
                 }
               />
+              <button
+                type="button"
+                className="btn ghost agent-context-attach"
+                disabled={
+                  isSubmitting ||
+                  activeTurn !== null ||
+                  isPickingSources ||
+                  attachedSources.length >= 8
+                }
+                onClick={() => void attachTextFiles()}
+              >
+                <FilePlus2 size={14} aria-hidden="true" />
+                {isPickingSources ? "Selecting..." : "Add files"}
+              </button>
             </div>
             <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
             <textarea
@@ -383,6 +424,9 @@ export function AgentConversation({
             />
             {composerState.status === "error" && (
               <p className="agent-composer__error" role="alert">{composerState.message}</p>
+            )}
+            {sourcePickerError && (
+              <p className="agent-composer__error" role="alert">{sourcePickerError}</p>
             )}
             <div className="agent-composer__actions">
               <span>{activeTurn ? "Agent is working" : "Text only"}</span>

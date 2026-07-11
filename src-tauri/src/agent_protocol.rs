@@ -9,7 +9,8 @@ use agent_client_protocol::schema::v1::{
 };
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::PathBuf;
@@ -21,7 +22,7 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
-use crate::{agent_custom, agent_install};
+use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -35,10 +36,10 @@ const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
 const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
 const MAX_CONTEXT_PATHS: usize = 8;
 const MAX_CONTEXT_PATH_CHARS: usize = 1024;
-const MAX_SOURCE_ATTACHMENTS: usize = 8;
-const MAX_SOURCE_TITLE_CHARS: usize = 256;
-const MAX_SOURCE_CONTENT_CHARS: usize = 256 * 1024;
-const MAX_SOURCE_TOTAL_CHARS: usize = 512 * 1024;
+const MAX_SOURCE_ATTACHMENTS: usize = crate::agent_sources::MAX_SOURCE_ATTACHMENTS;
+const MAX_SOURCE_TITLE_CHARS: usize = crate::agent_sources::MAX_SOURCE_TITLE_CHARS;
+const MAX_SOURCE_CONTENT_CHARS: usize = crate::agent_sources::MAX_SOURCE_CONTENT_CHARS;
+const MAX_SOURCE_TOTAL_CHARS: usize = crate::agent_sources::MAX_SOURCE_TOTAL_CHARS;
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
 const MAX_AUTH_METHODS: usize = 16;
@@ -88,13 +89,6 @@ pub struct AgentTurnInfo {
     connection_id: String,
     session_id: String,
     turn_id: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentSourceInput {
-    title: String,
-    content: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1081,6 +1075,18 @@ fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), String> {
             ));
         }
         total_chars = total_chars.saturating_add(content_chars);
+        if let Some(origin) = &source.origin {
+            let origin = origin.trim();
+            if origin.is_empty()
+                || origin.chars().count() > MAX_SOURCE_TITLE_CHARS
+                || origin.chars().any(char::is_control)
+                || origin.contains(['/', '\\'])
+            {
+                return Err(
+                    "Source origins must be bounded filenames with no controls.".to_string(),
+                );
+            }
+        }
     }
     if total_chars > MAX_SOURCE_TOTAL_CHARS {
         return Err(format!(
@@ -1094,9 +1100,13 @@ fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<ContentBlock> {
     sources
         .into_iter()
         .map(|source| {
+            let digest = format!("{:x}", Sha256::digest(source.content.as_bytes()));
+            let origin = source.origin.as_deref().unwrap_or("pasted text");
             ContentBlock::Text(TextContent::new(format!(
-                "## Attached user source: {}\n\n{}",
+                "## Attached user source: {}\n\nOrigin: {}\nSHA-256: {}\n\n{}",
                 source.title.trim(),
+                origin,
+                digest,
                 source.content
             )))
         })
@@ -2392,6 +2402,7 @@ mod tests {
         let source = AgentSourceInput {
             title: "Interview notes".to_string(),
             content: "The owner confirmed the definition.".to_string(),
+            origin: None,
         };
         validate_sources(std::slice::from_ref(&source)).expect("source should be valid");
         let prompt = okf_prompt_blocks(
@@ -2404,7 +2415,8 @@ mod tests {
         assert!(matches!(
             &prompt[prompt.len() - 2],
             ContentBlock::Text(text)
-                if text.text.starts_with("## Attached user source: Interview notes\n\n")
+                if text.text.starts_with("## Attached user source: Interview notes\n\nOrigin: pasted text\nSHA-256: ")
+                    && text.text.ends_with("\n\nThe owner confirmed the definition.")
         ));
         assert!(matches!(
             prompt.last(),
@@ -2414,12 +2426,14 @@ mod tests {
         let invalid = AgentSourceInput {
             title: "Bad\ntitle".to_string(),
             content: "content".to_string(),
+            origin: None,
         };
         assert!(validate_sources(&[invalid]).is_err());
         assert!(validate_sources(&vec![
             AgentSourceInput {
                 title: "Source".to_string(),
                 content: "content".to_string(),
+                origin: None,
             };
             MAX_SOURCE_ATTACHMENTS + 1
         ])
@@ -2427,12 +2441,14 @@ mod tests {
         assert!(validate_sources(&[AgentSourceInput {
             title: "Oversized".to_string(),
             content: "x".repeat(MAX_SOURCE_CONTENT_CHARS + 1),
+            origin: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
             AgentSourceInput {
                 title: "Large".to_string(),
                 content: "x".repeat(200_000),
+                origin: None,
             };
             3
         ])

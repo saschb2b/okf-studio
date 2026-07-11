@@ -201,6 +201,10 @@ describe("OKF Studio app", () => {
     );
     await user.click(screen.getByRole("button", { name: "Attach source" }));
     expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add files" }));
+    expect(
+      await screen.findByRole("button", { name: "Remove research-notes.md source" }),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -209,10 +213,17 @@ describe("OKF Studio app", () => {
       expect.any(String),
       "Summarize the **bundle**",
       ["product/overview.md", "features/graph-view.md"],
-      [{
-        title: "Interview notes",
-        content: "# Notes\n\nThe catalog owner confirmed the definition.",
-      }],
+      [
+        {
+          title: "Interview notes",
+          content: "# Notes\n\nThe catalog owner confirmed the definition.",
+        },
+        {
+          title: "research-notes.md",
+          content: "# Research notes\n\nBrowser-selected source.",
+          origin: "research-notes.md",
+        },
+      ],
     );
     expect(await screen.findByText("Summarize the **bundle**")).toBeInTheDocument();
     await screen.findByText(/Browser ACP received:/);
@@ -226,6 +237,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove research-notes.md source" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -247,6 +259,14 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
     await user.click(await screen.findByRole("button", { name: "Stop" }));
     expect(await screen.findByText("Turn cancelled.")).toBeInTheDocument();
+
+    vi.spyOn(ipc, "pickAgentTextSources").mockRejectedValueOnce(
+      new Error("The selected file is not UTF-8 text."),
+    );
+    await user.click(screen.getByRole("button", { name: "Add files" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The selected file is not UTF-8 text.",
+    );
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));

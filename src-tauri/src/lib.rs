@@ -7,6 +7,7 @@ mod agent_install;
 mod agent_mcp;
 mod agent_protocol;
 mod agent_runtime;
+mod agent_sources;
 mod remote;
 mod watch;
 
@@ -109,7 +110,7 @@ async fn prompt_agent(
     session_id: String,
     text: String,
     context_paths: Vec<String>,
-    sources: Vec<agent_protocol::AgentSourceInput>,
+    sources: Vec<agent_sources::AgentSourceInput>,
 ) -> Result<agent_protocol::AgentTurnInfo, String> {
     agent_protocol::prompt(
         state.inner(),
@@ -120,6 +121,14 @@ async fn prompt_agent(
         sources,
     )
     .await
+}
+
+#[tauri::command]
+async fn pick_agent_text_sources(
+    app: AppHandle,
+    limit: usize,
+) -> Result<Vec<agent_sources::AgentSourceInput>, String> {
+    agent_sources::pick_text_sources(&app, limit)
 }
 
 #[tauri::command]
@@ -326,6 +335,7 @@ pub fn run() {
             authenticate_agent,
             new_agent_session,
             prompt_agent,
+            pick_agent_text_sources,
             cancel_agent_turn,
             respond_agent_permission,
             agent_install_preflight,

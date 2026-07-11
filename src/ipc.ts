@@ -266,6 +266,20 @@ export async function promptAgent(
 export interface AgentSourceInput {
   title: string;
   content: string;
+  origin?: string;
+}
+
+export async function pickAgentTextSources(limit: number): Promise<AgentSourceInput[]> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSourceInput[]>("pick_agent_text_sources", { limit });
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  return [{
+    title: "research-notes.md",
+    content: "# Research notes\n\nBrowser-selected source.",
+    origin: "research-notes.md",
+  }].slice(0, Math.max(0, limit));
 }
 
 export async function cancelAgentTurn(

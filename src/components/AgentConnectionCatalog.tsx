@@ -1,12 +1,8 @@
-import { ArrowLeft, Cpu, RefreshCw, TerminalSquare } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import {
-  authMethodLabel,
-  catalogEntries,
-  runtimeLabel,
-  type AgentCatalogEntry,
-} from "../agent/catalog.ts";
+import { catalogEntries, type AgentCatalogEntry } from "../agent/catalog.ts";
 import { agentCatalog } from "../ipc.ts";
+import { AgentCatalogCard } from "./AgentCatalogCard.tsx";
 import "./AgentConnectionCatalog.css";
 
 type CatalogState =
@@ -86,52 +82,15 @@ export function AgentConnectionCatalog({ onBack }: { onBack: () => void }) {
       {state.status === "ready" && (
         <div className="agent-catalog__list">
           {state.entries.map((entry) => (
-            <article className="agent-catalog-card" key={entry.id}>
-              <div className="agent-catalog-card__icon">
-                {entry.runtime === "external-acp" ? (
-                  <TerminalSquare size={20} aria-hidden="true" />
-                ) : (
-                  <Cpu size={20} aria-hidden="true" />
-                )}
-              </div>
-              <div className="agent-catalog-card__body">
-                <div className="agent-catalog-card__title-row">
-                  <h3>{entry.name}</h3>
-                  <span className="badge">
-                    {entry.availability === "installable" ? "ACP" : "Planned"}
-                  </span>
-                </div>
-                <p>{entry.summary}</p>
-                <dl>
-                  <div>
-                    <dt>Runs as</dt>
-                    <dd>{runtimeLabel(entry.runtime)}</dd>
-                  </div>
-                  <div>
-                    <dt>Sign in</dt>
-                    <dd>{entry.authMethods.map(authMethodLabel).join(" or ")}</dd>
-                  </div>
-                </dl>
-              </div>
-              <button
-                type="button"
-                className="btn agent-catalog-card__action"
-                disabled
-                title="Installation is added in the next Studio work package"
-              >
-                {entry.availability === "installable"
-                  ? "Install"
-                  : "Not available yet"}
-              </button>
-            </article>
+            <AgentCatalogCard entry={entry} key={entry.id} />
           ))}
         </div>
       )}
 
       {state.status === "ready" && (
         <p className="agent-catalog__notice">
-          Catalog browsing does not download or start an agent. Installation is
-          disabled until Studio can verify packages and isolate its agent cache.
+          Catalog browsing does not download or start an agent. Install runs only
+          when you choose it; connecting and authentication remain separate.
         </p>
       )}
     </section>

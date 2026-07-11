@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T08:00:00Z
+timestamp: 2026-07-11T12:00:00Z
 ---
 
 # Entry and first open
@@ -16,7 +16,9 @@ First open makes no account or network request. It explains three paths and offe
 - **Studio Agent:** an API key in the OS credential store or a local compatible endpoint.
 - **Custom/local agent:** an ACP command with explicit executable, arguments, and environment names.
 
-The connection catalog distinguishes external ACP agents from Studio-managed runtimes and lists each path's credential owner. Claude Agent and Codex are the featured ACP choices. Studio API and local-model paths are visible as planned native runtimes. A bundled, versioned manifest supplies the choices through Rust IPC on desktop and the same data in browser development. Loading and retryable catalog errors have explicit states. Browsing the catalog never downloads or starts a process; install controls remain disabled until the verified installer is present.
+The connection catalog distinguishes external ACP agents from Studio-managed runtimes and lists each path's credential owner. Claude Agent and Codex are the featured ACP choices. Studio API and local-model paths are visible as planned native runtimes. A bundled, versioned manifest supplies the choices through Rust IPC on desktop and the same data in browser development. Loading and retryable catalog errors have explicit states.
+
+Browsing the catalog never downloads or starts a process. For an installable agent, a platform preflight checks the cache and discloses the exact remaining managed Node and package download before enabling **Install**. Installation reports its current runtime or package phase, remains cancellable, and exposes a retry after failure. Completion says **Installed** and explicitly states that no agent has started; connection and authentication are later, separate actions.
 
 # Layout and focus
 

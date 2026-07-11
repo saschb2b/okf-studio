@@ -12,7 +12,11 @@ import type {
 import { DEFAULT_SETTINGS } from "./types.ts";
 import catalog from "./agent/catalog.json";
 import type { AgentCatalogDocument } from "./agent/catalog.ts";
-import type { AgentInstallPreflight } from "./agent/install.ts";
+import type {
+  AgentInstallPreflight,
+  AgentInstallProgress,
+  AgentInstallReceipt,
+} from "./agent/install.ts";
 import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
@@ -57,6 +61,91 @@ export async function agentInstallPreflight(
     packageInstalled: false,
     runtimeInstalled: false,
   };
+}
+
+type AgentInstallProgressHandler = (progress: AgentInstallProgress) => void;
+
+const mockInstallProgressHandlers = new Set<AgentInstallProgressHandler>();
+const mockCancelledInstalls = new Set<string>();
+
+export async function onAgentInstallProgress(
+  handler: AgentInstallProgressHandler,
+): Promise<() => void> {
+  if (!isTauri()) {
+    mockInstallProgressHandlers.add(handler);
+    return () => mockInstallProgressHandlers.delete(handler);
+  }
+
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<AgentInstallProgress>("agent-install-progress", (event) =>
+    handler(event.payload),
+  );
+}
+
+export async function installAgent(
+  agentId: string,
+  installId: string,
+): Promise<AgentInstallReceipt> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentInstallReceipt>("install_agent", { agentId, installId });
+  }
+
+  const preflight = await agentInstallPreflight(agentId);
+  const phases: AgentInstallProgress["phase"][] = [
+    "runtime-downloading",
+    "runtime-extracting",
+    "package-downloading",
+    "package-extracting",
+    "complete",
+  ];
+  mockCancelledInstalls.delete(installId);
+
+  for (const phase of phases) {
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    if (mockCancelledInstalls.has(installId)) {
+      emitMockInstallProgress({
+        installId,
+        agentId,
+        phase: "cancelled",
+        downloadedBytes: 0,
+        totalBytes: preflight.totalDownloadSize,
+      });
+      throw new Error("Installation cancelled.");
+    }
+    emitMockInstallProgress({
+      installId,
+      agentId,
+      phase,
+      downloadedBytes: phase === "complete" ? preflight.totalDownloadSize : 0,
+      totalBytes: preflight.totalDownloadSize,
+    });
+  }
+
+  const entry = (catalog as AgentCatalogDocument).entries.find(
+    (candidate) => candidate.id === agentId,
+  );
+  if (!entry?.distribution) throw new Error("This agent is not installable yet.");
+  return {
+    agentId,
+    version: entry.distribution.version,
+    packageDir: `mock-agent-cache/${agentId}/${entry.distribution.version}`,
+    integrity: entry.distribution.integrity,
+    alreadyInstalled: false,
+  };
+}
+
+export async function cancelAgentInstall(installId: string): Promise<boolean> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<boolean>("cancel_agent_install", { installId });
+  }
+  mockCancelledInstalls.add(installId);
+  return true;
+}
+
+function emitMockInstallProgress(progress: AgentInstallProgress): void {
+  for (const handler of mockInstallProgressHandlers) handler(progress);
 }
 
 function browserTarget(): string {

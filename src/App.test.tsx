@@ -48,8 +48,43 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("heading", { name: /choose how agents run/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Claude Agent" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Codex" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Install" })).toHaveLength(2);
-    expect(screen.getAllByRole("button", { name: "Install" })[0]).toBeDisabled();
+    const installButtons = await screen.findAllByRole("button", { name: "Install" });
+    expect(installButtons).toHaveLength(2);
+    expect(installButtons[0]).toBeEnabled();
+    expect(screen.getAllByText(/managed Node v24\.11\.0/i)).toHaveLength(2);
+  });
+
+  it("installs an agent without starting or connecting it", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    const heading = screen.getByRole("heading", { name: "Claude Agent" });
+    const card = heading.closest("article");
+    if (!card) throw new Error("Claude Agent card was not rendered.");
+
+    await user.click(await within(card).findByRole("button", { name: "Install" }));
+
+    expect(await within(card).findByRole("button", { name: "Installed" })).toBeDisabled();
+    expect(within(card).getByText(/No agent has been started/i)).toBeInTheDocument();
+  });
+
+  it("cancels an in-progress agent installation and returns to installable", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    const heading = screen.getByRole("heading", { name: "Codex" });
+    const card = heading.closest("article");
+    if (!card) throw new Error("Codex card was not rendered.");
+
+    await user.click(await within(card).findByRole("button", { name: "Install" }));
+    await user.click(await within(card).findByRole("button", { name: "Cancel" }));
+
+    expect(await within(card).findByText(/Installation cancelled/i)).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Install" })).toBeEnabled();
   });
 
   it("shows a retryable error when the connection catalog cannot load", async () => {

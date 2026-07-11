@@ -80,6 +80,32 @@ async fn new_agent_session(
 }
 
 #[tauri::command]
+async fn prompt_agent(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    text: String,
+) -> Result<agent_protocol::AgentTurnInfo, String> {
+    agent_protocol::prompt(state.inner(), &connection_id, session_id, text).await
+}
+
+#[tauri::command]
+async fn cancel_agent_turn(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    turn_id: String,
+) -> Result<bool, String> {
+    agent_protocol::cancel_turn(
+        state.inner(),
+        &connection_id,
+        session_id,
+        turn_id,
+    )
+    .await
+}
+
+#[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
     agent_id: String,
@@ -255,6 +281,8 @@ pub fn run() {
             connect_custom_agent,
             disconnect_agent,
             new_agent_session,
+            prompt_agent,
+            cancel_agent_turn,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

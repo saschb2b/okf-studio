@@ -17,6 +17,8 @@ import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
   AgentSessionInfo,
+  AgentTurnEvent,
+  AgentTurnInfo,
 } from "./agent/connection.ts";
 import type {
   AgentInstallPreflight,
@@ -46,6 +48,9 @@ const activeAgentConnectionsById = new Map<string, AgentConnectionInfo>();
 type AgentConnectionHandler = (event: AgentConnectionEvent) => void;
 const agentConnectionHandlers = new Set<AgentConnectionHandler>();
 let agentConnectionListener: Promise<() => void> | undefined;
+type AgentTurnHandler = (event: AgentTurnEvent) => void;
+const agentTurnHandlers = new Set<AgentTurnHandler>();
+const mockCancelledTurns = new Set<string>();
 
 export async function customAgents(): Promise<readonly CustomAgentProfile[]> {
   if (!isTauri()) return mockCustomAgents;
@@ -139,6 +144,68 @@ export async function newAgentSession(
     sessionId: `session-${crypto.randomUUID()}`,
     bundleRoot,
   };
+}
+
+export async function promptAgent(
+  connectionId: string,
+  sessionId: string,
+  text: string,
+): Promise<AgentTurnInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentTurnInfo>("prompt_agent", { connectionId, sessionId, text });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const info = { connectionId, sessionId, turnId: `turn-${crypto.randomUUID()}` };
+  mockCancelledTurns.delete(info.turnId);
+  void emitMockTurn(info, text);
+  return info;
+}
+
+export async function cancelAgentTurn(
+  connectionId: string,
+  sessionId: string,
+  turnId: string,
+): Promise<boolean> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<boolean>("cancel_agent_turn", { connectionId, sessionId, turnId });
+  }
+  mockCancelledTurns.add(turnId);
+  return true;
+}
+
+export async function onAgentTurnUpdate(handler: AgentTurnHandler): Promise<() => void> {
+  if (!isTauri()) {
+    agentTurnHandlers.add(handler);
+    return () => agentTurnHandlers.delete(handler);
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<AgentTurnEvent>("agent-turn-update", (event) => handler(event.payload));
+}
+
+async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  if (mockCancelledTurns.has(info.turnId)) {
+    emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+    mockCancelledTurns.delete(info.turnId);
+    return;
+  }
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "text",
+      text: `Browser ACP received: ${text}`,
+      messageId: `message-${info.turnId}`,
+    },
+  });
+  emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "end-turn" } });
+}
+
+function emitAgentTurn(event: AgentTurnEvent): void {
+  for (const handler of agentTurnHandlers) handler(event);
 }
 
 export async function disconnectAgent(connectionId: string): Promise<boolean> {

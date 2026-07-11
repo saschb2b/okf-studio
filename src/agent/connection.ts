@@ -37,6 +37,22 @@ export interface AgentSessionInfo {
   bundleRoot: string;
 }
 
+export interface AgentTurnInfo {
+  connectionId: string;
+  sessionId: string;
+  turnId: string;
+}
+
+export interface AgentTurnEvent extends AgentTurnInfo {
+  update:
+    | { kind: "text"; text: string; messageId: string | null }
+    | {
+        kind: "completed";
+        stopReason: "end-turn" | "max-tokens" | "max-turn-requests" | "refusal" | "cancelled" | "unknown";
+      }
+    | { kind: "failed"; message: string };
+}
+
 export type AgentConnectionEvent =
   | {
       connectionId: string;

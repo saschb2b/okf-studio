@@ -1,6 +1,8 @@
 use agent_client_protocol::schema::v1::{
-    AgentCapabilities, Implementation, InitializeRequest, InitializeResponse, NewSessionRequest,
+    AgentCapabilities, CancelNotification, ContentBlock, ContentChunk, Implementation,
+    InitializeRequest, InitializeResponse, NewSessionRequest, PromptRequest,
     RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
+    SessionNotification, SessionUpdate, StopReason, TextContent,
 };
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo};
@@ -19,9 +21,13 @@ use crate::agent_custom;
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
+const COMMAND_ACCEPT_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
+const MAX_PROMPT_CHARS: usize = 128 * 1024;
+const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
 const CONNECTION_EVENT: &str = "agent-connection-state";
+const TURN_EVENT: &str = "agent-turn-update";
 type HandshakeResult = Result<AgentConnectionInfo, String>;
 type HandshakeSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<HandshakeResult>>>>;
 
@@ -52,6 +58,40 @@ pub struct AgentSessionInfo {
     session_id: String,
     bundle_root: PathBuf,
 }
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentTurnInfo {
+    connection_id: String,
+    session_id: String,
+    turn_id: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentTurnEvent {
+    connection_id: String,
+    session_id: String,
+    turn_id: String,
+    update: AgentTurnUpdate,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+enum AgentTurnUpdate {
+    Text {
+        text: String,
+        message_id: Option<String>,
+    },
+    Completed {
+        stop_reason: String,
+    },
+    Failed {
+        message: String,
+    },
+}
+
+type TurnEventSink = Arc<dyn Fn(AgentTurnEvent) + Send + Sync>;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -106,6 +146,17 @@ enum AgentHostCommand {
         bundle_root: PathBuf,
         response: tokio::sync::oneshot::Sender<Result<AgentSessionInfo, String>>,
     },
+    Prompt {
+        session_id: String,
+        turn_id: String,
+        text: String,
+        response: tokio::sync::oneshot::Sender<Result<AgentTurnInfo, String>>,
+    },
+    CancelTurn {
+        session_id: String,
+        turn_id: String,
+        response: tokio::sync::oneshot::Sender<Result<bool, String>>,
+    },
 }
 
 impl Drop for AgentHostState {
@@ -136,6 +187,10 @@ pub async fn connect_custom(
     let workers = Arc::clone(&state.workers);
     let worker_handshake = Arc::clone(&handshake_tx);
     let worker_app = app.clone();
+    let turn_app = app.clone();
+    let turn_events: TurnEventSink = Arc::new(move |event| {
+        let _ = turn_app.emit(TURN_EVENT, event);
+    });
     let (start_tx, start_rx) = tokio::sync::oneshot::channel();
 
     let worker = tokio::spawn(async move {
@@ -148,6 +203,7 @@ pub async fn connect_custom(
             worker_profile_id.clone(),
             Arc::clone(&worker_handshake),
             command_rx,
+            turn_events,
         )
         .await;
         if let Some(sender) = take_sender(&worker_handshake) {
@@ -237,6 +293,78 @@ pub async fn new_session(
         .await
         .map_err(|_| "Agent session creation timed out.".to_string())?
         .map_err(|_| "Agent connection ended before session creation.".to_string())?
+}
+
+pub async fn prompt(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: String,
+    text: String,
+) -> Result<AgentTurnInfo, String> {
+    let text = text.trim().to_string();
+    if text.is_empty() {
+        return Err("Prompt text cannot be empty.".to_string());
+    }
+    if text.chars().count() > MAX_PROMPT_CHARS {
+        return Err(format!(
+            "Prompt text cannot exceed {MAX_PROMPT_CHARS} characters."
+        ));
+    }
+    let turn_id = format!("turn-{}", uuid::Uuid::new_v4());
+    let commands = connection_commands(state, connection_id)?;
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::Prompt {
+            session_id,
+            turn_id,
+            text,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before accepting the prompt.".to_string())?;
+    command_response(response_rx, "prompt").await
+}
+
+pub async fn cancel_turn(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: String,
+    turn_id: String,
+) -> Result<bool, String> {
+    let commands = connection_commands(state, connection_id)?;
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::CancelTurn {
+            session_id,
+            turn_id,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before accepting cancellation.".to_string())?;
+    command_response(response_rx, "cancellation").await
+}
+
+fn connection_commands(
+    state: &AgentHostState,
+    connection_id: &str,
+) -> Result<tokio::sync::mpsc::Sender<AgentHostCommand>, String> {
+    state
+        .workers
+        .lock()
+        .map_err(|_| "Agent host state is unavailable.".to_string())?
+        .get(connection_id)
+        .map(|worker| worker.commands.clone())
+        .ok_or_else(|| "Agent connection was not found.".to_string())
+}
+
+async fn command_response<T>(
+    response: tokio::sync::oneshot::Receiver<Result<T, String>>,
+    action: &str,
+) -> Result<T, String> {
+    tokio::time::timeout(COMMAND_ACCEPT_TIMEOUT, response)
+        .await
+        .map_err(|_| format!("Agent {action} acceptance timed out."))?
+        .map_err(|_| format!("Agent connection ended before accepting {action}."))?
 }
 
 fn canonical_bundle_root(bundle_root: &str) -> Result<PathBuf, String> {
@@ -352,10 +480,28 @@ async fn run_connection(
     profile_id: String,
     handshake: HandshakeSender,
     mut commands: tokio::sync::mpsc::Receiver<AgentHostCommand>,
+    turn_events: TurnEventSink,
 ) -> Result<(), String> {
+    let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
+    let notification_turns = Arc::clone(&active_turns);
+    let notification_events = Arc::clone(&turn_events);
+    let notification_connection_id = connection_id.clone();
     Client
         .builder()
         .name("okf-studio")
+        .on_receive_notification(
+            async move |notification: SessionNotification, _connection| {
+                if let Some(event) = text_turn_event(
+                    &notification_connection_id,
+                    &notification_turns,
+                    notification,
+                ) {
+                    notification_events(event);
+                }
+                Ok(())
+            },
+            agent_client_protocol::on_receive_notification!(),
+        )
         .on_receive_request(
             async move |_request: RequestPermissionRequest, responder, _connection| {
                 responder.respond(RequestPermissionResponse::new(
@@ -380,24 +526,172 @@ async fn run_connection(
                     })?;
             }
             let mut sessions = HashMap::<String, PathBuf>::new();
-            while let Some(command) = commands.recv().await {
-                match command {
-                    AgentHostCommand::NewSession {
-                        bundle_root,
-                        response,
-                    } => {
-                        let result = create_session(&connection, &connection_id, bundle_root).await;
-                        if let Ok(info) = &result {
-                            sessions.insert(info.session_id.clone(), info.bundle_root.clone());
+            let mut turn_tasks = tokio::task::JoinSet::new();
+            loop {
+                tokio::select! {
+                    command = commands.recv() => {
+                        let Some(command) = command else { break };
+                        match command {
+                            AgentHostCommand::NewSession { bundle_root, response } => {
+                                let result = create_session(&connection, &connection_id, bundle_root).await;
+                                if let Ok(info) = &result {
+                                    sessions.insert(info.session_id.clone(), info.bundle_root.clone());
+                                }
+                                let _ = response.send(result);
+                            }
+                            AgentHostCommand::Prompt { session_id, turn_id, text, response } => {
+                                if !sessions.contains_key(&session_id) {
+                                    let _ = response.send(Err("Agent session was not found on this connection.".to_string()));
+                                    continue;
+                                }
+                                let accepted = {
+                                    let mut turns = active_turns.lock().map_err(|_| {
+                                        agent_client_protocol::util::internal_error("Agent turn state is unavailable")
+                                    })?;
+                                    if turns.contains_key(&session_id) {
+                                        false
+                                    } else {
+                                        turns.insert(session_id.clone(), turn_id.clone());
+                                        true
+                                    }
+                                };
+                                if !accepted {
+                                    let _ = response.send(Err("This session already has an active turn.".to_string()));
+                                    continue;
+                                }
+                                let info = AgentTurnInfo {
+                                    connection_id: connection_id.clone(),
+                                    session_id: session_id.clone(),
+                                    turn_id: turn_id.clone(),
+                                };
+                                if response.send(Ok(info)).is_err() {
+                                    remove_active_turn(&active_turns, &session_id, &turn_id);
+                                    continue;
+                                }
+                                let prompt_connection = connection.clone();
+                                let prompt_connection_id = connection_id.clone();
+                                let prompt_turns = Arc::clone(&active_turns);
+                                let prompt_events = Arc::clone(&turn_events);
+                                turn_tasks.spawn(async move {
+                                    let result = send_prompt(&prompt_connection, &session_id, text).await;
+                                    remove_active_turn(&prompt_turns, &session_id, &turn_id);
+                                    let update = match result {
+                                        Ok(stop_reason) => AgentTurnUpdate::Completed {
+                                            stop_reason: stop_reason_name(stop_reason).to_string(),
+                                        },
+                                        Err(message) => AgentTurnUpdate::Failed {
+                                            message: connection_message(&message),
+                                        },
+                                    };
+                                    prompt_events(AgentTurnEvent {
+                                        connection_id: prompt_connection_id,
+                                        session_id,
+                                        turn_id,
+                                        update,
+                                    });
+                                });
+                            }
+                            AgentHostCommand::CancelTurn { session_id, turn_id, response } => {
+                                let is_active = active_turns
+                                    .lock()
+                                    .map_err(|_| agent_client_protocol::util::internal_error("Agent turn state is unavailable"))?
+                                    .get(&session_id)
+                                    .is_some_and(|active_turn| active_turn == &turn_id);
+                                let result = if is_active {
+                                    connection
+                                        .send_notification(CancelNotification::new(session_id))
+                                        .map(|()| true)
+                                        .map_err(|error| format!("Agent cancellation failed: {error}"))
+                                } else {
+                                    Ok(false)
+                                };
+                                let _ = response.send(result);
+                            }
                         }
-                        let _ = response.send(result);
                     }
+                    _ = turn_tasks.join_next(), if !turn_tasks.is_empty() => {}
                 }
             }
+            turn_tasks.abort_all();
             Ok(())
         })
         .await
         .map_err(|error| format!("Agent connection failed: {error}"))
+}
+
+async fn send_prompt(
+    connection: &ConnectionTo<Agent>,
+    session_id: &str,
+    text: String,
+) -> Result<StopReason, String> {
+    connection
+        .send_request(PromptRequest::new(
+            session_id.to_string(),
+            vec![ContentBlock::Text(TextContent::new(text))],
+        ))
+        .block_task()
+        .await
+        .map(|response| response.stop_reason)
+        .map_err(|error| format!("Agent prompt failed: {error}"))
+}
+
+fn remove_active_turn(
+    active_turns: &Mutex<HashMap<String, String>>,
+    session_id: &str,
+    turn_id: &str,
+) {
+    if let Ok(mut turns) = active_turns.lock() {
+        if turns
+            .get(session_id)
+            .is_some_and(|active_turn| active_turn == turn_id)
+        {
+            turns.remove(session_id);
+        }
+    }
+}
+
+fn text_turn_event(
+    connection_id: &str,
+    active_turns: &Mutex<HashMap<String, String>>,
+    notification: SessionNotification,
+) -> Option<AgentTurnEvent> {
+    let session_id = notification.session_id.to_string();
+    let turn_id = active_turns.lock().ok()?.get(&session_id)?.clone();
+    let SessionUpdate::AgentMessageChunk(ContentChunk {
+        content: ContentBlock::Text(text),
+        message_id,
+        ..
+    }) = notification.update
+    else {
+        return None;
+    };
+    Some(AgentTurnEvent {
+        connection_id: connection_id.to_string(),
+        session_id,
+        turn_id,
+        update: AgentTurnUpdate::Text {
+            text: bounded_turn_text(&text.text),
+            message_id: message_id.map(|id| id.to_string()),
+        },
+    })
+}
+
+fn bounded_turn_text(text: &str) -> String {
+    text.chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .take(MAX_TURN_CHUNK_CHARS)
+        .collect()
+}
+
+fn stop_reason_name(reason: StopReason) -> &'static str {
+    match reason {
+        StopReason::EndTurn => "end-turn",
+        StopReason::MaxTokens => "max-tokens",
+        StopReason::MaxTurnRequests => "max-turn-requests",
+        StopReason::Refusal => "refusal",
+        StopReason::Cancelled => "cancelled",
+        _ => "unknown",
+    }
 }
 
 async fn create_session(
@@ -652,6 +946,7 @@ mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
         AgentCapabilities, AuthMethod, AuthMethodAgent, NewSessionResponse, PromptCapabilities,
+        PromptResponse,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -760,6 +1055,225 @@ mod tests {
             bundle_root.canonicalize().expect("canonical")
         );
         std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn streams_a_text_prompt_and_reports_its_stop_reason() {
+        let fake_agent = Agent
+            .builder()
+            .on_receive_request(
+                async move |_request: InitializeRequest,
+                            responder: Responder<InitializeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(InitializeResponse::new(ProtocolVersion::V1))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |_request: NewSessionRequest,
+                            responder: Responder<NewSessionResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(NewSessionResponse::new("session-1"))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |request: PromptRequest,
+                            responder: Responder<PromptResponse>,
+                            connection: ConnectionTo<Client>| {
+                    assert_eq!(request.session_id.to_string(), "session-1");
+                    assert!(matches!(
+                        request.prompt.as_slice(),
+                        [ContentBlock::Text(text)] if text.text == "Research this bundle"
+                    ));
+                    connection.send_notification(SessionNotification::new(
+                        request.session_id,
+                        SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
+                            TextContent::new("A grounded answer."),
+                        ))),
+                    ))?;
+                    responder.respond(PromptResponse::new(StopReason::EndTurn))
+                },
+                agent_client_protocol::on_receive_request!(),
+            );
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let handshake = Arc::new(Mutex::new(Some(handshake_tx)));
+        let (commands_tx, commands_rx) = tokio::sync::mpsc::channel(8);
+        let (events_tx, mut events_rx) = tokio::sync::mpsc::unbounded_channel();
+        let event_sink: TurnEventSink = Arc::new(move |event| {
+            let _ = events_tx.send(event);
+        });
+        let worker = tokio::spawn(run_connection(
+            fake_agent,
+            "connection-1".to_string(),
+            "profile-1".to_string(),
+            handshake,
+            commands_rx,
+            event_sink,
+        ));
+        handshake_rx
+            .await
+            .expect("handshake response")
+            .expect("handshake should pass");
+
+        let (session_tx, session_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::NewSession {
+                bundle_root: std::env::temp_dir(),
+                response: session_tx,
+            })
+            .await
+            .expect("send session command");
+        session_rx
+            .await
+            .expect("session response")
+            .expect("session should start");
+
+        let (prompt_tx, prompt_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::Prompt {
+                session_id: "session-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                text: "Research this bundle".to_string(),
+                response: prompt_tx,
+            })
+            .await
+            .expect("send prompt command");
+        prompt_rx
+            .await
+            .expect("prompt acceptance")
+            .expect("prompt should be accepted");
+
+        let text_event = events_rx.recv().await.expect("text event");
+        assert_eq!(text_event.turn_id, "turn-1");
+        assert!(matches!(
+            text_event.update,
+            AgentTurnUpdate::Text { text, .. } if text == "A grounded answer."
+        ));
+        let completion = events_rx.recv().await.expect("completion event");
+        assert!(matches!(
+            completion.update,
+            AgentTurnUpdate::Completed { stop_reason } if stop_reason == "end-turn"
+        ));
+
+        worker.abort();
+        assert!(worker
+            .await
+            .expect_err("worker should abort")
+            .is_cancelled());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn sends_session_cancellation_for_the_active_turn() {
+        let cancelled = Arc::new(tokio::sync::Notify::new());
+        let prompt_cancelled = Arc::clone(&cancelled);
+        let notification_cancelled = Arc::clone(&cancelled);
+        let fake_agent = Agent
+            .builder()
+            .on_receive_request(
+                async move |_request: InitializeRequest,
+                            responder: Responder<InitializeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(InitializeResponse::new(ProtocolVersion::V1))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |_request: NewSessionRequest,
+                            responder: Responder<NewSessionResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(NewSessionResponse::new("session-cancel"))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |_request: PromptRequest,
+                            responder: Responder<PromptResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    let prompt_cancelled = Arc::clone(&prompt_cancelled);
+                    tokio::spawn(async move {
+                        prompt_cancelled.notified().await;
+                        let _ = responder.respond(PromptResponse::new(StopReason::Cancelled));
+                    });
+                    Ok(())
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_notification(
+                async move |notification: CancelNotification, _connection: ConnectionTo<Client>| {
+                    assert_eq!(notification.session_id.to_string(), "session-cancel");
+                    notification_cancelled.notify_one();
+                    Ok(())
+                },
+                agent_client_protocol::on_receive_notification!(),
+            );
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let (commands_tx, commands_rx) = tokio::sync::mpsc::channel(8);
+        let (events_tx, mut events_rx) = tokio::sync::mpsc::unbounded_channel();
+        let event_sink: TurnEventSink = Arc::new(move |event| {
+            let _ = events_tx.send(event);
+        });
+        let worker = tokio::spawn(run_connection(
+            fake_agent,
+            "connection-cancel".to_string(),
+            "profile-cancel".to_string(),
+            Arc::new(Mutex::new(Some(handshake_tx))),
+            commands_rx,
+            event_sink,
+        ));
+        handshake_rx
+            .await
+            .expect("handshake response")
+            .expect("handshake should pass");
+        let (session_tx, session_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::NewSession {
+                bundle_root: std::env::temp_dir(),
+                response: session_tx,
+            })
+            .await
+            .expect("send session");
+        session_rx
+            .await
+            .expect("session response")
+            .expect("session should start");
+        let (prompt_tx, prompt_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::Prompt {
+                session_id: "session-cancel".to_string(),
+                turn_id: "turn-cancel".to_string(),
+                text: "Long task".to_string(),
+                response: prompt_tx,
+            })
+            .await
+            .expect("send prompt");
+        prompt_rx
+            .await
+            .expect("prompt response")
+            .expect("prompt accepted");
+        let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::CancelTurn {
+                session_id: "session-cancel".to_string(),
+                turn_id: "turn-cancel".to_string(),
+                response: cancel_tx,
+            })
+            .await
+            .expect("send cancellation");
+        assert!(cancel_rx
+            .await
+            .expect("cancellation response")
+            .expect("cancellation should send"));
+        let completion = tokio::time::timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("cancelled turn should complete")
+            .expect("completion event");
+        assert!(matches!(
+            completion.update,
+            AgentTurnUpdate::Completed { stop_reason } if stop_reason == "cancelled"
+        ));
+        worker.abort();
+        let _ = worker.await;
     }
 
     #[test]

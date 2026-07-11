@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T16:00:00Z
+timestamp: 2026-07-11T17:00:00Z
 ---
 
 # Outcome
@@ -87,7 +87,8 @@ Gate: mocked offline, corrupt, unsupported-platform, cancel, retry, and update t
 - [x] Negotiate a typed capability set during initialization.
 - [x] Scope each new session to one canonical absolute bundle root.
 - [x] Expose typed Tauri commands and terminal lifecycle events for custom connections.
-- [ ] Expose typed Tauri commands/events for prompts, streaming, permission, and cancellation.
+- [x] Expose typed Tauri commands/events for text prompts, streaming, and cancellation.
+- [ ] Expose typed permission requests and responses.
 - [x] Stop children on disconnect, removal, and app exit.
 
 Gate: a fake agent covers initialize, auth, session/new, streaming, permission, cancellation, crash, and reconnect.

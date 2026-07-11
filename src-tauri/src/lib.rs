@@ -71,6 +71,15 @@ fn disconnect_agent(
 }
 
 #[tauri::command]
+async fn new_agent_session(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    bundle_root: String,
+) -> Result<agent_protocol::AgentSessionInfo, String> {
+    agent_protocol::new_session(state.inner(), &connection_id, bundle_root).await
+}
+
+#[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
     agent_id: String,
@@ -245,6 +254,7 @@ pub fn run() {
             remove_custom_agent,
             connect_custom_agent,
             disconnect_agent,
+            new_agent_session,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

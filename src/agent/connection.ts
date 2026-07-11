@@ -31,6 +31,12 @@ export interface AgentConnectionInfo {
   capabilities: AgentCapabilityInfo;
 }
 
+export interface AgentSessionInfo {
+  connectionId: string;
+  sessionId: string;
+  bundleRoot: string;
+}
+
 export type AgentConnectionEvent =
   | {
       connectionId: string;

@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-11T15:00:00Z
+timestamp: 2026-07-11T16:00:00Z
 ---
 
 # Decision
@@ -77,6 +77,8 @@ The host starts a custom agent only through the typed `connect_custom_agent` com
 
 Permission requests default to **Cancelled** until the permission UI owns them. Stderr retains at most the latest 64 KiB, removes control characters, and redacts inherited values before it can enter an error. Disconnect aborts the connection future; `kill_on_drop` terminates its child. Removing a profile aborts every connection that uses it, and dropping the app-owned host state aborts all remaining children. A fake in-process agent covers initialization, advertised capability/auth capture, timeout, bounded diagnostic redaction, and profile-wide shutdown.
 
+After initialization, each connection becomes a small Rust-owned actor. Typed commands enter through a bounded channel instead of sharing the SDK connection across Tauri requests. Session creation canonicalizes an absolute bundle directory off the async runtime, rejects missing and non-directory paths, and sends that directory as ACP `cwd` with no additional roots. It has a separate 30-second deadline. Studio returns only the stable connection ID, session ID, and canonical bundle root; agent metadata and configuration do not cross IPC. The actor retains the session-to-root association for later prompt and tool scoping. A fake agent asserts the exact canonical root it receives.
+
 # IPC
 
-Implemented connection commands cover custom-agent connect and disconnect with stable UUID connection IDs; Rust rejects a second active connection for the same profile. A typed terminal lifecycle event reports spontaneous failure and explicit disconnection with the connection and profile IDs; the frontend ignores an event for an older connection on the same profile. The IPC module retains active connection identity and one app-lifetime event listener so catalog remounts do not lose live process state. Failure messages remove controls and are capped before IPC. Planned commands cover catalog-agent connect, authenticate, session, prompt, cancellation, permission, context, review, apply, and restore. Events will also carry session updates, permission requests, and change sets; install progress is already event-based. Stable IDs let the frontend accept late cancellation updates without reopening completed requests.
+Implemented commands cover custom-agent connect/disconnect and session creation with stable connection and session IDs; Rust rejects a second active connection for the same profile. A typed terminal lifecycle event reports spontaneous failure and explicit disconnection with the connection and profile IDs; the frontend ignores an event for an older connection on the same profile. The IPC module retains active connection identity and one app-lifetime event listener so catalog remounts do not lose live process state. Failure messages remove controls and are capped before IPC. Planned commands cover catalog-agent connect, authenticate, prompt, cancellation, permission, context, review, apply, and restore. Events will also carry session updates, permission requests, and change sets; install progress is already event-based. Stable IDs let the frontend accept late cancellation updates without reopening completed requests.

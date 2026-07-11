@@ -1,5 +1,5 @@
 use agent_client_protocol::schema::v1::{
-    AgentCapabilities, Implementation, InitializeRequest, InitializeResponse,
+    AgentCapabilities, Implementation, InitializeRequest, InitializeResponse, NewSessionRequest,
     RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
 };
 use agent_client_protocol::schema::ProtocolVersion;
@@ -18,6 +18,7 @@ use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 use crate::agent_custom;
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
+const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
 const CONNECTION_EVENT: &str = "agent-connection-state";
@@ -42,6 +43,14 @@ pub struct AgentConnectionEvent {
     profile_id: String,
     status: AgentConnectionStatus,
     message: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSessionInfo {
+    connection_id: String,
+    session_id: String,
+    bundle_root: PathBuf,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -89,6 +98,14 @@ pub struct AgentHostState {
 struct AgentWorker {
     profile_id: String,
     abort: tokio::task::AbortHandle,
+    commands: tokio::sync::mpsc::Sender<AgentHostCommand>,
+}
+
+enum AgentHostCommand {
+    NewSession {
+        bundle_root: PathBuf,
+        response: tokio::sync::oneshot::Sender<Result<AgentSessionInfo, String>>,
+    },
 }
 
 impl Drop for AgentHostState {
@@ -112,6 +129,7 @@ pub async fn connect_custom(
     let connection_id = format!("connection-{}", uuid::Uuid::new_v4());
     let spec = ProcessSpec::from_profile(&profile);
     let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+    let (command_tx, command_rx) = tokio::sync::mpsc::channel(8);
     let handshake_tx = Arc::new(Mutex::new(Some(handshake_tx)));
     let worker_id = connection_id.clone();
     let worker_profile_id = profile_id.to_string();
@@ -129,6 +147,7 @@ pub async fn connect_custom(
             worker_id.clone(),
             worker_profile_id.clone(),
             Arc::clone(&worker_handshake),
+            command_rx,
         )
         .await;
         if let Some(sender) = take_sender(&worker_handshake) {
@@ -168,6 +187,7 @@ pub async fn connect_custom(
             AgentWorker {
                 profile_id: profile_id.to_string(),
                 abort: worker.abort_handle(),
+                commands: command_tx,
             },
         );
     }
@@ -188,6 +208,49 @@ pub async fn connect_custom(
             Err("Agent initialization timed out.".to_string())
         }
     }
+}
+
+pub async fn new_session(
+    state: &AgentHostState,
+    connection_id: &str,
+    bundle_root: String,
+) -> Result<AgentSessionInfo, String> {
+    let bundle_root = tokio::task::spawn_blocking(move || canonical_bundle_root(&bundle_root))
+        .await
+        .map_err(|_| "Bundle root validation task failed.".to_string())??;
+    let commands = state
+        .workers
+        .lock()
+        .map_err(|_| "Agent host state is unavailable.".to_string())?
+        .get(connection_id)
+        .map(|worker| worker.commands.clone())
+        .ok_or_else(|| "Agent connection was not found.".to_string())?;
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::NewSession {
+            bundle_root,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before session creation.".to_string())?;
+    tokio::time::timeout(SESSION_CREATE_TIMEOUT, response_rx)
+        .await
+        .map_err(|_| "Agent session creation timed out.".to_string())?
+        .map_err(|_| "Agent connection ended before session creation.".to_string())?
+}
+
+fn canonical_bundle_root(bundle_root: &str) -> Result<PathBuf, String> {
+    let requested = PathBuf::from(bundle_root);
+    if !requested.is_absolute() {
+        return Err("Bundle root must be an absolute path.".to_string());
+    }
+    let canonical = requested
+        .canonicalize()
+        .map_err(|error| format!("Bundle root is unavailable: {error}"))?;
+    if !canonical.is_dir() {
+        return Err("Bundle root must be a directory.".to_string());
+    }
+    Ok(canonical)
 }
 
 pub fn disconnect(
@@ -288,6 +351,7 @@ async fn run_connection(
     connection_id: String,
     profile_id: String,
     handshake: HandshakeSender,
+    mut commands: tokio::sync::mpsc::Receiver<AgentHostCommand>,
 ) -> Result<(), String> {
     Client
         .builder()
@@ -304,19 +368,53 @@ async fn run_connection(
             let response = initialize_connection(&connection).await?;
             if let Some(sender) = take_sender(&handshake) {
                 sender
-                    .send(Ok(connection_info(connection_id, profile_id, response)))
+                    .send(Ok(connection_info(
+                        connection_id.clone(),
+                        profile_id,
+                        response,
+                    )))
                     .map_err(|_| {
                         agent_client_protocol::util::internal_error(
                             "ACP initialization result receiver closed",
                         )
                     })?;
             }
-            std::future::pending::<()>().await;
-            #[allow(unreachable_code)]
+            let mut sessions = HashMap::<String, PathBuf>::new();
+            while let Some(command) = commands.recv().await {
+                match command {
+                    AgentHostCommand::NewSession {
+                        bundle_root,
+                        response,
+                    } => {
+                        let result = create_session(&connection, &connection_id, bundle_root).await;
+                        if let Ok(info) = &result {
+                            sessions.insert(info.session_id.clone(), info.bundle_root.clone());
+                        }
+                        let _ = response.send(result);
+                    }
+                }
+            }
             Ok(())
         })
         .await
         .map_err(|error| format!("Agent connection failed: {error}"))
+}
+
+async fn create_session(
+    connection: &ConnectionTo<Agent>,
+    connection_id: &str,
+    bundle_root: PathBuf,
+) -> Result<AgentSessionInfo, String> {
+    let response = connection
+        .send_request(NewSessionRequest::new(&bundle_root))
+        .block_task()
+        .await
+        .map_err(|error| format!("Agent session creation failed: {error}"))?;
+    Ok(AgentSessionInfo {
+        connection_id: connection_id.to_string(),
+        session_id: response.session_id.to_string(),
+        bundle_root,
+    })
 }
 
 async fn initialize_connection(
@@ -553,7 +651,7 @@ async fn negotiate_with_timeout(
 mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
-        AgentCapabilities, AuthMethod, AuthMethodAgent, PromptCapabilities,
+        AgentCapabilities, AuthMethod, AuthMethodAgent, NewSessionResponse, PromptCapabilities,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -610,6 +708,68 @@ mod tests {
         assert_eq!(error, "Agent initialization timed out.");
     }
 
+    #[tokio::test(flavor = "current_thread")]
+    async fn creates_a_session_at_the_exact_bundle_root() {
+        let bundle_root =
+            std::env::temp_dir().join(format!("okf-studio-session-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+        let canonical_root = bundle_root.canonicalize().expect("canonical bundle root");
+        let expected_root = canonical_root.clone();
+        let fake_agent = Agent
+            .builder()
+            .on_receive_request(
+                async move |_request: InitializeRequest,
+                            responder: Responder<InitializeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(InitializeResponse::new(ProtocolVersion::V1))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |request: NewSessionRequest,
+                            responder: Responder<NewSessionResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    assert_eq!(request.cwd, expected_root);
+                    assert!(request.additional_directories.is_empty());
+                    responder.respond(NewSessionResponse::new("session-1"))
+                },
+                agent_client_protocol::on_receive_request!(),
+            );
+        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+
+        Client
+            .builder()
+            .name("okf-studio")
+            .connect_with(fake_agent, async move |connection: ConnectionTo<Agent>| {
+                initialize_connection(&connection).await?;
+                let result = create_session(&connection, "connection-1", canonical_root).await;
+                let _ = result_tx.send(result);
+                Ok(())
+            })
+            .await
+            .expect("client should finish");
+
+        let info = result_rx
+            .await
+            .expect("session result")
+            .expect("session should start");
+        assert_eq!(info.connection_id, "connection-1");
+        assert_eq!(info.session_id, "session-1");
+        assert_eq!(
+            info.bundle_root,
+            bundle_root.canonicalize().expect("canonical")
+        );
+        std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
+    }
+
+    #[test]
+    fn rejects_a_relative_session_root() {
+        assert_eq!(
+            canonical_bundle_root("relative/bundle").expect_err("relative root should fail"),
+            "Bundle root must be an absolute path."
+        );
+    }
+
     #[test]
     fn bounds_and_redacts_process_diagnostics() {
         let secret = "private-token".to_string();
@@ -648,11 +808,14 @@ mod tests {
         let state = AgentHostState::default();
         let first = tokio::spawn(std::future::pending::<()>());
         let second = tokio::spawn(std::future::pending::<()>());
+        let (first_commands, _) = tokio::sync::mpsc::channel(1);
+        let (second_commands, _) = tokio::sync::mpsc::channel(1);
         state.workers.lock().expect("workers").insert(
             "one".to_string(),
             AgentWorker {
                 profile_id: "profile-a".to_string(),
                 abort: first.abort_handle(),
+                commands: first_commands,
             },
         );
         state.workers.lock().expect("workers").insert(
@@ -660,6 +823,7 @@ mod tests {
             AgentWorker {
                 profile_id: "profile-a".to_string(),
                 abort: second.abort_handle(),
+                commands: second_commands,
             },
         );
 

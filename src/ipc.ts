@@ -13,7 +13,11 @@ import { DEFAULT_SETTINGS } from "./types.ts";
 import catalog from "./agent/catalog.json";
 import type { AgentCatalogDocument } from "./agent/catalog.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
-import type { AgentConnectionEvent, AgentConnectionInfo } from "./agent/connection.ts";
+import type {
+  AgentConnectionEvent,
+  AgentConnectionInfo,
+  AgentSessionInfo,
+} from "./agent/connection.ts";
 import type {
   AgentInstallPreflight,
   AgentInstallProgress,
@@ -117,6 +121,24 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
 
 export function activeAgentConnections(): readonly AgentConnectionInfo[] {
   return [...activeAgentConnectionsById.values()];
+}
+
+export async function newAgentSession(
+  connectionId: string,
+  bundleRoot: string,
+): Promise<AgentSessionInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSessionInfo>("new_agent_session", { connectionId, bundleRoot });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  return {
+    connectionId,
+    sessionId: `session-${crypto.randomUUID()}`,
+    bundleRoot,
+  };
 }
 
 export async function disconnectAgent(connectionId: string): Promise<boolean> {

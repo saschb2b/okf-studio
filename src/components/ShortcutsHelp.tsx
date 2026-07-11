@@ -30,6 +30,7 @@ const GROUPS: Group[] = [
       { combo: [mod, "⇧", "O"], label: "Open from URL" },
       { combo: [mod, "P"], label: "Bundle switcher" },
       { combo: [mod, "K"], alt: ["/"], label: "Search & commands" },
+      { combo: [mod, "â‡§", "A"], label: "Agent panel" },
       { combo: [mod, ","], label: "Settings" },
       { combo: ["?"], label: "Keyboard shortcuts" },
       { combo: ["Esc"], label: "Close dialog / deselect" },

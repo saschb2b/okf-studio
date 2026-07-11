@@ -221,6 +221,13 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:agent",
+      label: "Toggle agent panel",
+      hint: "Action",
+      run: () => actions.togglePanel("agent"),
+    },
+    {
+      kind: "action",
       id: "act:settings",
       label: "Settings",
       hint: "Action",

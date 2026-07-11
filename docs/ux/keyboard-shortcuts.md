@@ -3,7 +3,7 @@ type: Reference
 title: Keyboard Shortcuts
 description: The default keybindings; every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
-timestamp: 2026-07-08T12:00:00Z
+timestamp: 2026-07-11T05:10:00Z
 ---
 
 # Defaults
@@ -16,6 +16,7 @@ timestamp: 2026-07-08T12:00:00Z
 | `Ctrl/Cmd + Shift + O` | Open from URL — fetch a [remote bundle](../features/bundle-switcher.md) |
 | `Ctrl/Cmd + P` | Open the [Bundle Switcher](../features/bundle-switcher.md) — switch bundle, reopen a recent, or open a folder |
 | `Ctrl/Cmd + K` or `/` | Open the global search [launcher](../features/command-palette.md) — jump to a concept, full-text search, or run a command |
+| `Ctrl/Cmd + Shift + A` | Toggle the [Agent Panel](../features/agent-panel.md) |
 | `Esc` | Close the launcher / dialog / deselect |
 | `↑` `↓` | Move through results / the sidebar |
 | `Enter` | Open the highlighted concept |

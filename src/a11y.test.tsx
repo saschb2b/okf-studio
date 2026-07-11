@@ -51,6 +51,14 @@ describe("accessibility (axe-core)", () => {
     await expectNoViolations(container);
   });
 
+  it("the disconnected agent panel has no violations", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await screen.findByRole("complementary", { name: /agent panel/i });
+    await expectNoViolations(container);
+  });
+
   it("the settings dialog has no violations", async () => {
     const user = userEvent.setup();
     renderApp();

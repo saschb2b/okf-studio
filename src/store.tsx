@@ -30,7 +30,7 @@ import {
   openConceptWindow,
 } from "./window.ts";
 
-export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage";
+export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage" | "agent";
 
 /**
  * One open concept in the reader — a browser-style tab with its own
@@ -275,6 +275,7 @@ function makeInitialState(): State {
     log: false,
     validation: false,
     lineage: false,
+    agent: false,
   },
   palette: false,
   paletteSeed: null,

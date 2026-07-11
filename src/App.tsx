@@ -19,6 +19,7 @@ import { OpenRemoteDialog } from "./components/OpenRemoteDialog.tsx";
 import { OverviewView } from "./components/OverviewView.tsx";
 import { ResizeHandles } from "./components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "./components/ShortcutsHelp.tsx";
+import { AgentPanel } from "./components/AgentPanel.tsx";
 
 export function App() {
   const { state } = useApp();
@@ -30,6 +31,7 @@ export function App() {
       <div className="app-main">
         <ActivityBar />
         {state.bundle ? <Workspace /> : <EmptyState />}
+        <AgentPanel />
       </div>
       <StatusBar />
 

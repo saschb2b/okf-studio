@@ -7,7 +7,7 @@
 // Colour and weight are reserved for the exception: amber for warnings, red for
 // errors, where they actually draw the eye. See docs/features/validation.md.
 
-import { Check, History, TriangleAlert, Waypoints, X as XIcon } from "lucide-react";
+import { Check, History, Sparkles, TriangleAlert, Waypoints, X as XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useApp } from "../store.tsx";
 import "./StatusBar.css";
@@ -100,6 +100,19 @@ export function StatusBar() {
               .join(" · ")}
           </span>
         )}
+        <button
+          type="button"
+          className={`status-item status-toggle${state.panels.agent ? " is-active" : ""}`}
+          aria-label="Toggle agent panel"
+          aria-pressed={state.panels.agent}
+          title="Agent panel (Ctrl+Shift+A)"
+          onClick={() => actions.togglePanel("agent")}
+        >
+          <span className="status-icon" aria-hidden="true">
+            <Sparkles size={14} />
+          </span>
+          <span>Agent</span>
+        </button>
       </div>
     </footer>
   );

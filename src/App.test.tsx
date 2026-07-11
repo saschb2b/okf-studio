@@ -31,6 +31,16 @@ describe("OKF Studio app", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens the disconnected agent panel from the status bar", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+
+    expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Connect an agent" })).toBeInTheDocument();
+  });
+
   it("opens a folder and lists the bundle's concepts in the sidebar", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();

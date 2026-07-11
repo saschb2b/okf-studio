@@ -38,6 +38,9 @@ export function useGlobalKeys() {
         // close button owns closing the window).
         e.preventDefault();
         actions.closeTab();
+      } else if (mod && e.shiftKey && k === "a") {
+        e.preventDefault();
+        actions.togglePanel("agent");
       } else if (mod && e.shiftKey && k === "o") {
         // Open from URL (remote bundle). Shift distinguishes it from the local
         // folder picker on Ctrl/Cmd+O.

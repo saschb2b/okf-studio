@@ -242,6 +242,7 @@ export async function promptAgent(
   sessionId: string,
   text: string,
   contextPaths: readonly string[] = [],
+  sources: readonly AgentSourceInput[] = [],
 ): Promise<AgentTurnInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -250,6 +251,7 @@ export async function promptAgent(
       sessionId,
       text,
       contextPaths,
+      sources,
     });
   }
   if (!activeAgentConnectionsById.has(connectionId)) {
@@ -259,6 +261,11 @@ export async function promptAgent(
   mockCancelledTurns.delete(info.turnId);
   void emitMockTurn(info, text);
   return info;
+}
+
+export interface AgentSourceInput {
+  title: string;
+  content: string;
 }
 
 export async function cancelAgentTurn(

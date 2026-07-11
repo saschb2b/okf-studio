@@ -71,6 +71,9 @@ export function AgentConversation({
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
   >([]);
+  const [attachedSources, setAttachedSources] = useState<
+    { id: string; title: string; content: string }[]
+  >([]);
   const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
   const [contextQuery, setContextQuery] = useState("");
   const sessionRef = useRef<AgentSessionInfo | null>(null);
@@ -154,8 +157,16 @@ export function AgentConversation({
           sessionRef.current = session;
         }
         const contextPaths = attachedConcepts.map((concept) => `${concept.id}.md`);
-        const turn = await promptAgent(connection.connectionId, session.sessionId, text, contextPaths);
+        const sources = attachedSources.map(({ title, content }) => ({ title, content }));
+        const turn = await promptAgent(
+          connection.connectionId,
+          session.sessionId,
+          text,
+          contextPaths,
+          sources,
+        );
         setAttachedConcepts([]);
+        setAttachedSources([]);
         if (!completedTurnsRef.current.delete(turn.turnId)) setActiveTurn(turn);
         return { status: "idle" };
       } catch (error: unknown) {
@@ -313,6 +324,24 @@ export function AgentConversation({
                   </button>
                 </span>
               ))}
+              {attachedSources.map((source) => (
+                <span key={source.id} className="agent-context-chip">
+                  <FileText size={14} aria-hidden="true" />
+                  <span title={source.title}>{source.title}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${source.title} source`}
+                    disabled={isSubmitting || activeTurn !== null}
+                    onClick={() =>
+                      setAttachedSources((current) =>
+                        current.filter((candidate) => candidate.id !== source.id),
+                      )
+                    }
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              ))}
               <ContextPicker
                 concepts={concepts}
                 activeConceptId={activeConcept?.id ?? null}
@@ -330,6 +359,16 @@ export function AgentConversation({
                   setIsContextPickerOpen(false);
                   setContextQuery("");
                 }}
+              />
+              <SourcePicker
+                sourceCount={attachedSources.length}
+                disabled={isSubmitting || activeTurn !== null}
+                onAttach={(source) =>
+                  setAttachedSources((current) => [
+                    ...current,
+                    { id: crypto.randomUUID(), ...source },
+                  ])
+                }
               />
             </div>
             <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
@@ -362,6 +401,95 @@ export function AgentConversation({
         </>
       )}
     </section>
+  );
+}
+
+interface SourcePickerProps {
+  sourceCount: number;
+  disabled: boolean;
+  onAttach: (source: { title: string; content: string }) => void;
+}
+
+function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const isAtLimit = sourceCount >= 8;
+  const canAttach = title.trim().length > 0 && content.trim().length > 0;
+
+  function close() {
+    setIsOpen(false);
+    setTitle("");
+    setContent("");
+  }
+
+  function attach() {
+    if (!canAttach) return;
+    onAttach({ title: title.trim(), content });
+    close();
+  }
+
+  return (
+    <Popover.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) setIsOpen(true);
+        else close();
+      }}
+    >
+      <Popover.Trigger
+        render={
+          <button
+            type="button"
+            className="btn ghost agent-context-attach"
+            disabled={disabled || isAtLimit}
+          >
+            <FileText size={14} aria-hidden="true" />
+            {isAtLimit ? "Source limit reached" : "Add source"}
+          </button>
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner
+          className="ui-popover-positioner"
+          side="top"
+          align="start"
+          sideOffset={6}
+        >
+          <Popover.Popup className="ui-popover agent-source-picker" aria-label="Add text source">
+            <div>
+              <h3>Add text source</h3>
+              <p>Pasted text or Markdown. Sent with your next message.</p>
+            </div>
+            <label>
+              <span>Title</span>
+              <input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- opening this explicit form should focus its first field
+                autoFocus
+                value={title}
+                maxLength={256}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Content</span>
+              <textarea
+                value={content}
+                rows={8}
+                maxLength={64 * 1024}
+                onChange={(event) => setContent(event.target.value)}
+              />
+            </label>
+            <div className="agent-source-picker__actions">
+              <button type="button" className="btn ghost" onClick={close}>Cancel</button>
+              <button type="button" className="btn primary" disabled={!canAttach} onClick={attach}>
+                Attach source
+              </button>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 

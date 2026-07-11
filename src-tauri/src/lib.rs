@@ -109,6 +109,7 @@ async fn prompt_agent(
     session_id: String,
     text: String,
     context_paths: Vec<String>,
+    sources: Vec<agent_protocol::AgentSourceInput>,
 ) -> Result<agent_protocol::AgentTurnInfo, String> {
     agent_protocol::prompt(
         state.inner(),
@@ -116,6 +117,7 @@ async fn prompt_agent(
         session_id,
         text,
         context_paths,
+        sources,
     )
     .await
 }

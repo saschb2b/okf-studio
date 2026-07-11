@@ -193,6 +193,14 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Attach context" }));
     await user.type(screen.getByLabelText("Search concepts to attach"), "Graph View");
     await user.click(screen.getByRole("button", { name: "Add Graph View to context" }));
+    await user.click(screen.getByRole("button", { name: "Add source" }));
+    await user.type(screen.getByLabelText("Title"), "Interview notes");
+    await user.type(
+      screen.getByLabelText("Content"),
+      "# Notes\n\nThe catalog owner confirmed the definition.",
+    );
+    await user.click(screen.getByRole("button", { name: "Attach source" }));
+    expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -201,11 +209,16 @@ describe("OKF Studio app", () => {
       expect.any(String),
       "Summarize the bundle",
       ["product/overview.md", "features/graph-view.md"],
+      [{
+        title: "Interview notes",
+        content: "# Notes\n\nThe catalog owner confirmed the definition.",
+      }],
     );
     expect(await screen.findByText("Summarize the bundle")).toBeInTheDocument();
     expect(await screen.findByText("Browser ACP received: Summarize the bundle")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));

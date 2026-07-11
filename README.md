@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src-tauri/icons/icon.png" width="104" alt="OKF Viewer">
+  <img src="src-tauri/icons/icon.png" width="104" alt="OKF Studio">
 </p>
 
-<h1 align="center">OKF Viewer</h1>
+<h1 align="center">OKF Studio</h1>
 
 <p align="center"><strong>Point it at a folder. Read your knowledge as a graph.</strong></p>
 
@@ -18,11 +18,11 @@
 
 <p align="center">
   <a href="https://saschb2b.github.io/okf-viewer/">
-    <img src="site/public/screenshot-graph.webp" width="840" alt="OKF Viewer showing a knowledge bundle as a concept graph beside the reader">
+    <img src="site/public/screenshot-graph.webp" width="840" alt="OKF Studio showing a knowledge bundle as a concept graph beside the reader">
   </a>
 </p>
 
-OKF Viewer is a fast, native desktop app for reading [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Point it at a folder; it autodetects the OKF bundles inside and renders each as an interactive graph of interconnected concepts, alongside a markdown reader with backlinks, search, filters, validation, and live reload. It is offline, read-only, and built with [Tauri 2](https://tauri.app/) (a Rust core plus the system webview). Windows, macOS, and Linux.
+OKF Studio is a fast, native desktop app for reading [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Point it at a folder; it autodetects the OKF bundles inside and renders each as an interactive graph of interconnected concepts, alongside a markdown reader with backlinks, search, filters, validation, and live reload. It is offline, read-only, and built with [Tauri 2](https://tauri.app/) (a Rust core plus the system webview). Windows, macOS, and Linux.
 
 ## Download
 
@@ -48,7 +48,7 @@ Unsigned for now, so your OS may show an "unverified publisher" prompt on first 
 ## What is OKF? What is ODSF?
 
 - **[Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf)** is Google's open, vendor-neutral spec for packaging knowledge an agent (or a human) can read: plain markdown files with YAML frontmatter, organized into a portable bundle. No SDK, no database, no lock-in.
-- **[Open Design System Format](https://saschb2b.github.io/Open-Design-System-Format/)** is a profile of OKF for design systems. It adds machine-readable design tokens and runnable HTML/CSS examples so an agent produces UI that matches the system. This project's marketing site is built from an ODSF bundle ([`design-system/`](design-system/)), which OKF Viewer can itself open and preview.
+- **[Open Design System Format](https://saschb2b.github.io/Open-Design-System-Format/)** is a profile of OKF for design systems. It adds machine-readable design tokens and runnable HTML/CSS examples so an agent produces UI that matches the system. This project's marketing site is built from an ODSF bundle ([`design-system/`](design-system/)), which OKF Studio can itself open and preview.
 
 ## Develop and run
 
@@ -89,7 +89,7 @@ The marketing site under [`site/`](site/) has its own build (`pnpm --dir site bu
 
 ## The spec lives in `docs/`
 
-`docs/` is an OKF bundle that specifies what OKF Viewer does and why, and the app renders it as the built-in sample (it dogfoods itself). Treat it as the source of truth, for humans and agents:
+`docs/` is an OKF bundle that specifies what OKF Studio does and why, and the app renders it as the built-in sample (it dogfoods itself). Treat it as the source of truth, for humans and agents:
 
 - **Read the relevant concept before changing behavior.** Start at [`docs/index.md`](docs/index.md).
 - **Update the spec in the same change**, so the docs never drift from the code; on conflict, the bundle wins.

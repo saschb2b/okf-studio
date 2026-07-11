@@ -3,7 +3,7 @@ name = "okf-viewer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "OKF Viewer — point it at a folder, read your knowledge as a graph."
+description = "OKF Studio — point it at a folder, read your knowledge as a graph."
 default-run = "okf-viewer"
 
 [lib]

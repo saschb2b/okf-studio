@@ -1,3 +1,6 @@
+## 2026-07-11
+* **Update**: Renamed the product labels in the design-system overview and runnable component/pattern examples from **OKF Viewer** to **OKF Studio**. Tokens, component behavior, and layout remain unchanged.
+
 ## 2026-07-08
 * **Creation**: A [viz card](components/viz-card.md) component: a screenshot with its title and one caption line on a single bordered surface, the media bleeding flush to the card edge behind a hairline seam (the [hero](patterns/hero.md)'s grounded-media motif at card scale). Built for the landing page's new visualization section, a two-column grid of the app's four views of one bundle (graph, treemap, sunburst, circle packing). Reserved `aspect-ratio` keeps the lazy-loaded grid from shifting. Runnable example added; indexed; `styles/components.css` updated.
 

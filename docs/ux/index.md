@@ -1,6 +1,6 @@
 # UX
 
-How OKF Viewer looks and feels: the flows, the workspace layout, shortcuts, theming, accessibility, and settings.
+How OKF Studio looks and feels: the flows, the workspace layout, shortcuts, theming, accessibility, and settings.
 
 * [First Run](first-run.md) - From empty state to a rendered bundle in two clicks.
 * [Empty & Error States](empty-and-error-states.md) - Every no-content, loading, and failure state, and how to recover.

@@ -3,7 +3,7 @@ name = "okf-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Pure-Rust core for OKF Viewer: bundle detection, OKF parsing, graph/backlinks, and validation."
+description = "Pure-Rust core for OKF Studio: bundle detection, OKF parsing, graph/backlinks, and validation."
 
 [dependencies]
 serde = { workspace = true }

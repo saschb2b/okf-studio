@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-06-30T23:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Decision
@@ -39,7 +39,7 @@ Two GitHub Actions workflows (`.github/workflows/`):
 
 Two version numbers stay deliberately distinct:
 
-- **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Viewer app itself, set in the Tauri config and shown in the about/settings surface.
+- **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Studio app itself, set in the Tauri config and shown in the about/settings surface.
 - **`okf_version`** — the version of the OKF **format** a bundle declares in its root `index.md` (see [OKF Spec Summary](../reference/okf-spec-summary.md)). The app reads and displays this (quietly, in the [status bar](../ux/browsing-layout.md)); it is a property of the data, never of the app. A new app release does not change a bundle's `okf_version`, and vice versa. A bundle that is also an [ODSF](../features/design-system-rendering.md) design system declares an **`odsf_version`** in the same root frontmatter; the core reads it alongside `okf_version` and the app shows both — equally a property of the data.
 
 # Updates

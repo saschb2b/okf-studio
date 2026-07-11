@@ -1,15 +1,15 @@
 ---
 type: Reference
 title: OKF Reference HTML Visualizer
-description: Google's single self-contained HTML consumer that renders any OKF bundle as a force-directed graph — the reference implementation OKF Viewer is the native desktop counterpart to.
+description: Google's single self-contained HTML consumer that renders any OKF bundle as a force-directed graph — the reference implementation OKF Studio is the native desktop counterpart to.
 resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf
 tags: [reference, okf, visualizer, consumer, external]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Summary
 
-The OKF reference repository ships a **consumer**: a single, self-contained HTML file that renders any OKF [bundle](../reference/okf-spec-summary.md) in a browser. It is the canonical demonstration that an OKF bundle is portable knowledge — point it at a bundle and the same concept files OKF Viewer reads come to life with no build step. This is a dated snapshot for implementers; the canonical artifact is in the `resource` above.
+The OKF reference repository ships a **consumer**: a single, self-contained HTML file that renders any OKF [bundle](../reference/okf-spec-summary.md) in a browser. It is the canonical demonstration that an OKF bundle is portable knowledge — point it at a bundle and the same concept files OKF Studio reads come to life with no build step. This is a dated snapshot for implementers; the canonical artifact is in the `resource` above.
 
 # What it does
 
@@ -20,11 +20,11 @@ The OKF reference repository ships a **consumer**: a single, self-contained HTML
 - **Search** — find concepts by title or text.
 - **Type filters** — show or hide concepts by `type`.
 
-These are exactly the primitives OKF Viewer reuses in its [Graph View](../features/graph-view.md) and [Concept Reader](../features/concept-reader.md).
+These are exactly the primitives OKF Studio reuses in its [Graph View](../features/graph-view.md) and [Concept Reader](../features/concept-reader.md).
 
-# Relationship to OKF Viewer
+# Relationship to OKF Studio
 
-OKF Viewer is the **native desktop counterpart** to this visualizer — same core idea, expanded:
+OKF Studio is the **native desktop counterpart** to this visualizer — same core idea, expanded:
 
 - **Multi-bundle** — it autodetects every bundle under a chosen folder, not one bundle at a time.
 - **Folder-aware** — you point it at a directory; detection and the [bundle browser](../features/folder-autodetect.md) do the rest.
@@ -45,7 +45,7 @@ The reference visualizer is deliberately minimal:
 
 # Significance
 
-That a tiny, independent HTML file can faithfully render a bundle authored by an entirely separate producer is the proof of OKF's **producer/consumer independence**: the format, not any one tool, carries the meaning. OKF Viewer and this visualizer reading the same bundles is that principle in practice.
+That a tiny, independent HTML file can faithfully render a bundle authored by an entirely separate producer is the proof of OKF's **producer/consumer independence**: the format, not any one tool, carries the meaning. OKF Studio and this visualizer reading the same bundles is that principle in practice.
 
 # Citations
 

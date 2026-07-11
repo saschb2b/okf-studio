@@ -2,17 +2,17 @@
 okf_version: "0.1"
 ---
 
-# OKF Viewer — Product Knowledge Bundle
+# OKF Studio — Product Knowledge Bundle
 
-**OKF Viewer** is a cross-platform desktop app (Windows + Ubuntu) that you point at a folder; it **autodetects the [Open Knowledge Format](reference/okf-spec-summary.md) (OKF) bundles inside** and renders each as an interactive graph of interconnected concept documents. It is built with [Tauri 2.0](reference/tauri-2.md) — a Rust core plus the system webview.
+**OKF Studio** is a cross-platform desktop app (Windows + Ubuntu) that you point at a folder; it **autodetects the [Open Knowledge Format](reference/okf-spec-summary.md) (OKF) bundles inside** and renders each as an interactive graph of interconnected concept documents. It is built with [Tauri 2.0](reference/tauri-2.md) — a Rust core plus the system webview.
 
 This bundle is the product's source of truth: what it does ([features](features/)), how it feels ([UX](ux/)), and how it is built ([architecture](architecture/)). It also doubles as the app's **built-in sample bundle** — the viewer dogfoods itself by rendering this very directory.
 
 # Product
 
-* [Overview](product/overview.md) - What OKF Viewer is, who it's for, and the one-line pitch.
+* [Overview](product/overview.md) - What OKF Studio is, who it's for, and the one-line pitch.
 * [Personas & Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
-* [How It Compares](product/comparison.md) - OKF Viewer vs. the reference visualizer, PKM tools, static-site generators, and a file tree.
+* [How It Compares](product/comparison.md) - OKF Studio vs. the reference visualizer, PKM tools, static-site generators, and a file tree.
 * [Design Principles](product/principles.md) - The non-negotiables: local-first, vendor-neutral, tolerant, read-only, fast.
 * [Scope & Non-Goals](product/scope-and-non-goals.md) - What ships in v1, what comes later, what we will not build.
 

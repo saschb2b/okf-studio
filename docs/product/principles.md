@@ -1,9 +1,9 @@
 ---
 type: Design Principle
 title: Design Principles
-description: The non-negotiable principles every OKF Viewer feature and decision must respect.
+description: The non-negotiable principles every OKF Studio feature and decision must respect.
 tags: [product, principles]
-timestamp: 2026-06-30T22:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Principles

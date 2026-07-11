@@ -56,7 +56,7 @@ export function EmptyState() {
   // First run — nothing open yet.
   return (
     <div className="empty hero">
-      <h1 className="hero-title">OKF Viewer</h1>
+      <h1 className="hero-title">OKF Studio</h1>
       <p className="hero-tagline">
         Point it at a folder. Read your knowledge as a graph.
       </p>

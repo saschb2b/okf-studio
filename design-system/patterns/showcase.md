@@ -4,7 +4,7 @@ title: Showcase panel
 description: "An alternating feature row as a contained surface: copy on one half, the product screenshot bleeding flush to the panel's edge on the other."
 tags: [patterns, showcase, landing]
 status: stable
-timestamp: 2026-07-06T15:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 examples:
   - /patterns/showcase.example.html
 ---

@@ -1,10 +1,10 @@
 ---
 type: Reference
 title: Tauri 2.0
-description: Key facts about Tauri 2.0 — architecture, plugins, the permissions model, and per-platform prerequisites — for building OKF Viewer.
+description: Key facts about Tauri 2.0 — architecture, plugins, the permissions model, and per-platform prerequisites — for building OKF Studio.
 resource: https://tauri.app/
 tags: [reference, tauri, rust, external]
-timestamp: 2026-06-28T19:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Summary

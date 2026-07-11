@@ -4,12 +4,12 @@ title: OKF Spec Summary
 description: The Open Knowledge Format v0.1 rules the viewer must honor — conformance, the consumer contract, reserved files, links, and versioning.
 resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md
 tags: [reference, okf, spec, external]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Summary
 
-OKF (Open Knowledge Format) v0.1 is Google's vendor-neutral spec for the context an AI agent needs, represented as a **bundle**: a directory of markdown **concept** files with YAML frontmatter, kept in version control. It is the format OKF Viewer reads. This is a condensed snapshot for implementers; the canonical spec is the `resource` above.
+OKF (Open Knowledge Format) v0.1 is Google's vendor-neutral spec for the context an AI agent needs, represented as a **bundle**: a directory of markdown **concept** files with YAML frontmatter, kept in version control. It is the format OKF Studio reads. This is a condensed snapshot for implementers; the canonical spec is the `resource` above.
 
 # What the viewer must honor
 
@@ -24,7 +24,7 @@ A bundle is conformant when:
 
 A consumer **MUST NOT reject a bundle** for any of: missing optional fields, unknown `type` values, unknown extra frontmatter keys, broken cross-links, or missing `index.md`. A consumer that doesn't understand the declared version should still attempt best-effort rendering. This is the basis of the viewer's [tolerant-consumer principle](../product/principles.md) and its [Validation](../features/validation.md) feature.
 
-The reference repo ships its own consumer — the [OKF Reference HTML Visualizer](okf-reference-visualizer.md) — that OKF Viewer is the native desktop counterpart to, and a set of [sample bundles](okf-sample-bundles.md) that any conformant consumer should render.
+The reference repo ships its own consumer — the [OKF Reference HTML Visualizer](okf-reference-visualizer.md) — that OKF Studio is the native desktop counterpart to, and a set of [sample bundles](okf-sample-bundles.md) that any conformant consumer should render.
 
 ## Concepts
 

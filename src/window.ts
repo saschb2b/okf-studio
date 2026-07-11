@@ -79,7 +79,7 @@ export async function openConceptWindow(
   const label = `pop-${Date.now().toString(36)}-${popCounter++}`;
   const win = new WebviewWindow(label, {
     url: `index.html?${qs}`,
-    title: "OKF Viewer",
+    title: "OKF Studio",
     width: 980,
     height: 760,
     minWidth: 560,

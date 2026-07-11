@@ -5,7 +5,7 @@ description: A glyph, title, and one-line body: the unit of the feature grid.
 tags: [components, card]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-01T16:30:46Z
+timestamp: 2026-07-11T04:45:00Z
 examples:
   - /components/feature-card.example.html
 tokens:

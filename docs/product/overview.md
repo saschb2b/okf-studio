@@ -1,14 +1,14 @@
 ---
 type: Product
-title: OKF Viewer — Overview
+title: OKF Studio — Overview
 description: A cross-platform desktop app that points at a folder and renders the OKF bundles inside as interactive concept graphs.
 tags: [product, vision, desktop]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # What it is
 
-OKF Viewer is a small, fast, **offline desktop application** for reading [Open Knowledge Format](../reference/okf-spec-summary.md) bundles. You point it at a folder on disk; it finds every OKF bundle inside (see [Folder Autodetect](../features/folder-autodetect.md)) and renders each as an interactive [graph](../features/graph-view.md) of interconnected concept documents you can browse, search, and read.
+OKF Studio is a small, fast, **offline desktop application** for reading [Open Knowledge Format](../reference/okf-spec-summary.md) bundles. You point it at a folder on disk; it finds every OKF bundle inside (see [Folder Autodetect](../features/folder-autodetect.md)) and renders each as an interactive [graph](../features/graph-view.md) of interconnected concept documents you can browse, search, and read.
 
 It is the desktop counterpart to the single-file HTML visualizer that ships with the OKF reference implementation — but native, multi-bundle, folder-aware, and live-reloading.
 

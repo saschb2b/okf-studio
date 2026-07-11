@@ -99,7 +99,7 @@ export interface RemoteExample {
 
 export const REMOTE_EXAMPLES: RemoteExample[] = [
   {
-    title: "OKF Viewer docs",
+    title: "OKF Studio docs",
     blurb: "This app's own knowledge, as an OKF bundle",
     url: "https://github.com/saschb2b/okf-viewer/tree/main/docs",
   },

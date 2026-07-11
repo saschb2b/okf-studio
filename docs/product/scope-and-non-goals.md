@@ -1,9 +1,9 @@
 ---
 type: Reference
 title: Scope & Non-Goals
-description: What ships in v1, what is deferred, and what OKF Viewer deliberately will not be.
+description: What ships in v1, what is deferred, and what OKF Studio deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-11T04:15:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # v1 scope (the MVP)

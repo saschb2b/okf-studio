@@ -3,12 +3,12 @@ odsf_version: "0.1"
 okf_version: "0.1"
 ---
 
-# OKF Viewer Design System
+# OKF Studio Design System
 
-Dark-first, zed.dev-inspired visual language for the OKF Viewer marketing and download site. Built from the desktop app's theme and its app icon (the blue→violet folder on a near-black tile). Start at the [overview](overview.md); pull tokens from [styles/tokens.css](styles/tokens.css).
+Dark-first, zed.dev-inspired visual language for the OKF Studio marketing and download site. Built from the desktop app's theme and its app icon (the blue→violet folder on a near-black tile). Start at the [overview](overview.md); pull tokens from [styles/tokens.css](styles/tokens.css).
 
 # Overview
-* [OKF Viewer Design System](overview.md) - Principles, voice, and how to consume this bundle.
+* [OKF Studio Design System](overview.md) - Principles, voice, and how to consume this bundle.
 
 # Foundations
 * [Color](foundations/color.md) - Near-black palette and the blue→violet brand gradient.

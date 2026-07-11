@@ -13,7 +13,7 @@ const raw: RawConcept[] = [
     id: "product/overview",
     type: "Product",
     title: "Overview",
-    description: "What OKF Viewer is and who it's for.",
+    description: "What OKF Studio is and who it's for.",
     tags: ["product", "vision"],
     timestamp: "2026-06-28T00:00:00Z",
     resource: null,
@@ -382,14 +382,14 @@ const designSystem: RawConcept[] = [
 
 export const MOCK_BUNDLE: Bundle = {
   root: `${MOCK_FOLDER}/docs`,
-  name: "OKF Viewer (sample)",
+  name: "OKF Studio (sample)",
   okfVersion: "0.1",
   odsfVersion: "0.1",
   concepts: finalize([...raw, ...designSystem, ...generated()]),
   indexes: [
     {
       dir: "",
-      title: "OKF Viewer (sample)",
+      title: "OKF Studio (sample)",
       intro:
         "This is the built-in **sample bundle** — the viewer dogfooding itself. " +
         "It renders the [OKF](reference/glossary.md) concepts in this folder as a graph you can browse, " +
@@ -402,7 +402,7 @@ export const MOCK_BUNDLE: Bundle = {
             {
               title: "Overview",
               target: "product/overview",
-              description: "What OKF Viewer is and who it's for.",
+              description: "What OKF Studio is and who it's for.",
               kind: "concept",
             },
           ],
@@ -462,7 +462,7 @@ export const MOCK_BUNDLE: Bundle = {
       // the root "Product" section heading becomes a door to this folder home.
       dir: "product",
       title: "Product",
-      intro: "Vision, audience, principles, and scope for OKF Viewer.",
+      intro: "Vision, audience, principles, and scope for OKF Studio.",
       synthesized: false,
       sections: [
         {
@@ -471,7 +471,7 @@ export const MOCK_BUNDLE: Bundle = {
             {
               title: "Overview",
               target: "product/overview",
-              description: "What OKF Viewer is and who it's for.",
+              description: "What OKF Studio is and who it's for.",
               kind: "concept",
             },
           ],

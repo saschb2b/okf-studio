@@ -54,10 +54,10 @@ Gate: this roadmap, [Agent Panel](../features/agent-panel.md), [Agent System](..
 
 ## WP1: Studio identity without breaking upgrades
 
-- [ ] Rename visible app, docs, fixture, site, window-title, and display metadata copy to **OKF Studio**.
-- [ ] Replace the viewer one-liner with the knowledge-loop proposition.
-- [ ] Keep the repository name, update endpoint, Tauri identifier `app.okfviewer.desktop`, and current app-data location so installed copies upgrade in place.
-- [ ] Document compatibility names that intentionally remain `okf-viewer`.
+- [x] Rename visible app, docs, fixture, site, window-title, and display metadata copy to **OKF Studio**.
+- [ ] Replace the viewer one-liner with the knowledge-loop proposition once the Agent Panel makes that claim true.
+- [x] Keep the repository name, update endpoint, Tauri identifier `app.okfviewer.desktop`, and current app-data location so installed copies upgrade in place.
+- [x] Document compatibility names that intentionally remain `okf-viewer`.
 
 Gate: no visible Viewer branding remains; updater identity is unchanged; app and site builds pass.
 

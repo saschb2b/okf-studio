@@ -23,7 +23,7 @@ async function openFolder(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("button", { name: /switch bundle/i });
 }
 
-describe("OKF Viewer app", () => {
+describe("OKF Studio app", () => {
   it("shows the first-run empty state", () => {
     renderApp();
     expect(
@@ -50,7 +50,7 @@ describe("OKF Viewer app", () => {
     // Default landing is the bundle root's folder home (its index.md), not a
     // concept — its title is the bundle name and its authored intro renders.
     expect(
-      within(reader).getByRole("heading", { name: "OKF Viewer (sample)" }),
+      within(reader).getByRole("heading", { name: "OKF Studio (sample)" }),
     ).toBeInTheDocument();
     expect(container.querySelector(".folder-home")).not.toBeNull();
 

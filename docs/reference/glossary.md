@@ -1,16 +1,16 @@
 ---
 type: Glossary
 title: Glossary
-description: Terms used across the OKF Viewer bundle.
+description: Terms used across the OKF Studio bundle.
 tags: [reference, glossary]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Terms
 
 - **Backlink ("Cited by")** — The reverse of a cross-link: the set of concepts that link *to* a given concept. See [Concept Reader](../features/concept-reader.md).
 - **Barnes–Hut approximation** — An n-body optimization that treats distant node clusters as a single mass, making the force-directed layout scale to larger graphs. See [Performance](../architecture/performance.md).
-- **Bundle** — A self-contained directory of OKF markdown files; the unit OKF Viewer opens and renders. See [Bundle Detection](../architecture/bundle-detection.md).
+- **Bundle** — A self-contained directory of OKF markdown files; the unit OKF Studio opens and renders. See [Bundle Detection](../architecture/bundle-detection.md).
 - **Bundle root** — The top directory of a bundle, optionally declaring `okf_version` in its `index.md`.
 - **Capability** — A Tauri v2 permission grant: a `capabilities/` config that allows specific commands and paths, scoped to a window. See [IPC & Security](../architecture/ipc-and-security.md).
 - **Command palette** — A keyboard-driven launcher for navigating to concepts and running actions without the mouse. See [Command Palette](../features/command-palette.md).
@@ -27,6 +27,6 @@ timestamp: 2026-06-28T12:00:00Z
 - **Progressive disclosure** — Navigating via `index.md` files, revealing detail on demand rather than reading everything. See [Navigation](../features/navigation.md).
 - **Reference concept** — A concept that mirrors external material (a webpage, tool, or spec), authored with `type: Reference` and the source URL in `resource`. Used throughout this section.
 - **Reserved file** — `index.md` (directory listing / progressive disclosure) or `log.md` (dated change history). Never a concept.
-- **Scope** — The read-only folder subtree OKF Viewer is granted access to; nothing outside it is readable. See [IPC & Security](../architecture/ipc-and-security.md).
+- **Scope** — The read-only folder subtree OKF Studio is granted access to; nothing outside it is readable. See [IPC & Security](../architecture/ipc-and-security.md).
 - **Tolerant consumer** — A reader that never rejects a bundle for soft issues (missing fields, unknown types, broken links). A core [principle](../product/principles.md) and a spec requirement.
 - **Type** — The kind of a concept (`Feature`, `Reference`, `Metric`, …). Open-ended; drives node [color](../ux/theming.md) and [filters](../features/search-and-filter.md). The only field OKF requires.

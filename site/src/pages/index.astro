@@ -69,25 +69,25 @@ const vizzes = [
     src: `${base}screenshot-viz-graph.webp`,
     title: "Graph",
     body: "The force-directed network: what cites what, hubs and clusters at a glance. Double-click a node to expand its neighborhood.",
-    alt: "OKF Viewer's force-directed graph of a documentation bundle, nodes colored by concept type",
+    alt: "OKF Studio's force-directed graph of a documentation bundle, nodes colored by concept type",
   },
   {
     src: `${base}screenshot-viz-treemap.webp`,
     title: "Treemap",
     body: "Nested rectangles sized by how much is written: what's big, what's inside what. Click a group to drill in.",
-    alt: "OKF Viewer's treemap view: nested rectangles grouped by section, sized by content",
+    alt: "OKF Studio's treemap view: nested rectangles grouped by section, sized by content",
   },
   {
     src: `${base}screenshot-viz-sunburst.webp`,
     title: "Sunburst",
     body: "The whole hierarchy as concentric rings. Click a sector to re-root on it; the center takes you back up.",
-    alt: "OKF Viewer's sunburst view: the bundle hierarchy as labeled concentric rings",
+    alt: "OKF Studio's sunburst view: the bundle hierarchy as labeled concentric rings",
   },
   {
     src: `${base}screenshot-viz-pack.webp`,
     title: "Circle packing",
     body: "Groups within groups as nested circles, with a smooth zoom as you drill down and out.",
-    alt: "OKF Viewer's circle-packing view: concepts as nested circles grouped by section",
+    alt: "OKF Studio's circle-packing view: concepts as nested circles grouped by section",
   },
 ];
 
@@ -107,7 +107,7 @@ const downloads = [
     <nav class="site-nav topbar__inner" aria-label="Primary">
       <a class="site-nav__brand" href={base}>
         <img class="site-nav__logo" src={icon} alt="" width="28" height="28" />
-        OKF Viewer
+        OKF Studio
       </a>
       <div class="site-nav__links">
         <a class="site-nav__link" href="#formats">What is OKF?</a>
@@ -147,7 +147,7 @@ const downloads = [
             role="button"
             tabindex="0"
             src={shotGraph}
-            alt="OKF Viewer showing a knowledge bundle as a concept graph beside the reader"
+            alt="OKF Studio showing a knowledge bundle as a concept graph beside the reader"
             width="1760"
             height="1117"
             fetchpriority="high"
@@ -164,7 +164,7 @@ const downloads = [
           <span class="eyebrow">New here?</span>
           <h2 class="section__title">What's OKF? What's ODSF?</h2>
           <p class="section__sub">
-            OKF Viewer reads two open, vendor-neutral formats. Here's the short
+            OKF Studio reads two open, vendor-neutral formats. Here's the short
             version.
           </p>
         </div>
@@ -187,7 +187,7 @@ const downloads = [
               A profile of OKF for design systems: it adds machine-readable design
               tokens and runnable HTML/CSS examples, so an agent produces UI that
               matches your system. This very site was built from an ODSF bundle,
-              which OKF Viewer can open and preview.
+              which OKF Studio can open and preview.
             </p>
             <a class="spec-card__link" href={odsfSpec}>Read the ODSF spec →</a>
           </article>
@@ -198,7 +198,7 @@ const downloads = [
     <section class="section" id="features">
       <div class="container">
         <div class="section__head">
-          <span class="eyebrow">Why OKF Viewer</span>
+          <span class="eyebrow">Why OKF Studio</span>
           <h2 class="section__title">Built to read knowledge, not just files.</h2>
           <p class="section__sub">
             A focused reader for the Open Knowledge Format, the vendor-neutral way
@@ -272,7 +272,7 @@ const downloads = [
             </p>
           </div>
           <figure class="showcase__media">
-            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotReader} alt="OKF Viewer's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" decoding="async" />
+            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotReader} alt="OKF Studio's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" decoding="async" />
           </figure>
         </div>
 
@@ -281,13 +281,13 @@ const downloads = [
             <span class="eyebrow showcase__eyebrow">Design-system aware</span>
             <h2 class="showcase__title">It reads design systems, too.</h2>
             <p class="showcase__body">
-              Open an ODSF bundle and OKF Viewer renders its design tokens and
+              Open an ODSF bundle and OKF Studio renders its design tokens and
               live HTML/CSS examples inline. Here it's reading this very site's
               design system, previewing the hero it was built from.
             </p>
           </div>
           <figure class="showcase__media">
-            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotDs} alt="OKF Viewer rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" decoding="async" />
+            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotDs} alt="OKF Studio rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" decoding="async" />
           </figure>
         </div>
       </div>
@@ -300,7 +300,7 @@ const downloads = [
         <div class="band">
           <div class="section__head">
             <span class="eyebrow">Download</span>
-            <h2 class="section__title">Get OKF Viewer</h2>
+            <h2 class="section__title">Get OKF Studio</h2>
             <p class="section__sub">Free and open source. Pick your platform.</p>
           </div>
           <div class="download__row">
@@ -329,7 +329,7 @@ const downloads = [
 
   <footer class="footer">
     <div class="container footer__inner">
-      <span>OKF Viewer, open source. Point it at a folder.</span>
+      <span>OKF Studio, open source. Point it at a folder.</span>
       <div class="footer__links">
         <a href={repo}>GitHub</a>
         <a href={releases}>Releases</a>

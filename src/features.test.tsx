@@ -43,7 +43,7 @@ async function openBundleAtOverview(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("heading", { name: "Overview", level: 1 });
 }
 
-describe("OKF Viewer features", () => {
+describe("OKF Studio features", () => {
   it("switches to reader-only layout, hiding the graph", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();
@@ -153,7 +153,7 @@ describe("OKF Viewer features", () => {
     const popover = await screen.findByLabelText("Bundle switcher");
     expect(within(popover).getByText(/bundles in workspace/i)).toBeInTheDocument();
     expect(
-      within(popover).getByText("OKF Viewer (sample)"),
+      within(popover).getByText("OKF Studio (sample)"),
     ).toBeInTheDocument();
 
     // Seeded recents render, split into Pinned and Recent groups.
@@ -169,7 +169,7 @@ describe("OKF Viewer features", () => {
     expect(search).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(
-      within(popover).getByRole("button", { name: /OKF Viewer \(sample\)/i }),
+      within(popover).getByRole("button", { name: /OKF Studio \(sample\)/i }),
     ).toHaveFocus();
     await user.keyboard("{ArrowUp}");
     expect(search).toHaveFocus();
@@ -343,7 +343,7 @@ describe("OKF Viewer features", () => {
     const home = container.querySelector<HTMLElement>(".folder-home")!;
     expect(home).not.toBeNull();
     expect(
-      within(home).getByRole("heading", { name: "OKF Viewer (sample)", level: 1 }),
+      within(home).getByRole("heading", { name: "OKF Studio (sample)", level: 1 }),
     ).toBeInTheDocument();
     expect(home).toHaveTextContent(/built-in\s+sample bundle/i);
     // A card opens the concept it lists.
@@ -386,9 +386,9 @@ describe("OKF Viewer features", () => {
     await within(reader).findByRole("heading", { name: "Graph View", level: 1 });
 
     const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
-    await user.click(within(sidebar).getByRole("button", { name: "OKF Viewer (sample)" }));
+    await user.click(within(sidebar).getByRole("button", { name: "OKF Studio (sample)" }));
     expect(
-      await within(reader).findByRole("article", { name: /OKF Viewer \(sample\) folder home/i }),
+      await within(reader).findByRole("article", { name: /OKF Studio \(sample\) folder home/i }),
     ).toBeInTheDocument();
   });
 
@@ -448,7 +448,7 @@ describe("OKF Viewer features", () => {
     // The dialog stays open and explains the outcome — no bundle ever opened,
     // so the app is still on the first-run empty state, not a workspace.
     await within(dialog).findByText(/no okf bundle at that url/i);
-    expect(screen.queryByText("OKF Viewer (sample)")).not.toBeInTheDocument();
+    expect(screen.queryByText("OKF Studio (sample)")).not.toBeInTheDocument();
   });
 
   it("offers a picker when a URL resolves to several bundles", async () => {

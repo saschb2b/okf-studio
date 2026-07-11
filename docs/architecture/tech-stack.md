@@ -3,12 +3,12 @@ type: Architecture Decision
 title: Tech Stack
 description: Tauri 2.0 with a Rust core and a React + TypeScript frontend — the chosen stack and the reasoning behind it.
 tags: [architecture, decision, tauri, rust, react, typescript]
-timestamp: 2026-06-30T12:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Decision
 
-Build OKF Viewer on **[Tauri 2.0](../reference/tauri-2.md)**: a **Rust core** for filesystem work and a **React + TypeScript frontend** (built with Vite) rendered in the platform's native webview.
+Build OKF Studio on **[Tauri 2.0](../reference/tauri-2.md)**: a **Rust core** for filesystem work and a **React + TypeScript frontend** (built with Vite) rendered in the platform's native webview.
 
 # Responsibilities
 

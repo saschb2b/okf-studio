@@ -68,7 +68,7 @@ function updateHint(s: UpdateStatus): string {
     case "error":
       return s.message;
     case "idle":
-      return "OKF Viewer only checks when you ask — never on its own.";
+      return "OKF Studio only checks when you ask — never on its own.";
   }
 }
 

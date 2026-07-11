@@ -1,4 +1,4 @@
-# OKF Viewer marketing site
+# OKF Studio marketing site
 
 The landing/download page at [saschb2b.github.io/okf-viewer](https://saschb2b.github.io/okf-viewer/), built with Astro. One page (`src/pages/index.astro`), one layout (`src/layouts/Base.astro`), and page styles in `src/styles/site.css`.
 

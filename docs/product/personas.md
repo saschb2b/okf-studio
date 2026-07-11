@@ -1,14 +1,14 @@
 ---
 type: Product
 title: Personas & Use Cases
-description: The handful of concrete people OKF Viewer is built for, framed by the job each hires it to do.
+description: The handful of concrete people OKF Studio is built for, framed by the job each hires it to do.
 tags: [product, personas, use-cases]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-07-11T04:45:00Z
 ---
 
 # Who this is for
 
-The [Overview](overview.md) sketches the audience in three lines. This concept makes it concrete: four people, the job each hires OKF Viewer to do, and the [features](../features/) that matter most to them. These personas are the reason the product is [scoped](scope-and-non-goals.md) the way it is.
+The [Overview](overview.md) sketches the audience in three lines. This concept makes it concrete: four people, the job each hires OKF Studio to do, and the [features](../features/) that matter most to them. These personas are the reason the product is [scoped](scope-and-non-goals.md) the way it is.
 
 # The data / platform engineer
 

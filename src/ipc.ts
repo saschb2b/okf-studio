@@ -268,6 +268,8 @@ export interface AgentSourceInput {
   content: string;
   origin?: string;
   mediaType?: string;
+  sourceDigest?: string;
+  warning?: string;
 }
 
 export async function pickAgentTextSources(limit: number): Promise<AgentSourceInput[]> {
@@ -277,10 +279,12 @@ export async function pickAgentTextSources(limit: number): Promise<AgentSourceIn
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
   return [{
-    title: "research-data.csv",
-    content: "name,value\nalpha,1",
-    origin: "research-data.csv",
-    mediaType: "text/csv",
+    title: "research-report.pdf",
+    content: "## Page 1\n\nQuarterly research findings.",
+    origin: "research-report.pdf",
+    mediaType: "application/pdf",
+    sourceDigest: "a".repeat(64),
+    warning: "1 of 3 pages had no extractable text. OCR was not used.",
   }].slice(0, Math.max(0, limit));
 }
 

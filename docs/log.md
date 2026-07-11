@@ -1,5 +1,8 @@
 # Update Log
 
+## 2026-07-12
+* **Creation**: Added local PDF sources through an isolated parser helper. The host accepts selected PDFs up to 16 MiB and 256 pages, sends the path to a separate Studio process over stdin, and caps its runtime, output, and diagnostics. Extracted text carries page headings, original-file and content SHA-256 values, and a visible partial-text warning. Encrypted, malformed, incomplete, oversized, and image-only documents fail with a concrete recovery message; OCR is not implied.
+
 ## 2026-07-11
 * **Update**: Extended native Agent source intake to HTML, CSV, and JSON. These formats remain bounded UTF-8 text and carry a closed-set media type into the provenance block. Studio does not render attached HTML, execute it, follow its links, or load its assets. Tests cover media-type labelling while the existing path, encoding, count, and size boundaries remain unchanged.
 * **Creation**: Added native local-file intake to the Agent source tray. **Add files** accepts selected `.txt`, `.md`, and `.markdown` files; Rust rejects directories, unsupported extensions, binary text, files above 256 KiB, combined selections above 512 KiB, and selections beyond the remaining eight-source limit. IPC returns filename-labelled content without absolute paths. Every source block carries a SHA-256 digest recomputed from the exact content sent to the agent.

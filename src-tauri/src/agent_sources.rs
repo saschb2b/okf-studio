@@ -10,7 +10,7 @@ pub(crate) const MAX_SOURCE_CONTENT_CHARS: usize = 256 * 1024;
 pub(crate) const MAX_SOURCE_TOTAL_CHARS: usize = 512 * 1024;
 pub(crate) const MAX_SOURCE_TITLE_CHARS: usize = 256;
 const MAX_SOURCE_FILE_BYTES: u64 = MAX_SOURCE_CONTENT_CHARS as u64;
-const MAX_SOURCE_TOTAL_BYTES: usize = MAX_SOURCE_TOTAL_CHARS;
+const MAX_SELECTED_FILE_BYTES: u64 = 32 * 1024 * 1024;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,6 +19,8 @@ pub struct AgentSourceInput {
     pub(crate) content: String,
     pub(crate) origin: Option<String>,
     pub(crate) media_type: Option<String>,
+    pub(crate) source_digest: Option<String>,
+    pub(crate) warning: Option<String>,
 }
 
 pub(crate) fn pick_text_sources(
@@ -33,8 +35,8 @@ pub(crate) fn pick_text_sources(
         .dialog()
         .file()
         .add_filter(
-            "Text, Markdown, HTML, CSV, and JSON",
-            &["txt", "md", "markdown", "html", "htm", "csv", "json"],
+            "PDF, text, Markdown, HTML, CSV, and JSON",
+            &["pdf", "txt", "md", "markdown", "html", "htm", "csv", "json"],
         )
         .blocking_pick_files()
         .unwrap_or_default();
@@ -59,56 +61,81 @@ fn read_text_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSourceI
     if paths.len() > limit || paths.len() > MAX_SOURCE_ATTACHMENTS {
         return Err(format!("Select at most {limit} more source files."));
     }
-    let mut total_bytes = 0_usize;
-    paths
-        .iter()
-        .map(|path| {
-            let media_type = media_type_for_path(path)?;
-            let title = path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .filter(|name| !name.is_empty())
-                .ok_or_else(|| "A selected source has no usable filename.".to_string())?
-                .to_string();
-            if title.chars().count() > MAX_SOURCE_TITLE_CHARS || title.chars().any(char::is_control)
-            {
-                return Err(
-                    "A selected source filename is too long or contains controls.".to_string(),
-                );
-            }
-            let metadata = path
-                .metadata()
-                .map_err(|error| format!("Could not inspect {title}: {error}"))?;
-            if !metadata.is_file() {
-                return Err(format!("{title} is not a file."));
-            }
-            if metadata.len() > MAX_SOURCE_FILE_BYTES {
-                return Err(format!("{title} exceeds the 256 KiB source limit."));
-            }
+    let mut total_file_bytes = 0_u64;
+    let mut total_content_chars = 0_usize;
+    let mut sources = Vec::with_capacity(paths.len());
+    for path in paths {
+        let media_type = media_type_for_path(path)?;
+        let title = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .filter(|name| !name.is_empty())
+            .ok_or_else(|| "A selected source has no usable filename.".to_string())?
+            .to_string();
+        if title.chars().count() > MAX_SOURCE_TITLE_CHARS || title.chars().any(char::is_control) {
+            return Err("A selected source filename is too long or contains controls.".to_string());
+        }
+        let metadata = path
+            .metadata()
+            .map_err(|error| format!("Could not inspect {title}: {error}"))?;
+        if !metadata.is_file() {
+            return Err(format!("{title} is not a file."));
+        }
+        let file_limit = if media_type == "application/pdf" {
+            crate::agent_pdf::MAX_PDF_BYTES
+        } else {
+            MAX_SOURCE_FILE_BYTES
+        };
+        if metadata.len() > file_limit {
+            return Err(if media_type == "application/pdf" {
+                format!("{title} exceeds the 16 MiB PDF limit.")
+            } else {
+                format!("{title} exceeds the 256 KiB source limit.")
+            });
+        }
+        total_file_bytes = total_file_bytes.saturating_add(metadata.len());
+        if total_file_bytes > MAX_SELECTED_FILE_BYTES {
+            return Err("Selected source files exceed the 32 MiB combined limit.".to_string());
+        }
+
+        let (content, source_digest, warning) = if media_type == "application/pdf" {
+            let extraction = crate::agent_pdf::extract_in_helper(path)?;
+            (
+                extraction.content,
+                Some(extraction.source_digest),
+                extraction.warning,
+            )
+        } else {
             let mut bytes = Vec::with_capacity(metadata.len() as usize);
             File::open(path)
-                .and_then(|file| file.take(MAX_SOURCE_FILE_BYTES + 1).read_to_end(&mut bytes))
+                .and_then(|file| file.take(file_limit + 1).read_to_end(&mut bytes))
                 .map_err(|error| format!("Could not read {title}: {error}"))?;
-            if bytes.len() as u64 > MAX_SOURCE_FILE_BYTES {
+            if bytes.len() as u64 > file_limit {
                 return Err(format!("{title} exceeds the 256 KiB source limit."));
-            }
-            total_bytes = total_bytes.saturating_add(bytes.len());
-            if total_bytes > MAX_SOURCE_TOTAL_BYTES {
-                return Err("Selected source files exceed the 512 KiB combined limit.".to_string());
             }
             let content = String::from_utf8(bytes)
                 .map_err(|_| format!("{title} is not valid UTF-8 text."))?;
-            if content.trim().is_empty() {
-                return Err(format!("{title} is empty."));
-            }
-            Ok(AgentSourceInput {
-                title: title.clone(),
-                content,
-                origin: Some(title),
-                media_type: Some(media_type.to_string()),
-            })
-        })
-        .collect()
+            (content, None, None)
+        };
+        if content.trim().is_empty() {
+            return Err(format!("{title} is empty."));
+        }
+        total_content_chars = total_content_chars.saturating_add(content.chars().count());
+        if total_content_chars > MAX_SOURCE_TOTAL_CHARS {
+            return Err(
+                "Extracted source text exceeds the 524,288 character combined limit.".to_string(),
+            );
+        }
+        sources.push(AgentSourceInput {
+            title: title.clone(),
+            content,
+            origin: Some(title),
+            media_type: Some(media_type.to_string()),
+            source_digest,
+            warning,
+        });
+    }
+    Ok(sources)
 }
 
 fn media_type_for_path(path: &Path) -> Result<&'static str, String> {
@@ -122,7 +149,8 @@ fn media_type_for_path(path: &Path) -> Result<&'static str, String> {
         Some("html" | "htm") => Ok("text/html"),
         Some("csv") => Ok("text/csv"),
         Some("json") => Ok("application/json"),
-        _ => Err("Sources must be text, Markdown, HTML, CSV, or JSON files.".to_string()),
+        Some("pdf") => Ok("application/pdf"),
+        _ => Err("Sources must be PDF, text, Markdown, HTML, CSV, or JSON files.".to_string()),
     }
 }
 
@@ -223,7 +251,7 @@ mod tests {
 
         assert!(read_text_sources(&paths, 3)
             .expect_err("reject combined source size")
-            .contains("512 KiB"));
+            .contains("524,288 character"));
         fs::remove_dir_all(root).expect("remove temp directory");
     }
 }

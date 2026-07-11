@@ -40,12 +40,13 @@ const MAX_SOURCE_ATTACHMENTS: usize = crate::agent_sources::MAX_SOURCE_ATTACHMEN
 const MAX_SOURCE_TITLE_CHARS: usize = crate::agent_sources::MAX_SOURCE_TITLE_CHARS;
 const MAX_SOURCE_CONTENT_CHARS: usize = crate::agent_sources::MAX_SOURCE_CONTENT_CHARS;
 const MAX_SOURCE_TOTAL_CHARS: usize = crate::agent_sources::MAX_SOURCE_TOTAL_CHARS;
-const SOURCE_MEDIA_TYPES: [&str; 5] = [
+const SOURCE_MEDIA_TYPES: [&str; 6] = [
     "text/plain",
     "text/markdown",
     "text/html",
     "text/csv",
     "application/json",
+    "application/pdf",
 ];
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
@@ -1101,6 +1102,21 @@ fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), String> {
         {
             return Err("Source media types must use a supported text format.".to_string());
         }
+        if source.source_digest.as_deref().is_some_and(|digest| {
+            digest.len() != 64
+                || !digest
+                    .chars()
+                    .all(|character| matches!(character, '0'..='9' | 'a'..='f'))
+        }) {
+            return Err("Source digests must be lowercase SHA-256 values.".to_string());
+        }
+        if source.warning.as_deref().is_some_and(|warning| {
+            warning.trim().is_empty()
+                || warning.chars().count() > MAX_SOURCE_TITLE_CHARS * 2
+                || warning.chars().any(char::is_control)
+        }) {
+            return Err("Source warnings must be bounded and contain no controls.".to_string());
+        }
     }
     if total_chars > MAX_SOURCE_TOTAL_CHARS {
         return Err(format!(
@@ -1121,11 +1137,23 @@ fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<ContentBlock> {
                 .as_deref()
                 .map(|value| format!("\nMedia type: {value}"))
                 .unwrap_or_default();
+            let source_digest = source
+                .source_digest
+                .as_deref()
+                .map(|value| format!("\nOriginal source SHA-256: {value}"))
+                .unwrap_or_default();
+            let warning = source
+                .warning
+                .as_deref()
+                .map(|value| format!("\nExtraction warning: {value}"))
+                .unwrap_or_default();
             ContentBlock::Text(TextContent::new(format!(
-                "## Attached user source: {}\n\nOrigin: {}{}\nSHA-256: {}\n\n{}",
+                "## Attached user source: {}\n\nOrigin: {}{}{}{}\nContent SHA-256: {}\n\n{}",
                 source.title.trim(),
                 origin,
                 media_type,
+                source_digest,
+                warning,
                 digest,
                 source.content
             )))
@@ -2424,6 +2452,8 @@ mod tests {
             content: "The owner confirmed the definition.".to_string(),
             origin: None,
             media_type: None,
+            source_digest: None,
+            warning: None,
         };
         validate_sources(std::slice::from_ref(&source)).expect("source should be valid");
         let prompt = okf_prompt_blocks(
@@ -2436,7 +2466,7 @@ mod tests {
         assert!(matches!(
             &prompt[prompt.len() - 2],
             ContentBlock::Text(text)
-                if text.text.starts_with("## Attached user source: Interview notes\n\nOrigin: pasted text\nSHA-256: ")
+                if text.text.starts_with("## Attached user source: Interview notes\n\nOrigin: pasted text\nContent SHA-256: ")
                     && text.text.ends_with("\n\nThe owner confirmed the definition.")
         ));
         assert!(matches!(
@@ -2449,6 +2479,8 @@ mod tests {
             content: "name,value\nalpha,1".to_string(),
             origin: Some("research.csv".to_string()),
             media_type: Some("text/csv".to_string()),
+            source_digest: None,
+            warning: None,
         };
         validate_sources(std::slice::from_ref(&structured))
             .expect("structured source should be valid");
@@ -2456,7 +2488,7 @@ mod tests {
         assert!(matches!(
             &blocks[0],
             ContentBlock::Text(text)
-                if text.text.contains("Origin: research.csv\nMedia type: text/csv\nSHA-256: ")
+                if text.text.contains("Origin: research.csv\nMedia type: text/csv\nContent SHA-256: ")
         ));
 
         let invalid = AgentSourceInput {
@@ -2464,6 +2496,8 @@ mod tests {
             content: "content".to_string(),
             origin: None,
             media_type: None,
+            source_digest: None,
+            warning: None,
         };
         assert!(validate_sources(&[invalid]).is_err());
         assert!(validate_sources(&[AgentSourceInput {
@@ -2471,6 +2505,8 @@ mod tests {
             content: "content".to_string(),
             origin: None,
             media_type: Some("application/xml".to_string()),
+            source_digest: None,
+            warning: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
@@ -2479,6 +2515,8 @@ mod tests {
                 content: "content".to_string(),
                 origin: None,
                 media_type: None,
+                source_digest: None,
+                warning: None,
             };
             MAX_SOURCE_ATTACHMENTS + 1
         ])
@@ -2488,6 +2526,8 @@ mod tests {
             content: "x".repeat(MAX_SOURCE_CONTENT_CHARS + 1),
             origin: None,
             media_type: None,
+            source_digest: None,
+            warning: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
@@ -2496,6 +2536,8 @@ mod tests {
                 content: "x".repeat(200_000),
                 origin: None,
                 media_type: None,
+                source_digest: None,
+                warning: None,
             };
             3
         ])

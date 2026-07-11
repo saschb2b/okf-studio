@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The Tauri command/event surface between Rust and the frontend, and the read-only, scoped capability model.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-11T23:59:59.100Z
+timestamp: 2026-07-12T00:00:00Z
 ---
 
 # Command & event surface
@@ -13,7 +13,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | Command | Purpose |
 |---------|---------|
 | `pick_folder()` | Open the native folder dialog; return the chosen path (becomes the scope). |
-| `pick_agent_text_sources(limit)` | Open the native text, Markdown, HTML, CSV, and JSON picker; read bounded UTF-8 content in Rust; and return filename- and media-type-labelled sources without absolute paths. |
+| `pick_agent_text_sources(limit)` | Open the native PDF, text, Markdown, HTML, CSV, and JSON picker; read or extract bounded content in Rust; and return filename- and media-type-labelled sources without absolute paths. PDF parsing runs in a separate bounded helper process. |
 | `scan_bundles(folder)` | Run [bundle detection](bundle-detection.md); return the list of roots with confidence. |
 | `read_bundle(root)` | [Parse](okf-parsing.md) a root into a full [`Bundle`](data-model.md). |
 | `fetch_remote_bundle(source)` | Fetch a [remote bundle](../features/bundle-switcher.md) (a GitHub repo tarball or a direct archive URL) into a local cache dir and return its path; the frontend then scans it like any folder. The single **user-initiated** network path besides the updater. Blocking I/O runs off the UI thread. |

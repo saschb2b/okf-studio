@@ -5,6 +5,7 @@ mod agent_catalog;
 mod agent_custom;
 mod agent_install;
 mod agent_mcp;
+mod agent_pdf;
 mod agent_protocol;
 mod agent_runtime;
 mod agent_sources;
@@ -18,6 +19,10 @@ use watch::WatchState;
 
 pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
     agent_mcp::run(bundle_root)
+}
+
+pub fn run_pdf_extractor() -> Result<(), String> {
+    agent_pdf::run_helper()
 }
 
 #[tauri::command]

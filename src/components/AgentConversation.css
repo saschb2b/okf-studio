@@ -249,6 +249,10 @@
   white-space: nowrap;
 }
 
+.agent-context-chip__warning-icon {
+  color: var(--warn);
+}
+
 .agent-context-chip button {
   display: grid;
   width: 24px;

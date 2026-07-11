@@ -25,6 +25,7 @@ tauri-plugin-opener = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = "0.10"
+pdf-extract = "0.12"
 base64 = "0.22"
 okf-core = { path = "../crates/okf-core" }
 notify = "6"

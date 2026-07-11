@@ -1,4 +1,4 @@
-import { Bot, FilePlus2, FileText, Paperclip, Send, ShieldQuestion, Square, User, X } from "lucide-react";
+import { Bot, FilePlus2, FileText, Paperclip, Send, ShieldQuestion, Square, TriangleAlert, User, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -162,12 +162,16 @@ export function AgentConversation({
           sessionRef.current = session;
         }
         const contextPaths = attachedConcepts.map((concept) => `${concept.id}.md`);
-        const sources = attachedSources.map(({ title, content, origin, mediaType }) => ({
-          title,
-          content,
-          ...(origin ? { origin } : {}),
-          ...(mediaType ? { mediaType } : {}),
-        }));
+        const sources = attachedSources.map(
+          ({ title, content, origin, mediaType, sourceDigest, warning }) => ({
+            title,
+            content,
+            ...(origin ? { origin } : {}),
+            ...(mediaType ? { mediaType } : {}),
+            ...(sourceDigest ? { sourceDigest } : {}),
+            ...(warning ? { warning } : {}),
+          }),
+        );
         const turn = await promptAgent(
           connection.connectionId,
           session.sessionId,
@@ -355,8 +359,19 @@ export function AgentConversation({
               ))}
               {attachedSources.map((source) => (
                 <span key={source.id} className="agent-context-chip">
-                  <FileText size={14} aria-hidden="true" />
-                  <span title={source.title}>{source.title}</span>
+                  {source.warning ? (
+                    <TriangleAlert
+                      className="agent-context-chip__warning-icon"
+                      size={14}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <FileText size={14} aria-hidden="true" />
+                  )}
+                  <span title={source.warning ? `${source.title}: ${source.warning}` : source.title}>
+                    {source.title}
+                    {source.warning && <span className="sr-only"> Warning: {source.warning}</span>}
+                  </span>
                   <button
                     type="button"
                     aria-label={`Remove ${source.title} source`}

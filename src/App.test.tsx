@@ -203,7 +203,12 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add files" }));
     expect(
-      await screen.findByRole("button", { name: "Remove research-data.csv source" }),
+      await screen.findByRole("button", { name: "Remove research-report.pdf source" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTitle(
+        "research-report.pdf: 1 of 3 pages had no extractable text. OCR was not used.",
+      ),
     ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
@@ -219,10 +224,12 @@ describe("OKF Studio app", () => {
           content: "# Notes\n\nThe catalog owner confirmed the definition.",
         },
         {
-          title: "research-data.csv",
-          content: "name,value\nalpha,1",
-          origin: "research-data.csv",
-          mediaType: "text/csv",
+          title: "research-report.pdf",
+          content: "## Page 1\n\nQuarterly research findings.",
+          origin: "research-report.pdf",
+          mediaType: "application/pdf",
+          sourceDigest: "a".repeat(64),
+          warning: "1 of 3 pages had no extractable text. OCR was not used.",
         },
       ],
     );
@@ -238,7 +245,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Remove research-data.csv source" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove research-report.pdf source" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));

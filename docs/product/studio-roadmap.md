@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T23:59:59.100Z
+timestamp: 2026-07-12T00:00:00Z
 ---
 
 # Outcome
@@ -146,8 +146,9 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Accept pasted text and Markdown as visible, removable, bounded source attachments.
 - [x] Select local text and Markdown files through the native host, without exposing absolute paths.
 - [x] Preserve local HTML, CSV, and JSON as inert, media-typed UTF-8 source evidence.
-- [ ] Accept PDF, images, folders, and URLs in the source tray.
-- [ ] Extract structured formats locally and retain page/range provenance and warnings. Text sources already retain filename origins and content hashes.
+- [x] Extract bounded PDFs in an isolated helper with page provenance, original-file hashes, and partial-text warnings.
+- [ ] Accept images, folders, and URLs in the source tray.
+- [ ] Normalize structured formats locally and retain row/range provenance. Text sources already retain filename origins and content hashes.
 - [ ] Show the proposed concepts, types, links, and indexes before generation.
 - [ ] Generate into staging, validate, preview the graph, then choose a destination.
 - [ ] Reuse the pipeline to enrich bundles without silently overwriting authored facts.

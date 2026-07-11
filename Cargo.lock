@@ -2562,6 +2562,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "ureq",
+ "url",
  "uuid",
  "webkit2gtk",
  "zip 2.4.2",

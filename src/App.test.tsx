@@ -109,6 +109,7 @@ describe("OKF Studio app", () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
+    expect(screen.getByText(/attaches the OKF skill and bundle index/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     const connectedCard = screen.getByRole("heading", { name: "Codex" }).closest("article");

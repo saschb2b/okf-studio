@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-11T21:00:00Z
+timestamp: 2026-07-11T22:00:00Z
 ---
 
 # Decision
@@ -27,7 +27,7 @@ Rust owns processes, network, credentials, filesystem mediation, persistence, an
 
 ACP standardizes capability negotiation, agent-owned auth, sessions, streaming, tools, permission requests, diffs, filesystem requests, cancellation, and optional restore. It avoids separate Claude and Codex clients.
 
-ACP does not replace an external agent's system prompt. The native Studio Agent guarantees the packaged [OKF skill](../../.agents/skills/okf/SKILL.md), system prompt, scoped tools, validation, and staged writes. External agents receive bundle cwd, explicit resources, client permissions, and Studio OKF tools over MCP where supported.
+ACP does not replace an external agent's system prompt. The native Studio Agent guarantees the packaged [OKF skill](../../.agents/skills/okf/SKILL.md), system prompt, scoped tools, validation, and staged writes. External agents receive bundle cwd, explicit resources, client permissions, and Studio OKF tools over MCP where supported. Studio labels first-turn skill material as client context and never claims it changed the external agent's system instructions.
 
 # Components
 
@@ -86,6 +86,8 @@ Permission requests are deny by default. Rust accepts them only for a session wi
 After initialization, each connection becomes a small Rust-owned actor. Typed commands enter through a bounded channel instead of sharing the SDK connection across Tauri requests. Session creation canonicalizes an absolute bundle directory off the async runtime, rejects missing and non-directory paths, and sends that directory as ACP `cwd` with no additional roots. It has a separate 30-second deadline. Studio returns only the stable connection ID, session ID, and canonical bundle root; agent metadata and configuration do not cross IPC. The actor retains the session-to-root association for later prompt and tool scoping. A fake agent asserts the exact canonical root it receives.
 
 Prompt submission accepts non-empty text capped at 128 KiB and returns a stable turn ID as soon as the actor accepts it. One turn may run per session. Prompt work runs in a child task so the actor can process cancellation concurrently; disconnect aborts the task set. `session/update` notifications are reduced to text chunks for the matching active turn. Each chunk drops arbitrary metadata, strips controls, and is capped at 64 KiB before the `agent-turn-update` event. Completion reports a closed stop-reason vocabulary; failures carry the existing capped diagnostic message. Cancellation sends ACP `session/cancel` only when connection, session, and turn IDs match the active turn, then waits for the agent's `cancelled` stop reason. Fake-agent tests cover text streaming, successful completion, and cooperative cancellation.
+
+The first prompt in each session carries the canonical OKF `SKILL.md`, `spec.md`, `commands.md`, and `templates.md`, compiled from the repository's one skill source. If the agent advertises ACP embedded-context support, Studio sends them as four Markdown resources with stable `okf-studio://` URIs. The compatibility path uses labelled text content, which every ACP agent must accept. Both paths include a `file:` resource link to the canonical bundle-root `index.md`, a client-context notice that treats bundle files as untrusted knowledge, and the unchanged user text as the final content block. Context is marked attached only after a successful prompt response, so a failed first turn retries it; later turns avoid paying the context cost again.
 
 # IPC
 

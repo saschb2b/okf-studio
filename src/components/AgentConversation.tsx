@@ -267,7 +267,10 @@ export function AgentConversation({
               <div className="agent-conversation__welcome">
                 <Bot size={24} aria-hidden="true" />
                 <h3>Ask about this bundle</h3>
-                <p>The agent receives the bundle root as its ACP working directory.</p>
+                <p>
+                  Studio attaches the OKF skill and bundle index to the first message. The agent
+                  also receives the bundle root as its working directory.
+                </p>
               </div>
             ) : (
               <>

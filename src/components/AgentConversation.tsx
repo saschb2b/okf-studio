@@ -162,10 +162,11 @@ export function AgentConversation({
           sessionRef.current = session;
         }
         const contextPaths = attachedConcepts.map((concept) => `${concept.id}.md`);
-        const sources = attachedSources.map(({ title, content, origin }) => ({
+        const sources = attachedSources.map(({ title, content, origin, mediaType }) => ({
           title,
           content,
           ...(origin ? { origin } : {}),
+          ...(mediaType ? { mediaType } : {}),
         }));
         const turn = await promptAgent(
           connection.connectionId,

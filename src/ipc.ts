@@ -267,6 +267,7 @@ export interface AgentSourceInput {
   title: string;
   content: string;
   origin?: string;
+  mediaType?: string;
 }
 
 export async function pickAgentTextSources(limit: number): Promise<AgentSourceInput[]> {
@@ -276,9 +277,10 @@ export async function pickAgentTextSources(limit: number): Promise<AgentSourceIn
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
   return [{
-    title: "research-notes.md",
-    content: "# Research notes\n\nBrowser-selected source.",
-    origin: "research-notes.md",
+    title: "research-data.csv",
+    content: "name,value\nalpha,1",
+    origin: "research-data.csv",
+    mediaType: "text/csv",
   }].slice(0, Math.max(0, limit));
 }
 

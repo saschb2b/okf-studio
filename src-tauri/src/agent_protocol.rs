@@ -40,6 +40,13 @@ const MAX_SOURCE_ATTACHMENTS: usize = crate::agent_sources::MAX_SOURCE_ATTACHMEN
 const MAX_SOURCE_TITLE_CHARS: usize = crate::agent_sources::MAX_SOURCE_TITLE_CHARS;
 const MAX_SOURCE_CONTENT_CHARS: usize = crate::agent_sources::MAX_SOURCE_CONTENT_CHARS;
 const MAX_SOURCE_TOTAL_CHARS: usize = crate::agent_sources::MAX_SOURCE_TOTAL_CHARS;
+const SOURCE_MEDIA_TYPES: [&str; 5] = [
+    "text/plain",
+    "text/markdown",
+    "text/html",
+    "text/csv",
+    "application/json",
+];
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
 const MAX_AUTH_METHODS: usize = 16;
@@ -1087,6 +1094,13 @@ fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), String> {
                 );
             }
         }
+        if source
+            .media_type
+            .as_deref()
+            .is_some_and(|media_type| !SOURCE_MEDIA_TYPES.contains(&media_type))
+        {
+            return Err("Source media types must use a supported text format.".to_string());
+        }
     }
     if total_chars > MAX_SOURCE_TOTAL_CHARS {
         return Err(format!(
@@ -1102,10 +1116,16 @@ fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<ContentBlock> {
         .map(|source| {
             let digest = format!("{:x}", Sha256::digest(source.content.as_bytes()));
             let origin = source.origin.as_deref().unwrap_or("pasted text");
+            let media_type = source
+                .media_type
+                .as_deref()
+                .map(|value| format!("\nMedia type: {value}"))
+                .unwrap_or_default();
             ContentBlock::Text(TextContent::new(format!(
-                "## Attached user source: {}\n\nOrigin: {}\nSHA-256: {}\n\n{}",
+                "## Attached user source: {}\n\nOrigin: {}{}\nSHA-256: {}\n\n{}",
                 source.title.trim(),
                 origin,
+                media_type,
                 digest,
                 source.content
             )))
@@ -2403,6 +2423,7 @@ mod tests {
             title: "Interview notes".to_string(),
             content: "The owner confirmed the definition.".to_string(),
             origin: None,
+            media_type: None,
         };
         validate_sources(std::slice::from_ref(&source)).expect("source should be valid");
         let prompt = okf_prompt_blocks(
@@ -2423,17 +2444,41 @@ mod tests {
             Some(ContentBlock::Text(text)) if text.text == "Summarize the evidence"
         ));
 
+        let structured = AgentSourceInput {
+            title: "research.csv".to_string(),
+            content: "name,value\nalpha,1".to_string(),
+            origin: Some("research.csv".to_string()),
+            media_type: Some("text/csv".to_string()),
+        };
+        validate_sources(std::slice::from_ref(&structured))
+            .expect("structured source should be valid");
+        let blocks = source_content_blocks(vec![structured]);
+        assert!(matches!(
+            &blocks[0],
+            ContentBlock::Text(text)
+                if text.text.contains("Origin: research.csv\nMedia type: text/csv\nSHA-256: ")
+        ));
+
         let invalid = AgentSourceInput {
             title: "Bad\ntitle".to_string(),
             content: "content".to_string(),
             origin: None,
+            media_type: None,
         };
         assert!(validate_sources(&[invalid]).is_err());
+        assert!(validate_sources(&[AgentSourceInput {
+            title: "Unsupported".to_string(),
+            content: "content".to_string(),
+            origin: None,
+            media_type: Some("application/xml".to_string()),
+        }])
+        .is_err());
         assert!(validate_sources(&vec![
             AgentSourceInput {
                 title: "Source".to_string(),
                 content: "content".to_string(),
                 origin: None,
+                media_type: None,
             };
             MAX_SOURCE_ATTACHMENTS + 1
         ])
@@ -2442,6 +2487,7 @@ mod tests {
             title: "Oversized".to_string(),
             content: "x".repeat(MAX_SOURCE_CONTENT_CHARS + 1),
             origin: None,
+            media_type: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
@@ -2449,6 +2495,7 @@ mod tests {
                 title: "Large".to_string(),
                 content: "x".repeat(200_000),
                 origin: None,
+                media_type: None,
             };
             3
         ])

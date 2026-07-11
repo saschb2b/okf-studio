@@ -18,6 +18,7 @@ pub struct AgentSourceInput {
     pub(crate) title: String,
     pub(crate) content: String,
     pub(crate) origin: Option<String>,
+    pub(crate) media_type: Option<String>,
 }
 
 pub(crate) fn pick_text_sources(
@@ -31,7 +32,10 @@ pub(crate) fn pick_text_sources(
     let selected = app
         .dialog()
         .file()
-        .add_filter("Text and Markdown", &["txt", "md", "markdown"])
+        .add_filter(
+            "Text, Markdown, HTML, CSV, and JSON",
+            &["txt", "md", "markdown", "html", "htm", "csv", "json"],
+        )
         .blocking_pick_files()
         .unwrap_or_default();
     if selected.len() > limit {
@@ -59,7 +63,7 @@ fn read_text_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSourceI
     paths
         .iter()
         .map(|path| {
-            ensure_supported_extension(path)?;
+            let media_type = media_type_for_path(path)?;
             let title = path
                 .file_name()
                 .and_then(|name| name.to_str())
@@ -101,20 +105,24 @@ fn read_text_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSourceI
                 title: title.clone(),
                 content,
                 origin: Some(title),
+                media_type: Some(media_type.to_string()),
             })
         })
         .collect()
 }
 
-fn ensure_supported_extension(path: &Path) -> Result<(), String> {
+fn media_type_for_path(path: &Path) -> Result<&'static str, String> {
     let extension = path
         .extension()
         .and_then(|extension| extension.to_str())
         .map(str::to_ascii_lowercase);
-    if matches!(extension.as_deref(), Some("txt" | "md" | "markdown")) {
-        Ok(())
-    } else {
-        Err("Sources must be .txt, .md, or .markdown files.".to_string())
+    match extension.as_deref() {
+        Some("txt") => Ok("text/plain"),
+        Some("md" | "markdown") => Ok("text/markdown"),
+        Some("html" | "htm") => Ok("text/html"),
+        Some("csv") => Ok("text/csv"),
+        Some("json") => Ok("application/json"),
+        _ => Err("Sources must be text, Markdown, HTML, CSV, or JSON files.".to_string()),
     }
 }
 
@@ -140,6 +148,7 @@ mod tests {
         assert_eq!(sources.len(), 1);
         assert_eq!(sources[0].title, "Research.md");
         assert_eq!(sources[0].origin.as_deref(), Some("Research.md"));
+        assert_eq!(sources[0].media_type.as_deref(), Some("text/markdown"));
         assert_eq!(sources[0].content, "# Notes\n\nVerified.");
         let serialized = serde_json::to_string(&sources).expect("serialize sources");
         assert!(!serialized.contains(root.to_string_lossy().as_ref()));
@@ -147,13 +156,30 @@ mod tests {
     }
 
     #[test]
+    fn labels_structured_text_with_its_media_type() {
+        let root = temp_dir();
+        let cases = [
+            ("page.html", "<h1>Report</h1>", "text/html"),
+            ("rows.csv", "name,value\nalpha,1", "text/csv"),
+            ("record.json", r#"{"name":"alpha"}"#, "application/json"),
+        ];
+        for (name, content, expected_media_type) in cases {
+            let path = root.join(name);
+            fs::write(&path, content).expect("write structured source");
+            let sources = read_text_sources(&[path], 1).expect("read structured source");
+            assert_eq!(sources[0].media_type.as_deref(), Some(expected_media_type));
+        }
+        fs::remove_dir_all(root).expect("remove temp directory");
+    }
+
+    #[test]
     fn rejects_unsupported_binary_and_oversized_sources() {
         let root = temp_dir();
-        let unsupported = root.join("notes.json");
-        fs::write(&unsupported, "{}").expect("write unsupported source");
+        let unsupported = root.join("notes.xml");
+        fs::write(&unsupported, "<notes />").expect("write unsupported source");
         assert!(read_text_sources(&[unsupported], 1)
             .expect_err("reject unsupported extension")
-            .contains(".txt"));
+            .contains("text"));
 
         let binary = root.join("binary.txt");
         fs::write(&binary, [0xff, 0xfe]).expect("write binary source");

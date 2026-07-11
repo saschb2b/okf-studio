@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T23:59:59Z
+timestamp: 2026-07-11T23:59:59.100Z
 ---
 
 # Entry and first open
@@ -54,9 +54,9 @@ The client advertises ACP text reads and no ACP writes. Read requests must name 
 
 **Attach context** opens a searchable concept picker whether the reader shows a concept or the bundle home. The open concept sorts first and is marked **Current**; title, bundle-relative path, and type are searchable. Studio excludes concepts already attached, caps the ordered list at eight, and renders every attachment as a visible, removable chip above the composer. Navigating elsewhere does not silently replace the chosen snapshot. On send, Studio passes the ordered bundle-relative Markdown paths to Rust. Rust revalidates each path against the session root and supplies it to the agent as an ACP file resource link. The chips clear after the agent accepts the turn and remain after an error.
 
-**Add source** accepts pasted text or Markdown with a title. **Add files** opens the native picker for `.txt`, `.md`, and `.markdown` files. The Rust host reads only the selected files, requires UTF-8 text, and returns the filename and content without disclosing an absolute path to the webview. The composer shows up to eight source chips separately from bundle context.
+**Add source** accepts pasted text or Markdown with a title. **Add files** opens the native picker for plain text, Markdown, HTML, CSV, and JSON files. The Rust host reads only the selected files, requires UTF-8 text, and returns the filename, media type, and content without disclosing an absolute path to the webview. HTML remains inert source text: Studio does not render it, execute scripts, resolve links, or load referenced assets. The composer shows up to eight source chips separately from bundle context.
 
-Rust rejects empty or oversized titles, origins, and bodies. It caps one source at 262,144 characters or file bytes and the combined source input at 524,288 characters or file bytes. Each source becomes a labelled ACP text block before the unchanged user message. The block states its filename or `pasted text` origin and a SHA-256 digest recomputed from the exact content sent to the agent. The first-turn notice tells the agent to treat attached sources as untrusted knowledge. Accepted turns clear the source tray; failed sends retain it. This slice does not parse PDF or other document formats, fetch URLs, or write bundle content.
+Rust rejects empty or oversized titles, origins, and bodies. It caps one source at 262,144 characters or file bytes and the combined source input at 524,288 characters or file bytes. Each source becomes a labelled ACP text block before the unchanged user message. The block states its filename or `pasted text` origin, supported media type when known, and a SHA-256 digest recomputed from the exact content sent to the agent. The first-turn notice tells the agent to treat attached sources as untrusted knowledge. Accepted turns clear the source tray; failed sends retain it. This slice preserves structured files as authored text; it does not normalize tables, parse PDF or images, fetch URLs, or write bundle content.
 
 When the agent pauses for ACP permission, an in-thread card shows its bounded human title and exactly the choices it advertised. The card never exposes raw tool arguments or arbitrary metadata. Choosing an option disables the card while the response is sent and leaves a retryable error in place if sending fails. If no reject choice was advertised, Studio adds **Cancel**, which returns ACP `cancelled` rather than inventing a choice. **Stop** cancels every pending permission for that session before cancelling the turn. Agent switching stays disabled until the active turn ends, preventing an approval from being detached from its transcript.
 
@@ -64,7 +64,7 @@ Agent responses render through the same sanitized Markdown pipeline as bundle co
 
 # Context, tools, and writes
 
-The active bundle is the default scope. Explicit context currently includes concepts, pasted text, and selected local text or Markdown files. Planned context includes directories, selections, validation issues, other file formats, previous threads, and URLs. Attachments remain visible and removable before send.
+The active bundle is the default scope. Explicit context currently includes concepts, pasted text, and selected local text, Markdown, HTML, CSV, or JSON files. Planned context includes directories, selections, validation issues, binary document formats, previous threads, and URLs. Attachments remain visible and removable before send.
 
 Tool calls show pending, permission, running, completed, failed, or cancelled state. Opening a bundle grants no writes. A thread receives a separate write grant; Studio-owned writes become a staged, validated diff with per-hunk accept/reject and checkpoint restore.
 

@@ -203,7 +203,7 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add files" }));
     expect(
-      await screen.findByRole("button", { name: "Remove research-notes.md source" }),
+      await screen.findByRole("button", { name: "Remove research-data.csv source" }),
     ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
@@ -219,9 +219,10 @@ describe("OKF Studio app", () => {
           content: "# Notes\n\nThe catalog owner confirmed the definition.",
         },
         {
-          title: "research-notes.md",
-          content: "# Research notes\n\nBrowser-selected source.",
-          origin: "research-notes.md",
+          title: "research-data.csv",
+          content: "name,value\nalpha,1",
+          origin: "research-data.csv",
+          mediaType: "text/csv",
         },
       ],
     );
@@ -237,7 +238,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Remove research-notes.md source" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove research-data.csv source" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));

@@ -267,10 +267,7 @@ export function AgentConversation({
               <div className="agent-conversation__welcome">
                 <Bot size={24} aria-hidden="true" />
                 <h3>Ask about this bundle</h3>
-                <p>
-                  Studio attaches the OKF skill and bundle index to the first message. The agent
-                  also receives the bundle root as its working directory.
-                </p>
+                <p>Studio attaches OKF context and read-only access to this bundle.</p>
               </div>
             ) : (
               <>

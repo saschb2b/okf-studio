@@ -1,15 +1,16 @@
 use agent_client_protocol::schema::v1::{
-    AgentCapabilities, AuthenticateRequest, CancelNotification, ContentBlock, ContentChunk,
-    EmbeddedResource, EmbeddedResourceResource, Implementation, InitializeRequest,
-    InitializeResponse, NewSessionRequest, PermissionOptionKind, PromptRequest,
-    RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse, ResourceLink,
-    SelectedPermissionOutcome, SessionNotification, SessionUpdate, StopReason, TextContent,
-    TextResourceContents,
+    AgentCapabilities, AuthenticateRequest, CancelNotification, ClientCapabilities, ContentBlock,
+    ContentChunk, EmbeddedResource, EmbeddedResourceResource, FileSystemCapabilities,
+    Implementation, InitializeRequest, InitializeResponse, NewSessionRequest, PermissionOptionKind,
+    PromptRequest, ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
+    RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
+    SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents,
 };
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+use std::io::Read;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
@@ -30,6 +31,7 @@ const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
 const MAX_PROMPT_CHARS: usize = 128 * 1024;
 const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
+const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
 const MAX_AUTH_METHODS: usize = 16;
@@ -649,6 +651,7 @@ async fn run_connection(
         permission_events,
     } = runtime;
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
+    let sessions = Arc::new(Mutex::new(HashMap::<String, PathBuf>::new()));
     let notification_turns = Arc::clone(&active_turns);
     let notification_events = Arc::clone(&turn_events);
     let notification_connection_id = connection_id.clone();
@@ -656,6 +659,7 @@ async fn run_connection(
     let request_permissions = Arc::clone(&permissions);
     let request_events = Arc::clone(&permission_events);
     let request_connection_id = connection_id.clone();
+    let read_sessions = Arc::clone(&sessions);
     Client
         .builder()
         .name("okf-studio")
@@ -744,6 +748,20 @@ async fn run_connection(
             },
             agent_client_protocol::on_receive_request!(),
         )
+        .on_receive_request(
+            async move |request: ReadTextFileRequest, responder, _connection| {
+                let sessions = Arc::clone(&read_sessions);
+                match tokio::task::spawn_blocking(move || read_bundle_text(&sessions, &request))
+                    .await
+                {
+                    Ok(Ok(content)) => responder.respond(ReadTextFileResponse::new(content)),
+                    Ok(Err(message)) => responder.respond_with_internal_error(message),
+                    Err(_) => responder
+                        .respond_with_internal_error("Bundle read task did not complete."),
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
         .connect_with(agent, async move |connection: ConnectionTo<Agent>| {
             let response = initialize_connection(&connection).await?;
             let auth_methods = auth_method_info(&response);
@@ -775,7 +793,6 @@ async fn run_connection(
                         )
                     })?;
             }
-            let mut sessions = HashMap::<String, PathBuf>::new();
             let attached_contexts = Arc::new(Mutex::new(HashSet::<String>::new()));
             let mut turn_tasks = tokio::task::JoinSet::new();
             loop {
@@ -808,12 +825,20 @@ async fn run_connection(
                                     Err("Authenticate the agent before creating a session.".to_string())
                                 };
                                 if let Ok(info) = &result {
-                                    sessions.insert(info.session_id.clone(), info.bundle_root.clone());
+                                    sessions
+                                        .lock()
+                                        .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
+                                        .insert(info.session_id.clone(), info.bundle_root.clone());
                                 }
                                 let _ = response.send(result);
                             }
                             AgentHostCommand::Prompt { session_id, turn_id, text, response } => {
-                                let Some(bundle_root) = sessions.get(&session_id).cloned() else {
+                                let bundle_root = sessions
+                                    .lock()
+                                    .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
+                                    .get(&session_id)
+                                    .cloned();
+                                let Some(bundle_root) = bundle_root else {
                                     let _ = response.send(Err("Agent session was not found on this connection.".to_string()));
                                     continue;
                                 };
@@ -905,6 +930,55 @@ async fn run_connection(
         })
         .await
         .map_err(|error| format!("Agent connection failed: {error}"))
+}
+
+fn read_bundle_text(
+    sessions: &Mutex<HashMap<String, PathBuf>>,
+    request: &ReadTextFileRequest,
+) -> Result<String, String> {
+    let session_id = request.session_id.to_string();
+    let bundle_root = sessions
+        .lock()
+        .map_err(|_| "Bundle read state is unavailable.".to_string())?
+        .get(&session_id)
+        .cloned()
+        .ok_or_else(|| "Bundle read denied: the ACP session is not active.".to_string())?;
+    if !request.path.is_absolute() {
+        return Err("Bundle read denied: ACP file paths must be absolute.".to_string());
+    }
+    let path = request
+        .path
+        .canonicalize()
+        .map_err(|_| "Bundle file is unavailable.".to_string())?;
+    if !path.starts_with(&bundle_root) {
+        return Err("Bundle read denied: the file is outside the active bundle root.".to_string());
+    }
+    if !path.is_file() {
+        return Err("Bundle read denied: the requested path is not a file.".to_string());
+    }
+    let start_line = request.line.unwrap_or(1);
+    if start_line == 0 {
+        return Err("Bundle read denied: the starting line must be 1 or greater.".to_string());
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(&path)
+        .map_err(|_| "Bundle file is unavailable.".to_string())?
+        .take((MAX_AGENT_READ_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "Bundle file could not be read.".to_string())?;
+    if bytes.len() > MAX_AGENT_READ_BYTES {
+        return Err(format!(
+            "Bundle read denied: text files are limited to {MAX_AGENT_READ_BYTES} bytes."
+        ));
+    }
+    let text = String::from_utf8(bytes)
+        .map_err(|_| "Bundle read denied: the requested file is not UTF-8 text.".to_string())?;
+    let limit = request.limit.map_or(usize::MAX, |value| value as usize);
+    Ok(text
+        .split_inclusive('\n')
+        .skip((start_line - 1) as usize)
+        .take(limit)
+        .collect())
 }
 
 fn permission_options(
@@ -1118,9 +1192,18 @@ async fn initialize_connection(
     connection: &ConnectionTo<Agent>,
 ) -> agent_client_protocol::Result<InitializeResponse> {
     let response = connection
-        .send_request(InitializeRequest::new(ProtocolVersion::V1).client_info(
-            Implementation::new("okf-studio", env!("CARGO_PKG_VERSION")).title("OKF Studio"),
-        ))
+        .send_request(
+            InitializeRequest::new(ProtocolVersion::V1)
+                .client_capabilities(
+                    ClientCapabilities::new().fs(FileSystemCapabilities::new()
+                        .read_text_file(true)
+                        .write_text_file(false)),
+                )
+                .client_info(
+                    Implementation::new("okf-studio", env!("CARGO_PKG_VERSION"))
+                        .title("OKF Studio"),
+                ),
+        )
         .block_task()
         .await?;
     if response.protocol_version != ProtocolVersion::V1 {
@@ -1399,6 +1482,8 @@ mod tests {
                     request.client_info.as_ref().map(|info| info.name.as_str()),
                     Some("okf-studio")
                 );
+                assert!(request.client_capabilities.fs.read_text_file);
+                assert!(!request.client_capabilities.fs.write_text_file);
                 responder.respond(
                     InitializeResponse::new(ProtocolVersion::V1)
                         .agent_info(Implementation::new("fake-agent", "1.0.0"))
@@ -1493,6 +1578,217 @@ mod tests {
             bundle_root.canonicalize().expect("canonical")
         );
         std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn serves_line_ranged_bundle_text_to_the_active_acp_session() {
+        let bundle_root =
+            std::env::temp_dir().join(format!("okf-studio-read-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+        let concept_path = bundle_root.join("concept.md");
+        std::fs::write(&concept_path, "first\nsecond\nthird\n").expect("write concept");
+        let expected_path = concept_path.canonicalize().expect("canonical concept");
+        let (content_tx, content_rx) = tokio::sync::oneshot::channel();
+        let content_tx = Arc::new(Mutex::new(Some(content_tx)));
+        let fake_agent = Agent
+            .builder()
+            .on_receive_request(
+                async move |request: InitializeRequest,
+                            responder: Responder<InitializeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    assert!(request.client_capabilities.fs.read_text_file);
+                    assert!(!request.client_capabilities.fs.write_text_file);
+                    responder.respond(InitializeResponse::new(ProtocolVersion::V1))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |_request: NewSessionRequest,
+                            responder: Responder<NewSessionResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(NewSessionResponse::new("session-read"))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |request: PromptRequest,
+                            responder: Responder<PromptResponse>,
+                            connection: ConnectionTo<Client>| {
+                    let content_tx = Arc::clone(&content_tx);
+                    let expected_path = expected_path.clone();
+                    tokio::spawn(async move {
+                        let result = connection
+                            .send_request(
+                                ReadTextFileRequest::new(request.session_id, expected_path)
+                                    .line(2)
+                                    .limit(1),
+                            )
+                            .block_task()
+                            .await;
+                        if let Ok(response) = result {
+                            if let Some(sender) =
+                                content_tx.lock().ok().and_then(|mut value| value.take())
+                            {
+                                let _ = sender.send(response.content);
+                            }
+                            let _ = responder.respond(PromptResponse::new(StopReason::EndTurn));
+                        }
+                    });
+                    Ok(())
+                },
+                agent_client_protocol::on_receive_request!(),
+            );
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let (commands_tx, commands_rx) = tokio::sync::mpsc::channel(8);
+        let worker = tokio::spawn(run_connection(
+            fake_agent,
+            "connection-read".to_string(),
+            "profile-read".to_string(),
+            Arc::new(Mutex::new(Some(handshake_tx))),
+            commands_rx,
+            ConnectionRuntime {
+                turn_events: Arc::new(|_| {}),
+                permissions: Arc::new(Mutex::new(HashMap::new())),
+                permission_events: Arc::new(|_| {}),
+            },
+        ));
+        handshake_rx
+            .await
+            .expect("handshake response")
+            .expect("handshake should pass");
+        let (session_tx, session_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::NewSession {
+                bundle_root: bundle_root.canonicalize().expect("canonical bundle"),
+                response: session_tx,
+            })
+            .await
+            .expect("send session");
+        session_rx
+            .await
+            .expect("session response")
+            .expect("session should start");
+        let (prompt_tx, prompt_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::Prompt {
+                session_id: "session-read".to_string(),
+                turn_id: "turn-read".to_string(),
+                text: "Read the concept".to_string(),
+                response: prompt_tx,
+            })
+            .await
+            .expect("send prompt");
+        prompt_rx
+            .await
+            .expect("prompt response")
+            .expect("prompt should start");
+
+        assert_eq!(content_rx.await.expect("file response"), "second\n");
+        worker.abort();
+        let _ = worker.await;
+        std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
+    }
+
+    #[test]
+    fn rejects_acp_reads_outside_the_session_root() {
+        let base =
+            std::env::temp_dir().join(format!("okf-studio-read-scope-{}", uuid::Uuid::new_v4()));
+        let bundle_root = base.join("bundle");
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+        let outside_path = base.join("outside.md");
+        std::fs::write(&outside_path, "private").expect("write outside file");
+        let inside_path = bundle_root.join("inside.md");
+        std::fs::write(&inside_path, "public").expect("write bundle file");
+        let sessions = Mutex::new(HashMap::from([(
+            "session-1".to_string(),
+            bundle_root.canonicalize().expect("canonical bundle"),
+        )]));
+        let request =
+            ReadTextFileRequest::new("session-1", bundle_root.join("..").join("outside.md"));
+
+        assert_eq!(
+            read_bundle_text(&sessions, &request).expect_err("outside read should fail"),
+            "Bundle read denied: the file is outside the active bundle root."
+        );
+        assert_eq!(
+            read_bundle_text(
+                &sessions,
+                &ReadTextFileRequest::new("unknown-session", &inside_path),
+            )
+            .expect_err("unknown session should fail"),
+            "Bundle read denied: the ACP session is not active."
+        );
+        assert_eq!(
+            read_bundle_text(
+                &sessions,
+                &ReadTextFileRequest::new("session-1", "inside.md"),
+            )
+            .expect_err("relative path should fail"),
+            "Bundle read denied: ACP file paths must be absolute."
+        );
+        assert_eq!(
+            read_bundle_text(
+                &sessions,
+                &ReadTextFileRequest::new("session-1", inside_path).line(0),
+            )
+            .expect_err("zero line should fail"),
+            "Bundle read denied: the starting line must be 1 or greater."
+        );
+        std::fs::remove_dir_all(base).expect("remove test files");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_acp_reads_through_a_symlink_outside_the_session_root() {
+        let base =
+            std::env::temp_dir().join(format!("okf-studio-read-link-{}", uuid::Uuid::new_v4()));
+        let bundle_root = base.join("bundle");
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+        let outside_path = base.join("outside.md");
+        std::fs::write(&outside_path, "private").expect("write outside file");
+        let link_path = bundle_root.join("linked.md");
+        std::os::unix::fs::symlink(&outside_path, &link_path).expect("create file symlink");
+        let sessions = Mutex::new(HashMap::from([(
+            "session-1".to_string(),
+            bundle_root.canonicalize().expect("canonical bundle"),
+        )]));
+
+        assert_eq!(
+            read_bundle_text(&sessions, &ReadTextFileRequest::new("session-1", link_path),)
+                .expect_err("symlink escape should fail"),
+            "Bundle read denied: the file is outside the active bundle root."
+        );
+        std::fs::remove_dir_all(base).expect("remove test files");
+    }
+
+    #[test]
+    fn rejects_non_utf8_and_oversized_acp_bundle_reads() {
+        let bundle_root =
+            std::env::temp_dir().join(format!("okf-studio-read-limits-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+        let binary_path = bundle_root.join("binary.dat");
+        std::fs::write(&binary_path, [0xff, 0xfe]).expect("write binary file");
+        let large_path = bundle_root.join("large.md");
+        std::fs::write(&large_path, vec![b'a'; MAX_AGENT_READ_BYTES + 1])
+            .expect("write large file");
+        let sessions = Mutex::new(HashMap::from([(
+            "session-1".to_string(),
+            bundle_root.canonicalize().expect("canonical bundle"),
+        )]));
+
+        let binary_error = read_bundle_text(
+            &sessions,
+            &ReadTextFileRequest::new("session-1", binary_path),
+        )
+        .expect_err("binary read should fail");
+        assert!(binary_error.contains("not UTF-8 text"));
+        let large_error = read_bundle_text(
+            &sessions,
+            &ReadTextFileRequest::new("session-1", large_path),
+        )
+        .expect_err("large read should fail");
+        assert!(large_error.contains("limited to 1048576 bytes"));
+        std::fs::remove_dir_all(bundle_root).expect("remove test files");
     }
 
     #[tokio::test(flavor = "current_thread")]

@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T23:59:45Z
+timestamp: 2026-07-11T23:59:55Z
 ---
 
 # Outcome
@@ -108,6 +108,7 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 ## WP6: Threads and conversation
 
 - [x] Ship the first bundle-scoped text conversation with streamed output and Stop.
+- [x] Render agent responses as sanitized Markdown while preserving user messages as literal text.
 - [ ] Implement active, waiting, running, cancelled, failed, archived, and restorable thread states.
 - [ ] Stream messages, plans, tool cards, locations, diffs, usage, and stop reasons.
 - [ ] Support send, queue, stop, supported retry, titles, history, and Markdown export.

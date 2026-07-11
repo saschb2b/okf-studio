@@ -202,20 +202,27 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Attach source" }));
     expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
+    await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(promptSpy).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      "Summarize the bundle",
+      "Summarize the **bundle**",
       ["product/overview.md", "features/graph-view.md"],
       [{
         title: "Interview notes",
         content: "# Notes\n\nThe catalog owner confirmed the definition.",
       }],
     );
-    expect(await screen.findByText("Summarize the bundle")).toBeInTheDocument();
-    expect(await screen.findByText("Browser ACP received: Summarize the bundle")).toBeInTheDocument();
+    expect(await screen.findByText("Summarize the **bundle**")).toBeInTheDocument();
+    await screen.findByText(/Browser ACP received:/);
+    const renderedAgentText = document.querySelector(
+      ".agent-message--agent .agent-message__markdown strong",
+    );
+    expect(renderedAgentText).toHaveTextContent("bundle");
+    expect(renderedAgentText?.closest(".agent-message")).toHaveTextContent(
+      "Browser ACP received: Summarize the bundle",
+    );
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();

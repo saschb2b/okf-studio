@@ -141,6 +141,21 @@
   white-space: pre-wrap;
 }
 
+.agent-message__markdown {
+  margin-top: var(--space-4);
+  overflow-x: auto;
+  line-height: var(--lh-normal);
+  overflow-wrap: break-word;
+}
+
+.agent-message__markdown > :first-child {
+  margin-top: 0;
+}
+
+.agent-message__markdown > :last-child {
+  margin-bottom: 0;
+}
+
 .agent-message--user .agent-message__icon {
   color: var(--text-dim);
 }

@@ -21,6 +21,7 @@ import {
   promptAgent,
   respondAgentPermission,
 } from "../ipc.ts";
+import { renderMarkdown } from "../markdown.ts";
 import "./AgentConversation.css";
 
 interface AgentConversationProps {
@@ -699,6 +700,9 @@ function applyTurnEvent(
 }
 
 function Message({ message }: { message: ConversationMessage }) {
+  const renderedAgentText = message.role === "agent"
+    ? { __html: renderMarkdown(message.text) }
+    : null;
   return (
     <article className={`agent-message agent-message--${message.role}`}>
       <span className="agent-message__icon" aria-hidden="true">
@@ -706,7 +710,15 @@ function Message({ message }: { message: ConversationMessage }) {
       </span>
       <div>
         <strong>{message.role === "user" ? "You" : "Agent"}</strong>
-        <p>{message.text}</p>
+        {renderedAgentText ? (
+          <div
+            className="markdown agent-message__markdown"
+            // renderMarkdown sanitizes untrusted agent output with DOMPurify.
+            dangerouslySetInnerHTML={renderedAgentText}
+          />
+        ) : (
+          <p>{message.text}</p>
+        )}
       </div>
     </article>
   );

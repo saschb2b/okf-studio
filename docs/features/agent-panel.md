@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T23:59:45Z
+timestamp: 2026-07-11T23:59:55Z
 ---
 
 # Entry and first open
@@ -58,7 +58,7 @@ The client advertises ACP text reads and no ACP writes. Read requests must name 
 
 When the agent pauses for ACP permission, an in-thread card shows its bounded human title and exactly the choices it advertised. The card never exposes raw tool arguments or arbitrary metadata. Choosing an option disables the card while the response is sent and leaves a retryable error in place if sending fails. If no reject choice was advertised, Studio adds **Cancel**, which returns ACP `cancelled` rather than inventing a choice. **Stop** cancels every pending permission for that session before cancelling the turn. Agent switching stays disabled until the active turn ends, preventing an approval from being detached from its transcript.
 
-This slice does not yet persist threads, render Markdown, expose tool/plan cards, or claim write access. Those arrive with the remaining [Threads and conversation](../product/studio-roadmap.md) and [OKF context and tools](../product/studio-roadmap.md) packages.
+Agent responses render through the same sanitized Markdown pipeline as bundle concepts. DOMPurify removes unsafe HTML, scripts, event handlers, embedded frames, and remote media before it reaches the conversation. User messages stay literal text, so authored Markdown is never mistaken for agent output. This slice does not yet persist threads, expose tool or plan cards, or claim write access. Those arrive with the remaining [Threads and conversation](../product/studio-roadmap.md) and [OKF context and tools](../product/studio-roadmap.md) packages.
 
 # Context, tools, and writes
 

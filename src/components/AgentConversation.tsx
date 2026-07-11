@@ -1,9 +1,11 @@
-import { Bot, Send, Square, User } from "lucide-react";
+import { Bot, Send, ShieldQuestion, Square, User } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
+  AgentPermissionEvent,
+  AgentPermissionOptionInfo,
   AgentSessionInfo,
   AgentTurnEvent,
   AgentTurnInfo,
@@ -12,8 +14,10 @@ import {
   cancelAgentTurn,
   newAgentSession,
   onAgentConnectionState,
+  onAgentPermissionUpdate,
   onAgentTurnUpdate,
   promptAgent,
+  respondAgentPermission,
 } from "../ipc.ts";
 import "./AgentConversation.css";
 
@@ -33,6 +37,9 @@ interface ConversationMessage {
 }
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
+type PendingPermission = AgentPermissionEvent & {
+  update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
+};
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -48,6 +55,7 @@ export function AgentConversation({
 }: AgentConversationProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
+  const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const completedTurnsRef = useRef(new Set<string>());
@@ -56,10 +64,11 @@ export function AgentConversation({
   useEffect(() => {
     const messagesElement = messagesRef.current;
     if (messagesElement) messagesElement.scrollTop = messagesElement.scrollHeight;
-  }, [messages]);
+  }, [messages, pendingPermissions]);
 
   useEffect(() => {
     let stopTurnUpdates: (() => void) | undefined;
+    let stopPermissionUpdates: (() => void) | undefined;
     let stopConnectionUpdates: (() => void) | undefined;
     let isDisposed = false;
     void Promise.all([
@@ -73,16 +82,23 @@ export function AgentConversation({
           setIsCancelling(false);
         }
       }),
+      onAgentPermissionUpdate((event) => {
+        if (event.connectionId !== connection.connectionId) return;
+        if (sessionRef.current?.sessionId !== event.sessionId) return;
+        setPendingPermissions((current) => applyPermissionEvent(current, event));
+      }),
       onAgentConnectionState((event) => {
         if (event.connectionId === connection.connectionId) onConnectionEnd(event);
       }),
     ]).then(
-      ([stopTurns, stopConnections]) => {
+      ([stopTurns, stopPermissions, stopConnections]) => {
         if (isDisposed) {
           stopTurns();
+          stopPermissions();
           stopConnections();
         } else {
           stopTurnUpdates = stopTurns;
+          stopPermissionUpdates = stopPermissions;
           stopConnectionUpdates = stopConnections;
         }
       },
@@ -98,6 +114,7 @@ export function AgentConversation({
     return () => {
       isDisposed = true;
       stopTurnUpdates?.();
+      stopPermissionUpdates?.();
       stopConnectionUpdates?.();
     };
   }, [connection.connectionId, onConnectionEnd]);
@@ -168,6 +185,7 @@ export function AgentConversation({
           className="btn ghost"
           data-agent-initial-focus
           onClick={onChangeAgent}
+          disabled={isSubmitting || activeTurn !== null}
         >
           Change
         </button>
@@ -193,14 +211,19 @@ export function AgentConversation({
       {bundleRoot && !requiresAuthentication && (
         <>
           <div ref={messagesRef} className="agent-conversation__messages" aria-live="polite">
-            {messages.length === 0 ? (
+            {messages.length === 0 && pendingPermissions.length === 0 ? (
               <div className="agent-conversation__welcome">
                 <Bot size={24} aria-hidden="true" />
                 <h3>Ask about this bundle</h3>
                 <p>The agent receives the bundle root as its ACP working directory.</p>
               </div>
             ) : (
-              messages.map((message) => <Message key={message.id} message={message} />)
+              <>
+                {messages.map((message) => <Message key={message.id} message={message} />)}
+                {pendingPermissions.map((permission) => (
+                  <PermissionCard key={permission.requestId} permission={permission} />
+                ))}
+              </>
             )}
           </div>
           <form className="agent-composer" action={submitPrompt}>
@@ -234,6 +257,76 @@ export function AgentConversation({
         </>
       )}
     </section>
+  );
+}
+
+function applyPermissionEvent(
+  current: PendingPermission[],
+  event: AgentPermissionEvent,
+): PendingPermission[] {
+  if (event.update.kind === "resolved") {
+    return current.filter((permission) => permission.requestId !== event.requestId);
+  }
+  const requested: PendingPermission = { ...event, update: event.update };
+  const existingIndex = current.findIndex((permission) => permission.requestId === event.requestId);
+  if (existingIndex < 0) return [...current, requested];
+  return current.map((permission, index) => (index === existingIndex ? requested : permission));
+}
+
+function PermissionCard({ permission }: { permission: PendingPermission }) {
+  const [status, setStatus] = useState<"idle" | "submitting">("idle");
+  const [failure, setFailure] = useState<string | null>(null);
+  const hasRejectOption = permission.update.options.some((option) =>
+    option.kind.startsWith("reject-"),
+  );
+
+  async function choose(option: AgentPermissionOptionInfo | null) {
+    setStatus("submitting");
+    setFailure(null);
+    try {
+      const accepted = await respondAgentPermission(permission.requestId, option?.optionId ?? null);
+      if (!accepted) {
+        setStatus("idle");
+        setFailure("This permission request is no longer active.");
+      }
+    } catch (error: unknown) {
+      setStatus("idle");
+      setFailure(errorMessage(error));
+    }
+  }
+
+  return (
+    <article className="agent-permission" aria-labelledby={`permission-${permission.requestId}`}>
+      <ShieldQuestion size={20} aria-hidden="true" />
+      <div className="agent-permission__body">
+        <h3 id={`permission-${permission.requestId}`}>Permission needed</h3>
+        <p>{permission.update.title ?? "The agent wants to run a tool."}</p>
+        <div className="agent-permission__actions">
+          {permission.update.options.map((option) => (
+            <button
+              key={option.optionId}
+              type="button"
+              className={`btn ${option.kind.startsWith("allow-") ? "primary" : "ghost"}`}
+              disabled={status === "submitting"}
+              onClick={() => void choose(option)}
+            >
+              {option.name}
+            </button>
+          ))}
+          {!hasRejectOption && (
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={status === "submitting"}
+              onClick={() => void choose(null)}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+        {failure && <p className="agent-permission__error" role="alert">{failure}</p>}
+      </div>
+    </article>
   );
 }
 

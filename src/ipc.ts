@@ -16,6 +16,7 @@ import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
 import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
+  AgentPermissionEvent,
   AgentSessionInfo,
   AgentTurnEvent,
   AgentTurnInfo,
@@ -52,7 +53,13 @@ const agentConnectionHandlers = new Set<AgentConnectionHandler>();
 let agentConnectionListener: Promise<() => void> | undefined;
 type AgentTurnHandler = (event: AgentTurnEvent) => void;
 const agentTurnHandlers = new Set<AgentTurnHandler>();
+type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
+const agentPermissionHandlers = new Set<AgentPermissionHandler>();
 const mockCancelledTurns = new Set<string>();
+const mockPermissionResponses = new Map<
+  string,
+  { turnId: string; optionIds: ReadonlySet<string>; resolve: (optionId: string | null) => void }
+>();
 
 export async function customAgents(): Promise<readonly CustomAgentProfile[]> {
   if (!isTauri()) return mockCustomAgents;
@@ -183,6 +190,29 @@ export async function cancelAgentTurn(
     return invoke<boolean>("cancel_agent_turn", { connectionId, sessionId, turnId });
   }
   mockCancelledTurns.add(turnId);
+  for (const [requestId, pending] of mockPermissionResponses) {
+    if (pending.turnId !== turnId) continue;
+    mockPermissionResponses.delete(requestId);
+    pending.resolve(null);
+  }
+  return true;
+}
+
+export async function respondAgentPermission(
+  requestId: string,
+  optionId: string | null,
+): Promise<boolean> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<boolean>("respond_agent_permission", { requestId, optionId });
+  }
+  const pending = mockPermissionResponses.get(requestId);
+  if (!pending) return false;
+  if (optionId !== null && !pending.optionIds.has(optionId)) {
+    throw new Error("Permission option was not offered by the agent.");
+  }
+  mockPermissionResponses.delete(requestId);
+  pending.resolve(optionId);
   return true;
 }
 
@@ -195,12 +225,58 @@ export async function onAgentTurnUpdate(handler: AgentTurnHandler): Promise<() =
   return listen<AgentTurnEvent>("agent-turn-update", (event) => handler(event.payload));
 }
 
+export async function onAgentPermissionUpdate(
+  handler: AgentPermissionHandler,
+): Promise<() => void> {
+  if (!isTauri()) {
+    agentPermissionHandlers.add(handler);
+    return () => agentPermissionHandlers.delete(handler);
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<AgentPermissionEvent>("agent-permission-update", (event) => handler(event.payload));
+}
+
 async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 100));
   if (mockCancelledTurns.has(info.turnId)) {
     emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
     mockCancelledTurns.delete(info.turnId);
     return;
+  }
+  if (text.includes("Edit:")) {
+    const requestId = `permission-${crypto.randomUUID()}`;
+    const optionId = await new Promise<string | null>((resolve) => {
+      mockPermissionResponses.set(requestId, {
+        turnId: info.turnId,
+        optionIds: new Set(["allow-once", "reject-once"]),
+        resolve,
+      });
+      emitAgentPermission({
+        requestId,
+        connectionId: info.connectionId,
+        sessionId: info.sessionId,
+        update: {
+          kind: "requested",
+          toolCallId: `tool-${info.turnId}`,
+          title: "Write bundle files",
+          options: [
+            { optionId: "allow-once", name: "Allow once", kind: "allow-once" },
+            { optionId: "reject-once", name: "Reject", kind: "reject-once" },
+          ],
+        },
+      });
+    });
+    emitAgentPermission({
+      requestId,
+      connectionId: info.connectionId,
+      sessionId: info.sessionId,
+      update: { kind: "resolved", optionId },
+    });
+    if (optionId === null || optionId === "reject-once") {
+      emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+      mockCancelledTurns.delete(info.turnId);
+      return;
+    }
   }
   emitAgentTurn({
     ...info,
@@ -211,6 +287,10 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     },
   });
   emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "end-turn" } });
+}
+
+function emitAgentPermission(event: AgentPermissionEvent): void {
+  for (const handler of agentPermissionHandlers) handler(event);
 }
 
 function emitAgentTurn(event: AgentTurnEvent): void {

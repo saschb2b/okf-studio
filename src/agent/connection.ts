@@ -43,6 +43,33 @@ export interface AgentTurnInfo {
   turnId: string;
 }
 
+export type AgentPermissionOptionKind =
+  | "allow-once"
+  | "allow-always"
+  | "reject-once"
+  | "reject-always"
+  | "unknown";
+
+export interface AgentPermissionOptionInfo {
+  optionId: string;
+  name: string;
+  kind: AgentPermissionOptionKind;
+}
+
+export interface AgentPermissionEvent {
+  requestId: string;
+  connectionId: string;
+  sessionId: string;
+  update:
+    | {
+        kind: "requested";
+        toolCallId: string;
+        title: string | null;
+        options: readonly AgentPermissionOptionInfo[];
+      }
+    | { kind: "resolved"; optionId: string | null };
+}
+
 export interface AgentTurnEvent extends AgentTurnInfo {
   update:
     | { kind: "text"; text: string; messageId: string | null }

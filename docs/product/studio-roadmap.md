@@ -88,7 +88,7 @@ Gate: mocked offline, corrupt, unsupported-platform, cancel, retry, and update t
 - [x] Scope each new session to one canonical absolute bundle root.
 - [x] Expose typed Tauri commands and terminal lifecycle events for custom connections.
 - [x] Expose typed Tauri commands/events for text prompts, streaming, and cancellation.
-- [ ] Expose typed permission requests and responses.
+- [x] Expose typed permission requests and responses with deny-by-default cancellation.
 - [x] Stop children on disconnect, removal, and app exit.
 
 Gate: a fake agent covers initialize, auth, session/new, streaming, permission, cancellation, crash, and reconnect.

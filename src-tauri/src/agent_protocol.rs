@@ -1,13 +1,13 @@
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, CancelNotification, ContentBlock, ContentChunk, Implementation,
-    InitializeRequest, InitializeResponse, NewSessionRequest, PromptRequest,
+    InitializeRequest, InitializeResponse, NewSessionRequest, PermissionOptionKind, PromptRequest,
     RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
-    SessionNotification, SessionUpdate, StopReason, TextContent,
+    SelectedPermissionOutcome, SessionNotification, SessionUpdate, StopReason, TextContent,
 };
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
@@ -22,12 +22,16 @@ use crate::agent_custom;
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
 const COMMAND_ACCEPT_TIMEOUT: Duration = Duration::from_secs(10);
+const PERMISSION_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
 const MAX_PROMPT_CHARS: usize = 128 * 1024;
 const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
+const MAX_PERMISSION_OPTIONS: usize = 16;
+const MAX_PERMISSION_FIELD_CHARS: usize = 512;
 const CONNECTION_EVENT: &str = "agent-connection-state";
 const TURN_EVENT: &str = "agent-turn-update";
+const PERMISSION_EVENT: &str = "agent-permission-update";
 type HandshakeResult = Result<AgentConnectionInfo, String>;
 type HandshakeSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<HandshakeResult>>>>;
 
@@ -94,6 +98,44 @@ enum AgentTurnUpdate {
 type TurnEventSink = Arc<dyn Fn(AgentTurnEvent) + Send + Sync>;
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentPermissionEvent {
+    request_id: String,
+    connection_id: String,
+    session_id: String,
+    update: AgentPermissionUpdate,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+enum AgentPermissionUpdate {
+    Requested {
+        tool_call_id: String,
+        title: Option<String>,
+        options: Vec<AgentPermissionOptionInfo>,
+    },
+    Resolved {
+        option_id: Option<String>,
+    },
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentPermissionOptionInfo {
+    option_id: String,
+    name: String,
+    kind: &'static str,
+}
+
+type PermissionEventSink = Arc<dyn Fn(AgentPermissionEvent) + Send + Sync>;
+
+struct ConnectionRuntime {
+    turn_events: TurnEventSink,
+    permissions: Arc<Mutex<HashMap<String, PendingPermission>>>,
+    permission_events: PermissionEventSink,
+}
+
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum AgentConnectionStatus {
     Disconnected,
@@ -133,6 +175,14 @@ struct AgentCapabilityInfo {
 #[derive(Default)]
 pub struct AgentHostState {
     workers: Arc<Mutex<HashMap<String, AgentWorker>>>,
+    permissions: Arc<Mutex<HashMap<String, PendingPermission>>>,
+}
+
+struct PendingPermission {
+    connection_id: String,
+    session_id: String,
+    option_ids: HashSet<String>,
+    response: tokio::sync::oneshot::Sender<Option<String>>,
 }
 
 struct AgentWorker {
@@ -168,6 +218,7 @@ impl Drop for AgentHostState {
         for (_, worker) in workers.drain() {
             worker.abort.abort();
         }
+        cancel_matching_permissions(&self.permissions, |_, _| true);
     }
 }
 
@@ -191,6 +242,12 @@ pub async fn connect_custom(
     let turn_events: TurnEventSink = Arc::new(move |event| {
         let _ = turn_app.emit(TURN_EVENT, event);
     });
+    let permission_app = app.clone();
+    let permission_events: PermissionEventSink = Arc::new(move |event| {
+        let _ = permission_app.emit(PERMISSION_EVENT, event);
+    });
+    let permissions = Arc::clone(&state.permissions);
+    let worker_permissions = Arc::clone(&permissions);
     let (start_tx, start_rx) = tokio::sync::oneshot::channel();
 
     let worker = tokio::spawn(async move {
@@ -203,9 +260,16 @@ pub async fn connect_custom(
             worker_profile_id.clone(),
             Arc::clone(&worker_handshake),
             command_rx,
-            turn_events,
+            ConnectionRuntime {
+                turn_events,
+                permissions: Arc::clone(&worker_permissions),
+                permission_events,
+            },
         )
         .await;
+        cancel_matching_permissions(&worker_permissions, |permission, _| {
+            permission.connection_id == worker_id
+        });
         if let Some(sender) = take_sender(&worker_handshake) {
             let message = result
                 .err()
@@ -331,6 +395,9 @@ pub async fn cancel_turn(
     session_id: String,
     turn_id: String,
 ) -> Result<bool, String> {
+    cancel_matching_permissions(&state.permissions, |permission, _| {
+        permission.connection_id == connection_id && permission.session_id == session_id
+    });
     let commands = connection_commands(state, connection_id)?;
     let (response_tx, response_rx) = tokio::sync::oneshot::channel();
     commands
@@ -342,6 +409,33 @@ pub async fn cancel_turn(
         .await
         .map_err(|_| "Agent connection ended before accepting cancellation.".to_string())?;
     command_response(response_rx, "cancellation").await
+}
+
+pub fn respond_permission(
+    state: &AgentHostState,
+    request_id: &str,
+    option_id: Option<String>,
+) -> Result<bool, String> {
+    let pending = {
+        let mut permissions = state
+            .permissions
+            .lock()
+            .map_err(|_| "Agent permission state is unavailable.".to_string())?;
+        let Some(permission) = permissions.get(request_id) else {
+            return Ok(false);
+        };
+        if option_id
+            .as_ref()
+            .is_some_and(|option_id| !permission.option_ids.contains(option_id))
+        {
+            return Err("Permission option was not offered by the agent.".to_string());
+        }
+        permissions.remove(request_id)
+    };
+    let Some(pending) = pending else {
+        return Ok(false);
+    };
+    Ok(pending.response.send(option_id).is_ok())
 }
 
 fn connection_commands(
@@ -393,6 +487,9 @@ pub fn disconnect(
         .remove(connection_id);
     if let Some(worker) = worker {
         worker.abort.abort();
+        cancel_matching_permissions(&state.permissions, |permission, _| {
+            permission.connection_id == connection_id
+        });
         emit_connection_event(
             app,
             AgentConnectionEvent {
@@ -453,6 +550,9 @@ fn disconnect_profile_workers(
     let count = removed.len();
     for (connection_id, worker) in removed {
         worker.abort.abort();
+        cancel_matching_permissions(&state.permissions, |permission, _| {
+            permission.connection_id == connection_id
+        });
         on_disconnect(&connection_id, &worker);
     }
     Ok(count)
@@ -480,12 +580,21 @@ async fn run_connection(
     profile_id: String,
     handshake: HandshakeSender,
     mut commands: tokio::sync::mpsc::Receiver<AgentHostCommand>,
-    turn_events: TurnEventSink,
+    runtime: ConnectionRuntime,
 ) -> Result<(), String> {
+    let ConnectionRuntime {
+        turn_events,
+        permissions,
+        permission_events,
+    } = runtime;
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let notification_turns = Arc::clone(&active_turns);
     let notification_events = Arc::clone(&turn_events);
     let notification_connection_id = connection_id.clone();
+    let request_turns = Arc::clone(&active_turns);
+    let request_permissions = Arc::clone(&permissions);
+    let request_events = Arc::clone(&permission_events);
+    let request_connection_id = connection_id.clone();
     Client
         .builder()
         .name("okf-studio")
@@ -503,10 +612,74 @@ async fn run_connection(
             agent_client_protocol::on_receive_notification!(),
         )
         .on_receive_request(
-            async move |_request: RequestPermissionRequest, responder, _connection| {
-                responder.respond(RequestPermissionResponse::new(
-                    RequestPermissionOutcome::Cancelled,
-                ))
+            async move |request: RequestPermissionRequest, responder, _connection| {
+                let session_id = request.session_id.to_string();
+                let has_active_turn = request_turns
+                    .lock()
+                    .ok()
+                    .is_some_and(|turns| turns.contains_key(&session_id));
+                let options = permission_options(request.options);
+                if !has_active_turn || options.is_empty() {
+                    return responder.respond(RequestPermissionResponse::new(
+                        RequestPermissionOutcome::Cancelled,
+                    ));
+                }
+                let request_id = format!("permission-{}", uuid::Uuid::new_v4());
+                let option_ids = options
+                    .iter()
+                    .map(|option| option.option_id.clone())
+                    .collect();
+                let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+                if let Ok(mut pending) = request_permissions.lock() {
+                    pending.insert(
+                        request_id.clone(),
+                        PendingPermission {
+                            connection_id: request_connection_id.clone(),
+                            session_id: session_id.clone(),
+                            option_ids,
+                            response: response_tx,
+                        },
+                    );
+                } else {
+                    return responder.respond(RequestPermissionResponse::new(
+                        RequestPermissionOutcome::Cancelled,
+                    ));
+                }
+                request_events(AgentPermissionEvent {
+                    request_id: request_id.clone(),
+                    connection_id: request_connection_id.clone(),
+                    session_id: session_id.clone(),
+                    update: AgentPermissionUpdate::Requested {
+                        tool_call_id: bounded_permission_field(&request.tool_call.tool_call_id.to_string()),
+                        title: request
+                            .tool_call
+                            .fields
+                            .title
+                            .as_deref()
+                            .and_then(bounded_permission_title),
+                        options,
+                    },
+                });
+                let selected = tokio::time::timeout(PERMISSION_TIMEOUT, response_rx)
+                    .await
+                    .ok()
+                    .and_then(Result::ok)
+                    .flatten();
+                if let Ok(mut pending) = request_permissions.lock() {
+                    pending.remove(&request_id);
+                }
+                request_events(AgentPermissionEvent {
+                    request_id,
+                    connection_id: request_connection_id.clone(),
+                    session_id,
+                    update: AgentPermissionUpdate::Resolved {
+                        option_id: selected.clone(),
+                    },
+                });
+                let outcome = selected.map_or(RequestPermissionOutcome::Cancelled, |option_id| {
+                    RequestPermissionOutcome::Selected(SelectedPermissionOutcome::new(option_id))
+                });
+                responder.respond(RequestPermissionResponse::new(outcome))
             },
             agent_client_protocol::on_receive_request!(),
         )
@@ -617,6 +790,87 @@ async fn run_connection(
         })
         .await
         .map_err(|error| format!("Agent connection failed: {error}"))
+}
+
+fn permission_options(
+    options: Vec<agent_client_protocol::schema::v1::PermissionOption>,
+) -> Vec<AgentPermissionOptionInfo> {
+    options
+        .into_iter()
+        .take(MAX_PERMISSION_OPTIONS)
+        .filter_map(|option| {
+            let option_id = option.option_id.to_string();
+            if option_id.is_empty() || option_id.chars().count() > MAX_PERMISSION_FIELD_CHARS {
+                return None;
+            }
+            let kind = permission_kind_name(option.kind);
+            let name = bounded_permission_field(&option.name);
+            Some(AgentPermissionOptionInfo {
+                option_id,
+                name: if name.trim().is_empty() {
+                    permission_kind_label(kind).to_string()
+                } else {
+                    name
+                },
+                kind,
+            })
+        })
+        .collect()
+}
+
+fn permission_kind_label(kind: &str) -> &'static str {
+    match kind {
+        "allow-once" => "Allow once",
+        "allow-always" => "Always allow",
+        "reject-once" => "Reject",
+        "reject-always" => "Always reject",
+        _ => "Choose",
+    }
+}
+
+fn bounded_permission_title(value: &str) -> Option<String> {
+    let title = bounded_permission_field(value);
+    (!title.trim().is_empty()).then_some(title)
+}
+
+fn permission_kind_name(kind: PermissionOptionKind) -> &'static str {
+    match kind {
+        PermissionOptionKind::AllowOnce => "allow-once",
+        PermissionOptionKind::AllowAlways => "allow-always",
+        PermissionOptionKind::RejectOnce => "reject-once",
+        PermissionOptionKind::RejectAlways => "reject-always",
+        _ => "unknown",
+    }
+}
+
+fn bounded_permission_field(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .take(MAX_PERMISSION_FIELD_CHARS)
+        .collect()
+}
+
+fn cancel_matching_permissions(
+    permissions: &Mutex<HashMap<String, PendingPermission>>,
+    predicate: impl Fn(&PendingPermission, &str) -> bool,
+) {
+    let pending = if let Ok(mut permissions) = permissions.lock() {
+        let request_ids = permissions
+            .iter()
+            .filter(|(request_id, permission)| predicate(permission, request_id))
+            .map(|(request_id, _)| request_id.clone())
+            .collect::<Vec<_>>();
+        request_ids
+            .into_iter()
+            .filter_map(|request_id| permissions.remove(&request_id))
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    for permission in pending {
+        let _ = permission.response.send(None);
+    }
 }
 
 async fn send_prompt(
@@ -945,8 +1199,8 @@ async fn negotiate_with_timeout(
 mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
-        AgentCapabilities, AuthMethod, AuthMethodAgent, NewSessionResponse, PromptCapabilities,
-        PromptResponse,
+        AgentCapabilities, AuthMethod, AuthMethodAgent, NewSessionResponse, PermissionOption,
+        PromptCapabilities, PromptResponse, ToolCallUpdate, ToolCallUpdateFields,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -1103,13 +1357,19 @@ mod tests {
         let event_sink: TurnEventSink = Arc::new(move |event| {
             let _ = events_tx.send(event);
         });
+        let permissions = Arc::new(Mutex::new(HashMap::new()));
+        let permission_sink: PermissionEventSink = Arc::new(|_| {});
         let worker = tokio::spawn(run_connection(
             fake_agent,
             "connection-1".to_string(),
             "profile-1".to_string(),
             handshake,
             commands_rx,
-            event_sink,
+            ConnectionRuntime {
+                turn_events: event_sink,
+                permissions,
+                permission_events: permission_sink,
+            },
         ));
         handshake_rx
             .await
@@ -1164,6 +1424,186 @@ mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
+    async fn forwards_an_advertised_permission_choice_to_the_agent() {
+        let (outcome_tx, mut outcome_rx) = tokio::sync::mpsc::unbounded_channel();
+        let fake_agent = Agent
+            .builder()
+            .on_receive_request(
+                async move |_request: InitializeRequest,
+                            responder: Responder<InitializeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(InitializeResponse::new(ProtocolVersion::V1))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |_request: NewSessionRequest,
+                            responder: Responder<NewSessionResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(NewSessionResponse::new("session-permission"))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |request: PromptRequest,
+                            responder: Responder<PromptResponse>,
+                            connection: ConnectionTo<Client>| {
+                    let outcome_tx = outcome_tx.clone();
+                    tokio::spawn(async move {
+                        let permission = connection
+                            .send_request(RequestPermissionRequest::new(
+                                request.session_id,
+                                ToolCallUpdate::new(
+                                    "tool-call-1",
+                                    ToolCallUpdateFields::new().title("Write the bundle index"),
+                                ),
+                                vec![
+                                    PermissionOption::new(
+                                        "allow-once",
+                                        "Allow once",
+                                        PermissionOptionKind::AllowOnce,
+                                    ),
+                                    PermissionOption::new(
+                                        "reject-once",
+                                        "Reject",
+                                        PermissionOptionKind::RejectOnce,
+                                    ),
+                                ],
+                            ))
+                            .block_task()
+                            .await;
+                        if let Ok(permission) = permission {
+                            let _ = outcome_tx.send(permission.outcome);
+                            let _ = responder.respond(PromptResponse::new(StopReason::EndTurn));
+                        }
+                    });
+                    Ok(())
+                },
+                agent_client_protocol::on_receive_request!(),
+            );
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let (commands_tx, commands_rx) = tokio::sync::mpsc::channel(8);
+        let permissions = Arc::new(Mutex::new(HashMap::new()));
+        let state = AgentHostState {
+            workers: Arc::new(Mutex::new(HashMap::new())),
+            permissions: Arc::clone(&permissions),
+        };
+        let (permission_tx, mut permission_rx) = tokio::sync::mpsc::unbounded_channel();
+        let permission_sink: PermissionEventSink = Arc::new(move |event| {
+            let _ = permission_tx.send(event);
+        });
+        let worker = tokio::spawn(run_connection(
+            fake_agent,
+            "connection-permission".to_string(),
+            "profile-permission".to_string(),
+            Arc::new(Mutex::new(Some(handshake_tx))),
+            commands_rx,
+            ConnectionRuntime {
+                turn_events: Arc::new(|_| {}),
+                permissions,
+                permission_events: permission_sink,
+            },
+        ));
+        handshake_rx
+            .await
+            .expect("handshake response")
+            .expect("handshake should pass");
+        let (session_tx, session_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::NewSession {
+                bundle_root: std::env::temp_dir(),
+                response: session_tx,
+            })
+            .await
+            .expect("send session");
+        session_rx
+            .await
+            .expect("session response")
+            .expect("session should start");
+        let (prompt_tx, prompt_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::Prompt {
+                session_id: "session-permission".to_string(),
+                turn_id: "turn-permission".to_string(),
+                text: "Update the index".to_string(),
+                response: prompt_tx,
+            })
+            .await
+            .expect("send prompt");
+        prompt_rx
+            .await
+            .expect("prompt response")
+            .expect("prompt should start");
+
+        let requested = permission_rx.recv().await.expect("permission request");
+        assert_eq!(requested.session_id, "session-permission");
+        assert!(matches!(
+            &requested.update,
+            AgentPermissionUpdate::Requested { title, options, .. }
+                if title.as_deref() == Some("Write the bundle index") && options.len() == 2
+        ));
+        assert!(respond_permission(
+            &state,
+            &requested.request_id,
+            Some("allow-once".to_string())
+        )
+        .expect("respond to permission"));
+        let outcome = outcome_rx.recv().await.expect("permission outcome");
+        assert!(matches!(
+            outcome,
+            RequestPermissionOutcome::Selected(selected)
+                if selected.option_id.to_string() == "allow-once"
+        ));
+        assert!(matches!(
+            permission_rx.recv().await.expect("resolved event").update,
+            AgentPermissionUpdate::Resolved { option_id }
+                if option_id.as_deref() == Some("allow-once")
+        ));
+
+        worker.abort();
+        assert!(worker
+            .await
+            .expect_err("worker should abort")
+            .is_cancelled());
+    }
+
+    #[test]
+    fn rejects_a_permission_option_the_agent_did_not_offer() {
+        let (response, _receiver) = tokio::sync::oneshot::channel();
+        let state = AgentHostState::default();
+        state.permissions.lock().expect("permission state").insert(
+            "permission-1".to_string(),
+            PendingPermission {
+                connection_id: "connection-1".to_string(),
+                session_id: "session-1".to_string(),
+                option_ids: HashSet::from(["reject-once".to_string()]),
+                response,
+            },
+        );
+
+        let error = respond_permission(&state, "permission-1", Some("allow-once".to_string()))
+            .expect_err("unadvertised option should fail");
+        assert_eq!(error, "Permission option was not offered by the agent.");
+        assert!(state
+            .permissions
+            .lock()
+            .expect("permission state")
+            .contains_key("permission-1"));
+    }
+
+    #[test]
+    fn gives_an_empty_permission_choice_an_accessible_label() {
+        let options = permission_options(vec![PermissionOption::new(
+            "allow-once",
+            "   ",
+            PermissionOptionKind::AllowOnce,
+        )]);
+
+        assert_eq!(options.len(), 1);
+        assert_eq!(options[0].name, "Allow once");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
     async fn sends_session_cancellation_for_the_active_turn() {
         let cancelled = Arc::new(tokio::sync::Notify::new());
         let prompt_cancelled = Arc::clone(&cancelled);
@@ -1213,13 +1653,19 @@ mod tests {
         let event_sink: TurnEventSink = Arc::new(move |event| {
             let _ = events_tx.send(event);
         });
+        let permissions = Arc::new(Mutex::new(HashMap::new()));
+        let permission_sink: PermissionEventSink = Arc::new(|_| {});
         let worker = tokio::spawn(run_connection(
             fake_agent,
             "connection-cancel".to_string(),
             "profile-cancel".to_string(),
             Arc::new(Mutex::new(Some(handshake_tx))),
             commands_rx,
-            event_sink,
+            ConnectionRuntime {
+                turn_events: event_sink,
+                permissions,
+                permission_events: permission_sink,
+            },
         ));
         handshake_rx
             .await

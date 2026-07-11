@@ -106,6 +106,15 @@ async fn cancel_agent_turn(
 }
 
 #[tauri::command]
+fn respond_agent_permission(
+    state: State<'_, agent_protocol::AgentHostState>,
+    request_id: String,
+    option_id: Option<String>,
+) -> Result<bool, String> {
+    agent_protocol::respond_permission(state.inner(), &request_id, option_id)
+}
+
+#[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
     agent_id: String,
@@ -283,6 +292,7 @@ pub fn run() {
             new_agent_session,
             prompt_agent,
             cancel_agent_turn,
+            respond_agent_permission,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

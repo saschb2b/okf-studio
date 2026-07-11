@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T18:00:00Z
+timestamp: 2026-07-11T19:00:00Z
 ---
 
 # Entry and first open
@@ -44,6 +44,8 @@ Only advertised capabilities appear. Unsupported restore, model, usage, retry, o
 
 The first conversation slice activates after a custom ACP connection returns from the catalog. It names the agent and active bundle, creates a bundle-scoped session on the first send, renders user and streamed agent text, and replaces **Send** with **Stop** while one turn is active. The composer is text-only and allows one live turn. A connection without an open bundle offers **Open folder**; an agent that advertises authentication shows that requirement and keeps the composer unavailable until Studio implements the advertised flow. Changing agents returns to the catalog without losing the live process. Connection state comes from a `useSyncExternalStore` subscription so React Compiler memoization cannot freeze a mutable module snapshot.
 
+When the agent pauses for ACP permission, an in-thread card shows its bounded human title and exactly the choices it advertised. The card never exposes raw tool arguments or arbitrary metadata. Choosing an option disables the card while the response is sent and leaves a retryable error in place if sending fails. If no reject choice was advertised, Studio adds **Cancel**, which returns ACP `cancelled` rather than inventing a choice. **Stop** cancels every pending permission for that session before cancelling the turn. Agent switching stays disabled until the active turn ends, preventing an approval from being detached from its transcript.
+
 This slice does not yet persist threads, render Markdown, expose tool/plan cards, or claim write access. Those arrive with the remaining [Threads and conversation](../product/studio-roadmap.md) and [OKF context and tools](../product/studio-roadmap.md) packages.
 
 # Context, tools, and writes
@@ -61,6 +63,7 @@ Tool calls show pending, permission, running, completed, failed, or cancelled st
 - crashed: preserve transcript, bounded redacted diagnostics, restart;
 - no bundle: allow setup and offer Open folder for bundle tools;
 - read-only thread: research works and write attempts explain the grant.
+- permission pending: show the agent's title and choices, keep Stop available, and retain a response error for retry.
 
 # Accessibility
 

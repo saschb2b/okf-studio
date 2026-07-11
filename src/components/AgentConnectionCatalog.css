@@ -1,0 +1,119 @@
+.agent-catalog {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-12);
+}
+
+.agent-catalog__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+}
+
+.agent-catalog__back {
+  min-height: 32px;
+  padding: var(--space-4) var(--space-8);
+}
+
+.agent-catalog__intro h2,
+.agent-catalog__intro p,
+.agent-catalog-card h3,
+.agent-catalog-card p,
+.agent-catalog-card dl,
+.agent-catalog__notice {
+  margin: 0;
+}
+
+.agent-catalog__intro h2 {
+  font-size: var(--fs-lg);
+  line-height: var(--lh-tight);
+  text-wrap: balance;
+}
+
+.agent-catalog__intro p,
+.agent-catalog-card p,
+.agent-catalog__notice {
+  color: var(--text-dim);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.agent-catalog__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-8);
+}
+
+.agent-catalog-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+  padding: var(--space-12);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-catalog-card__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--accent);
+  background: var(--bg-elev);
+  border-radius: var(--radius-sm);
+}
+
+.agent-catalog-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.agent-catalog-card__title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.agent-catalog-card h3 {
+  min-width: 0;
+  font-size: var(--fs-md);
+  line-height: var(--lh-tight);
+}
+
+.agent-catalog-card dl {
+  display: grid;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
+}
+
+.agent-catalog-card dl > div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+.agent-catalog-card dt {
+  color: var(--text-dim);
+}
+
+.agent-catalog-card dd {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.agent-catalog-card__action {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.agent-catalog__notice {
+  margin-top: var(--space-12);
+  font-size: var(--fs-xs);
+}

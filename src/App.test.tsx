@@ -41,6 +41,13 @@ describe("OKF Studio app", () => {
 
     expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Connect an agent" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    expect(screen.getByRole("heading", { name: /choose how agents run/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claude Agent" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Codex" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Install" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Install" })[0]).toBeDisabled();
   });
 
   it("moves focus into and out of the agent panel with its shortcut", async () => {

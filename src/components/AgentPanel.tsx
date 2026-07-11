@@ -1,13 +1,15 @@
 import { ArrowLeft, PanelRightClose, Sparkles } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type * as React from "react";
 import { AGENT_PANEL_CLAMP, useApp } from "../store.tsx";
 import { focusAgentPanelOpener } from "../agentPanelFocus.ts";
+import { AgentConnectionCatalog } from "./AgentConnectionCatalog.tsx";
 import "./AgentPanel.css";
 
 export function AgentPanel() {
   const { state, actions } = useApp();
   const panelRef = useRef<HTMLElement>(null);
+  const [view, setView] = useState<"empty" | "catalog">("empty");
   if (!state.panels.agent) return null;
 
   const width =
@@ -18,6 +20,20 @@ export function AgentPanel() {
   function closePanel() {
     actions.togglePanel("agent", false);
     focusAgentPanelOpener();
+  }
+
+  function openCatalog() {
+    setView("catalog");
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>("[data-agent-catalog-focus]")?.focus();
+    });
+  }
+
+  function closeCatalog() {
+    setView("empty");
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>("[data-agent-initial-focus]")?.focus();
+    });
   }
 
   return (
@@ -45,23 +61,28 @@ export function AgentPanel() {
             <PanelRightClose className="agent-panel__close-icon" size={16} />
           </button>
         </header>
-        <div className="agent-panel__empty">
-          <span className="agent-panel__mark" aria-hidden="true">
-            <Sparkles size={24} />
-          </span>
-          <h2>Connect an agent</h2>
-          <p>
-            Use an existing subscription, an API-backed Studio Agent, or a local
-            model. Nothing connects until you choose.
-          </p>
-          <button
-            type="button"
-            className="btn primary"
-            data-agent-initial-focus
-          >
-            Connect an agent
-          </button>
-        </div>
+        {view === "catalog" ? (
+          <AgentConnectionCatalog onBack={closeCatalog} />
+        ) : (
+          <div className="agent-panel__empty">
+            <span className="agent-panel__mark" aria-hidden="true">
+              <Sparkles size={24} />
+            </span>
+            <h2>Connect an agent</h2>
+            <p>
+              Use an existing subscription, an API-backed Studio Agent, or a
+              local model. Nothing connects until you choose.
+            </p>
+            <button
+              type="button"
+              className="btn primary"
+              data-agent-initial-focus
+              onClick={openCatalog}
+            >
+              Connect an agent
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );

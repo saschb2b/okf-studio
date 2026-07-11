@@ -61,6 +61,15 @@ describe("accessibility (axe-core)", () => {
     await expectNoViolations(container);
   });
 
+  it("the agent connection catalog has no violations", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await screen.findByRole("heading", { name: /choose how agents run/i });
+    await expectNoViolations(container);
+  });
+
   it("the settings dialog has no violations", async () => {
     const user = userEvent.setup();
     renderApp();

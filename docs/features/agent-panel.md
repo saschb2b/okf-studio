@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T06:30:00Z
+timestamp: 2026-07-11T07:15:00Z
 ---
 
 # Entry and first open
@@ -15,6 +15,8 @@ First open makes no account or network request. It explains three paths and offe
 - **Subscription agent:** Claude Agent, Codex, or another ACP agent owns login and billing.
 - **Studio Agent:** an API key in the OS credential store or a local compatible endpoint.
 - **Custom/local agent:** an ACP command with explicit executable, arguments, and environment names.
+
+The connection catalog distinguishes external ACP agents from Studio-managed runtimes and lists each path's credential owner. Claude Agent and Codex are the featured ACP choices. Studio API and local-model paths are visible as planned native runtimes. Browsing the catalog never downloads or starts a process; install controls remain disabled until the verified installer is present.
 
 # Layout and focus
 

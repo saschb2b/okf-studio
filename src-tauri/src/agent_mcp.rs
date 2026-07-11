@@ -27,6 +27,11 @@ const MAX_OFFSET: usize = 1_000_000;
 const MAX_OUTPUT_ID_CHARS: usize = 4096;
 const MAX_OUTPUT_FIELD_CHARS: usize = 512;
 const MAX_OUTPUT_PROSE_CHARS: usize = 2048;
+const DEFAULT_READ_LIMIT: usize = 200;
+const MAX_READ_LIMIT: usize = 1000;
+const MAX_READ_CONTENT_CHARS: usize = 65_536;
+const DEFAULT_SOURCE_LIMIT: usize = 50;
+const MAX_SOURCE_LIMIT: usize = 200;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct InventoryInput {
@@ -79,6 +84,34 @@ struct InventoryItem {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+struct ReadInput {
+    /// Bundle-relative concept ID without the .md suffix.
+    concept_id: String,
+    /// One-based first body line. Defaults to 1.
+    line: Option<usize>,
+    /// Maximum body lines. Defaults to 200 and cannot exceed 1000.
+    limit: Option<usize>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct ReadOutput {
+    id: String,
+    title: String,
+    #[serde(rename = "type")]
+    concept_type: String,
+    description: String,
+    tags: Vec<String>,
+    timestamp: Option<String>,
+    resource: Option<String>,
+    total_lines: usize,
+    start_line: usize,
+    content: String,
+    content_truncated: bool,
+    next_line: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 struct SearchInput {
     /// Case-insensitive text to find in concept titles, paths, types, tags, descriptions, or bodies.
     query: String,
@@ -101,6 +134,32 @@ struct SearchItem {
     concept_type: String,
     description: String,
     snippet: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct SourcesInput {
+    /// Optional exact bundle-relative concept ID without the .md suffix.
+    concept_id: Option<String>,
+    /// Zero-based page offset. Use nextOffset from the previous response.
+    offset: Option<usize>,
+    /// Maximum source references. Defaults to 50 and cannot exceed 200.
+    limit: Option<usize>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct SourcesOutput {
+    matching_count: usize,
+    sources: Vec<SourceItem>,
+    next_offset: Option<usize>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct SourceItem {
+    uri: String,
+    kinds: Vec<String>,
+    concept_ids: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -259,6 +318,49 @@ impl OkfMcpServer {
     }
 
     #[tool(
+        description = "Read one parsed OKF concept by ID. Returns core metadata and a bounded, line-paged Markdown body without exposing an arbitrary file path."
+    )]
+    fn okf_read(
+        &self,
+        Parameters(input): Parameters<ReadInput>,
+    ) -> Result<Json<ReadOutput>, String> {
+        let concept_id = bounded_concept_id(&input.concept_id)?;
+        let line = input.line.unwrap_or(1);
+        if line == 0 || line > MAX_OFFSET {
+            return Err(format!("line must be between 1 and {MAX_OFFSET}"));
+        }
+        let limit = input
+            .limit
+            .unwrap_or(DEFAULT_READ_LIMIT)
+            .clamp(1, MAX_READ_LIMIT);
+        let result = query::read_concept(&self.bundle, concept_id, line, limit)
+            .ok_or_else(|| format!("concept not found: {concept_id}"))?;
+        let content_truncated = result.content.len() > MAX_READ_CONTENT_CHARS;
+        Ok(Json(ReadOutput {
+            id: bounded_output(&result.id, MAX_OUTPUT_ID_CHARS),
+            title: bounded_output(&result.title, MAX_OUTPUT_FIELD_CHARS),
+            concept_type: bounded_output(&result.concept_type, MAX_OUTPUT_FIELD_CHARS),
+            description: bounded_output(&result.description, MAX_OUTPUT_PROSE_CHARS),
+            tags: result
+                .tags
+                .into_iter()
+                .map(|tag| bounded_output(&tag, MAX_OUTPUT_FIELD_CHARS))
+                .collect(),
+            timestamp: result
+                .timestamp
+                .map(|value| bounded_output(&value, MAX_OUTPUT_FIELD_CHARS)),
+            resource: result
+                .resource
+                .map(|value| bounded_output(&value, MAX_OUTPUT_ID_CHARS)),
+            total_lines: result.total_lines,
+            start_line: result.start_line,
+            content: bounded_utf8_bytes(&result.content, MAX_READ_CONTENT_CHARS),
+            content_truncated,
+            next_line: result.next_line,
+        }))
+    }
+
+    #[tool(
         description = "Search the active OKF bundle without reading every file. Returns bounded concept metadata and matching Markdown snippets in relevance order."
     )]
     fn okf_search(
@@ -287,6 +389,49 @@ impl OkfMcpServer {
             })
             .collect();
         Ok(Json(SearchOutput { matches }))
+    }
+
+    #[tool(
+        description = "List canonical resource URIs and external citations authored in the active OKF bundle. Deduplicates references and reports their referring concept IDs without fetching them."
+    )]
+    fn okf_sources(
+        &self,
+        Parameters(input): Parameters<SourcesInput>,
+    ) -> Result<Json<SourcesOutput>, String> {
+        let concept_id = input
+            .concept_id
+            .as_deref()
+            .map(bounded_concept_id)
+            .transpose()?;
+        if concept_id.is_some_and(|id| !self.bundle.concepts.iter().any(|item| item.id == id)) {
+            return Err(format!(
+                "concept not found: {}",
+                concept_id.unwrap_or_default()
+            ));
+        }
+        let offset = bounded_offset(input.offset)?;
+        let limit = input
+            .limit
+            .unwrap_or(DEFAULT_SOURCE_LIMIT)
+            .clamp(1, MAX_SOURCE_LIMIT);
+        let result = query::sources(&self.bundle, concept_id, offset, limit);
+        Ok(Json(SourcesOutput {
+            matching_count: result.matching_count,
+            sources: result
+                .sources
+                .into_iter()
+                .map(|item| SourceItem {
+                    uri: bounded_output(&item.uri, MAX_OUTPUT_ID_CHARS),
+                    kinds: item.kinds,
+                    concept_ids: item
+                        .concept_ids
+                        .into_iter()
+                        .map(|id| bounded_output(&id, MAX_OUTPUT_ID_CHARS))
+                        .collect(),
+                })
+                .collect(),
+            next_offset: result.next_offset,
+        }))
     }
 
     #[tool(
@@ -387,6 +532,14 @@ fn validate_optional_filter(name: &str, value: Option<&str>) -> Result<(), Strin
     Ok(())
 }
 
+fn bounded_concept_id(value: &str) -> Result<&str, String> {
+    let value = value.trim();
+    if value.is_empty() || value.chars().count() > MAX_CONCEPT_ID_CHARS {
+        return Err("concept_id must be a bounded non-empty OKF concept ID".to_string());
+    }
+    Ok(value)
+}
+
 fn bounded_offset(offset: Option<usize>) -> Result<usize, String> {
     let offset = offset.unwrap_or_default();
     if offset > MAX_OFFSET {
@@ -403,6 +556,17 @@ fn bounded_output(value: &str, max_chars: usize) -> String {
     output
 }
 
+fn bounded_utf8_bytes(value: &str, max_bytes: usize) -> String {
+    if value.len() <= max_bytes {
+        return value.to_string();
+    }
+    let mut end = max_bytes;
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    value[..end].to_string()
+}
+
 #[tool_handler]
 impl ServerHandler for OkfMcpServer {
     fn get_info(&self) -> ServerInfo {
@@ -410,7 +574,7 @@ impl ServerHandler for OkfMcpServer {
             .with_server_info(Implementation::new("okf-studio", env!("CARGO_PKG_VERSION")))
             .with_protocol_version(ProtocolVersion::V_2024_11_05)
             .with_instructions(
-                "Read-only tools for inventory, search, traversal, and validation of the active Open Knowledge Format bundle.",
+                "Read-only tools to inspect, read, search, trace sources, traverse, and validate the active Open Knowledge Format bundle.",
             )
     }
 }
@@ -446,7 +610,7 @@ mod tests {
     use rmcp::model::CallToolRequestParams;
 
     #[test]
-    fn tools_inspect_search_traverse_and_validate_the_docs_bundle() {
+    fn tools_inspect_read_search_sources_traverse_and_validate_the_docs_bundle() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs");
         let server = OkfMcpServer::new(okf_core::read_bundle(&root));
         let Json(inventory) = server
@@ -464,6 +628,17 @@ mod tests {
             .iter()
             .all(|item| item.id.starts_with("features/")));
 
+        let Json(read) = server
+            .okf_read(Parameters(ReadInput {
+                concept_id: "features/agent-panel".to_string(),
+                line: Some(1),
+                limit: Some(5),
+            }))
+            .unwrap();
+        assert_eq!(read.id, "features/agent-panel");
+        assert!(!read.content.is_empty());
+        assert!(read.next_line.is_some());
+
         let Json(search) = server
             .okf_search(Parameters(SearchInput {
                 query: "agent panel".to_string(),
@@ -474,6 +649,19 @@ mod tests {
             .matches
             .iter()
             .any(|item| item.id == "features/agent-panel"));
+
+        let Json(sources) = server
+            .okf_sources(Parameters(SourcesInput {
+                concept_id: Some("features/agent-panel".to_string()),
+                offset: None,
+                limit: Some(10),
+            }))
+            .unwrap();
+        assert_eq!(sources.matching_count, sources.sources.len());
+        assert!(sources
+            .sources
+            .iter()
+            .all(|source| source.concept_ids == ["features/agent-panel"]));
 
         let Json(traversal) = server
             .okf_traverse(Parameters(TraverseInput {
@@ -520,6 +708,20 @@ mod tests {
             }))
             .is_err());
         assert!(server
+            .okf_read(Parameters(ReadInput {
+                concept_id: "missing".to_string(),
+                line: Some(0),
+                limit: None,
+            }))
+            .is_err());
+        assert!(server
+            .okf_sources(Parameters(SourcesInput {
+                concept_id: Some("missing".to_string()),
+                offset: None,
+                limit: None,
+            }))
+            .is_err());
+        assert!(server
             .okf_traverse(Parameters(TraverseInput {
                 concept_id: "missing".to_string(),
                 direction: Some("sideways".to_string()),
@@ -553,6 +755,9 @@ mod tests {
         );
         assert_eq!(output.chars().count(), MAX_OUTPUT_FIELD_CHARS + 1);
         assert!(output.ends_with('…'));
+        let body = bounded_utf8_bytes(&"ö".repeat(MAX_READ_CONTENT_CHARS), MAX_READ_CONTENT_CHARS);
+        assert_eq!(body.len(), MAX_READ_CONTENT_CHARS);
+        assert!(body.is_char_boundary(body.len()));
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -577,7 +782,9 @@ mod tests {
                 .collect::<Vec<_>>(),
             [
                 "okf_inventory",
+                "okf_read",
                 "okf_search",
+                "okf_sources",
                 "okf_traverse",
                 "okf_validate"
             ]

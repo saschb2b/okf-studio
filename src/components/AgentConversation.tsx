@@ -280,8 +280,8 @@ export function AgentConversation({
                 <Bot size={24} aria-hidden="true" />
                 <h3>Ask about this bundle</h3>
                 <p>
-                  Studio attaches OKF context, read-only access to this bundle, and tools for
-                  inventory, search, traversal, and validation.
+                  Studio attaches OKF context, read-only access to this bundle, and tools to
+                  inspect concepts, trace sources, and validate structure.
                 </p>
               </div>
             ) : (

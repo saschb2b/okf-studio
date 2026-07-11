@@ -54,6 +54,39 @@ pub struct InventoryResult {
     pub next_offset: Option<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConceptReadResult {
+    pub id: String,
+    pub title: String,
+    #[serde(rename = "type")]
+    pub concept_type: String,
+    pub description: String,
+    pub tags: Vec<String>,
+    pub timestamp: Option<String>,
+    pub resource: Option<String>,
+    pub total_lines: usize,
+    pub start_line: usize,
+    pub content: String,
+    pub next_line: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceReference {
+    pub uri: String,
+    pub kinds: Vec<String>,
+    pub concept_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceResult {
+    pub matching_count: usize,
+    pub sources: Vec<SourceReference>,
+    pub next_offset: Option<usize>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValidationLevel {
     All,
@@ -198,6 +231,84 @@ pub fn inventory(
         types: counts(bundle.concepts.iter().map(|concept| &concept.concept_type)),
         tags: counts(bundle.concepts.iter().flat_map(|concept| &concept.tags)),
         concepts: page,
+        next_offset,
+    }
+}
+
+/// Read a line-bounded page of one parsed concept body with its core metadata.
+pub fn read_concept(
+    bundle: &Bundle,
+    concept_id: &str,
+    start_line: usize,
+    limit: usize,
+) -> Option<ConceptReadResult> {
+    let concept = bundle.concepts.iter().find(|item| item.id == concept_id)?;
+    let lines = concept.body.split_inclusive('\n').collect::<Vec<_>>();
+    let total_lines = lines.len();
+    let start_index = start_line.saturating_sub(1).min(total_lines);
+    let content = lines
+        .iter()
+        .skip(start_index)
+        .take(limit)
+        .copied()
+        .collect::<String>();
+    let consumed = limit.min(total_lines.saturating_sub(start_index));
+    let next_index = start_index + consumed;
+    Some(ConceptReadResult {
+        id: concept.id.clone(),
+        title: concept.title.clone(),
+        concept_type: concept.concept_type.clone(),
+        description: concept.description.clone(),
+        tags: concept.tags.clone(),
+        timestamp: concept.timestamp.clone(),
+        resource: concept.resource.clone(),
+        total_lines,
+        start_line: start_index + 1,
+        content,
+        next_line: (next_index < total_lines).then_some(next_index + 1),
+    })
+}
+
+/// Deduplicate canonical resources and external citations across the bundle.
+/// An optional concept ID restricts discovery to one parsed concept.
+pub fn sources(
+    bundle: &Bundle,
+    concept_id: Option<&str>,
+    offset: usize,
+    limit: usize,
+) -> SourceResult {
+    let mut by_uri = BTreeMap::<String, (HashSet<String>, HashSet<String>)>::new();
+    for concept in bundle
+        .concepts
+        .iter()
+        .filter(|concept| concept_id.is_none_or(|id| concept.id == id))
+    {
+        if let Some(resource) = concept.resource.as_deref().filter(|uri| !uri.is_empty()) {
+            let entry = by_uri.entry(resource.to_string()).or_default();
+            entry.0.insert("resource".to_string());
+            entry.1.insert(concept.id.clone());
+        }
+        for citation in concept.external_links.iter().filter(|uri| !uri.is_empty()) {
+            let entry = by_uri.entry(citation.clone()).or_default();
+            entry.0.insert("citation".to_string());
+            entry.1.insert(concept.id.clone());
+        }
+    }
+    let matching_count = by_uri.len();
+    let sources = by_uri
+        .into_iter()
+        .skip(offset)
+        .take(limit)
+        .map(|(uri, (kinds, concept_ids))| SourceReference {
+            uri,
+            kinds: sorted_values(kinds),
+            concept_ids: sorted_values(concept_ids),
+        })
+        .collect::<Vec<_>>();
+    let next_offset = (offset + sources.len() < matching_count).then_some(offset + sources.len());
+    SourceResult {
+        matching_count,
+        sources,
         next_offset,
     }
 }
@@ -359,6 +470,12 @@ fn counts<'a>(values: impl Iterator<Item = &'a String>) -> Vec<CountByValue> {
             .then_with(|| left.value.cmp(&right.value))
     });
     result
+}
+
+fn sorted_values(values: HashSet<String>) -> Vec<String> {
+    let mut values = values.into_iter().collect::<Vec<_>>();
+    values.sort();
+    values
 }
 
 fn issue_counts(bundle: &Bundle) -> (usize, usize) {
@@ -562,6 +679,45 @@ mod tests {
         assert_eq!(warnings.matching_count, 2);
         assert_eq!(warnings.issues[0].level, "warning");
         assert_eq!(warnings.next_offset, Some(1));
+    }
+
+    #[test]
+    fn concept_read_pages_body_lines_and_preserves_metadata() {
+        let mut item = concept("guides/read", "Read", "Guide", "one\ntwo\nthree", vec![]);
+        item.tags = vec!["agent".to_string()];
+        item.resource = Some("https://example.com/read".to_string());
+        let bundle = bundle(vec![item]);
+        let first = read_concept(&bundle, "guides/read", 1, 2).unwrap();
+        assert_eq!(first.content, "one\ntwo\n");
+        assert_eq!(first.total_lines, 3);
+        assert_eq!(first.next_line, Some(3));
+        assert_eq!(first.resource.as_deref(), Some("https://example.com/read"));
+        let last = read_concept(&bundle, "guides/read", 3, 2).unwrap();
+        assert_eq!(last.content, "three");
+        assert_eq!(last.next_line, None);
+        assert!(read_concept(&bundle, "missing", 1, 2).is_none());
+    }
+
+    #[test]
+    fn sources_deduplicate_kinds_concepts_and_page_stably() {
+        let mut first = concept("a", "A", "Topic", "", vec![]);
+        first.resource = Some("https://example.com/shared".to_string());
+        first.external_links = vec![
+            "https://example.com/citation".to_string(),
+            "https://example.com/shared".to_string(),
+        ];
+        let mut second = concept("b", "B", "Topic", "", vec![]);
+        second.external_links = vec!["https://example.com/shared".to_string()];
+        let bundle = bundle(vec![second, first]);
+        let result = sources(&bundle, None, 0, 10);
+        assert_eq!(result.matching_count, 2);
+        assert_eq!(result.sources[0].uri, "https://example.com/citation");
+        assert_eq!(result.sources[1].kinds, ["citation", "resource"]);
+        assert_eq!(result.sources[1].concept_ids, ["a", "b"]);
+        let filtered = sources(&bundle, Some("a"), 1, 1);
+        assert_eq!(filtered.matching_count, 2);
+        assert_eq!(filtered.sources.len(), 1);
+        assert_eq!(filtered.next_offset, None);
     }
 
     fn concept(id: &str, title: &str, concept_type: &str, body: &str, links: Vec<&str>) -> Concept {

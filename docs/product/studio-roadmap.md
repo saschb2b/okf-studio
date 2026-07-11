@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T23:59:00Z
+timestamp: 2026-07-11T23:59:30Z
 ---
 
 # Outcome
@@ -123,7 +123,8 @@ Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and 
 - [ ] Give Studio Agent its OKF system prompt and progressive-disclosure skill catalog.
 - [x] Add bounded native search and graph traversal tools and offer them to every ACP session over standard stdio MCP.
 - [x] Add bounded inventory and validation inspection with filtered cursor paging.
-- [ ] Add native source extraction, proposed write, and review tools.
+- [x] Add bounded concept reads and native source discovery without arbitrary file access or network fetching.
+- [ ] Add source extraction, proposed write, and review tools.
 - [ ] Attach bundle, selection, source, issue, and previous-thread context explicitly.
 - [x] Establish the per-session, bundle-scoped stdio MCP tool boundary for ACP agents.
 

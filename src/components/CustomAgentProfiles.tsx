@@ -299,8 +299,8 @@ function ConnectionStatus({ connection }: { connection: ProfileConnection }) {
     );
   }
   const agentName = connection.info.agent?.title ?? connection.info.agent?.name ?? "agent";
-  const authNotice = connection.info.authMethods.length > 0
-    ? " Authentication is required but is not available in Studio yet."
+  const authNotice = !connection.info.authenticated
+    ? " Authentication is required before a session can start."
     : "";
   return (
     <span className="custom-agents__connection custom-agents__connection--ready" role="status">

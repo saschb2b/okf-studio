@@ -12,6 +12,7 @@ import type {
 } from "../agent/connection.ts";
 import {
   cancelAgentTurn,
+  authenticateAgent,
   newAgentSession,
   onAgentConnectionState,
   onAgentPermissionUpdate,
@@ -37,6 +38,10 @@ interface ConversationMessage {
 }
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
+type AuthenticationState =
+  | { status: "idle" }
+  | { status: "authenticating"; methodId: string }
+  | { status: "error"; methodId: string; message: string };
 type PendingPermission = AgentPermissionEvent & {
   update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
 };
@@ -57,6 +62,7 @@ export function AgentConversation({
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const completedTurnsRef = useRef(new Set<string>());
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -170,8 +176,26 @@ export function AgentConversation({
     }
   }
 
+  async function authenticate(methodId: string) {
+    setAuthentication({ status: "authenticating", methodId });
+    try {
+      const authenticated = await authenticateAgent(connection.connectionId, methodId);
+      if (!authenticated) {
+        setAuthentication({
+          status: "error",
+          methodId,
+          message: "The agent did not complete authentication.",
+        });
+      } else {
+        setAuthentication({ status: "idle" });
+      }
+    } catch (error: unknown) {
+      setAuthentication({ status: "error", methodId, message: errorMessage(error) });
+    }
+  }
+
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
-  const requiresAuthentication = connection.authMethods.length > 0;
+  const requiresAuthentication = !connection.authenticated && connection.authMethods.length > 0;
 
   return (
     <section className="agent-conversation" aria-labelledby="agent-conversation-title">
@@ -185,7 +209,9 @@ export function AgentConversation({
           className="btn ghost"
           data-agent-initial-focus
           onClick={onChangeAgent}
-          disabled={isSubmitting || activeTurn !== null}
+          disabled={
+            isSubmitting || activeTurn !== null || authentication.status === "authenticating"
+          }
         >
           Change
         </button>
@@ -202,9 +228,35 @@ export function AgentConversation({
       )}
 
       {requiresAuthentication && (
-        <div className="agent-conversation__state" role="status">
+        <div className="agent-conversation__state agent-authentication">
           <h3>Authentication required</h3>
-          <p>This agent advertised sign-in methods, but Studio does not handle them yet.</p>
+          <p>The agent owns sign-in and credentials. Studio sends only the method you choose.</p>
+          <div className="agent-authentication__methods">
+            {connection.authMethods.map((method) => (
+              <div key={method.id} className="agent-authentication__method">
+                <div>
+                  <strong>{method.name}</strong>
+                  {method.description && <p>{method.description}</p>}
+                </div>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={authentication.status === "authenticating"}
+                  onClick={() => void authenticate(method.id)}
+                >
+                  {authentication.status === "authenticating" &&
+                  authentication.methodId === method.id
+                    ? "Waiting..."
+                    : "Continue"}
+                </button>
+              </div>
+            ))}
+          </div>
+          {authentication.status === "error" && (
+            <p className="agent-authentication__error" role="alert">
+              Authentication failed. {authentication.message}
+            </p>
+          )}
         </div>
       )}
 

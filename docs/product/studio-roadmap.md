@@ -95,8 +95,9 @@ Gate: a fake agent covers initialize, auth, session/new, streaming, permission, 
 
 ## WP5: Authentication and providers
 
-- [ ] Render ACP-advertised auth methods; let external agents own browser, terminal, subscription, and token login.
-- [ ] Never copy external-agent credentials into Studio settings or logs.
+- [x] Render stable agent-owned ACP auth methods; let external agents own browser, subscription, and token login.
+- [ ] Add client-owned terminal and environment-variable authentication if ACP stabilizes those variants.
+- [x] Never copy external-agent credentials into Studio settings or logs.
 - [ ] Store Studio Agent keys only in the OS credential store.
 - [ ] Add Ollama, LM Studio, llama.cpp, and custom compatible endpoints with connection tests.
 

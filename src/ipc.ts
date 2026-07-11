@@ -117,7 +117,10 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
     profileId,
     protocolVersion: "1",
     agent: { name: "browser-acp", title: profile.name, version: "0.0.0-dev" },
-    authMethods: [],
+    authMethods: profile.name.includes("Auth")
+      ? [{ id: "browser-login", name: "Sign in with browser", description: "The agent opens its own sign-in flow." }]
+      : [],
+    authenticated: !profile.name.includes("Auth"),
     capabilities: {
       loadSession: false,
       promptImage: false,
@@ -152,14 +155,40 @@ export async function newAgentSession(
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<AgentSessionInfo>("new_agent_session", { connectionId, bundleRoot });
   }
-  if (!activeAgentConnectionsById.has(connectionId)) {
+  const connection = activeAgentConnectionsById.get(connectionId);
+  if (!connection) {
     throw new Error("Agent connection was not found.");
   }
+  if (!connection.authenticated) throw new Error("Authenticate the agent before creating a session.");
   return {
     connectionId,
     sessionId: `session-${crypto.randomUUID()}`,
     bundleRoot,
   };
+}
+
+export async function authenticateAgent(
+  connectionId: string,
+  methodId: string,
+): Promise<boolean> {
+  const current = activeAgentConnectionsById.get(connectionId);
+  if (!current) throw new Error("Agent connection was not found.");
+  if (!current.authMethods.some((method) => method.id === methodId)) {
+    throw new Error("Authentication method was not advertised by the agent.");
+  }
+  const authenticated = isTauri()
+    ? await import("@tauri-apps/api/core").then(({ invoke }) =>
+        invoke<boolean>("authenticate_agent", { connectionId, methodId }),
+      )
+    : await new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 80));
+  if (authenticated) {
+    const latest = activeAgentConnectionsById.get(connectionId);
+    if (latest) {
+      activeAgentConnectionsById.set(connectionId, { ...latest, authenticated: true });
+      publishAgentConnections();
+    }
+  }
+  return authenticated;
 }
 
 export async function promptAgent(

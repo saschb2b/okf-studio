@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T19:00:00Z
+timestamp: 2026-07-11T20:00:00Z
 ---
 
 # Entry and first open
@@ -22,7 +22,7 @@ Browsing the catalog never downloads or starts a process. For an installable age
 
 Custom ACP profiles accept a display name, an absolute executable path, arguments as an argv list, and names of environment variables to inherit. Studio stores these profiles through Rust in its app-data directory. It never accepts a shell command string or environment values. Arguments are plain-text settings and must not contain secrets. Saving registers the profile without running it.
 
-Each saved custom profile has an explicit **Connect** action and at most one active connection. Before the action, the catalog states that the executable runs as an external, unsandboxed process and that Studio limits only the inherited environment and ACP permission responses. While connecting, the row reports process startup and protocol negotiation. A successful handshake names the agent and selected ACP version; advertised authentication methods remain visible as a limitation until Studio implements their flow. **Disconnect** stops the child. Typed lifecycle events move a connected row to disconnected or failed when the process stops, with bounded diagnostics on failure. Removing a profile also stops its connections. Leaving and reopening the catalog preserves the live state instead of starting a duplicate process.
+Each saved custom profile has an explicit **Connect** action and at most one active connection. Before the action, the catalog states that the executable runs as an external, unsandboxed process and that Studio limits only the inherited environment and ACP permission responses. While connecting, the row reports process startup and protocol negotiation. A successful handshake names the agent and selected ACP version. If the agent advertises authentication, the row marks it required before a session can start. **Disconnect** stops the child. Typed lifecycle events move a connected row to disconnected or failed when the process stops, with bounded diagnostics on failure. Removing a profile also stops its connections. Leaving and reopening the catalog preserves the live state instead of starting a duplicate process.
 
 # Layout and focus
 
@@ -42,7 +42,7 @@ Keyboard opening focuses the first useful control. Closing returns focus to the 
 
 Only advertised capabilities appear. Unsupported restore, model, usage, retry, or logout actions are not implied.
 
-The first conversation slice activates after a custom ACP connection returns from the catalog. It names the agent and active bundle, creates a bundle-scoped session on the first send, renders user and streamed agent text, and replaces **Send** with **Stop** while one turn is active. The composer is text-only and allows one live turn. A connection without an open bundle offers **Open folder**; an agent that advertises authentication shows that requirement and keeps the composer unavailable until Studio implements the advertised flow. Changing agents returns to the catalog without losing the live process. Connection state comes from a `useSyncExternalStore` subscription so React Compiler memoization cannot freeze a mutable module snapshot.
+The first conversation slice activates after a custom ACP connection returns from the catalog. It names the agent and active bundle, creates a bundle-scoped session on the first send, renders user and streamed agent text, and replaces **Send** with **Stop** while one turn is active. The composer is text-only and allows one live turn. A connection without an open bundle offers **Open folder**. An agent that advertises authentication shows only those methods and keeps the composer unavailable. Selecting one sends its ID to the agent, which owns the sign-in flow and all credentials. Failure stays visible for retry. Changing agents returns to the catalog without losing the live process. Connection state comes from a `useSyncExternalStore` subscription so React Compiler memoization cannot freeze a mutable module snapshot.
 
 When the agent pauses for ACP permission, an in-thread card shows its bounded human title and exactly the choices it advertised. The card never exposes raw tool arguments or arbitrary metadata. Choosing an option disables the card while the response is sent and leaves a retryable error in place if sending fails. If no reject choice was advertised, Studio adds **Cancel**, which returns ACP `cancelled` rather than inventing a choice. **Stop** cancels every pending permission for that session before cancelling the turn. Agent switching stays disabled until the active turn ends, preventing an approval from being detached from its transcript.
 

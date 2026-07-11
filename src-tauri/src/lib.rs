@@ -80,6 +80,15 @@ async fn new_agent_session(
 }
 
 #[tauri::command]
+async fn authenticate_agent(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    method_id: String,
+) -> Result<bool, String> {
+    agent_protocol::authenticate(state.inner(), &connection_id, method_id).await
+}
+
+#[tauri::command]
 async fn prompt_agent(
     state: State<'_, agent_protocol::AgentHostState>,
     connection_id: String,
@@ -289,6 +298,7 @@ pub fn run() {
             remove_custom_agent,
             connect_custom_agent,
             disconnect_agent,
+            authenticate_agent,
             new_agent_session,
             prompt_agent,
             cancel_agent_turn,

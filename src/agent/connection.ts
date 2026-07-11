@@ -28,6 +28,7 @@ export interface AgentConnectionInfo {
   protocolVersion: string;
   agent: AgentImplementationInfo | null;
   authMethods: readonly AgentAuthMethodInfo[];
+  authenticated: boolean;
   capabilities: AgentCapabilityInfo;
 }
 

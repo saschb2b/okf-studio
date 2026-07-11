@@ -1,7 +1,7 @@
 use agent_client_protocol::schema::v1::{
-    AgentCapabilities, CancelNotification, ContentBlock, ContentChunk, Implementation,
-    InitializeRequest, InitializeResponse, NewSessionRequest, PermissionOptionKind, PromptRequest,
-    RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
+    AgentCapabilities, AuthenticateRequest, CancelNotification, ContentBlock, ContentChunk,
+    Implementation, InitializeRequest, InitializeResponse, NewSessionRequest, PermissionOptionKind,
+    PromptRequest, RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
     SelectedPermissionOutcome, SessionNotification, SessionUpdate, StopReason, TextContent,
 };
 use agent_client_protocol::schema::ProtocolVersion;
@@ -22,6 +22,7 @@ use crate::agent_custom;
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
 const COMMAND_ACCEPT_TIMEOUT: Duration = Duration::from_secs(10);
+const AUTHENTICATE_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const PERMISSION_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
@@ -29,6 +30,8 @@ const MAX_PROMPT_CHARS: usize = 128 * 1024;
 const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
+const MAX_AUTH_METHODS: usize = 16;
+const MAX_AUTH_FIELD_CHARS: usize = 512;
 const CONNECTION_EVENT: &str = "agent-connection-state";
 const TURN_EVENT: &str = "agent-turn-update";
 const PERMISSION_EVENT: &str = "agent-permission-update";
@@ -43,6 +46,7 @@ pub struct AgentConnectionInfo {
     protocol_version: String,
     agent: Option<AgentImplementationInfo>,
     auth_methods: Vec<AgentAuthMethodInfo>,
+    authenticated: bool,
     capabilities: AgentCapabilityInfo,
 }
 
@@ -192,6 +196,10 @@ struct AgentWorker {
 }
 
 enum AgentHostCommand {
+    Authenticate {
+        method_id: String,
+        response: tokio::sync::oneshot::Sender<Result<bool, String>>,
+    },
     NewSession {
         bundle_root: PathBuf,
         response: tokio::sync::oneshot::Sender<Result<AgentSessionInfo, String>>,
@@ -357,6 +365,26 @@ pub async fn new_session(
         .await
         .map_err(|_| "Agent session creation timed out.".to_string())?
         .map_err(|_| "Agent connection ended before session creation.".to_string())?
+}
+
+pub async fn authenticate(
+    state: &AgentHostState,
+    connection_id: &str,
+    method_id: String,
+) -> Result<bool, String> {
+    let commands = connection_commands(state, connection_id)?;
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::Authenticate {
+            method_id,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before authentication.".to_string())?;
+    tokio::time::timeout(AUTHENTICATE_TIMEOUT, response_rx)
+        .await
+        .map_err(|_| "Agent authentication timed out.".to_string())?
+        .map_err(|_| "Agent connection ended during authentication.".to_string())?
 }
 
 pub async fn prompt(
@@ -685,12 +713,24 @@ async fn run_connection(
         )
         .connect_with(agent, async move |connection: ConnectionTo<Agent>| {
             let response = initialize_connection(&connection).await?;
+            let auth_methods = auth_method_info(&response);
+            if !response.auth_methods.is_empty() && auth_methods.is_empty() {
+                return Err(agent_client_protocol::util::internal_error(
+                    "Agent advertised no usable authentication methods",
+                ));
+            }
+            let auth_method_ids = auth_methods
+                .iter()
+                .map(|method| method.id.clone())
+                .collect::<HashSet<_>>();
+            let mut authenticated = auth_method_ids.is_empty();
             if let Some(sender) = take_sender(&handshake) {
                 sender
                     .send(Ok(connection_info(
                         connection_id.clone(),
                         profile_id,
                         response,
+                        auth_methods,
                     )))
                     .map_err(|_| {
                         agent_client_protocol::util::internal_error(
@@ -705,8 +745,30 @@ async fn run_connection(
                     command = commands.recv() => {
                         let Some(command) = command else { break };
                         match command {
+                            AgentHostCommand::Authenticate { method_id, response } => {
+                                let result = if !auth_method_ids.contains(&method_id) {
+                                    Err("Authentication method was not advertised by the agent.".to_string())
+                                } else if authenticated {
+                                    Ok(true)
+                                } else {
+                                    connection
+                                        .send_request(AuthenticateRequest::new(method_id))
+                                        .block_task()
+                                        .await
+                                        .map(|_| {
+                                            authenticated = true;
+                                            true
+                                        })
+                                        .map_err(|error| format!("Agent authentication failed: {error}"))
+                                };
+                                let _ = response.send(result);
+                            }
                             AgentHostCommand::NewSession { bundle_root, response } => {
-                                let result = create_session(&connection, &connection_id, bundle_root).await;
+                                let result = if authenticated {
+                                    create_session(&connection, &connection_id, bundle_root).await
+                                } else {
+                                    Err("Authenticate the agent before creating a session.".to_string())
+                                };
                                 if let Ok(info) = &result {
                                     sessions.insert(info.session_id.clone(), info.bundle_root.clone());
                                 }
@@ -986,7 +1048,9 @@ fn connection_info(
     connection_id: String,
     profile_id: String,
     response: InitializeResponse,
+    auth_methods: Vec<AgentAuthMethodInfo>,
 ) -> AgentConnectionInfo {
+    let authenticated = auth_methods.is_empty();
     AgentConnectionInfo {
         connection_id,
         profile_id,
@@ -996,17 +1060,50 @@ fn connection_info(
             title: info.title,
             version: info.version,
         }),
-        auth_methods: response
-            .auth_methods
-            .into_iter()
-            .map(|method| AgentAuthMethodInfo {
-                id: method.id().to_string(),
-                name: method.name().to_string(),
-                description: method.description().map(str::to_string),
-            })
-            .collect(),
+        auth_methods,
+        authenticated,
         capabilities: capability_info(&response.agent_capabilities),
     }
+}
+
+fn auth_method_info(response: &InitializeResponse) -> Vec<AgentAuthMethodInfo> {
+    let mut seen = HashSet::new();
+    let mut methods = Vec::new();
+    for method in &response.auth_methods {
+        let id = method.id().to_string();
+        if id.is_empty()
+            || id.chars().count() > MAX_AUTH_FIELD_CHARS
+            || !seen.insert(id.clone())
+        {
+            continue;
+        }
+        let name = bounded_auth_field(method.name());
+        let description = method
+            .description()
+            .map(bounded_auth_field)
+            .filter(|description| !description.trim().is_empty());
+        methods.push(AgentAuthMethodInfo {
+            id,
+            name: if name.trim().is_empty() {
+                "Sign in".to_string()
+            } else {
+                name
+            },
+            description,
+        });
+        if methods.len() == MAX_AUTH_METHODS {
+            break;
+        }
+    }
+    methods
+}
+
+fn bounded_auth_field(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .take(MAX_AUTH_FIELD_CHARS)
+        .collect()
 }
 
 fn capability_info(capabilities: &AgentCapabilities) -> AgentCapabilityInfo {
@@ -1199,8 +1296,8 @@ async fn negotiate_with_timeout(
 mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
-        AgentCapabilities, AuthMethod, AuthMethodAgent, NewSessionResponse, PermissionOption,
-        PromptCapabilities, PromptResponse, ToolCallUpdate, ToolCallUpdateFields,
+        AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, NewSessionResponse,
+        PermissionOption, PromptCapabilities, PromptResponse, ToolCallUpdate, ToolCallUpdateFields,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -1309,6 +1406,125 @@ mod tests {
             bundle_root.canonicalize().expect("canonical")
         );
         std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn authenticates_with_an_advertised_method_before_session_creation() {
+        let fake_agent = Agent
+            .builder()
+            .on_receive_request(
+                async move |_request: InitializeRequest,
+                            responder: Responder<InitializeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(
+                        InitializeResponse::new(ProtocolVersion::V1).auth_methods(vec![
+                            AuthMethod::Agent(AuthMethodAgent::new("browser", "Sign in")),
+                        ]),
+                    )
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |request: AuthenticateRequest,
+                            responder: Responder<AuthenticateResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    assert_eq!(request.method_id.to_string(), "browser");
+                    responder.respond(AuthenticateResponse::new())
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |_request: NewSessionRequest,
+                            responder: Responder<NewSessionResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(NewSessionResponse::new("session-authenticated"))
+                },
+                agent_client_protocol::on_receive_request!(),
+            );
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let (commands_tx, commands_rx) = tokio::sync::mpsc::channel(8);
+        let worker = tokio::spawn(run_connection(
+            fake_agent,
+            "connection-auth".to_string(),
+            "profile-auth".to_string(),
+            Arc::new(Mutex::new(Some(handshake_tx))),
+            commands_rx,
+            ConnectionRuntime {
+                turn_events: Arc::new(|_| {}),
+                permissions: Arc::new(Mutex::new(HashMap::new())),
+                permission_events: Arc::new(|_| {}),
+            },
+        ));
+        let info = handshake_rx
+            .await
+            .expect("handshake response")
+            .expect("handshake should pass");
+        assert!(!info.authenticated);
+
+        let (session_tx, session_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::NewSession {
+                bundle_root: std::env::temp_dir(),
+                response: session_tx,
+            })
+            .await
+            .expect("send unauthenticated session");
+        assert_eq!(
+            session_rx
+                .await
+                .expect("session response")
+                .expect_err("session should require authentication"),
+            "Authenticate the agent before creating a session."
+        );
+
+        let (invalid_tx, invalid_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::Authenticate {
+                method_id: "invented".to_string(),
+                response: invalid_tx,
+            })
+            .await
+            .expect("send invalid authentication");
+        assert_eq!(
+            invalid_rx
+                .await
+                .expect("invalid auth response")
+                .expect_err("invented method should fail"),
+            "Authentication method was not advertised by the agent."
+        );
+
+        let (auth_tx, auth_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::Authenticate {
+                method_id: "browser".to_string(),
+                response: auth_tx,
+            })
+            .await
+            .expect("send authentication");
+        assert!(auth_rx
+            .await
+            .expect("authentication response")
+            .expect("authentication should pass"));
+
+        let (session_tx, session_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::NewSession {
+                bundle_root: std::env::temp_dir(),
+                response: session_tx,
+            })
+            .await
+            .expect("send authenticated session");
+        assert_eq!(
+            session_rx
+                .await
+                .expect("session response")
+                .expect("session should start")
+                .session_id,
+            "session-authenticated"
+        );
+
+        worker.abort();
+        assert!(worker.await.expect_err("worker should abort").is_cancelled());
     }
 
     #[tokio::test(flavor = "current_thread")]

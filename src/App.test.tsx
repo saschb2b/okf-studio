@@ -182,6 +182,37 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
   });
 
+  it("uses an ACP-advertised authentication method before starting a session", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Auth Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\auth.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Auth Harness" }));
+    expect(await screen.findByText(/Authentication is required before a session/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Authentication required" })).toBeInTheDocument();
+    expect(screen.getByText("Sign in with browser")).toBeInTheDocument();
+    expect(screen.getByText(/agent opens its own sign-in flow/i)).toBeInTheDocument();
+    vi.spyOn(ipc, "authenticateAgent").mockRejectedValueOnce(new Error("Browser closed"));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Authentication failed. Browser closed",
+    );
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(await screen.findByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Auth Harness" }));
+  });
+
   it("keeps a custom ACP connection failure visible and retryable", async () => {
     vi.spyOn(ipc, "connectCustomAgent").mockRejectedValueOnce(new Error("Handshake rejected"));
     const user = userEvent.setup();

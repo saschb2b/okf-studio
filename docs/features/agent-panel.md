@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T04:15:00Z
+timestamp: 2026-07-11T06:30:00Z
 ---
 
 # Entry and first open
@@ -19,6 +19,8 @@ First open makes no account or network request. It explains three paths and offe
 # Layout and focus
 
 The panel docks right and reduces workspace width. It does not cover the graph or reader. Width and visibility persist. At narrow widths it becomes the active center surface with a direct route back.
+
+The divider accepts pointer dragging and keyboard resizing. `ArrowLeft` widens the panel, `ArrowRight` narrows it, Shift changes the step, and Enter, Home, End, or double-click restores the default width. Width is clamped between 320 and 560 pixels.
 
 Keyboard opening focuses the first useful control. Closing returns focus to the opener. Pointer opening does not steal focus until the user activates a panel control.
 
@@ -51,4 +53,3 @@ Tool calls show pending, permission, running, completed, failed, or cancelled st
 # Accessibility
 
 The panel is a labelled complementary region. Streaming uses restrained live regions and never moves focus. Tool, diff, attachment, and permission actions are real controls with visible focus. The composer supports multiline input without ambiguous submission.
-

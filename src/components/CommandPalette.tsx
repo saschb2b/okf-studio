@@ -17,6 +17,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useApp } from "../store.tsx";
+import { focusAgentPanel, focusAgentPanelOpener } from "../agentPanelFocus.ts";
 import type { Concept } from "../types.ts";
 import "./chrome.css";
 import "./baseui.css";
@@ -224,7 +225,11 @@ export function CommandPalette() {
       id: "act:agent",
       label: "Toggle agent panel",
       hint: "Action",
-      run: () => actions.togglePanel("agent"),
+      run: () => {
+        actions.togglePanel("agent");
+        if (state.panels.agent) focusAgentPanelOpener();
+        else focusAgentPanel();
+      },
     },
     {
       kind: "action",

@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-11T04:15:00Z
+timestamp: 2026-07-11T06:30:00Z
 ---
 
 # Outcome
@@ -63,9 +63,9 @@ Gate: no visible Viewer branding remains; updater identity is unchanged; app and
 
 ## WP2: Agent Panel shell
 
-- [ ] Put the Agent opener last at the bottom-right of the status bar.
-- [ ] Toggle a resizable right dock that reduces the workspace instead of covering it.
-- [ ] Persist visibility and width; add `Ctrl/Cmd+Shift+A` and a command-palette action.
+- [x] Put the Agent opener last at the bottom-right of the status bar.
+- [x] Toggle a resizable right dock that reduces the workspace instead of covering it.
+- [x] Persist visibility and width; add `Ctrl/Cmd+Shift+A` and a command-palette action.
 - [ ] Ship no-connection, loading, connection-error, no-bundle, and narrow-window states.
 
 Gate: keyboard, focus return, axe, 24px targets, and screenshots at narrow and wide widths.

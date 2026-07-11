@@ -28,7 +28,10 @@ export function App() {
   return (
     <div className="app" data-maximized={state.maximized || undefined}>
       <TopBar />
-      <div className="app-main">
+      <div
+        className="app-main"
+        data-agent-open={state.panels.agent || undefined}
+      >
         <ActivityBar />
         {state.bundle ? <Workspace /> : <EmptyState />}
         <AgentPanel />

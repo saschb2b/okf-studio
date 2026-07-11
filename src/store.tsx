@@ -107,6 +107,11 @@ export interface PaneSizes {
   reader: number | null;
 }
 
+export interface AgentPanelLayout {
+  open: boolean;
+  width: number | null;
+}
+
 /** Min/max clamps (px) for draggable dividers; see reader-first-layout.md. */
 export const PANE_CLAMPS = {
   sidebar: { min: 200, max: 360 },
@@ -115,7 +120,43 @@ export const PANE_CLAMPS = {
   graphMin: 280,
 } as const;
 
+export const AGENT_PANEL_CLAMP = { min: 320, max: 560 } as const;
+
 const LAYOUT_KEY = "okf-viewer:layout";
+const AGENT_PANEL_KEY = "okf-studio:agent-panel";
+
+function loadAgentPanelLayout(): AgentPanelLayout {
+  const fallback: AgentPanelLayout = { open: false, width: null };
+  if (typeof localStorage === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(AGENT_PANEL_KEY);
+    if (!raw) return fallback;
+    const stored = JSON.parse(raw) as Partial<AgentPanelLayout>;
+    return {
+      open: stored.open === true,
+      width:
+        typeof stored.width === "number"
+          ? Math.round(
+              Math.min(
+                AGENT_PANEL_CLAMP.max,
+                Math.max(AGENT_PANEL_CLAMP.min, stored.width),
+              ),
+            )
+          : null,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveAgentPanelLayout(layout: AgentPanelLayout): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(AGENT_PANEL_KEY, JSON.stringify(layout));
+  } catch {
+    // Persistence is best-effort; ignore quota/serialization errors.
+  }
+}
 
 /**
  * Which visualization the graph pane renders. "graph" is the force-directed
@@ -221,6 +262,7 @@ export interface State {
   linkDensity: LinkDensity;
   layout: LayoutMode;
   paneSizes: PaneSizes;
+  agentPanelWidth: number | null;
   panels: Record<PanelName, boolean>;
   palette: boolean;
   /** One-shot initial query for the next palette open (e.g. the sidebar's
@@ -237,6 +279,7 @@ export interface State {
 // storage.
 function makeInitialState(): State {
   const persistedLayout = loadLayout();
+  const persistedAgentPanel = loadAgentPanelLayout();
   return {
   folder: null,
   bundles: [],
@@ -269,13 +312,14 @@ function makeInitialState(): State {
   // *action* saves, so the main window's saved layout is untouched.
   layout: bootTarget ? "reader" : persistedLayout.mode,
   paneSizes: persistedLayout.sizes,
+  agentPanelWidth: persistedAgentPanel.width,
   panels: {
     sidebar: !bootTarget,
     reader: true,
     log: false,
     validation: false,
     lineage: false,
-    agent: false,
+    agent: persistedAgentPanel.open,
   },
   palette: false,
   paletteSeed: null,
@@ -317,6 +361,7 @@ type Msg =
   | { t: "layout"; v: LayoutMode }
   | { t: "cycleLayout" }
   | { t: "paneSize"; pane: "sidebar" | "reader"; v: number | null }
+  | { t: "agentPanelWidth"; v: number | null }
   | { t: "panel"; name: PanelName; v?: boolean }
   | { t: "palette"; v: boolean; seed?: string }
   | { t: "settingsOpen"; v: boolean }
@@ -594,14 +639,32 @@ function reducer(s: State, m: Msg): State {
       saveLayout(s.layout, paneSizes, s.vizView);
       return { ...s, paneSizes };
     }
-    case "panel":
+    case "agentPanelWidth": {
+      const width =
+        m.v === null
+          ? null
+          : Math.round(
+              Math.min(
+                AGENT_PANEL_CLAMP.max,
+                Math.max(AGENT_PANEL_CLAMP.min, m.v),
+              ),
+            );
+      saveAgentPanelLayout({ open: s.panels.agent, width });
+      return { ...s, agentPanelWidth: width };
+    }
+    case "panel": {
+      const open = m.v ?? !s.panels[m.name];
+      if (m.name === "agent") {
+        saveAgentPanelLayout({ open, width: s.agentPanelWidth });
+      }
       return {
         ...s,
         panels: {
           ...s.panels,
-          [m.name]: m.v ?? !s.panels[m.name],
+          [m.name]: open,
         },
       };
+    }
     case "palette":
       return { ...s, palette: m.v, paletteSeed: m.v ? (m.seed ?? null) : null };
     case "settingsOpen":
@@ -667,6 +730,7 @@ export interface Actions {
   setLayout(mode: LayoutMode): void;
   cycleLayout(): void;
   setPaneSize(pane: "sidebar" | "reader", value: number | null): void;
+  setAgentPanelWidth(value: number | null): void;
   togglePanel(name: PanelName, value?: boolean): void;
   setPalette(open: boolean, seed?: string): void;
   setSettingsOpen(open: boolean): void;
@@ -916,6 +980,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setPaneSize(pane, value) {
       dispatch({ t: "paneSize", pane, v: value });
+    },
+    setAgentPanelWidth(value) {
+      dispatch({ t: "agentPanelWidth", v: value });
     },
     togglePanel(name, value) {
       dispatch({ t: "panel", name, v: value });

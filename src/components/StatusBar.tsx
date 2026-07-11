@@ -10,6 +10,7 @@
 import { Check, History, Sparkles, TriangleAlert, Waypoints, X as XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useApp } from "../store.tsx";
+import { AGENT_PANEL_OPENER_ID } from "../agentPanelFocus.ts";
 import "./StatusBar.css";
 
 export function StatusBar() {
@@ -101,6 +102,7 @@ export function StatusBar() {
           </span>
         )}
         <button
+          id={AGENT_PANEL_OPENER_ID}
           type="button"
           className={`status-item status-toggle${state.panels.agent ? " is-active" : ""}`}
           aria-label="Toggle agent panel"

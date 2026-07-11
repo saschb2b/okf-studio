@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, it, expect } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
@@ -15,6 +15,8 @@ function renderApp() {
     </AppProvider>,
   );
 }
+
+beforeEach(() => localStorage.clear());
 
 async function openFolder(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
@@ -39,6 +41,37 @@ describe("OKF Studio app", () => {
 
     expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Connect an agent" })).toBeInTheDocument();
+  });
+
+  it("moves focus into and out of the agent panel with its shortcut", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
+    expect(screen.getByRole("button", { name: "Connect an agent" })).toHaveFocus();
+
+    await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
+    expect(screen.getByRole("button", { name: /toggle agent panel/i })).toHaveFocus();
+  });
+
+  it("persists the agent panel width and visibility", async () => {
+    const user = userEvent.setup();
+    const first = renderApp();
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+
+    const splitter = screen.getByRole("separator", { name: /resize agent panel/i });
+    fireEvent.keyDown(splitter, { key: "ArrowLeft" });
+    expect(
+      JSON.parse(localStorage.getItem("okf-studio:agent-panel")!),
+    ).toEqual({ open: true, width: 456 });
+
+    first.unmount();
+    renderApp();
+    expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
+    expect(screen.getByRole("separator", { name: /resize agent panel/i })).toHaveAttribute(
+      "aria-valuenow",
+      "456",
+    );
   });
 
   it("opens a folder and lists the bundle's concepts in the sidebar", async () => {

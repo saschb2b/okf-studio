@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-11T22:30:00Z
+timestamp: 2026-07-11T23:00:00Z
 ---
 
 # Entry and first open
@@ -49,6 +49,8 @@ The first conversation slice activates after a catalog or custom ACP connection 
 The empty thread states that Studio attaches OKF context on the first send and provides read-only bundle text through ACP. That first prompt keeps the user's text as its own final block and precedes it with a client-context notice, the canonical OKF skill, specification, commands, templates, and a file resource link to the active bundle's root `index.md`. Agents that advertise embedded-context support receive the four trusted skill documents as Markdown resources. Other agents receive the same documents as labelled text blocks. The bundle index remains a link because bundle content is untrusted knowledge and may change during the session. Later turns do not repeat the context. A failed first prompt retries it.
 
 The client advertises ACP text reads and no ACP writes. Read requests must name the active session and an absolute UTF-8 file inside that session's canonical bundle root. Studio rejects traversal, symbolic-link escape, directories, binary content, and files above its documented 1 MiB response bound. ACP line and limit fields allow a bounded range. This mediation does not sandbox the external process, which still receives the bundle root as its working directory.
+
+When a concept is open, **Attach current concept** adds a visible, removable chip above the composer. The attachment records that concept at the time of the action; navigating elsewhere does not silently replace it. On send, Studio passes its bundle-relative Markdown path to Rust. Rust revalidates the path against the session root and supplies it to the agent as an ACP file resource link. The chip clears after the agent accepts the turn and remains after an error.
 
 When the agent pauses for ACP permission, an in-thread card shows its bounded human title and exactly the choices it advertised. The card never exposes raw tool arguments or arbitrary metadata. Choosing an option disables the card while the response is sent and leaves a retryable error in place if sending fails. If no reject choice was advertised, Studio adds **Cancel**, which returns ACP `cancelled` rather than inventing a choice. **Stop** cancels every pending permission for that session before cancelling the turn. Agent switching stays disabled until the active turn ends, preventing an approval from being detached from its transcript.
 

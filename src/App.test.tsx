@@ -167,8 +167,10 @@ describe("OKF Studio app", () => {
 
   it("creates a bundle-scoped session and renders streamed agent text", async () => {
     const user = userEvent.setup();
+    const promptSpy = vi.spyOn(ipc, "promptAgent");
     renderApp();
     await openFolder(user);
+    await user.click(screen.getByRole("treeitem", { name: "Overview" }));
 
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
@@ -180,12 +182,21 @@ describe("OKF Studio app", () => {
     await screen.findByText(/Connected to Research Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Attach current concept" }));
+    expect(screen.getByRole("button", { name: "Remove Overview from context" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
     await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(promptSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "Summarize the bundle",
+      ["product/overview.md"],
+    );
     expect(await screen.findByText("Summarize the bundle")).toBeInTheDocument();
     expect(await screen.findByText("Browser ACP received: Summarize the bundle")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Attach current concept" })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));

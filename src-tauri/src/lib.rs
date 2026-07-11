@@ -103,8 +103,16 @@ async fn prompt_agent(
     connection_id: String,
     session_id: String,
     text: String,
+    context_paths: Vec<String>,
 ) -> Result<agent_protocol::AgentTurnInfo, String> {
-    agent_protocol::prompt(state.inner(), &connection_id, session_id, text).await
+    agent_protocol::prompt(
+        state.inner(),
+        &connection_id,
+        session_id,
+        text,
+        context_paths,
+    )
+    .await
 }
 
 #[tauri::command]

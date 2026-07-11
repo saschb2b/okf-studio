@@ -32,6 +32,8 @@ const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
 const MAX_PROMPT_CHARS: usize = 128 * 1024;
 const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
 const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
+const MAX_CONTEXT_PATHS: usize = 8;
+const MAX_CONTEXT_PATH_CHARS: usize = 1024;
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
 const MAX_AUTH_METHODS: usize = 16;
@@ -216,6 +218,7 @@ enum AgentHostCommand {
         session_id: String,
         turn_id: String,
         text: String,
+        context_paths: Vec<String>,
         response: tokio::sync::oneshot::Sender<Result<AgentTurnInfo, String>>,
     },
     CancelTurn {
@@ -427,6 +430,7 @@ pub async fn prompt(
     connection_id: &str,
     session_id: String,
     text: String,
+    context_paths: Vec<String>,
 ) -> Result<AgentTurnInfo, String> {
     let text = text.trim().to_string();
     if text.is_empty() {
@@ -437,6 +441,15 @@ pub async fn prompt(
             "Prompt text cannot exceed {MAX_PROMPT_CHARS} characters."
         ));
     }
+    if context_paths.len() > MAX_CONTEXT_PATHS {
+        return Err(format!("A prompt can attach at most {MAX_CONTEXT_PATHS} context files."));
+    }
+    if context_paths
+        .iter()
+        .any(|path| path.is_empty() || path.chars().count() > MAX_CONTEXT_PATH_CHARS)
+    {
+        return Err("Context paths must be non-empty and bounded.".to_string());
+    }
     let turn_id = format!("turn-{}", uuid::Uuid::new_v4());
     let commands = connection_commands(state, connection_id)?;
     let (response_tx, response_rx) = tokio::sync::oneshot::channel();
@@ -445,6 +458,7 @@ pub async fn prompt(
             session_id,
             turn_id,
             text,
+            context_paths,
             response: response_tx,
         })
         .await
@@ -832,7 +846,7 @@ async fn run_connection(
                                 }
                                 let _ = response.send(result);
                             }
-                            AgentHostCommand::Prompt { session_id, turn_id, text, response } => {
+                            AgentHostCommand::Prompt { session_id, turn_id, text, context_paths, response } => {
                                 let bundle_root = sessions
                                     .lock()
                                     .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
@@ -841,6 +855,13 @@ async fn run_connection(
                                 let Some(bundle_root) = bundle_root else {
                                     let _ = response.send(Err("Agent session was not found on this connection.".to_string()));
                                     continue;
+                                };
+                                let context = match context_resource_links(&bundle_root, &context_paths) {
+                                    Ok(context) => context,
+                                    Err(message) => {
+                                        let _ = response.send(Err(message));
+                                        continue;
+                                    }
                                 };
                                 let accepted = {
                                     let mut turns = active_turns.lock().map_err(|_| {
@@ -876,9 +897,11 @@ async fn run_connection(
                                     .ok()
                                     .is_some_and(|contexts| contexts.contains(&session_id));
                                 let prompt = if attach_context {
-                                    okf_prompt_blocks(&bundle_root, text, supports_embedded_context)
+                                    okf_prompt_blocks(&bundle_root, context, text, supports_embedded_context)
                                 } else {
-                                    vec![ContentBlock::Text(TextContent::new(text))]
+                                    let mut prompt = context;
+                                    prompt.push(ContentBlock::Text(TextContent::new(text)));
+                                    prompt
                                 };
                                 turn_tasks.spawn(async move {
                                     let result = send_prompt(&prompt_connection, &session_id, prompt).await;
@@ -981,6 +1004,41 @@ fn read_bundle_text(
         .collect())
 }
 
+fn context_resource_links(
+    bundle_root: &std::path::Path,
+    context_paths: &[String],
+) -> Result<Vec<ContentBlock>, String> {
+    let mut seen = HashSet::new();
+    context_paths
+        .iter()
+        .filter(|relative| seen.insert((*relative).clone()))
+        .map(|relative| {
+            let relative_path = std::path::Path::new(relative);
+            if relative_path.is_absolute()
+                || relative_path.components().any(|component| {
+                    !matches!(component, std::path::Component::Normal(_))
+                })
+            {
+                return Err("Context attachment denied: paths must be bundle-relative files.".to_string());
+            }
+            let path = bundle_root
+                .join(relative_path)
+                .canonicalize()
+                .map_err(|_| "Context attachment is unavailable.".to_string())?;
+            if !path.starts_with(bundle_root) || !path.is_file() {
+                return Err("Context attachment denied: the file is outside the active bundle root.".to_string());
+            }
+            let uri = url::Url::from_file_path(&path)
+                .map_err(|()| "Context attachment could not be represented as a file URL.".to_string())?;
+            Ok(ContentBlock::ResourceLink(
+                ResourceLink::new(format!("Context: {relative}"), uri.to_string())
+                    .description("User-attached OKF concept from the active bundle.")
+                    .mime_type("text/markdown"),
+            ))
+        })
+        .collect()
+}
+
 fn permission_options(
     options: Vec<agent_client_protocol::schema::v1::PermissionOption>,
 ) -> Vec<AgentPermissionOptionInfo> {
@@ -1077,6 +1135,7 @@ async fn send_prompt(
 
 fn okf_prompt_blocks(
     bundle_root: &std::path::Path,
+    context: Vec<ContentBlock>,
     user_text: String,
     supports_embedded_context: bool,
 ) -> Vec<ContentBlock> {
@@ -1108,6 +1167,7 @@ fn okf_prompt_blocks(
                 .mime_type("text/markdown"),
         ));
     }
+    prompt.extend(context);
     prompt.push(ContentBlock::Text(TextContent::new(user_text)));
     prompt
 }
@@ -1674,6 +1734,7 @@ mod tests {
                 session_id: "session-read".to_string(),
                 turn_id: "turn-read".to_string(),
                 text: "Read the concept".to_string(),
+                context_paths: Vec::new(),
                 response: prompt_tx,
             })
             .await
@@ -1999,6 +2060,7 @@ mod tests {
                 session_id: "session-1".to_string(),
                 turn_id: "turn-1".to_string(),
                 text: "Research this bundle".to_string(),
+                context_paths: Vec::new(),
                 response: prompt_tx,
             })
             .await
@@ -2130,6 +2192,7 @@ mod tests {
                 session_id: "session-permission".to_string(),
                 turn_id: "turn-permission".to_string(),
                 text: "Update the index".to_string(),
+                context_paths: Vec::new(),
                 response: prompt_tx,
             })
             .await
@@ -2211,6 +2274,7 @@ mod tests {
     fn okf_context_uses_embedded_resources_when_the_agent_supports_them() {
         let prompt = okf_prompt_blocks(
             &std::env::temp_dir(),
+            Vec::new(),
             "Map this bundle".to_string(),
             true,
         );
@@ -2229,6 +2293,37 @@ mod tests {
             content,
             ContentBlock::ResourceLink(link) if link.uri.starts_with("file:")
         )));
+    }
+
+    #[test]
+    fn resolves_explicit_context_inside_the_bundle_and_rejects_traversal() {
+        let bundle_root = std::env::temp_dir().join(format!(
+            "okf-studio-context-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let concept_dir = bundle_root.join("product");
+        std::fs::create_dir_all(&concept_dir).expect("create concept directory");
+        std::fs::write(concept_dir.join("overview.md"), "---\ntype: Product\n---\n")
+            .expect("write concept");
+        let canonical_root = bundle_root.canonicalize().expect("canonical bundle");
+
+        let context = context_resource_links(
+            &canonical_root,
+            &["product/overview.md".to_string()],
+        )
+        .expect("context should resolve");
+        assert!(matches!(
+            context.as_slice(),
+            [ContentBlock::ResourceLink(link)]
+                if link.name == "Context: product/overview.md"
+                    && link.uri.starts_with("file:")
+        ));
+        assert_eq!(
+            context_resource_links(&canonical_root, &["../outside.md".to_string()])
+                .expect_err("traversal should fail"),
+            "Context attachment denied: paths must be bundle-relative files."
+        );
+        std::fs::remove_dir_all(bundle_root).expect("remove bundle");
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -2317,6 +2412,7 @@ mod tests {
                 session_id: "session-cancel".to_string(),
                 turn_id: "turn-cancel".to_string(),
                 text: "Long task".to_string(),
+                context_paths: Vec::new(),
                 response: prompt_tx,
             })
             .await

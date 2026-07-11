@@ -11,6 +11,9 @@ import "./AgentPanel.css";
 export function AgentPanel() {
   const { state, actions } = useApp();
   const connections = useAgentConnections();
+  const activeConcept = state.bundle?.concepts.find(
+    (concept) => concept.id === state.activeConceptId,
+  ) ?? null;
   const panelRef = useRef<HTMLElement>(null);
   const [view, setView] = useState<"empty" | "catalog" | "conversation">("empty");
   if (!state.panels.agent) return null;
@@ -77,6 +80,7 @@ export function AgentPanel() {
             connection={connection}
             bundleRoot={state.activeRoot}
             bundleName={state.bundle?.name ?? null}
+            activeConcept={activeConcept}
             onChangeAgent={openCatalog}
             onConnectionEnd={() => setView("empty")}
             onOpenFolder={() => actions.openFolder()}

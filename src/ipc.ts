@@ -241,10 +241,16 @@ export async function promptAgent(
   connectionId: string,
   sessionId: string,
   text: string,
+  contextPaths: readonly string[] = [],
 ): Promise<AgentTurnInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
-    return invoke<AgentTurnInfo>("prompt_agent", { connectionId, sessionId, text });
+    return invoke<AgentTurnInfo>("prompt_agent", {
+      connectionId,
+      sessionId,
+      text,
+      contextPaths,
+    });
   }
   if (!activeAgentConnectionsById.has(connectionId)) {
     throw new Error("Agent connection was not found.");

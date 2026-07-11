@@ -1,4 +1,4 @@
-import { Bot, Send, ShieldQuestion, Square, User } from "lucide-react";
+import { Bot, FileText, Paperclip, Send, ShieldQuestion, Square, User, X } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type {
@@ -26,6 +26,7 @@ interface AgentConversationProps {
   connection: AgentConnectionInfo;
   bundleRoot: string | null;
   bundleName: string | null;
+  activeConcept: { id: string; title: string } | null;
   onChangeAgent: () => void;
   onConnectionEnd: (event: AgentConnectionEvent) => void;
   onOpenFolder: () => Promise<void>;
@@ -54,6 +55,7 @@ export function AgentConversation({
   connection,
   bundleRoot,
   bundleName,
+  activeConcept,
   onChangeAgent,
   onConnectionEnd,
   onOpenFolder,
@@ -63,6 +65,7 @@ export function AgentConversation({
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
+  const [attachedConcept, setAttachedConcept] = useState<{ id: string; title: string } | null>(null);
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const completedTurnsRef = useRef(new Set<string>());
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -143,7 +146,9 @@ export function AgentConversation({
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
         }
-        const turn = await promptAgent(connection.connectionId, session.sessionId, text);
+        const contextPaths = attachedConcept ? [`${attachedConcept.id}.md`] : [];
+        const turn = await promptAgent(connection.connectionId, session.sessionId, text, contextPaths);
+        setAttachedConcept(null);
         if (!completedTurnsRef.current.delete(turn.turnId)) setActiveTurn(turn);
         return { status: "idle" };
       } catch (error: unknown) {
@@ -279,6 +284,34 @@ export function AgentConversation({
             )}
           </div>
           <form className="agent-composer" action={submitPrompt}>
+            <div className="agent-composer__context">
+              {attachedConcept ? (
+                <span className="agent-context-chip">
+                  <FileText size={14} aria-hidden="true" />
+                  <span title={attachedConcept.title}>{attachedConcept.title}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${attachedConcept.title} from context`}
+                    disabled={isSubmitting || activeTurn !== null}
+                    onClick={() => setAttachedConcept(null)}
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </span>
+              ) : activeConcept ? (
+                <button
+                  type="button"
+                  className="btn ghost agent-context-attach"
+                  disabled={isSubmitting || activeTurn !== null}
+                  onClick={() => setAttachedConcept(activeConcept)}
+                >
+                  <Paperclip size={14} aria-hidden="true" />
+                  Attach current concept
+                </button>
+              ) : (
+                <span className="agent-context-empty">Open a concept to attach it</span>
+              )}
+            </div>
             <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
             <textarea
               id="agent-prompt"

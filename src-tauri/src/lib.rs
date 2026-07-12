@@ -3,6 +3,7 @@
 
 mod agent_catalog;
 mod agent_custom;
+mod agent_csv;
 mod agent_install;
 mod agent_mcp;
 mod agent_pdf;

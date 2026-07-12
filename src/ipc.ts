@@ -297,9 +297,10 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
   return [
     {
       title: "data/findings.csv",
-      content: "finding,status\nSchema drift,confirmed",
+      content: "## CSV columns\n\n- Column 1: finding\n- Column 2: status\n\n## Rows 1-1\n\n| Row | Column 1: finding | Column 2: status |\n| ---: | --- | --- |\n| 1 | Schema drift | confirmed |\n",
       origin: "data/findings.csv",
       mediaType: "text/csv",
+      sourceDigest: "b".repeat(64),
     },
     {
       title: "notes/brief.md",

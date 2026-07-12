@@ -149,7 +149,8 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Extract bounded PDFs in an isolated helper with page provenance, original-file hashes, and partial-text warnings.
 - [x] Discover supported sources from a bounded local folder without exposing its absolute path.
 - [ ] Accept images and URLs in the source tray.
-- [ ] Normalize structured formats locally and retain row/range provenance. Text sources already retain filename origins and content hashes.
+- [x] Normalize CSV locally with strict records, original-file hashes, and row-range provenance.
+- [ ] Normalize JSON locally and retain structural provenance.
 - [ ] Show the proposed concepts, types, links, and indexes before generation.
 - [ ] Generate into staging, validate, preview the graph, then choose a destination.
 - [ ] Reuse the pipeline to enrich bundles without silently overwriting authored facts.

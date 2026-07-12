@@ -217,9 +217,19 @@ fn read_sources(paths: &[SourcePath], limit: usize) -> Result<Vec<AgentSourceInp
             if bytes.len() as u64 > file_limit {
                 return Err(format!("{title} exceeds the 256 KiB source limit."));
             }
-            let content = String::from_utf8(bytes)
-                .map_err(|_| format!("{title} is not valid UTF-8 text."))?;
-            (content, None, None)
+            if media_type == "text/csv" {
+                let normalization =
+                    crate::agent_csv::normalize(&bytes, title, MAX_SOURCE_CONTENT_CHARS)?;
+                (
+                    normalization.content,
+                    Some(normalization.source_digest),
+                    None,
+                )
+            } else {
+                let content = String::from_utf8(bytes)
+                    .map_err(|_| format!("{title} is not valid UTF-8 text."))?;
+                (content, None, None)
+            }
         };
         if content.trim().is_empty() {
             return Err(format!("{title} is empty."));
@@ -323,6 +333,11 @@ mod tests {
             fs::write(&path, content).expect("write structured source");
             let sources = read_text_sources(&[path], 1).expect("read structured source");
             assert_eq!(sources[0].media_type.as_deref(), Some(expected_media_type));
+            if name == "rows.csv" {
+                assert!(sources[0].content.contains("## Rows 1-1"));
+                assert!(sources[0].content.contains("| 1 | alpha | 1 |"));
+                assert_eq!(sources[0].source_digest.as_deref().map(str::len), Some(64));
+            }
         }
         fs::remove_dir_all(root).expect("remove temp directory");
     }

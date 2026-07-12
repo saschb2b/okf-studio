@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-12
+* **Creation**: Added local CSV normalization for Agent sources. Studio parses strict records, labels columns by position, preserves quoted and multiline cell boundaries, and emits Markdown tables in exact 100-row ranges. Malformed or expanded-over-limit tables fail. Provenance includes SHA-256 of the original CSV and the normalized content sent to the agent.
 * **Creation**: Added bounded local-folder intake to the Agent source tray. Studio discovers supported files in stable relative-path order, does not follow symbolic links, and caps traversal at eight levels and 4,096 entries. Each file remains a separate removable source. The host exposes relative provenance only and rejects folders that cannot fit in the remaining tray instead of silently omitting evidence.
 * **Creation**: Added local PDF sources through an isolated parser helper. The host accepts selected PDFs up to 16 MiB and 256 pages, sends the path to a separate Studio process over stdin, and caps its runtime, output, and diagnostics. Extracted text carries page headings, original-file and content SHA-256 values, and a visible partial-text warning. Encrypted, malformed, incomplete, oversized, and image-only documents fail with a concrete recovery message; OCR is not implied.
 

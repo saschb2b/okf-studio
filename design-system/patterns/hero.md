@@ -4,7 +4,7 @@ title: Hero
 description: "The above-the-fold composition: a rounded, tinted canvas bundling the nav, eyebrow, display headline, sub, download CTAs, and the product shot grounded at its foot."
 tags: [patterns, hero, landing, canvas]
 status: stable
-timestamp: 2026-07-11T04:45:00Z
+timestamp: 2026-07-12T00:00:00Z
 examples:
   - /patterns/hero.example.html
 ---

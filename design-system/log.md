@@ -1,3 +1,6 @@
+## 2026-07-12
+* **Update**: Updated the hero and feature-card examples to the shipped Studio proposition: connected knowledge, an explicit ACP agent connection, and no implied bundle write. Component structure, tokens, and behavior remain unchanged.
+
 ## 2026-07-11
 * **Update**: Renamed the product labels in the design-system overview and runnable component/pattern examples from **OKF Viewer** to **OKF Studio**. Tokens, component behavior, and layout remain unchanged.
 

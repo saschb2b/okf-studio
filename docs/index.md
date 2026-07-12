@@ -4,9 +4,9 @@ okf_version: "0.1"
 
 # OKF Studio — Product Knowledge Bundle
 
-**OKF Studio** is a cross-platform desktop app (Windows + Ubuntu) that you point at a folder; it **autodetects the [Open Knowledge Format](reference/okf-spec-summary.md) (OKF) bundles inside** and renders each as an interactive graph of interconnected concept documents. It is built with [Tauri 2.0](reference/tauri-2.md) — a Rust core plus the system webview.
+**OKF Studio** is a cross-platform desktop workspace (Windows + Ubuntu) for connected [Open Knowledge Format](reference/okf-spec-summary.md) (OKF) bundles. It detects the bundles in a folder, renders each as a graph and reader, and can connect a compatible agent to research the active bundle with explicit context. It is built with [Tauri 2.0](reference/tauri-2.md) — a Rust core plus the system webview.
 
-This bundle is the product's source of truth: what it does ([features](features/)), how it feels ([UX](ux/)), and how it is built ([architecture](architecture/)). It also doubles as the app's **built-in sample bundle** — the viewer dogfoods itself by rendering this very directory.
+This bundle is the product's source of truth: what it does ([features](features/)), how it feels ([UX](ux/)), and how it is built ([architecture](architecture/)). It also doubles as the app's **built-in sample bundle** — Studio dogfoods itself by rendering this very directory.
 
 # Product
 

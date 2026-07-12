@@ -42,7 +42,7 @@ async function openBundle(user: ReturnType<typeof userEvent.setup>) {
 describe("accessibility (axe-core)", () => {
   it("the first-run empty state has no violations", async () => {
     const { container } = renderApp();
-    await screen.findByText(/Read your knowledge as a graph/i);
+    await screen.findByText(/Explore connected knowledge with the agents you already use/i);
     await expectNoViolations(container);
   });
 

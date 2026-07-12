@@ -20,10 +20,10 @@ const raw: RawConcept[] = [
     extra: {},
     body:
       "## What it is\n\n" +
-      "A desktop app that renders [OKF](../reference/glossary.md) bundles as a [graph](../features/graph-view.md). It is built for the analyst who keeps a folder of markdown notes and wants to traverse the cross-links offline, without a server.\n\n" +
-      "> [!NOTE]\n> Everything ships in one binary — no signup, no telemetry, nothing leaves your machine.\n\n" +
+      "A local-first desktop workspace that renders [OKF](../reference/glossary.md) bundles as a [graph](../features/graph-view.md) and reader, with optional agent assistance for researching the active bundle.\n\n" +
+      "> [!NOTE]\n> Studio requires no account. Opening a folder stays read-only; agent processes and network actions start only when you choose them.\n\n" +
       "## How it works\n\n" +
-      "Point it at a folder; it finds every bundle inside and renders each as an interactive graph alongside this reader.\n\n" +
+      "Open a folder to find every bundle inside and render each as an interactive graph alongside this reader. Connect an agent only when you want to research the active bundle with explicit context.\n\n" +
       "### Pipeline\n\n" +
       "1. Scan the folder for bundles\n2. Parse each concept and its links\n3. Render the graph and the reader\n\n" +
       "```ts\nconst bundle = await readBundle(root);\nrenderGraph(bundle);\n```\n\n" +
@@ -391,7 +391,7 @@ export const MOCK_BUNDLE: Bundle = {
       dir: "",
       title: "OKF Studio (sample)",
       intro:
-        "This is the built-in **sample bundle** — the viewer dogfooding itself. " +
+        "This is the built-in **sample bundle** — Studio dogfooding itself. " +
         "It renders the [OKF](reference/glossary.md) concepts in this folder as a graph you can browse, " +
         "search, and read. Start anywhere: the sidebar mirrors this index, and every folder is a door.",
       synthesized: false,

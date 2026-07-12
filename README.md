@@ -4,7 +4,7 @@
 
 <h1 align="center">OKF Studio</h1>
 
-<p align="center"><strong>Point it at a folder. Read your knowledge as a graph.</strong></p>
+<p align="center"><strong>Explore connected knowledge with the agents you already use.</strong></p>
 
 <p align="center">
   <a href="https://saschb2b.github.io/okf-viewer/">Homepage</a>
@@ -22,7 +22,7 @@
   </a>
 </p>
 
-OKF Studio is a fast, native desktop app for reading [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Point it at a folder; it autodetects the OKF bundles inside and renders each as an interactive graph of interconnected concepts, alongside a markdown reader with backlinks, search, filters, validation, and live reload. It is offline, read-only, and built with [Tauri 2](https://tauri.app/) (a Rust core plus the system webview). Windows, macOS, and Linux.
+OKF Studio is a local-first desktop workspace for [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Open a folder and it detects the bundles inside, then renders each as an interactive graph and markdown reader with backlinks, search, validation, and live reload. Connect a compatible ACP agent when you want to research the active bundle with selected concepts, files, structured data, PDFs, images, or bounded web sources. Folder opening remains read-only, connections start only when chosen, and there is no Studio account. Built with [Tauri 2](https://tauri.app/) for Windows, macOS, and Linux.
 
 ## Download
 

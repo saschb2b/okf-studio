@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.7",
   "type": "module",
-  "description": "Point it at a folder. Read your knowledge as a graph.",
+  "description": "Explore connected knowledge with the agents you already use.",
   "scripts": {
     "dev": "vite",
     "build": "tsgo --noEmit && vite build",

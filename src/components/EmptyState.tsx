@@ -58,7 +58,7 @@ export function EmptyState() {
     <div className="empty hero">
       <h1 className="hero-title">OKF Studio</h1>
       <p className="hero-tagline">
-        Point it at a folder. Read your knowledge as a graph.
+        Explore connected knowledge with the agents you already use.
       </p>
       <div className="hero-cta">
         <button className="btn primary lg" onClick={() => void actions.openFolder()}>
@@ -74,8 +74,8 @@ export function EmptyState() {
       </p>
       <p className="empty-line hero-what">
         An OKF bundle is a folder of markdown concepts, cross-linked into a
-        graph. Point at a local folder, or fetch one from a URL — it's read only
-        either way.
+        graph. Open a local folder or URL without changing its files. Agent
+        connections start only when you choose.
       </p>
 
       {REMOTE_EXAMPLES.length > 0 && (

@@ -35,7 +35,7 @@ describe("OKF Studio app", () => {
   it("shows the first-run empty state", () => {
     renderApp();
     expect(
-      screen.getByText(/Point it at a folder\. Read your knowledge as a graph\./i),
+      screen.getByText(/Explore connected knowledge with the agents you already use\./i),
     ).toBeInTheDocument();
   });
 

@@ -1,10 +1,10 @@
 # OKF Studio
 
-A cross-platform **desktop app** (Windows + Ubuntu, macOS for free) that you point at a folder; it **autodetects the OKF bundles inside** and renders each as an interactive graph of interconnected concept documents. Built with **Tauri 2.0** — a Rust core plus the system webview.
+A cross-platform **desktop workspace** (Windows + Ubuntu, macOS for free) that autodetects the OKF bundles in a folder, renders their connected concepts as a graph and reader, and lets the user connect an ACP agent to research the active bundle with explicit context. Built with **Tauri 2.0** — a Rust core plus the system webview.
 
 ## How it's put together
 
-The **Rust core** (`crates/okf-core` + `src-tauri/`) does all filesystem work — [scan a folder for bundles](docs/architecture/bundle-detection.md), [parse each into concepts/links/backlinks](docs/architecture/okf-parsing.md), [validate](docs/features/validation.md), and [watch for changes](docs/features/live-reload.md) — exposing a small [command/event surface](docs/architecture/ipc-and-security.md) that hands the **React 19 + TypeScript frontend** (`src/`, Vite, React Compiler enabled — no manual memoization) ready-to-render JSON ([data model](docs/architecture/data-model.md)). The frontend renders a [force-directed graph](docs/features/graph-view.md) + [concept reader](docs/features/concept-reader.md) with [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [theming](docs/ux/theming.md). Read-only, offline, scoped to the chosen folder.
+The **Rust core** (`crates/okf-core` + `src-tauri/`) owns filesystem, process, and network mediation: it [scans a folder for bundles](docs/architecture/bundle-detection.md), [parses concepts/links/backlinks](docs/architecture/okf-parsing.md), [validates](docs/features/validation.md), [watches for changes](docs/features/live-reload.md), and hosts explicit [agent connections](docs/architecture/agent-system.md). Its typed [command/event surface](docs/architecture/ipc-and-security.md) hands the **React 19 + TypeScript frontend** (`src/`, Vite, React Compiler enabled — no manual memoization) ready-to-render state. The frontend combines the [graph](docs/features/graph-view.md), [concept reader](docs/features/concept-reader.md), [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [Agent Panel](docs/features/agent-panel.md). Folder opening remains read-only; agent processes and network actions start only after explicit user actions.
 
 ```
 okf-viewer/
@@ -117,6 +117,6 @@ When you add or change a feature, decision, or flow, update the bundle **in the 
 ## Conventions
 
 - **Rust owns the filesystem; the frontend owns rendering.** The webview gets no direct fs/network access — only [commands/events](docs/architecture/ipc-and-security.md).
-- **Read-only, offline, scoped** always (see [principles](docs/product/principles.md)). Opening an untrusted bundle must be safe.
+- **Read-only folder opening and explicit external activity** (see [principles](docs/product/principles.md)). Opening an untrusted bundle must be safe. Agent processes and network requests start only from a user action, and bundle writes remain disabled until reviewed-write grants ship.
 - **Tolerant consumer:** never refuse a bundle for soft issues (missing fields, unknown `type`, broken links, missing `index.md`); surface them via [Validation](docs/features/validation.md) instead.
 - **Capabilities stay least-privilege** (`src-tauri/capabilities/`): read-only `fs` scoped to the chosen folder, dialog open, store. Network only where a principle-level exception is recorded (updater, explicit open-from-URL fetch).

@@ -303,10 +303,11 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
       sourceDigest: "b".repeat(64),
     },
     {
-      title: "notes/brief.md",
-      content: "# Research brief\n\nInvestigate the reported change.",
-      origin: "notes/brief.md",
-      mediaType: "text/markdown",
+      title: "config/settings.json",
+      content: "## JSON structure\n\nPaths use JSON Pointer. `(root)` identifies the complete document.\n\n## Nodes 1-5\n\n| Node | JSON Pointer | Type | Value |\n| ---: | --- | --- | --- |\n| 1 | (root) | object | 2 properties |\n| 2 | /mode | string | \"research\" |\n| 3 | /sources | array | 2 items |\n| 4 | /sources/0 | string | \"csv\" |\n| 5 | /sources/1 | string | \"pdf\" |\n",
+      origin: "config/settings.json",
+      mediaType: "application/json",
+      sourceDigest: "c".repeat(64),
     },
   ].slice(0, Math.max(0, limit));
 }

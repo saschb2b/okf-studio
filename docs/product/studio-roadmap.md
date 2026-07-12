@@ -150,7 +150,7 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Discover supported sources from a bounded local folder without exposing its absolute path.
 - [ ] Accept images and URLs in the source tray.
 - [x] Normalize CSV locally with strict records, original-file hashes, and row-range provenance.
-- [ ] Normalize JSON locally and retain structural provenance.
+- [x] Normalize JSON locally with deterministic JSON Pointer provenance and original-file hashes.
 - [ ] Show the proposed concepts, types, links, and indexes before generation.
 - [ ] Generate into staging, validate, preview the graph, then choose a destination.
 - [ ] Reuse the pipeline to enrich bundles without silently overwriting authored facts.

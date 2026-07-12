@@ -225,6 +225,14 @@ fn read_sources(paths: &[SourcePath], limit: usize) -> Result<Vec<AgentSourceInp
                     Some(normalization.source_digest),
                     None,
                 )
+            } else if media_type == "application/json" {
+                let normalization =
+                    crate::agent_json::normalize(&bytes, title, MAX_SOURCE_CONTENT_CHARS)?;
+                (
+                    normalization.content,
+                    Some(normalization.source_digest),
+                    None,
+                )
             } else {
                 let content = String::from_utf8(bytes)
                     .map_err(|_| format!("{title} is not valid UTF-8 text."))?;
@@ -336,6 +344,12 @@ mod tests {
             if name == "rows.csv" {
                 assert!(sources[0].content.contains("## Rows 1-1"));
                 assert!(sources[0].content.contains("| 1 | alpha | 1 |"));
+                assert_eq!(sources[0].source_digest.as_deref().map(str::len), Some(64));
+            } else if name == "record.json" {
+                assert!(sources[0].content.contains("## Nodes 1-2"));
+                assert!(sources[0]
+                    .content
+                    .contains("| 2 | /name | string | \"alpha\" |"));
                 assert_eq!(sources[0].source_digest.as_deref().map(str::len), Some(64));
             }
         }

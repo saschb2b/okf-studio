@@ -3,6 +3,7 @@ export interface AgentThreadMetadata {
   profileId: string;
   sessionId: string;
   title: string;
+  archived: boolean;
   updatedAt: number;
 }
 
@@ -23,39 +24,60 @@ function isBoundedText(value: unknown, limit: number): value is string {
     });
 }
 
-function isAgentThreadMetadata(value: unknown): value is AgentThreadMetadata {
-  if (!value || typeof value !== "object") return false;
+function parseMetadata(value: unknown): AgentThreadMetadata | null {
+  if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<AgentThreadMetadata>;
-  return isBoundedText(candidate.bundleRoot, LIMITS.bundleRoot) &&
+  if (!(isBoundedText(candidate.bundleRoot, LIMITS.bundleRoot) &&
     isBoundedText(candidate.profileId, LIMITS.profileId) &&
     isBoundedText(candidate.sessionId, LIMITS.sessionId) &&
     isBoundedText(candidate.title, LIMITS.title) &&
     typeof candidate.updatedAt === "number" && Number.isSafeInteger(candidate.updatedAt) &&
-    candidate.updatedAt >= 0;
+    candidate.updatedAt >= 0 &&
+    (candidate.archived === undefined || typeof candidate.archived === "boolean"))) return null;
+  return {
+    bundleRoot: candidate.bundleRoot,
+    profileId: candidate.profileId,
+    sessionId: candidate.sessionId,
+    title: candidate.title,
+    archived: candidate.archived ?? false,
+    updatedAt: candidate.updatedAt,
+  };
 }
 
 export function parseAgentThreadMetadata(value: unknown): AgentThreadMetadata[] {
   if (!Array.isArray(value)) return [];
-  const seen = new Set<string>();
+  const seenStates = new Set<string>();
+  const seenSessions = new Set<string>();
   return value
-    .filter(isAgentThreadMetadata)
+    .map(parseMetadata)
+    .filter((metadata): metadata is AgentThreadMetadata => metadata !== null)
     .sort((left, right) => right.updatedAt - left.updatedAt)
     .filter((metadata) => {
-      const key = JSON.stringify([metadata.bundleRoot, metadata.profileId]);
-      if (seen.has(key)) return false;
-      seen.add(key);
+      const stateKey = JSON.stringify([
+        metadata.bundleRoot,
+        metadata.profileId,
+        metadata.archived,
+      ]);
+      const sessionKey = JSON.stringify([
+        metadata.bundleRoot,
+        metadata.profileId,
+        metadata.sessionId,
+      ]);
+      if (seenStates.has(stateKey) || seenSessions.has(sessionKey)) return false;
+      seenStates.add(stateKey);
+      seenSessions.add(sessionKey);
       return true;
     })
     .slice(0, AGENT_THREAD_METADATA_CAP);
 }
 
 export function createAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt">,
+  input: Omit<AgentThreadMetadata, "updatedAt" | "archived"> & { archived?: boolean },
   updatedAt = Date.now(),
 ): AgentThreadMetadata {
   const title = input.title.replace(/\s+/gu, " ").trim();
-  const metadata = { ...input, title, updatedAt };
-  if (!isAgentThreadMetadata(metadata)) {
+  const metadata = parseMetadata({ ...input, title, archived: input.archived ?? false, updatedAt });
+  if (!metadata) {
     throw new Error("The thread metadata is invalid or exceeds its storage limit.");
   }
   return metadata;
@@ -68,7 +90,9 @@ export function upsertAgentThreadMetadata(
   return [
     metadata,
     ...current.filter((candidate) =>
-      candidate.bundleRoot !== metadata.bundleRoot || candidate.profileId !== metadata.profileId
+      candidate.bundleRoot !== metadata.bundleRoot ||
+      candidate.profileId !== metadata.profileId ||
+      (candidate.archived !== metadata.archived && candidate.sessionId !== metadata.sessionId)
     ),
   ].slice(0, AGENT_THREAD_METADATA_CAP);
 }
@@ -77,8 +101,10 @@ export function removeAgentThreadMetadata(
   current: readonly AgentThreadMetadata[],
   bundleRoot: string,
   profileId: string,
+  sessionId?: string,
 ): AgentThreadMetadata[] {
   return current.filter((candidate) =>
-    candidate.bundleRoot !== bundleRoot || candidate.profileId !== profileId
+    candidate.bundleRoot !== bundleRoot || candidate.profileId !== profileId ||
+    (sessionId !== undefined && candidate.sessionId !== sessionId)
   );
 }

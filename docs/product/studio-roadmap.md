@@ -110,7 +110,7 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 - [x] Ship the first bundle-scoped text conversation with streamed output and Stop.
 - [x] Render agent responses as sanitized Markdown while preserving user messages as literal text.
 - [x] Distinguish waiting, running, cancelled, and failed states in the active thread.
-- [ ] Add archived and restorable thread states after Studio metadata persistence lands.
+- [x] Add archived and restorable thread states after Studio metadata persistence lands.
 - [x] Stream structured ACP plans as live replacement cards and preserve the final plan in export.
 - [x] Stream bounded ACP tool-call lifecycle cards without raw arguments or output.
 - [x] Stream bounded ACP context-window usage and cumulative session cost when reported.

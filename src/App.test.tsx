@@ -573,6 +573,22 @@ describe("OKF Studio app", () => {
       }),
     ])));
 
+    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(
+      JSON.parse(localStorage.getItem("okf-studio:agent-threads") ?? "[]"),
+    ).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        sessionId: "mock-session-research",
+        title: "Evidence notebook",
+        archived: true,
+      }),
+    ])));
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
+    expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
@@ -605,6 +621,38 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove History Harness" }));
+  });
+
+  it("archives a browser-mock thread and restores it through the advertised history", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Archive Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\archive.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Archive Harness" }));
+    await screen.findByText(/Connected to Archive Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Browser ACP received: Summarize the bundle"))
+      .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(await screen.findByRole("heading", { name: "Summarize the bundle" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Browser ACP received: Summarize the bundle"))
+      .toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Archive Harness" }));
   });
 
   it("attaches an explicit reader selection as bounded source context", async () => {

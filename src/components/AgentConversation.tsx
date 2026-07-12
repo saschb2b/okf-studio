@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, History, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
+import { Archive as ArchiveIcon, Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, History, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
@@ -123,7 +123,8 @@ type HistoryState =
   | { status: "error"; message: string };
 type SavedThreadState =
   | { status: "none" | "loading" }
-  | { status: "ready" | "resuming"; metadata: AgentThreadMetadata }
+  | { status: "ready"; metadata: readonly AgentThreadMetadata[] }
+  | { status: "resuming"; metadata: readonly AgentThreadMetadata[]; sessionId: string }
   | { status: "error"; message: string; metadata?: AgentThreadMetadata };
 type PendingPermission = AgentPermissionEvent & {
   update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
@@ -333,6 +334,7 @@ export function AgentConversation({
   const completedTurnsRef = useRef(new Set<string>());
   const failedTurnsRef = useRef(new Set<string>());
   const acceptedDraftsRef = useRef(new Map<string, PromptDraft>());
+  const metadataSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const messagesRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
@@ -355,7 +357,7 @@ export function AgentConversation({
     setSavedThread({ status: "loading" });
     try {
       const metadata = await loadAgentThreadMetadata(bundleRoot, connection.profileId);
-      setSavedThread(metadata ? { status: "ready", metadata } : { status: "none" });
+      setSavedThread(metadata.length > 0 ? { status: "ready", metadata } : { status: "none" });
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error) });
     }
@@ -367,18 +369,26 @@ export function AgentConversation({
     void loadSavedThreadEffect();
   }, [bundleRoot, connection.profileId, supportsHistory]);
 
-  function persistThreadMetadata(session: AgentSessionInfo, title: string) {
-    if (!supportsHistory) return;
+  function persistThreadMetadata(
+    session: AgentSessionInfo,
+    title: string,
+    archived = false,
+  ): Promise<AgentThreadMetadata | null> {
+    if (!supportsHistory) return Promise.resolve(null);
     setThreadMetadataError(null);
-    void saveAgentThreadMetadata({
+    const operation = metadataSaveQueueRef.current.then(() => saveAgentThreadMetadata({
       bundleRoot: session.bundleRoot,
       profileId: connection.profileId,
       sessionId: session.sessionId,
       title,
-    }).then(
+      archived,
+    }));
+    metadataSaveQueueRef.current = operation.then(() => undefined, () => undefined);
+    void operation.then(
       () => setSavedThread({ status: "none" }),
       (error: unknown) => setThreadMetadataError(errorMessage(error)),
     );
+    return operation;
   }
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
@@ -451,7 +461,7 @@ export function AgentConversation({
         setThreadTitle((current) => current.source === "default"
           ? { source: "derived", value: nextTitle }
           : current);
-        persistThreadMetadata(session, nextTitle);
+        void persistThreadMetadata(session, nextTitle);
         setExportState({ status: "idle" });
         if (source === "composer") {
           setAttachedConcepts([]);
@@ -739,13 +749,20 @@ export function AgentConversation({
     setRetryingTurnId(null);
     setSavedThread({ status: "none" });
     setHistory({ status: "closed" });
-    persistThreadMetadata(loaded, title);
+    void persistThreadMetadata(loaded, title);
     requestAnimationFrame(() => promptRef.current?.focus());
   }
 
   async function resumeSavedThread(metadata: AgentThreadMetadata) {
     if (!bundleRoot || savedThread.status === "resuming") return;
-    setSavedThread({ status: "resuming", metadata });
+    const savedMetadata = savedThread.status === "ready"
+      ? savedThread.metadata
+      : [metadata];
+    setSavedThread({
+      status: "resuming",
+      metadata: savedMetadata,
+      sessionId: metadata.sessionId,
+    });
     try {
       const page = await listAgentSessions(connection.connectionId, bundleRoot);
       const session = page.sessions.find((candidate) => candidate.sessionId === metadata.sessionId);
@@ -772,11 +789,15 @@ export function AgentConversation({
     }
   }
 
-  async function dismissSavedThread() {
+  async function dismissSavedThread(metadata: AgentThreadMetadata) {
     if (!bundleRoot) return;
     try {
-      await removeAgentThreadMetadata(bundleRoot, connection.profileId);
-      setSavedThread({ status: "none" });
+      await removeAgentThreadMetadata(
+        bundleRoot,
+        connection.profileId,
+        metadata.sessionId,
+      );
+      await loadSavedThread();
       requestAnimationFrame(() => promptRef.current?.focus());
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error) });
@@ -796,7 +817,40 @@ export function AgentConversation({
   function changeThreadTitle(value: string) {
     setThreadTitle({ source: "custom", value });
     const session = sessionRef.current;
-    if (session) persistThreadMetadata(session, value);
+    if (session) void persistThreadMetadata(session, value);
+  }
+
+  async function archiveThread() {
+    const session = sessionRef.current;
+    if (!session || messages.length === 0 || activeTurn || isSubmitting ||
+      promptText.trim() || attachedConcepts.length > 0 || attachedSources.length > 0 ||
+      queuedPrompt) return;
+    try {
+      const metadata = await persistThreadMetadata(session, threadTitle.value, true);
+      if (!metadata) return;
+      sessionRef.current = null;
+      completedTurnsRef.current.clear();
+      failedTurnsRef.current.clear();
+      acceptedDraftsRef.current.clear();
+      setThreadTitle({ source: "default", value: "New thread" });
+      setMessages([]);
+      setExportState({ status: "idle" });
+      setActiveTurn(null);
+      setPendingPermissions([]);
+      setUsage(null);
+      setIsCancelling(false);
+      setHistory({ status: "closed" });
+      setRestoringSessionId(null);
+      setRetryableTurnIds(new Set());
+      setRetryingTurnId(null);
+      setRetryErrors(new Map());
+      setSourcePickerError(null);
+      setSourcePicker(null);
+      setSavedThread({ status: "ready", metadata: [metadata] });
+      requestAnimationFrame(() => savedThreadActionRef.current?.focus());
+    } catch {
+      // persistThreadMetadata keeps its bounded error beside the toolbar actions.
+    }
   }
 
   function retryAcceptedTurn(turnId: string) {
@@ -850,7 +904,9 @@ export function AgentConversation({
               disabled={isSubmitting || activeTurn !== null || restoringSessionId !== null}
             >
               {history.status === "closed" ? <History aria-hidden="true" size={14} /> : <ChevronLeft aria-hidden="true" size={14} />}
-              {history.status === "closed" ? "History" : "Back"}
+              <span className="agent-conversation__action-label">
+                {history.status === "closed" ? "History" : "Back"}
+              </span>
             </button>
           )}
           <button
@@ -865,19 +921,44 @@ export function AgentConversation({
             }
           >
             <FileDown aria-hidden="true" size={14} />
-            {exportState.status === "exporting" ? "Exporting..." : "Export"}
+            <span className="agent-conversation__action-label">
+              {exportState.status === "exporting" ? "Exporting..." : "Export"}
+            </span>
           </button>
+          {supportsHistory && (
+            <button
+              type="button"
+              className="btn ghost icon"
+              aria-label="Archive current thread"
+              title={promptText.trim() || attachedConcepts.length > 0 || attachedSources.length > 0
+                ? "Send or clear the draft before archiving."
+                : messages.length === 0
+                  ? "Send a message before archiving."
+                  : "Archive this thread and start a new one"}
+              onClick={() => void archiveThread()}
+              disabled={
+                messages.length === 0 || isSubmitting || activeTurn !== null ||
+                queuedPrompt !== null || promptText.trim().length > 0 ||
+                attachedConcepts.length > 0 || attachedSources.length > 0
+              }
+            >
+              <ArchiveIcon aria-hidden="true" size={14} />
+            </button>
+          )}
           <button
             type="button"
             className="btn ghost"
             data-agent-initial-focus
+            aria-label="Change"
+            title="Change agent"
             onClick={onChangeAgent}
             disabled={
               isSubmitting || activeTurn !== null || authentication.status === "authenticating" ||
               exportState.status === "exporting"
             }
           >
-            Change
+            <Bot aria-hidden="true" size={14} />
+            <span className="agent-conversation__action-label">Change</span>
           </button>
         </div>
       </header>
@@ -992,34 +1073,48 @@ export function AgentConversation({
             {messages.length === 0 && pendingPermissions.length === 0 ? (
               <div className="agent-conversation__welcome">
                 <Bot size={24} aria-hidden="true" />
-                {(savedThread.status === "ready" || savedThread.status === "resuming") && (
-                  <section className="agent-saved-thread" aria-labelledby="agent-saved-thread-title">
-                    <History size={16} aria-hidden="true" />
-                    <div>
-                      <h4 id="agent-saved-thread-title">Continue previous thread</h4>
-                      <span title={savedThread.metadata.title}>{savedThread.metadata.title}</span>
-                    </div>
-                    <div className="agent-saved-thread__actions">
-                      <button
-                        ref={savedThreadActionRef}
-                        type="button"
-                        className="btn"
-                        disabled={savedThread.status === "resuming"}
-                        onClick={() => void resumeSavedThread(savedThread.metadata)}
+                {(savedThread.status === "ready" || savedThread.status === "resuming") &&
+                  savedThread.metadata.map((metadata, index) => {
+                    const isResuming = savedThread.status === "resuming" &&
+                      savedThread.sessionId === metadata.sessionId;
+                    const titleId = `agent-saved-thread-title-${index}`;
+                    return (
+                      <section
+                        key={`${metadata.sessionId}-${metadata.archived ? "archived" : "current"}`}
+                        className="agent-saved-thread"
+                        aria-labelledby={titleId}
                       >
-                        {savedThread.status === "resuming" ? "Resuming..." : "Resume"}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn ghost"
-                        disabled={savedThread.status === "resuming"}
-                        onClick={() => void dismissSavedThread()}
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </section>
-                )}
+                        {metadata.archived
+                          ? <ArchiveIcon size={16} aria-hidden="true" />
+                          : <History size={16} aria-hidden="true" />}
+                        <div>
+                          <h4 id={titleId}>
+                            {metadata.archived ? "Archived thread" : "Continue previous thread"}
+                          </h4>
+                          <span title={metadata.title}>{metadata.title}</span>
+                        </div>
+                        <div className="agent-saved-thread__actions">
+                          <button
+                            ref={index === 0 ? savedThreadActionRef : undefined}
+                            type="button"
+                            className="btn"
+                            disabled={savedThread.status === "resuming"}
+                            onClick={() => void resumeSavedThread(metadata)}
+                          >
+                            {isResuming ? "Resuming..." : "Resume"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn ghost"
+                            disabled={savedThread.status === "resuming"}
+                            onClick={() => void dismissSavedThread(metadata)}
+                          >
+                            {metadata.archived ? "Forget" : "Dismiss"}
+                          </button>
+                        </div>
+                      </section>
+                    );
+                  })}
                 {savedThread.status === "error" && (
                   <section className="agent-saved-thread agent-saved-thread--error">
                     <CircleAlert size={16} aria-hidden="true" />
@@ -1037,9 +1132,13 @@ export function AgentConversation({
                         <button
                           type="button"
                           className="btn ghost"
-                          onClick={() => void dismissSavedThread()}
+                          onClick={() => {
+                            if (savedThread.metadata) {
+                              void dismissSavedThread(savedThread.metadata);
+                            }
+                          }}
                         >
-                          Dismiss
+                          {savedThread.metadata.archived ? "Forget" : "Dismiss"}
                         </button>
                       )}
                     </div>

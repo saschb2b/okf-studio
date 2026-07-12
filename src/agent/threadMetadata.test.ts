@@ -19,6 +19,7 @@ describe("agent thread metadata", () => {
     expect(createAgentThreadMetadata({ ...BASE, title: "  Bundle   research  " }, 42)).toEqual({
       ...BASE,
       title: "Bundle research",
+      archived: false,
       updatedAt: 42,
     });
     expect(() => createAgentThreadMetadata({ ...BASE, sessionId: "bad\nsession" }))
@@ -28,10 +29,10 @@ describe("agent thread metadata", () => {
       { ...BASE, sessionId: "older-duplicate", updatedAt: 1 },
       { ...BASE, sessionId: "", updatedAt: 3 },
       { ...BASE, title: "tampered", updatedAt: Number.POSITIVE_INFINITY },
-    ])).toEqual([{ ...BASE, updatedAt: 2 }]);
+    ])).toEqual([{ ...BASE, archived: false, updatedAt: 2 }]);
   });
 
-  it("keeps the latest pointer per bundle and profile within the cap", () => {
+  it("keeps one current and one archived pointer per bundle and profile within the cap", () => {
     let metadata = Array.from({ length: AGENT_THREAD_METADATA_CAP }, (_, index) =>
       createAgentThreadMetadata({
         ...BASE,
@@ -39,9 +40,14 @@ describe("agent thread metadata", () => {
         sessionId: `session-${index}`,
       }, index)
     );
+    metadata = upsertAgentThreadMetadata(
+      metadata,
+      createAgentThreadMetadata(BASE, 99),
+    );
     const replacement = createAgentThreadMetadata({
       ...BASE,
       sessionId: "session-latest",
+      archived: true,
     }, 100);
     metadata = upsertAgentThreadMetadata(metadata, replacement);
 
@@ -49,8 +55,13 @@ describe("agent thread metadata", () => {
     expect(metadata[0]).toEqual(replacement);
     expect(metadata.filter((item) =>
       item.bundleRoot === BASE.bundleRoot && item.profileId === BASE.profileId
-    )).toHaveLength(1);
-    expect(removeAgentThreadMetadata(metadata, BASE.bundleRoot, BASE.profileId))
+    )).toHaveLength(2);
+    expect(removeAgentThreadMetadata(
+      metadata,
+      BASE.bundleRoot,
+      BASE.profileId,
+      replacement.sessionId,
+    ))
       .not.toContainEqual(replacement);
   });
 });

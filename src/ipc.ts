@@ -66,6 +66,14 @@ type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
 const agentPermissionHandlers = new Set<AgentPermissionHandler>();
 const mockCancelledTurns = new Set<string>();
 const mockFailedOncePrompts = new Set<string>();
+interface MockAgentSession {
+  profileId: string;
+  bundleRoot: string;
+  title: string;
+  updatedAt: string;
+  messages: AgentLoadedSessionInfo["messages"];
+}
+const mockAgentSessions = new Map<string, MockAgentSession>();
 const mockPermissionResponses = new Map<
   string,
   { turnId: string; optionIds: ReadonlySet<string>; resolve: (optionId: string | null) => void }
@@ -108,6 +116,9 @@ export async function removeCustomAgent(profileId: string): Promise<boolean> {
   }
   const previousLength = mockCustomAgents.length;
   mockCustomAgents = mockCustomAgents.filter((profile) => profile.id !== profileId);
+  for (const [sessionId, session] of mockAgentSessions) {
+    if (session.profileId === profileId) mockAgentSessions.delete(sessionId);
+  }
   return mockCustomAgents.length !== previousLength;
 }
 
@@ -216,11 +227,19 @@ export async function newAgentSession(
     throw new Error("Agent connection was not found.");
   }
   if (!connection.authenticated) throw new Error("Authenticate the agent before creating a session.");
-  return {
+  const session = {
     connectionId,
     sessionId: `session-${crypto.randomUUID()}`,
     bundleRoot,
   };
+  mockAgentSessions.set(session.sessionId, {
+    profileId: connection.profileId,
+    bundleRoot,
+    title: "Untitled session",
+    updatedAt: new Date().toISOString(),
+    messages: [],
+  });
+  return session;
 }
 
 export async function listAgentSessions(
@@ -237,8 +256,18 @@ export async function listAgentSessions(
     throw new Error("This agent did not advertise session history support.");
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  const liveSessions = [...mockAgentSessions.entries()]
+    .filter(([, session]) =>
+      session.profileId === connection.profileId && session.bundleRoot === bundleRoot
+    )
+    .map(([sessionId, session]) => ({
+      sessionId,
+      title: session.title,
+      updatedAt: session.updatedAt,
+    }));
   return {
     sessions: [
+      ...liveSessions,
       {
         sessionId: "mock-session-research",
         title: "Trace bundle evidence",
@@ -273,6 +302,16 @@ export async function loadAgentSession(
     throw new Error("This agent did not advertise session restore support.");
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  const liveSession = mockAgentSessions.get(sessionId);
+  if (liveSession?.profileId === connection.profileId &&
+    liveSession.bundleRoot === bundleRoot) {
+    return {
+      connectionId,
+      sessionId,
+      bundleRoot,
+      messages: liveSession.messages,
+    };
+  }
   return {
     connectionId,
     sessionId,
@@ -333,6 +372,12 @@ export async function promptAgent(
     throw new Error("The browser mock rejected this prompt before starting a turn.");
   }
   const info = { connectionId, sessionId, turnId: `turn-${crypto.randomUUID()}` };
+  const mockSession = mockAgentSessions.get(sessionId);
+  if (mockSession) {
+    mockSession.title = text.replace(/\s+/gu, " ").trim().slice(0, 80) || "Untitled session";
+    mockSession.updatedAt = new Date().toISOString();
+    mockSession.messages = [...mockSession.messages, { role: "user", text }];
+  }
   mockCancelledTurns.delete(info.turnId);
   void emitMockTurn(info, text);
   return info;
@@ -636,6 +681,14 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     },
   });
   emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "end-turn" } });
+  const mockSession = mockAgentSessions.get(info.sessionId);
+  if (mockSession) {
+    mockSession.updatedAt = new Date().toISOString();
+    mockSession.messages = [
+      ...mockSession.messages,
+      { role: "agent", text: `Browser ACP received: ${text}` },
+    ];
+  }
 }
 
 function emitAgentPermission(event: AgentPermissionEvent): void {
@@ -1008,15 +1061,15 @@ async function writeAgentThreads(next: readonly AgentThreadMetadata[]): Promise<
 export async function loadAgentThreadMetadata(
   bundleRoot: string,
   profileId: string,
-): Promise<AgentThreadMetadata | null> {
+): Promise<AgentThreadMetadata[]> {
   const threads = await readAgentThreads();
-  return threads.find((thread) =>
+  return threads.filter((thread) =>
     thread.bundleRoot === bundleRoot && thread.profileId === profileId
-  ) ?? null;
+  );
 }
 
 export async function saveAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt">,
+  input: Omit<AgentThreadMetadata, "updatedAt" | "archived"> & { archived?: boolean },
 ): Promise<AgentThreadMetadata> {
   const metadata = createAgentThreadMetadata(input);
   await writeAgentThreads(upsertAgentThreadMetadata(await readAgentThreads(), metadata));
@@ -1026,8 +1079,11 @@ export async function saveAgentThreadMetadata(
 export async function removeAgentThreadMetadata(
   bundleRoot: string,
   profileId: string,
+  sessionId?: string,
 ): Promise<void> {
-  await writeAgentThreads(removeThreadMetadata(await readAgentThreads(), bundleRoot, profileId));
+  await writeAgentThreads(
+    removeThreadMetadata(await readAgentThreads(), bundleRoot, profileId, sessionId),
+  );
 }
 
 export async function recentBundles(): Promise<RecentBundle[]> {

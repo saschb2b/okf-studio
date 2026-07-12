@@ -3,6 +3,7 @@
   flex: 1 1 auto;
   min-height: 0;
   flex-direction: column;
+  container-type: inline-size;
 }
 
 .agent-conversation__toolbar {
@@ -40,6 +41,12 @@
   gap: var(--space-4);
 }
 
+.agent-conversation__toolbar-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .agent-conversation__export {
   display: inline-flex;
   align-items: center;
@@ -50,6 +57,16 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
+}
+
+@container (max-width: 460px) {
+  .agent-conversation__toolbar-actions .btn {
+    padding-inline: var(--space-8);
+  }
+
+  .agent-conversation__action-label {
+    display: none;
+  }
 }
 
 .agent-history {

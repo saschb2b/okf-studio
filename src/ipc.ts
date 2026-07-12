@@ -123,7 +123,7 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
     authenticated: !profile.name.includes("Auth"),
     capabilities: {
       loadSession: false,
-      promptImage: false,
+      promptImage: true,
       promptAudio: false,
       promptEmbeddedContext: false,
       mcpHttp: false,
@@ -270,6 +270,7 @@ export interface AgentSourceInput {
   mediaType?: string;
   sourceDigest?: string;
   warning?: string;
+  imageData?: string;
 }
 
 export async function pickAgentTextSources(limit: number): Promise<AgentSourceInput[]> {
@@ -310,6 +311,22 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
       sourceDigest: "c".repeat(64),
     },
   ].slice(0, Math.max(0, limit));
+}
+
+export async function pickAgentImageSources(limit: number): Promise<AgentSourceInput[]> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSourceInput[]>("pick_agent_image_sources", { limit });
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  return [{
+    title: "architecture.png",
+    content: "",
+    origin: "architecture.png",
+    mediaType: "image/png",
+    sourceDigest: "3c7474b4239ada3342d87f25ec8849eb8473ee35c5471452482686098b49e81b",
+    imageData: "iVBORw0KGgppbWFnZQ==",
+  }].slice(0, Math.max(0, limit));
 }
 
 export async function fetchAgentSourceUrl(url: string): Promise<AgentSourceInput> {

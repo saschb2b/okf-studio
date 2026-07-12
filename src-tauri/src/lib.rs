@@ -148,6 +148,14 @@ async fn pick_agent_source_folder(
 }
 
 #[tauri::command]
+async fn pick_agent_image_sources(
+    app: AppHandle,
+    limit: usize,
+) -> Result<Vec<agent_sources::AgentSourceInput>, String> {
+    agent_sources::pick_image_sources(&app, limit)
+}
+
+#[tauri::command]
 async fn fetch_agent_source_url(
     url: String,
 ) -> Result<agent_sources::AgentSourceInput, String> {
@@ -362,6 +370,7 @@ pub fn run() {
             prompt_agent,
             pick_agent_text_sources,
             pick_agent_source_folder,
+            pick_agent_image_sources,
             fetch_agent_source_url,
             cancel_agent_turn,
             respond_agent_permission,

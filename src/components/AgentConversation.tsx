@@ -1,4 +1,4 @@
-import { Bot, FilePlus2, FileText, FolderPlus, Paperclip, Send, ShieldQuestion, Square, TriangleAlert, User, X } from "lucide-react";
+import { Bot, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Send, ShieldQuestion, Square, TriangleAlert, User, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -20,6 +20,7 @@ import {
   onAgentPermissionUpdate,
   onAgentTurnUpdate,
   pickAgentSourceFolder,
+  pickAgentImageSources,
   pickAgentTextSources,
   promptAgent,
   respondAgentPermission,
@@ -80,7 +81,7 @@ export function AgentConversation({
     (AgentSourceInput & { id: string })[]
   >([]);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
-  const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | null>(null);
+  const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
   const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
   const [contextQuery, setContextQuery] = useState("");
   const sessionRef = useRef<AgentSessionInfo | null>(null);
@@ -165,13 +166,14 @@ export function AgentConversation({
         }
         const contextPaths = attachedConcepts.map((concept) => `${concept.id}.md`);
         const sources = attachedSources.map(
-          ({ title, content, origin, mediaType, sourceDigest, warning }) => ({
+          ({ title, content, origin, mediaType, sourceDigest, warning, imageData }) => ({
             title,
             content,
             ...(origin ? { origin } : {}),
             ...(mediaType ? { mediaType } : {}),
             ...(sourceDigest ? { sourceDigest } : {}),
             ...(warning ? { warning } : {}),
+            ...(imageData ? { imageData } : {}),
           }),
         );
         const turn = await promptAgent(
@@ -233,14 +235,16 @@ export function AgentConversation({
     }
   }
 
-  async function attachLocalSources(kind: "files" | "folder") {
+  async function attachLocalSources(kind: "files" | "folder" | "images") {
     setSourcePicker(kind);
     setSourcePickerError(null);
     try {
       const available = 8 - attachedSources.length;
       const sources = await (kind === "files"
         ? pickAgentTextSources(available)
-        : pickAgentSourceFolder(available));
+        : kind === "folder"
+          ? pickAgentSourceFolder(available)
+          : pickAgentImageSources(available));
       setAttachedSources((current) => [
         ...current,
         ...sources.slice(0, 8 - current.length).map((source) => ({
@@ -370,6 +374,8 @@ export function AgentConversation({
                       size={14}
                       aria-hidden="true"
                     />
+                  ) : source.imageData ? (
+                    <ImageIcon size={14} aria-hidden="true" />
                   ) : (
                     <FileText size={14} aria-hidden="true" />
                   )}
@@ -448,6 +454,26 @@ export function AgentConversation({
                   <FolderPlus size={14} aria-hidden="true" />
                   {sourcePicker === "folder" ? "Selecting..." : "Add folder"}
                 </button>
+                <button
+                  type="button"
+                  className="btn ghost agent-context-attach"
+                  title={
+                    connection.capabilities.promptImage
+                      ? undefined
+                      : "This agent does not accept image prompts."
+                  }
+                  disabled={
+                    !connection.capabilities.promptImage ||
+                    isSubmitting ||
+                    activeTurn !== null ||
+                    sourcePicker !== null ||
+                    attachedSources.length >= 8
+                  }
+                  onClick={() => void attachLocalSources("images")}
+                >
+                  <ImagePlus size={14} aria-hidden="true" />
+                  {sourcePicker === "images" ? "Selecting..." : "Add images"}
+                </button>
               </div>
             </div>
             <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
@@ -466,7 +492,13 @@ export function AgentConversation({
               <p className="agent-composer__error" role="alert">{sourcePickerError}</p>
             )}
             <div className="agent-composer__actions">
-              <span>{activeTurn ? "Agent is working" : "Text only"}</span>
+              <span>
+                {activeTurn
+                  ? "Agent is working"
+                  : connection.capabilities.promptImage
+                    ? "Text and images"
+                    : "Text only"}
+              </span>
               {activeTurn ? (
                 <button type="button" className="btn" disabled={isCancelling} onClick={() => void stopTurn()}>
                   <Square size={14} aria-hidden="true" />

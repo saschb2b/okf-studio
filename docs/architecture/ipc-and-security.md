@@ -15,6 +15,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `pick_folder()` | Open the native folder dialog; return the chosen path (becomes the scope). |
 | `pick_agent_text_sources(limit)` | Open the native PDF, text, Markdown, HTML, CSV, and JSON picker; read or extract bounded content in Rust; and return filename- and media-type-labelled sources without absolute paths. PDF parsing runs in a separate bounded helper process. |
 | `pick_agent_source_folder(limit)` | Open the native folder picker; discover supported files through a bounded, non-symlink traversal; and return individually removable sources with relative-path provenance. |
+| `pick_agent_image_sources(limit)` | Open the native PNG, JPEG, and WebP picker; verify signatures and bounded bytes in Rust; and return image sources without absolute paths. |
 | `fetch_agent_source_url(url)` | Fetch one explicit public HTTPS text, Markdown, HTML, CSV, or JSON source through bounded Rust mediation; return its final URL, media type, content, and original-response digest. |
 | `scan_bundles(folder)` | Run [bundle detection](bundle-detection.md); return the list of roots with confidence. |
 | `read_bundle(root)` | [Parse](okf-parsing.md) a root into a full [`Bundle`](data-model.md). |

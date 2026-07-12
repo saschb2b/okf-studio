@@ -1,12 +1,13 @@
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthenticateRequest, CancelNotification, ClientCapabilities, ContentBlock,
     ContentChunk, EmbeddedResource, EmbeddedResourceResource, FileSystemCapabilities,
-    Implementation, InitializeRequest, InitializeResponse, McpServer, McpServerStdio,
+    ImageContent, Implementation, InitializeRequest, InitializeResponse, McpServer, McpServerStdio,
     NewSessionRequest, PermissionOptionKind, PromptRequest, ReadTextFileRequest, ReadTextFileResponse,
     RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents,
 };
+use base64::Engine;
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo};
 use serde::Serialize;
@@ -41,13 +42,18 @@ const MAX_SOURCE_TITLE_CHARS: usize = crate::agent_sources::MAX_SOURCE_TITLE_CHA
 const MAX_SOURCE_ORIGIN_CHARS: usize = crate::agent_sources::MAX_SOURCE_ORIGIN_CHARS;
 const MAX_SOURCE_CONTENT_CHARS: usize = crate::agent_sources::MAX_SOURCE_CONTENT_CHARS;
 const MAX_SOURCE_TOTAL_CHARS: usize = crate::agent_sources::MAX_SOURCE_TOTAL_CHARS;
-const SOURCE_MEDIA_TYPES: [&str; 6] = [
+const MAX_IMAGE_SOURCE_BYTES: u64 = crate::agent_sources::MAX_IMAGE_SOURCE_BYTES;
+const MAX_IMAGE_TOTAL_BYTES: u64 = crate::agent_sources::MAX_IMAGE_TOTAL_BYTES;
+const SOURCE_MEDIA_TYPES: [&str; 9] = [
     "text/plain",
     "text/markdown",
     "text/html",
     "text/csv",
     "application/json",
     "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
 ];
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
@@ -824,6 +830,7 @@ async fn run_connection(
                 .agent_capabilities
                 .prompt_capabilities
                 .embedded_context;
+            let supports_images = response.agent_capabilities.prompt_capabilities.image;
             if let Some(sender) = take_sender(&handshake) {
                 sender
                     .send(Ok(connection_info(
@@ -878,6 +885,10 @@ async fn run_connection(
                                 let _ = response.send(result);
                             }
                             AgentHostCommand::Prompt { session_id, turn_id, text, context_paths, sources, response } => {
+                                if sources.iter().any(|source| source.image_data.is_some()) && !supports_images {
+                                    let _ = response.send(Err("This agent did not advertise image prompt support.".to_string()));
+                                    continue;
+                                }
                                 let bundle_root = sessions
                                     .lock()
                                     .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
@@ -1079,6 +1090,7 @@ fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), String> {
         ));
     }
     let mut total_chars = 0_usize;
+    let mut total_image_bytes = 0_u64;
     for source in sources {
         let title = source.title.trim();
         if title.is_empty()
@@ -1089,13 +1101,42 @@ fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), String> {
                 "Source titles must be non-empty, bounded, and contain no controls.".to_string(),
             );
         }
-        let content_chars = source.content.chars().count();
-        if source.content.trim().is_empty() || content_chars > MAX_SOURCE_CONTENT_CHARS {
-            return Err(format!(
-                "Source content must be non-empty and cannot exceed {MAX_SOURCE_CONTENT_CHARS} characters."
-            ));
+        let is_image = source.image_data.is_some();
+        if is_image {
+            if !source.content.is_empty()
+                || !matches!(source.media_type.as_deref(), Some("image/png" | "image/jpeg" | "image/webp"))
+            {
+                return Err("Image sources must use a supported image media type and no text body.".to_string());
+            }
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(source.image_data.as_deref().unwrap_or_default())
+                .map_err(|_| "Image sources must contain valid base64 data.".to_string())?;
+            if bytes.is_empty() || bytes.len() as u64 > MAX_IMAGE_SOURCE_BYTES {
+                return Err("Image sources must be non-empty and no larger than 8 MiB.".to_string());
+            }
+            if !image_bytes_match_media_type(
+                &bytes,
+                source.media_type.as_deref().unwrap_or_default(),
+            ) {
+                return Err("Image source bytes do not match their media type.".to_string());
+            }
+            total_image_bytes = total_image_bytes.saturating_add(bytes.len() as u64);
+            if total_image_bytes > MAX_IMAGE_TOTAL_BYTES {
+                return Err("Attached images cannot exceed 16 MiB in total.".to_string());
+            }
+            let digest = format!("{:x}", Sha256::digest(&bytes));
+            if source.source_digest.as_deref() != Some(digest.as_str()) {
+                return Err("Image source digests must match the attached bytes.".to_string());
+            }
+        } else {
+            let content_chars = source.content.chars().count();
+            if source.content.trim().is_empty() || content_chars > MAX_SOURCE_CONTENT_CHARS {
+                return Err(format!(
+                    "Source content must be non-empty and cannot exceed {MAX_SOURCE_CONTENT_CHARS} characters."
+                ));
+            }
+            total_chars = total_chars.saturating_add(content_chars);
         }
-        total_chars = total_chars.saturating_add(content_chars);
         if let Some(origin) = &source.origin {
             let origin = origin.trim();
             if origin.is_empty()
@@ -1136,10 +1177,37 @@ fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), String> {
     Ok(())
 }
 
+fn image_bytes_match_media_type(bytes: &[u8], media_type: &str) -> bool {
+    match media_type {
+        "image/png" => bytes.starts_with(b"\x89PNG\r\n\x1a\n"),
+        "image/jpeg" => bytes.starts_with(&[0xff, 0xd8, 0xff]),
+        "image/webp" => {
+            bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP"
+        }
+        _ => false,
+    }
+}
+
 fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<ContentBlock> {
     sources
         .into_iter()
-        .map(|source| {
+        .flat_map(|source| {
+            if let (Some(data), Some(media_type)) =
+                (source.image_data.clone(), source.media_type.clone())
+            {
+                let origin = source.origin.as_deref().unwrap_or("selected image");
+                let digest = source.source_digest.as_deref().unwrap_or("unavailable");
+                return vec![
+                    ContentBlock::Text(TextContent::new(format!(
+                        "## Attached user image: {}\n\nOrigin: {}\nMedia type: {}\nOriginal source SHA-256: {}",
+                        source.title.trim(),
+                        origin,
+                        media_type,
+                        digest
+                    ))),
+                    ContentBlock::Image(ImageContent::new(data, media_type)),
+                ];
+            }
             let digest = format!("{:x}", Sha256::digest(source.content.as_bytes()));
             let origin = source.origin.as_deref().unwrap_or("pasted text");
             let media_type = source
@@ -1157,7 +1225,7 @@ fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<ContentBlock> {
                 .as_deref()
                 .map(|value| format!("\nExtraction warning: {value}"))
                 .unwrap_or_default();
-            ContentBlock::Text(TextContent::new(format!(
+            vec![ContentBlock::Text(TextContent::new(format!(
                 "## Attached user source: {}\n\nOrigin: {}{}{}{}\nContent SHA-256: {}\n\n{}",
                 source.title.trim(),
                 origin,
@@ -1166,7 +1234,7 @@ fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<ContentBlock> {
                 warning,
                 digest,
                 source.content
-            )))
+            )))]
         })
         .collect()
 }
@@ -2477,6 +2545,7 @@ mod tests {
             media_type: None,
             source_digest: None,
             warning: None,
+            image_data: None,
         };
         validate_sources(std::slice::from_ref(&source)).expect("source should be valid");
         let prompt = okf_prompt_blocks(
@@ -2504,6 +2573,7 @@ mod tests {
             media_type: Some("text/csv".to_string()),
             source_digest: None,
             warning: None,
+            image_data: None,
         };
         validate_sources(std::slice::from_ref(&structured))
             .expect("structured source should be valid");
@@ -2514,6 +2584,25 @@ mod tests {
                 if text.text.contains("Origin: research.csv\nMedia type: text/csv\nContent SHA-256: ")
         ));
 
+        let image_bytes = b"\x89PNG\r\n\x1a\nimage";
+        let image = AgentSourceInput {
+            title: "diagram.png".to_string(),
+            content: String::new(),
+            origin: Some("diagram.png".to_string()),
+            media_type: Some("image/png".to_string()),
+            source_digest: Some(format!("{:x}", Sha256::digest(image_bytes))),
+            warning: None,
+            image_data: Some(base64::engine::general_purpose::STANDARD.encode(image_bytes)),
+        };
+        validate_sources(std::slice::from_ref(&image)).expect("image source should be valid");
+        let blocks = source_content_blocks(vec![image]);
+        assert!(matches!(
+            &blocks[..],
+            [ContentBlock::Text(text), ContentBlock::Image(image)]
+                if text.text.contains("Attached user image: diagram.png")
+                    && image.mime_type == "image/png"
+        ));
+
         let invalid = AgentSourceInput {
             title: "Bad\ntitle".to_string(),
             content: "content".to_string(),
@@ -2521,6 +2610,7 @@ mod tests {
             media_type: None,
             source_digest: None,
             warning: None,
+            image_data: None,
         };
         assert!(validate_sources(&[invalid]).is_err());
         assert!(validate_sources(&[AgentSourceInput {
@@ -2530,6 +2620,7 @@ mod tests {
             media_type: Some("application/xml".to_string()),
             source_digest: None,
             warning: None,
+            image_data: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
@@ -2540,6 +2631,7 @@ mod tests {
                 media_type: None,
                 source_digest: None,
                 warning: None,
+                image_data: None,
             };
             MAX_SOURCE_ATTACHMENTS + 1
         ])
@@ -2551,6 +2643,7 @@ mod tests {
             media_type: None,
             source_digest: None,
             warning: None,
+            image_data: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
@@ -2561,6 +2654,7 @@ mod tests {
                 media_type: None,
                 source_digest: None,
                 warning: None,
+                image_data: None,
             };
             3
         ])

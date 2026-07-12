@@ -110,6 +110,8 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add images" })).toBeDisabled();
+    expect(screen.getByTitle("This agent does not accept image prompts.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     const connectedCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
@@ -217,6 +219,10 @@ describe("OKF Studio app", () => {
     expect(
       screen.getByRole("button", { name: "Remove data/findings.csv source" }),
     ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add images" }));
+    expect(
+      await screen.findByRole("button", { name: "Remove architecture.png source" }),
+    ).toBeInTheDocument();
     vi.spyOn(ipc, "fetchAgentSourceUrl").mockRejectedValueOnce(
       new Error("The URL could not be fetched securely."),
     );
@@ -267,6 +273,14 @@ describe("OKF Studio app", () => {
           sourceDigest: "c".repeat(64),
         },
         {
+          title: "architecture.png",
+          content: "",
+          origin: "architecture.png",
+          mediaType: "image/png",
+          sourceDigest: "3c7474b4239ada3342d87f25ec8849eb8473ee35c5471452482686098b49e81b",
+          imageData: "iVBORw0KGgppbWFnZQ==",
+        },
+        {
           title: "research.html",
           content: "# Remote research\n\nFetched evidence.",
           origin: "https://example.com/research.html",
@@ -290,6 +304,7 @@ describe("OKF Studio app", () => {
     expect(screen.queryByRole("button", { name: "Remove research-report.pdf source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove config/settings.json source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove data/findings.csv source" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove architecture.png source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove research.html source" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");

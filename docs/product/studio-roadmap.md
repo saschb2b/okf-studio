@@ -149,7 +149,7 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Extract bounded PDFs in an isolated helper with page provenance, original-file hashes, and partial-text warnings.
 - [x] Discover supported sources from a bounded local folder without exposing its absolute path.
 - [x] Fetch bounded public HTTPS text, Markdown, HTML, CSV, and JSON sources with redirect-safe network mediation and final-URL provenance.
-- [ ] Accept images in the source tray.
+- [x] Accept bounded PNG, JPEG, and WebP images when the connected ACP agent advertises image prompt support.
 - [x] Normalize CSV locally with strict records, original-file hashes, and row-range provenance.
 - [x] Normalize JSON locally with deterministic JSON Pointer provenance and original-file hashes.
 - [ ] Show the proposed concepts, types, links, and indexes before generation.

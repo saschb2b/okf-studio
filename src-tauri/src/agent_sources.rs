@@ -1,3 +1,4 @@
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::fs::{self, File};
@@ -11,6 +12,8 @@ pub(crate) const MAX_SOURCE_CONTENT_CHARS: usize = 256 * 1024;
 pub(crate) const MAX_SOURCE_TOTAL_CHARS: usize = 512 * 1024;
 pub(crate) const MAX_SOURCE_TITLE_CHARS: usize = 256;
 pub(crate) const MAX_SOURCE_ORIGIN_CHARS: usize = 2_048;
+pub(crate) const MAX_IMAGE_SOURCE_BYTES: u64 = 8 * 1024 * 1024;
+pub(crate) const MAX_IMAGE_TOTAL_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_SOURCE_FILE_BYTES: u64 = MAX_SOURCE_CONTENT_CHARS as u64;
 const MAX_SELECTED_FILE_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_FOLDER_DEPTH: usize = 8;
@@ -30,6 +33,7 @@ pub struct AgentSourceInput {
     pub(crate) media_type: Option<String>,
     pub(crate) source_digest: Option<String>,
     pub(crate) warning: Option<String>,
+    pub(crate) image_data: Option<String>,
 }
 
 pub(crate) fn pick_text_sources(
@@ -79,6 +83,36 @@ pub(crate) fn pick_source_folder(
     read_folder_sources(&root, requested_limit.min(MAX_SOURCE_ATTACHMENTS))
 }
 
+pub(crate) fn pick_image_sources(
+    app: &AppHandle,
+    requested_limit: usize,
+) -> Result<Vec<AgentSourceInput>, String> {
+    if requested_limit == 0 {
+        return Err("The source tray is full.".to_string());
+    }
+    let limit = requested_limit.min(MAX_SOURCE_ATTACHMENTS);
+    let selected = app
+        .dialog()
+        .file()
+        .add_filter(
+            "PNG, JPEG, and WebP images",
+            &["png", "jpg", "jpeg", "webp"],
+        )
+        .blocking_pick_files()
+        .unwrap_or_default();
+    if selected.len() > limit {
+        return Err(format!("Select at most {limit} more images."));
+    }
+    let paths = selected
+        .into_iter()
+        .map(|path| {
+            path.into_path()
+                .map_err(|_| "A selected image path is not available on this platform.".to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    read_image_sources(&paths, limit)
+}
+
 fn read_text_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSourceInput>, String> {
     let paths = paths
         .iter()
@@ -95,6 +129,62 @@ fn read_text_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSourceI
         })
         .collect::<Result<Vec<_>, String>>()?;
     read_sources(&paths, limit)
+}
+
+fn read_image_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSourceInput>, String> {
+    if paths.len() > limit || paths.len() > MAX_SOURCE_ATTACHMENTS {
+        return Err(format!("Select at most {limit} more images."));
+    }
+    let mut total_bytes = 0_u64;
+    paths
+        .iter()
+        .map(|path| {
+            let title = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .filter(|name| !name.is_empty())
+                .ok_or_else(|| "A selected image has no usable filename.".to_string())?;
+            if title.chars().count() > MAX_SOURCE_TITLE_CHARS || title.chars().any(char::is_control)
+            {
+                return Err(
+                    "A selected image filename is too long or contains controls.".to_string(),
+                );
+            }
+            let metadata = path
+                .metadata()
+                .map_err(|error| format!("Could not inspect {title}: {error}"))?;
+            if !metadata.is_file() {
+                return Err(format!("{title} is not a file."));
+            }
+            if metadata.len() > MAX_IMAGE_SOURCE_BYTES {
+                return Err(format!("{title} exceeds the 8 MiB image limit."));
+            }
+            total_bytes = total_bytes.saturating_add(metadata.len());
+            if total_bytes > MAX_IMAGE_TOTAL_BYTES {
+                return Err("Selected images exceed the 16 MiB combined limit.".to_string());
+            }
+            let mut bytes = Vec::with_capacity(metadata.len() as usize);
+            File::open(path)
+                .and_then(|file| {
+                    file.take(MAX_IMAGE_SOURCE_BYTES + 1)
+                        .read_to_end(&mut bytes)
+                })
+                .map_err(|error| format!("Could not read {title}: {error}"))?;
+            if bytes.len() as u64 > MAX_IMAGE_SOURCE_BYTES {
+                return Err(format!("{title} exceeds the 8 MiB image limit."));
+            }
+            let media_type = image_media_type(path, &bytes)?;
+            Ok(AgentSourceInput {
+                title: title.to_string(),
+                content: String::new(),
+                origin: Some(title.to_string()),
+                media_type: Some(media_type.to_string()),
+                source_digest: Some(format!("{:x}", sha2::Sha256::digest(&bytes))),
+                warning: None,
+                image_data: Some(base64::engine::general_purpose::STANDARD.encode(bytes)),
+            })
+        })
+        .collect()
 }
 
 fn read_folder_sources(root: &Path, limit: usize) -> Result<Vec<AgentSourceInput>, String> {
@@ -213,6 +303,7 @@ fn read_sources(paths: &[SourcePath], limit: usize) -> Result<Vec<AgentSourceInp
                 media_type: Some(media_type.to_string()),
                 source_digest: Some(extraction.source_digest),
                 warning: extraction.warning,
+                image_data: None,
             }
         } else {
             let mut bytes = Vec::with_capacity(metadata.len() as usize);
@@ -272,7 +363,24 @@ pub(crate) fn source_from_bytes(
         media_type: Some(media_type.to_string()),
         source_digest,
         warning: None,
+        image_data: None,
     })
+}
+
+fn image_media_type(path: &Path, bytes: &[u8]) -> Result<&'static str, String> {
+    let extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(str::to_ascii_lowercase);
+    let media_type = match extension.as_deref() {
+        Some("png") if bytes.starts_with(b"\x89PNG\r\n\x1a\n") => "image/png",
+        Some("jpg" | "jpeg") if bytes.starts_with(&[0xff, 0xd8, 0xff]) => "image/jpeg",
+        Some("webp") if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" => {
+            "image/webp"
+        }
+        _ => return Err("Images must be valid PNG, JPEG, or WebP files.".to_string()),
+    };
+    Ok(media_type)
 }
 
 fn relative_path_label(path: &Path) -> Result<String, String> {
@@ -368,6 +476,52 @@ mod tests {
                 assert_eq!(sources[0].source_digest.as_deref().map(str::len), Some(64));
             }
         }
+        fs::remove_dir_all(root).expect("remove temp directory");
+    }
+
+    #[test]
+    fn reads_bounded_images_with_provenance_without_disclosing_paths() {
+        let root = temp_dir();
+        let path = root.join("diagram.png");
+        let bytes = b"\x89PNG\r\n\x1a\nimage bytes";
+        fs::write(&path, bytes).expect("write image");
+
+        let sources = read_image_sources(&[path], 1).expect("read image");
+
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].title, "diagram.png");
+        assert_eq!(sources[0].origin.as_deref(), Some("diagram.png"));
+        assert_eq!(sources[0].media_type.as_deref(), Some("image/png"));
+        assert!(sources[0].content.is_empty());
+        assert_eq!(
+            sources[0].image_data.as_deref(),
+            Some(
+                base64::engine::general_purpose::STANDARD
+                    .encode(bytes)
+                    .as_str()
+            )
+        );
+        assert_eq!(sources[0].source_digest.as_deref().map(str::len), Some(64));
+        let serialized = serde_json::to_string(&sources).expect("serialize images");
+        assert!(!serialized.contains(root.to_string_lossy().as_ref()));
+        fs::remove_dir_all(root).expect("remove temp directory");
+    }
+
+    #[test]
+    fn rejects_mislabeled_and_oversized_images() {
+        let root = temp_dir();
+        let mislabeled = root.join("diagram.png");
+        fs::write(&mislabeled, b"not a png").expect("write mislabeled image");
+        assert!(read_image_sources(&[mislabeled], 1)
+            .expect_err("reject mislabeled image")
+            .contains("valid PNG"));
+
+        let oversized = root.join("large.jpg");
+        fs::write(&oversized, vec![0_u8; MAX_IMAGE_SOURCE_BYTES as usize + 1])
+            .expect("write oversized image");
+        assert!(read_image_sources(&[oversized], 1)
+            .expect_err("reject oversized image")
+            .contains("8 MiB"));
         fs::remove_dir_all(root).expect("remove temp directory");
     }
 

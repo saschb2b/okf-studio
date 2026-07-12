@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-12
+* **Creation**: Added ACP tool lifecycle cards to Agent threads. Rust exposes only a bounded title, ID, kind, and status, while dropping raw arguments, output, content, locations, and extension metadata before IPC. Repeated updates replace one card, cancellation and failure close running cards, and Markdown export retains only the tool title and final state.
 * **Creation**: Added structured ACP plans to Agent threads. Rust reduces each complete update to at most 64 bounded tasks with closed status and priority values. The transcript keeps one live replacement card per turn, preserves user-before-plan order when updates arrive early, and exports the final plan as a Markdown task list.
 * **Update**: Compacted Agent context intake into one plus menu inside the prompt footer. Bundle concepts, validation issues, text or URL sources, files, folders, and images now use one keyboard-focused popover, while attached items remain visible as chips. The idle composer no longer reserves a six-button grid for optional actions.
 * **Creation**: Added one visible in-memory follow-up queue to active Agent turns. The queued prompt keeps its context and sources, stays outside the transcript until ACP accepts it, can be edited or removed, and starts after completion or cancellation. A rejected queued start restores the draft and attachments for explicit retry.

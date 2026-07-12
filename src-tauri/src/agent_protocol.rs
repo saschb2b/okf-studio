@@ -5,7 +5,8 @@ use agent_client_protocol::schema::v1::{
     NewSessionRequest, PermissionOptionKind, PlanEntryPriority, PlanEntryStatus, PromptRequest,
     ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
-    SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents,
+    SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents, ToolCallStatus,
+    ToolKind,
 };
 use base64::Engine;
 use agent_client_protocol::schema::ProtocolVersion;
@@ -36,6 +37,7 @@ const MAX_PROMPT_CHARS: usize = 128 * 1024;
 const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
 const MAX_PLAN_ENTRIES: usize = 64;
 const MAX_PLAN_ENTRY_CHARS: usize = 1024;
+const MAX_TOOL_FIELD_CHARS: usize = 512;
 const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
 const MAX_CONTEXT_PATHS: usize = 8;
 const MAX_CONTEXT_PATH_CHARS: usize = 1024;
@@ -126,6 +128,12 @@ enum AgentTurnUpdate {
     },
     Plan {
         entries: Vec<AgentPlanEntryInfo>,
+    },
+    ToolCall {
+        tool_call_id: String,
+        title: Option<String>,
+        tool_kind: Option<&'static str>,
+        status: Option<&'static str>,
     },
     Completed {
         stop_reason: String,
@@ -1430,6 +1438,18 @@ fn turn_event(
                 })
                 .collect(),
         },
+        SessionUpdate::ToolCall(tool) => AgentTurnUpdate::ToolCall {
+            tool_call_id: bounded_tool_field(&tool.tool_call_id.to_string()),
+            title: Some(bounded_tool_field(&tool.title)),
+            tool_kind: Some(tool_kind_name(tool.kind)),
+            status: Some(tool_status_name(tool.status)),
+        },
+        SessionUpdate::ToolCallUpdate(update) => AgentTurnUpdate::ToolCall {
+            tool_call_id: bounded_tool_field(&update.tool_call_id.to_string()),
+            title: update.fields.title.map(|title| bounded_tool_field(&title)),
+            tool_kind: update.fields.kind.map(tool_kind_name),
+            status: update.fields.status.map(tool_status_name),
+        },
         _ => return None,
     };
     Some(AgentTurnEvent {
@@ -1469,6 +1489,40 @@ fn plan_status_name(status: PlanEntryStatus) -> &'static str {
         PlanEntryStatus::Pending => "pending",
         PlanEntryStatus::InProgress => "in-progress",
         PlanEntryStatus::Completed => "completed",
+        _ => "unknown",
+    }
+}
+
+fn bounded_tool_field(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| !character.is_control())
+        .take(MAX_TOOL_FIELD_CHARS)
+        .collect()
+}
+
+fn tool_kind_name(kind: ToolKind) -> &'static str {
+    match kind {
+        ToolKind::Read => "read",
+        ToolKind::Edit => "edit",
+        ToolKind::Delete => "delete",
+        ToolKind::Move => "move",
+        ToolKind::Search => "search",
+        ToolKind::Execute => "execute",
+        ToolKind::Think => "think",
+        ToolKind::Fetch => "fetch",
+        ToolKind::SwitchMode => "switch-mode",
+        ToolKind::Other => "other",
+        _ => "unknown",
+    }
+}
+
+fn tool_status_name(status: ToolCallStatus) -> &'static str {
+    match status {
+        ToolCallStatus::Pending => "pending",
+        ToolCallStatus::InProgress => "in-progress",
+        ToolCallStatus::Completed => "completed",
+        ToolCallStatus::Failed => "failed",
         _ => "unknown",
     }
 }
@@ -1807,8 +1861,8 @@ mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
         AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, NewSessionResponse,
-        PermissionOption, Plan, PlanEntry, PromptCapabilities, PromptResponse, ToolCallUpdate,
-        ToolCallUpdateFields,
+        PermissionOption, Plan, PlanEntry, PromptCapabilities, PromptResponse, ToolCall,
+        ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -1840,6 +1894,44 @@ mod tests {
         assert_eq!(entries.len(), MAX_PLAN_ENTRIES);
         assert_eq!(entries[0].content.chars().count(), MAX_PLAN_ENTRY_CHARS);
         assert!(!entries[0].content.contains('\u{0000}'));
+    }
+
+    #[test]
+    fn reduces_tool_updates_without_raw_arguments_or_output() {
+        let active_turns = Mutex::new(HashMap::from([(
+            "session-tool".to_string(),
+            "turn-tool".to_string(),
+        )]));
+        let event = turn_event(
+            "connection-tool",
+            &active_turns,
+            SessionNotification::new(
+                "session-tool",
+                SessionUpdate::ToolCall(
+                    ToolCall::new("tool-secret", format!("Search\u{0000}{}", "x".repeat(600)))
+                        .kind(ToolKind::Search)
+                        .status(ToolCallStatus::InProgress)
+                        .raw_input(serde_json::json!({ "token": "must-not-cross-ipc" }))
+                        .raw_output(serde_json::json!({ "secret": true })),
+                ),
+            ),
+        )
+        .expect("tool event");
+        let event_debug = format!("{event:?}");
+
+        let AgentTurnUpdate::ToolCall {
+            tool_call_id,
+            title,
+            tool_kind,
+            status,
+        } = event.update else {
+            panic!("expected a tool update");
+        };
+        assert_eq!(tool_call_id, "tool-secret");
+        assert_eq!(title.expect("title").chars().count(), MAX_TOOL_FIELD_CHARS);
+        assert_eq!(tool_kind, Some("search"));
+        assert_eq!(status, Some("in-progress"));
+        assert!(!event_debug.contains("must-not-cross-ipc"));
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -2356,6 +2448,21 @@ mod tests {
                         ])),
                     ))?;
                     connection.send_notification(SessionNotification::new(
+                        request.session_id.clone(),
+                        SessionUpdate::ToolCall(
+                            ToolCall::new("tool-search", "Search the bundle")
+                                .kind(ToolKind::Search)
+                                .status(ToolCallStatus::InProgress),
+                        ),
+                    ))?;
+                    connection.send_notification(SessionNotification::new(
+                        request.session_id.clone(),
+                        SessionUpdate::ToolCallUpdate(ToolCallUpdate::new(
+                            "tool-search",
+                            ToolCallUpdateFields::new().status(ToolCallStatus::Completed),
+                        )),
+                    ))?;
+                    connection.send_notification(SessionNotification::new(
                         request.session_id,
                         SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
                             TextContent::new("A grounded answer."),
@@ -2438,6 +2545,26 @@ mod tests {
                 if entries.len() == 2
                     && entries[0].status == "completed"
                     && entries[1].status == "in-progress"
+        ));
+        let tool_start = events_rx.recv().await.expect("tool start event");
+        assert!(matches!(
+            tool_start.update,
+            AgentTurnUpdate::ToolCall {
+                tool_call_id,
+                title: Some(title),
+                tool_kind: Some("search"),
+                status: Some("in-progress"),
+            } if tool_call_id == "tool-search" && title == "Search the bundle"
+        ));
+        let tool_end = events_rx.recv().await.expect("tool completion event");
+        assert!(matches!(
+            tool_end.update,
+            AgentTurnUpdate::ToolCall {
+                tool_call_id,
+                title: None,
+                tool_kind: None,
+                status: Some("completed"),
+            } if tool_call_id == "tool-search"
         ));
         let text_event = events_rx.recv().await.expect("text event");
         assert_eq!(text_event.turn_id, "turn-1");

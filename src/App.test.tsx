@@ -355,10 +355,14 @@ describe("OKF Studio app", () => {
     const planCard = await screen.findByRole("region", { name: "Agent plan" });
     expect(within(planCard).getByText("Inspect the bundle and attachments")).toBeInTheDocument();
     expect(within(planCard).getByText("Draft the response")).toBeInTheDocument();
+    const toolCard = await screen.findByRole("article", { name: "Tool: Search the bundle" });
+    expect(within(toolCard).getByText("Search")).toBeInTheDocument();
     await screen.findByText(/Browser ACP received:/);
     expect(within(planCard).getByText("2 of 2 complete")).toBeInTheDocument();
     expect(within(planCard).getAllByText("Completed")).toHaveLength(2);
+    expect(within(toolCard).getByText("Completed")).toBeInTheDocument();
     expect(screen.getAllByRole("region", { name: "Agent plan" })).toHaveLength(1);
+    expect(screen.getAllByRole("article", { name: "Tool: Search the bundle" })).toHaveLength(1);
     const renderedAgentText = document.querySelector(
       ".agent-message--agent .agent-message__markdown strong",
     );
@@ -384,7 +388,7 @@ describe("OKF Studio app", () => {
     expect(exportSpy).toHaveBeenLastCalledWith(
       "bundle-research-thread.md",
       expect.stringContaining(
-        "# Bundle research\n\nAgent: Research Harness\n\nBundle: OKF Studio (sample)\n\n## You\n\n> Summarize the **bundle**\n\n## Plan\n\n- [x] Inspect the bundle and attachments\n- [x] Draft the response\n\n## Agent\n\n",
+        "# Bundle research\n\nAgent: Research Harness\n\nBundle: OKF Studio (sample)\n\n## You\n\n> Summarize the **bundle**\n\n## Plan\n\n- [x] Inspect the bundle and attachments\n- [x] Draft the response\n\n> **Tool (Completed):** Search the bundle\n\n## Agent\n\n",
       ),
     );
     expect(await screen.findByRole("status")).toHaveTextContent(
@@ -419,6 +423,12 @@ describe("OKF Studio app", () => {
 
     await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
     await user.click(screen.getByRole("button", { name: "Send" }));
+    const activeToolCards = await screen.findAllByRole("article", {
+      name: "Tool: Search the bundle",
+    });
+    const activeToolCard = activeToolCards.at(-1);
+    if (!activeToolCard) throw new Error("The active tool card was not rendered.");
+    expect(within(activeToolCard).getByText("Running")).toBeInTheDocument();
     const userMessageCount = document.querySelectorAll(".agent-message--user").length;
     fireEvent.change(screen.getByLabelText("Message the agent"), {
       target: { value: "Explain the implications" },
@@ -451,6 +461,7 @@ describe("OKF Studio app", () => {
     promptSpy.mockRejectedValueOnce(new Error("Queued follow-up did not start."));
     await user.click(await screen.findByRole("button", { name: "Stop" }));
     const cancelledStatus = await screen.findByText("Turn cancelled.");
+    expect(within(activeToolCard).getByText("Cancelled")).toBeInTheDocument();
     expect(cancelledStatus.closest("article")).toHaveAttribute("role", "status");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Queued follow-up did not start.",

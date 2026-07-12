@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
+import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
@@ -6,6 +6,8 @@ import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
   AgentPlanEntryInfo,
+  AgentToolKind,
+  AgentToolStatus,
   AgentPermissionEvent,
   AgentPermissionOptionInfo,
   AgentSessionInfo,
@@ -58,7 +60,17 @@ interface ConversationPlan {
   entries: readonly AgentPlanEntryInfo[];
 }
 
-type ConversationItem = ConversationMessage | ConversationPlan;
+interface ConversationTool {
+  id: string;
+  role: "tool";
+  turnId: string;
+  toolCallId: string;
+  title: string;
+  toolKind: AgentToolKind;
+  status: AgentToolStatus | "cancelled";
+}
+
+type ConversationItem = ConversationMessage | ConversationPlan | ConversationTool;
 
 type AttachedSource = AgentSourceInput & {
   id: string;
@@ -285,7 +297,8 @@ export function AgentConversation({
         );
         setMessages((current) => {
           const firstTurnItem = current.findIndex((item) =>
-            item.id === `plan-${turn.turnId}` || item.id === `agent-${turn.turnId}`);
+            item.id === `plan-${turn.turnId}` || item.id === `agent-${turn.turnId}` ||
+            (item.role === "tool" && item.turnId === turn.turnId));
           if (firstTurnItem < 0) return [...current, userMessage];
           return [
             ...current.slice(0, firstTurnItem),
@@ -641,9 +654,7 @@ export function AgentConversation({
               </div>
             ) : (
               <>
-                {messages.map((item) => item.role === "plan"
-                  ? <PlanCard key={item.id} plan={item} />
-                  : <Message key={item.id} message={item} />)}
+                {messages.map((item) => <ConversationItemView key={item.id} item={item} />)}
                 {pendingPermissions.map((permission) => (
                   <PermissionCard key={permission.requestId} permission={permission} />
                 ))}
@@ -1330,10 +1341,10 @@ function applyTurnEvent(
     const chunkText = event.update.text;
     setMessages((current) => {
       const index = current.findIndex((message) =>
-        message.role !== "plan" && message.id === messageId);
+        message.role !== "plan" && message.role !== "tool" && message.id === messageId);
       if (index < 0) return [...current, { id: messageId, role: "agent", text: chunkText }];
       return current.map((message, messageIndex) =>
-        messageIndex === index && message.role !== "plan"
+        messageIndex === index && message.role !== "plan" && message.role !== "tool"
           ? { ...message, text: message.text + chunkText }
           : message,
       );
@@ -1348,10 +1359,30 @@ function applyTurnEvent(
       if (index < 0) return [...current, plan];
       return current.map((item, itemIndex) => itemIndex === index ? plan : item);
     });
+  } else if (event.update.kind === "tool-call") {
+    const toolUpdate = event.update;
+    const itemId = `tool-${event.turnId}-${toolUpdate.toolCallId}`;
+    setMessages((current) => {
+      const index = current.findIndex((item) => item.id === itemId);
+      const existing = index >= 0 && current[index]?.role === "tool"
+        ? current[index]
+        : null;
+      const tool: ConversationTool = {
+        id: itemId,
+        role: "tool",
+        turnId: event.turnId,
+        toolCallId: toolUpdate.toolCallId,
+        title: toolUpdate.title ?? existing?.title ?? "Agent tool",
+        toolKind: toolUpdate.toolKind ?? existing?.toolKind ?? "other",
+        status: toolUpdate.status ?? existing?.status ?? "pending",
+      };
+      if (index < 0) return [...current, tool];
+      return current.map((item, itemIndex) => itemIndex === index ? tool : item);
+    });
   } else if (event.update.kind === "failed") {
     const failureMessage = event.update.message;
     setMessages((current) => [
-      ...current,
+      ...finalizeToolItems(current, event.turnId, "failed"),
       {
         id: `status-${event.turnId}`,
         role: "status",
@@ -1360,6 +1391,7 @@ function applyTurnEvent(
       },
     ]);
   } else if (event.update.stopReason !== "end-turn") {
+    const stopReason = event.update.stopReason;
     const stop = ({
       cancelled: { text: "Turn cancelled.", tone: "neutral" },
       refusal: { text: "The agent refused this turn.", tone: "warning" },
@@ -1369,9 +1401,11 @@ function applyTurnEvent(
         tone: "warning",
       },
       unknown: { text: "The agent stopped for an unknown reason.", tone: "warning" },
-    } as const)[event.update.stopReason];
+    } as const)[stopReason];
     setMessages((current) => [
-      ...current,
+      ...(stopReason === "cancelled"
+        ? finalizeToolItems(current, event.turnId, "cancelled")
+        : current),
       {
         id: `status-${event.turnId}`,
         role: "status",
@@ -1380,6 +1414,63 @@ function applyTurnEvent(
       },
     ]);
   }
+}
+
+function finalizeToolItems(
+  items: readonly ConversationItem[],
+  turnId: string,
+  status: "failed" | "cancelled",
+): ConversationItem[] {
+  return items.map((item) =>
+    item.role === "tool" && item.turnId === turnId &&
+      (item.status === "pending" || item.status === "in-progress")
+      ? { ...item, status }
+      : item);
+}
+
+function ConversationItemView({ item }: { item: ConversationItem }) {
+  if (item.role === "plan") return <PlanCard plan={item} />;
+  if (item.role === "tool") return <ToolCard tool={item} />;
+  return <Message message={item} />;
+}
+
+function ToolCard({ tool }: { tool: ConversationTool }) {
+  const kindLabel = ({
+    read: "Read",
+    edit: "Edit",
+    delete: "Delete",
+    move: "Move",
+    search: "Search",
+    execute: "Command",
+    think: "Reasoning",
+    fetch: "Fetch",
+    "switch-mode": "Mode",
+    other: "Tool",
+    unknown: "Tool",
+  } as const)[tool.toolKind];
+  const statusLabel = ({
+    pending: "Pending",
+    "in-progress": "Running",
+    completed: "Completed",
+    failed: "Failed",
+    cancelled: "Cancelled",
+    unknown: "Status unknown",
+  } as const)[tool.status];
+  return (
+    <article
+      className={`agent-tool agent-tool--${tool.status}`}
+      aria-label={`Tool: ${tool.title}`}
+    >
+      <span className="agent-tool__icon" aria-hidden="true">
+        <Wrench size={15} />
+      </span>
+      <div>
+        <strong>{tool.title}</strong>
+        <small>{kindLabel}</small>
+      </div>
+      <small className="agent-tool__status">{statusLabel}</small>
+    </article>
+  );
 }
 
 function PlanCard({ plan }: { plan: ConversationPlan }) {

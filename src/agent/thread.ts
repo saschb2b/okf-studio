@@ -20,7 +20,16 @@ export interface ThreadTranscriptPlan {
   entries: readonly ThreadTranscriptPlanEntry[];
 }
 
-export type ThreadTranscriptItem = ThreadTranscriptMessage | ThreadTranscriptPlan;
+export interface ThreadTranscriptTool {
+  role: "tool";
+  title: string;
+  status: "pending" | "in-progress" | "completed" | "failed" | "cancelled" | "unknown";
+}
+
+export type ThreadTranscriptItem =
+  | ThreadTranscriptMessage
+  | ThreadTranscriptPlan
+  | ThreadTranscriptTool;
 
 function plainTitleText(text: string): string {
   return text
@@ -86,6 +95,11 @@ export function transcriptMarkdown(
         return `- [${marker}] ${entry.content.replace(/[\r\n]+/g, " ")}${suffix}`;
       });
       return `## Plan\n\n${entries.join("\n")}`;
+    }
+    if (message.role === "tool") {
+      const status = message.status === "in-progress" ? "Running" :
+        `${message.status.charAt(0).toUpperCase()}${message.status.slice(1)}`;
+      return `> **Tool (${status}):** ${message.title.replace(/[\r\n]+/g, " ")}`;
     }
     if (message.role === "user") return `## You\n\n${quoteMarkdown(message.text)}`;
     if (message.role === "agent") return `## Agent\n\n${message.text}`;

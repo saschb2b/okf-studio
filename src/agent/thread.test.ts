@@ -27,12 +27,14 @@ describe("agent thread metadata", () => {
           { content: "Draft the answer", status: "in-progress" },
         ],
       },
+      { role: "tool", title: "Search the bundle", status: "completed" },
       { role: "agent", text: "**Finding:** documented." },
       { role: "status", text: "Turn cancelled." },
     ])).toBe(
       "# Bundle research\n\nAgent: Local agent\n\nBundle: Catalog\n\n" +
       "## You\n\n> Summarize **literally**\n\n" +
       "## Plan\n\n- [x] Inspect the bundle\n- [ ] Draft the answer (in progress)\n\n" +
+      "> **Tool (Completed):** Search the bundle\n\n" +
       "## Agent\n\n**Finding:** documented.\n\n> **Turn:** Turn cancelled.\n",
     );
   });

@@ -50,6 +50,12 @@ export interface AgentPlanEntryInfo {
   status: "pending" | "in-progress" | "completed" | "unknown";
 }
 
+export type AgentToolKind =
+  | "read" | "edit" | "delete" | "move" | "search" | "execute"
+  | "think" | "fetch" | "switch-mode" | "other" | "unknown";
+export type AgentToolStatus =
+  | "pending" | "in-progress" | "completed" | "failed" | "unknown";
+
 export type AgentPermissionOptionKind =
   | "allow-once"
   | "allow-always"
@@ -81,6 +87,13 @@ export interface AgentTurnEvent extends AgentTurnInfo {
   update:
     | { kind: "text"; text: string; messageId: string | null }
     | { kind: "plan"; entries: readonly AgentPlanEntryInfo[] }
+    | {
+        kind: "tool-call";
+        toolCallId: string;
+        title: string | null;
+        toolKind: AgentToolKind | null;
+        status: AgentToolStatus | null;
+      }
     | {
         kind: "completed";
         stopReason: "end-turn" | "max-tokens" | "max-turn-requests" | "refusal" | "cancelled" | "unknown";

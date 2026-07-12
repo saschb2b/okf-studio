@@ -336,6 +336,65 @@
   color: var(--error);
 }
 
+.agent-tool {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 48px;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-tool__icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+  background: var(--bg-elev);
+  border-radius: var(--radius-sm);
+}
+
+.agent-tool > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.agent-tool strong {
+  line-height: var(--lh-tight);
+  overflow-wrap: break-word;
+}
+
+.agent-tool small {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-tool__status {
+  text-align: end;
+}
+
+.agent-tool--completed .agent-tool__icon {
+  color: var(--ok);
+}
+
+.agent-tool--failed .agent-tool__icon,
+.agent-tool--failed .agent-tool__status {
+  color: var(--error);
+}
+
+.agent-tool--cancelled .agent-tool__icon,
+.agent-tool--cancelled .agent-tool__status,
+.agent-tool--unknown .agent-tool__icon,
+.agent-tool--unknown .agent-tool__status {
+  color: var(--text-dim);
+}
+
 .agent-plan {
   display: grid;
   gap: var(--space-8);

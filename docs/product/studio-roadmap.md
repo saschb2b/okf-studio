@@ -112,7 +112,8 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 - [x] Distinguish waiting, running, cancelled, and failed states in the active thread.
 - [ ] Add archived and restorable thread states after Studio metadata persistence lands.
 - [x] Stream structured ACP plans as live replacement cards and preserve the final plan in export.
-- [ ] Stream tool cards, locations, diffs, and usage.
+- [x] Stream bounded ACP tool-call lifecycle cards without raw arguments or output.
+- [ ] Stream locations, diffs, and usage.
 - [x] Support send, stop, and safe retry when a prompt fails before turn acceptance.
 - [x] Export the current in-memory thread as Markdown through an explicit native save dialog.
 - [x] Derive and edit a title for the current in-memory thread and use it in Markdown export.

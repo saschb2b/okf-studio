@@ -431,6 +431,16 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       ],
     },
   });
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "tool-call",
+      toolCallId: `search-${info.turnId}`,
+      title: "Search the bundle",
+      toolKind: "search",
+      status: "in-progress",
+    },
+  });
   const delaySteps = text.includes("Run a long investigation") ? 100 : 1;
   for (let step = 0; step < delaySteps; step += 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -499,6 +509,16 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
         { content: "Inspect the bundle and attachments", priority: "high", status: "completed" },
         { content: "Draft the response", priority: "medium", status: "in-progress" },
       ],
+    },
+  });
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "tool-call",
+      toolCallId: `search-${info.turnId}`,
+      title: null,
+      toolKind: null,
+      status: "completed",
     },
   });
   emitAgentTurn({

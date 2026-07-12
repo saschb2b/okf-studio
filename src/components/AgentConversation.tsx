@@ -1,4 +1,4 @@
-import { Bot, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Send, ShieldQuestion, Square, TriangleAlert, User, X } from "lucide-react";
+import { Bot, Database, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -55,6 +55,33 @@ type PendingPermission = AgentPermissionEvent & {
   update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
 };
 
+const THREAD_STARTERS = [
+  {
+    title: "Create bundle",
+    description: "Turn attached evidence into a proposed OKF structure.",
+    prompt: "Create a new OKF bundle from the sources I attach. First inspect the evidence, then propose the concepts, types, links, and indexes. Do not write files yet.",
+    icon: WandSparkles,
+  },
+  {
+    title: "Enhance bundle",
+    description: "Find useful additions without replacing authored facts.",
+    prompt: "Review this OKF bundle and the sources I attach. Propose additions or corrections without overwriting authored facts. Do not write files yet.",
+    icon: Sparkles,
+  },
+  {
+    title: "Request dataset change",
+    description: "Map a requested change to affected knowledge.",
+    prompt: "Assess this dataset documentation and propose a change plan. Identify affected concepts, dependencies, validation risks, and supporting evidence. Do not write files yet.",
+    icon: Database,
+  },
+  {
+    title: "Deep research",
+    description: "Trace a question through the bundle and sources.",
+    prompt: "Research this question across the active bundle and attached sources. Cite the evidence for each finding and label any inference: ",
+    icon: Search,
+  },
+] as const;
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -87,6 +114,7 @@ export function AgentConversation({
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const completedTurnsRef = useRef(new Set<string>());
   const messagesRef = useRef<HTMLDivElement>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const messagesElement = messagesRef.current;
@@ -262,6 +290,13 @@ export function AgentConversation({
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
   const requiresAuthentication = !connection.authenticated && connection.authMethods.length > 0;
 
+  function selectStarter(prompt: string) {
+    if (!promptRef.current) return;
+    promptRef.current.value = prompt;
+    promptRef.current.focus();
+    promptRef.current.setSelectionRange(prompt.length, prompt.length);
+  }
+
   return (
     <section className="agent-conversation" aria-labelledby="agent-conversation-title">
       <header className="agent-conversation__toolbar">
@@ -336,6 +371,26 @@ export function AgentConversation({
                   Studio attaches OKF context, read-only access to this bundle, and tools to
                   inspect concepts, trace sources, and validate structure.
                 </p>
+                <div className="agent-starters" role="group" aria-label="Start a guided thread">
+                  {THREAD_STARTERS.map((starter) => {
+                    const Icon = starter.icon;
+                    return (
+                      <button
+                        key={starter.title}
+                        type="button"
+                        className="agent-starter"
+                        aria-label={`${starter.title}: ${starter.description}`}
+                        onClick={() => selectStarter(starter.prompt)}
+                      >
+                        <Icon size={16} aria-hidden="true" />
+                        <span>
+                          <strong>{starter.title}</strong>
+                          <small>{starter.description}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <>
@@ -478,6 +533,7 @@ export function AgentConversation({
             </div>
             <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
             <textarea
+              ref={promptRef}
               id="agent-prompt"
               name="prompt"
               rows={3}

@@ -55,6 +55,67 @@
   text-align: center;
 }
 
+.agent-conversation__welcome {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.agent-starters {
+  display: grid;
+  width: 100%;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+  text-align: start;
+}
+
+.agent-starter {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  min-height: 48px;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-10);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.agent-starter:hover {
+  background: var(--bg-sunken);
+}
+
+.agent-starter:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
+}
+
+.agent-starter > .lucide {
+  margin-top: var(--space-2);
+  color: var(--accent);
+}
+
+.agent-starter span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.agent-starter strong {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-tight);
+}
+
+.agent-starter small {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
 .agent-conversation__state h3,
 .agent-conversation__welcome h3 {
   font-size: var(--fs-md);
@@ -490,4 +551,10 @@
 .agent-composer__error {
   color: var(--error);
   overflow-wrap: break-word;
+}
+
+@media (max-width: 420px) {
+  .agent-starter small {
+    display: none;
+  }
 }

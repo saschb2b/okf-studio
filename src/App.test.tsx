@@ -184,6 +184,19 @@ describe("OKF Studio app", () => {
     await screen.findByText(/Connected to Research Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Enhance bundle/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Request dataset change/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Deep research/ }));
+    expect(screen.getByLabelText("Message the agent")).toHaveValue(
+      "Research this question across the active bundle and attached sources. Cite the evidence for each finding and label any inference: ",
+    );
+    await user.type(screen.getByLabelText("Message the agent"), "Which decisions lack sources?");
+    expect(screen.getByLabelText("Message the agent")).toHaveValue(
+      "Research this question across the active bundle and attached sources. Cite the evidence for each finding and label any inference: Which decisions lack sources?",
+    );
+    expect(promptSpy).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText("Message the agent"));
     await user.click(screen.getByRole("button", { name: "Attach context" }));
     await user.click(screen.getByRole("button", { name: "Add Overview to context" }));
     expect(screen.getByRole("button", { name: "Remove Overview from context" })).toBeInTheDocument();

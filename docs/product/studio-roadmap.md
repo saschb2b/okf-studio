@@ -160,8 +160,8 @@ Gate: mixed, duplicate, malformed, offline, provenance, and deterministic-valida
 
 ## WP10: Guided knowledge work
 
-- [ ] Add **Create bundle**, **Enhance bundle**, **Request dataset change**, and **Deep research** starters.
-- [ ] Keep starters as normal inspectable threads, not separate result silos.
+- [x] Add **Create bundle**, **Enhance bundle**, **Request dataset change**, and **Deep research** starters.
+- [x] Keep starters as normal inspectable threads, not separate result silos.
 - [ ] Require cited evidence and mark inference in research exports.
 - [ ] Require a change plan and affected-concept set before dataset edits.
 

@@ -18,8 +18,13 @@ import type {
   AgentTurnInfo,
 } from "../agent/connection.ts";
 import type { ReaderSelectionCapture } from "../agent/readerSelection.ts";
-import type { AgentThreadMetadata } from "../agent/threadMetadata.ts";
-import { deriveThreadTitle, transcriptFilename, transcriptMarkdown } from "../agent/thread.ts";
+import type { AgentThreadMetadata, AgentThreadWorkflow } from "../agent/threadMetadata.ts";
+import {
+  deriveThreadTitle,
+  researchExportRequirements,
+  transcriptFilename,
+  transcriptMarkdown,
+} from "../agent/thread.ts";
 import {
   cancelAgentTurn,
   authenticateAgent,
@@ -136,27 +141,37 @@ const THREAD_STARTERS = [
     title: "Create bundle",
     description: "Turn attached evidence into a proposed OKF structure.",
     prompt: "Create a new OKF bundle from the sources I attach. First inspect the evidence, then propose the concepts, types, links, and indexes. Do not write files yet.",
+    workflow: null,
     icon: WandSparkles,
   },
   {
     title: "Enhance bundle",
     description: "Find useful additions without replacing authored facts.",
     prompt: "Review this OKF bundle and the sources I attach. Propose additions or corrections without overwriting authored facts. Do not write files yet.",
+    workflow: null,
     icon: Sparkles,
   },
   {
     title: "Request dataset change",
     description: "Map a requested change to affected knowledge.",
     prompt: "Assess this dataset documentation and propose a change plan. Identify affected concepts, dependencies, validation risks, and supporting evidence. Do not write files yet.",
+    workflow: "dataset-change",
     icon: Database,
   },
   {
     title: "Deep research",
     description: "Trace a question through the bundle and sources.",
-    prompt: "Research this question across the active bundle and attached sources. Cite the evidence for each finding and label any inference: ",
+    prompt: "Research this question across the active bundle and attached sources. Cite the evidence for each finding. End with `## Sources` containing one bullet per cited source and `## Inferences` containing each inference or `None.`: ",
+    workflow: "deep-research",
     icon: Search,
   },
 ] as const;
+
+function workflowForPrompt(prompt: string): AgentThreadWorkflow {
+  return THREAD_STARTERS.find((starter) =>
+    starter.workflow !== null && prompt.startsWith(starter.prompt)
+  )?.workflow ?? null;
+}
 
 const MAX_THREAD_TITLE_CHARS = 80;
 
@@ -304,6 +319,7 @@ export function AgentConversation({
     source: "default",
     value: "New thread",
   });
+  const [threadWorkflow, setThreadWorkflow] = useState<AgentThreadWorkflow>(null);
   const [messages, setMessages] = useState<ConversationItem[]>([]);
   const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
@@ -373,6 +389,7 @@ export function AgentConversation({
     session: AgentSessionInfo,
     title: string,
     archived = false,
+    workflow = threadWorkflow,
   ): Promise<AgentThreadMetadata | null> {
     if (!supportsHistory) return Promise.resolve(null);
     setThreadMetadataError(null);
@@ -382,6 +399,7 @@ export function AgentConversation({
       sessionId: session.sessionId,
       title,
       archived,
+      workflow,
     }));
     metadataSaveQueueRef.current = operation.then(() => undefined, () => undefined);
     void operation.then(
@@ -403,7 +421,9 @@ export function AgentConversation({
       };
       try {
         let session = sessionRef.current;
+        let startsNewSession = false;
         if (session?.bundleRoot !== bundleRoot) {
+          startsNewSession = true;
           setUsage(null);
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
@@ -458,10 +478,12 @@ export function AgentConversation({
         const nextTitle = threadTitle.source === "default"
           ? deriveThreadTitle(text, THREAD_STARTERS)
           : threadTitle.value;
+        const nextWorkflow = startsNewSession ? workflowForPrompt(text) : threadWorkflow;
         setThreadTitle((current) => current.source === "default"
           ? { source: "derived", value: nextTitle }
           : current);
-        void persistThreadMetadata(session, nextTitle);
+        setThreadWorkflow(nextWorkflow);
+        void persistThreadMetadata(session, nextTitle, false, nextWorkflow);
         setExportState({ status: "idle" });
         if (source === "composer") {
           setAttachedConcepts([]);
@@ -683,6 +705,21 @@ export function AgentConversation({
 
   async function exportTranscript() {
     if (messages.length === 0 || exportState.status === "exporting") return;
+    if (threadWorkflow === "deep-research") {
+      const requirements = researchExportRequirements(messages);
+      if (requirements.length > 0) {
+        const missing = requirements.length === 2
+          ? "a Sources list with a cited link or bundle path and an Inferences section"
+          : requirements[0] === "sources"
+            ? "a Sources list with a cited link or bundle path"
+            : "an Inferences section";
+        setExportState({
+          status: "error",
+          message: `Research export needs ${missing}. Ask the agent to revise the response. Use None when it made no inference.`,
+        });
+        return;
+      }
+    }
     setExportState({ status: "exporting" });
     try {
       const filename = await exportAgentTranscript(
@@ -691,7 +728,7 @@ export function AgentConversation({
       );
       setExportState(filename ? { status: "success", filename } : { status: "idle" });
     } catch (error: unknown) {
-      setExportState({ status: "error", message: errorMessage(error) });
+      setExportState({ status: "error", message: `Export failed. ${errorMessage(error)}` });
     }
   }
 
@@ -715,7 +752,7 @@ export function AgentConversation({
         bundleRoot,
         session.sessionId,
       );
-      applyRestoredSession(loaded, session.sessionId, session.title ?? "Restored thread");
+      applyRestoredSession(loaded, session.sessionId, session.title ?? "Restored thread", null);
     } catch (error: unknown) {
       setHistory({ status: "error", message: errorMessage(error) });
     } finally {
@@ -727,6 +764,7 @@ export function AgentConversation({
     loaded: AgentLoadedSessionInfo,
     sessionId: string,
     title: string,
+    workflow: AgentThreadWorkflow,
   ) {
     sessionRef.current = loaded;
     setMessages(loaded.messages.map((message, index) => ({
@@ -735,6 +773,7 @@ export function AgentConversation({
       text: message.text,
     })));
     setThreadTitle({ source: "custom", value: title });
+    setThreadWorkflow(workflow);
     setPendingPermissions([]);
     setUsage(null);
     setQueuedPrompt(null);
@@ -749,7 +788,7 @@ export function AgentConversation({
     setRetryingTurnId(null);
     setSavedThread({ status: "none" });
     setHistory({ status: "closed" });
-    void persistThreadMetadata(loaded, title);
+    void persistThreadMetadata(loaded, title, false, workflow);
     requestAnimationFrame(() => promptRef.current?.focus());
   }
 
@@ -782,7 +821,7 @@ export function AgentConversation({
         bundleRoot,
         session.sessionId,
       );
-      applyRestoredSession(loaded, session.sessionId, metadata.title);
+      applyRestoredSession(loaded, session.sessionId, metadata.title, metadata.workflow);
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error), metadata });
       requestAnimationFrame(() => savedThreadActionRef.current?.focus());
@@ -826,13 +865,19 @@ export function AgentConversation({
       promptText.trim() || attachedConcepts.length > 0 || attachedSources.length > 0 ||
       queuedPrompt) return;
     try {
-      const metadata = await persistThreadMetadata(session, threadTitle.value, true);
+      const metadata = await persistThreadMetadata(
+        session,
+        threadTitle.value,
+        true,
+        threadWorkflow,
+      );
       if (!metadata) return;
       sessionRef.current = null;
       completedTurnsRef.current.clear();
       failedTurnsRef.current.clear();
       acceptedDraftsRef.current.clear();
       setThreadTitle({ source: "default", value: "New thread" });
+      setThreadWorkflow(null);
       setMessages([]);
       setExportState({ status: "idle" });
       setActiveTurn(null);
@@ -884,7 +929,7 @@ export function AgentConversation({
           )}
           {exportState.status === "error" && (
             <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
-              Export failed. {exportState.message}
+              {exportState.message}
             </p>
           )}
           {threadMetadataError && (

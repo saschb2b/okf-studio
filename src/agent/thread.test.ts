@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { deriveThreadTitle, transcriptFilename, transcriptMarkdown } from "./thread.ts";
+import {
+  deriveThreadTitle,
+  researchExportRequirements,
+  transcriptFilename,
+  transcriptMarkdown,
+} from "./thread.ts";
 
 const STARTERS = [{
   title: "Deep research",
@@ -37,5 +42,24 @@ describe("agent thread metadata", () => {
       "> **Tool (Completed):** Search the bundle\n\n" +
       "## Agent\n\n**Finding:** documented.\n\n> **Turn:** Turn cancelled.\n",
     );
+  });
+
+  it("requires explicit source and inference sections for research exports", () => {
+    expect(researchExportRequirements([
+      { role: "agent", text: "## Finding\n\nDocumented." },
+    ])).toEqual(["sources", "inferences"]);
+    expect(researchExportRequirements([
+      { role: "agent", text: "## Sources\n\n- A vague reference\n\n## Inferences\n\nNone." },
+    ])).toEqual(["sources"]);
+    expect(researchExportRequirements([
+      {
+        role: "agent",
+        text: "## Sources\n\n- [Overview](product/overview.md)\n\n## Inferences\n\nNone.",
+      },
+    ])).toEqual([]);
+    expect(researchExportRequirements([
+      { role: "user", text: "## Sources\n\n- Invented by the user" },
+      { role: "agent", text: "## Inferences\n\n- This is inferred." },
+    ])).toEqual(["sources"]);
   });
 });

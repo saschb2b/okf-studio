@@ -34,7 +34,7 @@ import {
   removeAgentThreadMetadata as removeThreadMetadata,
   upsertAgentThreadMetadata,
 } from "./agent/threadMetadata.ts";
-import type { AgentThreadMetadata } from "./agent/threadMetadata.ts";
+import type { AgentThreadMetadata, AgentThreadWorkflow } from "./agent/threadMetadata.ts";
 import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
@@ -535,6 +535,18 @@ export async function onAgentPermissionUpdate(
   return listen<AgentPermissionEvent>("agent-permission-update", (event) => handler(event.payload));
 }
 
+function mockAgentResponse(text: string): string {
+  if (text.startsWith("Research this question across the active bundle")) {
+    if (text.includes("Omit research sections")) {
+      return "**Finding:** Missing required sections.";
+    }
+    return "**Finding:** The bundle documents its product and architecture decisions.\n\n" +
+      "## Sources\n\n- [Product overview](product/overview.md)\n\n" +
+      "## Inferences\n\nNone.";
+  }
+  return `Browser ACP received: ${text}`;
+}
+
 async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
   emitAgentTurn({
@@ -666,7 +678,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     ...info,
     update: {
       kind: "text",
-      text: `Browser ACP received: ${text}`,
+      text: mockAgentResponse(text),
       messageId: `message-${info.turnId}`,
     },
   });
@@ -686,7 +698,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     mockSession.updatedAt = new Date().toISOString();
     mockSession.messages = [
       ...mockSession.messages,
-      { role: "agent", text: `Browser ACP received: ${text}` },
+      { role: "agent", text: mockAgentResponse(text) },
     ];
   }
 }
@@ -1069,7 +1081,10 @@ export async function loadAgentThreadMetadata(
 }
 
 export async function saveAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived"> & { archived?: boolean },
+  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "workflow"> & {
+    archived?: boolean;
+    workflow?: AgentThreadWorkflow;
+  },
 ): Promise<AgentThreadMetadata> {
   const metadata = createAgentThreadMetadata(input);
   await writeAgentThreads(upsertAgentThreadMetadata(await readAgentThreads(), metadata));

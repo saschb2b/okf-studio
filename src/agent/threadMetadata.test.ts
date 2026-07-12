@@ -20,6 +20,7 @@ describe("agent thread metadata", () => {
       ...BASE,
       title: "Bundle research",
       archived: false,
+      workflow: null,
       updatedAt: 42,
     });
     expect(() => createAgentThreadMetadata({ ...BASE, sessionId: "bad\nsession" }))
@@ -29,7 +30,8 @@ describe("agent thread metadata", () => {
       { ...BASE, sessionId: "older-duplicate", updatedAt: 1 },
       { ...BASE, sessionId: "", updatedAt: 3 },
       { ...BASE, title: "tampered", updatedAt: Number.POSITIVE_INFINITY },
-    ])).toEqual([{ ...BASE, archived: false, updatedAt: 2 }]);
+      { ...BASE, bundleRoot: "C:\\knowledge\\research", workflow: "unknown", updatedAt: 4 },
+    ])).toEqual([{ ...BASE, archived: false, workflow: null, updatedAt: 2 }]);
   });
 
   it("keeps one current and one archived pointer per bundle and profile within the cap", () => {

@@ -31,6 +31,42 @@ export type ThreadTranscriptItem =
   | ThreadTranscriptPlan
   | ThreadTranscriptTool;
 
+export type ResearchExportRequirement = "sources" | "inferences";
+
+function sectionBody(markdown: string, title: string): string | null {
+  const heading = new RegExp(`^#{1,6}\\s+${title}\\s*$`, "imu");
+  const match = heading.exec(markdown);
+  if (!match) return null;
+  const afterHeading = markdown.slice(match.index + match[0].length);
+  const nextHeading = /^#{1,6}\s+\S.*$/mu.exec(afterHeading);
+  return (nextHeading ? afterHeading.slice(0, nextHeading.index) : afterHeading).trim();
+}
+
+export function researchExportRequirements(
+  messages: readonly ThreadTranscriptItem[],
+): ResearchExportRequirement[] {
+  const responses = messages.flatMap((message) =>
+    message.role === "agent" ? [message.text] : []
+  );
+  const hasSources = responses.some((response) => {
+    const body = sectionBody(response, "Sources");
+    if (body === null) return false;
+    return body.split("\n").some((line) =>
+      /^\s*[-*+]\s+\S/u.test(line) &&
+      (/\[[^\r\n]+\]\([^\r\n)]+\)/u.test(line) || /https?:\/\/\S+/u.test(line) ||
+        /(?:^|[\s`])(?:\.?\.?\/)?[\w./-]+\.md(?:#[^\s`]*)?/u.test(line))
+    );
+  });
+  const hasInferences = responses.some((response) => {
+    const body = sectionBody(response, "Inferences");
+    return body !== null && body.length > 0;
+  });
+  const requirements: ResearchExportRequirement[] = [];
+  if (!hasSources) requirements.push("sources");
+  if (!hasInferences) requirements.push("inferences");
+  return requirements;
+}
+
 function plainTitleText(text: string): string {
   return text
     .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")

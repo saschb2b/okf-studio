@@ -197,11 +197,11 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: /Request dataset change/ })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Deep research/ }));
     expect(screen.getByLabelText("Message the agent")).toHaveValue(
-      "Research this question across the active bundle and attached sources. Cite the evidence for each finding and label any inference: ",
+      "Research this question across the active bundle and attached sources. Cite the evidence for each finding. End with `## Sources` containing one bullet per cited source and `## Inferences` containing each inference or `None.`: ",
     );
     await user.type(screen.getByLabelText("Message the agent"), "Which decisions lack sources?");
     expect(screen.getByLabelText("Message the agent")).toHaveValue(
-      "Research this question across the active bundle and attached sources. Cite the evidence for each finding and label any inference: Which decisions lack sources?",
+      "Research this question across the active bundle and attached sources. Cite the evidence for each finding. End with `## Sources` containing one bullet per cited source and `## Inferences` containing each inference or `None.`: Which decisions lack sources?",
     );
     expect(promptSpy).not.toHaveBeenCalled();
     await user.clear(screen.getByLabelText("Message the agent"));
@@ -653,6 +653,50 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Archive Harness" }));
+  });
+
+  it("blocks incomplete deep-research exports and saves a compliant revision", async () => {
+    const user = userEvent.setup();
+    const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Research Export Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\research-export.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Research Export Harness" }));
+    await screen.findByText(/Connected to Research Export Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.click(screen.getByRole("button", { name: /Deep research/ }));
+    await user.type(screen.getByLabelText("Message the agent"), "Omit research sections");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Missing required sections.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Research export needs a Sources list with a cited link or bundle path and an Inferences section",
+    );
+    expect(exportSpy).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await user.click(screen.getByRole("button", { name: /Deep research/ }));
+    await user.type(screen.getByLabelText("Message the agent"), "Which decisions are documented?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("link", { name: "Product overview" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Exported");
+    expect(exportSpy).toHaveBeenCalledTimes(1);
+    expect(exportSpy).toHaveBeenCalledWith(
+      expect.stringContaining("deep-research"),
+      expect.stringContaining("## Inferences\n\nNone."),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Research Export Harness" }));
   });
 
   it("attaches an explicit reader selection as bounded source context", async () => {

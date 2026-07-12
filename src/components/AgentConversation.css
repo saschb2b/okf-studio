@@ -213,6 +213,9 @@
 
 .agent-conversation__toolbar .agent-conversation__export-status--error {
   color: var(--error);
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .agent-conversation__toolbar h2 {

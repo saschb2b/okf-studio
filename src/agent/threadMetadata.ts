@@ -1,9 +1,12 @@
+export type AgentThreadWorkflow = "deep-research" | "dataset-change" | null;
+
 export interface AgentThreadMetadata {
   bundleRoot: string;
   profileId: string;
   sessionId: string;
   title: string;
   archived: boolean;
+  workflow: AgentThreadWorkflow;
   updatedAt: number;
 }
 
@@ -27,19 +30,25 @@ function isBoundedText(value: unknown, limit: number): value is string {
 function parseMetadata(value: unknown): AgentThreadMetadata | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<AgentThreadMetadata>;
+  const workflow = (value as Record<string, unknown>).workflow;
   if (!(isBoundedText(candidate.bundleRoot, LIMITS.bundleRoot) &&
     isBoundedText(candidate.profileId, LIMITS.profileId) &&
     isBoundedText(candidate.sessionId, LIMITS.sessionId) &&
     isBoundedText(candidate.title, LIMITS.title) &&
     typeof candidate.updatedAt === "number" && Number.isSafeInteger(candidate.updatedAt) &&
     candidate.updatedAt >= 0 &&
-    (candidate.archived === undefined || typeof candidate.archived === "boolean"))) return null;
+    (candidate.archived === undefined || typeof candidate.archived === "boolean") &&
+    (workflow === undefined || workflow === null || workflow === "deep-research" ||
+      workflow === "dataset-change"))) {
+    return null;
+  }
   return {
     bundleRoot: candidate.bundleRoot,
     profileId: candidate.profileId,
     sessionId: candidate.sessionId,
     title: candidate.title,
     archived: candidate.archived ?? false,
+    workflow: workflow ?? null,
     updatedAt: candidate.updatedAt,
   };
 }
@@ -72,11 +81,20 @@ export function parseAgentThreadMetadata(value: unknown): AgentThreadMetadata[] 
 }
 
 export function createAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived"> & { archived?: boolean },
+  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "workflow"> & {
+    archived?: boolean;
+    workflow?: AgentThreadWorkflow;
+  },
   updatedAt = Date.now(),
 ): AgentThreadMetadata {
   const title = input.title.replace(/\s+/gu, " ").trim();
-  const metadata = parseMetadata({ ...input, title, archived: input.archived ?? false, updatedAt });
+  const metadata = parseMetadata({
+    ...input,
+    title,
+    archived: input.archived ?? false,
+    workflow: input.workflow ?? null,
+    updatedAt,
+  });
   if (!metadata) {
     throw new Error("The thread metadata is invalid or exceeds its storage limit.");
   }

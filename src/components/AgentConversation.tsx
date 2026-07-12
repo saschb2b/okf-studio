@@ -22,6 +22,7 @@ import type { AgentThreadMetadata, AgentThreadWorkflow } from "../agent/threadMe
 import {
   datasetChangeRequirements,
   deriveThreadTitle,
+  previousThreadSource,
   researchExportRequirements,
   transcriptFilename,
   transcriptMarkdown,
@@ -93,10 +94,12 @@ type ConversationItem = ConversationMessage | ConversationPlan | ConversationToo
 
 type AttachedSource = AgentSourceInput & {
   id: string;
-  kind?: "issue" | "selection";
+  kind?: "issue" | "selection" | "thread";
   issueKey?: string;
   issueLevel?: Issue["level"];
 };
+
+type ThreadAttachSupport = "unsupported" | "busy" | "ready";
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
 interface PromptDraft {
@@ -216,6 +219,14 @@ function historyDateLabel(value: string | null): string | null {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function threadDateLabel(updatedAt: number): string | null {
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(updatedAt));
 }
 
 function sourceTooltip(source: AttachedSource): string {
@@ -671,6 +682,45 @@ export function AgentConversation({
     } finally {
       setSourcePicker(null);
     }
+  }
+
+  async function loadAttachableThreads(): Promise<AgentThreadMetadata[]> {
+    if (!bundleRoot || !supportsHistory) return [];
+    const metadata = await loadAgentThreadMetadata(bundleRoot, connection.profileId);
+    return metadata.filter((entry) => entry.sessionId !== sessionRef.current?.sessionId);
+  }
+
+  async function attachPreviousThread(metadata: AgentThreadMetadata): Promise<void> {
+    if (!bundleRoot) throw new Error("Open an OKF bundle first.");
+    // A saved pointer never bypasses the live allowlist: the session must
+    // appear in a fresh bundle-filtered ACP listing before it is loaded.
+    const page = await listAgentSessions(connection.connectionId, bundleRoot);
+    const session = page.sessions.find(
+      (candidate) => candidate.sessionId === metadata.sessionId,
+    );
+    if (!session) {
+      throw new Error(page.hasMore
+        ? "The saved session is not in the agent's first 50 matching sessions."
+        : "The agent no longer reports this session for the active bundle.");
+    }
+    const loaded = await loadAgentSession(
+      connection.connectionId,
+      bundleRoot,
+      metadata.sessionId,
+    );
+    const source = previousThreadSource(loaded.messages);
+    if (!source) throw new Error("The previous thread replayed no text to attach.");
+    setAttachedSources((current) => [...current, {
+      id: crypto.randomUUID(),
+      kind: "thread",
+      title: `Thread: ${metadata.title}`,
+      content: source.content,
+      origin: "Previous thread",
+      mediaType: "text/markdown",
+      ...(source.truncated
+        ? { warning: "Older messages were omitted to fit the source limit." }
+        : {}),
+    }]);
   }
 
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
@@ -1312,6 +1362,8 @@ export function AgentConversation({
                       />
                     ) : source.kind === "selection" ? (
                       <TextSelect size={14} aria-hidden="true" />
+                    ) : source.kind === "thread" ? (
+                      <History size={14} aria-hidden="true" />
                     ) : source.imageData ? (
                       <ImageIcon size={14} aria-hidden="true" />
                     ) : (
@@ -1379,6 +1431,9 @@ export function AgentConversation({
                     onCaptureReaderSelection={onCaptureReaderSelection}
                     disabled={isSubmitting || queuedPrompt !== null}
                     imageSupported={connection.capabilities.promptImage}
+                    threadSupport={!supportsHistory ? "unsupported" : activeTurn ? "busy" : "ready"}
+                    onLoadThreads={loadAttachableThreads}
+                    onThreadAttach={attachPreviousThread}
                     nativePicker={sourcePicker}
                     onConceptAttach={(concept) =>
                       setAttachedConcepts((current) => [...current, concept])
@@ -1453,8 +1508,12 @@ function validationIssueKey(issue: Issue): string {
   return JSON.stringify([issue.level, issue.conceptId, issue.message]);
 }
 
-type AttachmentView = "menu" | "concepts" | "issues" | "source";
+type AttachmentView = "menu" | "concepts" | "issues" | "source" | "threads";
 type NativeSourcePicker = "files" | "folder" | "images";
+type ThreadPickerState =
+  | { status: "loading" }
+  | { status: "ready"; threads: readonly AgentThreadMetadata[] }
+  | { status: "error"; message: string };
 
 interface AttachmentPickerProps {
   concepts: readonly { id: string; title: string; type: string }[];
@@ -1466,6 +1525,9 @@ interface AttachmentPickerProps {
   onCaptureReaderSelection: () => ReaderSelectionCapture;
   disabled: boolean;
   imageSupported: boolean;
+  threadSupport: ThreadAttachSupport;
+  onLoadThreads: () => Promise<AgentThreadMetadata[]>;
+  onThreadAttach: (metadata: AgentThreadMetadata) => Promise<void>;
   nativePicker: NativeSourcePicker | null;
   onConceptAttach: (concept: { id: string; title: string; type: string }) => void;
   onIssueAttach: (issue: Issue, issueKey: string) => void;
@@ -1483,6 +1545,9 @@ function AttachmentPicker({
   onCaptureReaderSelection,
   disabled,
   imageSupported,
+  threadSupport,
+  onLoadThreads,
+  onThreadAttach,
   nativePicker,
   onConceptAttach,
   onIssueAttach,
@@ -1498,11 +1563,15 @@ function AttachmentPicker({
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [threadPicker, setThreadPicker] = useState<ThreadPickerState>({ status: "loading" });
+  const [attachingThreadId, setAttachingThreadId] = useState<string | null>(null);
+  const [threadError, setThreadError] = useState<string | null>(null);
   const [readerSelection, setReaderSelection] = useState<ReaderSelectionCapture>({
     status: "unavailable",
     reason: "Select text in the reader first.",
   });
   const fetchRequestRef = useRef(0);
+  const threadRequestRef = useRef(0);
   const menuFirstRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const isAtLimit = sourceCount >= 8;
@@ -1557,9 +1626,17 @@ function AttachmentPicker({
     : readerSelection.status === "available"
       ? "Attach the selected text from the current concept"
       : readerSelection.reason;
+  const threadExplanation = threadSupport === "unsupported"
+    ? "This agent does not expose session history."
+    : isAtLimit
+      ? "The source limit has been reached."
+      : threadSupport === "busy"
+        ? "Wait for the active turn to finish."
+        : "Attach a saved thread as source evidence";
 
   function close() {
     fetchRequestRef.current += 1;
+    threadRequestRef.current += 1;
     setIsOpen(false);
     setView("menu");
     setQuery("");
@@ -1569,10 +1646,53 @@ function AttachmentPicker({
     setUrl("");
     setUrlError(null);
     setIsFetching(false);
+    setThreadPicker({ status: "loading" });
+    setAttachingThreadId(null);
+    setThreadError(null);
   }
 
   function openView(nextView: AttachmentView) {
     setView(nextView);
+  }
+
+  async function openThreads() {
+    setView("threads");
+    const requestId = ++threadRequestRef.current;
+    setThreadPicker({ status: "loading" });
+    setThreadError(null);
+    try {
+      const threads = await onLoadThreads();
+      if (threadRequestRef.current !== requestId) return;
+      setThreadPicker({ status: "ready", threads });
+    } catch (error) {
+      if (threadRequestRef.current !== requestId) return;
+      setThreadPicker({ status: "error", message: errorMessage(error) });
+    }
+    // The list arrives after the subview rendered, so the mount-time focus
+    // pass found nothing; move focus once results (or Back, when empty) exist.
+    requestAnimationFrame(() => {
+      const popup = popupRef.current;
+      if (!popup || threadRequestRef.current !== requestId) return;
+      const target = popup.querySelector<HTMLElement>("[data-attachment-initial-focus]")
+        ?? popup.querySelector<HTMLElement>("button");
+      target?.focus();
+    });
+  }
+
+  async function attachThread(metadata: AgentThreadMetadata) {
+    if (attachingThreadId) return;
+    const requestId = ++threadRequestRef.current;
+    setAttachingThreadId(metadata.sessionId);
+    setThreadError(null);
+    try {
+      await onThreadAttach(metadata);
+      if (threadRequestRef.current !== requestId) return;
+      close();
+    } catch (error) {
+      if (threadRequestRef.current !== requestId) return;
+      setAttachingThreadId(null);
+      setThreadError(errorMessage(error));
+    }
   }
 
   function attach() {
@@ -1685,6 +1805,16 @@ function AttachmentPicker({
                 </button>
                 <button
                   type="button"
+                  aria-label="Attach previous thread"
+                  title={threadExplanation}
+                  disabled={isAtLimit || threadSupport !== "ready"}
+                  onClick={() => void openThreads()}
+                >
+                  <History size={16} aria-hidden="true" />
+                  <span><strong>Previous thread</strong><small>{threadExplanation}</small></span>
+                </button>
+                <button
+                  type="button"
                   aria-label="Add source"
                   disabled={isAtLimit}
                   onClick={() => openView("source")}
@@ -1789,6 +1919,67 @@ function AttachmentPicker({
                     );
                   })}
                 </div>
+              </>
+            )}
+
+            {view === "threads" && (
+              <>
+                <AttachmentPickerHeader title="Previous thread" onBack={() => openView("menu")} />
+                {threadPicker.status === "loading" && (
+                  <p role="status">Loading saved threads...</p>
+                )}
+                {threadPicker.status === "error" && (
+                  <>
+                    <p className="agent-source-picker__error" role="alert">
+                      Saved threads unavailable. {threadPicker.message}
+                    </p>
+                    <div className="agent-source-picker__actions">
+                      <button
+                        type="button"
+                        className="btn"
+                        data-attachment-initial-focus
+                        onClick={() => void openThreads()}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </>
+                )}
+                {threadPicker.status === "ready" && threadPicker.threads.length === 0 && (
+                  <p>No saved thread exists for this bundle and agent.</p>
+                )}
+                {threadPicker.status === "ready" && threadPicker.threads.length > 0 && (
+                  <>
+                    <p>Attach a saved thread's replayed conversation as one source.</p>
+                    <div className="agent-context-picker__results">
+                      {threadPicker.threads.map((metadata, index) => {
+                        const updatedAt = threadDateLabel(metadata.updatedAt);
+                        const detail = attachingThreadId === metadata.sessionId
+                          ? "Attaching..."
+                          : [metadata.archived ? "Archived" : "Current", updatedAt]
+                            .filter(Boolean)
+                            .join(" · ");
+                        return (
+                          <button
+                            key={metadata.sessionId}
+                            type="button"
+                            data-attachment-initial-focus={index === 0 ? "" : undefined}
+                            title={metadata.title}
+                            aria-label={`Attach previous thread: ${metadata.title}`}
+                            disabled={attachingThreadId !== null}
+                            onClick={() => void attachThread(metadata)}
+                          >
+                            <History size={14} aria-hidden="true" />
+                            <span><strong>{metadata.title}</strong><small>{detail}</small></span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {threadError && (
+                      <p className="agent-source-picker__error" role="alert">{threadError}</p>
+                    )}
+                  </>
+                )}
               </>
             )}
 

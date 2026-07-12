@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   datasetChangeRequirements,
   deriveThreadTitle,
+  previousThreadSource,
   researchExportRequirements,
   transcriptFilename,
   transcriptMarkdown,
@@ -62,6 +63,42 @@ describe("agent thread metadata", () => {
       { role: "user", text: "## Sources\n\n- Invented by the user" },
       { role: "agent", text: "## Inferences\n\n- This is inferred." },
     ])).toEqual(["sources"]);
+  });
+
+  it("formats a previous-thread replay with quoted user text", () => {
+    expect(previousThreadSource([
+      { role: "user", text: "What changed?\nAnything else?" },
+      { role: "agent", text: "**Two** concepts changed." },
+    ])).toEqual({
+      content: "## You\n\n> What changed?\n> Anything else?\n\n" +
+        "## Agent\n\n**Two** concepts changed.",
+      truncated: false,
+    });
+    expect(previousThreadSource([])).toBeNull();
+    expect(previousThreadSource([{ role: "agent", text: "   \n " }])).toBeNull();
+  });
+
+  it("keeps the newest replay messages when the source cap is exceeded", () => {
+    const source = previousThreadSource([
+      { role: "user", text: `oldest question ${"q".repeat(80)}` },
+      { role: "agent", text: `middle answer ${"m".repeat(80)}` },
+      { role: "agent", text: `newest answer ${"n".repeat(80)}` },
+    ], 250);
+    expect(source).not.toBeNull();
+    expect(source?.truncated).toBe(true);
+    expect(source?.content).toContain("omitted to fit the source limit");
+    expect(source?.content).toContain("newest answer");
+    expect(source?.content).not.toContain("oldest question");
+  });
+
+  it("keeps the tail of a lone oversized replay message within the cap", () => {
+    const source = previousThreadSource(
+      [{ role: "agent", text: `${"x".repeat(400)}END` }],
+      120,
+    );
+    expect(source?.truncated).toBe(true);
+    expect(source?.content.length).toBeLessThanOrEqual(120);
+    expect(source?.content.endsWith("END")).toBe(true);
   });
 
   it("requires a plan and bundle-relative concept set for dataset changes", () => {

@@ -150,6 +150,69 @@ function quoteMarkdown(text: string): string {
     .join("\n");
 }
 
+// Mirrors the Rust per-source cap (MAX_SOURCE_CONTENT_CHARS). UTF-16 length is
+// counted here, which never undercounts the Unicode scalars Rust checks.
+export const MAX_THREAD_SOURCE_CHARS = 262_144;
+const THREAD_SOURCE_OMISSION =
+  "> Earlier messages were omitted to fit the source limit.";
+
+export interface PreviousThreadMessage {
+  role: "user" | "agent";
+  text: string;
+}
+
+export interface PreviousThreadSourceContent {
+  content: string;
+  truncated: boolean;
+}
+
+/**
+ * Format a bounded ACP session replay as one Markdown source body. The replay
+ * can exceed the per-source cap, so the newest messages win: older blocks are
+ * dropped whole (or the lone newest block keeps its tail) and an omission
+ * marker records the cut for the agent. Returns null when no message carries
+ * replayable text.
+ */
+export function previousThreadSource(
+  messages: readonly PreviousThreadMessage[],
+  limit = MAX_THREAD_SOURCE_CHARS,
+): PreviousThreadSourceContent | null {
+  const blocks = messages
+    .filter((message) => message.text.trim().length > 0)
+    .map((message) => message.role === "user"
+      ? `## You\n\n${quoteMarkdown(message.text)}`
+      : `## Agent\n\n${message.text}`);
+  if (blocks.length === 0) return null;
+
+  const total = blocks.reduce(
+    (sum, block, index) => sum + block.length + (index > 0 ? 2 : 0),
+    0,
+  );
+  if (total <= limit) return { content: blocks.join("\n\n"), truncated: false };
+
+  // Reserve the marker's space, then keep whole blocks newest-first.
+  const budget = Math.max(0, limit - THREAD_SOURCE_OMISSION.length - 2);
+  const kept: string[] = [];
+  let used = 0;
+  for (let index = blocks.length - 1; index >= 0; index--) {
+    const block = blocks[index];
+    const cost = block.length + (kept.length > 0 ? 2 : 0);
+    if (used + cost <= budget) {
+      kept.unshift(block);
+      used += cost;
+      continue;
+    }
+    if (kept.length === 0) kept.unshift(tailSlice(block, budget));
+    break;
+  }
+  return { content: `${THREAD_SOURCE_OMISSION}\n\n${kept.join("\n\n")}`, truncated: true };
+}
+
+/** The newest `limit` UTF-16 units of `text`, never starting mid-surrogate. */
+function tailSlice(text: string, limit: number): string {
+  return text.slice(text.length - limit).replace(/^[\udc00-\udfff]/u, "");
+}
+
 export function transcriptMarkdown(
   threadTitle: string,
   bundleName: string | null,

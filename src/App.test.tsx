@@ -660,6 +660,81 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Remove Archive Harness" }));
   });
 
+  it("attaches a previous thread as bounded source evidence", async () => {
+    const user = userEvent.setup();
+    const promptSpy = vi.spyOn(ipc, "promptAgent");
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Thread Context Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\thread-context.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Thread Context Harness" }));
+    await screen.findByText(/Connected to Thread Context Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    // The live thread's own pointer is never offered as attachable context.
+    await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Browser ACP received: Summarize the bundle"))
+      .toBeInTheDocument();
+    await openAttachmentMenu(user);
+    await user.click(screen.getByRole("button", { name: "Attach previous thread" }));
+    expect(await screen.findByText("No saved thread exists for this bundle and agent."))
+      .toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
+
+    await openAttachmentMenu(user);
+    await user.click(screen.getByRole("button", { name: "Attach previous thread" }));
+    await user.click(await screen.findByRole("button", {
+      name: "Attach previous thread: Summarize the bundle",
+    }));
+    expect(await screen.findByText("Thread: Summarize the bundle")).toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText("Message the agent"),
+      "Continue from the earlier thread",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Browser ACP received: Continue from the earlier thread"))
+      .toBeInTheDocument();
+    expect(promptSpy).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "Continue from the earlier thread",
+      [],
+      [expect.objectContaining({
+        title: "Thread: Summarize the bundle",
+        origin: "Previous thread",
+        mediaType: "text/markdown",
+        content: expect.stringContaining("## You\n\n> Summarize the bundle"),
+      })],
+    );
+    expect(screen.queryByText("Thread: Summarize the bundle")).not.toBeInTheDocument();
+
+    // A pointer missing from a fresh bundle-filtered listing cannot attach.
+    vi.spyOn(ipc, "listAgentSessions").mockResolvedValueOnce({ sessions: [], hasMore: false });
+    await openAttachmentMenu(user);
+    await user.click(screen.getByRole("button", { name: "Attach previous thread" }));
+    await user.click(await screen.findByRole("button", {
+      name: "Attach previous thread: Summarize the bundle",
+    }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The agent no longer reports this session for the active bundle.",
+    );
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Thread Context Harness" }));
+  }, 25_000);
+
   it("blocks incomplete deep-research exports and saves a compliant revision", async () => {
     const user = userEvent.setup();
     const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");

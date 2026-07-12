@@ -128,7 +128,8 @@ Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and 
 - [x] Add bounded inventory and validation inspection with filtered cursor paging.
 - [x] Add bounded concept reads and native source discovery without arbitrary file access or network fetching.
 - [ ] Add source extraction, proposed write, and review tools.
-- [ ] Attach bundle, selection, source, issue, and previous-thread context explicitly.
+- [x] Attach the active bundle, selected concepts, sources, and validation issues explicitly.
+- [ ] Attach reader selections and previous-thread context explicitly.
 - [x] Establish the per-session, bundle-scoped stdio MCP tool boundary for ACP agents.
 
 Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, Codex, and one local model, with limitations recorded.

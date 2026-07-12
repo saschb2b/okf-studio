@@ -208,6 +208,12 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Attach context" }));
     await user.type(screen.getByLabelText("Search concepts to attach"), "Graph View");
     await user.click(screen.getByRole("button", { name: "Add Graph View to context" }));
+    await user.click(screen.getByRole("button", { name: "Attach issue" }));
+    await user.click(screen.getByRole("button", { name: /Attach warning: features\/concept-reader/ }));
+    expect(
+      screen.getByRole("button", { name: "Remove Warning: features/concept-reader source" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Issues attached" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Add source" }));
     await user.type(screen.getByLabelText("Title"), "Interview notes");
     await user.type(
@@ -258,6 +264,9 @@ describe("OKF Studio app", () => {
     expect(document.querySelector(".agent-message--user")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Message the agent")).toHaveValue("Summarize the **bundle**");
     expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Warning: features/concept-reader source" }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(promptSpy).toHaveBeenCalledWith(
       expect.any(String),
@@ -265,6 +274,13 @@ describe("OKF Studio app", () => {
       "Summarize the **bundle**",
       ["product/overview.md", "features/graph-view.md"],
       [
+        {
+          title: "Warning: features/concept-reader",
+          content:
+            "features/concept-reader.md: link target not found -> features/does-not-exist",
+          origin: "features/concept-reader.md",
+          mediaType: "text/plain",
+        },
         {
           title: "Interview notes",
           content: "# Notes\n\nThe catalog owner confirmed the definition.",
@@ -320,6 +336,9 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove Warning: features/concept-reader source" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove research-report.pdf source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove config/settings.json source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove data/findings.csv source" })).not.toBeInTheDocument();

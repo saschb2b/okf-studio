@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-12
+* **Creation**: Added explicit validation-issue context to Agent conversations. The issue picker lists the active bundle's errors and warnings, suppresses attached duplicates, and creates a removable source with the exact message and concept provenance. Findings share the bounded source limit and grant no writes.
 * **Update**: Made Agent turn lifecycle explicit. Studio now reports prompt startup as waiting, commits a user message only after ACP accepts the turn, and preserves the prompt and attachments with a Retry action when startup fails. Cancelled, refused, limited, unknown, and failed turns render as labelled status records, separate from partial agent output.
 * **Creation**: Added Create bundle, Enhance bundle, Request dataset change, and Deep research starters to empty Agent threads. A starter only prefills and focuses the ordinary composer, so its full prompt stays editable and inspectable before the user sends it with any chosen context or sources. It does not auto-submit or grant writes.
 * **Creation**: Added capability-gated image sources to Agent conversations. Studio verifies PNG, JPEG, and WebP signatures in Rust, caps one image at 8 MiB and the image set at 16 MiB, retains filename and original-byte SHA-256 provenance, and revalidates decoded bytes before emitting an ACP image block. Agents without image prompt support cannot select or receive images. Studio does not preview, OCR, or persist them.

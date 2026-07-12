@@ -354,6 +354,11 @@
   color: var(--warn);
 }
 
+.agent-context-chip__error-icon,
+.agent-issue-picker__error-icon {
+  color: var(--error);
+}
+
 .agent-context-chip button {
   display: grid;
   width: 24px;
@@ -454,6 +459,17 @@
 
 .agent-context-picker__results em {
   font-style: normal;
+}
+
+.agent-issue-picker {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.agent-issue-picker .agent-context-picker__results em {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-context-picker__results p {

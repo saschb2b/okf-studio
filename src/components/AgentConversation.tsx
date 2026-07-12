@@ -27,6 +27,7 @@ import {
 } from "../ipc.ts";
 import type { AgentSourceInput } from "../ipc.ts";
 import { renderMarkdown } from "../markdown.ts";
+import type { Issue } from "../types.ts";
 import "./AgentConversation.css";
 
 interface AgentConversationProps {
@@ -35,6 +36,7 @@ interface AgentConversationProps {
   bundleName: string | null;
   activeConcept: { id: string; title: string } | null;
   concepts: readonly { id: string; title: string; type: string }[];
+  issues: readonly Issue[];
   onChangeAgent: () => void;
   onConnectionEnd: (event: AgentConnectionEvent) => void;
   onOpenFolder: () => Promise<void>;
@@ -46,6 +48,13 @@ interface ConversationMessage {
   text: string;
   tone?: "neutral" | "warning" | "error";
 }
+
+type AttachedSource = AgentSourceInput & {
+  id: string;
+  kind?: "issue";
+  issueKey?: string;
+  issueLevel?: Issue["level"];
+};
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
 type AuthenticationState =
@@ -87,12 +96,19 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function sourceTooltip(source: AttachedSource): string {
+  if (source.kind === "issue") return source.content;
+  if (source.warning) return `${source.title}: ${source.warning}`;
+  return source.title;
+}
+
 export function AgentConversation({
   connection,
   bundleRoot,
   bundleName,
   activeConcept,
   concepts,
+  issues,
   onChangeAgent,
   onConnectionEnd,
   onOpenFolder,
@@ -105,9 +121,7 @@ export function AgentConversation({
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
   >([]);
-  const [attachedSources, setAttachedSources] = useState<
-    (AgentSourceInput & { id: string })[]
-  >([]);
+  const [attachedSources, setAttachedSources] = useState<AttachedSource[]>([]);
   const [promptText, setPromptText] = useState("");
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
@@ -293,6 +307,9 @@ export function AgentConversation({
 
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
   const requiresAuthentication = !connection.authenticated && connection.authMethods.length > 0;
+  const attachedIssueKeys = new Set(
+    attachedSources.flatMap((source) => source.issueKey ? [source.issueKey] : []),
+  );
 
   function selectStarter(prompt: string) {
     if (!promptRef.current) return;
@@ -426,9 +443,13 @@ export function AgentConversation({
               ))}
               {attachedSources.map((source) => (
                 <span key={source.id} className="agent-context-chip">
-                  {source.warning ? (
+                  {source.warning || source.kind === "issue" ? (
                     <TriangleAlert
-                      className="agent-context-chip__warning-icon"
+                      className={
+                        source.issueLevel === "error"
+                          ? "agent-context-chip__error-icon"
+                          : "agent-context-chip__warning-icon"
+                      }
                       size={14}
                       aria-hidden="true"
                     />
@@ -437,7 +458,7 @@ export function AgentConversation({
                   ) : (
                     <FileText size={14} aria-hidden="true" />
                   )}
-                  <span title={source.warning ? `${source.title}: ${source.warning}` : source.title}>
+                  <span title={sourceTooltip(source)}>
                     {source.title}
                     {source.warning && <span className="sr-only"> Warning: {source.warning}</span>}
                   </span>
@@ -473,6 +494,27 @@ export function AgentConversation({
                     setIsContextPickerOpen(false);
                     setContextQuery("");
                   }}
+                />
+                <ValidationIssuePicker
+                  issues={issues}
+                  attachedIssueKeys={attachedIssueKeys}
+                  sourceCount={attachedSources.length}
+                  disabled={isSubmitting || activeTurn !== null}
+                  onAttach={(issue, issueKey) =>
+                    setAttachedSources((current) => [
+                      ...current,
+                      {
+                        id: crypto.randomUUID(),
+                        kind: "issue",
+                        issueKey,
+                        issueLevel: issue.level,
+                        title: `${issue.level === "error" ? "Error" : "Warning"}: ${issue.conceptId ?? "bundle"}`,
+                        content: issue.message,
+                        origin: issue.conceptId ? `${issue.conceptId}.md` : "Bundle validation",
+                        mediaType: "text/plain",
+                      },
+                    ])
+                  }
                 />
                 <SourcePicker
                   sourceCount={attachedSources.length}
@@ -596,6 +638,108 @@ interface SourcePickerProps {
   sourceCount: number;
   disabled: boolean;
   onAttach: (source: AgentSourceInput) => void;
+}
+
+interface ValidationIssuePickerProps {
+  issues: readonly Issue[];
+  attachedIssueKeys: ReadonlySet<string>;
+  sourceCount: number;
+  disabled: boolean;
+  onAttach: (issue: Issue, issueKey: string) => void;
+}
+
+function validationIssueKey(issue: Issue): string {
+  return JSON.stringify([issue.level, issue.conceptId, issue.message]);
+}
+
+function ValidationIssuePicker({
+  issues,
+  attachedIssueKeys,
+  sourceCount,
+  disabled,
+  onAttach,
+}: ValidationIssuePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const availableIssues = issues.filter(
+    (issue) => !attachedIssueKeys.has(validationIssueKey(issue)),
+  );
+  const isAtLimit = sourceCount >= 8;
+  let label = "Attach issue";
+  let explanation: string | undefined;
+  if (issues.length === 0) {
+    label = "No validation issues";
+    explanation = "This bundle has no validation issues.";
+  } else if (availableIssues.length === 0) {
+    label = "Issues attached";
+    explanation = "All validation issues are already attached.";
+  } else if (isAtLimit) {
+    label = "Source limit reached";
+  }
+
+  return (
+    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Popover.Trigger
+        render={
+          <button
+            type="button"
+            className="btn ghost agent-context-attach"
+            title={explanation}
+            disabled={disabled || isAtLimit || availableIssues.length === 0}
+          >
+            <TriangleAlert size={14} aria-hidden="true" />
+            {label}
+          </button>
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner
+          className="ui-popover-positioner"
+          side="top"
+          align="start"
+          sideOffset={6}
+        >
+          <Popover.Popup
+            className="ui-popover agent-context-picker agent-issue-picker"
+            aria-label="Attach validation issue"
+          >
+            <div className="agent-context-picker__results">
+              {availableIssues.map((issue) => {
+                const key = validationIssueKey(issue);
+                const severity = issue.level === "error" ? "Error" : "Warning";
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    title={issue.message}
+                    aria-label={`Attach ${severity.toLowerCase()}: ${issue.message}`}
+                    onClick={() => {
+                      onAttach(issue, key);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <TriangleAlert
+                      className={
+                        issue.level === "error"
+                          ? "agent-issue-picker__error-icon"
+                          : "agent-context-chip__warning-icon"
+                      }
+                      size={14}
+                      aria-hidden="true"
+                    />
+                    <span>
+                      <strong>{severity}</strong>
+                      <small>{issue.message}</small>
+                    </span>
+                    {issue.conceptId && <em>{issue.conceptId}</em>}
+                  </button>
+                );
+              })}
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
 }
 
 function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {

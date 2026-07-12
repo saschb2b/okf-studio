@@ -95,6 +95,12 @@ export interface AgentTurnEvent extends AgentTurnInfo {
         status: AgentToolStatus | null;
       }
     | {
+        kind: "usage";
+        usedTokens: number;
+        contextWindowTokens: number;
+        cost: { amount: number; currency: string } | null;
+      }
+    | {
         kind: "completed";
         stopReason: "end-turn" | "max-tokens" | "max-turn-requests" | "refusal" | "cancelled" | "unknown";
       }

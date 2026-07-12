@@ -105,6 +105,7 @@ type AuthenticationState =
 type PendingPermission = AgentPermissionEvent & {
   update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
 };
+type AgentUsage = Extract<AgentTurnEvent["update"], { kind: "usage" }>;
 
 const THREAD_STARTERS = [
   {
@@ -134,6 +135,34 @@ const THREAD_STARTERS = [
 ] as const;
 
 const MAX_THREAD_TITLE_CHARS = 80;
+
+function usageCostLabel(cost: AgentUsage["cost"]): string | null {
+  if (!cost) return null;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: cost.currency,
+      maximumFractionDigits: 4,
+    }).format(cost.amount);
+  } catch {
+    return `${cost.currency} ${cost.amount.toFixed(4).replace(/\.?0+$/, "")}`;
+  }
+}
+
+function usageLabels(usage: AgentUsage): { visible: string; detail: string } {
+  const cost = usageCostLabel(usage.cost);
+  const used = new Intl.NumberFormat().format(usage.usedTokens);
+  const size = new Intl.NumberFormat().format(usage.contextWindowTokens);
+  const context = usage.contextWindowTokens > 0
+    ? `${Math.min(100, Math.round((usage.usedTokens / usage.contextWindowTokens) * 100))}% context`
+    : `${new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(usage.usedTokens)} tokens`;
+  return {
+    visible: cost ? `${context} · ${cost}` : context,
+    detail: cost
+      ? `${used} of ${size} context tokens used. Cumulative session cost: ${cost}.`
+      : `${used} of ${size} context tokens used.`,
+  };
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -238,6 +267,7 @@ export function AgentConversation({
   const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
+  const [usage, setUsage] = useState<AgentUsage | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
   const [attachedConcepts, setAttachedConcepts] = useState<
@@ -273,6 +303,7 @@ export function AgentConversation({
       try {
         let session = sessionRef.current;
         if (session?.bundleRoot !== bundleRoot) {
+          setUsage(null);
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
         }
@@ -372,7 +403,8 @@ export function AgentConversation({
       onAgentTurnUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.sessionId) return;
-        applyTurnEvent(event, setMessages);
+        if (event.update.kind === "usage") setUsage(event.update);
+        else applyTurnEvent(event, setMessages);
         if (event.update.kind === "completed" || event.update.kind === "failed") {
           applyTerminalTurnEvent(event);
         }
@@ -489,6 +521,7 @@ export function AgentConversation({
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
   if (isSubmitting) composerStatus = "Starting turn";
+  const usageLabel = usage ? usageLabels(usage) : null;
 
   function selectStarter(prompt: string) {
     if (!promptRef.current) return;
@@ -808,7 +841,18 @@ export function AgentConversation({
                     }
                     onNativePick={(kind) => void attachLocalSources(kind)}
                   />
-                  <span>{composerStatus}</span>
+                  <span className="agent-composer__status" title={composerStatus}>
+                    {composerStatus}
+                  </span>
+                  {usageLabel && (
+                    <span
+                      className="agent-composer__usage"
+                      aria-label={usageLabel.detail}
+                      title={usageLabel.detail}
+                    >
+                      {usageLabel.visible}
+                    </span>
+                  )}
                 </div>
                 {activeTurn ? (
                   <div className="agent-composer__turn-actions">
@@ -1336,6 +1380,7 @@ function applyTurnEvent(
   event: AgentTurnEvent,
   setMessages: Dispatch<SetStateAction<ConversationItem[]>>,
 ): void {
+  if (event.update.kind === "usage") return;
   if (event.update.kind === "text") {
     const messageId = `agent-${event.turnId}`;
     const chunkText = event.update.text;

@@ -113,7 +113,8 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 - [ ] Add archived and restorable thread states after Studio metadata persistence lands.
 - [x] Stream structured ACP plans as live replacement cards and preserve the final plan in export.
 - [x] Stream bounded ACP tool-call lifecycle cards without raw arguments or output.
-- [ ] Stream locations, diffs, and usage.
+- [x] Stream bounded ACP context-window usage and cumulative session cost when reported.
+- [ ] Stream bundle-scoped tool locations.
 - [x] Support send, stop, and safe retry when a prompt fails before turn acceptance.
 - [x] Export the current in-memory thread as Markdown through an explicit native save dialog.
 - [x] Derive and edit a title for the current in-memory thread and use it in Markdown export.
@@ -143,6 +144,7 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 
 - [ ] Keep tools read-only until **Allow edits in this thread** is granted.
 - [ ] Stage Studio writes; show per-file/per-hunk accept and reject controls.
+- [ ] Reduce ACP diff content into the staged change service; never present it as an applied Studio change.
 - [ ] Validate the staged tree, apply accepted files atomically, and retain a restorable checkpoint.
 - [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.
 - [ ] Require an enforcement-capable sandbox before unattended external-agent writes.

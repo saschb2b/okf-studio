@@ -6,7 +6,7 @@ use agent_client_protocol::schema::v1::{
     ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents, ToolCallStatus,
-    ToolKind,
+    ToolKind, UsageUpdate,
 };
 use base64::Engine;
 use agent_client_protocol::schema::ProtocolVersion;
@@ -38,6 +38,8 @@ const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
 const MAX_PLAN_ENTRIES: usize = 64;
 const MAX_PLAN_ENTRY_CHARS: usize = 1024;
 const MAX_TOOL_FIELD_CHARS: usize = 512;
+const MAX_SAFE_USAGE_TOKENS: u64 = 9_007_199_254_740_991;
+const MAX_USAGE_COST: f64 = 1_000_000_000_000.0;
 const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
 const MAX_CONTEXT_PATHS: usize = 8;
 const MAX_CONTEXT_PATH_CHARS: usize = 1024;
@@ -135,6 +137,11 @@ enum AgentTurnUpdate {
         tool_kind: Option<&'static str>,
         status: Option<&'static str>,
     },
+    Usage {
+        used_tokens: u64,
+        context_window_tokens: u64,
+        cost: Option<AgentUsageCostInfo>,
+    },
     Completed {
         stop_reason: String,
     },
@@ -149,6 +156,13 @@ struct AgentPlanEntryInfo {
     content: String,
     priority: &'static str,
     status: &'static str,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentUsageCostInfo {
+    amount: f64,
+    currency: String,
 }
 
 type TurnEventSink = Arc<dyn Fn(AgentTurnEvent) + Send + Sync>;
@@ -1450,6 +1464,7 @@ fn turn_event(
             tool_kind: update.fields.kind.map(tool_kind_name),
             status: update.fields.status.map(tool_status_name),
         },
+        SessionUpdate::UsageUpdate(usage) => reduced_usage_update(usage),
         _ => return None,
     };
     Some(AgentTurnEvent {
@@ -1458,6 +1473,26 @@ fn turn_event(
         turn_id,
         update,
     })
+}
+
+fn reduced_usage_update(usage: UsageUpdate) -> AgentTurnUpdate {
+    let cost = usage.cost.and_then(|cost| {
+        let currency = cost.currency.trim();
+        (cost.amount.is_finite()
+            && cost.amount >= 0.0
+            && cost.amount <= MAX_USAGE_COST
+            && currency.len() == 3
+            && currency.bytes().all(|byte| byte.is_ascii_alphabetic()))
+        .then(|| AgentUsageCostInfo {
+            amount: cost.amount,
+            currency: currency.to_ascii_uppercase(),
+        })
+    });
+    AgentTurnUpdate::Usage {
+        used_tokens: usage.used.min(MAX_SAFE_USAGE_TOKENS),
+        context_window_tokens: usage.size.min(MAX_SAFE_USAGE_TOKENS),
+        cost,
+    }
 }
 
 fn bounded_turn_text(text: &str) -> String {
@@ -1861,8 +1896,8 @@ mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
         AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, NewSessionResponse,
-        PermissionOption, Plan, PlanEntry, PromptCapabilities, PromptResponse, ToolCall,
-        ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind,
+        Cost, PermissionOption, Plan, PlanEntry, PromptCapabilities, PromptResponse, ToolCall,
+        ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -1932,6 +1967,43 @@ mod tests {
         assert_eq!(tool_kind, Some("search"));
         assert_eq!(status, Some("in-progress"));
         assert!(!event_debug.contains("must-not-cross-ipc"));
+    }
+
+    #[test]
+    fn reduces_usage_updates_to_safe_numeric_fields() {
+        let active_turns = Mutex::new(HashMap::from([(
+            "session-usage".to_string(),
+            "turn-usage".to_string(),
+        )]));
+        let event = turn_event(
+            "connection-usage",
+            &active_turns,
+            SessionNotification::new(
+                "session-usage",
+                SessionUpdate::UsageUpdate(
+                    UsageUpdate::new(u64::MAX, 128_000)
+                        .cost(Cost::new(0.084, "usd")),
+                ),
+            ),
+        )
+        .expect("usage event");
+
+        assert!(matches!(
+            event.update,
+            AgentTurnUpdate::Usage {
+                used_tokens: MAX_SAFE_USAGE_TOKENS,
+                context_window_tokens: 128_000,
+                cost: Some(AgentUsageCostInfo { amount, currency }),
+            } if amount == 0.084 && currency == "USD"
+        ));
+
+        let invalid_cost = reduced_usage_update(
+            UsageUpdate::new(1, 2).cost(Cost::new(f64::NAN, "not-a-currency")),
+        );
+        assert!(matches!(
+            invalid_cost,
+            AgentTurnUpdate::Usage { cost: None, .. }
+        ));
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -2463,6 +2535,13 @@ mod tests {
                         )),
                     ))?;
                     connection.send_notification(SessionNotification::new(
+                        request.session_id.clone(),
+                        SessionUpdate::UsageUpdate(
+                            UsageUpdate::new(2_400, 128_000)
+                                .cost(Cost::new(0.08, "USD")),
+                        ),
+                    ))?;
+                    connection.send_notification(SessionNotification::new(
                         request.session_id,
                         SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
                             TextContent::new("A grounded answer."),
@@ -2565,6 +2644,15 @@ mod tests {
                 tool_kind: None,
                 status: Some("completed"),
             } if tool_call_id == "tool-search"
+        ));
+        let usage = events_rx.recv().await.expect("usage event");
+        assert!(matches!(
+            usage.update,
+            AgentTurnUpdate::Usage {
+                used_tokens: 2_400,
+                context_window_tokens: 128_000,
+                cost: Some(AgentUsageCostInfo { amount, currency }),
+            } if amount == 0.08 && currency == "USD"
         ));
         let text_event = events_rx.recv().await.expect("text event");
         assert_eq!(text_event.turn_id, "turn-1");

@@ -363,6 +363,9 @@ describe("OKF Studio app", () => {
     expect(within(toolCard).getByText("Completed")).toBeInTheDocument();
     expect(screen.getAllByRole("region", { name: "Agent plan" })).toHaveLength(1);
     expect(screen.getAllByRole("article", { name: "Tool: Search the bundle" })).toHaveLength(1);
+    const completedUsage = document.querySelector(".agent-composer__usage");
+    expect(completedUsage).toHaveTextContent("3% context");
+    expect(completedUsage?.getAttribute("title")).toContain("Cumulative session cost:");
     const renderedAgentText = document.querySelector(
       ".agent-message--agent .agent-message__markdown strong",
     );
@@ -429,6 +432,7 @@ describe("OKF Studio app", () => {
     const activeToolCard = activeToolCards.at(-1);
     if (!activeToolCard) throw new Error("The active tool card was not rendered.");
     expect(within(activeToolCard).getByText("Running")).toBeInTheDocument();
+    expect(document.querySelector(".agent-composer__usage")).toHaveTextContent("2% context");
     const userMessageCount = document.querySelectorAll(".agent-message--user").length;
     fireEvent.change(screen.getByLabelText("Message the agent"), {
       target: { value: "Explain the implications" },

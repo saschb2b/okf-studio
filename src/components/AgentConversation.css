@@ -918,6 +918,7 @@
 
 .agent-composer__actions {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
@@ -938,6 +939,15 @@
   line-height: var(--lh-normal);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.agent-composer__status {
+  min-width: 0;
+}
+
+.agent-composer__usage {
+  flex: none;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .agent-attachment-trigger {

@@ -441,6 +441,15 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       status: "in-progress",
     },
   });
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "usage",
+      usedTokens: 2_400,
+      contextWindowTokens: 128_000,
+      cost: { amount: 0.04, currency: "USD" },
+    },
+  });
   const delaySteps = text.includes("Run a long investigation") ? 100 : 1;
   for (let step = 0; step < delaySteps; step += 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -519,6 +528,15 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       title: null,
       toolKind: null,
       status: "completed",
+    },
+  });
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "usage",
+      usedTokens: 4_200,
+      contextWindowTokens: 128_000,
+      cost: { amount: 0.08, currency: "USD" },
     },
   });
   emitAgentTurn({

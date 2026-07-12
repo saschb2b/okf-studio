@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
+import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
@@ -15,6 +15,7 @@ import type {
   AgentTurnEvent,
   AgentTurnInfo,
 } from "../agent/connection.ts";
+import type { ReaderSelectionCapture } from "../agent/readerSelection.ts";
 import { deriveThreadTitle, transcriptFilename, transcriptMarkdown } from "../agent/thread.ts";
 import {
   cancelAgentTurn,
@@ -41,6 +42,7 @@ interface AgentConversationProps {
   bundleRoot: string | null;
   bundleName: string | null;
   activeConcept: { id: string; title: string } | null;
+  onCaptureReaderSelection: () => ReaderSelectionCapture;
   concepts: readonly { id: string; title: string; type: string }[];
   issues: readonly Issue[];
   onChangeAgent: () => void;
@@ -76,7 +78,7 @@ type ConversationItem = ConversationMessage | ConversationPlan | ConversationToo
 
 type AttachedSource = AgentSourceInput & {
   id: string;
-  kind?: "issue";
+  kind?: "issue" | "selection";
   issueKey?: string;
   issueLevel?: Issue["level"];
 };
@@ -172,6 +174,11 @@ function errorMessage(error: unknown): string {
 
 function sourceTooltip(source: AttachedSource): string {
   if (source.kind === "issue") return source.content;
+  if (source.kind === "selection") {
+    const content = Array.from(source.content);
+    const excerpt = content.slice(0, 256).join("");
+    return `${source.title}: ${excerpt}${content.length > 256 ? "..." : ""}`;
+  }
   if (source.warning) return `${source.title}: ${source.warning}`;
   return source.title;
 }
@@ -255,6 +262,7 @@ export function AgentConversation({
   bundleRoot,
   bundleName,
   activeConcept,
+  onCaptureReaderSelection,
   concepts,
   issues,
   onChangeAgent,
@@ -750,6 +758,8 @@ export function AgentConversation({
                         size={14}
                         aria-hidden="true"
                       />
+                    ) : source.kind === "selection" ? (
+                      <TextSelect size={14} aria-hidden="true" />
                     ) : source.imageData ? (
                       <ImageIcon size={14} aria-hidden="true" />
                     ) : (
@@ -814,6 +824,7 @@ export function AgentConversation({
                     issues={issues}
                     attachedIssueKeys={attachedIssueKeys}
                     sourceCount={attachedSources.length}
+                    onCaptureReaderSelection={onCaptureReaderSelection}
                     disabled={isSubmitting || queuedPrompt !== null}
                     imageSupported={connection.capabilities.promptImage}
                     nativePicker={sourcePicker}
@@ -835,10 +846,10 @@ export function AgentConversation({
                         },
                       ])
                     }
-                    onSourceAttach={(source) =>
+                    onSourceAttach={(source, kind) =>
                       setAttachedSources((current) => [
                         ...current,
-                        { id: crypto.randomUUID(), ...source },
+                        { id: crypto.randomUUID(), kind, ...source },
                       ])
                     }
                     onNativePick={(kind) => void attachLocalSources(kind)}
@@ -900,12 +911,13 @@ interface AttachmentPickerProps {
   issues: readonly Issue[];
   attachedIssueKeys: ReadonlySet<string>;
   sourceCount: number;
+  onCaptureReaderSelection: () => ReaderSelectionCapture;
   disabled: boolean;
   imageSupported: boolean;
   nativePicker: NativeSourcePicker | null;
   onConceptAttach: (concept: { id: string; title: string; type: string }) => void;
   onIssueAttach: (issue: Issue, issueKey: string) => void;
-  onSourceAttach: (source: AgentSourceInput) => void;
+  onSourceAttach: (source: AgentSourceInput, kind?: "selection") => void;
   onNativePick: (kind: NativeSourcePicker) => void;
 }
 
@@ -916,6 +928,7 @@ function AttachmentPicker({
   issues,
   attachedIssueKeys,
   sourceCount,
+  onCaptureReaderSelection,
   disabled,
   imageSupported,
   nativePicker,
@@ -933,6 +946,10 @@ function AttachmentPicker({
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [readerSelection, setReaderSelection] = useState<ReaderSelectionCapture>({
+    status: "unavailable",
+    reason: "Select text in the reader first.",
+  });
   const fetchRequestRef = useRef(0);
   const menuFirstRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -983,6 +1000,11 @@ function AttachmentPicker({
   if (issues.length === 0) issueExplanation = "This bundle has no validation issues.";
   else if (availableIssues.length === 0) issueExplanation = "All validation issues are attached.";
   else if (isAtLimit) issueExplanation = "The source limit has been reached.";
+  const selectionExplanation = isAtLimit
+    ? "The source limit has been reached."
+    : readerSelection.status === "available"
+      ? "Attach the selected text from the current concept"
+      : readerSelection.reason;
 
   function close() {
     fetchRequestRef.current += 1;
@@ -1049,6 +1071,12 @@ function AttachmentPicker({
             aria-label="Add context or sources"
             title="Add context or sources"
             disabled={disabled || nativePicker !== null}
+            onPointerDown={() => setReaderSelection(onCaptureReaderSelection())}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                setReaderSelection(onCaptureReaderSelection());
+              }
+            }}
           >
             <Plus size={17} aria-hidden="true" />
           </button>
@@ -1078,6 +1106,20 @@ function AttachmentPicker({
                 >
                   <Paperclip size={16} aria-hidden="true" />
                   <span><strong>Bundle concepts</strong><small>Attach concepts from the active bundle</small></span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Attach reader selection"
+                  title={selectionExplanation}
+                  disabled={isAtLimit || readerSelection.status === "unavailable"}
+                  onClick={() => {
+                    if (readerSelection.status !== "available") return;
+                    onSourceAttach(readerSelection.source, "selection");
+                    close();
+                  }}
+                >
+                  <TextSelect size={16} aria-hidden="true" />
+                  <span><strong>Reader selection</strong><small>{selectionExplanation}</small></span>
                 </button>
                 <button
                   type="button"

@@ -650,6 +650,8 @@ export function Reader() {
     >
       <article
         className="reader-main concept-reader"
+        data-reader-selection-scope
+        data-concept-id={c.id}
         data-aids={state.settings.readerAids ? "on" : undefined}
       >
         <header className="reader-header">

@@ -2,6 +2,7 @@ import { ArrowLeft, PanelRightClose, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type * as React from "react";
 import { AGENT_PANEL_CLAMP, useApp } from "../store.tsx";
+import { captureReaderSelection } from "../agent/readerSelection.ts";
 import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import { focusAgentPanelOpener } from "../agentPanelFocus.ts";
 import { AgentConnectionCatalog } from "./AgentConnectionCatalog.tsx";
@@ -81,6 +82,7 @@ export function AgentPanel() {
             bundleRoot={state.activeRoot}
             bundleName={state.bundle?.name ?? null}
             activeConcept={activeConcept}
+            onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
             concepts={state.bundle?.concepts ?? []}
             issues={state.bundle?.issues ?? []}
             onChangeAgent={openCatalog}

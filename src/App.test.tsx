@@ -509,6 +509,64 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
   }, 25_000);
 
+  it("attaches an explicit reader selection as bounded source context", async () => {
+    const user = userEvent.setup();
+    const promptSpy = vi.spyOn(ipc, "promptAgent");
+    renderApp();
+    await openFolder(user);
+    await user.click(screen.getByRole("treeitem", { name: "Overview" }));
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Selection Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\selection.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Selection Harness" }));
+    await screen.findByText(/Connected to Selection Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    const paragraph = document.querySelector<HTMLElement>(".reader-main .body p");
+    const selection = window.getSelection();
+    if (!paragraph || !selection) throw new Error("The reader paragraph could not be selected.");
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const selectedText = selection.toString().trim();
+
+    await openAttachmentMenu(user);
+    const attachSelection = screen.getByRole("button", { name: "Attach reader selection" });
+    expect(attachSelection).toBeEnabled();
+    expect(attachSelection).toHaveAttribute(
+      "title",
+      "Attach the selected text from the current concept",
+    );
+    await user.click(attachSelection);
+    expect(
+      screen.getByRole("button", { name: "Remove Selection from Overview source" }),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Message the agent"), "Assess this excerpt");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(promptSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "Assess this excerpt",
+      [],
+      [{
+        title: "Selection from Overview",
+        content: selectedText,
+        origin: "product/overview.md#reader-selection",
+        mediaType: "text/plain",
+      }],
+    );
+    await screen.findByText(/Browser ACP received:.*Assess this excerpt/);
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Selection Harness" }));
+  });
+
   it("uses an ACP-advertised authentication method before starting a session", async () => {
     const user = userEvent.setup();
     renderApp();

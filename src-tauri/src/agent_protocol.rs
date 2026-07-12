@@ -2,8 +2,8 @@ use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthenticateRequest, CancelNotification, ClientCapabilities, ContentBlock,
     ContentChunk, EmbeddedResource, EmbeddedResourceResource, FileSystemCapabilities,
     ImageContent, Implementation, InitializeRequest, InitializeResponse, McpServer, McpServerStdio,
-    NewSessionRequest, PermissionOptionKind, PromptRequest, ReadTextFileRequest, ReadTextFileResponse,
-    RequestPermissionOutcome,
+    NewSessionRequest, PermissionOptionKind, PlanEntryPriority, PlanEntryStatus, PromptRequest,
+    ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents,
 };
@@ -34,6 +34,8 @@ const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const MAX_CONNECTION_MESSAGE_CHARS: usize = 2048;
 const MAX_PROMPT_CHARS: usize = 128 * 1024;
 const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
+const MAX_PLAN_ENTRIES: usize = 64;
+const MAX_PLAN_ENTRY_CHARS: usize = 1024;
 const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
 const MAX_CONTEXT_PATHS: usize = 8;
 const MAX_CONTEXT_PATH_CHARS: usize = 1024;
@@ -122,12 +124,23 @@ enum AgentTurnUpdate {
         text: String,
         message_id: Option<String>,
     },
+    Plan {
+        entries: Vec<AgentPlanEntryInfo>,
+    },
     Completed {
         stop_reason: String,
     },
     Failed {
         message: String,
     },
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentPlanEntryInfo {
+    content: String,
+    priority: &'static str,
+    status: &'static str,
 }
 
 type TurnEventSink = Arc<dyn Fn(AgentTurnEvent) + Send + Sync>;
@@ -716,7 +729,7 @@ async fn run_connection(
         .name("okf-studio")
         .on_receive_notification(
             async move |notification: SessionNotification, _connection| {
-                if let Some(event) = text_turn_event(
+                if let Some(event) = turn_event(
                     &notification_connection_id,
                     &notification_turns,
                     notification,
@@ -1389,29 +1402,41 @@ fn remove_active_turn(
     }
 }
 
-fn text_turn_event(
+fn turn_event(
     connection_id: &str,
     active_turns: &Mutex<HashMap<String, String>>,
     notification: SessionNotification,
 ) -> Option<AgentTurnEvent> {
     let session_id = notification.session_id.to_string();
     let turn_id = active_turns.lock().ok()?.get(&session_id)?.clone();
-    let SessionUpdate::AgentMessageChunk(ContentChunk {
-        content: ContentBlock::Text(text),
-        message_id,
-        ..
-    }) = notification.update
-    else {
-        return None;
+    let update = match notification.update {
+        SessionUpdate::AgentMessageChunk(ContentChunk {
+            content: ContentBlock::Text(text),
+            message_id,
+            ..
+        }) => AgentTurnUpdate::Text {
+            text: bounded_turn_text(&text.text),
+            message_id: message_id.map(|id| id.to_string()),
+        },
+        SessionUpdate::Plan(plan) => AgentTurnUpdate::Plan {
+            entries: plan
+                .entries
+                .into_iter()
+                .take(MAX_PLAN_ENTRIES)
+                .map(|entry| AgentPlanEntryInfo {
+                    content: bounded_plan_entry(&entry.content),
+                    priority: plan_priority_name(entry.priority),
+                    status: plan_status_name(entry.status),
+                })
+                .collect(),
+        },
+        _ => return None,
     };
     Some(AgentTurnEvent {
         connection_id: connection_id.to_string(),
         session_id,
         turn_id,
-        update: AgentTurnUpdate::Text {
-            text: bounded_turn_text(&text.text),
-            message_id: message_id.map(|id| id.to_string()),
-        },
+        update,
     })
 }
 
@@ -1420,6 +1445,32 @@ fn bounded_turn_text(text: &str) -> String {
         .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
         .take(MAX_TURN_CHUNK_CHARS)
         .collect()
+}
+
+fn bounded_plan_entry(content: &str) -> String {
+    content
+        .chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .take(MAX_PLAN_ENTRY_CHARS)
+        .collect()
+}
+
+fn plan_priority_name(priority: PlanEntryPriority) -> &'static str {
+    match priority {
+        PlanEntryPriority::High => "high",
+        PlanEntryPriority::Medium => "medium",
+        PlanEntryPriority::Low => "low",
+        _ => "unknown",
+    }
+}
+
+fn plan_status_name(status: PlanEntryStatus) -> &'static str {
+    match status {
+        PlanEntryStatus::Pending => "pending",
+        PlanEntryStatus::InProgress => "in-progress",
+        PlanEntryStatus::Completed => "completed",
+        _ => "unknown",
+    }
 }
 
 fn stop_reason_name(reason: StopReason) -> &'static str {
@@ -1756,9 +1807,40 @@ mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
         AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, NewSessionResponse,
-        PermissionOption, PromptCapabilities, PromptResponse, ToolCallUpdate, ToolCallUpdateFields,
+        PermissionOption, Plan, PlanEntry, PromptCapabilities, PromptResponse, ToolCallUpdate,
+        ToolCallUpdateFields,
     };
     use agent_client_protocol::{Dispatch, Responder};
+
+    #[test]
+    fn bounds_plan_updates_before_they_cross_ipc() {
+        let active_turns = Mutex::new(HashMap::from([(
+            "session-plan".to_string(),
+            "turn-plan".to_string(),
+        )]));
+        let entries = (0..=MAX_PLAN_ENTRIES)
+            .map(|index| {
+                PlanEntry::new(
+                    format!("Task {index}\u{0000} {}", "x".repeat(MAX_PLAN_ENTRY_CHARS + 8)),
+                    PlanEntryPriority::Low,
+                    PlanEntryStatus::Pending,
+                )
+            })
+            .collect();
+        let event = turn_event(
+            "connection-plan",
+            &active_turns,
+            SessionNotification::new("session-plan", SessionUpdate::Plan(Plan::new(entries))),
+        )
+        .expect("plan event");
+
+        let AgentTurnUpdate::Plan { entries } = event.update else {
+            panic!("expected a plan update");
+        };
+        assert_eq!(entries.len(), MAX_PLAN_ENTRIES);
+        assert_eq!(entries[0].content.chars().count(), MAX_PLAN_ENTRY_CHARS);
+        assert!(!entries[0].content.contains('\u{0000}'));
+    }
 
     #[tokio::test(flavor = "current_thread")]
     async fn negotiates_v1_and_records_advertised_capabilities() {
@@ -2244,6 +2326,36 @@ mod tests {
                         ContentBlock::ResourceLink(link) if link.name == "OKF bundle index"
                     )));
                     connection.send_notification(SessionNotification::new(
+                        request.session_id.clone(),
+                        SessionUpdate::Plan(Plan::new(vec![
+                            PlanEntry::new(
+                                "Inspect the bundle",
+                                PlanEntryPriority::High,
+                                PlanEntryStatus::InProgress,
+                            ),
+                            PlanEntry::new(
+                                "Write the answer",
+                                PlanEntryPriority::Medium,
+                                PlanEntryStatus::Pending,
+                            ),
+                        ])),
+                    ))?;
+                    connection.send_notification(SessionNotification::new(
+                        request.session_id.clone(),
+                        SessionUpdate::Plan(Plan::new(vec![
+                            PlanEntry::new(
+                                "Inspect the bundle",
+                                PlanEntryPriority::High,
+                                PlanEntryStatus::Completed,
+                            ),
+                            PlanEntry::new(
+                                "Write the answer",
+                                PlanEntryPriority::Medium,
+                                PlanEntryStatus::InProgress,
+                            ),
+                        ])),
+                    ))?;
+                    connection.send_notification(SessionNotification::new(
                         request.session_id,
                         SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
                             TextContent::new("A grounded answer."),
@@ -2309,6 +2421,24 @@ mod tests {
             .expect("prompt acceptance")
             .expect("prompt should be accepted");
 
+        let first_plan = events_rx.recv().await.expect("first plan event");
+        assert!(matches!(
+            first_plan.update,
+            AgentTurnUpdate::Plan { entries }
+                if entries.len() == 2
+                    && entries[0].content == "Inspect the bundle"
+                    && entries[0].priority == "high"
+                    && entries[0].status == "in-progress"
+                    && entries[1].status == "pending"
+        ));
+        let replacement_plan = events_rx.recv().await.expect("replacement plan event");
+        assert!(matches!(
+            replacement_plan.update,
+            AgentTurnUpdate::Plan { entries }
+                if entries.len() == 2
+                    && entries[0].status == "completed"
+                    && entries[1].status == "in-progress"
+        ));
         let text_event = events_rx.recv().await.expect("text event");
         assert_eq!(text_event.turn_id, "turn-1");
         assert!(matches!(

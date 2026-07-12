@@ -44,6 +44,12 @@ export interface AgentTurnInfo {
   turnId: string;
 }
 
+export interface AgentPlanEntryInfo {
+  content: string;
+  priority: "high" | "medium" | "low" | "unknown";
+  status: "pending" | "in-progress" | "completed" | "unknown";
+}
+
 export type AgentPermissionOptionKind =
   | "allow-once"
   | "allow-always"
@@ -74,6 +80,7 @@ export interface AgentPermissionEvent {
 export interface AgentTurnEvent extends AgentTurnInfo {
   update:
     | { kind: "text"; text: string; messageId: string | null }
+    | { kind: "plan"; entries: readonly AgentPlanEntryInfo[] }
     | {
         kind: "completed";
         stopReason: "end-turn" | "max-tokens" | "max-turn-requests" | "refusal" | "cancelled" | "unknown";

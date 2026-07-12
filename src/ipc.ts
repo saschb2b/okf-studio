@@ -420,6 +420,17 @@ export async function onAgentPermissionUpdate(
 }
 
 async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "plan",
+      entries: [
+        { content: "Inspect the bundle and attachments", priority: "high", status: "in-progress" },
+        { content: "Draft the response", priority: "medium", status: "pending" },
+      ],
+    },
+  });
   const delaySteps = text.includes("Run a long investigation") ? 100 : 1;
   for (let step = 0; step < delaySteps; step += 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -483,9 +494,29 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
   emitAgentTurn({
     ...info,
     update: {
+      kind: "plan",
+      entries: [
+        { content: "Inspect the bundle and attachments", priority: "high", status: "completed" },
+        { content: "Draft the response", priority: "medium", status: "in-progress" },
+      ],
+    },
+  });
+  emitAgentTurn({
+    ...info,
+    update: {
       kind: "text",
       text: `Browser ACP received: ${text}`,
       messageId: `message-${info.turnId}`,
+    },
+  });
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "plan",
+      entries: [
+        { content: "Inspect the bundle and attachments", priority: "high", status: "completed" },
+        { content: "Draft the response", priority: "medium", status: "completed" },
+      ],
     },
   });
   emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "end-turn" } });

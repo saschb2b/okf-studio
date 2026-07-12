@@ -20,11 +20,19 @@ describe("agent thread metadata", () => {
     expect(transcriptFilename("Bundle research / Q3")).toBe("bundle-research-q3-thread.md");
     expect(transcriptMarkdown("Bundle research", "Catalog", "Local agent", [
       { role: "user", text: "Summarize **literally**" },
+      {
+        role: "plan",
+        entries: [
+          { content: "Inspect the bundle", status: "completed" },
+          { content: "Draft the answer", status: "in-progress" },
+        ],
+      },
       { role: "agent", text: "**Finding:** documented." },
       { role: "status", text: "Turn cancelled." },
     ])).toBe(
       "# Bundle research\n\nAgent: Local agent\n\nBundle: Catalog\n\n" +
       "## You\n\n> Summarize **literally**\n\n" +
+      "## Plan\n\n- [x] Inspect the bundle\n- [ ] Draft the answer (in progress)\n\n" +
       "## Agent\n\n**Finding:** documented.\n\n> **Turn:** Turn cancelled.\n",
     );
   });

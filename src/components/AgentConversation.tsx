@@ -1,10 +1,11 @@
-import { Bot, ChevronLeft, CircleAlert, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
+import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
 import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
+  AgentPlanEntryInfo,
   AgentPermissionEvent,
   AgentPermissionOptionInfo,
   AgentSessionInfo,
@@ -50,6 +51,14 @@ interface ConversationMessage {
   text: string;
   tone?: "neutral" | "warning" | "error";
 }
+
+interface ConversationPlan {
+  id: string;
+  role: "plan";
+  entries: readonly AgentPlanEntryInfo[];
+}
+
+type ConversationItem = ConversationMessage | ConversationPlan;
 
 type AttachedSource = AgentSourceInput & {
   id: string;
@@ -213,7 +222,7 @@ export function AgentConversation({
     source: "default",
     value: "New thread",
   });
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [messages, setMessages] = useState<ConversationItem[]>([]);
   const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
@@ -274,7 +283,16 @@ export function AgentConversation({
           contextPaths,
           sources,
         );
-        setMessages((current) => [...current, userMessage]);
+        setMessages((current) => {
+          const firstTurnItem = current.findIndex((item) =>
+            item.id === `plan-${turn.turnId}` || item.id === `agent-${turn.turnId}`);
+          if (firstTurnItem < 0) return [...current, userMessage];
+          return [
+            ...current.slice(0, firstTurnItem),
+            userMessage,
+            ...current.slice(firstTurnItem),
+          ];
+        });
         setThreadTitle((current) => current.source === "default"
           ? { source: "derived", value: deriveThreadTitle(text, THREAD_STARTERS) }
           : current);
@@ -342,7 +360,9 @@ export function AgentConversation({
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.sessionId) return;
         applyTurnEvent(event, setMessages);
-        if (event.update.kind !== "text") applyTerminalTurnEvent(event);
+        if (event.update.kind === "completed" || event.update.kind === "failed") {
+          applyTerminalTurnEvent(event);
+        }
       }),
       onAgentPermissionUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
@@ -621,7 +641,9 @@ export function AgentConversation({
               </div>
             ) : (
               <>
-                {messages.map((message) => <Message key={message.id} message={message} />)}
+                {messages.map((item) => item.role === "plan"
+                  ? <PlanCard key={item.id} plan={item} />
+                  : <Message key={item.id} message={item} />)}
                 {pendingPermissions.map((permission) => (
                   <PermissionCard key={permission.requestId} permission={permission} />
                 ))}
@@ -1301,17 +1323,30 @@ function PermissionCard({ permission }: { permission: PendingPermission }) {
 
 function applyTurnEvent(
   event: AgentTurnEvent,
-  setMessages: Dispatch<SetStateAction<ConversationMessage[]>>,
+  setMessages: Dispatch<SetStateAction<ConversationItem[]>>,
 ): void {
   if (event.update.kind === "text") {
     const messageId = `agent-${event.turnId}`;
     const chunkText = event.update.text;
     setMessages((current) => {
-      const index = current.findIndex((message) => message.id === messageId);
+      const index = current.findIndex((message) =>
+        message.role !== "plan" && message.id === messageId);
       if (index < 0) return [...current, { id: messageId, role: "agent", text: chunkText }];
       return current.map((message, messageIndex) =>
-        messageIndex === index ? { ...message, text: message.text + chunkText } : message,
+        messageIndex === index && message.role !== "plan"
+          ? { ...message, text: message.text + chunkText }
+          : message,
       );
+    });
+  } else if (event.update.kind === "plan") {
+    const planId = `plan-${event.turnId}`;
+    const entries = event.update.entries;
+    setMessages((current) => {
+      const index = current.findIndex((item) => item.id === planId);
+      if (entries.length === 0) return current.filter((item) => item.id !== planId);
+      const plan: ConversationPlan = { id: planId, role: "plan", entries };
+      if (index < 0) return [...current, plan];
+      return current.map((item, itemIndex) => itemIndex === index ? plan : item);
     });
   } else if (event.update.kind === "failed") {
     const failureMessage = event.update.message;
@@ -1345,6 +1380,44 @@ function applyTurnEvent(
       },
     ]);
   }
+}
+
+function PlanCard({ plan }: { plan: ConversationPlan }) {
+  const completed = plan.entries.filter((entry) => entry.status === "completed").length;
+  return (
+    <section className="agent-plan" aria-label="Agent plan">
+      <header>
+        <span className="agent-plan__icon" aria-hidden="true">
+          <ListChecks size={16} />
+        </span>
+        <div>
+          <strong>Plan</strong>
+          <small>{completed} of {plan.entries.length} complete</small>
+        </div>
+      </header>
+      <ol>
+        {plan.entries.map((entry, index) => {
+          const status = ({
+            pending: { label: "Pending", icon: Circle },
+            "in-progress": { label: "In progress", icon: CircleDot },
+            completed: { label: "Completed", icon: Check },
+            unknown: { label: "Status unknown", icon: CircleAlert },
+          } as const)[entry.status];
+          const StatusIcon = status.icon;
+          return (
+            <li
+              key={`${entry.content}-${entry.priority}-${index}`}
+              className={`agent-plan__entry agent-plan__entry--${entry.status}`}
+            >
+              <StatusIcon size={14} aria-hidden="true" />
+              <span>{entry.content}</span>
+              <small title={`${entry.priority} priority`}>{status.label}</small>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
 }
 
 function Message({ message }: { message: ConversationMessage }) {

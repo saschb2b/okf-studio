@@ -336,6 +336,87 @@
   color: var(--error);
 }
 
+.agent-plan {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-plan > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.agent-plan__icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+  background: var(--bg-elev);
+  border-radius: var(--radius-sm);
+}
+
+.agent-plan > header > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.agent-plan small {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-plan ol {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.agent-plan__entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 32px;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-4);
+}
+
+.agent-plan__entry > span {
+  min-width: 0;
+  line-height: var(--lh-normal);
+  overflow-wrap: break-word;
+}
+
+.agent-plan__entry--in-progress > svg {
+  color: var(--accent);
+}
+
+.agent-plan__entry--completed > svg {
+  color: var(--ok);
+}
+
+.agent-plan__entry--completed > span {
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+.agent-plan__entry--pending > svg,
+.agent-plan__entry--unknown > svg {
+  color: var(--text-dim);
+}
+
 .agent-permission {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

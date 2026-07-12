@@ -352,7 +352,13 @@ describe("OKF Studio app", () => {
       ],
     );
     expect(await screen.findByText("Summarize the **bundle**")).toBeInTheDocument();
+    const planCard = await screen.findByRole("region", { name: "Agent plan" });
+    expect(within(planCard).getByText("Inspect the bundle and attachments")).toBeInTheDocument();
+    expect(within(planCard).getByText("Draft the response")).toBeInTheDocument();
     await screen.findByText(/Browser ACP received:/);
+    expect(within(planCard).getByText("2 of 2 complete")).toBeInTheDocument();
+    expect(within(planCard).getAllByText("Completed")).toHaveLength(2);
+    expect(screen.getAllByRole("region", { name: "Agent plan" })).toHaveLength(1);
     const renderedAgentText = document.querySelector(
       ".agent-message--agent .agent-message__markdown strong",
     );
@@ -378,7 +384,7 @@ describe("OKF Studio app", () => {
     expect(exportSpy).toHaveBeenLastCalledWith(
       "bundle-research-thread.md",
       expect.stringContaining(
-        "# Bundle research\n\nAgent: Research Harness\n\nBundle: OKF Studio (sample)\n\n## You\n\n> Summarize the **bundle**\n\n## Agent\n\n",
+        "# Bundle research\n\nAgent: Research Harness\n\nBundle: OKF Studio (sample)\n\n## You\n\n> Summarize the **bundle**\n\n## Plan\n\n- [x] Inspect the bundle and attachments\n- [x] Draft the response\n\n## Agent\n\n",
       ),
     );
     expect(await screen.findByRole("status")).toHaveTextContent(

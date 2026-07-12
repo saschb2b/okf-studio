@@ -10,6 +10,18 @@ export interface ThreadTranscriptMessage {
   text: string;
 }
 
+export interface ThreadTranscriptPlanEntry {
+  content: string;
+  status: "pending" | "in-progress" | "completed" | "unknown";
+}
+
+export interface ThreadTranscriptPlan {
+  role: "plan";
+  entries: readonly ThreadTranscriptPlanEntry[];
+}
+
+export type ThreadTranscriptItem = ThreadTranscriptMessage | ThreadTranscriptPlan;
+
 function plainTitleText(text: string): string {
   return text
     .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
@@ -61,12 +73,20 @@ export function transcriptMarkdown(
   threadTitle: string,
   bundleName: string | null,
   agentName: string,
-  messages: readonly ThreadTranscriptMessage[],
+  messages: readonly ThreadTranscriptItem[],
 ): string {
   const safeBundleName = (bundleName ?? "No bundle selected").replace(/[\r\n]+/g, " ");
   const safeAgentName = agentName.replace(/[\r\n]+/g, " ");
   const safeThreadTitle = threadTitle.replace(/[\r\n]+/g, " ");
   const sections = messages.map((message) => {
+    if (message.role === "plan") {
+      const entries = message.entries.map((entry) => {
+        const marker = entry.status === "completed" ? "x" : " ";
+        const suffix = entry.status === "in-progress" ? " (in progress)" : "";
+        return `- [${marker}] ${entry.content.replace(/[\r\n]+/g, " ")}${suffix}`;
+      });
+      return `## Plan\n\n${entries.join("\n")}`;
+    }
     if (message.role === "user") return `## You\n\n${quoteMarkdown(message.text)}`;
     if (message.role === "agent") return `## Agent\n\n${message.text}`;
     return `> **Turn:** ${message.text.replace(/\n/g, "\n> ")}`;

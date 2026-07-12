@@ -357,10 +357,14 @@ describe("OKF Studio app", () => {
     expect(within(planCard).getByText("Draft the response")).toBeInTheDocument();
     const toolCard = await screen.findByRole("article", { name: "Tool: Search the bundle" });
     expect(within(toolCard).getByText("Search")).toBeInTheDocument();
+    await user.click(within(toolCard).getByText("2 locations"));
+    expect(within(toolCard).getByText("product/overview.md:12")).toBeVisible();
+    expect(within(toolCard).getByText("features/agent-panel.md:49")).toBeVisible();
     await screen.findByText(/Browser ACP received:/);
     expect(within(planCard).getByText("2 of 2 complete")).toBeInTheDocument();
     expect(within(planCard).getAllByText("Completed")).toHaveLength(2);
     expect(within(toolCard).getByText("Completed")).toBeInTheDocument();
+    expect(within(toolCard).getByText("2 locations")).toBeInTheDocument();
     expect(screen.getAllByRole("region", { name: "Agent plan" })).toHaveLength(1);
     expect(screen.getAllByRole("article", { name: "Tool: Search the bundle" })).toHaveLength(1);
     const completedUsage = document.querySelector(".agent-composer__usage");

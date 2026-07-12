@@ -7,6 +7,7 @@ import type {
   AgentConnectionInfo,
   AgentPlanEntryInfo,
   AgentToolKind,
+  AgentToolLocationInfo,
   AgentToolStatus,
   AgentPermissionEvent,
   AgentPermissionOptionInfo,
@@ -68,6 +69,7 @@ interface ConversationTool {
   title: string;
   toolKind: AgentToolKind;
   status: AgentToolStatus | "cancelled";
+  locations: readonly AgentToolLocationInfo[];
 }
 
 type ConversationItem = ConversationMessage | ConversationPlan | ConversationTool;
@@ -1420,6 +1422,7 @@ function applyTurnEvent(
         title: toolUpdate.title ?? existing?.title ?? "Agent tool",
         toolKind: toolUpdate.toolKind ?? existing?.toolKind ?? "other",
         status: toolUpdate.status ?? existing?.status ?? "pending",
+        locations: toolUpdate.locations ?? existing?.locations ?? [],
       };
       if (index < 0) return [...current, tool];
       return current.map((item, itemIndex) => itemIndex === index ? tool : item);
@@ -1512,9 +1515,38 @@ function ToolCard({ tool }: { tool: ConversationTool }) {
       <div>
         <strong>{tool.title}</strong>
         <small>{kindLabel}</small>
+        <ToolLocations locations={tool.locations} />
       </div>
       <small className="agent-tool__status">{statusLabel}</small>
     </article>
+  );
+}
+
+function toolLocationLabel(location: AgentToolLocationInfo): string {
+  return location.line === null ? location.path : `${location.path}:${location.line}`;
+}
+
+function ToolLocations({ locations }: { locations: readonly AgentToolLocationInfo[] }) {
+  if (locations.length === 0) return null;
+  if (locations.length === 1) {
+    const label = toolLocationLabel(locations[0]);
+    return (
+      <small className="agent-tool__location" title={label}>
+        <FileText size={12} aria-hidden="true" />
+        <span>{label}</span>
+      </small>
+    );
+  }
+  return (
+    <details className="agent-tool__locations">
+      <summary>{locations.length} locations</summary>
+      <ul>
+        {locations.map((location) => {
+          const label = toolLocationLabel(location);
+          return <li key={label} title={label}>{label}</li>;
+        })}
+      </ul>
+    </details>
   );
 }
 

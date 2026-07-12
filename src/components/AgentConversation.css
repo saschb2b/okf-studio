@@ -338,6 +338,7 @@
 
 .agent-tool {
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-height: 48px;
   align-items: center;
@@ -350,6 +351,7 @@
 
 .agent-tool__icon {
   display: grid;
+  align-self: start;
   place-items: center;
   width: 24px;
   height: 24px;
@@ -376,7 +378,42 @@
 }
 
 .agent-tool__status {
+  align-self: start;
   text-align: end;
+}
+
+.agent-tool__location {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-tool__location > span,
+.agent-tool__locations li {
+  overflow-wrap: anywhere;
+}
+
+.agent-tool__locations {
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-tool__locations summary {
+  min-height: 24px;
+  align-content: center;
+  cursor: pointer;
+}
+
+.agent-tool__locations ul {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-16);
 }
 
 .agent-tool--completed .agent-tool__icon {

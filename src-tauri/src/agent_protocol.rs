@@ -6,7 +6,7 @@ use agent_client_protocol::schema::v1::{
     ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents, ToolCallStatus,
-    ToolKind, UsageUpdate,
+    ToolCallLocation, ToolKind, UsageUpdate,
 };
 use base64::Engine;
 use agent_client_protocol::schema::ProtocolVersion;
@@ -38,6 +38,8 @@ const MAX_TURN_CHUNK_CHARS: usize = 64 * 1024;
 const MAX_PLAN_ENTRIES: usize = 64;
 const MAX_PLAN_ENTRY_CHARS: usize = 1024;
 const MAX_TOOL_FIELD_CHARS: usize = 512;
+const MAX_TOOL_LOCATIONS: usize = 8;
+const MAX_TOOL_PATH_CHARS: usize = 1024;
 const MAX_SAFE_USAGE_TOKENS: u64 = 9_007_199_254_740_991;
 const MAX_USAGE_COST: f64 = 1_000_000_000_000.0;
 const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
@@ -136,6 +138,7 @@ enum AgentTurnUpdate {
         title: Option<String>,
         tool_kind: Option<&'static str>,
         status: Option<&'static str>,
+        locations: Option<Vec<AgentToolLocationInfo>>,
     },
     Usage {
         used_tokens: u64,
@@ -163,6 +166,13 @@ struct AgentPlanEntryInfo {
 struct AgentUsageCostInfo {
     amount: f64,
     currency: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentToolLocationInfo {
+    path: String,
+    line: Option<u32>,
 }
 
 type TurnEventSink = Arc<dyn Fn(AgentTurnEvent) + Send + Sync>;
@@ -739,6 +749,7 @@ async fn run_connection(
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let sessions = Arc::new(Mutex::new(HashMap::<String, PathBuf>::new()));
     let notification_turns = Arc::clone(&active_turns);
+    let notification_sessions = Arc::clone(&sessions);
     let notification_events = Arc::clone(&turn_events);
     let notification_connection_id = connection_id.clone();
     let request_turns = Arc::clone(&active_turns);
@@ -754,6 +765,7 @@ async fn run_connection(
                 if let Some(event) = turn_event(
                     &notification_connection_id,
                     &notification_turns,
+                    &notification_sessions,
                     notification,
                 ) {
                     notification_events(event);
@@ -1427,6 +1439,7 @@ fn remove_active_turn(
 fn turn_event(
     connection_id: &str,
     active_turns: &Mutex<HashMap<String, String>>,
+    sessions: &Mutex<HashMap<String, PathBuf>>,
     notification: SessionNotification,
 ) -> Option<AgentTurnEvent> {
     let session_id = notification.session_id.to_string();
@@ -1457,12 +1470,17 @@ fn turn_event(
             title: Some(bounded_tool_field(&tool.title)),
             tool_kind: Some(tool_kind_name(tool.kind)),
             status: Some(tool_status_name(tool.status)),
+            locations: Some(reduced_tool_locations(sessions, &session_id, tool.locations)),
         },
         SessionUpdate::ToolCallUpdate(update) => AgentTurnUpdate::ToolCall {
             tool_call_id: bounded_tool_field(&update.tool_call_id.to_string()),
             title: update.fields.title.map(|title| bounded_tool_field(&title)),
             tool_kind: update.fields.kind.map(tool_kind_name),
             status: update.fields.status.map(tool_status_name),
+            locations: update
+                .fields
+                .locations
+                .map(|locations| reduced_tool_locations(sessions, &session_id, locations)),
         },
         SessionUpdate::UsageUpdate(usage) => reduced_usage_update(usage),
         _ => return None,
@@ -1472,6 +1490,59 @@ fn turn_event(
         session_id,
         turn_id,
         update,
+    })
+}
+
+fn reduced_tool_locations(
+    sessions: &Mutex<HashMap<String, PathBuf>>,
+    session_id: &str,
+    locations: Vec<ToolCallLocation>,
+) -> Vec<AgentToolLocationInfo> {
+    let Some(bundle_root) = sessions
+        .lock()
+        .ok()
+        .and_then(|sessions| sessions.get(session_id).cloned())
+    else {
+        return Vec::new();
+    };
+    let mut seen = HashSet::new();
+    locations
+        .into_iter()
+        .filter_map(|location| reduced_tool_location(&bundle_root, location))
+        .filter(|location| seen.insert((location.path.clone(), location.line)))
+        .take(MAX_TOOL_LOCATIONS)
+        .collect()
+}
+
+fn reduced_tool_location(
+    bundle_root: &std::path::Path,
+    location: ToolCallLocation,
+) -> Option<AgentToolLocationInfo> {
+    if !location.path.is_absolute() {
+        return None;
+    }
+    let relative = location.path.strip_prefix(bundle_root).ok()?;
+    let mut parts = Vec::new();
+    for component in relative.components() {
+        let std::path::Component::Normal(part) = component else {
+            return None;
+        };
+        let part = part.to_str()?;
+        if part.is_empty() || part.chars().any(char::is_control) {
+            return None;
+        }
+        parts.push(part);
+    }
+    if parts.is_empty() {
+        return None;
+    }
+    let path = parts.join("/");
+    if path.chars().count() > MAX_TOOL_PATH_CHARS {
+        return None;
+    }
+    Some(AgentToolLocationInfo {
+        path,
+        line: location.line.filter(|line| *line > 0),
     })
 }
 
@@ -1919,6 +1990,7 @@ mod tests {
         let event = turn_event(
             "connection-plan",
             &active_turns,
+            &Mutex::new(HashMap::new()),
             SessionNotification::new("session-plan", SessionUpdate::Plan(Plan::new(entries))),
         )
         .expect("plan event");
@@ -1933,19 +2005,42 @@ mod tests {
 
     #[test]
     fn reduces_tool_updates_without_raw_arguments_or_output() {
+        let bundle_root = std::env::temp_dir().join(format!(
+            "okf-studio-tool-location-test-{}",
+            uuid::Uuid::new_v4()
+        ));
         let active_turns = Mutex::new(HashMap::from([(
             "session-tool".to_string(),
             "turn-tool".to_string(),
         )]));
+        let sessions = Mutex::new(HashMap::from([(
+            "session-tool".to_string(),
+            bundle_root.clone(),
+        )]));
+        let outside_path = bundle_root.with_file_name("outside-secret.md");
+        let mut locations = vec![
+            ToolCallLocation::new(bundle_root.join("product").join("overview.md")).line(12),
+            ToolCallLocation::new(bundle_root.join("product").join("overview.md")).line(12),
+            ToolCallLocation::new(&outside_path),
+            ToolCallLocation::new(bundle_root.join("..").join("outside-secret.md")),
+            ToolCallLocation::new("relative.md"),
+            ToolCallLocation::new(&bundle_root),
+            ToolCallLocation::new(bundle_root.join("x".repeat(MAX_TOOL_PATH_CHARS + 1))),
+        ];
+        locations.extend((0..10).map(|index| {
+            ToolCallLocation::new(bundle_root.join(format!("concept-{index}.md")))
+        }));
         let event = turn_event(
             "connection-tool",
             &active_turns,
+            &sessions,
             SessionNotification::new(
                 "session-tool",
                 SessionUpdate::ToolCall(
                     ToolCall::new("tool-secret", format!("Search\u{0000}{}", "x".repeat(600)))
                         .kind(ToolKind::Search)
                         .status(ToolCallStatus::InProgress)
+                        .locations(locations)
                         .raw_input(serde_json::json!({ "token": "must-not-cross-ipc" }))
                         .raw_output(serde_json::json!({ "secret": true })),
                 ),
@@ -1959,6 +2054,7 @@ mod tests {
             title,
             tool_kind,
             status,
+            locations,
         } = event.update else {
             panic!("expected a tool update");
         };
@@ -1966,7 +2062,34 @@ mod tests {
         assert_eq!(title.expect("title").chars().count(), MAX_TOOL_FIELD_CHARS);
         assert_eq!(tool_kind, Some("search"));
         assert_eq!(status, Some("in-progress"));
+        let locations = locations.expect("full location update");
+        assert_eq!(locations.len(), MAX_TOOL_LOCATIONS);
+        assert_eq!(locations[0].path, "product/overview.md");
+        assert_eq!(locations[0].line, Some(12));
+        assert_eq!(locations[1].path, "concept-0.md");
         assert!(!event_debug.contains("must-not-cross-ipc"));
+        assert!(!event_debug.contains("outside-secret.md"));
+
+        let cleared = turn_event(
+            "connection-tool",
+            &active_turns,
+            &sessions,
+            SessionNotification::new(
+                "session-tool",
+                SessionUpdate::ToolCallUpdate(ToolCallUpdate::new(
+                    "tool-secret",
+                    ToolCallUpdateFields::new().locations(Vec::new()),
+                )),
+            ),
+        )
+        .expect("tool location clearing event");
+        assert!(matches!(
+            cleared.update,
+            AgentTurnUpdate::ToolCall {
+                locations: Some(locations),
+                ..
+            } if locations.is_empty()
+        ));
     }
 
     #[test]
@@ -1978,6 +2101,7 @@ mod tests {
         let event = turn_event(
             "connection-usage",
             &active_turns,
+            &Mutex::new(HashMap::new()),
             SessionNotification::new(
                 "session-usage",
                 SessionUpdate::UsageUpdate(
@@ -2524,7 +2648,11 @@ mod tests {
                         SessionUpdate::ToolCall(
                             ToolCall::new("tool-search", "Search the bundle")
                                 .kind(ToolKind::Search)
-                                .status(ToolCallStatus::InProgress),
+                                .status(ToolCallStatus::InProgress)
+                                .locations(vec![ToolCallLocation::new(
+                                    std::env::temp_dir().join("product").join("overview.md"),
+                                )
+                                .line(12)]),
                         ),
                     ))?;
                     connection.send_notification(SessionNotification::new(
@@ -2633,7 +2761,12 @@ mod tests {
                 title: Some(title),
                 tool_kind: Some("search"),
                 status: Some("in-progress"),
-            } if tool_call_id == "tool-search" && title == "Search the bundle"
+                locations: Some(locations),
+            } if tool_call_id == "tool-search"
+                && title == "Search the bundle"
+                && locations.len() == 1
+                && locations[0].path == "product/overview.md"
+                && locations[0].line == Some(12)
         ));
         let tool_end = events_rx.recv().await.expect("tool completion event");
         assert!(matches!(
@@ -2643,6 +2776,7 @@ mod tests {
                 title: None,
                 tool_kind: None,
                 status: Some("completed"),
+                locations: None,
             } if tool_call_id == "tool-search"
         ));
         let usage = events_rx.recv().await.expect("usage event");

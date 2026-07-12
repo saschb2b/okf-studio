@@ -56,6 +56,11 @@ export type AgentToolKind =
 export type AgentToolStatus =
   | "pending" | "in-progress" | "completed" | "failed" | "unknown";
 
+export interface AgentToolLocationInfo {
+  path: string;
+  line: number | null;
+}
+
 export type AgentPermissionOptionKind =
   | "allow-once"
   | "allow-always"
@@ -93,6 +98,7 @@ export interface AgentTurnEvent extends AgentTurnInfo {
         title: string | null;
         toolKind: AgentToolKind | null;
         status: AgentToolStatus | null;
+        locations: readonly AgentToolLocationInfo[] | null;
       }
     | {
         kind: "usage";

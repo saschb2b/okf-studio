@@ -439,6 +439,10 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       title: "Search the bundle",
       toolKind: "search",
       status: "in-progress",
+      locations: [
+        { path: "product/overview.md", line: 12 },
+        { path: "features/agent-panel.md", line: 49 },
+      ],
     },
   });
   emitAgentTurn({
@@ -528,6 +532,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       title: null,
       toolKind: null,
       status: "completed",
+      locations: null,
     },
   });
   emitAgentTurn({

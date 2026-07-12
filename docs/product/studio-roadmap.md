@@ -114,7 +114,7 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 - [x] Stream structured ACP plans as live replacement cards and preserve the final plan in export.
 - [x] Stream bounded ACP tool-call lifecycle cards without raw arguments or output.
 - [x] Stream bounded ACP context-window usage and cumulative session cost when reported.
-- [ ] Stream bundle-scoped tool locations.
+- [x] Stream bundle-scoped tool locations without absolute path disclosure or access grants.
 - [x] Support send, stop, and safe retry when a prompt fails before turn acceptance.
 - [x] Export the current in-memory thread as Markdown through an explicit native save dialog.
 - [x] Derive and edit a title for the current in-memory thread and use it in Markdown export.

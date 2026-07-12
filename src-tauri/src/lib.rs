@@ -308,6 +308,14 @@ fn stop_watch(state: State<'_, WatchState>) {
     watch::stop(state.inner());
 }
 
+/// Diagnostic sink: print a frontend message to the host terminal. The webview
+/// console is invisible in `tauri dev` output, so crash forensics (uncaught
+/// errors, heap samples) route through here.
+#[tauri::command]
+fn frontend_log(message: String) {
+    eprintln!("[frontend] {message}");
+}
+
 /// Whether the running install can update itself in place. The Tauri updater
 /// only replaces an AppImage on Linux, so a `.deb` (or any non-AppImage) install
 /// must update by downloading the new package; Windows/macOS self-update fine.
@@ -420,7 +428,8 @@ pub fn run() {
             read_asset_data_url,
             start_watch,
             stop_watch,
-            can_self_update
+            can_self_update,
+            frontend_log
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

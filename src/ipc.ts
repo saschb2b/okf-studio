@@ -47,6 +47,21 @@ export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+/**
+ * Diagnostic sink: mirror a message to the host terminal (`pnpm tauri dev`).
+ * Best-effort and fire-and-forget — the webview console is invisible there,
+ * so crash forensics (uncaught errors, heap samples) also route through this.
+ */
+export function logToHost(message: string): void {
+  console.warn(message);
+  if (!isTauri()) return;
+  void import("@tauri-apps/api/core")
+    .then(({ invoke }) => invoke("frontend_log", { message }))
+    .catch(() => {
+      /* diagnostics must never throw */
+    });
+}
+
 export async function agentCatalog(): Promise<AgentCatalogDocument> {
   if (!isTauri()) return catalog as AgentCatalogDocument;
   const { invoke } = await import("@tauri-apps/api/core");

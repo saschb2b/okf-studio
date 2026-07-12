@@ -2035,7 +2035,7 @@ function applyTurnEvent(
     ]);
   } else if (event.update.stopReason !== "end-turn") {
     const stopReason = event.update.stopReason;
-    const stop = ({
+    const notices = {
       cancelled: { text: "Turn cancelled.", tone: "neutral" },
       refusal: { text: "The agent refused this turn.", tone: "warning" },
       "max-tokens": { text: "The agent reached its token limit.", tone: "warning" },
@@ -2044,7 +2044,10 @@ function applyTurnEvent(
         tone: "warning",
       },
       unknown: { text: "The agent stopped for an unknown reason.", tone: "warning" },
-    } as const)[stopReason];
+    } as const;
+    // The wire value can drift from the typed union (it once arrived as
+    // snake_case and unmounted the whole app); never let this lookup throw.
+    const stop = notices[stopReason in notices ? stopReason : "unknown"];
     setMessages((current) => [
       ...(stopReason === "cancelled"
         ? finalizeToolItems(current, event.turnId, "cancelled")

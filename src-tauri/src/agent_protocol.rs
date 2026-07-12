@@ -161,7 +161,7 @@ struct AgentTurnEvent {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[serde(tag = "kind", rename_all = "kebab-case")]
+#[serde(tag = "kind", rename_all = "kebab-case", rename_all_fields = "camelCase")]
 enum AgentTurnUpdate {
     Text {
         text: String,
@@ -224,7 +224,7 @@ struct AgentPermissionEvent {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[serde(tag = "kind", rename_all = "kebab-case")]
+#[serde(tag = "kind", rename_all = "kebab-case", rename_all_fields = "camelCase")]
 enum AgentPermissionUpdate {
     Requested {
         tool_call_id: String,
@@ -2246,6 +2246,63 @@ mod tests {
         ToolCallUpdateFields, ToolKind, UsageUpdate,
     };
     use agent_client_protocol::{Dispatch, Responder};
+
+    /// The frontend reads these payloads with camelCase field names
+    /// (src/agent/connection.ts). `rename_all` on a tagged enum only renames
+    /// the variants, so the fields need `rename_all_fields` — losing it once
+    /// shipped `stop_reason` over the wire and crashed the agent panel on
+    /// every completed turn.
+    #[test]
+    fn serializes_turn_and_permission_updates_with_camel_case_fields() {
+        let completed = serde_json::to_value(AgentTurnUpdate::Completed {
+            stop_reason: "end-turn".to_string(),
+        })
+        .expect("serialize completed");
+        assert_eq!(completed["kind"], "completed");
+        assert_eq!(completed["stopReason"], "end-turn");
+
+        let tool_call = serde_json::to_value(AgentTurnUpdate::ToolCall {
+            tool_call_id: "tool-1".to_string(),
+            title: None,
+            tool_kind: Some("read"),
+            status: Some("pending"),
+            locations: None,
+        })
+        .expect("serialize tool call");
+        assert_eq!(tool_call["kind"], "tool-call");
+        assert_eq!(tool_call["toolCallId"], "tool-1");
+        assert_eq!(tool_call["toolKind"], "read");
+
+        let text = serde_json::to_value(AgentTurnUpdate::Text {
+            text: "chunk".to_string(),
+            message_id: Some("message-1".to_string()),
+        })
+        .expect("serialize text");
+        assert_eq!(text["messageId"], "message-1");
+
+        let usage = serde_json::to_value(AgentTurnUpdate::Usage {
+            used_tokens: 10,
+            context_window_tokens: 100,
+            cost: None,
+        })
+        .expect("serialize usage");
+        assert_eq!(usage["usedTokens"], 10);
+        assert_eq!(usage["contextWindowTokens"], 100);
+
+        let requested = serde_json::to_value(AgentPermissionUpdate::Requested {
+            tool_call_id: "tool-1".to_string(),
+            title: None,
+            options: Vec::new(),
+        })
+        .expect("serialize permission request");
+        assert_eq!(requested["toolCallId"], "tool-1");
+
+        let resolved = serde_json::to_value(AgentPermissionUpdate::Resolved {
+            option_id: Some("allow".to_string()),
+        })
+        .expect("serialize permission resolution");
+        assert_eq!(resolved["optionId"], "allow");
+    }
 
     #[test]
     fn bounds_plan_updates_before_they_cross_ipc() {

@@ -1,4 +1,4 @@
-import { ArrowLeft, PanelRightClose, Sparkles } from "lucide-react";
+import { ArrowLeft, CircleAlert, PanelRightClose, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type * as React from "react";
 import { AGENT_PANEL_CLAMP, useApp } from "../store.tsx";
@@ -7,6 +7,7 @@ import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import { focusAgentPanelOpener } from "../agentPanelFocus.ts";
 import { AgentConnectionCatalog } from "./AgentConnectionCatalog.tsx";
 import { AgentConversation } from "./AgentConversation.tsx";
+import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import "./AgentPanel.css";
 
 export function AgentPanel() {
@@ -17,6 +18,7 @@ export function AgentPanel() {
   ) ?? null;
   const panelRef = useRef<HTMLElement>(null);
   const [view, setView] = useState<"empty" | "catalog" | "conversation">("empty");
+  const [resetToken, setResetToken] = useState(0);
   if (!state.panels.agent) return null;
 
   const width =
@@ -45,6 +47,16 @@ export function AgentPanel() {
 
   const connection = connections.at(0);
 
+  // Land on a safe view and remount the failed subtree. Thread UI state is
+  // lost, but saved-thread metadata lets the user resume the conversation.
+  function resetPanel() {
+    setView(connection ? "conversation" : "empty");
+    setResetToken((token) => token + 1);
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>("[data-agent-initial-focus]")?.focus();
+    });
+  }
+
   return (
     <>
       <AgentPanelDivider panelRef={panelRef} />
@@ -70,45 +82,64 @@ export function AgentPanel() {
             <PanelRightClose className="agent-panel__close-icon" size={16} />
           </button>
         </header>
-        {view === "catalog" ? (
-          <AgentConnectionCatalog
-            onBack={closeCatalog}
-            onConnected={() => setView("conversation")}
-          />
-        ) : view === "conversation" && connection ? (
-          <AgentConversation
-            key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
-            connection={connection}
-            bundleRoot={state.activeRoot}
-            bundleName={state.bundle?.name ?? null}
-            activeConcept={activeConcept}
-            onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
-            concepts={state.bundle?.concepts ?? []}
-            issues={state.bundle?.issues ?? []}
-            onChangeAgent={openCatalog}
-            onConnectionEnd={() => setView("empty")}
-            onOpenFolder={() => actions.openFolder()}
-          />
-        ) : (
-          <div className="agent-panel__empty">
-            <span className="agent-panel__mark" aria-hidden="true">
-              <Sparkles size={24} />
-            </span>
-            <h2>Connect an agent</h2>
-            <p>
-              Use an existing subscription, an API-backed Studio Agent, or a
-              local model. Nothing connects until you choose.
-            </p>
-            <button
-              type="button"
-              className="btn primary"
-              data-agent-initial-focus
-              onClick={openCatalog}
-            >
-              Connect an agent
-            </button>
-          </div>
-        )}
+        <ErrorBoundary
+          resetKey={resetToken}
+          fallback={
+            <div className="agent-panel__empty" role="alert">
+              <span className="agent-panel__mark" aria-hidden="true">
+                <CircleAlert size={24} />
+              </span>
+              <h2>The agent panel hit an error</h2>
+              <p>
+                The rest of Studio is unaffected. Reset the panel to continue;
+                a saved thread can be resumed from the conversation view.
+              </p>
+              <button type="button" className="btn primary" onClick={resetPanel}>
+                Reset panel
+              </button>
+            </div>
+          }
+        >
+          {view === "catalog" ? (
+            <AgentConnectionCatalog
+              onBack={closeCatalog}
+              onConnected={() => setView("conversation")}
+            />
+          ) : view === "conversation" && connection ? (
+            <AgentConversation
+              key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
+              connection={connection}
+              bundleRoot={state.activeRoot}
+              bundleName={state.bundle?.name ?? null}
+              activeConcept={activeConcept}
+              onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
+              concepts={state.bundle?.concepts ?? []}
+              issues={state.bundle?.issues ?? []}
+              onChangeAgent={openCatalog}
+              onConnectionEnd={() => setView("empty")}
+              onOpenFolder={() => actions.openFolder()}
+            />
+          ) : (
+            <div className="agent-panel__empty">
+              <span className="agent-panel__mark" aria-hidden="true">
+                <Sparkles size={24} />
+              </span>
+              <h2>Connect an agent</h2>
+              <p>
+                Use an existing subscription, an API-backed Studio Agent, or a
+                local model. Nothing connects until you choose.
+              </p>
+              <button
+                type="button"
+                className="btn primary"
+                data-agent-initial-focus
+                onClick={openCatalog}
+              >
+                Connect an agent
+              </button>
+            </div>
+          )}
+        </ErrorBoundary>
       </aside>
     </>
   );

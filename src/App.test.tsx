@@ -390,9 +390,52 @@ describe("OKF Studio app", () => {
 
     await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
     await user.click(screen.getByRole("button", { name: "Send" }));
+    const userMessageCount = document.querySelectorAll(".agent-message--user").length;
+    fireEvent.change(screen.getByLabelText("Message the agent"), {
+      target: { value: "Explain the implications" },
+    });
+    await user.click(await screen.findByRole("button", { name: "Queue" }));
+    expect(await screen.findByText("Follow-up queued")).toBeInTheDocument();
+    const queuedMessage = screen.getByRole("region", { name: "Next message" });
+    await vi.waitFor(() =>
+      expect(within(queuedMessage).getByRole("button", { name: "Edit" })).toHaveFocus(),
+    );
+    expect(document.querySelectorAll(".agent-message--user")).toHaveLength(userMessageCount);
+    expect(screen.getByLabelText("Message the agent")).toBeDisabled();
+    await user.click(within(queuedMessage).getByRole("button", { name: "Edit" }));
+    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+    expect(screen.getByLabelText("Message the agent")).toHaveValue("Explain the implications");
+    fireEvent.change(screen.getByLabelText("Message the agent"), {
+      target: { value: "Explain the implications and cite sources" },
+    });
+    await user.click(screen.getByRole("button", { name: "Queue" }));
+    await user.click(
+      within(screen.getByRole("region", { name: "Next message" }))
+        .getByRole("button", { name: "Remove" }),
+    );
+    expect(screen.queryByRole("region", { name: "Next message" })).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+    fireEvent.change(screen.getByLabelText("Message the agent"), {
+      target: { value: "Explain the implications and cite sources" },
+    });
+    await user.click(screen.getByRole("button", { name: "Queue" }));
+    promptSpy.mockRejectedValueOnce(new Error("Queued follow-up did not start."));
     await user.click(await screen.findByRole("button", { name: "Stop" }));
     const cancelledStatus = await screen.findByText("Turn cancelled.");
     expect(cancelledStatus.closest("article")).toHaveAttribute("role", "status");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Queued follow-up did not start.",
+    );
+    expect(screen.getByLabelText("Message the agent")).toHaveValue(
+      "Explain the implications and cite sources",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(
+      await screen.findByText(
+        "Browser ACP received: Explain the implications and cite sources",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Next message" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Fail: simulate a dropped connection");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -415,7 +458,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
-  }, 20_000);
+  }, 25_000);
 
   it("uses an ACP-advertised authentication method before starting a session", async () => {
     const user = userEvent.setup();

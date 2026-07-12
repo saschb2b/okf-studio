@@ -115,7 +115,8 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 - [x] Support send, stop, and safe retry when a prompt fails before turn acceptance.
 - [x] Export the current in-memory thread as Markdown through an explicit native save dialog.
 - [x] Derive and edit a title for the current in-memory thread and use it in Markdown export.
-- [ ] Add queue, accepted-turn retry where supported, and history.
+- [x] Queue one visible, editable in-memory follow-up and submit it after the active turn.
+- [ ] Add accepted-turn retry where supported and history.
 - [ ] Persist Studio metadata; use ACP restore capabilities only when advertised.
 
 Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and late updates.

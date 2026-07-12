@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-12
+* **Creation**: Added one visible in-memory follow-up queue to active Agent turns. The queued prompt keeps its context and sources, stays outside the transcript until ACP accepts it, can be edited or removed, and starts after completion or cancellation. A rejected queued start restores the draft and attachments for explicit retry.
 * **Creation**: Added titles to the current Agent thread. The first accepted prompt derives a bounded plain-text title, guided starters retain their task name, and an explicit rename popover supports correction. Failed starts leave **New thread** unchanged. The title becomes the Markdown export heading and suggested filename; it remains in memory until thread persistence lands.
 * **Creation**: Added explicit Markdown export for the current Agent thread. The native host writes at most 2 MiB only after a save destination is chosen, enforces a Markdown filename, and returns no absolute path. User messages are quoted, agent Markdown is preserved, turn lifecycle records stay labelled, cancellation is silent, and save failures remain visible for retry. Export does not persist the thread or grant bundle writes.
 * **Creation**: Added explicit validation-issue context to Agent conversations. The issue picker lists the active bundle's errors and warnings, suppresses attached duplicates, and creates a removable source with the exact message and concept provenance. Findings share the bounded source limit and grant no writes.

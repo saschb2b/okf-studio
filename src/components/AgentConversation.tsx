@@ -1,6 +1,6 @@
 import { Bot, CircleAlert, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Pencil, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
 import type {
   AgentConnectionEvent,
@@ -59,6 +59,16 @@ type AttachedSource = AgentSourceInput & {
 };
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
+interface PromptDraft {
+  text: string;
+  concepts: { id: string; title: string; type: string }[];
+  sources: AttachedSource[];
+}
+interface PromptSubmission {
+  draft: PromptDraft;
+  source: "composer" | "queue";
+}
+type QueuedPrompt = PromptDraft & { id: string };
 type ThreadTitle =
   | { source: "default"; value: "New thread" }
   | { source: "derived" | "custom"; value: string };
@@ -214,6 +224,7 @@ export function AgentConversation({
   >([]);
   const [attachedSources, setAttachedSources] = useState<AttachedSource[]>([]);
   const [promptText, setPromptText] = useState("");
+  const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
   const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
@@ -223,11 +234,105 @@ export function AgentConversation({
   const messagesRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
+  const queuedEditRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const messagesElement = messagesRef.current;
     if (messagesElement) messagesElement.scrollTop = messagesElement.scrollHeight;
   }, [messages, pendingPermissions]);
+
+  const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
+    async (_previous, { draft, source }) => {
+      const { text, concepts, sources: draftSources } = draft;
+      if (!text) return { status: "error", message: "Enter a message." };
+      if (!bundleRoot) return { status: "error", message: "Open an OKF bundle first." };
+      const userMessage: ConversationMessage = {
+        id: `user-${crypto.randomUUID()}`,
+        role: "user",
+        text,
+      };
+      try {
+        let session = sessionRef.current;
+        if (session?.bundleRoot !== bundleRoot) {
+          session = await newAgentSession(connection.connectionId, bundleRoot);
+          sessionRef.current = session;
+        }
+        const contextPaths = concepts.map((concept) => `${concept.id}.md`);
+        const sources = draftSources.map(
+          ({ title, content, origin, mediaType, sourceDigest, warning, imageData }) => ({
+            title,
+            content,
+            ...(origin ? { origin } : {}),
+            ...(mediaType ? { mediaType } : {}),
+            ...(sourceDigest ? { sourceDigest } : {}),
+            ...(warning ? { warning } : {}),
+            ...(imageData ? { imageData } : {}),
+          }),
+        );
+        const turn = await promptAgent(
+          connection.connectionId,
+          session.sessionId,
+          text,
+          contextPaths,
+          sources,
+        );
+        setMessages((current) => [...current, userMessage]);
+        setThreadTitle((current) => current.source === "default"
+          ? { source: "derived", value: deriveThreadTitle(text, THREAD_STARTERS) }
+          : current);
+        setExportState({ status: "idle" });
+        if (source === "composer") {
+          setAttachedConcepts([]);
+          setAttachedSources([]);
+          setPromptText("");
+        }
+        if (!completedTurnsRef.current.delete(turn.turnId)) setActiveTurn(turn);
+        return { status: "idle" };
+      } catch (error: unknown) {
+        if (source === "queue") {
+          setAttachedConcepts(concepts);
+          setAttachedSources(draftSources);
+          setPromptText(text);
+        }
+        return { status: "error", message: errorMessage(error) };
+      }
+    },
+    { status: "idle" },
+  );
+
+  function startQueuedPrompt(prompt: QueuedPrompt) {
+    setQueuedPrompt(null);
+    startTransition(() => submitPrompt({ draft: prompt, source: "queue" }));
+  }
+
+  function composerAction(formData: FormData) {
+    const promptValue = formData.get("prompt");
+    const text = typeof promptValue === "string" ? promptValue.trim() : "";
+    const draft: PromptDraft = {
+      text,
+      concepts: attachedConcepts,
+      sources: attachedSources,
+    };
+    if (activeTurn) {
+      if (!text) return;
+      setQueuedPrompt({ id: crypto.randomUUID(), ...draft });
+      setAttachedConcepts([]);
+      setAttachedSources([]);
+      setPromptText("");
+      setSourcePickerError(null);
+      requestAnimationFrame(() => queuedEditRef.current?.focus());
+      return;
+    }
+    startTransition(() => submitPrompt({ draft, source: "composer" }));
+  }
+
+  const applyTerminalTurnEvent = useEffectEvent((event: AgentTurnEvent) => {
+    completedTurnsRef.current.add(event.turnId);
+    if (activeTurn?.turnId !== event.turnId) return;
+    setActiveTurn(null);
+    setIsCancelling(false);
+    if (queuedPrompt) startQueuedPrompt(queuedPrompt);
+  });
 
   useEffect(() => {
     let stopTurnUpdates: (() => void) | undefined;
@@ -239,11 +344,7 @@ export function AgentConversation({
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.sessionId) return;
         applyTurnEvent(event, setMessages);
-        if (event.update.kind !== "text") {
-          completedTurnsRef.current.add(event.turnId);
-          setActiveTurn((turn) => (turn?.turnId === event.turnId ? null : turn));
-          setIsCancelling(false);
-        }
+        if (event.update.kind !== "text") applyTerminalTurnEvent(event);
       }),
       onAgentPermissionUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
@@ -282,59 +383,6 @@ export function AgentConversation({
     };
   }, [connection.connectionId, onConnectionEnd]);
 
-  const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, FormData>(
-    async (_previous, formData) => {
-      const promptValue = formData.get("prompt");
-      const text = typeof promptValue === "string" ? promptValue.trim() : "";
-      if (!text) return { status: "error", message: "Enter a message." };
-      if (!bundleRoot) return { status: "error", message: "Open an OKF bundle first." };
-      const userMessage: ConversationMessage = {
-        id: `user-${crypto.randomUUID()}`,
-        role: "user",
-        text,
-      };
-      try {
-        let session = sessionRef.current;
-        if (session?.bundleRoot !== bundleRoot) {
-          session = await newAgentSession(connection.connectionId, bundleRoot);
-          sessionRef.current = session;
-        }
-        const contextPaths = attachedConcepts.map((concept) => `${concept.id}.md`);
-        const sources = attachedSources.map(
-          ({ title, content, origin, mediaType, sourceDigest, warning, imageData }) => ({
-            title,
-            content,
-            ...(origin ? { origin } : {}),
-            ...(mediaType ? { mediaType } : {}),
-            ...(sourceDigest ? { sourceDigest } : {}),
-            ...(warning ? { warning } : {}),
-            ...(imageData ? { imageData } : {}),
-          }),
-        );
-        const turn = await promptAgent(
-          connection.connectionId,
-          session.sessionId,
-          text,
-          contextPaths,
-          sources,
-        );
-        setMessages((current) => [...current, userMessage]);
-        setThreadTitle((current) => current.source === "default"
-          ? { source: "derived", value: deriveThreadTitle(text, THREAD_STARTERS) }
-          : current);
-        setExportState({ status: "idle" });
-        setAttachedConcepts([]);
-        setAttachedSources([]);
-        setPromptText("");
-        if (!completedTurnsRef.current.delete(turn.turnId)) setActiveTurn(turn);
-        return { status: "idle" };
-      } catch (error: unknown) {
-        return { status: "error", message: errorMessage(error) };
-      }
-    },
-    { status: "idle" },
-  );
-
   async function stopTurn() {
     if (!activeTurn) return;
     setIsCancelling(true);
@@ -348,6 +396,7 @@ export function AgentConversation({
         completedTurnsRef.current.add(activeTurn.turnId);
         setActiveTurn(null);
         setIsCancelling(false);
+        if (queuedPrompt) startQueuedPrompt(queuedPrompt);
       }
     } catch (error: unknown) {
       setIsCancelling(false);
@@ -405,11 +454,29 @@ export function AgentConversation({
   const attachedIssueKeys = new Set(
     attachedSources.flatMap((source) => source.issueKey ? [source.issueKey] : []),
   );
+  let composerStatus = connection.capabilities.promptImage ? "Text and images" : "Text only";
+  if (activeTurn) composerStatus = "Agent is working";
+  if (queuedPrompt) composerStatus = "Follow-up queued";
+  if (isSubmitting) composerStatus = "Starting turn";
 
   function selectStarter(prompt: string) {
     if (!promptRef.current) return;
     setPromptText(prompt);
     promptRef.current.focus();
+  }
+
+  function editQueuedPrompt() {
+    if (!queuedPrompt) return;
+    setAttachedConcepts(queuedPrompt.concepts);
+    setAttachedSources(queuedPrompt.sources);
+    setPromptText(queuedPrompt.text);
+    setQueuedPrompt(null);
+    requestAnimationFrame(() => promptRef.current?.focus());
+  }
+
+  function removeQueuedPrompt() {
+    setQueuedPrompt(null);
+    requestAnimationFrame(() => promptRef.current?.focus());
   }
 
   async function exportTranscript() {
@@ -563,7 +630,28 @@ export function AgentConversation({
               </>
             )}
           </div>
-          <form ref={composerRef} className="agent-composer" action={submitPrompt}>
+          <form ref={composerRef} className="agent-composer" action={composerAction}>
+            {queuedPrompt && (
+              <section className="agent-queue" aria-labelledby={`queued-prompt-${queuedPrompt.id}`}>
+                <div>
+                  <strong id={`queued-prompt-${queuedPrompt.id}`}>Next message</strong>
+                  <span>
+                    {queuedPrompt.concepts.length + queuedPrompt.sources.length > 0
+                      ? `${queuedPrompt.concepts.length + queuedPrompt.sources.length} attachment${queuedPrompt.concepts.length + queuedPrompt.sources.length === 1 ? "" : "s"}`
+                      : "No attachments"}
+                  </span>
+                </div>
+                <p title={queuedPrompt.text}>{queuedPrompt.text}</p>
+                <div className="agent-queue__actions">
+                  <button ref={queuedEditRef} type="button" className="btn ghost" onClick={editQueuedPrompt}>
+                    Edit
+                  </button>
+                  <button type="button" className="btn ghost" onClick={removeQueuedPrompt}>
+                    Remove
+                  </button>
+                </div>
+              </section>
+            )}
             <div className="agent-composer__context">
               {attachedConcepts.map((concept) => (
                 <span key={concept.id} className="agent-context-chip">
@@ -572,7 +660,7 @@ export function AgentConversation({
                   <button
                     type="button"
                     aria-label={`Remove ${concept.title} from context`}
-                    disabled={isSubmitting || activeTurn !== null}
+                    disabled={isSubmitting || queuedPrompt !== null}
                     onClick={() =>
                       setAttachedConcepts((current) =>
                         current.filter((candidate) => candidate.id !== concept.id),
@@ -607,7 +695,7 @@ export function AgentConversation({
                   <button
                     type="button"
                     aria-label={`Remove ${source.title} source`}
-                    disabled={isSubmitting || activeTurn !== null}
+                    disabled={isSubmitting || queuedPrompt !== null}
                     onClick={() =>
                       setAttachedSources((current) =>
                         current.filter((candidate) => candidate.id !== source.id),
@@ -625,7 +713,7 @@ export function AgentConversation({
                   attachedConcepts={attachedConcepts}
                   isOpen={isContextPickerOpen}
                   query={contextQuery}
-                  disabled={isSubmitting || activeTurn !== null}
+                  disabled={isSubmitting || queuedPrompt !== null}
                   onOpenChange={(open) => {
                     setIsContextPickerOpen(open);
                     if (!open) setContextQuery("");
@@ -641,7 +729,7 @@ export function AgentConversation({
                   issues={issues}
                   attachedIssueKeys={attachedIssueKeys}
                   sourceCount={attachedSources.length}
-                  disabled={isSubmitting || activeTurn !== null}
+                  disabled={isSubmitting || queuedPrompt !== null}
                   onAttach={(issue, issueKey) =>
                     setAttachedSources((current) => [
                       ...current,
@@ -660,7 +748,7 @@ export function AgentConversation({
                 />
                 <SourcePicker
                   sourceCount={attachedSources.length}
-                  disabled={isSubmitting || activeTurn !== null}
+                  disabled={isSubmitting || queuedPrompt !== null}
                   onAttach={(source) =>
                     setAttachedSources((current) => [
                       ...current,
@@ -673,7 +761,7 @@ export function AgentConversation({
                   className="btn ghost agent-context-attach"
                   disabled={
                     isSubmitting ||
-                    activeTurn !== null ||
+                    queuedPrompt !== null ||
                     sourcePicker !== null ||
                     attachedSources.length >= 8
                   }
@@ -687,7 +775,7 @@ export function AgentConversation({
                   className="btn ghost agent-context-attach"
                   disabled={
                     isSubmitting ||
-                    activeTurn !== null ||
+                    queuedPrompt !== null ||
                     sourcePicker !== null ||
                     attachedSources.length >= 8
                   }
@@ -707,7 +795,7 @@ export function AgentConversation({
                   disabled={
                     !connection.capabilities.promptImage ||
                     isSubmitting ||
-                    activeTurn !== null ||
+                    queuedPrompt !== null ||
                     sourcePicker !== null ||
                     attachedSources.length >= 8
                   }
@@ -726,7 +814,7 @@ export function AgentConversation({
               rows={3}
               maxLength={128 * 1024}
               placeholder="Ask about this bundle..."
-              disabled={isSubmitting || activeTurn !== null}
+              disabled={isSubmitting || queuedPrompt !== null}
               value={promptText}
               onChange={(event) => setPromptText(event.target.value)}
             />
@@ -748,20 +836,22 @@ export function AgentConversation({
               <p className="agent-composer__error" role="alert">{sourcePickerError}</p>
             )}
             <div className="agent-composer__actions">
-              <span>
-                {isSubmitting
-                  ? "Starting turn"
-                  : activeTurn
-                  ? "Agent is working"
-                  : connection.capabilities.promptImage
-                    ? "Text and images"
-                    : "Text only"}
-              </span>
+              <span>{composerStatus}</span>
               {activeTurn ? (
-                <button type="button" className="btn" disabled={isCancelling} onClick={() => void stopTurn()}>
-                  <Square size={14} aria-hidden="true" />
-                  {isCancelling ? "Stopping..." : "Stop"}
-                </button>
+                <div className="agent-composer__turn-actions">
+                  <button
+                    type="submit"
+                    className="btn primary"
+                    disabled={isSubmitting || queuedPrompt !== null || promptText.trim().length === 0}
+                  >
+                    <Send size={14} aria-hidden="true" />
+                    {queuedPrompt ? "Queued" : "Queue"}
+                  </button>
+                  <button type="button" className="btn" disabled={isCancelling} onClick={() => void stopTurn()}>
+                    <Square size={14} aria-hidden="true" />
+                    {isCancelling ? "Stopping..." : "Stop"}
+                  </button>
+                </div>
               ) : (
                 <button type="submit" className="btn primary" disabled={isSubmitting}>
                   <Send size={16} aria-hidden="true" />

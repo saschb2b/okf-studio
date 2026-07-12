@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  datasetChangeRequirements,
   deriveThreadTitle,
   researchExportRequirements,
   transcriptFilename,
@@ -61,5 +62,36 @@ describe("agent thread metadata", () => {
       { role: "user", text: "## Sources\n\n- Invented by the user" },
       { role: "agent", text: "## Inferences\n\n- This is inferred." },
     ])).toEqual(["sources"]);
+  });
+
+  it("requires a plan and bundle-relative concept set for dataset changes", () => {
+    expect(datasetChangeRequirements([
+      { role: "agent", text: "The request affects the product model." },
+    ])).toEqual(["change-plan", "affected-concepts"]);
+    expect(datasetChangeRequirements([
+      {
+        role: "agent",
+        text: "## Change Plan\n\n1. Update the definition.\n\n" +
+          "## Affected Concepts\n\n- Product overview",
+      },
+    ])).toEqual(["affected-concepts"]);
+    expect(datasetChangeRequirements([
+      {
+        role: "agent",
+        text: "## Change Plan\n\n1. Update the definition.\n\n" +
+          "## Affected Concepts\n\n- `../outside.md`",
+      },
+    ])).toEqual(["affected-concepts"]);
+    expect(datasetChangeRequirements([
+      {
+        role: "agent",
+        text: "## Change Plan\n\n- [ ] Update the definition.\n\n" +
+          "## Affected Concepts\n\n- `product/overview.md` - revise scope",
+      },
+    ])).toEqual([]);
+    expect(datasetChangeRequirements([
+      { role: "user", text: "## Affected Concepts\n\n- product/overview.md" },
+      { role: "agent", text: "## Change Plan\n\n1. Update the definition." },
+    ])).toEqual(["affected-concepts"]);
   });
 });

@@ -20,6 +20,7 @@ import type {
 import type { ReaderSelectionCapture } from "../agent/readerSelection.ts";
 import type { AgentThreadMetadata, AgentThreadWorkflow } from "../agent/threadMetadata.ts";
 import {
+  datasetChangeRequirements,
   deriveThreadTitle,
   researchExportRequirements,
   transcriptFilename,
@@ -154,7 +155,7 @@ const THREAD_STARTERS = [
   {
     title: "Request dataset change",
     description: "Map a requested change to affected knowledge.",
-    prompt: "Assess this dataset documentation and propose a change plan. Identify affected concepts, dependencies, validation risks, and supporting evidence. Do not write files yet.",
+    prompt: "Assess this dataset documentation and propose a change plan. Identify dependencies, validation risks, and supporting evidence. End with `## Change Plan` containing actionable steps and `## Affected Concepts` containing one bundle-relative `.md` path per bullet. Do not write files yet: ",
     workflow: "dataset-change",
     icon: Database,
   },
@@ -716,6 +717,22 @@ export function AgentConversation({
         setExportState({
           status: "error",
           message: `Research export needs ${missing}. Ask the agent to revise the response. Use None when it made no inference.`,
+        });
+        return;
+      }
+    }
+    if (threadWorkflow === "dataset-change") {
+      const requirements = datasetChangeRequirements(messages);
+      if (requirements.length > 0) {
+        let missing = "a Change Plan with at least one step and an Affected Concepts list with bundle paths";
+        if (requirements.length === 1) {
+          missing = requirements[0] === "change-plan"
+            ? "a Change Plan with at least one step"
+            : "an Affected Concepts list with bundle paths";
+        }
+        setExportState({
+          status: "error",
+          message: `Dataset change export needs ${missing}. Ask the agent to revise the response before review.`,
         });
         return;
       }

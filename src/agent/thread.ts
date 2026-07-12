@@ -32,6 +32,7 @@ export type ThreadTranscriptItem =
   | ThreadTranscriptTool;
 
 export type ResearchExportRequirement = "sources" | "inferences";
+export type DatasetChangeRequirement = "change-plan" | "affected-concepts";
 
 function sectionBody(markdown: string, title: string): string | null {
   const heading = new RegExp(`^#{1,6}\\s+${title}\\s*$`, "imu");
@@ -40,6 +41,17 @@ function sectionBody(markdown: string, title: string): string | null {
   const afterHeading = markdown.slice(match.index + match[0].length);
   const nextHeading = /^#{1,6}\s+\S.*$/mu.exec(afterHeading);
   return (nextHeading ? afterHeading.slice(0, nextHeading.index) : afterHeading).trim();
+}
+
+function hasBundleMarkdownPath(line: string): boolean {
+  const candidates = line.matchAll(
+    /(?:^|[\s`(])((?:\/|\.\/)?[\w./-]+\.md(?:#[^\s`)]*)?)/gu,
+  );
+  return [...candidates].some((candidate) => {
+    const path = candidate[1].split("#", 1)[0]?.replace(/^\.?\//u, "");
+    if (!path || path.includes(":") || path.includes("\\")) return false;
+    return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+  });
 }
 
 export function researchExportRequirements(
@@ -64,6 +76,30 @@ export function researchExportRequirements(
   const requirements: ResearchExportRequirement[] = [];
   if (!hasSources) requirements.push("sources");
   if (!hasInferences) requirements.push("inferences");
+  return requirements;
+}
+
+export function datasetChangeRequirements(
+  messages: readonly ThreadTranscriptItem[],
+): DatasetChangeRequirement[] {
+  const responses = messages.flatMap((message) =>
+    message.role === "agent" ? [message.text] : []
+  );
+  const hasChangePlan = responses.some((response) => {
+    const body = sectionBody(response, "Change Plan");
+    return body?.split("\n").some((line) =>
+      /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)\S/u.test(line)
+    ) ?? false;
+  });
+  const hasAffectedConcepts = responses.some((response) => {
+    const body = sectionBody(response, "Affected Concepts");
+    return body?.split("\n").some((line) =>
+      /^\s*[-*+]\s+\S/u.test(line) && hasBundleMarkdownPath(line)
+    ) ?? false;
+  });
+  const requirements: DatasetChangeRequirement[] = [];
+  if (!hasChangePlan) requirements.push("change-plan");
+  if (!hasAffectedConcepts) requirements.push("affected-concepts");
   return requirements;
 }
 

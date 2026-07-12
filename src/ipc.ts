@@ -544,6 +544,14 @@ function mockAgentResponse(text: string): string {
       "## Sources\n\n- [Product overview](product/overview.md)\n\n" +
       "## Inferences\n\nNone.";
   }
+  if (text.startsWith("Assess this dataset documentation and propose a change plan")) {
+    if (text.includes("Omit change sections")) {
+      return "The requested change needs review.";
+    }
+    return "The change is bounded to the documented product scope.\n\n" +
+      "## Change Plan\n\n1. Review the current definition.\n2. Update the documented scope.\n3. Run OKF validation.\n\n" +
+      "## Affected Concepts\n\n- `product/overview.md` - update the product definition";
+  }
   return `Browser ACP received: ${text}`;
 }
 

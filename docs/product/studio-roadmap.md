@@ -175,7 +175,7 @@ Gate: mixed, duplicate, malformed, offline, provenance, and deterministic-valida
 - [x] Add **Create bundle**, **Enhance bundle**, **Request dataset change**, and **Deep research** starters.
 - [x] Keep starters as normal inspectable threads, not separate result silos.
 - [x] Require cited evidence and mark inference in research exports.
-- [ ] Require a change plan and affected-concept set before dataset edits.
+- [x] Require a change plan and affected-concept set before dataset edits.
 
 Gate: end-to-end tests reach useful results with no hidden write or network action.
 

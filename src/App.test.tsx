@@ -195,6 +195,11 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Enhance bundle/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Request dataset change/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
+    expect(screen.getByLabelText("Message the agent")).toHaveValue(
+      "Assess this dataset documentation and propose a change plan. Identify dependencies, validation risks, and supporting evidence. End with `## Change Plan` containing actionable steps and `## Affected Concepts` containing one bundle-relative `.md` path per bullet. Do not write files yet: ",
+    );
+    await user.clear(screen.getByLabelText("Message the agent"));
     await user.click(screen.getByRole("button", { name: /Deep research/ }));
     expect(screen.getByLabelText("Message the agent")).toHaveValue(
       "Research this question across the active bundle and attached sources. Cite the evidence for each finding. End with `## Sources` containing one bullet per cited source and `## Inferences` containing each inference or `None.`: ",
@@ -697,6 +702,53 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Research Export Harness" }));
+  });
+
+  it("blocks dataset-change exports without a plan and affected concept set", async () => {
+    const user = userEvent.setup();
+    const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Dataset Change Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\dataset-change.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Dataset Change Harness" }));
+    await screen.findByText(/Connected to Dataset Change Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
+    await user.type(screen.getByLabelText("Message the agent"), "Omit change sections");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("The requested change needs review.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Dataset change export needs a Change Plan with at least one step and an Affected Concepts list with bundle paths",
+    );
+    expect(exportSpy).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
+    await user.type(screen.getByLabelText("Message the agent"), "Clarify the documented scope");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("The change is bounded to the documented product scope."))
+      .toBeInTheDocument();
+    expect(screen.getByText("Change Plan")).toBeInTheDocument();
+    expect(screen.getByText("Affected Concepts")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Exported");
+    expect(exportSpy).toHaveBeenCalledTimes(1);
+    expect(exportSpy).toHaveBeenCalledWith(
+      expect.stringContaining("dataset-change"),
+      expect.stringContaining("## Affected Concepts\n\n- `product/overview.md`"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Dataset Change Harness" }));
   });
 
   it("attaches an explicit reader selection as bounded source context", async () => {

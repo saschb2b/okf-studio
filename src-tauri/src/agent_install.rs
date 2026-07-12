@@ -357,7 +357,9 @@ pub(crate) fn installed_command(
         return Err("The installed agent entry point escapes its package.".to_string());
     }
 
-    let mut arguments = vec![entrypoint.to_string_lossy().into_owned()];
+    let mut arguments = vec![child_process_path(&entrypoint)
+        .to_string_lossy()
+        .into_owned()];
     arguments.extend(distribution.arguments.clone());
     Ok(InstalledAgentCommand {
         executable: runtime.node_path(),
@@ -712,8 +714,9 @@ fn installed_receipt(
     }
     let bytes = fs::read(&marker)
         .map_err(|error| format!("Studio could not read the install record: {error}"))?;
-    let mut receipt: AgentInstallReceipt = serde_json::from_slice(&bytes)
-        .map_err(|error| format!("The install record is invalid: {error}"))?;
+    let Some(mut receipt) = parse_install_receipt(&bytes) else {
+        return Ok(None);
+    };
     if receipt.version != distribution.version || receipt.integrity != distribution.integrity {
         return Ok(None);
     }
@@ -731,6 +734,24 @@ fn installed_receipt(
     }
     receipt.already_installed = true;
     Ok(Some(receipt))
+}
+
+fn parse_install_receipt(bytes: &[u8]) -> Option<AgentInstallReceipt> {
+    serde_json::from_slice(bytes).ok()
+}
+
+fn child_process_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let value = path.to_string_lossy();
+        if let Some(path) = value.strip_prefix(r"\\?\UNC\") {
+            return PathBuf::from(format!(r"\\{path}"));
+        }
+        if let Some(path) = value.strip_prefix(r"\\?\") {
+            return PathBuf::from(path);
+        }
+    }
+    path.to_path_buf()
 }
 
 fn agent_cache(app: &AppHandle) -> Result<PathBuf, String> {
@@ -898,6 +919,32 @@ mod tests {
         assert!(validate_distribution(&distribution)
             .unwrap_err()
             .contains("environment"));
+    }
+
+    #[test]
+    fn obsolete_or_malformed_install_receipts_trigger_reinstallation() {
+        let obsolete = br#"{
+            "agentId": "codex",
+            "version": "1.1.2",
+            "packageDir": "agent-cache",
+            "integrity": "sha512-old",
+            "alreadyInstalled": false
+        }"#;
+        assert!(parse_install_receipt(obsolete).is_none());
+        assert!(parse_install_receipt(b"not json").is_none());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn removes_windows_verbatim_prefix_before_launching_node() {
+        assert_eq!(
+            child_process_path(Path::new(r"\\?\C:\cache\package\dist\index.js")),
+            PathBuf::from(r"C:\cache\package\dist\index.js")
+        );
+        assert_eq!(
+            child_process_path(Path::new(r"\\?\UNC\server\cache\index.js")),
+            PathBuf::from(r"\\server\cache\index.js")
+        );
     }
 
     #[test]

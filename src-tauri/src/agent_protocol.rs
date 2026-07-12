@@ -379,7 +379,7 @@ async fn connect_process(
         Ok(Ok(Ok(info))) => Ok(info),
         Ok(Ok(Err(error))) => {
             disconnect(app, state, &connection_id)?;
-            Err(error)
+            Err(connection_message(&error))
         }
         Ok(Err(_)) => {
             disconnect(app, state, &connection_id)?;
@@ -659,11 +659,23 @@ fn emit_connection_event(app: &AppHandle, event: AgentConnectionEvent) {
 }
 
 fn connection_message(message: &str) -> String {
+    let message = internal_error_data(message).unwrap_or_else(|| message.to_string());
     message
         .chars()
         .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
         .take(MAX_CONNECTION_MESSAGE_CHARS)
         .collect()
+}
+
+fn internal_error_data(message: &str) -> Option<String> {
+    let payload = message
+        .find("Internal error: {")
+        .map(|index| &message[index + "Internal error: ".len()..])?;
+    serde_json::from_str::<serde_json::Value>(payload)
+        .ok()?
+        .get("data")?
+        .as_str()
+        .map(str::to_string)
 }
 
 fn take_sender(sender: &HandshakeSender) -> Option<tokio::sync::oneshot::Sender<HandshakeResult>> {
@@ -1570,12 +1582,25 @@ impl ConnectTo<Client> for ProcessAgent {
                 let message = if diagnostics.is_empty() {
                     format!("Agent process exited with {status}")
                 } else {
-                    format!("Agent process exited with {status}: {diagnostics}")
+                    format!(
+                        "Agent process exited with {status}. {}",
+                        diagnostic_summary(&diagnostics)
+                    )
                 };
                 Err(agent_client_protocol::util::internal_error(message))
             }
         }
     }
+}
+
+fn diagnostic_summary(diagnostics: &str) -> String {
+    let line = diagnostics
+        .lines()
+        .map(str::trim)
+        .find(|line| line.starts_with("Error:"))
+        .or_else(|| diagnostics.lines().map(str::trim).find(|line| !line.is_empty()))
+        .unwrap_or("No diagnostic was provided.");
+    line.chars().take(MAX_CONNECTION_MESSAGE_CHARS / 2).collect()
 }
 
 async fn read_diagnostics(
@@ -2715,6 +2740,21 @@ mod tests {
         assert!(!diagnostics.contains("abc"));
         assert!(diagnostics.ends_with("[REDACTED] [REDACTED]\nfailed"));
         assert!(!diagnostics.contains('\0'));
+    }
+
+    #[test]
+    fn reduces_process_failures_to_their_actionable_diagnostic() {
+        let diagnostics = "node:fs:2734\n  source line\nError: EISDIR: illegal operation on a directory\n    at Object.realpathSync";
+        assert_eq!(
+            diagnostic_summary(diagnostics),
+            "Error: EISDIR: illegal operation on a directory"
+        );
+
+        let wrapped = r#"Agent connection failed: Internal error: {"spawned_at":"sdk.rs:1","data":"Agent process exited with exit code: 1. Error: launch failed"}"#;
+        assert_eq!(
+            connection_message(wrapped),
+            "Agent process exited with exit code: 1. Error: launch failed"
+        );
     }
 
     #[test]

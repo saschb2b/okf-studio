@@ -1,4 +1,4 @@
-import { Bot, Database, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
+import { Bot, CircleAlert, Database, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -42,8 +42,9 @@ interface AgentConversationProps {
 
 interface ConversationMessage {
   id: string;
-  role: "user" | "agent";
+  role: "user" | "agent" | "status";
   text: string;
+  tone?: "neutral" | "warning" | "error";
 }
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
@@ -107,6 +108,7 @@ export function AgentConversation({
   const [attachedSources, setAttachedSources] = useState<
     (AgentSourceInput & { id: string })[]
   >([]);
+  const [promptText, setPromptText] = useState("");
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
   const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
@@ -115,6 +117,7 @@ export function AgentConversation({
   const completedTurnsRef = useRef(new Set<string>());
   const messagesRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const messagesElement = messagesRef.current;
@@ -185,7 +188,6 @@ export function AgentConversation({
         role: "user",
         text,
       };
-      setMessages((current) => [...current, userMessage]);
       try {
         let session = sessionRef.current;
         if (session?.bundleRoot !== bundleRoot) {
@@ -211,8 +213,10 @@ export function AgentConversation({
           contextPaths,
           sources,
         );
+        setMessages((current) => [...current, userMessage]);
         setAttachedConcepts([]);
         setAttachedSources([]);
+        setPromptText("");
         if (!completedTurnsRef.current.delete(turn.turnId)) setActiveTurn(turn);
         return { status: "idle" };
       } catch (error: unknown) {
@@ -292,9 +296,8 @@ export function AgentConversation({
 
   function selectStarter(prompt: string) {
     if (!promptRef.current) return;
-    promptRef.current.value = prompt;
+    setPromptText(prompt);
     promptRef.current.focus();
-    promptRef.current.setSelectionRange(prompt.length, prompt.length);
   }
 
   return (
@@ -401,7 +404,7 @@ export function AgentConversation({
               </>
             )}
           </div>
-          <form className="agent-composer" action={submitPrompt}>
+          <form ref={composerRef} className="agent-composer" action={submitPrompt}>
             <div className="agent-composer__context">
               {attachedConcepts.map((concept) => (
                 <span key={concept.id} className="agent-context-chip">
@@ -540,16 +543,31 @@ export function AgentConversation({
               maxLength={128 * 1024}
               placeholder="Ask about this bundle..."
               disabled={isSubmitting || activeTurn !== null}
+              value={promptText}
+              onChange={(event) => setPromptText(event.target.value)}
             />
             {composerState.status === "error" && (
-              <p className="agent-composer__error" role="alert">{composerState.message}</p>
+              <div className="agent-composer__error-row">
+                <p className="agent-composer__error" role="alert">{composerState.message}</p>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={isSubmitting || promptText.trim().length === 0}
+                  onClick={() => composerRef.current?.requestSubmit()}
+                >
+                  <RotateCcw size={14} aria-hidden="true" />
+                  Retry
+                </button>
+              </div>
             )}
             {sourcePickerError && (
               <p className="agent-composer__error" role="alert">{sourcePickerError}</p>
             )}
             <div className="agent-composer__actions">
               <span>
-                {activeTurn
+                {isSubmitting
+                  ? "Starting turn"
+                  : activeTurn
                   ? "Agent is working"
                   : connection.capabilities.promptImage
                     ? "Text and images"
@@ -937,19 +955,32 @@ function applyTurnEvent(
     const failureMessage = event.update.message;
     setMessages((current) => [
       ...current,
-      { id: `agent-${event.turnId}`, role: "agent", text: `Agent turn failed. ${failureMessage}` },
+      {
+        id: `status-${event.turnId}`,
+        role: "status",
+        tone: "error",
+        text: `Turn failed. ${failureMessage}`,
+      },
     ]);
   } else if (event.update.stopReason !== "end-turn") {
-    const stopMessage = {
-      cancelled: "Turn cancelled.",
-      refusal: "The agent refused this turn.",
-      "max-tokens": "The agent reached its token limit.",
-      "max-turn-requests": "The agent reached its turn-request limit.",
-      unknown: "The agent stopped for an unknown reason.",
-    }[event.update.stopReason];
+    const stop = ({
+      cancelled: { text: "Turn cancelled.", tone: "neutral" },
+      refusal: { text: "The agent refused this turn.", tone: "warning" },
+      "max-tokens": { text: "The agent reached its token limit.", tone: "warning" },
+      "max-turn-requests": {
+        text: "The agent reached its turn-request limit.",
+        tone: "warning",
+      },
+      unknown: { text: "The agent stopped for an unknown reason.", tone: "warning" },
+    } as const)[event.update.stopReason];
     setMessages((current) => [
       ...current,
-      { id: `stop-${event.turnId}`, role: "agent", text: stopMessage },
+      {
+        id: `status-${event.turnId}`,
+        role: "status",
+        tone: stop.tone,
+        text: stop.text,
+      },
     ]);
   }
 }
@@ -958,13 +989,23 @@ function Message({ message }: { message: ConversationMessage }) {
   const renderedAgentText = message.role === "agent"
     ? { __html: renderMarkdown(message.text) }
     : null;
+  const label = message.role === "user" ? "You" : message.role === "agent" ? "Agent" : "Turn";
   return (
-    <article className={`agent-message agent-message--${message.role}`}>
+    <article
+      className={`agent-message agent-message--${message.role}${message.tone ? ` agent-message--${message.tone}` : ""}`}
+      {...(message.role === "status" ? { role: "status", "aria-label": message.text } : {})}
+    >
       <span className="agent-message__icon" aria-hidden="true">
-        {message.role === "user" ? <User size={16} /> : <Bot size={16} />}
+        {message.role === "user" ? (
+          <User size={16} />
+        ) : message.role === "agent" ? (
+          <Bot size={16} />
+        ) : (
+          <CircleAlert size={16} />
+        )}
       </span>
       <div>
-        <strong>{message.role === "user" ? "You" : "Agent"}</strong>
+        <strong>{label}</strong>
         {renderedAgentText ? (
           <div
             className="markdown agent-message__markdown"

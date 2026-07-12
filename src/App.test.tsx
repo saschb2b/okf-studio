@@ -251,8 +251,14 @@ describe("OKF Studio app", () => {
       await screen.findByRole("button", { name: "Remove research.html source" }),
     ).toBeInTheDocument();
 
+    promptSpy.mockRejectedValueOnce(new Error("Agent session was not ready."));
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
     await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Agent session was not ready.");
+    expect(document.querySelector(".agent-message--user")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Message the agent")).toHaveValue("Summarize the **bundle**");
+    expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(promptSpy).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
@@ -339,7 +345,18 @@ describe("OKF Studio app", () => {
     await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
     await user.click(screen.getByRole("button", { name: "Send" }));
     await user.click(await screen.findByRole("button", { name: "Stop" }));
-    expect(await screen.findByText("Turn cancelled.")).toBeInTheDocument();
+    const cancelledStatus = await screen.findByText("Turn cancelled.");
+    expect(cancelledStatus.closest("article")).toHaveAttribute("role", "status");
+
+    await user.type(screen.getByLabelText("Message the agent"), "Fail: simulate a dropped connection");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(
+      await screen.findByText("The agent started a response before the connection failed."),
+    ).toBeInTheDocument();
+    const failedStatus = await screen.findByText(
+      "Turn failed. The mock agent connection closed.",
+    );
+    expect(failedStatus.closest("article")).toHaveAttribute("role", "status");
 
     vi.spyOn(ipc, "pickAgentTextSources").mockRejectedValueOnce(
       new Error("The selected file is not UTF-8 text."),
@@ -352,7 +369,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
-  }, 10_000);
+  }, 15_000);
 
   it("uses an ACP-advertised authentication method before starting a session", async () => {
     const user = userEvent.setup();

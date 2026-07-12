@@ -257,6 +257,10 @@ export async function promptAgent(
   if (!activeAgentConnectionsById.has(connectionId)) {
     throw new Error("Agent connection was not found.");
   }
+  if (text.startsWith("Reject:")) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 80));
+    throw new Error("The browser mock rejected this prompt before starting a turn.");
+  }
   const info = { connectionId, sessionId, turnId: `turn-${crypto.randomUUID()}` };
   mockCancelledTurns.delete(info.turnId);
   void emitMockTurn(info, text);
@@ -441,6 +445,21 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       mockCancelledTurns.delete(info.turnId);
       return;
     }
+  }
+  if (text.includes("Fail:")) {
+    emitAgentTurn({
+      ...info,
+      update: {
+        kind: "text",
+        text: "The agent started a response before the connection failed.",
+        messageId: `message-${info.turnId}`,
+      },
+    });
+    emitAgentTurn({
+      ...info,
+      update: { kind: "failed", message: "The mock agent connection closed." },
+    });
+    return;
   }
   emitAgentTurn({
     ...info,

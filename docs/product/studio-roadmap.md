@@ -109,9 +109,11 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 
 - [x] Ship the first bundle-scoped text conversation with streamed output and Stop.
 - [x] Render agent responses as sanitized Markdown while preserving user messages as literal text.
-- [ ] Implement active, waiting, running, cancelled, failed, archived, and restorable thread states.
+- [x] Distinguish waiting, running, cancelled, and failed states in the active thread.
+- [ ] Add archived and restorable thread states after Studio metadata persistence lands.
 - [ ] Stream messages, plans, tool cards, locations, diffs, usage, and stop reasons.
-- [ ] Support send, queue, stop, supported retry, titles, history, and Markdown export.
+- [x] Support send, stop, and safe retry when a prompt fails before turn acceptance.
+- [ ] Add queue, accepted-turn retry where supported, titles, history, and Markdown export.
 - [ ] Persist Studio metadata; use ACP restore capabilities only when advertised.
 
 Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and late updates.

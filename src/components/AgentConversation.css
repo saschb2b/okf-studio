@@ -221,6 +221,35 @@
   color: var(--text-dim);
 }
 
+.agent-message--status {
+  padding: var(--space-8);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-message--status .agent-message__icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-dim);
+  background: var(--bg-elev);
+}
+
+.agent-message--status p {
+  margin-top: var(--space-2);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.agent-message--warning .agent-message__icon {
+  color: var(--warn);
+}
+
+.agent-message--error .agent-message__icon,
+.agent-message--error p {
+  color: var(--error);
+}
+
 .agent-permission {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -551,6 +580,17 @@
 .agent-composer__error {
   color: var(--error);
   overflow-wrap: break-word;
+}
+
+.agent-composer__error-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.agent-composer__error-row .btn {
+  flex: none;
 }
 
 @media (max-width: 420px) {

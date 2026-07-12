@@ -1,7 +1,7 @@
-import { Bot, CircleAlert, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
+import { Bot, CircleAlert, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Pencil, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction, SubmitEvent } from "react";
 import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
@@ -11,6 +11,7 @@ import type {
   AgentTurnEvent,
   AgentTurnInfo,
 } from "../agent/connection.ts";
+import { deriveThreadTitle, transcriptFilename, transcriptMarkdown } from "../agent/thread.ts";
 import {
   cancelAgentTurn,
   authenticateAgent,
@@ -58,6 +59,9 @@ type AttachedSource = AgentSourceInput & {
 };
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
+type ThreadTitle =
+  | { source: "default"; value: "New thread" }
+  | { source: "derived" | "custom"; value: string };
 type ExportState =
   | { status: "idle" }
   | { status: "exporting" }
@@ -98,6 +102,8 @@ const THREAD_STARTERS = [
   },
 ] as const;
 
+const MAX_THREAD_TITLE_CHARS = 80;
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -108,41 +114,78 @@ function sourceTooltip(source: AttachedSource): string {
   return source.title;
 }
 
-function transcriptFilename(bundleName: string | null): string {
-  const slug = ((bundleName ?? "okf-bundle")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "okf-bundle")
-    .slice(0, 100)
-    .replace(/-+$/g, "");
-  return `${slug || "okf-bundle"}-agent-thread.md`;
+interface ThreadTitleEditorProps {
+  title: string;
+  onTitleChange: (title: string) => void;
 }
 
-function quoteMarkdown(text: string): string {
-  return text
-    .split("\n")
-    .map((line) => line.length > 0 ? `> ${line}` : ">")
-    .join("\n");
-}
+function ThreadTitleEditor({ title, onTitleChange }: ThreadTitleEditorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [draft, setDraft] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function transcriptMarkdown(
-  bundleName: string | null,
-  agentName: string,
-  messages: readonly ConversationMessage[],
-): string {
-  const safeBundleName = (bundleName ?? "No bundle selected").replace(/[\r\n]+/g, " ");
-  const safeAgentName = agentName.replace(/[\r\n]+/g, " ");
-  const sections = messages.map((message) => {
-    if (message.role === "user") return `## You\n\n${quoteMarkdown(message.text)}`;
-    if (message.role === "agent") return `## Agent\n\n${message.text}`;
-    return `> **Turn:** ${message.text.replace(/\n/g, "\n> ")}`;
-  });
-  return [
-    `# ${safeBundleName} agent thread`,
-    `Agent: ${safeAgentName}`,
-    `Bundle: ${safeBundleName}`,
-    ...sections,
-  ].join("\n\n") + "\n";
+  function handleOpenChange(open: boolean) {
+    setIsOpen(open);
+    if (open) setDraft(title);
+  }
+
+  function saveTitle(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextTitle = draft.replace(/\s+/g, " ").trim();
+    if (!nextTitle) return;
+    onTitleChange(nextTitle);
+    setIsOpen(false);
+  }
+
+  return (
+    <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
+      <Popover.Trigger
+        render={
+          <button
+            type="button"
+            className="btn ghost icon agent-conversation__rename"
+            aria-label={`Rename thread: ${title}`}
+            title="Rename thread"
+          >
+            <Pencil size={13} aria-hidden="true" />
+          </button>
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner
+          className="ui-popover-positioner"
+          side="bottom"
+          align="start"
+          sideOffset={6}
+        >
+          <Popover.Popup
+            className="ui-popover agent-thread-title"
+            aria-label="Rename thread"
+            initialFocus={inputRef}
+          >
+            <form onSubmit={saveTitle}>
+              <label htmlFor="agent-thread-title">Thread title</label>
+              <input
+                ref={inputRef}
+                id="agent-thread-title"
+                maxLength={MAX_THREAD_TITLE_CHARS}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+              />
+              <div className="agent-thread-title__actions">
+                <button type="button" className="btn ghost" onClick={() => setIsOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn primary" disabled={!draft.trim()}>
+                  Save title
+                </button>
+              </div>
+            </form>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
 }
 
 export function AgentConversation({
@@ -156,6 +199,10 @@ export function AgentConversation({
   onConnectionEnd,
   onOpenFolder,
 }: AgentConversationProps) {
+  const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
+    source: "default",
+    value: "New thread",
+  });
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
@@ -272,6 +319,9 @@ export function AgentConversation({
           sources,
         );
         setMessages((current) => [...current, userMessage]);
+        setThreadTitle((current) => current.source === "default"
+          ? { source: "derived", value: deriveThreadTitle(text, THREAD_STARTERS) }
+          : current);
         setExportState({ status: "idle" });
         setAttachedConcepts([]);
         setAttachedSources([]);
@@ -367,8 +417,8 @@ export function AgentConversation({
     setExportState({ status: "exporting" });
     try {
       const filename = await exportAgentTranscript(
-        transcriptFilename(bundleName),
-        transcriptMarkdown(bundleName, agentName, messages),
+        transcriptFilename(threadTitle.value),
+        transcriptMarkdown(threadTitle.value, bundleName, agentName, messages),
       );
       setExportState(filename ? { status: "success", filename } : { status: "idle" });
     } catch (error: unknown) {
@@ -380,8 +430,14 @@ export function AgentConversation({
     <section className="agent-conversation" aria-labelledby="agent-conversation-title">
       <header className="agent-conversation__toolbar">
         <div>
-          <h2 id="agent-conversation-title">{agentName}</h2>
-          <p>{bundleName ?? "No bundle selected"}</p>
+          <div className="agent-conversation__title-row">
+            <h2 id="agent-conversation-title" title={threadTitle.value}>{threadTitle.value}</h2>
+            <ThreadTitleEditor
+              title={threadTitle.value}
+              onTitleChange={(value) => setThreadTitle({ source: "custom", value })}
+            />
+          </div>
+          <p>{agentName} · {bundleName ?? "No bundle selected"}</p>
           {exportState.status === "success" && (
             <p className="agent-conversation__export-status agent-conversation__export-status--success" role="status">
               Exported {exportState.filename}

@@ -420,7 +420,8 @@ export async function onAgentPermissionUpdate(
 }
 
 async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  const responseDelay = text.includes("Run a long investigation") ? 500 : 100;
+  await new Promise((resolve) => setTimeout(resolve, responseDelay));
   if (mockCancelledTurns.has(info.turnId)) {
     emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
     mockCancelledTurns.delete(info.turnId);

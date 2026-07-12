@@ -157,7 +157,8 @@ describe("OKF Studio app", () => {
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByRole("heading", { name: "Local Harness" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "New thread" })).toBeInTheDocument();
+    expect(screen.getByText(/Local Harness · No bundle selected/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Open a bundle to start" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Change" }));
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
@@ -184,6 +185,7 @@ describe("OKF Studio app", () => {
     await user.click(await screen.findByRole("button", { name: "Connect Research Harness" }));
     await screen.findByText(/Connected to Research Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Enhance bundle/ })).toBeInTheDocument();
@@ -263,6 +265,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Agent session was not ready.");
     expect(document.querySelector(".agent-message--user")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
     expect(screen.getByLabelText("Message the agent")).toHaveValue("Summarize the **bundle**");
     expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
     expect(
@@ -335,6 +338,14 @@ describe("OKF Studio app", () => {
       "Browser ACP received: Summarize the bundle",
     );
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
+    expect(screen.getByRole("heading", { name: "Summarize the bundle" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Rename thread: Summarize the bundle" }));
+    const titleInput = screen.getByLabelText("Thread title");
+    expect(titleInput).toHaveFocus();
+    await user.clear(titleInput);
+    await user.type(titleInput, "Bundle research");
+    await user.click(screen.getByRole("button", { name: "Save title" }));
+    expect(screen.getByRole("heading", { name: "Bundle research" })).toBeInTheDocument();
     exportSpy.mockRejectedValueOnce(new Error("The selected folder is read-only."));
     await user.click(screen.getByRole("button", { name: "Export thread" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -342,13 +353,13 @@ describe("OKF Studio app", () => {
     );
     await user.click(screen.getByRole("button", { name: "Export thread" }));
     expect(exportSpy).toHaveBeenLastCalledWith(
-      "okf-studio-sample-agent-thread.md",
+      "bundle-research-thread.md",
       expect.stringContaining(
-        "# OKF Studio (sample) agent thread\n\nAgent: Research Harness\n\nBundle: OKF Studio (sample)\n\n## You\n\n> Summarize the **bundle**\n\n## Agent\n\n",
+        "# Bundle research\n\nAgent: Research Harness\n\nBundle: OKF Studio (sample)\n\n## You\n\n> Summarize the **bundle**\n\n## Agent\n\n",
       ),
     );
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "Exported okf-studio-sample-agent-thread.md",
+      "Exported bundle-research-thread.md",
     );
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
@@ -404,7 +415,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
-  }, 15_000);
+  }, 20_000);
 
   it("uses an ACP-advertised authentication method before starting a session", async () => {
     const user = userEvent.setup();

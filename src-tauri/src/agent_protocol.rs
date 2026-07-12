@@ -38,6 +38,7 @@ const MAX_CONTEXT_PATHS: usize = 8;
 const MAX_CONTEXT_PATH_CHARS: usize = 1024;
 const MAX_SOURCE_ATTACHMENTS: usize = crate::agent_sources::MAX_SOURCE_ATTACHMENTS;
 const MAX_SOURCE_TITLE_CHARS: usize = crate::agent_sources::MAX_SOURCE_TITLE_CHARS;
+const MAX_SOURCE_ORIGIN_CHARS: usize = crate::agent_sources::MAX_SOURCE_ORIGIN_CHARS;
 const MAX_SOURCE_CONTENT_CHARS: usize = crate::agent_sources::MAX_SOURCE_CONTENT_CHARS;
 const MAX_SOURCE_TOTAL_CHARS: usize = crate::agent_sources::MAX_SOURCE_TOTAL_CHARS;
 const SOURCE_MEDIA_TYPES: [&str; 6] = [
@@ -1086,13 +1087,10 @@ fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), String> {
         if let Some(origin) = &source.origin {
             let origin = origin.trim();
             if origin.is_empty()
-                || origin.chars().count() > MAX_SOURCE_TITLE_CHARS
+                || origin.chars().count() > MAX_SOURCE_ORIGIN_CHARS
                 || origin.chars().any(char::is_control)
-                || origin.contains(['/', '\\'])
             {
-                return Err(
-                    "Source origins must be bounded filenames with no controls.".to_string(),
-                );
+                return Err("Source origins must be bounded and contain no controls.".to_string());
             }
         }
         if source

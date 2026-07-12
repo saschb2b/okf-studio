@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -9,6 +10,7 @@ pub(crate) const MAX_SOURCE_ATTACHMENTS: usize = 8;
 pub(crate) const MAX_SOURCE_CONTENT_CHARS: usize = 256 * 1024;
 pub(crate) const MAX_SOURCE_TOTAL_CHARS: usize = 512 * 1024;
 pub(crate) const MAX_SOURCE_TITLE_CHARS: usize = 256;
+pub(crate) const MAX_SOURCE_ORIGIN_CHARS: usize = 2_048;
 const MAX_SOURCE_FILE_BYTES: u64 = MAX_SOURCE_CONTENT_CHARS as u64;
 const MAX_SELECTED_FILE_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_FOLDER_DEPTH: usize = 8;
@@ -202,13 +204,16 @@ fn read_sources(paths: &[SourcePath], limit: usize) -> Result<Vec<AgentSourceInp
             return Err("Selected source files exceed the 32 MiB combined limit.".to_string());
         }
 
-        let (content, source_digest, warning) = if media_type == "application/pdf" {
+        let source = if media_type == "application/pdf" {
             let extraction = crate::agent_pdf::extract_in_helper(path)?;
-            (
-                extraction.content,
-                Some(extraction.source_digest),
-                extraction.warning,
-            )
+            AgentSourceInput {
+                title: title.clone(),
+                content: extraction.content,
+                origin: Some(title.clone()),
+                media_type: Some(media_type.to_string()),
+                source_digest: Some(extraction.source_digest),
+                warning: extraction.warning,
+            }
         } else {
             let mut bytes = Vec::with_capacity(metadata.len() as usize);
             File::open(path)
@@ -217,47 +222,57 @@ fn read_sources(paths: &[SourcePath], limit: usize) -> Result<Vec<AgentSourceInp
             if bytes.len() as u64 > file_limit {
                 return Err(format!("{title} exceeds the 256 KiB source limit."));
             }
-            if media_type == "text/csv" {
-                let normalization =
-                    crate::agent_csv::normalize(&bytes, title, MAX_SOURCE_CONTENT_CHARS)?;
-                (
-                    normalization.content,
-                    Some(normalization.source_digest),
-                    None,
-                )
-            } else if media_type == "application/json" {
-                let normalization =
-                    crate::agent_json::normalize(&bytes, title, MAX_SOURCE_CONTENT_CHARS)?;
-                (
-                    normalization.content,
-                    Some(normalization.source_digest),
-                    None,
-                )
-            } else {
-                let content = String::from_utf8(bytes)
-                    .map_err(|_| format!("{title} is not valid UTF-8 text."))?;
-                (content, None, None)
-            }
+            source_from_bytes(title.clone(), title.clone(), media_type, bytes, false)?
         };
-        if content.trim().is_empty() {
+        if source.content.trim().is_empty() {
             return Err(format!("{title} is empty."));
         }
-        total_content_chars = total_content_chars.saturating_add(content.chars().count());
+        total_content_chars = total_content_chars.saturating_add(source.content.chars().count());
         if total_content_chars > MAX_SOURCE_TOTAL_CHARS {
             return Err(
                 "Extracted source text exceeds the 524,288 character combined limit.".to_string(),
             );
         }
-        sources.push(AgentSourceInput {
-            title: title.clone(),
-            content,
-            origin: Some(title.clone()),
-            media_type: Some(media_type.to_string()),
-            source_digest,
-            warning,
-        });
+        sources.push(source);
     }
     Ok(sources)
+}
+
+pub(crate) fn source_from_bytes(
+    title: String,
+    origin: String,
+    media_type: &str,
+    bytes: Vec<u8>,
+    retain_source_digest: bool,
+) -> Result<AgentSourceInput, String> {
+    let digest = retain_source_digest.then(|| format!("{:x}", sha2::Sha256::digest(&bytes)));
+    let (content, source_digest) = if media_type == "text/csv" {
+        let normalization = crate::agent_csv::normalize(&bytes, &title, MAX_SOURCE_CONTENT_CHARS)?;
+        (normalization.content, Some(normalization.source_digest))
+    } else if media_type == "application/json" {
+        let normalization = crate::agent_json::normalize(&bytes, &title, MAX_SOURCE_CONTENT_CHARS)?;
+        (normalization.content, Some(normalization.source_digest))
+    } else {
+        let content =
+            String::from_utf8(bytes).map_err(|_| format!("{title} is not valid UTF-8 text."))?;
+        (content, digest)
+    };
+    if content.trim().is_empty() {
+        return Err(format!("{title} is empty."));
+    }
+    if content.chars().count() > MAX_SOURCE_CONTENT_CHARS {
+        return Err(format!(
+            "{title} exceeds the {MAX_SOURCE_CONTENT_CHARS} character source limit."
+        ));
+    }
+    Ok(AgentSourceInput {
+        title,
+        content,
+        origin: Some(origin),
+        media_type: Some(media_type.to_string()),
+        source_digest,
+        warning: None,
+    })
 }
 
 fn relative_path_label(path: &Path) -> Result<String, String> {

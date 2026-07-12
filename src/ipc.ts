@@ -312,6 +312,21 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
   ].slice(0, Math.max(0, limit));
 }
 
+export async function fetchAgentSourceUrl(url: string): Promise<AgentSourceInput> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSourceInput>("fetch_agent_source_url", { url });
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  return {
+    title: "research.html",
+    content: "# Remote research\n\nFetched evidence.",
+    origin: "https://example.com/research.html",
+    mediaType: "text/html",
+    sourceDigest: "d".repeat(64),
+  };
+}
+
 export async function cancelAgentTurn(
   connectionId: string,
   sessionId: string,

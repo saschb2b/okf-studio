@@ -14,6 +14,7 @@ import type {
 import {
   cancelAgentTurn,
   authenticateAgent,
+  fetchAgentSourceUrl,
   newAgentSession,
   onAgentConnectionState,
   onAgentPermissionUpdate,
@@ -488,26 +489,54 @@ export function AgentConversation({
 interface SourcePickerProps {
   sourceCount: number;
   disabled: boolean;
-  onAttach: (source: { title: string; content: string }) => void;
+  onAttach: (source: AgentSourceInput) => void;
 }
 
 function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<"paste" | "url">("paste");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const fetchRequestRef = useRef(0);
   const isAtLimit = sourceCount >= 8;
   const canAttach = title.trim().length > 0 && content.trim().length > 0;
+  const canFetch = url.trim().startsWith("https://") && !isFetching;
 
   function close() {
+    fetchRequestRef.current += 1;
     setIsOpen(false);
+    setMode("paste");
     setTitle("");
     setContent("");
+    setUrl("");
+    setUrlError(null);
+    setIsFetching(false);
   }
 
   function attach() {
     if (!canAttach) return;
     onAttach({ title: title.trim(), content });
     close();
+  }
+
+  async function fetchSource() {
+    if (!canFetch) return;
+    const requestId = ++fetchRequestRef.current;
+    setIsFetching(true);
+    setUrlError(null);
+    try {
+      const source = await fetchAgentSourceUrl(url.trim());
+      if (fetchRequestRef.current !== requestId) return;
+      onAttach(source);
+      close();
+    } catch (error) {
+      if (fetchRequestRef.current !== requestId) return;
+      setUrlError(errorMessage(error));
+      setIsFetching(false);
+    }
   }
 
   return (
@@ -540,32 +569,90 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
           <Popover.Popup className="ui-popover agent-source-picker" aria-label="Add text source">
             <div>
               <h3>Add text source</h3>
-              <p>Pasted text or Markdown. Sent with your next message.</p>
+              <p>Paste text or fetch a public HTTPS page for your next message.</p>
             </div>
-            <label>
-              <span>Title</span>
-              <input
-                // eslint-disable-next-line jsx-a11y/no-autofocus -- opening this explicit form should focus its first field
-                autoFocus
-                value={title}
-                maxLength={256}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Content</span>
-              <textarea
-                value={content}
-                rows={8}
-                maxLength={64 * 1024}
-                onChange={(event) => setContent(event.target.value)}
-              />
-            </label>
+            <div className="agent-source-picker__modes" aria-label="Source input method">
+              <button
+                type="button"
+                className="btn ghost"
+                aria-pressed={mode === "paste"}
+                disabled={isFetching}
+                onClick={() => {
+                  setMode("paste");
+                  setUrlError(null);
+                }}
+              >
+                Paste text
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                aria-pressed={mode === "url"}
+                disabled={isFetching}
+                onClick={() => setMode("url")}
+              >
+                Fetch URL
+              </button>
+            </div>
+            {mode === "paste" ? (
+              <>
+                <label>
+                  <span>Title</span>
+                  <input
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- opening this explicit form should focus its first field
+                    autoFocus
+                    value={title}
+                    maxLength={256}
+                    onChange={(event) => setTitle(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Content</span>
+                  <textarea
+                    value={content}
+                    rows={8}
+                    maxLength={64 * 1024}
+                    onChange={(event) => setContent(event.target.value)}
+                  />
+                </label>
+              </>
+            ) : (
+              <label>
+                <span>HTTPS URL</span>
+                <input
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- switching to this explicit form should focus its field
+                  autoFocus
+                  type="url"
+                  inputMode="url"
+                  value={url}
+                  maxLength={2_048}
+                  placeholder="https://example.com/research.html"
+                  disabled={isFetching}
+                  onChange={(event) => {
+                    setUrl(event.target.value);
+                    setUrlError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void fetchSource();
+                    }
+                  }}
+                />
+              </label>
+            )}
+            {urlError && <p className="agent-source-picker__error" role="alert">{urlError}</p>}
             <div className="agent-source-picker__actions">
               <button type="button" className="btn ghost" onClick={close}>Cancel</button>
-              <button type="button" className="btn primary" disabled={!canAttach} onClick={attach}>
-                Attach source
-              </button>
+              {mode === "paste" ? (
+                <button type="button" className="btn primary" disabled={!canAttach} onClick={attach}>
+                  Attach source
+                </button>
+              ) : (
+                <button type="button" className="btn primary" disabled={!canFetch} onClick={() => void fetchSource()}>
+                  {isFetching ? "Fetching..." : "Fetch and attach"}
+                </button>
+              )}
             </div>
           </Popover.Popup>
         </Popover.Positioner>

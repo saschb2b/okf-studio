@@ -11,6 +11,7 @@ mod agent_pdf;
 mod agent_protocol;
 mod agent_runtime;
 mod agent_sources;
+mod agent_url;
 mod remote;
 mod watch;
 
@@ -144,6 +145,15 @@ async fn pick_agent_source_folder(
     limit: usize,
 ) -> Result<Vec<agent_sources::AgentSourceInput>, String> {
     agent_sources::pick_source_folder(&app, limit)
+}
+
+#[tauri::command]
+async fn fetch_agent_source_url(
+    url: String,
+) -> Result<agent_sources::AgentSourceInput, String> {
+    tauri::async_runtime::spawn_blocking(move || agent_url::fetch(url))
+        .await
+        .map_err(|error| format!("The URL source task failed: {error}"))?
 }
 
 #[tauri::command]
@@ -352,6 +362,7 @@ pub fn run() {
             prompt_agent,
             pick_agent_text_sources,
             pick_agent_source_folder,
+            fetch_agent_source_url,
             cancel_agent_turn,
             respond_agent_permission,
             agent_install_preflight,

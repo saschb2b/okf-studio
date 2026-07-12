@@ -217,6 +217,20 @@ describe("OKF Studio app", () => {
     expect(
       screen.getByRole("button", { name: "Remove data/findings.csv source" }),
     ).toBeInTheDocument();
+    vi.spyOn(ipc, "fetchAgentSourceUrl").mockRejectedValueOnce(
+      new Error("The URL could not be fetched securely."),
+    );
+    await user.click(screen.getByRole("button", { name: "Add source" }));
+    await user.click(screen.getByRole("button", { name: "Fetch URL" }));
+    await user.type(screen.getByLabelText("HTTPS URL"), "https://example.com/research.html");
+    await user.click(screen.getByRole("button", { name: "Fetch and attach" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The URL could not be fetched securely.",
+    );
+    await user.click(screen.getByRole("button", { name: "Fetch and attach" }));
+    expect(
+      await screen.findByRole("button", { name: "Remove research.html source" }),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -252,6 +266,13 @@ describe("OKF Studio app", () => {
           mediaType: "application/json",
           sourceDigest: "c".repeat(64),
         },
+        {
+          title: "research.html",
+          content: "# Remote research\n\nFetched evidence.",
+          origin: "https://example.com/research.html",
+          mediaType: "text/html",
+          sourceDigest: "d".repeat(64),
+        },
       ],
     );
     expect(await screen.findByText("Summarize the **bundle**")).toBeInTheDocument();
@@ -269,6 +290,7 @@ describe("OKF Studio app", () => {
     expect(screen.queryByRole("button", { name: "Remove research-report.pdf source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove config/settings.json source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove data/findings.csv source" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove research.html source" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));

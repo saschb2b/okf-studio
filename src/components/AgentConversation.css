@@ -408,6 +408,31 @@
   gap: var(--space-4);
 }
 
+.agent-source-picker__modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-source-picker__modes .btn {
+  justify-content: center;
+  min-width: 0;
+}
+
+.agent-source-picker__modes .btn[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.agent-source-picker .agent-source-picker__error {
+  color: var(--error);
+}
+
 .agent-source-picker input,
 .agent-source-picker textarea {
   width: 100%;

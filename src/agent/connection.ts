@@ -150,6 +150,13 @@ export interface AgentStageEvent {
   changes: AgentStagedChangesInfo;
 }
 
+export interface AgentStagedFileDiff {
+  path: string;
+  kind: "create" | "modify";
+  unified: string;
+  truncated: boolean;
+}
+
 export type AgentConnectionEvent =
   | {
       connectionId: string;

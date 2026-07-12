@@ -18,6 +18,8 @@ pub(crate) const MAX_STAGED_TOTAL_BYTES: usize = 8 * 1024 * 1024;
 pub(crate) const MAX_STAGED_FILES: usize = 64;
 pub(crate) const MAX_STAGED_PATH_CHARS: usize = 1024;
 
+pub(crate) const MAX_DIFF_CHARS: usize = 256 * 1024;
+
 pub(crate) const WRITE_GRANT_MESSAGE: &str =
     "Bundle write denied: writes require the Allow edits in this thread grant.";
 
@@ -38,6 +40,16 @@ pub struct AgentStagedChangesInfo {
     pub session_id: String,
     pub granted: bool,
     pub files: Vec<AgentStagedFileInfo>,
+}
+
+/// One staged file's bounded unified diff against the current bundle file.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedFileDiff {
+    pub path: String,
+    pub kind: &'static str,
+    pub unified: String,
+    pub truncated: bool,
 }
 
 struct SessionStage {
@@ -160,6 +172,79 @@ impl SessionStages {
         );
         stage.files.insert(relative, StagedFile { content, kind });
         Ok(snapshot(session_id, stage))
+    }
+
+    /// Remove one staged file, identified by the bundle-relative path the
+    /// snapshot reported. The grant is untouched.
+    pub fn discard_file(
+        &self,
+        session_id: &str,
+        path: &str,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if stage.files.remove(path).is_none() {
+            return Err("This file is not staged.".to_string());
+        }
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// A bounded unified diff between the current bundle file and the staged
+    /// content, identified by the bundle-relative path the snapshot reported.
+    /// Never touches the filesystem beyond one bounded read of the original.
+    pub fn staged_diff(
+        &self,
+        session_id: &str,
+        path: &str,
+    ) -> Result<AgentStagedFileDiff, String> {
+        // Copy what the diff needs, then release the lock before file I/O.
+        let (bundle_root, content, kind) = {
+            let sessions = self
+                .sessions
+                .lock()
+                .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+            let stage = sessions
+                .get(session_id)
+                .ok_or_else(|| "The ACP session is not active.".to_string())?;
+            let file = stage
+                .files
+                .get(path)
+                .ok_or_else(|| "This file is not staged.".to_string())?;
+            (stage.bundle_root.clone(), file.content.clone(), file.kind)
+        };
+        let original = if kind == "modify" {
+            let bytes = std::fs::read(bundle_root.join(Path::new(path)))
+                .map_err(|_| "The original bundle file could not be read.".to_string())?;
+            if bytes.len() > MAX_STAGED_FILE_BYTES {
+                return Err("The original bundle file is too large to diff.".to_string());
+            }
+            String::from_utf8(bytes)
+                .map_err(|_| "The original bundle file is not UTF-8 text.".to_string())?
+        } else {
+            String::new()
+        };
+        let text_diff = similar::TextDiff::from_lines(&original, &content);
+        let unified = text_diff
+            .unified_diff()
+            .context_radius(3)
+            .header(&format!("a/{path}"), &format!("b/{path}"))
+            .to_string();
+        let truncated = unified.chars().count() > MAX_DIFF_CHARS;
+        Ok(AgentStagedFileDiff {
+            path: path.to_string(),
+            kind,
+            unified: if truncated {
+                unified.chars().take(MAX_DIFF_CHARS).collect()
+            } else {
+                unified
+            },
+            truncated,
+        })
     }
 
     /// The staged content for a path, if that exact bundle file was staged.
@@ -417,6 +502,56 @@ mod tests {
         stages
             .stage_write("session-1", &root.join("file-0.md"), "updated".to_string())
             .expect("replacement write should stage");
+    }
+
+    #[test]
+    fn diffs_staged_files_against_the_bundle_and_rejects_unknown_paths() {
+        let root = canonical_temp_dir("diff");
+        std::fs::write(root.join("existing.md"), "alpha\nbeta\n").expect("seed bundle file");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write("session-1", &root.join("existing.md"), "alpha\ngamma\n".to_string())
+            .expect("stage modification");
+        stages
+            .stage_write("session-1", &root.join("new.md"), "# New\n".to_string())
+            .expect("stage creation");
+
+        let modified = stages.staged_diff("session-1", "existing.md").expect("diff");
+        assert_eq!(modified.kind, "modify");
+        assert!(!modified.truncated);
+        assert!(modified.unified.contains("-beta"));
+        assert!(modified.unified.contains("+gamma"));
+
+        let created = stages.staged_diff("session-1", "new.md").expect("diff");
+        assert_eq!(created.kind, "create");
+        assert!(created.unified.contains("+# New"));
+
+        assert_eq!(
+            stages.staged_diff("session-1", "missing.md").expect_err("unknown path"),
+            "This file is not staged.",
+        );
+    }
+
+    #[test]
+    fn discards_a_single_staged_file_by_reported_path() {
+        let root = canonical_temp_dir("reject");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write("session-1", &root.join("keep.md"), "keep".to_string())
+            .expect("stage first");
+        stages
+            .stage_write("session-1", &root.join("drop.md"), "drop".to_string())
+            .expect("stage second");
+        let info = stages.discard_file("session-1", "drop.md").expect("discard one");
+        assert_eq!(info.files.len(), 1);
+        assert_eq!(info.files[0].path, "keep.md");
+        assert!(info.granted);
+        assert_eq!(
+            stages.discard_file("session-1", "drop.md").expect_err("already gone"),
+            "This file is not staged.",
+        );
     }
 
     #[test]

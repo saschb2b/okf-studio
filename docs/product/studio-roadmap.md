@@ -145,7 +145,8 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 ## WP8: Reviewed writes
 
 - [x] Keep tools read-only until **Allow edits in this thread** is granted.
-- [ ] Stage Studio writes; show per-file/per-hunk accept and reject controls.
+- [x] Stage Studio writes; show bounded per-file diffs and reject controls.
+- [ ] Add per-hunk accept and reject selection before apply.
 - [ ] Reduce ACP diff content into the staged change service; never present it as an applied Studio change.
 - [ ] Validate the staged tree, apply accepted files atomically, and retain a restorable checkpoint.
 - [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.

@@ -250,6 +250,29 @@ fn discard_agent_staged_changes(
     agent_protocol::discard_staged_changes(&app, state.inner(), &connection_id, &session_id)
 }
 
+/// Discard one staged file by its reported bundle-relative path.
+#[tauri::command]
+fn discard_agent_staged_file(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    path: String,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    agent_protocol::discard_staged_file(&app, state.inner(), &connection_id, &session_id, &path)
+}
+
+/// A bounded unified diff between the bundle file and one staged file.
+#[tauri::command]
+async fn agent_staged_file_diff(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    path: String,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    agent_protocol::staged_file_diff(state.inner(), &connection_id, &session_id, &path).await
+}
+
 #[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
@@ -448,6 +471,8 @@ pub fn run() {
             respond_agent_permission,
             set_agent_write_grant,
             discard_agent_staged_changes,
+            discard_agent_staged_file,
+            agent_staged_file_diff,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

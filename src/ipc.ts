@@ -21,6 +21,7 @@ import type {
   AgentSessionInfo,
   AgentSessionHistoryPage,
   AgentStagedChangesInfo,
+  AgentStagedFileDiff,
   AgentStagedFileInfo,
   AgentStageEvent,
   AgentTurnEvent,
@@ -84,9 +85,10 @@ type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
 const agentPermissionHandlers = new Set<AgentPermissionHandler>();
 type AgentStageHandler = (event: AgentStageEvent) => void;
 const agentStageHandlers = new Set<AgentStageHandler>();
+type MockStagedFile = AgentStagedFileInfo & { content: string };
 const mockStagedChanges = new Map<
   string,
-  { granted: boolean; files: AgentStagedFileInfo[] }
+  { granted: boolean; files: MockStagedFile[] }
 >();
 const mockCancelledTurns = new Set<string>();
 const mockFailedOncePrompts = new Set<string>();
@@ -610,7 +612,7 @@ export async function discardAgentStagedChanges(
   return emitMockStage(connectionId, sessionId);
 }
 
-function mockStageState(sessionId: string): { granted: boolean; files: AgentStagedFileInfo[] } {
+function mockStageState(sessionId: string): { granted: boolean; files: MockStagedFile[] } {
   let state = mockStagedChanges.get(sessionId);
   if (!state) {
     state = { granted: false, files: [] };
@@ -624,10 +626,61 @@ function emitMockStage(connectionId: string, sessionId: string): AgentStagedChan
   const changes: AgentStagedChangesInfo = {
     sessionId,
     granted: state.granted,
-    files: [...state.files],
+    files: state.files.map(({ path, bytes, kind }) => ({ path, bytes, kind })),
   };
   for (const handler of agentStageHandlers) handler({ connectionId, changes });
   return changes;
+}
+
+export async function agentStagedFileDiff(
+  connectionId: string,
+  sessionId: string,
+  path: string,
+): Promise<AgentStagedFileDiff> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedFileDiff>("agent_staged_file_diff", {
+      connectionId,
+      sessionId,
+      path,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const file = mockStageState(sessionId).files.find((candidate) => candidate.path === path);
+  if (!file) throw new Error("This file is not staged.");
+  const added = file.content.split("\n").map((line) => `+${line}`).join("\n");
+  return {
+    path,
+    kind: file.kind,
+    unified: `--- a/${path}\n+++ b/${path}\n@@ -0,0 +1 @@\n${added}\n`,
+    truncated: false,
+  };
+}
+
+export async function discardAgentStagedFile(
+  connectionId: string,
+  sessionId: string,
+  path: string,
+): Promise<AgentStagedChangesInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedChangesInfo>("discard_agent_staged_file", {
+      connectionId,
+      sessionId,
+      path,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const state = mockStageState(sessionId);
+  if (!state.files.some((candidate) => candidate.path === path)) {
+    throw new Error("This file is not staged.");
+  }
+  state.files = state.files.filter((candidate) => candidate.path !== path);
+  return emitMockStage(connectionId, sessionId);
 }
 
 /** Browser-mock agent write: `Stage: <path>` prompts stage one file. */
@@ -638,9 +691,14 @@ function mockStageWrite(info: AgentTurnInfo, text: string): string | null {
     return "Bundle write denied: writes require the Allow edits in this thread grant.";
   }
   const path = text.slice("Stage:".length).trim() || "proposals/draft.md";
+  const content = `# Draft\n\nStaged by the browser mock for ${path}.`;
   const existing = state.files.find((file) => file.path === path);
-  if (existing) existing.bytes += 8;
-  else state.files.push({ path, bytes: 320, kind: "create" });
+  if (existing) {
+    existing.content = `${existing.content}\n\nRevised.`;
+    existing.bytes = existing.content.length;
+  } else {
+    state.files.push({ path, bytes: content.length, kind: "create", content });
+  }
   emitMockStage(info.connectionId, info.sessionId);
   return `Browser ACP staged: ${path}`;
 }

@@ -579,6 +579,39 @@ pub fn discard_staged_changes(
     Ok(changes)
 }
 
+/// Remove one staged file, identified by its reported bundle-relative path.
+/// Emits the updated staged-change snapshot.
+pub fn discard_staged_file(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+    path: &str,
+) -> Result<AgentStagedChangesInfo, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let changes = stages.discard_file(session_id, path)?;
+    let _ = app.emit(STAGE_EVENT, AgentStageEvent {
+        connection_id: connection_id.to_string(),
+        changes: changes.clone(),
+    });
+    Ok(changes)
+}
+
+/// A bounded unified diff for one staged file (read-only, no event).
+pub async fn staged_file_diff(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+    path: &str,
+) -> Result<crate::agent_stage::AgentStagedFileDiff, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let session_id = session_id.to_string();
+    let path = path.to_string();
+    tokio::task::spawn_blocking(move || stages.staged_diff(&session_id, &path))
+        .await
+        .map_err(|_| "Staged diff task did not complete.".to_string())?
+}
+
 fn connection_stages(
     state: &AgentHostState,
     connection_id: &str,

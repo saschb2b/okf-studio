@@ -15,6 +15,7 @@ import type {
   AgentSessionInfo,
   AgentSessionHistoryInfo,
   AgentStagedChangesInfo,
+  AgentStagedFileDiff,
   AgentTurnEvent,
   AgentTurnInfo,
 } from "../agent/connection.ts";
@@ -29,9 +30,11 @@ import {
   transcriptMarkdown,
 } from "../agent/thread.ts";
 import {
+  agentStagedFileDiff,
   cancelAgentTurn,
   authenticateAgent,
   discardAgentStagedChanges,
+  discardAgentStagedFile,
   exportAgentTranscript,
   fetchAgentSourceUrl,
   listAgentSessions,
@@ -362,6 +365,13 @@ export function AgentConversation({
   const [stagedChanges, setStagedChanges] = useState<AgentStagedChangesInfo | null>(null);
   const [stageError, setStageError] = useState<string | null>(null);
   const [isSettingGrant, setIsSettingGrant] = useState(false);
+  const [expandedDiff, setExpandedDiff] = useState<
+    | { path: string; state: "loading" }
+    | { path: string; state: "ready"; diff: AgentStagedFileDiff }
+    | { path: string; state: "error"; message: string }
+    | null
+  >(null);
+  const [rejectingStagedPath, setRejectingStagedPath] = useState<string | null>(null);
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
   >([]);
@@ -378,6 +388,7 @@ export function AgentConversation({
   const messagesRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
+  const stagedDiscardRef = useRef<HTMLButtonElement>(null);
   const queuedEditRef = useRef<HTMLButtonElement>(null);
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
 
@@ -451,6 +462,8 @@ export function AgentConversation({
           setUsage(null);
           setStagedChanges(null);
           setStageError(null);
+          setExpandedDiff(null);
+          setRejectingStagedPath(null);
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
         }
@@ -604,7 +617,7 @@ export function AgentConversation({
       onAgentStageUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.changes.sessionId) return;
-        setStagedChanges(event.changes);
+        updateStagedChanges(event.changes);
       }),
       onAgentConnectionState((event) => {
         if (event.connectionId === connection.connectionId) onConnectionEnd(event);
@@ -719,7 +732,7 @@ export function AgentConversation({
         session.sessionId,
         granted,
       );
-      setStagedChanges(changes);
+      updateStagedChanges(changes);
     } catch (error: unknown) {
       setStageError(errorMessage(error));
     } finally {
@@ -736,10 +749,70 @@ export function AgentConversation({
         connection.connectionId,
         session.sessionId,
       );
-      setStagedChanges(changes);
+      updateStagedChanges(changes);
+      requestAnimationFrame(() => promptRef.current?.focus());
     } catch (error: unknown) {
       setStageError(errorMessage(error));
     }
+  }
+
+  function updateStagedChanges(changes: AgentStagedChangesInfo) {
+    setStagedChanges(changes);
+    setExpandedDiff((current) =>
+      current && !changes.files.some((file) => file.path === current.path) ? null : current
+    );
+  }
+
+  async function toggleStagedFileReview(path: string) {
+    if (expandedDiff?.path === path && expandedDiff.state === "ready") {
+      setExpandedDiff(null);
+      return;
+    }
+    const session = sessionRef.current;
+    if (!session || expandedDiff?.state === "loading") return;
+    const sessionId = session.sessionId;
+    setStageError(null);
+    setExpandedDiff({ path, state: "loading" });
+    try {
+      const diff = await agentStagedFileDiff(connection.connectionId, sessionId, path);
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      setExpandedDiff({ path, state: "ready", diff });
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      setExpandedDiff({ path, state: "error", message: errorMessage(error) });
+    }
+  }
+
+  async function rejectStagedFile(path: string) {
+    const session = sessionRef.current;
+    if (!session || rejectingStagedPath) return;
+    const sessionId = session.sessionId;
+    setRejectingStagedPath(path);
+    setStageError(null);
+    try {
+      const changes = await discardAgentStagedFile(
+        connection.connectionId,
+        sessionId,
+        path,
+      );
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      updateStagedChanges(changes);
+      requestAnimationFrame(() => {
+        if (changes.files.length > 0) stagedDiscardRef.current?.focus();
+        else promptRef.current?.focus();
+      });
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId === sessionId) setStageError(errorMessage(error));
+    } finally {
+      if (sessionRef.current?.sessionId === sessionId) setRejectingStagedPath(null);
+    }
+  }
+
+  function stagedReviewLabel(path: string): string {
+    if (expandedDiff?.path !== path) return "Review";
+    if (expandedDiff.state === "loading") return "Loading...";
+    if (expandedDiff.state === "ready") return "Close";
+    return "Retry";
   }
 
   async function loadAttachableThreads(): Promise<AgentThreadMetadata[]> {
@@ -787,6 +860,8 @@ export function AgentConversation({
   // replayed one); the grant command needs that session ID.
   const hasSession = messages.some((item) => item.role === "user");
   const writeGranted = stagedChanges?.granted ?? false;
+  const stagedFileCount = stagedChanges?.files.length ?? 0;
+  const stagedSummary = `${stagedFileCount === 1 ? "1 file" : `${stagedFileCount} files`} · not applied to the bundle`;
   const writeGrantTitle = !hasSession
     ? "Send a message to start the session, then allow edits."
     : writeGranted
@@ -913,6 +988,8 @@ export function AgentConversation({
     setQueuedPrompt(null);
     setStagedChanges(null);
     setStageError(null);
+    setExpandedDiff(null);
+    setRejectingStagedPath(null);
     setAttachedConcepts([]);
     setAttachedSources([]);
     setPromptText("");
@@ -1021,6 +1098,8 @@ export function AgentConversation({
       setUsage(null);
       setStagedChanges(null);
       setStageError(null);
+      setExpandedDiff(null);
+      setRejectingStagedPath(null);
       setIsCancelling(false);
       setHistory({ status: "closed" });
       setRestoringSessionId(null);
@@ -1397,31 +1476,90 @@ export function AgentConversation({
             <section className="agent-staged" aria-labelledby="agent-staged-title">
               <header>
                 <strong id="agent-staged-title">Staged changes</strong>
-                <span>
-                  {stagedChanges.files.length === 1
-                    ? "1 file"
-                    : `${stagedChanges.files.length} files`} · not applied to the bundle
-                </span>
+                <span title={stagedSummary}>{stagedSummary}</span>
                 <button
+                  ref={stagedDiscardRef}
                   type="button"
                   className="btn ghost"
                   onClick={() => void discardStagedChanges()}
                 >
-                  Discard
+                  Discard all
                 </button>
               </header>
               <ul>
-                {stagedChanges.files.map((file) => (
-                  <li key={file.path}>
-                    <FileText size={14} aria-hidden="true" />
-                    <span title={file.path}>{file.path}</span>
-                    <small>
-                      {file.kind === "create" ? "New file" : "Modified"} · {stagedBytesLabel(file.bytes)}
-                    </small>
-                  </li>
-                ))}
+                {stagedChanges.files.map((file, index) => {
+                  const isExpanded = expandedDiff?.path === file.path;
+                  const diffId = `agent-staged-diff-${index}`;
+                  return (
+                    <li key={file.path}>
+                      <div className="agent-staged__file-row">
+                        <FileText size={14} aria-hidden="true" />
+                        <span title={file.path}>{file.path}</span>
+                        <small>
+                          {file.kind === "create" ? "New file" : "Modified"} · {stagedBytesLabel(file.bytes)}
+                        </small>
+                        <div className="agent-staged__file-actions">
+                          <button
+                            type="button"
+                            className="btn ghost"
+                            aria-label={`${stagedReviewLabel(file.path)} staged file ${file.path}`}
+                            aria-expanded={isExpanded}
+                            aria-controls={diffId}
+                            disabled={expandedDiff?.state === "loading" || rejectingStagedPath !== null}
+                            onClick={() => void toggleStagedFileReview(file.path)}
+                          >
+                            {stagedReviewLabel(file.path)}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn ghost"
+                            disabled={rejectingStagedPath !== null || expandedDiff?.state === "loading"}
+                            aria-label={`Reject staged file ${file.path}`}
+                            onClick={() => void rejectStagedFile(file.path)}
+                          >
+                            {rejectingStagedPath === file.path ? "Rejecting..." : "Reject"}
+                          </button>
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <section
+                          id={diffId}
+                          className="agent-staged__diff"
+                          aria-label={`Review ${file.path}`}
+                        >
+                          {expandedDiff.state === "loading" && (
+                            <p role="status">Loading staged diff...</p>
+                          )}
+                          {expandedDiff.state === "error" && (
+                            <p role="alert">Diff unavailable. {expandedDiff.message}</p>
+                          )}
+                          {expandedDiff.state === "ready" && (
+                            <>
+                              <pre aria-label={`Unified diff for ${file.path}`}>
+                                {expandedDiff.diff.unified.split("\n").map((line, lineIndex) => {
+                                  let className = "agent-staged__diff-line";
+                                  if (line.startsWith("+") && !line.startsWith("+++")) {
+                                    className += " agent-staged__diff-line--added";
+                                  } else if (line.startsWith("-") && !line.startsWith("---")) {
+                                    className += " agent-staged__diff-line--removed";
+                                  } else if (line.startsWith("@@")) {
+                                    className += " agent-staged__diff-line--hunk";
+                                  }
+                                  return <span key={lineIndex} className={className}>{line || " "}</span>;
+                                })}
+                              </pre>
+                              {expandedDiff.diff.truncated && (
+                                <p role="status">Diff truncated at the review limit.</p>
+                              )}
+                            </>
+                          )}
+                        </section>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
-              <p>Review and apply ships in a later update; Discard removes every staged file.</p>
+              <p>Review or reject staged files. Validation and apply ship in a later update.</p>
             </section>
           )}
           {stageError && (

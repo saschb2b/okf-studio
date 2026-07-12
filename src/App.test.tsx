@@ -737,6 +737,8 @@ describe("OKF Studio app", () => {
 
   it("gates agent writes behind the thread grant and stages them for review", async () => {
     const user = userEvent.setup();
+    vi.spyOn(ipc, "agentStagedFileDiff")
+      .mockRejectedValueOnce(new Error("Diff fixture unavailable."));
     renderApp();
     await openFolder(user);
 
@@ -773,10 +775,44 @@ describe("OKF Studio app", () => {
     expect(screen.getByText("proposals/draft.md")).toBeInTheDocument();
     expect(screen.getByText(/not applied to the bundle/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Discard" }));
+    await user.click(screen.getByRole("button", {
+      name: "Review staged file proposals/draft.md",
+    }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Diff unavailable. Diff fixture unavailable.",
+    );
+    await user.click(screen.getByRole("button", {
+      name: "Retry staged file proposals/draft.md",
+    }));
+    const diff = await screen.findByLabelText("Unified diff for proposals/draft.md");
+    expect(diff).toHaveTextContent("+# Draft");
+    expect(screen.getByRole("button", {
+      name: "Close staged file proposals/draft.md",
+    })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/notes.md");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Browser ACP staged: proposals/notes.md"))
+      .toBeInTheDocument();
+    expect(screen.getByText("proposals/notes.md")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", {
+      name: "Reject staged file proposals/draft.md",
+    }));
+    await vi.waitFor(() =>
+      expect(screen.queryByText("proposals/draft.md")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("proposals/notes.md")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Discard all" })).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Discard all" }));
     await vi.waitFor(() =>
       expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
     );
+    expect(screen.getByLabelText("Message the agent")).toHaveFocus();
 
     await user.click(grantToggle);
     await vi.waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "false"));

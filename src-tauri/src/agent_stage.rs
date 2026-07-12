@@ -1,0 +1,441 @@
+//! Per-session write grant and in-memory staged tree (WP8).
+//!
+//! Opening a bundle grants no writes. A thread's ACP session accepts
+//! `fs/write_text_file` only after the user grants **Allow edits in this
+//! thread**, and a granted write never touches the bundle: it lands in this
+//! bounded in-memory staged tree, keyed by bundle-relative path, until a later
+//! reviewed apply ships. Reads overlay staged content so the agent observes
+//! its own writes. See docs/architecture/agent-system.md.
+
+use std::collections::{BTreeMap, HashMap};
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+
+use serde::Serialize;
+
+pub(crate) const MAX_STAGED_FILE_BYTES: usize = 1024 * 1024;
+pub(crate) const MAX_STAGED_TOTAL_BYTES: usize = 8 * 1024 * 1024;
+pub(crate) const MAX_STAGED_FILES: usize = 64;
+pub(crate) const MAX_STAGED_PATH_CHARS: usize = 1024;
+
+pub(crate) const WRITE_GRANT_MESSAGE: &str =
+    "Bundle write denied: writes require the Allow edits in this thread grant.";
+
+/// One staged file as it crosses IPC: a bundle-relative forward-slash path,
+/// the staged byte count, and whether the write creates or modifies the file.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedFileInfo {
+    pub path: String,
+    pub bytes: usize,
+    pub kind: &'static str,
+}
+
+/// A session's staged-change snapshot as it crosses IPC.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedChangesInfo {
+    pub session_id: String,
+    pub granted: bool,
+    pub files: Vec<AgentStagedFileInfo>,
+}
+
+struct SessionStage {
+    bundle_root: PathBuf,
+    granted: bool,
+    files: BTreeMap<String, StagedFile>,
+}
+
+struct StagedFile {
+    content: String,
+    kind: &'static str,
+}
+
+/// All write-grant and staged-tree state for one agent connection. Sessions
+/// register on creation or load with their canonical bundle root; the state
+/// drops with the connection, so grants never outlive their process.
+#[derive(Default)]
+pub struct SessionStages {
+    sessions: Mutex<HashMap<String, SessionStage>>,
+}
+
+impl SessionStages {
+    /// Register (or reset) a session. Creating and loading both start with the
+    /// grant revoked and the staged tree empty: a restored session never
+    /// inherits an earlier grant.
+    pub fn register_session(&self, session_id: &str, bundle_root: &Path) {
+        if let Ok(mut sessions) = self.sessions.lock() {
+            sessions.insert(session_id.to_string(), SessionStage {
+                bundle_root: bundle_root.to_path_buf(),
+                granted: false,
+                files: BTreeMap::new(),
+            });
+        }
+    }
+
+    /// Grant or revoke writes for one registered session. Revoking keeps the
+    /// staged files visible so the user can still review or discard them.
+    pub fn set_grant(
+        &self,
+        session_id: &str,
+        granted: bool,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        stage.granted = granted;
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// Discard every staged file for one session; the grant is untouched.
+    pub fn discard(&self, session_id: &str) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        stage.files.clear();
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// Stage one agent write. The write is accepted only for a registered,
+    /// granted session and a path that stays inside the bundle root; content
+    /// and tree size are bounded. Nothing reaches the filesystem.
+    pub fn stage_write(
+        &self,
+        session_id: &str,
+        path: &Path,
+        content: String,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "Bundle write denied: the ACP session is not active.".to_string())?;
+        if !stage.granted {
+            return Err(WRITE_GRANT_MESSAGE.to_string());
+        }
+        let relative = bundle_relative_write_path(&stage.bundle_root, path)?;
+        if content.len() > MAX_STAGED_FILE_BYTES {
+            return Err(format!(
+                "Bundle write denied: staged files are limited to {MAX_STAGED_FILE_BYTES} bytes."
+            ));
+        }
+        let existing = stage.files.get(&relative);
+        let used: usize = stage
+            .files
+            .iter()
+            .filter(|(staged_path, _)| *staged_path != &relative)
+            .map(|(_, file)| file.content.len())
+            .sum();
+        if used + content.len() > MAX_STAGED_TOTAL_BYTES {
+            return Err(format!(
+                "Bundle write denied: staged changes are limited to {MAX_STAGED_TOTAL_BYTES} bytes in total."
+            ));
+        }
+        if existing.is_none() && stage.files.len() >= MAX_STAGED_FILES {
+            return Err(format!(
+                "Bundle write denied: staged changes are limited to {MAX_STAGED_FILES} files."
+            ));
+        }
+        // Whether this write creates or modifies is decided against the real
+        // bundle once, then kept stable across repeated writes to the path.
+        let kind = existing.map_or_else(
+            || {
+                if stage.bundle_root.join(Path::new(&relative)).is_file() {
+                    "modify"
+                } else {
+                    "create"
+                }
+            },
+            |file| file.kind,
+        );
+        stage.files.insert(relative, StagedFile { content, kind });
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// The staged content for a path, if that exact bundle file was staged.
+    /// Used by the read bridge so a granted agent observes its own writes.
+    pub fn staged_content(&self, session_id: &str, path: &Path) -> Option<String> {
+        let sessions = self.sessions.lock().ok()?;
+        let stage = sessions.get(session_id)?;
+        let relative = bundle_relative_write_path(&stage.bundle_root, path).ok()?;
+        stage
+            .files
+            .get(&relative)
+            .map(|file| file.content.clone())
+    }
+
+    /// The current snapshot for one session, when registered.
+    #[cfg(test)]
+    pub fn summary(&self, session_id: &str) -> Option<AgentStagedChangesInfo> {
+        let sessions = self.sessions.lock().ok()?;
+        sessions
+            .get(session_id)
+            .map(|stage| snapshot(session_id, stage))
+    }
+}
+
+fn snapshot(session_id: &str, stage: &SessionStage) -> AgentStagedChangesInfo {
+    AgentStagedChangesInfo {
+        session_id: session_id.to_string(),
+        granted: stage.granted,
+        files: stage
+            .files
+            .iter()
+            .map(|(path, file)| AgentStagedFileInfo {
+                path: path.clone(),
+                bytes: file.content.len(),
+                kind: file.kind,
+            })
+            .collect(),
+    }
+}
+
+/// Reduce an agent-supplied absolute write path to a bundle-relative
+/// forward-slash path, mirroring the tool-location discipline: every
+/// component must be a normal, non-control Unicode segment lexically under
+/// the canonical root, and no component may target Git metadata. A symbolic
+/// link anywhere on an existing prefix of the path must not escape the root.
+fn bundle_relative_write_path(bundle_root: &Path, path: &Path) -> Result<String, String> {
+    if !path.is_absolute() {
+        return Err("Bundle write denied: ACP file paths must be absolute.".to_string());
+    }
+    let relative = strip_bundle_prefix(bundle_root, path).ok_or_else(|| {
+        "Bundle write denied: the file is outside the active bundle root.".to_string()
+    })?;
+    let mut parts: Vec<&str> = Vec::new();
+    for component in relative.components() {
+        let std::path::Component::Normal(part) = component else {
+            return Err("Bundle write denied: the path may not traverse outside the bundle.".to_string());
+        };
+        let part = part
+            .to_str()
+            .ok_or_else(|| "Bundle write denied: paths must be Unicode.".to_string())?;
+        // Verbatim Windows paths parse `..` and `.` as normal components.
+        if part == ".." || part == "." {
+            return Err("Bundle write denied: the path may not traverse outside the bundle.".to_string());
+        }
+        if part.is_empty() || part.chars().any(char::is_control) {
+            return Err("Bundle write denied: the path contains unsupported characters.".to_string());
+        }
+        if part.eq_ignore_ascii_case(".git") {
+            return Err("Bundle write denied: Git metadata is protected.".to_string());
+        }
+        parts.push(part);
+    }
+    if parts.is_empty() {
+        return Err("Bundle write denied: the bundle root itself cannot be written.".to_string());
+    }
+    let joined = parts.join("/");
+    if joined.chars().count() > MAX_STAGED_PATH_CHARS {
+        return Err("Bundle write denied: the path is too long.".to_string());
+    }
+    // The target may not exist yet, so canonicalize the deepest existing
+    // ancestor and require it to stay under the canonical root. This rejects
+    // escape through a symbolic link on any existing prefix.
+    let mut ancestor = bundle_root.to_path_buf();
+    for part in &parts {
+        let next = ancestor.join(part);
+        if !next.exists() {
+            break;
+        }
+        ancestor = next;
+    }
+    let canonical_ancestor = ancestor
+        .canonicalize()
+        .map_err(|_| "Bundle write denied: the path could not be resolved.".to_string())?;
+    if !canonical_ancestor.starts_with(bundle_root) {
+        return Err("Bundle write denied: the file is outside the active bundle root.".to_string());
+    }
+    Ok(joined)
+}
+
+/// Strip the canonical bundle root off an agent-supplied absolute path. The
+/// canonical root is a verbatim `\\?\` path on Windows while agents send
+/// plain Win32 paths, so both spellings of the root are accepted.
+fn strip_bundle_prefix<'a>(bundle_root: &Path, path: &'a Path) -> Option<&'a Path> {
+    if let Ok(relative) = path.strip_prefix(bundle_root) {
+        return Some(relative);
+    }
+    #[cfg(windows)]
+    {
+        let value = bundle_root.to_string_lossy();
+        let win32 = if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
+            Some(PathBuf::from(format!(r"\\{rest}")))
+        } else {
+            value.strip_prefix(r"\\?\").map(PathBuf::from)
+        };
+        if let Some(win32) = win32 {
+            if let Ok(relative) = path.strip_prefix(&win32) {
+                return Some(relative);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn registered(root: &Path) -> SessionStages {
+        let stages = SessionStages::default();
+        stages.register_session("session-1", root);
+        stages
+    }
+
+    fn canonical_temp_dir(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("okf-stage-{label}-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).expect("create temp bundle root");
+        dir.canonicalize().expect("canonicalize temp bundle root")
+    }
+
+    #[test]
+    fn denies_writes_without_the_thread_grant() {
+        let root = canonical_temp_dir("deny");
+        let stages = registered(&root);
+        let error = stages
+            .stage_write("session-1", &root.join("concept.md"), "text".to_string())
+            .expect_err("write without grant should fail");
+        assert!(error.contains("Allow edits in this thread"));
+        assert_eq!(stages.summary("session-1").expect("summary").files.len(), 0);
+    }
+
+    #[test]
+    fn stages_a_granted_write_in_memory_only() {
+        let root = canonical_temp_dir("stage");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let info = stages
+            .stage_write("session-1", &root.join("notes").join("new.md"), "# New".to_string())
+            .expect("granted write should stage");
+        assert_eq!(info.files, vec![AgentStagedFileInfo {
+            path: "notes/new.md".to_string(),
+            bytes: 5,
+            kind: "create",
+        }]);
+        assert!(!root.join("notes").exists(), "staging must not touch the filesystem");
+        assert_eq!(
+            stages.staged_content("session-1", &root.join("notes").join("new.md")),
+            Some("# New".to_string()),
+        );
+    }
+
+    #[test]
+    fn labels_writes_to_existing_files_as_modifications() {
+        let root = canonical_temp_dir("modify");
+        std::fs::write(root.join("existing.md"), "old").expect("seed bundle file");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let info = stages
+            .stage_write("session-1", &root.join("existing.md"), "new".to_string())
+            .expect("stage existing file");
+        assert_eq!(info.files[0].kind, "modify");
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("bundle file intact"),
+            "old",
+        );
+    }
+
+    #[test]
+    fn rejects_traversal_outside_root_and_git_metadata() {
+        let root = canonical_temp_dir("paths");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let separator = std::path::MAIN_SEPARATOR;
+        // Built from a string so `join` cannot collapse the traversal.
+        let traversal = PathBuf::from(format!(
+            "{}{separator}..{separator}outside.md",
+            root.display(),
+        ));
+        for (path, expected) in [
+            (traversal, "traverse"),
+            (root.parent().expect("parent").join("outside.md"), "outside the active bundle root"),
+            (root.join(".git").join("config"), "Git metadata"),
+            (root.clone(), "root itself"),
+            (PathBuf::from("relative.md"), "must be absolute"),
+        ] {
+            let error = stages
+                .stage_write("session-1", &path, "text".to_string())
+                .expect_err("invalid path should fail");
+            assert!(error.contains(expected), "{path:?}: {error}");
+        }
+    }
+
+    // Real agents send plain Win32 paths while the canonical root is verbatim.
+    #[cfg(windows)]
+    #[test]
+    fn accepts_win32_paths_under_a_verbatim_canonical_root() {
+        let root = canonical_temp_dir("win32");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let win32_root = PathBuf::from(
+            root.to_string_lossy()
+                .strip_prefix(r"\\?\")
+                .expect("canonical root should be verbatim")
+                .to_string(),
+        );
+        let info = stages
+            .stage_write("session-1", &win32_root.join("doc.md"), "x".to_string())
+            .expect("win32 spelling should stage");
+        assert_eq!(info.files[0].path, "doc.md");
+        assert_eq!(
+            stages.staged_content("session-1", &win32_root.join("doc.md")),
+            Some("x".to_string()),
+        );
+    }
+
+    #[test]
+    fn bounds_file_size_count_and_total_bytes() {
+        let root = canonical_temp_dir("bounds");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let oversized = "x".repeat(MAX_STAGED_FILE_BYTES + 1);
+        let error = stages
+            .stage_write("session-1", &root.join("large.md"), oversized)
+            .expect_err("oversized file should fail");
+        assert!(error.contains("bytes"));
+        for index in 0..MAX_STAGED_FILES {
+            stages
+                .stage_write("session-1", &root.join(format!("file-{index}.md")), "x".to_string())
+                .expect("staged file within count");
+        }
+        let error = stages
+            .stage_write("session-1", &root.join("overflow.md"), "x".to_string())
+            .expect_err("file count above limit should fail");
+        assert!(error.contains("files"));
+        // Restaging an already-staged path stays within the count limit.
+        stages
+            .stage_write("session-1", &root.join("file-0.md"), "updated".to_string())
+            .expect("replacement write should stage");
+    }
+
+    #[test]
+    fn discard_clears_files_and_restore_resets_the_grant() {
+        let root = canonical_temp_dir("reset");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write("session-1", &root.join("a.md"), "text".to_string())
+            .expect("stage file");
+        let info = stages.discard("session-1").expect("discard");
+        assert!(info.files.is_empty());
+        assert!(info.granted, "discard keeps the grant");
+        // Re-registration (session load/restore) revokes the earlier grant.
+        stages.register_session("session-1", &root);
+        assert!(!stages.summary("session-1").expect("summary").granted);
+        let error = stages
+            .stage_write("session-1", &root.join("a.md"), "text".to_string())
+            .expect_err("restored session requires a fresh grant");
+        assert!(error.contains("Allow edits in this thread"));
+    }
+}

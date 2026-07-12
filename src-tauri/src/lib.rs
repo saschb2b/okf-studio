@@ -11,6 +11,7 @@ mod agent_pdf;
 mod agent_protocol;
 mod agent_runtime;
 mod agent_sources;
+mod agent_stage;
 mod agent_transcript;
 mod agent_url;
 mod remote;
@@ -224,6 +225,31 @@ fn respond_agent_permission(
     agent_protocol::respond_permission(state.inner(), &request_id, option_id)
 }
 
+/// Grant or revoke **Allow edits in this thread** for one live ACP session.
+/// Deny by default; the grant never persists and a restored session starts
+/// revoked. Granted writes stage in memory and never touch the bundle.
+#[tauri::command]
+fn set_agent_write_grant(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    granted: bool,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    agent_protocol::set_write_grant(&app, state.inner(), &connection_id, &session_id, granted)
+}
+
+/// Discard every staged file for one live ACP session; the grant is untouched.
+#[tauri::command]
+fn discard_agent_staged_changes(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    agent_protocol::discard_staged_changes(&app, state.inner(), &connection_id, &session_id)
+}
+
 #[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
@@ -420,6 +446,8 @@ pub fn run() {
             export_agent_transcript,
             cancel_agent_turn,
             respond_agent_permission,
+            set_agent_write_grant,
+            discard_agent_staged_changes,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

@@ -735,6 +735,57 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Remove Thread Context Harness" }));
   }, 25_000);
 
+  it("gates agent writes behind the thread grant and stages them for review", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Write Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\write.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Write Harness" }));
+    await screen.findByText(/Connected to Write Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    const grantToggle = screen.getByRole("button", { name: "Allow edits in this thread" });
+    expect(grantToggle).toBeDisabled();
+
+    // Without the grant, a write attempt explains what is missing.
+    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(
+      /Bundle write denied: writes require the Allow edits in this thread grant/,
+    )).toBeInTheDocument();
+    expect(screen.queryByText("Staged changes")).not.toBeInTheDocument();
+
+    await vi.waitFor(() => expect(grantToggle).toBeEnabled());
+    await user.click(grantToggle);
+    await vi.waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "true"));
+
+    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Browser ACP staged: proposals/draft.md"))
+      .toBeInTheDocument();
+    expect(await screen.findByText("Staged changes")).toBeInTheDocument();
+    expect(screen.getByText("proposals/draft.md")).toBeInTheDocument();
+    expect(screen.getByText(/not applied to the bundle/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Discard" }));
+    await vi.waitFor(() =>
+      expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
+    );
+
+    await user.click(grantToggle);
+    await vi.waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "false"));
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Write Harness" }));
+  }, 25_000);
+
   it("blocks incomplete deep-research exports and saves a compliant revision", async () => {
     const user = userEvent.setup();
     const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");

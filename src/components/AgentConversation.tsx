@@ -14,6 +14,7 @@ import type {
   AgentLoadedSessionInfo,
   AgentSessionInfo,
   AgentSessionHistoryInfo,
+  AgentStagedChangesInfo,
   AgentTurnEvent,
   AgentTurnInfo,
 } from "../agent/connection.ts";
@@ -30,6 +31,7 @@ import {
 import {
   cancelAgentTurn,
   authenticateAgent,
+  discardAgentStagedChanges,
   exportAgentTranscript,
   fetchAgentSourceUrl,
   listAgentSessions,
@@ -38,7 +40,9 @@ import {
   newAgentSession,
   onAgentConnectionState,
   onAgentPermissionUpdate,
+  onAgentStageUpdate,
   onAgentTurnUpdate,
+  setAgentWriteGrant,
   pickAgentSourceFolder,
   pickAgentImageSources,
   pickAgentTextSources,
@@ -221,6 +225,11 @@ function historyDateLabel(value: string | null): string | null {
   }).format(date);
 }
 
+function stagedBytesLabel(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 function threadDateLabel(updatedAt: number): string | null {
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return null;
   return new Intl.DateTimeFormat(undefined, {
@@ -350,6 +359,9 @@ export function AgentConversation({
   const [retryErrors, setRetryErrors] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
+  const [stagedChanges, setStagedChanges] = useState<AgentStagedChangesInfo | null>(null);
+  const [stageError, setStageError] = useState<string | null>(null);
+  const [isSettingGrant, setIsSettingGrant] = useState(false);
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
   >([]);
@@ -437,6 +449,8 @@ export function AgentConversation({
         if (session?.bundleRoot !== bundleRoot) {
           startsNewSession = true;
           setUsage(null);
+          setStagedChanges(null);
+          setStageError(null);
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
         }
@@ -569,6 +583,7 @@ export function AgentConversation({
   useEffect(() => {
     let stopTurnUpdates: (() => void) | undefined;
     let stopPermissionUpdates: (() => void) | undefined;
+    let stopStageUpdates: (() => void) | undefined;
     let stopConnectionUpdates: (() => void) | undefined;
     let isDisposed = false;
     void Promise.all([
@@ -586,18 +601,25 @@ export function AgentConversation({
         if (sessionRef.current?.sessionId !== event.sessionId) return;
         setPendingPermissions((current) => applyPermissionEvent(current, event));
       }),
+      onAgentStageUpdate((event) => {
+        if (event.connectionId !== connection.connectionId) return;
+        if (sessionRef.current?.sessionId !== event.changes.sessionId) return;
+        setStagedChanges(event.changes);
+      }),
       onAgentConnectionState((event) => {
         if (event.connectionId === connection.connectionId) onConnectionEnd(event);
       }),
     ]).then(
-      ([stopTurns, stopPermissions, stopConnections]) => {
+      ([stopTurns, stopPermissions, stopStages, stopConnections]) => {
         if (isDisposed) {
           stopTurns();
           stopPermissions();
+          stopStages();
           stopConnections();
         } else {
           stopTurnUpdates = stopTurns;
           stopPermissionUpdates = stopPermissions;
+          stopStageUpdates = stopStages;
           stopConnectionUpdates = stopConnections;
         }
       },
@@ -614,6 +636,7 @@ export function AgentConversation({
       isDisposed = true;
       stopTurnUpdates?.();
       stopPermissionUpdates?.();
+      stopStageUpdates?.();
       stopConnectionUpdates?.();
     };
   }, [connection.connectionId, onConnectionEnd]);
@@ -684,6 +707,41 @@ export function AgentConversation({
     }
   }
 
+  async function toggleWriteGrant() {
+    const session = sessionRef.current;
+    if (!session || isSettingGrant) return;
+    const granted = !(stagedChanges?.granted ?? false);
+    setIsSettingGrant(true);
+    setStageError(null);
+    try {
+      const changes = await setAgentWriteGrant(
+        connection.connectionId,
+        session.sessionId,
+        granted,
+      );
+      setStagedChanges(changes);
+    } catch (error: unknown) {
+      setStageError(errorMessage(error));
+    } finally {
+      setIsSettingGrant(false);
+    }
+  }
+
+  async function discardStagedChanges() {
+    const session = sessionRef.current;
+    if (!session) return;
+    setStageError(null);
+    try {
+      const changes = await discardAgentStagedChanges(
+        connection.connectionId,
+        session.sessionId,
+      );
+      setStagedChanges(changes);
+    } catch (error: unknown) {
+      setStageError(errorMessage(error));
+    }
+  }
+
   async function loadAttachableThreads(): Promise<AgentThreadMetadata[]> {
     if (!bundleRoot || !supportsHistory) return [];
     const metadata = await loadAgentThreadMetadata(bundleRoot, connection.profileId);
@@ -725,6 +783,15 @@ export function AgentConversation({
 
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
   const requiresAuthentication = !connection.authenticated && connection.authMethods.length > 0;
+  // A live session exists once a user message was accepted (or a restore
+  // replayed one); the grant command needs that session ID.
+  const hasSession = messages.some((item) => item.role === "user");
+  const writeGranted = stagedChanges?.granted ?? false;
+  const writeGrantTitle = !hasSession
+    ? "Send a message to start the session, then allow edits."
+    : writeGranted
+      ? "Agent edits stage for review; nothing is applied to the bundle."
+      : "Writes stay denied until granted for this thread.";
   const attachedIssueKeys = new Set(
     attachedSources.flatMap((source) => source.issueKey ? [source.issueKey] : []),
   );
@@ -844,6 +911,8 @@ export function AgentConversation({
     setPendingPermissions([]);
     setUsage(null);
     setQueuedPrompt(null);
+    setStagedChanges(null);
+    setStageError(null);
     setAttachedConcepts([]);
     setAttachedSources([]);
     setPromptText("");
@@ -950,6 +1019,8 @@ export function AgentConversation({
       setActiveTurn(null);
       setPendingPermissions([]);
       setUsage(null);
+      setStagedChanges(null);
+      setStageError(null);
       setIsCancelling(false);
       setHistory({ status: "closed" });
       setRestoringSessionId(null);
@@ -1006,6 +1077,22 @@ export function AgentConversation({
           )}
         </div>
         <div className="agent-conversation__toolbar-actions">
+          {bundleRoot && !requiresAuthentication && (
+            <button
+              type="button"
+              className={`btn ghost agent-conversation__write-grant${writeGranted ? " agent-conversation__write-grant--on" : ""}`}
+              aria-pressed={writeGranted}
+              aria-label="Allow edits in this thread"
+              title={writeGrantTitle}
+              disabled={!hasSession || isSettingGrant}
+              onClick={() => void toggleWriteGrant()}
+            >
+              <Pencil aria-hidden="true" size={14} />
+              <span className="agent-conversation__action-label">
+                {writeGranted ? "Edits allowed" : "Allow edits"}
+              </span>
+            </button>
+          )}
           {supportsHistory && bundleRoot && !requiresAuthentication && (
             <button
               type="button"
@@ -1306,6 +1393,40 @@ export function AgentConversation({
               </>
             )}
           </div>
+          {stagedChanges && stagedChanges.files.length > 0 && (
+            <section className="agent-staged" aria-labelledby="agent-staged-title">
+              <header>
+                <strong id="agent-staged-title">Staged changes</strong>
+                <span>
+                  {stagedChanges.files.length === 1
+                    ? "1 file"
+                    : `${stagedChanges.files.length} files`} · not applied to the bundle
+                </span>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => void discardStagedChanges()}
+                >
+                  Discard
+                </button>
+              </header>
+              <ul>
+                {stagedChanges.files.map((file) => (
+                  <li key={file.path}>
+                    <FileText size={14} aria-hidden="true" />
+                    <span title={file.path}>{file.path}</span>
+                    <small>
+                      {file.kind === "create" ? "New file" : "Modified"} · {stagedBytesLabel(file.bytes)}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+              <p>Review and apply ships in a later update; Discard removes every staged file.</p>
+            </section>
+          )}
+          {stageError && (
+            <p className="agent-composer__error" role="alert">{stageError}</p>
+          )}
           <form ref={composerRef} className="agent-composer" action={composerAction}>
             {queuedPrompt && (
               <section className="agent-queue" aria-labelledby={`queued-prompt-${queuedPrompt.id}`}>

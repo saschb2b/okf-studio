@@ -133,6 +133,23 @@ export interface AgentTurnEvent extends AgentTurnInfo {
     | { kind: "failed"; message: string };
 }
 
+export interface AgentStagedFileInfo {
+  path: string;
+  bytes: number;
+  kind: "create" | "modify";
+}
+
+export interface AgentStagedChangesInfo {
+  sessionId: string;
+  granted: boolean;
+  files: readonly AgentStagedFileInfo[];
+}
+
+export interface AgentStageEvent {
+  connectionId: string;
+  changes: AgentStagedChangesInfo;
+}
+
 export type AgentConnectionEvent =
   | {
       connectionId: string;

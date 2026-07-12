@@ -7,7 +7,7 @@ use agent_client_protocol::schema::v1::{
     ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents, ToolCallStatus,
-    ToolCallLocation, ToolKind, UsageUpdate,
+    ToolCallLocation, ToolKind, UsageUpdate, WriteTextFileRequest, WriteTextFileResponse,
 };
 use base64::Engine;
 use agent_client_protocol::schema::ProtocolVersion;
@@ -25,6 +25,7 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
+use crate::agent_stage::{AgentStagedChangesInfo, SessionStages};
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
@@ -80,6 +81,7 @@ const OKF_TEMPLATES: &str = include_str!("../../.agents/skills/okf/templates.md"
 const CONNECTION_EVENT: &str = "agent-connection-state";
 const TURN_EVENT: &str = "agent-turn-update";
 const PERMISSION_EVENT: &str = "agent-permission-update";
+const STAGE_EVENT: &str = "agent-stage-update";
 type HandshakeResult = Result<AgentConnectionInfo, String>;
 type HandshakeSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<HandshakeResult>>>>;
 
@@ -246,10 +248,23 @@ struct AgentPermissionOptionInfo {
 
 type PermissionEventSink = Arc<dyn Fn(AgentPermissionEvent) + Send + Sync>;
 
+/// A staged-change snapshot event as it crosses IPC after a grant change,
+/// staged write, or discard.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentStageEvent {
+    connection_id: String,
+    changes: AgentStagedChangesInfo,
+}
+
+type StageEventSink = Arc<dyn Fn(AgentStageEvent) + Send + Sync>;
+
 struct ConnectionRuntime {
     turn_events: TurnEventSink,
     permissions: Arc<Mutex<HashMap<String, PendingPermission>>>,
     permission_events: PermissionEventSink,
+    stages: Arc<SessionStages>,
+    stage_events: StageEventSink,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -306,6 +321,7 @@ struct AgentWorker {
     profile_id: String,
     abort: tokio::task::AbortHandle,
     commands: tokio::sync::mpsc::Sender<AgentHostCommand>,
+    stages: Arc<SessionStages>,
 }
 
 enum AgentHostCommand {
@@ -403,6 +419,12 @@ async fn connect_process(
     let permission_events: PermissionEventSink = Arc::new(move |event| {
         let _ = permission_app.emit(PERMISSION_EVENT, event);
     });
+    let stages = Arc::new(SessionStages::default());
+    let worker_stages = Arc::clone(&stages);
+    let stage_app = app.clone();
+    let stage_events: StageEventSink = Arc::new(move |event| {
+        let _ = stage_app.emit(STAGE_EVENT, event);
+    });
     let permissions = Arc::clone(&state.permissions);
     let worker_permissions = Arc::clone(&permissions);
     let (start_tx, start_rx) = tokio::sync::oneshot::channel();
@@ -421,6 +443,8 @@ async fn connect_process(
                 turn_events,
                 permissions: Arc::clone(&worker_permissions),
                 permission_events,
+                stages: worker_stages,
+                stage_events,
             },
         )
         .await;
@@ -467,6 +491,7 @@ async fn connect_process(
                 profile_id: profile_id.to_string(),
                 abort: worker.abort_handle(),
                 commands: command_tx,
+                stages,
             },
         );
     }
@@ -516,6 +541,55 @@ pub async fn new_session(
         .await
         .map_err(|_| "Agent session creation timed out.".to_string())?
         .map_err(|_| "Agent connection ended before session creation.".to_string())?
+}
+
+/// Grant or revoke **Allow edits in this thread** for one session. The grant
+/// is Rust-owned, deny-by-default, and scoped to a live session; it never
+/// persists. Emits the updated staged-change snapshot.
+pub fn set_write_grant(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+    granted: bool,
+) -> Result<AgentStagedChangesInfo, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let changes = stages.set_grant(session_id, granted)?;
+    let _ = app.emit(STAGE_EVENT, AgentStageEvent {
+        connection_id: connection_id.to_string(),
+        changes: changes.clone(),
+    });
+    Ok(changes)
+}
+
+/// Discard every staged file for one session without touching the grant.
+/// Emits the updated staged-change snapshot.
+pub fn discard_staged_changes(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+) -> Result<AgentStagedChangesInfo, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let changes = stages.discard(session_id)?;
+    let _ = app.emit(STAGE_EVENT, AgentStageEvent {
+        connection_id: connection_id.to_string(),
+        changes: changes.clone(),
+    });
+    Ok(changes)
+}
+
+fn connection_stages(
+    state: &AgentHostState,
+    connection_id: &str,
+) -> Result<Arc<SessionStages>, String> {
+    state
+        .workers
+        .lock()
+        .map_err(|_| "Agent host state is unavailable.".to_string())?
+        .get(connection_id)
+        .map(|worker| Arc::clone(&worker.stages))
+        .ok_or_else(|| "Agent connection was not found.".to_string())
 }
 
 pub async fn list_sessions(
@@ -842,6 +916,8 @@ async fn run_connection(
         turn_events,
         permissions,
         permission_events,
+        stages,
+        stage_events,
     } = runtime;
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let sessions = Arc::new(Mutex::new(HashMap::<String, PathBuf>::new()));
@@ -856,6 +932,10 @@ async fn run_connection(
     let request_events = Arc::clone(&permission_events);
     let request_connection_id = connection_id.clone();
     let read_sessions = Arc::clone(&sessions);
+    let read_stages = Arc::clone(&stages);
+    let write_stages = Arc::clone(&stages);
+    let write_events = Arc::clone(&stage_events);
+    let write_connection_id = connection_id.clone();
     Client
         .builder()
         .name("okf-studio")
@@ -951,13 +1031,39 @@ async fn run_connection(
         .on_receive_request(
             async move |request: ReadTextFileRequest, responder, _connection| {
                 let sessions = Arc::clone(&read_sessions);
-                match tokio::task::spawn_blocking(move || read_bundle_text(&sessions, &request))
-                    .await
+                let stages = Arc::clone(&read_stages);
+                match tokio::task::spawn_blocking(move || {
+                    read_bundle_text(&sessions, &stages, &request)
+                })
+                .await
                 {
                     Ok(Ok(content)) => responder.respond(ReadTextFileResponse::new(content)),
                     Ok(Err(message)) => responder.respond_with_internal_error(message),
                     Err(_) => responder
                         .respond_with_internal_error("Bundle read task did not complete."),
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            async move |request: WriteTextFileRequest, responder, _connection| {
+                let stages = Arc::clone(&write_stages);
+                let session_id = request.session_id.to_string();
+                let result = tokio::task::spawn_blocking(move || {
+                    stages.stage_write(&session_id, &request.path, request.content)
+                })
+                .await;
+                match result {
+                    Ok(Ok(changes)) => {
+                        write_events(AgentStageEvent {
+                            connection_id: write_connection_id.clone(),
+                            changes,
+                        });
+                        responder.respond(WriteTextFileResponse::default())
+                    }
+                    Ok(Err(message)) => responder.respond_with_internal_error(message),
+                    Err(_) => responder
+                        .respond_with_internal_error("Bundle write task did not complete."),
                 }
             },
             agent_client_protocol::on_receive_request!(),
@@ -1033,6 +1139,7 @@ async fn run_connection(
                                         .lock()
                                         .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
                                         .insert(info.session_id.clone(), info.bundle_root.clone());
+                                    stages.register_session(&info.session_id, &info.bundle_root);
                                 }
                                 let _ = response.send(result);
                             }
@@ -1079,6 +1186,9 @@ async fn run_connection(
                                     if let Ok(mut contexts) = attached_contexts.lock() {
                                         contexts.insert(info.session_id.clone());
                                     }
+                                    // A restored session never inherits an
+                                    // earlier write grant or staged files.
+                                    stages.register_session(&info.session_id, &info.bundle_root);
                                 }
                                 let _ = response.send(result);
                             }
@@ -1199,6 +1309,7 @@ async fn run_connection(
 
 fn read_bundle_text(
     sessions: &Mutex<HashMap<String, PathBuf>>,
+    stages: &SessionStages,
     request: &ReadTextFileRequest,
 ) -> Result<String, String> {
     let session_id = request.session_id.to_string();
@@ -1211,6 +1322,20 @@ fn read_bundle_text(
     if !request.path.is_absolute() {
         return Err("Bundle read denied: ACP file paths must be absolute.".to_string());
     }
+    let start_line = request.line.unwrap_or(1);
+    if start_line == 0 {
+        return Err("Bundle read denied: the starting line must be 1 or greater.".to_string());
+    }
+    // Staged content overlays the bundle so a granted agent observes its own
+    // writes, including files that do not exist on disk yet.
+    if let Some(staged) = stages.staged_content(&session_id, &request.path) {
+        let limit = request.limit.map_or(usize::MAX, |value| value as usize);
+        return Ok(staged
+            .split_inclusive('\n')
+            .skip((start_line - 1) as usize)
+            .take(limit)
+            .collect());
+    }
     let path = request
         .path
         .canonicalize()
@@ -1220,10 +1345,6 @@ fn read_bundle_text(
     }
     if !path.is_file() {
         return Err("Bundle read denied: the requested path is not a file.".to_string());
-    }
-    let start_line = request.line.unwrap_or(1);
-    if start_line == 0 {
-        return Err("Bundle read denied: the starting line must be 1 or greater.".to_string());
     }
     let mut bytes = Vec::new();
     std::fs::File::open(&path)
@@ -1958,7 +2079,9 @@ async fn initialize_connection(
                 .client_capabilities(
                     ClientCapabilities::new().fs(FileSystemCapabilities::new()
                         .read_text_file(true)
-                        .write_text_file(false)),
+                        // Writes are advertised but land in the staged tree,
+                        // and only after the per-thread grant (WP8).
+                        .write_text_file(true)),
                 )
                 .client_info(
                     Implementation::new("okf-studio", env!("CARGO_PKG_VERSION"))
@@ -2654,7 +2777,7 @@ mod tests {
                     Some("okf-studio")
                 );
                 assert!(request.client_capabilities.fs.read_text_file);
-                assert!(!request.client_capabilities.fs.write_text_file);
+                assert!(request.client_capabilities.fs.write_text_file);
                 responder.respond(
                     InitializeResponse::new(ProtocolVersion::V1)
                         .agent_info(Implementation::new("fake-agent", "1.0.0"))
@@ -2776,7 +2899,7 @@ mod tests {
                             responder: Responder<InitializeResponse>,
                             _connection: ConnectionTo<Client>| {
                     assert!(request.client_capabilities.fs.read_text_file);
-                    assert!(!request.client_capabilities.fs.write_text_file);
+                    assert!(request.client_capabilities.fs.write_text_file);
                     responder.respond(InitializeResponse::new(ProtocolVersion::V1))
                 },
                 agent_client_protocol::on_receive_request!(),
@@ -2829,6 +2952,8 @@ mod tests {
                 turn_events: Arc::new(|_| {}),
                 permissions: Arc::new(Mutex::new(HashMap::new())),
                 permission_events: Arc::new(|_| {}),
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
             },
         ));
         handshake_rx
@@ -2888,12 +3013,14 @@ mod tests {
             ReadTextFileRequest::new("session-1", bundle_root.join("..").join("outside.md"));
 
         assert_eq!(
-            read_bundle_text(&sessions, &request).expect_err("outside read should fail"),
+            read_bundle_text(&sessions, &SessionStages::default(), &request)
+                .expect_err("outside read should fail"),
             "Bundle read denied: the file is outside the active bundle root."
         );
         assert_eq!(
             read_bundle_text(
                 &sessions,
+                &SessionStages::default(),
                 &ReadTextFileRequest::new("unknown-session", &inside_path),
             )
             .expect_err("unknown session should fail"),
@@ -2902,6 +3029,7 @@ mod tests {
         assert_eq!(
             read_bundle_text(
                 &sessions,
+                &SessionStages::default(),
                 &ReadTextFileRequest::new("session-1", "inside.md"),
             )
             .expect_err("relative path should fail"),
@@ -2910,6 +3038,7 @@ mod tests {
         assert_eq!(
             read_bundle_text(
                 &sessions,
+                &SessionStages::default(),
                 &ReadTextFileRequest::new("session-1", inside_path).line(0),
             )
             .expect_err("zero line should fail"),
@@ -2935,8 +3064,12 @@ mod tests {
         )]));
 
         assert_eq!(
-            read_bundle_text(&sessions, &ReadTextFileRequest::new("session-1", link_path),)
-                .expect_err("symlink escape should fail"),
+            read_bundle_text(
+                &sessions,
+                &SessionStages::default(),
+                &ReadTextFileRequest::new("session-1", link_path),
+            )
+            .expect_err("symlink escape should fail"),
             "Bundle read denied: the file is outside the active bundle root."
         );
         std::fs::remove_dir_all(base).expect("remove test files");
@@ -2959,12 +3092,14 @@ mod tests {
 
         let binary_error = read_bundle_text(
             &sessions,
+            &SessionStages::default(),
             &ReadTextFileRequest::new("session-1", binary_path),
         )
         .expect_err("binary read should fail");
         assert!(binary_error.contains("not UTF-8 text"));
         let large_error = read_bundle_text(
             &sessions,
+            &SessionStages::default(),
             &ReadTextFileRequest::new("session-1", large_path),
         )
         .expect_err("large read should fail");
@@ -3017,6 +3152,8 @@ mod tests {
                 turn_events: Arc::new(|_| {}),
                 permissions: Arc::new(Mutex::new(HashMap::new())),
                 permission_events: Arc::new(|_| {}),
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
             },
         ));
         let info = handshake_rx
@@ -3210,6 +3347,8 @@ mod tests {
                 turn_events: event_sink,
                 permissions,
                 permission_events: permission_sink,
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
             },
         ));
         handshake_rx
@@ -3398,6 +3537,8 @@ mod tests {
                 turn_events: Arc::new(|_| {}),
                 permissions,
                 permission_events: permission_sink,
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
             },
         ));
         handshake_rx
@@ -3745,6 +3886,8 @@ mod tests {
                 turn_events: event_sink,
                 permissions,
                 permission_events: permission_sink,
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
             },
         ));
         handshake_rx
@@ -3873,6 +4016,7 @@ mod tests {
                 profile_id: "profile-a".to_string(),
                 abort: first.abort_handle(),
                 commands: first_commands,
+                stages: Arc::new(SessionStages::default()),
             },
         );
         state.workers.lock().expect("workers").insert(
@@ -3881,6 +4025,7 @@ mod tests {
                 profile_id: "profile-a".to_string(),
                 abort: second.abort_handle(),
                 commands: second_commands,
+                stages: Arc::new(SessionStages::default()),
             },
         );
 

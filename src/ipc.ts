@@ -20,6 +20,9 @@ import type {
   AgentLoadedSessionInfo,
   AgentSessionInfo,
   AgentSessionHistoryPage,
+  AgentStagedChangesInfo,
+  AgentStagedFileInfo,
+  AgentStageEvent,
   AgentTurnEvent,
   AgentTurnInfo,
 } from "./agent/connection.ts";
@@ -79,6 +82,12 @@ type AgentTurnHandler = (event: AgentTurnEvent) => void;
 const agentTurnHandlers = new Set<AgentTurnHandler>();
 type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
 const agentPermissionHandlers = new Set<AgentPermissionHandler>();
+type AgentStageHandler = (event: AgentStageEvent) => void;
+const agentStageHandlers = new Set<AgentStageHandler>();
+const mockStagedChanges = new Map<
+  string,
+  { granted: boolean; files: AgentStagedFileInfo[] }
+>();
 const mockCancelledTurns = new Set<string>();
 const mockFailedOncePrompts = new Set<string>();
 interface MockAgentSession {
@@ -317,6 +326,8 @@ export async function loadAgentSession(
     throw new Error("This agent did not advertise session restore support.");
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  // Mirrors Rust: a restored session never inherits a write grant or files.
+  mockStagedChanges.set(sessionId, { granted: false, files: [] });
   const liveSession = mockAgentSessions.get(sessionId);
   if (liveSession?.profileId === connection.profileId &&
     liveSession.bundleRoot === bundleRoot) {
@@ -550,6 +561,90 @@ export async function onAgentPermissionUpdate(
   return listen<AgentPermissionEvent>("agent-permission-update", (event) => handler(event.payload));
 }
 
+export async function onAgentStageUpdate(handler: AgentStageHandler): Promise<() => void> {
+  if (!isTauri()) {
+    agentStageHandlers.add(handler);
+    return () => agentStageHandlers.delete(handler);
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<AgentStageEvent>("agent-stage-update", (event) => handler(event.payload));
+}
+
+export async function setAgentWriteGrant(
+  connectionId: string,
+  sessionId: string,
+  granted: boolean,
+): Promise<AgentStagedChangesInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedChangesInfo>("set_agent_write_grant", {
+      connectionId,
+      sessionId,
+      granted,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const state = mockStageState(sessionId);
+  state.granted = granted;
+  return emitMockStage(connectionId, sessionId);
+}
+
+export async function discardAgentStagedChanges(
+  connectionId: string,
+  sessionId: string,
+): Promise<AgentStagedChangesInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedChangesInfo>("discard_agent_staged_changes", {
+      connectionId,
+      sessionId,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const state = mockStageState(sessionId);
+  state.files = [];
+  return emitMockStage(connectionId, sessionId);
+}
+
+function mockStageState(sessionId: string): { granted: boolean; files: AgentStagedFileInfo[] } {
+  let state = mockStagedChanges.get(sessionId);
+  if (!state) {
+    state = { granted: false, files: [] };
+    mockStagedChanges.set(sessionId, state);
+  }
+  return state;
+}
+
+function emitMockStage(connectionId: string, sessionId: string): AgentStagedChangesInfo {
+  const state = mockStageState(sessionId);
+  const changes: AgentStagedChangesInfo = {
+    sessionId,
+    granted: state.granted,
+    files: [...state.files],
+  };
+  for (const handler of agentStageHandlers) handler({ connectionId, changes });
+  return changes;
+}
+
+/** Browser-mock agent write: `Stage: <path>` prompts stage one file. */
+function mockStageWrite(info: AgentTurnInfo, text: string): string | null {
+  if (!text.startsWith("Stage:")) return null;
+  const state = mockStageState(info.sessionId);
+  if (!state.granted) {
+    return "Bundle write denied: writes require the Allow edits in this thread grant.";
+  }
+  const path = text.slice("Stage:".length).trim() || "proposals/draft.md";
+  const existing = state.files.find((file) => file.path === path);
+  if (existing) existing.bytes += 8;
+  else state.files.push({ path, bytes: 320, kind: "create" });
+  emitMockStage(info.connectionId, info.sessionId);
+  return `Browser ACP staged: ${path}`;
+}
+
 function mockAgentResponse(text: string): string {
   if (text.startsWith("Research this question across the active bundle")) {
     if (text.includes("Omit research sections")) {
@@ -697,11 +792,12 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       cost: { amount: 0.08, currency: "USD" },
     },
   });
+  const responseText = mockStageWrite(info, text) ?? mockAgentResponse(text);
   emitAgentTurn({
     ...info,
     update: {
       kind: "text",
-      text: mockAgentResponse(text),
+      text: responseText,
       messageId: `message-${info.turnId}`,
     },
   });
@@ -721,7 +817,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     mockSession.updatedAt = new Date().toISOString();
     mockSession.messages = [
       ...mockSession.messages,
-      { role: "agent", text: mockAgentResponse(text) },
+      { role: "agent", text: responseText },
     ];
   }
 }

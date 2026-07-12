@@ -58,6 +58,7 @@ const agentTurnHandlers = new Set<AgentTurnHandler>();
 type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
 const agentPermissionHandlers = new Set<AgentPermissionHandler>();
 const mockCancelledTurns = new Set<string>();
+const mockFailedOncePrompts = new Set<string>();
 const mockPermissionResponses = new Map<
   string,
   { turnId: string; optionIds: ReadonlySet<string>; resolve: (optionId: string | null) => void }
@@ -562,7 +563,9 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       return;
     }
   }
-  if (text.includes("Fail:")) {
+  const shouldFailOnce = text.includes("Fail once:") && !mockFailedOncePrompts.has(text);
+  if (shouldFailOnce) mockFailedOncePrompts.add(text);
+  if (text.includes("Fail:") || shouldFailOnce) {
     emitAgentTurn({
       ...info,
       update: {

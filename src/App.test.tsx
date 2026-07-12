@@ -485,7 +485,7 @@ describe("OKF Studio app", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Next message" })).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Message the agent"), "Fail: simulate a dropped connection");
+    await user.type(screen.getByLabelText("Message the agent"), "Fail once: simulate a dropped connection");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(
       await screen.findByText("The agent started a response before the connection failed."),
@@ -493,7 +493,19 @@ describe("OKF Studio app", () => {
     const failedStatus = await screen.findByText(
       "Turn failed. The mock agent connection closed.",
     );
-    expect(failedStatus.closest("article")).toHaveAttribute("role", "status");
+    const failedTurn = failedStatus.closest("article");
+    if (!failedTurn) throw new Error("The failed turn record was not rendered.");
+    expect(failedTurn).toHaveAttribute("role", "status");
+    promptSpy.mockRejectedValueOnce(new Error("The retry was not accepted."));
+    await user.click(within(failedTurn).getByRole("button", { name: "Retry turn" }));
+    expect(await within(failedTurn).findByRole("alert")).toHaveTextContent(
+      "Retry failed. The retry was not accepted.",
+    );
+    await user.click(within(failedTurn).getByRole("button", { name: "Retry turn" }));
+    expect(
+      await screen.findByText("Browser ACP received: Fail once: simulate a dropped connection"),
+    ).toBeInTheDocument();
+    expect(within(failedTurn).queryByRole("button", { name: "Retry turn" })).not.toBeInTheDocument();
 
     vi.spyOn(ipc, "pickAgentTextSources").mockRejectedValueOnce(
       new Error("The selected file is not UTF-8 text."),

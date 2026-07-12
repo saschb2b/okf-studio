@@ -58,6 +58,7 @@ interface ConversationMessage {
   role: "user" | "agent" | "status";
   text: string;
   tone?: "neutral" | "warning" | "error";
+  turnId?: string;
 }
 
 interface ConversationPlan {
@@ -94,7 +95,8 @@ interface PromptDraft {
 }
 interface PromptSubmission {
   draft: PromptDraft;
-  source: "composer" | "queue";
+  source: "composer" | "queue" | "retry";
+  retryTurnId?: string;
 }
 type QueuedPrompt = PromptDraft & { id: string };
 type ThreadTitle =
@@ -300,6 +302,13 @@ export function AgentConversation({
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
   const [history, setHistory] = useState<HistoryState>({ status: "closed" });
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
+  const [retryableTurnIds, setRetryableTurnIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [retryingTurnId, setRetryingTurnId] = useState<string | null>(null);
+  const [retryErrors, setRetryErrors] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
   >([]);
@@ -310,6 +319,8 @@ export function AgentConversation({
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const completedTurnsRef = useRef(new Set<string>());
+  const failedTurnsRef = useRef(new Set<string>());
+  const acceptedDraftsRef = useRef(new Map<string, PromptDraft>());
   const messagesRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
@@ -321,7 +332,7 @@ export function AgentConversation({
   }, [messages, pendingPermissions]);
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
-    async (_previous, { draft, source }) => {
+    async (_previous, { draft, source, retryTurnId }) => {
       const { text, concepts, sources: draftSources } = draft;
       if (!text) return { status: "error", message: "Enter a message." };
       if (!bundleRoot) return { status: "error", message: "Open an OKF bundle first." };
@@ -356,6 +367,23 @@ export function AgentConversation({
           contextPaths,
           sources,
         );
+        acceptedDraftsRef.current.set(turn.turnId, draft);
+        if (failedTurnsRef.current.delete(turn.turnId)) {
+          setRetryableTurnIds((current) => new Set(current).add(turn.turnId));
+        }
+        if (source === "retry" && retryTurnId) {
+          acceptedDraftsRef.current.delete(retryTurnId);
+          setRetryableTurnIds((current) => {
+            const next = new Set(current);
+            next.delete(retryTurnId);
+            return next;
+          });
+          setRetryErrors((current) => {
+            const next = new Map(current);
+            next.delete(retryTurnId);
+            return next;
+          });
+        }
         setMessages((current) => {
           const firstTurnItem = current.findIndex((item) =>
             item.id === `plan-${turn.turnId}` || item.id === `agent-${turn.turnId}` ||
@@ -384,7 +412,13 @@ export function AgentConversation({
           setAttachedSources(draftSources);
           setPromptText(text);
         }
+        if (source === "retry" && retryTurnId) {
+          setRetryErrors((current) => new Map(current).set(retryTurnId, errorMessage(error)));
+          return { status: "idle" };
+        }
         return { status: "error", message: errorMessage(error) };
+      } finally {
+        if (source === "retry") setRetryingTurnId(null);
       }
     },
     { status: "idle" },
@@ -418,6 +452,16 @@ export function AgentConversation({
 
   const applyTerminalTurnEvent = useEffectEvent((event: AgentTurnEvent) => {
     completedTurnsRef.current.add(event.turnId);
+    if (event.update.kind === "failed") {
+      failedTurnsRef.current.add(event.turnId);
+      if (acceptedDraftsRef.current.has(event.turnId)) {
+        failedTurnsRef.current.delete(event.turnId);
+        setRetryableTurnIds((current) => new Set(current).add(event.turnId));
+      }
+    } else {
+      acceptedDraftsRef.current.delete(event.turnId);
+      failedTurnsRef.current.delete(event.turnId);
+    }
     if (activeTurn?.turnId !== event.turnId) return;
     setActiveTurn(null);
     setIsCancelling(false);
@@ -624,6 +668,11 @@ export function AgentConversation({
       setAttachedSources([]);
       setPromptText("");
       setExportState({ status: "idle" });
+      acceptedDraftsRef.current.clear();
+      failedTurnsRef.current.clear();
+      setRetryableTurnIds(new Set());
+      setRetryErrors(new Map());
+      setRetryingTurnId(null);
       setHistory({ status: "closed" });
       requestAnimationFrame(() => promptRef.current?.focus());
     } catch (error: unknown) {
@@ -634,6 +683,18 @@ export function AgentConversation({
   }
 
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
+
+  function retryAcceptedTurn(turnId: string) {
+    const draft = acceptedDraftsRef.current.get(turnId);
+    if (!draft || activeTurn || isSubmitting || retryingTurnId) return;
+    setRetryErrors((current) => {
+      const next = new Map(current);
+      next.delete(turnId);
+      return next;
+    });
+    setRetryingTurnId(turnId);
+    startTransition(() => submitPrompt({ draft, source: "retry", retryTurnId: turnId }));
+  }
 
   return (
     <section className="agent-conversation" aria-labelledby="agent-conversation-title">
@@ -839,7 +900,22 @@ export function AgentConversation({
               </div>
             ) : (
               <>
-                {messages.map((item) => <ConversationItemView key={item.id} item={item} />)}
+                {messages.map((item) => {
+                  const turnId = item.role === "status" ? item.turnId : undefined;
+                  return (
+                    <ConversationItemView
+                      key={item.id}
+                      item={item}
+                      onRetry={
+                        turnId && retryableTurnIds.has(turnId)
+                          ? () => retryAcceptedTurn(turnId)
+                          : undefined
+                      }
+                      isRetrying={turnId === retryingTurnId}
+                      retryError={turnId ? retryErrors.get(turnId) ?? null : null}
+                    />
+                  );
+                })}
                 {pendingPermissions.map((permission) => (
                   <PermissionCard key={permission.requestId} permission={permission} />
                 ))}
@@ -1619,6 +1695,7 @@ function applyTurnEvent(
         id: `status-${event.turnId}`,
         role: "status",
         tone: "error",
+        turnId: event.turnId,
         text: `Turn failed. ${failureMessage}`,
       },
     ]);
@@ -1660,10 +1737,29 @@ function finalizeToolItems(
       : item);
 }
 
-function ConversationItemView({ item }: { item: ConversationItem }) {
+interface ConversationItemViewProps {
+  item: ConversationItem;
+  onRetry?: () => void;
+  isRetrying: boolean;
+  retryError: string | null;
+}
+
+function ConversationItemView({
+  item,
+  onRetry,
+  isRetrying,
+  retryError,
+}: ConversationItemViewProps) {
   if (item.role === "plan") return <PlanCard plan={item} />;
   if (item.role === "tool") return <ToolCard tool={item} />;
-  return <Message message={item} />;
+  return (
+    <Message
+      message={item}
+      onRetry={onRetry}
+      isRetrying={isRetrying}
+      retryError={retryError}
+    />
+  );
 }
 
 function ToolCard({ tool }: { tool: ConversationTool }) {
@@ -1772,7 +1868,14 @@ function PlanCard({ plan }: { plan: ConversationPlan }) {
   );
 }
 
-function Message({ message }: { message: ConversationMessage }) {
+interface MessageProps {
+  message: ConversationMessage;
+  onRetry?: () => void;
+  isRetrying: boolean;
+  retryError: string | null;
+}
+
+function Message({ message, onRetry, isRetrying, retryError }: MessageProps) {
   const renderedAgentText = message.role === "agent"
     ? { __html: renderMarkdown(message.text) }
     : null;
@@ -1801,6 +1904,24 @@ function Message({ message }: { message: ConversationMessage }) {
           />
         ) : (
           <p>{message.text}</p>
+        )}
+        {onRetry && (
+          <div className="agent-message__actions">
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={isRetrying}
+              onClick={onRetry}
+            >
+              <RotateCcw size={14} aria-hidden="true" />
+              {isRetrying ? "Retrying..." : "Retry turn"}
+            </button>
+          </div>
+        )}
+        {retryError && (
+          <p className="agent-message__retry-error" role="alert">
+            Retry failed. {retryError}
+          </p>
         )}
       </div>
     </article>

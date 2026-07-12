@@ -414,6 +414,21 @@
   font-size: var(--fs-xs);
 }
 
+.agent-message__actions {
+  display: flex;
+  margin-top: var(--space-8);
+}
+
+.agent-message__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-message--status .agent-message__retry-error {
+  color: var(--error);
+}
+
 .agent-message--warning .agent-message__icon {
   color: var(--warn);
 }

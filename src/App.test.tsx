@@ -27,6 +27,10 @@ async function openFolder(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("button", { name: /switch bundle/i });
 }
 
+async function openAttachmentMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Add context or sources" }));
+}
+
 describe("OKF Studio app", () => {
   it("shows the first-run empty state", () => {
     renderApp();
@@ -110,6 +114,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
+    await openAttachmentMenu(user);
     expect(screen.getByRole("button", { name: "Add images" })).toBeDisabled();
     expect(screen.getByTitle("This agent does not accept image prompts.")).toBeInTheDocument();
 
@@ -200,24 +205,37 @@ describe("OKF Studio app", () => {
     );
     expect(promptSpy).not.toHaveBeenCalled();
     await user.clear(screen.getByLabelText("Message the agent"));
+    expect(screen.queryByRole("button", { name: "Add files" })).not.toBeInTheDocument();
+    await openAttachmentMenu(user);
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: "Attach context" })).toHaveFocus(),
+    );
     await user.click(screen.getByRole("button", { name: "Attach context" }));
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText("Search concepts to attach")).toHaveFocus(),
+    );
     await user.click(screen.getByRole("button", { name: "Add Overview to context" }));
     expect(screen.getByRole("button", { name: "Remove Overview from context" })).toBeInTheDocument();
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Attach context" }));
     expect(screen.queryByRole("button", { name: "Add Overview to context" })).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Search concepts to attach"), "Graph View");
     await user.click(screen.getByRole("button", { name: "Add Graph View to context" }));
     await user.click(screen.getByRole("button", { name: "Remove Graph View from context" }));
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Attach context" }));
     await user.type(screen.getByLabelText("Search concepts to attach"), "Graph View");
     await user.click(screen.getByRole("button", { name: "Add Graph View to context" }));
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Attach issue" }));
     await user.click(screen.getByRole("button", { name: /Attach warning: features\/concept-reader/ }));
     expect(
       screen.getByRole("button", { name: "Remove Warning: features/concept-reader source" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Issues attached" })).toBeDisabled();
+    await openAttachmentMenu(user);
+    expect(screen.getByRole("button", { name: "Attach issue" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Add source" }));
+    await vi.waitFor(() => expect(screen.getByLabelText("Title")).toHaveFocus());
     await user.type(screen.getByLabelText("Title"), "Interview notes");
     await user.type(
       screen.getByLabelText("Content"),
@@ -225,6 +243,7 @@ describe("OKF Studio app", () => {
     );
     await user.click(screen.getByRole("button", { name: "Attach source" }));
     expect(screen.getByRole("button", { name: "Remove Interview notes source" })).toBeInTheDocument();
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Add files" }));
     expect(
       await screen.findByRole("button", { name: "Remove research-report.pdf source" }),
@@ -234,6 +253,7 @@ describe("OKF Studio app", () => {
         "research-report.pdf: 1 of 3 pages had no extractable text. OCR was not used.",
       ),
     ).toBeInTheDocument();
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Add folder" }));
     expect(
       await screen.findByRole("button", { name: "Remove config/settings.json source" }),
@@ -241,6 +261,7 @@ describe("OKF Studio app", () => {
     expect(
       screen.getByRole("button", { name: "Remove data/findings.csv source" }),
     ).toBeInTheDocument();
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Add images" }));
     expect(
       await screen.findByRole("button", { name: "Remove architecture.png source" }),
@@ -248,8 +269,10 @@ describe("OKF Studio app", () => {
     vi.spyOn(ipc, "fetchAgentSourceUrl").mockRejectedValueOnce(
       new Error("The URL could not be fetched securely."),
     );
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Add source" }));
     await user.click(screen.getByRole("button", { name: "Fetch URL" }));
+    await vi.waitFor(() => expect(screen.getByLabelText("HTTPS URL")).toHaveFocus());
     await user.type(screen.getByLabelText("HTTPS URL"), "https://example.com/research.html");
     await user.click(screen.getByRole("button", { name: "Fetch and attach" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -361,7 +384,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Exported bundle-research-thread.md",
     );
-    expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add context or sources" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Remove Warning: features/concept-reader source" }),
@@ -450,6 +473,7 @@ describe("OKF Studio app", () => {
     vi.spyOn(ipc, "pickAgentTextSources").mockRejectedValueOnce(
       new Error("The selected file is not UTF-8 text."),
     );
+    await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Add files" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "The selected file is not UTF-8 text.",

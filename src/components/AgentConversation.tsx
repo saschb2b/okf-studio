@@ -1,4 +1,4 @@
-import { Bot, CircleAlert, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Pencil, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
+import { Bot, ChevronLeft, CircleAlert, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
@@ -227,8 +227,6 @@ export function AgentConversation({
   const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
-  const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
-  const [contextQuery, setContextQuery] = useState("");
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const completedTurnsRef = useRef(new Set<string>());
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -652,172 +650,63 @@ export function AgentConversation({
                 </div>
               </section>
             )}
-            <div className="agent-composer__context">
-              {attachedConcepts.map((concept) => (
-                <span key={concept.id} className="agent-context-chip">
-                  <FileText size={14} aria-hidden="true" />
-                  <span title={concept.title}>{concept.title}</span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${concept.title} from context`}
-                    disabled={isSubmitting || queuedPrompt !== null}
-                    onClick={() =>
-                      setAttachedConcepts((current) =>
-                        current.filter((candidate) => candidate.id !== concept.id),
-                      )
-                    }
-                  >
-                    <X size={14} aria-hidden="true" />
-                  </button>
-                </span>
-              ))}
-              {attachedSources.map((source) => (
-                <span key={source.id} className="agent-context-chip">
-                  {source.warning || source.kind === "issue" ? (
-                    <TriangleAlert
-                      className={
-                        source.issueLevel === "error"
-                          ? "agent-context-chip__error-icon"
-                          : "agent-context-chip__warning-icon"
-                      }
-                      size={14}
-                      aria-hidden="true"
-                    />
-                  ) : source.imageData ? (
-                    <ImageIcon size={14} aria-hidden="true" />
-                  ) : (
+            {attachedConcepts.length + attachedSources.length > 0 && (
+              <div className="agent-composer__context">
+                {attachedConcepts.map((concept) => (
+                  <span key={concept.id} className="agent-context-chip">
                     <FileText size={14} aria-hidden="true" />
-                  )}
-                  <span title={sourceTooltip(source)}>
-                    {source.title}
-                    {source.warning && <span className="sr-only"> Warning: {source.warning}</span>}
+                    <span title={concept.title}>{concept.title}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${concept.title} from context`}
+                      disabled={isSubmitting || queuedPrompt !== null}
+                      onClick={() =>
+                        setAttachedConcepts((current) =>
+                          current.filter((candidate) => candidate.id !== concept.id),
+                        )
+                      }
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
                   </span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${source.title} source`}
-                    disabled={isSubmitting || queuedPrompt !== null}
-                    onClick={() =>
-                      setAttachedSources((current) =>
-                        current.filter((candidate) => candidate.id !== source.id),
-                      )
-                    }
-                  >
-                    <X size={14} aria-hidden="true" />
-                  </button>
-                </span>
-              ))}
-              <div className="agent-composer__context-actions">
-                <ContextPicker
-                  concepts={concepts}
-                  activeConceptId={activeConcept?.id ?? null}
-                  attachedConcepts={attachedConcepts}
-                  isOpen={isContextPickerOpen}
-                  query={contextQuery}
-                  disabled={isSubmitting || queuedPrompt !== null}
-                  onOpenChange={(open) => {
-                    setIsContextPickerOpen(open);
-                    if (!open) setContextQuery("");
-                  }}
-                  onQueryChange={setContextQuery}
-                  onAttach={(concept) => {
-                    setAttachedConcepts((current) => [...current, concept]);
-                    setIsContextPickerOpen(false);
-                    setContextQuery("");
-                  }}
-                />
-                <ValidationIssuePicker
-                  issues={issues}
-                  attachedIssueKeys={attachedIssueKeys}
-                  sourceCount={attachedSources.length}
-                  disabled={isSubmitting || queuedPrompt !== null}
-                  onAttach={(issue, issueKey) =>
-                    setAttachedSources((current) => [
-                      ...current,
-                      {
-                        id: crypto.randomUUID(),
-                        kind: "issue",
-                        issueKey,
-                        issueLevel: issue.level,
-                        title: `${issue.level === "error" ? "Error" : "Warning"}: ${issue.conceptId ?? "bundle"}`,
-                        content: issue.message,
-                        origin: issue.conceptId ? `${issue.conceptId}.md` : "Bundle validation",
-                        mediaType: "text/plain",
-                      },
-                    ])
-                  }
-                />
-                <SourcePicker
-                  sourceCount={attachedSources.length}
-                  disabled={isSubmitting || queuedPrompt !== null}
-                  onAttach={(source) =>
-                    setAttachedSources((current) => [
-                      ...current,
-                      { id: crypto.randomUUID(), ...source },
-                    ])
-                  }
-                />
-                <button
-                  type="button"
-                  className="btn ghost agent-context-attach"
-                  disabled={
-                    isSubmitting ||
-                    queuedPrompt !== null ||
-                    sourcePicker !== null ||
-                    attachedSources.length >= 8
-                  }
-                  onClick={() => void attachLocalSources("files")}
-                >
-                  <FilePlus2 size={14} aria-hidden="true" />
-                  {sourcePicker === "files" ? "Selecting..." : "Add files"}
-                </button>
-                <button
-                  type="button"
-                  className="btn ghost agent-context-attach"
-                  disabled={
-                    isSubmitting ||
-                    queuedPrompt !== null ||
-                    sourcePicker !== null ||
-                    attachedSources.length >= 8
-                  }
-                  onClick={() => void attachLocalSources("folder")}
-                >
-                  <FolderPlus size={14} aria-hidden="true" />
-                  {sourcePicker === "folder" ? "Selecting..." : "Add folder"}
-                </button>
-                <button
-                  type="button"
-                  className="btn ghost agent-context-attach"
-                  title={
-                    connection.capabilities.promptImage
-                      ? undefined
-                      : "This agent does not accept image prompts."
-                  }
-                  disabled={
-                    !connection.capabilities.promptImage ||
-                    isSubmitting ||
-                    queuedPrompt !== null ||
-                    sourcePicker !== null ||
-                    attachedSources.length >= 8
-                  }
-                  onClick={() => void attachLocalSources("images")}
-                >
-                  <ImagePlus size={14} aria-hidden="true" />
-                  {sourcePicker === "images" ? "Selecting..." : "Add images"}
-                </button>
+                ))}
+                {attachedSources.map((source) => (
+                  <span key={source.id} className="agent-context-chip">
+                    {source.warning || source.kind === "issue" ? (
+                      <TriangleAlert
+                        className={
+                          source.issueLevel === "error"
+                            ? "agent-context-chip__error-icon"
+                            : "agent-context-chip__warning-icon"
+                        }
+                        size={14}
+                        aria-hidden="true"
+                      />
+                    ) : source.imageData ? (
+                      <ImageIcon size={14} aria-hidden="true" />
+                    ) : (
+                      <FileText size={14} aria-hidden="true" />
+                    )}
+                    <span title={sourceTooltip(source)}>
+                      {source.title}
+                      {source.warning && <span className="sr-only"> Warning: {source.warning}</span>}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${source.title} source`}
+                      disabled={isSubmitting || queuedPrompt !== null}
+                      onClick={() =>
+                        setAttachedSources((current) =>
+                          current.filter((candidate) => candidate.id !== source.id),
+                        )
+                      }
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
               </div>
-            </div>
-            <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
-            <textarea
-              ref={promptRef}
-              id="agent-prompt"
-              name="prompt"
-              rows={3}
-              maxLength={128 * 1024}
-              placeholder="Ask about this bundle..."
-              disabled={isSubmitting || queuedPrompt !== null}
-              value={promptText}
-              onChange={(event) => setPromptText(event.target.value)}
-            />
+            )}
             {composerState.status === "error" && (
               <div className="agent-composer__error-row">
                 <p className="agent-composer__error" role="alert">{composerState.message}</p>
@@ -835,29 +724,81 @@ export function AgentConversation({
             {sourcePickerError && (
               <p className="agent-composer__error" role="alert">{sourcePickerError}</p>
             )}
-            <div className="agent-composer__actions">
-              <span>{composerStatus}</span>
-              {activeTurn ? (
-                <div className="agent-composer__turn-actions">
-                  <button
-                    type="submit"
-                    className="btn primary"
-                    disabled={isSubmitting || queuedPrompt !== null || promptText.trim().length === 0}
-                  >
-                    <Send size={14} aria-hidden="true" />
-                    {queuedPrompt ? "Queued" : "Queue"}
-                  </button>
-                  <button type="button" className="btn" disabled={isCancelling} onClick={() => void stopTurn()}>
-                    <Square size={14} aria-hidden="true" />
-                    {isCancelling ? "Stopping..." : "Stop"}
-                  </button>
+            <div className="agent-composer__input-shell">
+              <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
+              <textarea
+                ref={promptRef}
+                id="agent-prompt"
+                name="prompt"
+                rows={3}
+                maxLength={128 * 1024}
+                placeholder="Ask about this bundle..."
+                disabled={isSubmitting || queuedPrompt !== null}
+                value={promptText}
+                onChange={(event) => setPromptText(event.target.value)}
+              />
+              <div className="agent-composer__actions">
+                <div className="agent-composer__leading-actions">
+                  <AttachmentPicker
+                    concepts={concepts}
+                    activeConceptId={activeConcept?.id ?? null}
+                    attachedConcepts={attachedConcepts}
+                    issues={issues}
+                    attachedIssueKeys={attachedIssueKeys}
+                    sourceCount={attachedSources.length}
+                    disabled={isSubmitting || queuedPrompt !== null}
+                    imageSupported={connection.capabilities.promptImage}
+                    nativePicker={sourcePicker}
+                    onConceptAttach={(concept) =>
+                      setAttachedConcepts((current) => [...current, concept])
+                    }
+                    onIssueAttach={(issue, issueKey) =>
+                      setAttachedSources((current) => [
+                        ...current,
+                        {
+                          id: crypto.randomUUID(),
+                          kind: "issue",
+                          issueKey,
+                          issueLevel: issue.level,
+                          title: `${issue.level === "error" ? "Error" : "Warning"}: ${issue.conceptId ?? "bundle"}`,
+                          content: issue.message,
+                          origin: issue.conceptId ? `${issue.conceptId}.md` : "Bundle validation",
+                          mediaType: "text/plain",
+                        },
+                      ])
+                    }
+                    onSourceAttach={(source) =>
+                      setAttachedSources((current) => [
+                        ...current,
+                        { id: crypto.randomUUID(), ...source },
+                      ])
+                    }
+                    onNativePick={(kind) => void attachLocalSources(kind)}
+                  />
+                  <span>{composerStatus}</span>
                 </div>
-              ) : (
-                <button type="submit" className="btn primary" disabled={isSubmitting}>
-                  <Send size={16} aria-hidden="true" />
-                  {isSubmitting ? "Sending..." : "Send"}
-                </button>
-              )}
+                {activeTurn ? (
+                  <div className="agent-composer__turn-actions">
+                    <button
+                      type="submit"
+                      className="btn primary"
+                      disabled={isSubmitting || queuedPrompt !== null || promptText.trim().length === 0}
+                    >
+                      <Send size={14} aria-hidden="true" />
+                      {queuedPrompt ? "Queued" : "Queue"}
+                    </button>
+                    <button type="button" className="btn" disabled={isCancelling} onClick={() => void stopTurn()}>
+                      <Square size={14} aria-hidden="true" />
+                      {isCancelling ? "Stopping..." : "Stop"}
+                    </button>
+                  </div>
+                ) : (
+                  <button type="submit" className="btn primary" disabled={isSubmitting}>
+                    <Send size={16} aria-hidden="true" />
+                    {isSubmitting ? "Sending..." : "Send"}
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </>
@@ -866,116 +807,47 @@ export function AgentConversation({
   );
 }
 
-interface SourcePickerProps {
-  sourceCount: number;
-  disabled: boolean;
-  onAttach: (source: AgentSourceInput) => void;
-}
-
-interface ValidationIssuePickerProps {
-  issues: readonly Issue[];
-  attachedIssueKeys: ReadonlySet<string>;
-  sourceCount: number;
-  disabled: boolean;
-  onAttach: (issue: Issue, issueKey: string) => void;
-}
-
 function validationIssueKey(issue: Issue): string {
   return JSON.stringify([issue.level, issue.conceptId, issue.message]);
 }
 
-function ValidationIssuePicker({
+type AttachmentView = "menu" | "concepts" | "issues" | "source";
+type NativeSourcePicker = "files" | "folder" | "images";
+
+interface AttachmentPickerProps {
+  concepts: readonly { id: string; title: string; type: string }[];
+  activeConceptId: string | null;
+  attachedConcepts: readonly { id: string; title: string; type: string }[];
+  issues: readonly Issue[];
+  attachedIssueKeys: ReadonlySet<string>;
+  sourceCount: number;
+  disabled: boolean;
+  imageSupported: boolean;
+  nativePicker: NativeSourcePicker | null;
+  onConceptAttach: (concept: { id: string; title: string; type: string }) => void;
+  onIssueAttach: (issue: Issue, issueKey: string) => void;
+  onSourceAttach: (source: AgentSourceInput) => void;
+  onNativePick: (kind: NativeSourcePicker) => void;
+}
+
+function AttachmentPicker({
+  concepts,
+  activeConceptId,
+  attachedConcepts,
   issues,
   attachedIssueKeys,
   sourceCount,
   disabled,
-  onAttach,
-}: ValidationIssuePickerProps) {
+  imageSupported,
+  nativePicker,
+  onConceptAttach,
+  onIssueAttach,
+  onSourceAttach,
+  onNativePick,
+}: AttachmentPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const availableIssues = issues.filter(
-    (issue) => !attachedIssueKeys.has(validationIssueKey(issue)),
-  );
-  const isAtLimit = sourceCount >= 8;
-  let label = "Attach issue";
-  let explanation: string | undefined;
-  if (issues.length === 0) {
-    label = "No validation issues";
-    explanation = "This bundle has no validation issues.";
-  } else if (availableIssues.length === 0) {
-    label = "Issues attached";
-    explanation = "All validation issues are already attached.";
-  } else if (isAtLimit) {
-    label = "Source limit reached";
-  }
-
-  return (
-    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
-      <Popover.Trigger
-        render={
-          <button
-            type="button"
-            className="btn ghost agent-context-attach"
-            title={explanation}
-            disabled={disabled || isAtLimit || availableIssues.length === 0}
-          >
-            <TriangleAlert size={14} aria-hidden="true" />
-            {label}
-          </button>
-        }
-      />
-      <Popover.Portal>
-        <Popover.Positioner
-          className="ui-popover-positioner"
-          side="top"
-          align="start"
-          sideOffset={6}
-        >
-          <Popover.Popup
-            className="ui-popover agent-context-picker agent-issue-picker"
-            aria-label="Attach validation issue"
-          >
-            <div className="agent-context-picker__results">
-              {availableIssues.map((issue) => {
-                const key = validationIssueKey(issue);
-                const severity = issue.level === "error" ? "Error" : "Warning";
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    title={issue.message}
-                    aria-label={`Attach ${severity.toLowerCase()}: ${issue.message}`}
-                    onClick={() => {
-                      onAttach(issue, key);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <TriangleAlert
-                      className={
-                        issue.level === "error"
-                          ? "agent-issue-picker__error-icon"
-                          : "agent-context-chip__warning-icon"
-                      }
-                      size={14}
-                      aria-hidden="true"
-                    />
-                    <span>
-                      <strong>{severity}</strong>
-                      <small>{issue.message}</small>
-                    </span>
-                    {issue.conceptId && <em>{issue.conceptId}</em>}
-                  </button>
-                );
-              })}
-            </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [view, setView] = useState<AttachmentView>("menu");
+  const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"paste" | "url">("paste");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -983,13 +855,61 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
   const [urlError, setUrlError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const fetchRequestRef = useRef(0);
+  const menuFirstRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const isAtLimit = sourceCount >= 8;
   const canAttach = title.trim().length > 0 && content.trim().length > 0;
   const canFetch = url.trim().startsWith("https://") && !isFetching;
 
+  useEffect(() => {
+    if (!isOpen) return;
+    let focusFrame = 0;
+    const renderFrame = requestAnimationFrame(() => {
+      focusFrame = requestAnimationFrame(() => {
+        if (view === "menu") {
+          menuFirstRef.current?.focus();
+          return;
+        }
+        popupRef.current
+          ?.querySelector<HTMLElement>("[data-attachment-initial-focus]")
+          ?.focus();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(renderFrame);
+      cancelAnimationFrame(focusFrame);
+    };
+  }, [isOpen, mode, view]);
+
+  const attachedIds = new Set(attachedConcepts.map((concept) => concept.id));
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const matchingConcepts = concepts
+    .filter((concept) => !attachedIds.has(concept.id))
+    .filter((concept) =>
+      normalizedQuery.length === 0
+        ? true
+        : `${concept.title} ${concept.id} ${concept.type}`
+            .toLocaleLowerCase()
+            .includes(normalizedQuery),
+    )
+    .sort((left, right) => {
+      if (left.id === activeConceptId) return -1;
+      if (right.id === activeConceptId) return 1;
+      return left.title.localeCompare(right.title);
+    });
+  const availableIssues = issues.filter(
+    (issue) => !attachedIssueKeys.has(validationIssueKey(issue)),
+  );
+  let issueExplanation = "Attach a validation finding to the next message.";
+  if (issues.length === 0) issueExplanation = "This bundle has no validation issues.";
+  else if (availableIssues.length === 0) issueExplanation = "All validation issues are attached.";
+  else if (isAtLimit) issueExplanation = "The source limit has been reached.";
+
   function close() {
     fetchRequestRef.current += 1;
     setIsOpen(false);
+    setView("menu");
+    setQuery("");
     setMode("paste");
     setTitle("");
     setContent("");
@@ -998,9 +918,13 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
     setIsFetching(false);
   }
 
+  function openView(nextView: AttachmentView) {
+    setView(nextView);
+  }
+
   function attach() {
     if (!canAttach) return;
-    onAttach({ title: title.trim(), content });
+    onSourceAttach({ title: title.trim(), content });
     close();
   }
 
@@ -1012,7 +936,7 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
     try {
       const source = await fetchAgentSourceUrl(url.trim());
       if (fetchRequestRef.current !== requestId) return;
-      onAttach(source);
+      onSourceAttach(source);
       close();
     } catch (error) {
       if (fetchRequestRef.current !== requestId) return;
@@ -1020,6 +944,15 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
       setIsFetching(false);
     }
   }
+
+  function pickNative(kind: NativeSourcePicker) {
+    close();
+    onNativePick(kind);
+  }
+
+  const popupClass = view === "source"
+    ? "ui-popover agent-attachment-picker agent-source-picker"
+    : "ui-popover agent-attachment-picker";
 
   return (
     <Popover.Root
@@ -1033,11 +966,12 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
         render={
           <button
             type="button"
-            className="btn ghost agent-context-attach"
-            disabled={disabled || isAtLimit}
+            className="btn ghost icon agent-attachment-trigger"
+            aria-label="Add context or sources"
+            title="Add context or sources"
+            disabled={disabled || nativePicker !== null}
           >
-            <FileText size={14} aria-hidden="true" />
-            {isAtLimit ? "Source limit reached" : "Add source"}
+            <Plus size={17} aria-hidden="true" />
           </button>
         }
       />
@@ -1048,12 +982,148 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
           align="start"
           sideOffset={6}
         >
-          <Popover.Popup className="ui-popover agent-source-picker" aria-label="Add text source">
-            <div>
-              <h3>Add text source</h3>
-              <p>Paste text or fetch a public HTTPS page for your next message.</p>
-            </div>
-            <div className="agent-source-picker__modes" aria-label="Source input method">
+          <Popover.Popup
+            ref={popupRef}
+            className={popupClass}
+            aria-label="Add context or sources"
+            initialFocus={menuFirstRef}
+          >
+            {view === "menu" && (
+              <div className="agent-attachment-picker__menu">
+                <button
+                  ref={menuFirstRef}
+                  type="button"
+                  aria-label="Attach context"
+                  disabled={attachedConcepts.length >= 8}
+                  onClick={() => openView("concepts")}
+                >
+                  <Paperclip size={16} aria-hidden="true" />
+                  <span><strong>Bundle concepts</strong><small>Attach concepts from the active bundle</small></span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Attach issue"
+                  title={issueExplanation}
+                  disabled={isAtLimit || availableIssues.length === 0}
+                  onClick={() => openView("issues")}
+                >
+                  <TriangleAlert size={16} aria-hidden="true" />
+                  <span><strong>Validation issue</strong><small>{issueExplanation}</small></span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Add source"
+                  disabled={isAtLimit}
+                  onClick={() => openView("source")}
+                >
+                  <FileText size={16} aria-hidden="true" />
+                  <span><strong>Text or URL</strong><small>Paste text or fetch a public HTTPS page</small></span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Add files"
+                  disabled={isAtLimit || nativePicker !== null}
+                  onClick={() => pickNative("files")}
+                >
+                  <FilePlus2 size={16} aria-hidden="true" />
+                  <span><strong>Files</strong><small>PDF, Markdown, text, HTML, CSV, or JSON</small></span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Add folder"
+                  disabled={isAtLimit || nativePicker !== null}
+                  onClick={() => pickNative("folder")}
+                >
+                  <FolderPlus size={16} aria-hidden="true" />
+                  <span><strong>Folder</strong><small>Discover supported files below one folder</small></span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Add images"
+                  title={imageSupported ? undefined : "This agent does not accept image prompts."}
+                  disabled={!imageSupported || isAtLimit || nativePicker !== null}
+                  onClick={() => pickNative("images")}
+                >
+                  <ImagePlus size={16} aria-hidden="true" />
+                  <span>
+                    <strong>Images</strong>
+                    <small>{imageSupported ? "PNG, JPEG, or WebP" : "This agent does not accept images"}</small>
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {view === "concepts" && (
+              <>
+                <AttachmentPickerHeader title="Bundle concepts" onBack={() => openView("menu")} />
+                <input
+                  data-attachment-initial-focus
+                  type="search"
+                  aria-label="Search concepts to attach"
+                  placeholder="Search concepts..."
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+                <div className="agent-context-picker__results">
+                  {matchingConcepts.length > 0 ? matchingConcepts.map((concept) => (
+                    <button
+                      key={concept.id}
+                      type="button"
+                      aria-label={`Add ${concept.title} to context`}
+                      onClick={() => {
+                        onConceptAttach(concept);
+                        close();
+                      }}
+                    >
+                      <FileText size={14} aria-hidden="true" />
+                      <span><strong>{concept.title}</strong><small>{concept.id}.md</small></span>
+                      {concept.id === activeConceptId && <em>Current</em>}
+                    </button>
+                  )) : <p>No matching concepts.</p>}
+                </div>
+              </>
+            )}
+
+            {view === "issues" && (
+              <>
+                <AttachmentPickerHeader title="Validation issues" onBack={() => openView("menu")} />
+                <div className="agent-context-picker__results">
+                  {availableIssues.map((issue, index) => {
+                    const key = validationIssueKey(issue);
+                    const severity = issue.level === "error" ? "Error" : "Warning";
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        data-attachment-initial-focus={index === 0 ? "" : undefined}
+                        title={issue.message}
+                        aria-label={`Attach ${severity.toLowerCase()}: ${issue.message}`}
+                        onClick={() => {
+                          onIssueAttach(issue, key);
+                          close();
+                        }}
+                      >
+                        <TriangleAlert
+                          className={issue.level === "error"
+                            ? "agent-issue-picker__error-icon"
+                            : "agent-context-chip__warning-icon"}
+                          size={14}
+                          aria-hidden="true"
+                        />
+                        <span><strong>{severity}</strong><small>{issue.message}</small></span>
+                        {issue.conceptId && <em>{issue.conceptId}</em>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {view === "source" && (
+              <>
+                <AttachmentPickerHeader title="Text or URL" onBack={() => openView("menu")} />
+                <p>Paste text or fetch a public HTTPS page for your next message.</p>
+                <div className="agent-source-picker__modes" aria-label="Source input method">
               <button
                 type="button"
                 className="btn ghost"
@@ -1075,14 +1145,13 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
               >
                 Fetch URL
               </button>
-            </div>
-            {mode === "paste" ? (
+                </div>
+                {mode === "paste" ? (
               <>
                 <label>
                   <span>Title</span>
                   <input
-                    // eslint-disable-next-line jsx-a11y/no-autofocus -- opening this explicit form should focus its first field
-                    autoFocus
+                    data-attachment-initial-focus
                     value={title}
                     maxLength={256}
                     onChange={(event) => setTitle(event.target.value)}
@@ -1102,8 +1171,7 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
               <label>
                 <span>HTTPS URL</span>
                 <input
-                  // eslint-disable-next-line jsx-a11y/no-autofocus -- switching to this explicit form should focus its field
-                  autoFocus
+                  data-attachment-initial-focus
                   type="url"
                   inputMode="url"
                   value={url}
@@ -1122,9 +1190,9 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
                   }}
                 />
               </label>
-            )}
-            {urlError && <p className="agent-source-picker__error" role="alert">{urlError}</p>}
-            <div className="agent-source-picker__actions">
+                )}
+                {urlError && <p className="agent-source-picker__error" role="alert">{urlError}</p>}
+                <div className="agent-source-picker__actions">
               <button type="button" className="btn ghost" onClick={close}>Cancel</button>
               {mode === "paste" ? (
                 <button type="button" className="btn primary" disabled={!canAttach} onClick={attach}>
@@ -1135,7 +1203,9 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
                   {isFetching ? "Fetching..." : "Fetch and attach"}
                 </button>
               )}
-            </div>
+                </div>
+              </>
+            )}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
@@ -1143,103 +1213,19 @@ function SourcePicker({ sourceCount, disabled, onAttach }: SourcePickerProps) {
   );
 }
 
-interface ContextPickerProps {
-  concepts: readonly { id: string; title: string; type: string }[];
-  activeConceptId: string | null;
-  attachedConcepts: readonly { id: string; title: string; type: string }[];
-  isOpen: boolean;
-  query: string;
-  disabled: boolean;
-  onOpenChange: (open: boolean) => void;
-  onQueryChange: (query: string) => void;
-  onAttach: (concept: { id: string; title: string; type: string }) => void;
-}
-
-function ContextPicker({
-  concepts,
-  activeConceptId,
-  attachedConcepts,
-  isOpen,
-  query,
-  disabled,
-  onOpenChange,
-  onQueryChange,
-  onAttach,
-}: ContextPickerProps) {
-  const attachedIds = new Set(attachedConcepts.map((concept) => concept.id));
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const matches = concepts
-    .filter((concept) => !attachedIds.has(concept.id))
-    .filter((concept) =>
-      normalizedQuery.length === 0
-        ? true
-        : `${concept.title} ${concept.id} ${concept.type}`
-            .toLocaleLowerCase()
-            .includes(normalizedQuery),
-    )
-    .sort((left, right) => {
-      if (left.id === activeConceptId) return -1;
-      if (right.id === activeConceptId) return 1;
-      return left.title.localeCompare(right.title);
-    });
-  const isAtLimit = attachedConcepts.length >= 8;
-
+function AttachmentPickerHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
-    <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
-      <Popover.Trigger
-        render={
-          <button
-            type="button"
-            className="btn ghost agent-context-attach"
-            disabled={disabled || isAtLimit}
-          >
-            <Paperclip size={14} aria-hidden="true" />
-            {isAtLimit ? "Context limit reached" : "Attach context"}
-          </button>
-        }
-      />
-      <Popover.Portal>
-        <Popover.Positioner
-          className="ui-popover-positioner"
-          side="top"
-          align="start"
-          sideOffset={6}
-        >
-          <Popover.Popup className="ui-popover agent-context-picker" aria-label="Attach concept context">
-            <input
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- opening this explicit picker should focus its search field
-              autoFocus
-              type="search"
-              aria-label="Search concepts to attach"
-              placeholder="Search concepts..."
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-            />
-            <div className="agent-context-picker__results">
-              {matches.length > 0 ? (
-                matches.map((concept) => (
-                  <button
-                    key={concept.id}
-                    type="button"
-                    onClick={() => onAttach(concept)}
-                    aria-label={`Add ${concept.title} to context`}
-                  >
-                    <FileText size={14} aria-hidden="true" />
-                    <span>
-                      <strong>{concept.title}</strong>
-                      <small>{concept.id}.md</small>
-                    </span>
-                    {concept.id === activeConceptId && <em>Current</em>}
-                  </button>
-                ))
-              ) : (
-                <p>No matching concepts.</p>
-              )}
-            </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
+    <div className="agent-attachment-picker__header">
+      <button
+        type="button"
+        className="btn ghost icon"
+        aria-label="Back to add menu"
+        onClick={onBack}
+      >
+        <ChevronLeft size={16} aria-hidden="true" />
+      </button>
+      <h3>{title}</h3>
+    </div>
   );
 }
 

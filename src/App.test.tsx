@@ -210,6 +210,13 @@ describe("OKF Studio app", () => {
         "research-report.pdf: 1 of 3 pages had no extractable text. OCR was not used.",
       ),
     ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add folder" }));
+    expect(
+      await screen.findByRole("button", { name: "Remove notes/brief.md source" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove data/findings.csv source" }),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -231,6 +238,18 @@ describe("OKF Studio app", () => {
           sourceDigest: "a".repeat(64),
           warning: "1 of 3 pages had no extractable text. OCR was not used.",
         },
+        {
+          title: "data/findings.csv",
+          content: "finding,status\nSchema drift,confirmed",
+          origin: "data/findings.csv",
+          mediaType: "text/csv",
+        },
+        {
+          title: "notes/brief.md",
+          content: "# Research brief\n\nInvestigate the reported change.",
+          origin: "notes/brief.md",
+          mediaType: "text/markdown",
+        },
       ],
     );
     expect(await screen.findByText("Summarize the **bundle**")).toBeInTheDocument();
@@ -246,6 +265,8 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove research-report.pdf source" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove notes/brief.md source" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove data/findings.csv source" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));

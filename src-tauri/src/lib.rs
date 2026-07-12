@@ -137,6 +137,14 @@ async fn pick_agent_text_sources(
 }
 
 #[tauri::command]
+async fn pick_agent_source_folder(
+    app: AppHandle,
+    limit: usize,
+) -> Result<Vec<agent_sources::AgentSourceInput>, String> {
+    agent_sources::pick_source_folder(&app, limit)
+}
+
+#[tauri::command]
 async fn cancel_agent_turn(
     state: State<'_, agent_protocol::AgentHostState>,
     connection_id: String,
@@ -341,6 +349,7 @@ pub fn run() {
             new_agent_session,
             prompt_agent,
             pick_agent_text_sources,
+            pick_agent_source_folder,
             cancel_agent_turn,
             respond_agent_permission,
             agent_install_preflight,

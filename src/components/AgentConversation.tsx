@@ -1,4 +1,4 @@
-import { Bot, FilePlus2, FileText, Paperclip, Send, ShieldQuestion, Square, TriangleAlert, User, X } from "lucide-react";
+import { Bot, FilePlus2, FileText, FolderPlus, Paperclip, Send, ShieldQuestion, Square, TriangleAlert, User, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -18,6 +18,7 @@ import {
   onAgentConnectionState,
   onAgentPermissionUpdate,
   onAgentTurnUpdate,
+  pickAgentSourceFolder,
   pickAgentTextSources,
   promptAgent,
   respondAgentPermission,
@@ -78,7 +79,7 @@ export function AgentConversation({
     (AgentSourceInput & { id: string })[]
   >([]);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
-  const [isPickingSources, setIsPickingSources] = useState(false);
+  const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | null>(null);
   const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
   const [contextQuery, setContextQuery] = useState("");
   const sessionRef = useRef<AgentSessionInfo | null>(null);
@@ -231,11 +232,14 @@ export function AgentConversation({
     }
   }
 
-  async function attachTextFiles() {
-    setIsPickingSources(true);
+  async function attachLocalSources(kind: "files" | "folder") {
+    setSourcePicker(kind);
     setSourcePickerError(null);
     try {
-      const sources = await pickAgentTextSources(8 - attachedSources.length);
+      const available = 8 - attachedSources.length;
+      const sources = await (kind === "files"
+        ? pickAgentTextSources(available)
+        : pickAgentSourceFolder(available));
       setAttachedSources((current) => [
         ...current,
         ...sources.slice(0, 8 - current.length).map((source) => ({
@@ -246,7 +250,7 @@ export function AgentConversation({
     } catch (error: unknown) {
       setSourcePickerError(errorMessage(error));
     } finally {
-      setIsPickingSources(false);
+      setSourcePicker(null);
     }
   }
 
@@ -386,48 +390,64 @@ export function AgentConversation({
                   </button>
                 </span>
               ))}
-              <ContextPicker
-                concepts={concepts}
-                activeConceptId={activeConcept?.id ?? null}
-                attachedConcepts={attachedConcepts}
-                isOpen={isContextPickerOpen}
-                query={contextQuery}
-                disabled={isSubmitting || activeTurn !== null}
-                onOpenChange={(open) => {
-                  setIsContextPickerOpen(open);
-                  if (!open) setContextQuery("");
-                }}
-                onQueryChange={setContextQuery}
-                onAttach={(concept) => {
-                  setAttachedConcepts((current) => [...current, concept]);
-                  setIsContextPickerOpen(false);
-                  setContextQuery("");
-                }}
-              />
-              <SourcePicker
-                sourceCount={attachedSources.length}
-                disabled={isSubmitting || activeTurn !== null}
-                onAttach={(source) =>
-                  setAttachedSources((current) => [
-                    ...current,
-                    { id: crypto.randomUUID(), ...source },
-                  ])
-                }
-              />
-              <button
-                type="button"
-                className="btn ghost agent-context-attach"
-                disabled={
-                  isSubmitting ||
-                  activeTurn !== null ||
-                  isPickingSources ||
-                  attachedSources.length >= 8
-                }
-                onClick={() => void attachTextFiles()}
-              >
-                <FilePlus2 size={14} aria-hidden="true" />
-                {isPickingSources ? "Selecting..." : "Add files"}
-              </button>
+              <div className="agent-composer__context-actions">
+                <ContextPicker
+                  concepts={concepts}
+                  activeConceptId={activeConcept?.id ?? null}
+                  attachedConcepts={attachedConcepts}
+                  isOpen={isContextPickerOpen}
+                  query={contextQuery}
+                  disabled={isSubmitting || activeTurn !== null}
+                  onOpenChange={(open) => {
+                    setIsContextPickerOpen(open);
+                    if (!open) setContextQuery("");
+                  }}
+                  onQueryChange={setContextQuery}
+                  onAttach={(concept) => {
+                    setAttachedConcepts((current) => [...current, concept]);
+                    setIsContextPickerOpen(false);
+                    setContextQuery("");
+                  }}
+                />
+                <SourcePicker
+                  sourceCount={attachedSources.length}
+                  disabled={isSubmitting || activeTurn !== null}
+                  onAttach={(source) =>
+                    setAttachedSources((current) => [
+                      ...current,
+                      { id: crypto.randomUUID(), ...source },
+                    ])
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn ghost agent-context-attach"
+                  disabled={
+                    isSubmitting ||
+                    activeTurn !== null ||
+                    sourcePicker !== null ||
+                    attachedSources.length >= 8
+                  }
+                  onClick={() => void attachLocalSources("files")}
+                >
+                  <FilePlus2 size={14} aria-hidden="true" />
+                  {sourcePicker === "files" ? "Selecting..." : "Add files"}
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost agent-context-attach"
+                  disabled={
+                    isSubmitting ||
+                    activeTurn !== null ||
+                    sourcePicker !== null ||
+                    attachedSources.length >= 8
+                  }
+                  onClick={() => void attachLocalSources("folder")}
+                >
+                  <FolderPlus size={14} aria-hidden="true" />
+                  {sourcePicker === "folder" ? "Selecting..." : "Add folder"}
+                </button>
+              </div>
             </div>
             <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
             <textarea

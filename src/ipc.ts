@@ -288,6 +288,28 @@ export async function pickAgentTextSources(limit: number): Promise<AgentSourceIn
   }].slice(0, Math.max(0, limit));
 }
 
+export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceInput[]> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSourceInput[]>("pick_agent_source_folder", { limit });
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  return [
+    {
+      title: "data/findings.csv",
+      content: "finding,status\nSchema drift,confirmed",
+      origin: "data/findings.csv",
+      mediaType: "text/csv",
+    },
+    {
+      title: "notes/brief.md",
+      content: "# Research brief\n\nInvestigate the reported change.",
+      origin: "notes/brief.md",
+      mediaType: "text/markdown",
+    },
+  ].slice(0, Math.max(0, limit));
+}
+
 export async function cancelAgentTurn(
   connectionId: string,
   sessionId: string,

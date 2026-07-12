@@ -147,7 +147,8 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Select local text and Markdown files through the native host, without exposing absolute paths.
 - [x] Preserve local HTML, CSV, and JSON as inert, media-typed UTF-8 source evidence.
 - [x] Extract bounded PDFs in an isolated helper with page provenance, original-file hashes, and partial-text warnings.
-- [ ] Accept images, folders, and URLs in the source tray.
+- [x] Discover supported sources from a bounded local folder without exposing its absolute path.
+- [ ] Accept images and URLs in the source tray.
 - [ ] Normalize structured formats locally and retain row/range provenance. Text sources already retain filename origins and content hashes.
 - [ ] Show the proposed concepts, types, links, and indexes before generation.
 - [ ] Generate into staging, validate, preview the graph, then choose a destination.

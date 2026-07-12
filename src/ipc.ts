@@ -17,7 +17,9 @@ import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
   AgentPermissionEvent,
+  AgentLoadedSessionInfo,
   AgentSessionInfo,
+  AgentSessionHistoryPage,
   AgentTurnEvent,
   AgentTurnInfo,
 } from "./agent/connection.ts";
@@ -122,13 +124,13 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
       : [],
     authenticated: !profile.name.includes("Auth"),
     capabilities: {
-      loadSession: false,
+      loadSession: true,
       promptImage: true,
       promptAudio: false,
       promptEmbeddedContext: false,
       mcpHttp: false,
       mcpSse: false,
-      sessionList: false,
+      sessionList: true,
       sessionResume: false,
       sessionClose: false,
     },
@@ -210,6 +212,67 @@ export async function newAgentSession(
     connectionId,
     sessionId: `session-${crypto.randomUUID()}`,
     bundleRoot,
+  };
+}
+
+export async function listAgentSessions(
+  connectionId: string,
+  bundleRoot: string,
+): Promise<AgentSessionHistoryPage> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSessionHistoryPage>("list_agent_sessions", { connectionId, bundleRoot });
+  }
+  const connection = activeAgentConnectionsById.get(connectionId);
+  if (!connection) throw new Error("Agent connection was not found.");
+  if (!connection.capabilities.sessionList) {
+    throw new Error("This agent did not advertise session history support.");
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  return {
+    sessions: [
+      {
+        sessionId: "mock-session-research",
+        title: "Trace bundle evidence",
+        updatedAt: "2026-07-11T18:24:00Z",
+      },
+      {
+        sessionId: "mock-session-validation",
+        title: "Resolve validation warnings",
+        updatedAt: "2026-07-10T09:12:00Z",
+      },
+    ],
+    hasMore: false,
+  };
+}
+
+export async function loadAgentSession(
+  connectionId: string,
+  bundleRoot: string,
+  sessionId: string,
+): Promise<AgentLoadedSessionInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentLoadedSessionInfo>("load_agent_session", {
+      connectionId,
+      bundleRoot,
+      sessionId,
+    });
+  }
+  const connection = activeAgentConnectionsById.get(connectionId);
+  if (!connection) throw new Error("Agent connection was not found.");
+  if (!connection.capabilities.loadSession) {
+    throw new Error("This agent did not advertise session restore support.");
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  return {
+    connectionId,
+    sessionId,
+    bundleRoot,
+    messages: [
+      { role: "user", text: "Trace the evidence behind the bundle's product principles." },
+      { role: "agent", text: "I traced the principles through the product overview and architecture concepts." },
+    ],
   };
 }
 

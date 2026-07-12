@@ -1,8 +1,9 @@
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthenticateRequest, CancelNotification, ClientCapabilities, ContentBlock,
     ContentChunk, EmbeddedResource, EmbeddedResourceResource, FileSystemCapabilities,
-    ImageContent, Implementation, InitializeRequest, InitializeResponse, McpServer, McpServerStdio,
-    NewSessionRequest, PermissionOptionKind, PlanEntryPriority, PlanEntryStatus, PromptRequest,
+    ImageContent, Implementation, InitializeRequest, InitializeResponse, ListSessionsRequest,
+    LoadSessionRequest, McpServer, McpServerStdio, NewSessionRequest, PermissionOptionKind,
+    PlanEntryPriority, PlanEntryStatus, PromptRequest,
     ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents, ToolCallStatus,
@@ -28,6 +29,7 @@ use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
+const SESSION_HISTORY_TIMEOUT: Duration = Duration::from_secs(30);
 const COMMAND_ACCEPT_TIMEOUT: Duration = Duration::from_secs(10);
 const AUTHENTICATE_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const PERMISSION_TIMEOUT: Duration = Duration::from_secs(5 * 60);
@@ -67,6 +69,10 @@ const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
 const MAX_AUTH_METHODS: usize = 16;
 const MAX_AUTH_FIELD_CHARS: usize = 512;
+const MAX_HISTORY_SESSIONS: usize = 50;
+const MAX_HISTORY_FIELD_CHARS: usize = 512;
+const MAX_HISTORY_MESSAGES: usize = 200;
+const MAX_HISTORY_TOTAL_CHARS: usize = 512 * 1024;
 const OKF_SKILL: &str = include_str!("../../.agents/skills/okf/SKILL.md");
 const OKF_SPEC: &str = include_str!("../../.agents/skills/okf/spec.md");
 const OKF_COMMANDS: &str = include_str!("../../.agents/skills/okf/commands.md");
@@ -104,6 +110,37 @@ pub struct AgentSessionInfo {
     connection_id: String,
     session_id: String,
     bundle_root: PathBuf,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSessionHistoryInfo {
+    session_id: String,
+    title: Option<String>,
+    updated_at: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSessionHistoryPage {
+    sessions: Vec<AgentSessionHistoryInfo>,
+    has_more: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentLoadedSessionInfo {
+    connection_id: String,
+    session_id: String,
+    bundle_root: PathBuf,
+    messages: Vec<AgentHistoryMessage>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentHistoryMessage {
+    role: &'static str,
+    text: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -279,6 +316,15 @@ enum AgentHostCommand {
     NewSession {
         bundle_root: PathBuf,
         response: tokio::sync::oneshot::Sender<Result<AgentSessionInfo, String>>,
+    },
+    ListSessions {
+        bundle_root: PathBuf,
+        response: tokio::sync::oneshot::Sender<Result<AgentSessionHistoryPage, String>>,
+    },
+    LoadSession {
+        bundle_root: PathBuf,
+        session_id: String,
+        response: tokio::sync::oneshot::Sender<Result<AgentLoadedSessionInfo, String>>,
     },
     Prompt {
         session_id: String,
@@ -470,6 +516,57 @@ pub async fn new_session(
         .await
         .map_err(|_| "Agent session creation timed out.".to_string())?
         .map_err(|_| "Agent connection ended before session creation.".to_string())?
+}
+
+pub async fn list_sessions(
+    state: &AgentHostState,
+    connection_id: &str,
+    bundle_root: String,
+) -> Result<AgentSessionHistoryPage, String> {
+    let bundle_root = tokio::task::spawn_blocking(move || canonical_bundle_root(&bundle_root))
+        .await
+        .map_err(|_| "Bundle root validation task failed.".to_string())??;
+    let commands = connection_commands(state, connection_id)?;
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::ListSessions {
+            bundle_root,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before listing sessions.".to_string())?;
+    tokio::time::timeout(SESSION_HISTORY_TIMEOUT, response_rx)
+        .await
+        .map_err(|_| "Agent session history timed out.".to_string())?
+        .map_err(|_| "Agent connection ended while listing sessions.".to_string())?
+}
+
+pub async fn load_session(
+    state: &AgentHostState,
+    connection_id: &str,
+    bundle_root: String,
+    session_id: String,
+) -> Result<AgentLoadedSessionInfo, String> {
+    if session_id.is_empty() || session_id.chars().count() > MAX_HISTORY_FIELD_CHARS {
+        return Err("Agent session ID must be non-empty and bounded.".to_string());
+    }
+    let bundle_root = tokio::task::spawn_blocking(move || canonical_bundle_root(&bundle_root))
+        .await
+        .map_err(|_| "Bundle root validation task failed.".to_string())??;
+    let commands = connection_commands(state, connection_id)?;
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::LoadSession {
+            bundle_root,
+            session_id,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before loading the session.".to_string())?;
+    tokio::time::timeout(SESSION_HISTORY_TIMEOUT, response_rx)
+        .await
+        .map_err(|_| "Agent session restore timed out.".to_string())?
+        .map_err(|_| "Agent connection ended while loading the session.".to_string())?
 }
 
 pub async fn authenticate(
@@ -748,9 +845,11 @@ async fn run_connection(
     } = runtime;
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let sessions = Arc::new(Mutex::new(HashMap::<String, PathBuf>::new()));
+    let history_replays = Arc::new(Mutex::new(HashMap::<String, Vec<AgentHistoryMessage>>::new()));
     let notification_turns = Arc::clone(&active_turns);
     let notification_sessions = Arc::clone(&sessions);
     let notification_events = Arc::clone(&turn_events);
+    let notification_replays = Arc::clone(&history_replays);
     let notification_connection_id = connection_id.clone();
     let request_turns = Arc::clone(&active_turns);
     let request_permissions = Arc::clone(&permissions);
@@ -762,6 +861,9 @@ async fn run_connection(
         .name("okf-studio")
         .on_receive_notification(
             async move |notification: SessionNotification, _connection| {
+                if collect_history_replay(&notification_replays, &notification) {
+                    return Ok(());
+                }
                 if let Some(event) = turn_event(
                     &notification_connection_id,
                     &notification_turns,
@@ -878,6 +980,8 @@ async fn run_connection(
                 .prompt_capabilities
                 .embedded_context;
             let supports_images = response.agent_capabilities.prompt_capabilities.image;
+            let supports_session_list = response.agent_capabilities.session_capabilities.list.is_some();
+            let supports_session_load = response.agent_capabilities.load_session;
             if let Some(sender) = take_sender(&handshake) {
                 sender
                     .send(Ok(connection_info(
@@ -893,6 +997,7 @@ async fn run_connection(
                     })?;
             }
             let attached_contexts = Arc::new(Mutex::new(HashSet::<String>::new()));
+            let mut loadable_sessions = HashMap::<String, PathBuf>::new();
             let mut turn_tasks = tokio::task::JoinSet::new();
             loop {
                 tokio::select! {
@@ -928,6 +1033,52 @@ async fn run_connection(
                                         .lock()
                                         .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
                                         .insert(info.session_id.clone(), info.bundle_root.clone());
+                                }
+                                let _ = response.send(result);
+                            }
+                            AgentHostCommand::ListSessions { bundle_root, response } => {
+                                let result = if !authenticated {
+                                    Err("Authenticate the agent before listing sessions.".to_string())
+                                } else if !supports_session_list {
+                                    Err("This agent did not advertise session history support.".to_string())
+                                } else {
+                                    list_bundle_sessions(&connection, &bundle_root).await
+                                };
+                                if let Ok(page) = &result {
+                                    loadable_sessions.retain(|_, root| root != &bundle_root);
+                                    for session in &page.sessions {
+                                        loadable_sessions.insert(session.session_id.clone(), bundle_root.clone());
+                                    }
+                                }
+                                let _ = response.send(result);
+                            }
+                            AgentHostCommand::LoadSession { bundle_root, session_id, response } => {
+                                let is_allowed = loadable_sessions
+                                    .get(&session_id)
+                                    .is_some_and(|root| root == &bundle_root);
+                                let result = if !authenticated {
+                                    Err("Authenticate the agent before loading a session.".to_string())
+                                } else if !supports_session_load {
+                                    Err("This agent did not advertise session restore support.".to_string())
+                                } else if !is_allowed {
+                                    Err("List this bundle's agent sessions before loading one.".to_string())
+                                } else {
+                                    load_bundle_session(
+                                        &connection,
+                                        &connection_id,
+                                        &history_replays,
+                                        bundle_root,
+                                        session_id,
+                                    ).await
+                                };
+                                if let Ok(info) = &result {
+                                    sessions
+                                        .lock()
+                                        .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
+                                        .insert(info.session_id.clone(), info.bundle_root.clone());
+                                    if let Ok(mut contexts) = attached_contexts.lock() {
+                                        contexts.insert(info.session_id.clone());
+                                    }
                                 }
                                 let _ = response.send(result);
                             }
@@ -1663,6 +1814,129 @@ async fn create_session(
     })
 }
 
+async fn list_bundle_sessions(
+    connection: &ConnectionTo<Agent>,
+    bundle_root: &std::path::Path,
+) -> Result<AgentSessionHistoryPage, String> {
+    let response = connection
+        .send_request(ListSessionsRequest::new().cwd(bundle_root))
+        .block_task()
+        .await
+        .map_err(|error| format!("Agent session history failed: {error}"))?;
+    let mut seen = HashSet::new();
+    let matching = response
+        .sessions
+        .into_iter()
+        .filter(|session| session.cwd == bundle_root)
+        .filter_map(|session| {
+            let session_id = session.session_id.to_string();
+            valid_history_session_id(&session_id).then(|| AgentSessionHistoryInfo {
+                session_id,
+                title: session.title.as_deref().and_then(optional_history_field),
+                updated_at: session.updated_at.as_deref().and_then(optional_history_field),
+            })
+        })
+        .filter(|session| seen.insert(session.session_id.clone()))
+        .collect::<Vec<_>>();
+    let has_more = response.next_cursor.is_some() || matching.len() > MAX_HISTORY_SESSIONS;
+    Ok(AgentSessionHistoryPage {
+        sessions: matching.into_iter().take(MAX_HISTORY_SESSIONS).collect(),
+        has_more,
+    })
+}
+
+async fn load_bundle_session(
+    connection: &ConnectionTo<Agent>,
+    connection_id: &str,
+    history_replays: &Mutex<HashMap<String, Vec<AgentHistoryMessage>>>,
+    bundle_root: PathBuf,
+    session_id: String,
+) -> Result<AgentLoadedSessionInfo, String> {
+    let request = LoadSessionRequest::new(session_id.clone(), &bundle_root)
+        .mcp_servers(vec![okf_mcp_server(&bundle_root)?]);
+    history_replays
+        .lock()
+        .map_err(|_| "Agent history replay state is unavailable.".to_string())?
+        .insert(session_id.clone(), Vec::new());
+    let result = connection
+        .send_request(request)
+        .block_task()
+        .await
+        .map_err(|error| format!("Agent session restore failed: {error}"));
+    let messages = history_replays
+        .lock()
+        .map_err(|_| "Agent history replay state is unavailable.".to_string())?
+        .remove(&session_id)
+        .unwrap_or_default();
+    result?;
+    Ok(AgentLoadedSessionInfo {
+        connection_id: connection_id.to_string(),
+        session_id,
+        bundle_root,
+        messages,
+    })
+}
+
+fn collect_history_replay(
+    history_replays: &Mutex<HashMap<String, Vec<AgentHistoryMessage>>>,
+    notification: &SessionNotification,
+) -> bool {
+    let session_id = notification.session_id.to_string();
+    let Ok(mut replays) = history_replays.lock() else {
+        return false;
+    };
+    let Some(messages) = replays.get_mut(&session_id) else {
+        return false;
+    };
+    let (role, text) = match &notification.update {
+        SessionUpdate::UserMessageChunk(ContentChunk {
+            content: ContentBlock::Text(text),
+            ..
+        }) => ("user", text.text.as_str()),
+        SessionUpdate::AgentMessageChunk(ContentChunk {
+            content: ContentBlock::Text(text),
+            ..
+        }) => ("agent", text.text.as_str()),
+        _ => return true,
+    };
+    let used = messages.iter().map(|message| message.text.chars().count()).sum::<usize>();
+    let remaining = MAX_HISTORY_TOTAL_CHARS.saturating_sub(used);
+    if remaining == 0 {
+        return true;
+    }
+    let text = text.chars().take(remaining).collect::<String>();
+    if text.is_empty() {
+        return true;
+    }
+    if let Some(message) = messages.last_mut().filter(|message| message.role == role) {
+        message.text.push_str(&text);
+    } else if messages.len() < MAX_HISTORY_MESSAGES {
+        messages.push(AgentHistoryMessage { role, text });
+    }
+    true
+}
+
+fn bounded_history_field(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| !character.is_control())
+        .take(MAX_HISTORY_FIELD_CHARS)
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn valid_history_session_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.chars().count() <= MAX_HISTORY_FIELD_CHARS
+        && !value.chars().any(char::is_control)
+}
+
+fn optional_history_field(value: &str) -> Option<String> {
+    let value = bounded_history_field(value);
+    (!value.is_empty()).then_some(value)
+}
+
 fn okf_mcp_server(bundle_root: &std::path::Path) -> Result<McpServer, String> {
     let executable = std::env::current_exe()
         .map_err(|_| "OKF Studio could not locate its MCP executable.".to_string())?;
@@ -1967,8 +2241,9 @@ mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
         AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, NewSessionResponse,
-        Cost, PermissionOption, Plan, PlanEntry, PromptCapabilities, PromptResponse, ToolCall,
-        ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
+        Cost, ListSessionsResponse, LoadSessionResponse, PermissionOption, Plan, PlanEntry,
+        PromptCapabilities, PromptResponse, SessionInfo, ToolCall, ToolCallStatus, ToolCallUpdate,
+        ToolCallUpdateFields, ToolKind, UsageUpdate,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -2128,6 +2403,186 @@ mod tests {
             invalid_cost,
             AgentTurnUpdate::Usage { cost: None, .. }
         ));
+    }
+
+    #[test]
+    fn collects_only_bounded_plain_text_history() {
+        let replays = Mutex::new(HashMap::from([(
+            "session-history".to_string(),
+            Vec::<AgentHistoryMessage>::new(),
+        )]));
+        assert!(collect_history_replay(
+            &replays,
+            &SessionNotification::new(
+                "session-history",
+                SessionUpdate::UserMessageChunk(ContentChunk::new(ContentBlock::Text(
+                    TextContent::new("Question"),
+                ))),
+            ),
+        ));
+        assert!(collect_history_replay(
+            &replays,
+            &SessionNotification::new(
+                "session-history",
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
+                    TextContent::new("Answer"),
+                ))),
+            ),
+        ));
+        assert!(collect_history_replay(
+            &replays,
+            &SessionNotification::new(
+                "session-history",
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
+                    TextContent::new(" continued"),
+                ))),
+            ),
+        ));
+        assert!(collect_history_replay(
+            &replays,
+            &SessionNotification::new(
+                "session-history",
+                SessionUpdate::ToolCall(ToolCall::new("secret", "Do not replay")),
+            ),
+        ));
+
+        let messages = replays.lock().expect("history state");
+        let messages = messages.get("session-history").expect("session replay");
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].role, "user");
+        assert_eq!(messages[0].text, "Question");
+        assert_eq!(messages[1].role, "agent");
+        assert_eq!(messages[1].text, "Answer continued");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn filters_agent_history_to_the_exact_bundle_root() {
+        let bundle_root = std::env::temp_dir().join(format!(
+            "okf-studio-history-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let outside_root = bundle_root.with_file_name("okf-studio-history-outside");
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+        std::fs::create_dir_all(&outside_root).expect("create outside root");
+        let canonical_root = bundle_root.canonicalize().expect("canonical bundle root");
+        let expected_root = canonical_root.clone();
+        let expected_outside_root = outside_root.clone();
+        let fake_agent = Agent.builder().on_receive_request(
+            move |request: ListSessionsRequest,
+                  responder: Responder<ListSessionsResponse>,
+                  _connection: ConnectionTo<Client>| {
+                let expected_root = expected_root.clone();
+                let expected_outside_root = expected_outside_root.clone();
+                async move {
+                    assert_eq!(request.cwd, Some(expected_root.clone()));
+                    responder.respond(ListSessionsResponse::new(vec![
+                        SessionInfo::new("inside", expected_root).title("Inside\u{0000} title"),
+                        SessionInfo::new("outside", expected_outside_root),
+                    ]))
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        );
+        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+
+        Client
+            .builder()
+            .name("okf-studio")
+            .connect_with(fake_agent, async move |connection: ConnectionTo<Agent>| {
+                let result = list_bundle_sessions(&connection, &canonical_root).await;
+                let _ = result_tx.send(result);
+                Ok(())
+            })
+            .await
+            .expect("client should finish");
+
+        let page = result_rx.await.expect("history result").expect("history page");
+        assert_eq!(page.sessions.len(), 1);
+        assert_eq!(page.sessions[0].session_id, "inside");
+        assert_eq!(page.sessions[0].title.as_deref(), Some("Inside title"));
+        assert!(!page.has_more);
+        std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
+        std::fs::remove_dir_all(outside_root).expect("remove outside root");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn loads_plain_text_replay_and_reattaches_the_scoped_mcp_server() {
+        let bundle_root = std::env::temp_dir().join(format!(
+            "okf-studio-history-load-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+        let canonical_root = bundle_root.canonicalize().expect("canonical bundle root");
+        let expected_root = canonical_root.clone();
+        let fake_agent = Agent.builder().on_receive_request(
+            move |request: LoadSessionRequest,
+                  responder: Responder<LoadSessionResponse>,
+                  connection: ConnectionTo<Client>| {
+                let expected_root = expected_root.clone();
+                async move {
+                    assert_eq!(request.cwd, expected_root);
+                    assert_eq!(request.session_id.to_string(), "history-session");
+                    let [McpServer::Stdio(server)] = request.mcp_servers.as_slice() else {
+                        panic!("loaded session should receive one stdio OKF tool server");
+                    };
+                    assert_eq!(server.name, "OKF Studio");
+                    connection
+                        .send_notification(SessionNotification::new(
+                            "history-session",
+                            SessionUpdate::UserMessageChunk(ContentChunk::new(
+                                ContentBlock::Text(TextContent::new("Previous question")),
+                            )),
+                        ))?;
+                    connection
+                        .send_notification(SessionNotification::new(
+                            "history-session",
+                            SessionUpdate::AgentMessageChunk(ContentChunk::new(
+                                ContentBlock::Text(TextContent::new("Previous answer")),
+                            )),
+                        ))?;
+                    responder.respond(LoadSessionResponse::new())
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        );
+        let replays = Arc::new(Mutex::new(HashMap::<String, Vec<AgentHistoryMessage>>::new()));
+        let notification_replays = Arc::clone(&replays);
+        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
+
+        Client
+            .builder()
+            .name("okf-studio")
+            .on_receive_notification(
+                async move |notification: SessionNotification, _connection| {
+                    collect_history_replay(&notification_replays, &notification);
+                    Ok(())
+                },
+                agent_client_protocol::on_receive_notification!(),
+            )
+            .connect_with(fake_agent, async move |connection: ConnectionTo<Agent>| {
+                let result = load_bundle_session(
+                    &connection,
+                    "connection-history",
+                    &replays,
+                    canonical_root,
+                    "history-session".to_string(),
+                )
+                .await;
+                let _ = result_tx.send(result);
+                Ok(())
+            })
+            .await
+            .expect("client should finish");
+
+        let loaded = result_rx.await.expect("load result").expect("loaded session");
+        assert_eq!(loaded.connection_id, "connection-history");
+        assert_eq!(loaded.session_id, "history-session");
+        assert_eq!(loaded.messages.len(), 2);
+        assert_eq!(loaded.messages[0].role, "user");
+        assert_eq!(loaded.messages[0].text, "Previous question");
+        assert_eq!(loaded.messages[1].role, "agent");
+        assert_eq!(loaded.messages[1].text, "Previous answer");
+        std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
     }
 
     #[tokio::test(flavor = "current_thread")]

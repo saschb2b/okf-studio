@@ -46,6 +46,93 @@
   gap: var(--space-4);
 }
 
+.agent-conversation__history-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-history {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  overflow: auto;
+}
+
+.agent-history > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.agent-history h3,
+.agent-history p {
+  margin: 0;
+}
+
+.agent-history h3 {
+  font-size: var(--fs-md);
+  line-height: var(--lh-tight);
+}
+
+.agent-history header p,
+.agent-history__limit,
+.agent-history__list span {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-history__list {
+  display: grid;
+  gap: var(--space-8);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.agent-history__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 56px;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-history__list li > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.agent-history__list strong,
+.agent-history__list span {
+  overflow-wrap: anywhere;
+}
+
+.agent-history__state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-history__state [role="alert"] {
+  color: var(--error);
+  overflow-wrap: anywhere;
+}
+
 .agent-thread-title {
   width: min(320px, calc(100vw - 2 * var(--space-16)));
   padding: var(--space-12);
@@ -1010,10 +1097,17 @@
   flex: none;
 }
 
-@media (max-width: 420px) {
+@container (max-width: 420px) {
   .agent-conversation__toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
     gap: var(--space-4);
     padding-inline: var(--space-8);
+  }
+
+  .agent-conversation__toolbar-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .agent-conversation__toolbar-actions .btn {

@@ -104,6 +104,31 @@ async fn new_agent_session(
 }
 
 #[tauri::command]
+async fn list_agent_sessions(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    bundle_root: String,
+) -> Result<agent_protocol::AgentSessionHistoryPage, String> {
+    agent_protocol::list_sessions(state.inner(), &connection_id, bundle_root).await
+}
+
+#[tauri::command]
+async fn load_agent_session(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    bundle_root: String,
+    session_id: String,
+) -> Result<agent_protocol::AgentLoadedSessionInfo, String> {
+    agent_protocol::load_session(
+        state.inner(),
+        &connection_id,
+        bundle_root,
+        session_id,
+    )
+    .await
+}
+
+#[tauri::command]
 async fn authenticate_agent(
     state: State<'_, agent_protocol::AgentHostState>,
     connection_id: String,
@@ -377,6 +402,8 @@ pub fn run() {
             disconnect_agent,
             authenticate_agent,
             new_agent_session,
+            list_agent_sessions,
+            load_agent_session,
             prompt_agent,
             pick_agent_text_sources,
             pick_agent_source_folder,

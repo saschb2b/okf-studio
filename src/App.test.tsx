@@ -509,6 +509,50 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
   }, 25_000);
 
+  it("lists and restores agent-owned sessions for the active bundle", async () => {
+    vi.spyOn(ipc, "listAgentSessions")
+      .mockRejectedValueOnce(new Error("History service unavailable"))
+      .mockResolvedValueOnce({ sessions: [], hasMore: false });
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "History Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\history.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
+    await screen.findByText(/Connected to History Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.click(screen.getByRole("button", { name: "Agent session history" }));
+    expect(await screen.findByRole("heading", { name: "Agent session history" })).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "History unavailable. History service unavailable",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("This agent has no sessions for the active bundle.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Refresh agent session history" }));
+    expect(await screen.findByText("Trace bundle evidence")).toBeInTheDocument();
+    expect(screen.getByText("Resolve validation warnings")).toBeInTheDocument();
+
+    const session = screen.getByText("Trace bundle evidence").closest("li");
+    if (!session) throw new Error("The session history row was not rendered.");
+    await user.click(within(session).getByRole("button", { name: "Restore" }));
+
+    expect(await screen.findByRole("heading", { name: "Trace bundle evidence" })).toBeInTheDocument();
+    expect(screen.getByText(/Trace the evidence behind/)).toBeInTheDocument();
+    expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Message the agent")).toBeEnabled();
+    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove History Harness" }));
+  });
+
   it("attaches an explicit reader selection as bounded source context", async () => {
     const user = userEvent.setup();
     const promptSpy = vi.spyOn(ipc, "promptAgent");

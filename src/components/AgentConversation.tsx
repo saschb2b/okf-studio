@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
+import { Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, History, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
@@ -12,6 +12,7 @@ import type {
   AgentPermissionEvent,
   AgentPermissionOptionInfo,
   AgentSessionInfo,
+  AgentSessionHistoryInfo,
   AgentTurnEvent,
   AgentTurnInfo,
 } from "../agent/connection.ts";
@@ -22,6 +23,8 @@ import {
   authenticateAgent,
   exportAgentTranscript,
   fetchAgentSourceUrl,
+  listAgentSessions,
+  loadAgentSession,
   newAgentSession,
   onAgentConnectionState,
   onAgentPermissionUpdate,
@@ -106,6 +109,11 @@ type AuthenticationState =
   | { status: "idle" }
   | { status: "authenticating"; methodId: string }
   | { status: "error"; methodId: string; message: string };
+type HistoryState =
+  | { status: "closed" }
+  | { status: "loading" }
+  | { status: "ready"; sessions: readonly AgentSessionHistoryInfo[]; hasMore: boolean }
+  | { status: "error"; message: string };
 type PendingPermission = AgentPermissionEvent & {
   update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
 };
@@ -170,6 +178,16 @@ function usageLabels(usage: AgentUsage): { visible: string; detail: string } {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function historyDateLabel(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function sourceTooltip(source: AttachedSource): string {
@@ -280,6 +298,8 @@ export function AgentConversation({
   const [usage, setUsage] = useState<AgentUsage | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
+  const [history, setHistory] = useState<HistoryState>({ status: "closed" });
+  const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
   >([]);
@@ -567,6 +587,54 @@ export function AgentConversation({
     }
   }
 
+  async function openHistory() {
+    if (!bundleRoot || activeTurn || isSubmitting) return;
+    setHistory({ status: "loading" });
+    try {
+      const page = await listAgentSessions(connection.connectionId, bundleRoot);
+      setHistory({ status: "ready", sessions: page.sessions, hasMore: page.hasMore });
+    } catch (error: unknown) {
+      setHistory({ status: "error", message: errorMessage(error) });
+    }
+  }
+
+  async function restoreSession(session: AgentSessionHistoryInfo) {
+    if (!bundleRoot || restoringSessionId) return;
+    setRestoringSessionId(session.sessionId);
+    try {
+      const loaded = await loadAgentSession(
+        connection.connectionId,
+        bundleRoot,
+        session.sessionId,
+      );
+      sessionRef.current = loaded;
+      setMessages(loaded.messages.map((message, index) => ({
+        id: `history-${session.sessionId}-${index}`,
+        role: message.role,
+        text: message.text,
+      })));
+      setThreadTitle({
+        source: "derived",
+        value: session.title ?? "Restored thread",
+      });
+      setPendingPermissions([]);
+      setUsage(null);
+      setQueuedPrompt(null);
+      setAttachedConcepts([]);
+      setAttachedSources([]);
+      setPromptText("");
+      setExportState({ status: "idle" });
+      setHistory({ status: "closed" });
+      requestAnimationFrame(() => promptRef.current?.focus());
+    } catch (error: unknown) {
+      setHistory({ status: "error", message: errorMessage(error) });
+    } finally {
+      setRestoringSessionId(null);
+    }
+  }
+
+  const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
+
   return (
     <section className="agent-conversation" aria-labelledby="agent-conversation-title">
       <header className="agent-conversation__toolbar">
@@ -591,6 +659,19 @@ export function AgentConversation({
           )}
         </div>
         <div className="agent-conversation__toolbar-actions">
+          {supportsHistory && bundleRoot && !requiresAuthentication && (
+            <button
+              type="button"
+              className="btn ghost agent-conversation__history-button"
+              aria-label="Agent session history"
+              title="Agent session history"
+              onClick={() => history.status === "closed" ? void openHistory() : setHistory({ status: "closed" })}
+              disabled={isSubmitting || activeTurn !== null || restoringSessionId !== null}
+            >
+              {history.status === "closed" ? <History aria-hidden="true" size={14} /> : <ChevronLeft aria-hidden="true" size={14} />}
+              {history.status === "closed" ? "History" : "Back"}
+            </button>
+          )}
           <button
             type="button"
             className="btn ghost agent-conversation__export"
@@ -663,7 +744,68 @@ export function AgentConversation({
         </div>
       )}
 
-      {bundleRoot && !requiresAuthentication && (
+      {bundleRoot && !requiresAuthentication && history.status !== "closed" && (
+        <section className="agent-history" aria-labelledby="agent-history-title">
+          <header>
+            <div>
+              <h3 id="agent-history-title">Agent session history</h3>
+              <p>Sessions reported by this agent for the active bundle.</p>
+            </div>
+            <button
+              type="button"
+              className="btn ghost icon"
+              aria-label="Refresh agent session history"
+              title="Refresh"
+              disabled={history.status === "loading" || restoringSessionId !== null}
+              onClick={() => void openHistory()}
+            >
+              <RotateCcw aria-hidden="true" size={14} />
+            </button>
+          </header>
+          {history.status === "loading" && <p role="status">Loading agent sessions...</p>}
+          {history.status === "error" && (
+            <div className="agent-history__state">
+              <p role="alert">History unavailable. {history.message}</p>
+              <button type="button" className="btn" onClick={() => void openHistory()}>Retry</button>
+            </div>
+          )}
+          {history.status === "ready" && history.sessions.length === 0 && (
+            <div className="agent-history__state">
+              <p>This agent has no sessions for the active bundle.</p>
+            </div>
+          )}
+          {history.status === "ready" && history.sessions.length > 0 && (
+            <>
+              <ul className="agent-history__list">
+                {history.sessions.map((session) => {
+                  const updatedAt = historyDateLabel(session.updatedAt);
+                  return (
+                    <li key={session.sessionId}>
+                      <div>
+                        <strong>{session.title ?? "Untitled session"}</strong>
+                        {updatedAt && <span>{updatedAt}</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={restoringSessionId !== null}
+                        onClick={() => void restoreSession(session)}
+                      >
+                        {restoringSessionId === session.sessionId ? "Restoring..." : "Restore"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {history.hasMore && (
+                <p className="agent-history__limit">Showing the first 50 matching sessions.</p>
+              )}
+            </>
+          )}
+        </section>
+      )}
+
+      {bundleRoot && !requiresAuthentication && history.status === "closed" && (
         <>
           <div ref={messagesRef} className="agent-conversation__messages" aria-live="polite">
             {messages.length === 0 && pendingPermissions.length === 0 ? (

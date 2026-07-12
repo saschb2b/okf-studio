@@ -18,6 +18,8 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `pick_agent_image_sources(limit)` | Open the native PNG, JPEG, and WebP picker; verify signatures and bounded bytes in Rust; and return image sources without absolute paths. |
 | `fetch_agent_source_url(url)` | Fetch one explicit public HTTPS text, Markdown, HTML, CSV, or JSON source through bounded Rust mediation; return its final URL, media type, content, and original-response digest. |
 | `export_agent_transcript(suggested_name, markdown)` | Open a native save dialog for the current in-memory Agent thread and write at most 2 MiB of Markdown. Cancellation returns no path; success returns only the saved filename. |
+| `list_agent_sessions(connection_id, bundle_root)` | Ask a capability-compatible ACP agent for sessions, retain at most 50 whose reported working directory exactly matches the canonical active bundle root, and return bounded titles and timestamps. |
+| `load_agent_session(connection_id, bundle_root, session_id)` | Load only a session ID returned by the filtered list on the same connection, reattach the scoped OKF MCP server, and return a bounded plain-text replay. |
 | `scan_bundles(folder)` | Run [bundle detection](bundle-detection.md); return the list of roots with confidence. |
 | `read_bundle(root)` | [Parse](okf-parsing.md) a root into a full [`Bundle`](data-model.md). |
 | `fetch_remote_bundle(source)` | Fetch a [remote bundle](../features/bundle-switcher.md) (a GitHub repo tarball or a direct archive URL) into a local cache dir and return its path; the frontend then scans it like any folder. Blocking I/O runs off the UI thread. |

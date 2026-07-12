@@ -38,6 +38,26 @@ export interface AgentSessionInfo {
   bundleRoot: string;
 }
 
+export interface AgentSessionHistoryInfo {
+  sessionId: string;
+  title: string | null;
+  updatedAt: string | null;
+}
+
+export interface AgentSessionHistoryPage {
+  sessions: readonly AgentSessionHistoryInfo[];
+  hasMore: boolean;
+}
+
+export interface AgentHistoryMessage {
+  role: "user" | "agent";
+  text: string;
+}
+
+export interface AgentLoadedSessionInfo extends AgentSessionInfo {
+  messages: readonly AgentHistoryMessage[];
+}
+
 export interface AgentTurnInfo {
   connectionId: string;
   sessionId: string;

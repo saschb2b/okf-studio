@@ -11,12 +11,14 @@ import type {
   AgentToolStatus,
   AgentPermissionEvent,
   AgentPermissionOptionInfo,
+  AgentLoadedSessionInfo,
   AgentSessionInfo,
   AgentSessionHistoryInfo,
   AgentTurnEvent,
   AgentTurnInfo,
 } from "../agent/connection.ts";
 import type { ReaderSelectionCapture } from "../agent/readerSelection.ts";
+import type { AgentThreadMetadata } from "../agent/threadMetadata.ts";
 import { deriveThreadTitle, transcriptFilename, transcriptMarkdown } from "../agent/thread.ts";
 import {
   cancelAgentTurn,
@@ -24,6 +26,7 @@ import {
   exportAgentTranscript,
   fetchAgentSourceUrl,
   listAgentSessions,
+  loadAgentThreadMetadata,
   loadAgentSession,
   newAgentSession,
   onAgentConnectionState,
@@ -33,7 +36,9 @@ import {
   pickAgentImageSources,
   pickAgentTextSources,
   promptAgent,
+  removeAgentThreadMetadata,
   respondAgentPermission,
+  saveAgentThreadMetadata,
 } from "../ipc.ts";
 import type { AgentSourceInput } from "../ipc.ts";
 import { renderMarkdown } from "../markdown.ts";
@@ -116,6 +121,10 @@ type HistoryState =
   | { status: "loading" }
   | { status: "ready"; sessions: readonly AgentSessionHistoryInfo[]; hasMore: boolean }
   | { status: "error"; message: string };
+type SavedThreadState =
+  | { status: "none" | "loading" }
+  | { status: "ready" | "resuming"; metadata: AgentThreadMetadata }
+  | { status: "error"; message: string; metadata?: AgentThreadMetadata };
 type PendingPermission = AgentPermissionEvent & {
   update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
 };
@@ -289,6 +298,7 @@ export function AgentConversation({
   onConnectionEnd,
   onOpenFolder,
 }: AgentConversationProps) {
+  const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
     source: "default",
     value: "New thread",
@@ -302,6 +312,8 @@ export function AgentConversation({
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
   const [history, setHistory] = useState<HistoryState>({ status: "closed" });
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
+  const [savedThread, setSavedThread] = useState<SavedThreadState>({ status: "none" });
+  const [threadMetadataError, setThreadMetadataError] = useState<string | null>(null);
   const [retryableTurnIds, setRetryableTurnIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -325,11 +337,49 @@ export function AgentConversation({
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   const queuedEditRef = useRef<HTMLButtonElement>(null);
+  const savedThreadActionRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const messagesElement = messagesRef.current;
-    if (messagesElement) messagesElement.scrollTop = messagesElement.scrollHeight;
-  }, [messages, pendingPermissions]);
+    if (!messagesElement) return;
+    messagesElement.scrollTop = messages.length > 0 || pendingPermissions.length > 0
+      ? messagesElement.scrollHeight
+      : 0;
+  }, [messages, pendingPermissions, savedThread.status]);
+
+  async function loadSavedThread() {
+    if (!bundleRoot || !supportsHistory) {
+      setSavedThread({ status: "none" });
+      return;
+    }
+    setSavedThread({ status: "loading" });
+    try {
+      const metadata = await loadAgentThreadMetadata(bundleRoot, connection.profileId);
+      setSavedThread(metadata ? { status: "ready", metadata } : { status: "none" });
+    } catch (error: unknown) {
+      setSavedThread({ status: "error", message: errorMessage(error) });
+    }
+  }
+
+  const loadSavedThreadEffect = useEffectEvent(loadSavedThread);
+
+  useEffect(() => {
+    void loadSavedThreadEffect();
+  }, [bundleRoot, connection.profileId, supportsHistory]);
+
+  function persistThreadMetadata(session: AgentSessionInfo, title: string) {
+    if (!supportsHistory) return;
+    setThreadMetadataError(null);
+    void saveAgentThreadMetadata({
+      bundleRoot: session.bundleRoot,
+      profileId: connection.profileId,
+      sessionId: session.sessionId,
+      title,
+    }).then(
+      () => setSavedThread({ status: "none" }),
+      (error: unknown) => setThreadMetadataError(errorMessage(error)),
+    );
+  }
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
     async (_previous, { draft, source, retryTurnId }) => {
@@ -395,9 +445,13 @@ export function AgentConversation({
             ...current.slice(firstTurnItem),
           ];
         });
+        const nextTitle = threadTitle.source === "default"
+          ? deriveThreadTitle(text, THREAD_STARTERS)
+          : threadTitle.value;
         setThreadTitle((current) => current.source === "default"
-          ? { source: "derived", value: deriveThreadTitle(text, THREAD_STARTERS) }
+          ? { source: "derived", value: nextTitle }
           : current);
+        persistThreadMetadata(session, nextTitle);
         setExportState({ status: "idle" });
         if (source === "composer") {
           setAttachedConcepts([]);
@@ -651,30 +705,7 @@ export function AgentConversation({
         bundleRoot,
         session.sessionId,
       );
-      sessionRef.current = loaded;
-      setMessages(loaded.messages.map((message, index) => ({
-        id: `history-${session.sessionId}-${index}`,
-        role: message.role,
-        text: message.text,
-      })));
-      setThreadTitle({
-        source: "derived",
-        value: session.title ?? "Restored thread",
-      });
-      setPendingPermissions([]);
-      setUsage(null);
-      setQueuedPrompt(null);
-      setAttachedConcepts([]);
-      setAttachedSources([]);
-      setPromptText("");
-      setExportState({ status: "idle" });
-      acceptedDraftsRef.current.clear();
-      failedTurnsRef.current.clear();
-      setRetryableTurnIds(new Set());
-      setRetryErrors(new Map());
-      setRetryingTurnId(null);
-      setHistory({ status: "closed" });
-      requestAnimationFrame(() => promptRef.current?.focus());
+      applyRestoredSession(loaded, session.sessionId, session.title ?? "Restored thread");
     } catch (error: unknown) {
       setHistory({ status: "error", message: errorMessage(error) });
     } finally {
@@ -682,7 +713,91 @@ export function AgentConversation({
     }
   }
 
-  const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
+  function applyRestoredSession(
+    loaded: AgentLoadedSessionInfo,
+    sessionId: string,
+    title: string,
+  ) {
+    sessionRef.current = loaded;
+    setMessages(loaded.messages.map((message, index) => ({
+      id: `history-${sessionId}-${index}`,
+      role: message.role,
+      text: message.text,
+    })));
+    setThreadTitle({ source: "custom", value: title });
+    setPendingPermissions([]);
+    setUsage(null);
+    setQueuedPrompt(null);
+    setAttachedConcepts([]);
+    setAttachedSources([]);
+    setPromptText("");
+    setExportState({ status: "idle" });
+    acceptedDraftsRef.current.clear();
+    failedTurnsRef.current.clear();
+    setRetryableTurnIds(new Set());
+    setRetryErrors(new Map());
+    setRetryingTurnId(null);
+    setSavedThread({ status: "none" });
+    setHistory({ status: "closed" });
+    persistThreadMetadata(loaded, title);
+    requestAnimationFrame(() => promptRef.current?.focus());
+  }
+
+  async function resumeSavedThread(metadata: AgentThreadMetadata) {
+    if (!bundleRoot || savedThread.status === "resuming") return;
+    setSavedThread({ status: "resuming", metadata });
+    try {
+      const page = await listAgentSessions(connection.connectionId, bundleRoot);
+      const session = page.sessions.find((candidate) => candidate.sessionId === metadata.sessionId);
+      if (!session) {
+        setSavedThread({
+          status: "error",
+          metadata,
+          message: page.hasMore
+            ? "The saved session is not in the agent's first 50 matching sessions. Open History to find it."
+            : "The agent no longer reports this session for the active bundle.",
+        });
+        requestAnimationFrame(() => savedThreadActionRef.current?.focus());
+        return;
+      }
+      const loaded = await loadAgentSession(
+        connection.connectionId,
+        bundleRoot,
+        session.sessionId,
+      );
+      applyRestoredSession(loaded, session.sessionId, metadata.title);
+    } catch (error: unknown) {
+      setSavedThread({ status: "error", message: errorMessage(error), metadata });
+      requestAnimationFrame(() => savedThreadActionRef.current?.focus());
+    }
+  }
+
+  async function dismissSavedThread() {
+    if (!bundleRoot) return;
+    try {
+      await removeAgentThreadMetadata(bundleRoot, connection.profileId);
+      setSavedThread({ status: "none" });
+      requestAnimationFrame(() => promptRef.current?.focus());
+    } catch (error: unknown) {
+      setSavedThread({ status: "error", message: errorMessage(error) });
+      requestAnimationFrame(() => savedThreadActionRef.current?.focus());
+    }
+  }
+
+  async function retrySavedThreadLoad() {
+    if (savedThread.status === "error" && savedThread.metadata) {
+      await resumeSavedThread(savedThread.metadata);
+      return;
+    }
+    await loadSavedThread();
+    requestAnimationFrame(() => savedThreadActionRef.current?.focus());
+  }
+
+  function changeThreadTitle(value: string) {
+    setThreadTitle({ source: "custom", value });
+    const session = sessionRef.current;
+    if (session) persistThreadMetadata(session, value);
+  }
 
   function retryAcceptedTurn(turnId: string) {
     const draft = acceptedDraftsRef.current.get(turnId);
@@ -704,7 +819,7 @@ export function AgentConversation({
             <h2 id="agent-conversation-title" title={threadTitle.value}>{threadTitle.value}</h2>
             <ThreadTitleEditor
               title={threadTitle.value}
-              onTitleChange={(value) => setThreadTitle({ source: "custom", value })}
+              onTitleChange={changeThreadTitle}
             />
           </div>
           <p>{agentName} · {bundleName ?? "No bundle selected"}</p>
@@ -716,6 +831,11 @@ export function AgentConversation({
           {exportState.status === "error" && (
             <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
               Export failed. {exportState.message}
+            </p>
+          )}
+          {threadMetadataError && (
+            <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
+              Thread metadata was not saved. {threadMetadataError}
             </p>
           )}
         </div>
@@ -872,6 +992,59 @@ export function AgentConversation({
             {messages.length === 0 && pendingPermissions.length === 0 ? (
               <div className="agent-conversation__welcome">
                 <Bot size={24} aria-hidden="true" />
+                {(savedThread.status === "ready" || savedThread.status === "resuming") && (
+                  <section className="agent-saved-thread" aria-labelledby="agent-saved-thread-title">
+                    <History size={16} aria-hidden="true" />
+                    <div>
+                      <h4 id="agent-saved-thread-title">Continue previous thread</h4>
+                      <span title={savedThread.metadata.title}>{savedThread.metadata.title}</span>
+                    </div>
+                    <div className="agent-saved-thread__actions">
+                      <button
+                        ref={savedThreadActionRef}
+                        type="button"
+                        className="btn"
+                        disabled={savedThread.status === "resuming"}
+                        onClick={() => void resumeSavedThread(savedThread.metadata)}
+                      >
+                        {savedThread.status === "resuming" ? "Resuming..." : "Resume"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        disabled={savedThread.status === "resuming"}
+                        onClick={() => void dismissSavedThread()}
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </section>
+                )}
+                {savedThread.status === "error" && (
+                  <section className="agent-saved-thread agent-saved-thread--error">
+                    <CircleAlert size={16} aria-hidden="true" />
+                    <p role="alert">Saved thread unavailable. {savedThread.message}</p>
+                    <div className="agent-saved-thread__actions">
+                      <button
+                        ref={savedThreadActionRef}
+                        type="button"
+                        className="btn"
+                        onClick={() => void retrySavedThreadLoad()}
+                      >
+                        Retry
+                      </button>
+                      {savedThread.metadata && (
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          onClick={() => void dismissSavedThread()}
+                        >
+                          Dismiss
+                        </button>
+                      )}
+                    </div>
+                  </section>
+                )}
                 <h3>Ask about this bundle</h3>
                 <p>
                   Studio attaches OKF context, read-only access to this bundle, and tools to

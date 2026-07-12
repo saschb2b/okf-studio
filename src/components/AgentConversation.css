@@ -242,6 +242,61 @@
   text-align: start;
 }
 
+.agent-saved-thread {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  width: 100%;
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  color: var(--text);
+  text-align: start;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-saved-thread > .lucide {
+  margin-top: var(--space-2);
+  color: var(--accent);
+}
+
+.agent-saved-thread > div:not(.agent-saved-thread__actions) {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.agent-saved-thread span,
+.agent-saved-thread p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-saved-thread h4 {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-tight);
+}
+
+.agent-saved-thread__actions {
+  display: flex;
+  grid-column: 2;
+  gap: var(--space-8);
+}
+
+.agent-saved-thread--error {
+  align-items: start;
+}
+
+.agent-saved-thread--error > .lucide,
+.agent-saved-thread--error p {
+  color: var(--error);
+}
+
 .agent-starter {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

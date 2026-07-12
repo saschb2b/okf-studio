@@ -121,7 +121,7 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 - [x] Queue one visible, editable in-memory follow-up and submit it after the active turn.
 - [x] Browse and restore bundle-matching agent-owned ACP sessions when both list and load are advertised.
 - [x] Add accepted-turn retry while the same ACP session remains live.
-- [ ] Persist Studio metadata; use ACP restore capabilities only when advertised.
+- [x] Persist the current thread title and agent-owned session pointer per bundle and profile; re-list through ACP before restore.
 
 Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and late updates.
 

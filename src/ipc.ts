@@ -29,6 +29,13 @@ import type {
   AgentInstallReceipt,
 } from "./agent/install.ts";
 import {
+  createAgentThreadMetadata,
+  parseAgentThreadMetadata,
+  removeAgentThreadMetadata as removeThreadMetadata,
+  upsertAgentThreadMetadata,
+} from "./agent/threadMetadata.ts";
+import type { AgentThreadMetadata } from "./agent/threadMetadata.ts";
+import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
   MOCK_FOLDER,
@@ -936,6 +943,8 @@ export async function openExternal(url: string): Promise<void> {
 
 const STORE_FILE = "okf-viewer.json";
 const RECENTS_KEY = "recentBundles";
+const AGENT_THREADS_KEY = "agentThreads";
+const MOCK_AGENT_THREADS_KEY = "okf-studio:agent-threads";
 const RECENTS_CAP = 12;
 
 async function store() {
@@ -973,6 +982,52 @@ async function writeRecents(next: RecentBundle[]): Promise<void> {
   const st = await store();
   await st.set(RECENTS_KEY, next);
   await st.save();
+}
+
+async function readAgentThreads(): Promise<AgentThreadMetadata[]> {
+  if (!isTauri()) {
+    try {
+      return parseAgentThreadMetadata(JSON.parse(localStorage.getItem(MOCK_AGENT_THREADS_KEY) ?? "[]"));
+    } catch {
+      return [];
+    }
+  }
+  return parseAgentThreadMetadata(await (await store()).get<unknown>(AGENT_THREADS_KEY));
+}
+
+async function writeAgentThreads(next: readonly AgentThreadMetadata[]): Promise<void> {
+  if (!isTauri()) {
+    localStorage.setItem(MOCK_AGENT_THREADS_KEY, JSON.stringify(next));
+    return;
+  }
+  const st = await store();
+  await st.set(AGENT_THREADS_KEY, next);
+  await st.save();
+}
+
+export async function loadAgentThreadMetadata(
+  bundleRoot: string,
+  profileId: string,
+): Promise<AgentThreadMetadata | null> {
+  const threads = await readAgentThreads();
+  return threads.find((thread) =>
+    thread.bundleRoot === bundleRoot && thread.profileId === profileId
+  ) ?? null;
+}
+
+export async function saveAgentThreadMetadata(
+  input: Omit<AgentThreadMetadata, "updatedAt">,
+): Promise<AgentThreadMetadata> {
+  const metadata = createAgentThreadMetadata(input);
+  await writeAgentThreads(upsertAgentThreadMetadata(await readAgentThreads(), metadata));
+  return metadata;
+}
+
+export async function removeAgentThreadMetadata(
+  bundleRoot: string,
+  profileId: string,
+): Promise<void> {
+  await writeAgentThreads(removeThreadMetadata(await readAgentThreads(), bundleRoot, profileId));
 }
 
 export async function recentBundles(): Promise<RecentBundle[]> {

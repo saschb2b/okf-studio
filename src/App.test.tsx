@@ -522,7 +522,7 @@ describe("OKF Studio app", () => {
   }, 25_000);
 
   it("lists and restores agent-owned sessions for the active bundle", async () => {
-    vi.spyOn(ipc, "listAgentSessions")
+    const historySpy = vi.spyOn(ipc, "listAgentSessions")
       .mockRejectedValueOnce(new Error("History service unavailable"))
       .mockResolvedValueOnce({ sessions: [], hasMore: false });
     const user = userEvent.setup();
@@ -559,6 +559,48 @@ describe("OKF Studio app", () => {
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
     expect(screen.getByLabelText("Message the agent")).toBeEnabled();
     await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+
+    await user.click(screen.getByRole("button", { name: "Rename thread: Trace bundle evidence" }));
+    await user.clear(screen.getByLabelText("Thread title"));
+    await user.type(screen.getByLabelText("Thread title"), "Evidence notebook");
+    await user.click(screen.getByRole("button", { name: "Save title" }));
+    await vi.waitFor(() => expect(
+      JSON.parse(localStorage.getItem("okf-studio:agent-threads") ?? "[]"),
+    ).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        sessionId: "mock-session-research",
+        title: "Evidence notebook",
+      }),
+    ])));
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
+    await screen.findByText(/Connected to History Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("heading", { name: "Continue previous thread" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Evidence notebook")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resume" }));
+    expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
+    expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    historySpy.mockResolvedValueOnce({ sessions: [], hasMore: false });
+    await user.click(await screen.findByRole("button", { name: "Resume" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Saved thread unavailable. The agent no longer reports this session",
+    );
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(await screen.findByRole("button", { name: "Dismiss" }));
+    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+    expect(localStorage.getItem("okf-studio:agent-threads")).toBe("[]");
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));

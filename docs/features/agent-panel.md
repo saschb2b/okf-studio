@@ -78,6 +78,8 @@ When the agent pauses for ACP permission, an in-thread card shows its bounded hu
 
 Agent responses render through the same sanitized Markdown pipeline as bundle concepts. DOMPurify removes unsafe HTML, scripts, event handlers, embedded frames, and remote media before it reaches the conversation. User messages stay literal text, so authored Markdown is never mistaken for agent output. This slice does not yet persist threads, expose tool or plan cards, or claim write access. Those arrive with the remaining [Threads and conversation](../product/studio-roadmap.md) and [OKF context and tools](../product/studio-roadmap.md) packages.
 
+After the thread contains a message, **Export** opens the native save dialog and writes the current transcript as Markdown. User messages are quoted, agent responses keep their Markdown, and cancellation or failure records stay labelled as turn status. The action is disabled while a turn or export is active. Cancelling the dialog has no effect; a save failure remains visible beside the action and can be retried. The export is a snapshot of current memory, not thread history or persistence, and it grants no write access to the open bundle.
+
 # Context, tools, and writes
 
 The active bundle is the default scope. Explicit context currently includes concepts, validation issues, pasted text, public HTTPS text pages, capability-gated images, and selected local PDF, text, Markdown, HTML, CSV, or JSON files, either chosen directly or discovered from a folder. Planned context includes reader selections and previous threads. Attachments remain visible and removable before send.

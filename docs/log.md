@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-12
+* **Creation**: Added explicit Markdown export for the current Agent thread. The native host writes at most 2 MiB only after a save destination is chosen, enforces a Markdown filename, and returns no absolute path. User messages are quoted, agent Markdown is preserved, turn lifecycle records stay labelled, cancellation is silent, and save failures remain visible for retry. Export does not persist the thread or grant bundle writes.
 * **Creation**: Added explicit validation-issue context to Agent conversations. The issue picker lists the active bundle's errors and warnings, suppresses attached duplicates, and creates a removable source with the exact message and concept provenance. Findings share the bounded source limit and grant no writes.
 * **Update**: Made Agent turn lifecycle explicit. Studio now reports prompt startup as waiting, commits a user message only after ACP accepts the turn, and preserves the prompt and attachments with a Retry action when startup fails. Cancelled, refused, limited, unknown, and failed turns render as labelled status records, separate from partial agent output.
 * **Creation**: Added Create bundle, Enhance bundle, Request dataset change, and Deep research starters to empty Agent threads. A starter only prefills and focuses the ordinary composer, so its full prompt stays editable and inspectable before the user sends it with any chosen context or sources. It does not auto-submit or grant writes.

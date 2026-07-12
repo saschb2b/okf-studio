@@ -11,6 +11,7 @@ mod agent_pdf;
 mod agent_protocol;
 mod agent_runtime;
 mod agent_sources;
+mod agent_transcript;
 mod agent_url;
 mod remote;
 mod watch;
@@ -162,6 +163,15 @@ async fn fetch_agent_source_url(
     tauri::async_runtime::spawn_blocking(move || agent_url::fetch(url))
         .await
         .map_err(|error| format!("The URL source task failed: {error}"))?
+}
+
+#[tauri::command]
+async fn export_agent_transcript(
+    app: AppHandle,
+    suggested_name: String,
+    markdown: String,
+) -> Result<Option<String>, String> {
+    agent_transcript::export(&app, suggested_name, markdown).await
 }
 
 #[tauri::command]
@@ -372,6 +382,7 @@ pub fn run() {
             pick_agent_source_folder,
             pick_agent_image_sources,
             fetch_agent_source_url,
+            export_agent_transcript,
             cancel_agent_turn,
             respond_agent_permission,
             agent_install_preflight,

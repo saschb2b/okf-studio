@@ -14,6 +14,22 @@
   border-bottom: 1px solid var(--border);
 }
 
+.agent-conversation__toolbar > div:first-child {
+  min-width: 0;
+}
+
+.agent-conversation__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-conversation__export {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .agent-conversation__toolbar h2,
 .agent-conversation__toolbar p,
 .agent-conversation__state h3,
@@ -23,6 +39,20 @@
 .agent-message p,
 .agent-composer__error {
   margin: 0;
+}
+
+.agent-conversation__toolbar .agent-conversation__export-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-conversation__toolbar .agent-conversation__export-status--success {
+  color: var(--ok);
+}
+
+.agent-conversation__toolbar .agent-conversation__export-status--error {
+  color: var(--error);
 }
 
 .agent-conversation__toolbar h2 {
@@ -610,6 +640,15 @@
 }
 
 @media (max-width: 420px) {
+  .agent-conversation__toolbar {
+    gap: var(--space-4);
+    padding-inline: var(--space-8);
+  }
+
+  .agent-conversation__toolbar-actions .btn {
+    padding-inline: var(--space-6);
+  }
+
   .agent-starter small {
     display: none;
   }

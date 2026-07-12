@@ -170,6 +170,7 @@ describe("OKF Studio app", () => {
   it("creates a bundle-scoped session and renders streamed agent text", async () => {
     const user = userEvent.setup();
     const promptSpy = vi.spyOn(ipc, "promptAgent");
+    const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
     renderApp();
     await openFolder(user);
     await user.click(screen.getByRole("treeitem", { name: "Overview" }));
@@ -334,6 +335,21 @@ describe("OKF Studio app", () => {
       "Browser ACP received: Summarize the bundle",
     );
     expect(await screen.findByRole("button", { name: "Send" })).toBeEnabled();
+    exportSpy.mockRejectedValueOnce(new Error("The selected folder is read-only."));
+    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Export failed. The selected folder is read-only.",
+    );
+    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    expect(exportSpy).toHaveBeenLastCalledWith(
+      "okf-studio-sample-agent-thread.md",
+      expect.stringContaining(
+        "# OKF Studio (sample) agent thread\n\nAgent: Research Harness\n\nBundle: OKF Studio (sample)\n\n## You\n\n> Summarize the **bundle**\n\n## Agent\n\n",
+      ),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Exported okf-studio-sample-agent-thread.md",
+    );
     expect(screen.getByRole("button", { name: "Attach context" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Interview notes source" })).not.toBeInTheDocument();
     expect(

@@ -1,4 +1,4 @@
-import { Bot, CircleAlert, Database, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
+import { Bot, CircleAlert, Database, FileDown, FilePlus2, FileText, FolderPlus, ImageIcon, ImagePlus, Paperclip, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TriangleAlert, User, WandSparkles, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -14,6 +14,7 @@ import type {
 import {
   cancelAgentTurn,
   authenticateAgent,
+  exportAgentTranscript,
   fetchAgentSourceUrl,
   newAgentSession,
   onAgentConnectionState,
@@ -57,6 +58,11 @@ type AttachedSource = AgentSourceInput & {
 };
 
 type ComposerState = { status: "idle" } | { status: "error"; message: string };
+type ExportState =
+  | { status: "idle" }
+  | { status: "exporting" }
+  | { status: "success"; filename: string }
+  | { status: "error"; message: string };
 type AuthenticationState =
   | { status: "idle" }
   | { status: "authenticating"; methodId: string }
@@ -102,6 +108,43 @@ function sourceTooltip(source: AttachedSource): string {
   return source.title;
 }
 
+function transcriptFilename(bundleName: string | null): string {
+  const slug = ((bundleName ?? "okf-bundle")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "okf-bundle")
+    .slice(0, 100)
+    .replace(/-+$/g, "");
+  return `${slug || "okf-bundle"}-agent-thread.md`;
+}
+
+function quoteMarkdown(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => line.length > 0 ? `> ${line}` : ">")
+    .join("\n");
+}
+
+function transcriptMarkdown(
+  bundleName: string | null,
+  agentName: string,
+  messages: readonly ConversationMessage[],
+): string {
+  const safeBundleName = (bundleName ?? "No bundle selected").replace(/[\r\n]+/g, " ");
+  const safeAgentName = agentName.replace(/[\r\n]+/g, " ");
+  const sections = messages.map((message) => {
+    if (message.role === "user") return `## You\n\n${quoteMarkdown(message.text)}`;
+    if (message.role === "agent") return `## Agent\n\n${message.text}`;
+    return `> **Turn:** ${message.text.replace(/\n/g, "\n> ")}`;
+  });
+  return [
+    `# ${safeBundleName} agent thread`,
+    `Agent: ${safeAgentName}`,
+    `Bundle: ${safeBundleName}`,
+    ...sections,
+  ].join("\n\n") + "\n";
+}
+
 export function AgentConversation({
   connection,
   bundleRoot,
@@ -114,6 +157,7 @@ export function AgentConversation({
   onOpenFolder,
 }: AgentConversationProps) {
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -228,6 +272,7 @@ export function AgentConversation({
           sources,
         );
         setMessages((current) => [...current, userMessage]);
+        setExportState({ status: "idle" });
         setAttachedConcepts([]);
         setAttachedSources([]);
         setPromptText("");
@@ -317,24 +362,65 @@ export function AgentConversation({
     promptRef.current.focus();
   }
 
+  async function exportTranscript() {
+    if (messages.length === 0 || exportState.status === "exporting") return;
+    setExportState({ status: "exporting" });
+    try {
+      const filename = await exportAgentTranscript(
+        transcriptFilename(bundleName),
+        transcriptMarkdown(bundleName, agentName, messages),
+      );
+      setExportState(filename ? { status: "success", filename } : { status: "idle" });
+    } catch (error: unknown) {
+      setExportState({ status: "error", message: errorMessage(error) });
+    }
+  }
+
   return (
     <section className="agent-conversation" aria-labelledby="agent-conversation-title">
       <header className="agent-conversation__toolbar">
         <div>
           <h2 id="agent-conversation-title">{agentName}</h2>
           <p>{bundleName ?? "No bundle selected"}</p>
+          {exportState.status === "success" && (
+            <p className="agent-conversation__export-status agent-conversation__export-status--success" role="status">
+              Exported {exportState.filename}
+            </p>
+          )}
+          {exportState.status === "error" && (
+            <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
+              Export failed. {exportState.message}
+            </p>
+          )}
         </div>
-        <button
-          type="button"
-          className="btn ghost"
-          data-agent-initial-focus
-          onClick={onChangeAgent}
-          disabled={
-            isSubmitting || activeTurn !== null || authentication.status === "authenticating"
-          }
-        >
-          Change
-        </button>
+        <div className="agent-conversation__toolbar-actions">
+          <button
+            type="button"
+            className="btn ghost agent-conversation__export"
+            aria-label="Export thread"
+            title={messages.length === 0 ? "Send a message before exporting." : "Export thread as Markdown"}
+            onClick={() => void exportTranscript()}
+            disabled={
+              messages.length === 0 || isSubmitting || activeTurn !== null ||
+              exportState.status === "exporting"
+            }
+          >
+            <FileDown aria-hidden="true" size={14} />
+            {exportState.status === "exporting" ? "Exporting..." : "Export"}
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            data-agent-initial-focus
+            onClick={onChangeAgent}
+            disabled={
+              isSubmitting || activeTurn !== null || authentication.status === "authenticating" ||
+              exportState.status === "exporting"
+            }
+          >
+            Change
+          </button>
+        </div>
       </header>
 
       {!bundleRoot && (

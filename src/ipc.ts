@@ -267,6 +267,21 @@ export async function promptAgent(
   return info;
 }
 
+export async function exportAgentTranscript(
+  suggestedName: string,
+  markdown: string,
+): Promise<string | null> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<string | null>("export_agent_transcript", { suggestedName, markdown });
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  if (markdown.includes("> Export fail:")) {
+    throw new Error("The browser mock could not save the transcript.");
+  }
+  return suggestedName;
+}
+
 export interface AgentSourceInput {
   title: string;
   content: string;

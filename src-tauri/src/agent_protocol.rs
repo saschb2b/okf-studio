@@ -115,10 +115,28 @@ pub struct AgentConnectionInfo {
 #[serde(rename_all = "camelCase")]
 struct AgentSecurityScopeInfo {
     evidence_source: AgentSecurityEvidenceSource,
-    file_access: AgentFileAccess,
-    network_access: AgentNetworkAccess,
-    write_access: AgentWriteAccess,
     process_containment: AgentProcessContainment,
+    profile: AgentSecurityProfileInfo,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSecurityProfileInfo {
+    id: AgentSecurityProfileId,
+    effective_mounts: AgentEffectiveMounts,
+    writable_roots: AgentWritableRoots,
+    network_policy: AgentNetworkPolicy,
+    credential_exposure: AgentCredentialExposure,
+    lifetime: AgentSecurityLifetime,
+    stop_conditions: Vec<AgentSecurityStopCondition>,
+    unattended_eligible: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentSecurityProfileId {
+    StudioNativeMediatedV1,
+    ExternalInteractiveUnrestrictedV1,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -130,23 +148,44 @@ enum AgentSecurityEvidenceSource {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
-enum AgentFileAccess {
-    StudioToolsOnly,
-    OperatingSystem,
+enum AgentEffectiveMounts {
+    StudioToolMediatedBundle,
+    HostOperatingSystem,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
-enum AgentNetworkAccess {
+enum AgentWritableRoots {
+    ReviewedStagingOnly,
+    HostOperatingSystemPermissions,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentNetworkPolicy {
     ConfiguredEndpointOnly,
-    OperatingSystem,
+    HostOperatingSystem,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
-enum AgentWriteAccess {
-    ReviewedStaging,
-    ReviewedMediationOnly,
+enum AgentCredentialExposure {
+    ConfiguredEndpointOnly,
+    HostOperatingSystemAndLaunchEnvironment,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentSecurityLifetime {
+    Connection,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentSecurityStopCondition {
+    Disconnect,
+    ApplicationExit,
+    HostFailure,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -163,10 +202,21 @@ impl AgentSecurityScopeInfo {
     fn native_provider() -> Self {
         Self {
             evidence_source: AgentSecurityEvidenceSource::NativeProviderHost,
-            file_access: AgentFileAccess::StudioToolsOnly,
-            network_access: AgentNetworkAccess::ConfiguredEndpointOnly,
-            write_access: AgentWriteAccess::ReviewedStaging,
             process_containment: AgentProcessContainment::InProcess,
+            profile: AgentSecurityProfileInfo {
+                id: AgentSecurityProfileId::StudioNativeMediatedV1,
+                effective_mounts: AgentEffectiveMounts::StudioToolMediatedBundle,
+                writable_roots: AgentWritableRoots::ReviewedStagingOnly,
+                network_policy: AgentNetworkPolicy::ConfiguredEndpointOnly,
+                credential_exposure: AgentCredentialExposure::ConfiguredEndpointOnly,
+                lifetime: AgentSecurityLifetime::Connection,
+                stop_conditions: vec![
+                    AgentSecurityStopCondition::Disconnect,
+                    AgentSecurityStopCondition::ApplicationExit,
+                    AgentSecurityStopCondition::HostFailure,
+                ],
+                unattended_eligible: false,
+            },
         }
     }
 
@@ -183,10 +233,22 @@ impl AgentSecurityScopeInfo {
         };
         Self {
             evidence_source: AgentSecurityEvidenceSource::ExternalProcessLauncher,
-            file_access: AgentFileAccess::OperatingSystem,
-            network_access: AgentNetworkAccess::OperatingSystem,
-            write_access: AgentWriteAccess::ReviewedMediationOnly,
             process_containment,
+            profile: AgentSecurityProfileInfo {
+                id: AgentSecurityProfileId::ExternalInteractiveUnrestrictedV1,
+                effective_mounts: AgentEffectiveMounts::HostOperatingSystem,
+                writable_roots: AgentWritableRoots::HostOperatingSystemPermissions,
+                network_policy: AgentNetworkPolicy::HostOperatingSystem,
+                credential_exposure:
+                    AgentCredentialExposure::HostOperatingSystemAndLaunchEnvironment,
+                lifetime: AgentSecurityLifetime::Connection,
+                stop_conditions: vec![
+                    AgentSecurityStopCondition::Disconnect,
+                    AgentSecurityStopCondition::ApplicationExit,
+                    AgentSecurityStopCondition::HostFailure,
+                ],
+                unattended_eligible: false,
+            },
         }
     }
 }
@@ -3539,10 +3601,44 @@ mod tests {
         let scope = AgentSecurityScopeInfo::external_process(containment);
         let value = serde_json::to_value(scope).expect("serialize security scope");
         assert_eq!(value["evidenceSource"], "external-process-launcher");
-        assert_eq!(value["fileAccess"], "operating-system");
-        assert_eq!(value["networkAccess"], "operating-system");
-        assert_eq!(value["writeAccess"], "reviewed-mediation-only");
         assert_eq!(value["processContainment"], expected_process);
+        assert_eq!(value["profile"]["id"], "external-interactive-unrestricted-v1");
+        assert_eq!(value["profile"]["effectiveMounts"], "host-operating-system");
+        assert_eq!(
+            value["profile"]["writableRoots"],
+            "host-operating-system-permissions"
+        );
+        assert_eq!(value["profile"]["networkPolicy"], "host-operating-system");
+        assert_eq!(
+            value["profile"]["credentialExposure"],
+            "host-operating-system-and-launch-environment"
+        );
+        assert_eq!(value["profile"]["lifetime"], "connection");
+        assert_eq!(
+            value["profile"]["stopConditions"],
+            serde_json::json!(["disconnect", "application-exit", "host-failure"])
+        );
+        assert_eq!(value["profile"]["unattendedEligible"].as_bool(), Some(false));
+    }
+
+    #[test]
+    fn serializes_native_mediated_security_profile() {
+        let value = serde_json::to_value(AgentSecurityScopeInfo::native_provider())
+            .expect("serialize native security scope");
+        assert_eq!(value["evidenceSource"], "native-provider-host");
+        assert_eq!(value["processContainment"], "in-process");
+        assert_eq!(value["profile"]["id"], "studio-native-mediated-v1");
+        assert_eq!(
+            value["profile"]["effectiveMounts"],
+            "studio-tool-mediated-bundle"
+        );
+        assert_eq!(value["profile"]["writableRoots"], "reviewed-staging-only");
+        assert_eq!(value["profile"]["networkPolicy"], "configured-endpoint-only");
+        assert_eq!(
+            value["profile"]["credentialExposure"],
+            "configured-endpoint-only"
+        );
+        assert_eq!(value["profile"]["unattendedEligible"].as_bool(), Some(false));
     }
 
     #[tokio::test(flavor = "current_thread")]

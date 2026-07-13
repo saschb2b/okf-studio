@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T20:50:00Z
+timestamp: 2026-07-13T20:55:00Z
 ---
 
 # Outcome
@@ -218,7 +218,7 @@ The remaining WP11 boxes stay open until their enforcement dependency exists. A 
 - [ ] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths, denies Git and credential paths below those mounts, and reports a closed network mode.
 - [ ] Provide a Windows enforcement path. WSL plus Bubblewrap may be an opt-in profile, but Studio cannot assume WSL exists or describe a native Job Object as a filesystem or network sandbox. A Linux- or macOS-only first slice must remain visibly unavailable on Windows.
 - [x] Bind every isolation claim to launcher-produced evidence. Saved profile text and agent-advertised capabilities are descriptive input, never proof that containment is active.
-- [ ] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. Authentication-dependent ACP agents need an explicit network exception rather than an undocumented full-network default.
+- [x] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. The initial native-mediated and external-interactive profiles both lock unattended work; the external baseline explicitly reports host network access instead of hiding it. A future restricted profile must model authentication bootstrap as a separate network exception.
 - [ ] Add cross-session permission rules only when ACP supplies a stable tool identity that Studio can display and match independently of agent-controlled titles or raw arguments.
 - [ ] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny.
 - [x] Treat the active bundle as granted only when the Rust registry produced and still owns the canonical root. Frontend store entries and path strings cannot satisfy this condition.

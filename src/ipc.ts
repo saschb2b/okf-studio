@@ -22,6 +22,7 @@ import type {
   AgentConnectionEvent,
   AgentCheckpointRestoreInfo,
   AgentConnectionInfo,
+  AgentSecurityScopeInfo,
   AgentPermissionEvent,
   AgentLoadedSessionInfo,
   AgentSessionInfo,
@@ -273,6 +274,42 @@ export async function testSavedLocalModelEndpoint(
   return testLocalModelEndpoint(profile);
 }
 
+function mockExternalSecurityScope(): AgentSecurityScopeInfo {
+  return {
+    evidenceSource: "external-process-launcher",
+    processContainment: navigator.userAgent.includes("Windows")
+      ? "windows-job-object"
+      : "posix-process-group",
+    profile: {
+      id: "external-interactive-unrestricted-v1",
+      effectiveMounts: "host-operating-system",
+      writableRoots: "host-operating-system-permissions",
+      networkPolicy: "host-operating-system",
+      credentialExposure: "host-operating-system-and-launch-environment",
+      lifetime: "connection",
+      stopConditions: ["disconnect", "application-exit", "host-failure"],
+      unattendedEligible: false,
+    },
+  };
+}
+
+function mockNativeSecurityScope(): AgentSecurityScopeInfo {
+  return {
+    evidenceSource: "native-provider-host",
+    processContainment: "in-process",
+    profile: {
+      id: "studio-native-mediated-v1",
+      effectiveMounts: "studio-tool-mediated-bundle",
+      writableRoots: "reviewed-staging-only",
+      networkPolicy: "configured-endpoint-only",
+      credentialExposure: "configured-endpoint-only",
+      lifetime: "connection",
+      stopConditions: ["disconnect", "application-exit", "host-failure"],
+      unattendedEligible: false,
+    },
+  };
+}
+
 export async function connectCustomAgent(profileId: string): Promise<AgentConnectionInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -304,15 +341,7 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
       sessionResume: false,
       sessionClose: false,
     },
-    securityScope: {
-      evidenceSource: "external-process-launcher",
-      fileAccess: "operating-system",
-      networkAccess: "operating-system",
-      writeAccess: "reviewed-mediation-only",
-      processContainment: navigator.userAgent.includes("Windows")
-        ? "windows-job-object"
-        : "posix-process-group",
-    },
+    securityScope: mockExternalSecurityScope(),
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
@@ -359,15 +388,7 @@ export async function connectCatalogAgent(agentId: string): Promise<AgentConnect
       sessionResume: false,
       sessionClose: false,
     },
-    securityScope: {
-      evidenceSource: "external-process-launcher",
-      fileAccess: "operating-system",
-      networkAccess: "operating-system",
-      writeAccess: "reviewed-mediation-only",
-      processContainment: navigator.userAgent.includes("Windows")
-        ? "windows-job-object"
-        : "posix-process-group",
-    },
+    securityScope: mockExternalSecurityScope(),
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
@@ -414,13 +435,7 @@ export async function connectLocalModel(
       sessionResume: false,
       sessionClose: false,
     },
-    securityScope: {
-      evidenceSource: "native-provider-host",
-      fileAccess: "studio-tools-only",
-      networkAccess: "configured-endpoint-only",
-      writeAccess: "reviewed-staging",
-      processContainment: "in-process",
-    },
+    securityScope: mockNativeSecurityScope(),
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();

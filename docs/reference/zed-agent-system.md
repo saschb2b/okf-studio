@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-13T18:36:48Z
+timestamp: 2026-07-13T20:55:00Z
 ---
 
 # Adopted patterns
@@ -28,6 +28,8 @@ timestamp: 2026-07-13T18:36:48Z
 - Zed keeps its native agent separate from External Agents; external agents own runtime, auth, model, tools, and native configuration.
 - ACP assumes a trusted process. Protocol permissions do not sandbox it.
 - Zed combines its native-agent tool permissions with terminal sandboxing. Native Windows terminal isolation currently requires WSL and Bubblewrap.
+- Zed's native sandbox covers its terminal and fetch tools, not the whole agent process. Linux uses a runnable non-setuid system Bubblewrap, macOS uses Seatbelt through `sandbox-exec`, and Windows gets this path only inside WSL. Zed can warn and continue without the native tool sandbox when its platform prerequisite is unavailable.
+- Zed's native default permits broad reads, project writes outside protected Git metadata, and temporary writes while denying outbound network and local IPC. Linux and macOS can approve individual HTTP or HTTPS hosts through a proxy; WSL network approval is all or nothing.
 - Zed does not currently provide generic process confinement for external ACP agents; its repository still tracks that as an open feature request. Studio therefore copies the visible-scope principle, not a nonexistent external-agent sandbox.
 - The external-agent sandbox discussion remained open on 2026-07-13. Its most concrete current proposal separates execution isolation, visible resource policy, and reusable profiles. This is community design input, not a shipped Zed contract.
 - A provider may bring its own sandbox. Codex ACP has exercised Codex's Landlock path on Linux, for example, but that provider-owned behavior cannot prove containment for another ACP executable or for the host process itself.
@@ -39,6 +41,12 @@ timestamp: 2026-07-13T18:36:48Z
 - Zed's current Agent Panel preserves multi-line queued messages while a turn is active. Studio adopts the visible follow-up pattern but keeps its first queue slice to one frontend-owned snapshot because ACP itself still permits one live prompt turn per session.
 - The official Rust SDK checked on 2026-07-11 is `agent-client-protocol` 1.2.0 with schema artifact 1.4.0. Its current API composes typed `Client` and `Agent` builders over `ConnectTo` transports. ACP wire compatibility remains protocol v1 and must be negotiated independently of those artifact versions.
 
+# Studio host decision
+
+Studio profiles describe effective resources instead of a command prefix or provider promise. The current native-mediated and external-interactive profiles make the shipped boundaries visible but do not unlock unattended work. A later enforced external profile must fail closed when its platform host cannot start or prove the declared policy; it must not follow Zed's native-tool fallback to an unsandboxed process because the external process itself is the trust boundary.
+
+The first viable Linux host is a preflight-tested system Bubblewrap binary with a complete Studio-owned namespace and mount policy. Bubblewrap is a low-level construction tool, not a policy by itself, and Ubuntu AppArmor can distinguish the system path from a copied or vendored binary. macOS requires a separately tested Seatbelt profile. Windows may offer WSL plus Bubblewrap as an opt-in profile, but a native Job Object remains lifecycle ownership only. Authentication bootstrap network access must be separate from the work profile so signing in does not silently turn a restricted thread into a full-network one.
+
 # Citations
 
 - [Zed Agent Panel](https://github.com/zed-industries/zed/blob/main/docs/src/ai/agent-panel.md)
@@ -48,6 +56,8 @@ timestamp: 2026-07-13T18:36:48Z
 - [Zed tool permissions](https://github.com/zed-industries/zed/blob/main/docs/src/ai/tool-permissions.md)
 - [Zed sandboxing](https://github.com/zed-industries/zed/blob/main/docs/src/ai/sandboxing.md)
 - [Zed external-agent sandboxing request](https://github.com/zed-industries/zed/discussions/40482)
+- [Bubblewrap](https://github.com/containers/bubblewrap)
+- [Ubuntu AppArmor and Bubblewrap path behavior](https://github.com/openai/codex/issues/14919)
 - [Codex ACP Landlock integration issue](https://github.com/zed-industries/zed/issues/43021)
 - [Zed skills](https://github.com/zed-industries/zed/blob/main/docs/src/ai/skills.md)
 - [Zed agent server trait](https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/agent_servers.rs)

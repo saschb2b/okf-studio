@@ -276,6 +276,23 @@ function sourceTooltip(source: AttachedSource): string {
   return source.title;
 }
 
+const SECURITY_PROFILE_NAMES = {
+  "studio-native-mediated-v1": "Studio mediated (v1)",
+  "external-interactive-unrestricted-v1": "External interactive (v1)",
+} satisfies Record<AgentSecurityScopeInfo["profile"]["id"], string>;
+
+const SECURITY_STOP_LABELS = {
+  disconnect: "disconnect",
+  "application-exit": "app exit",
+  "host-failure": "host failure",
+} satisfies Record<AgentSecurityScopeInfo["profile"]["stopConditions"][number], string>;
+
+function readableSecurityStops(labels: readonly string[]): string {
+  if (labels.length < 2) return labels[0] ?? "";
+  if (labels.length === 2) return `${labels[0]} or ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, or ${labels.at(-1)}`;
+}
+
 function ThreadSecurityScope({
   bundleName,
   scope,
@@ -283,15 +300,20 @@ function ThreadSecurityScope({
   bundleName: string | null;
   scope: AgentSecurityScopeInfo;
 }) {
-  const fileScope = scope.fileAccess === "studio-tools-only"
+  const profile = scope.profile;
+  const profileName = SECURITY_PROFILE_NAMES[profile.id];
+  const fileScope = profile.effectiveMounts === "studio-tool-mediated-bundle"
     ? "Only bounded Studio tools can read the active bundle."
     : "Studio tools are bundle-scoped. The ACP process keeps normal OS file access.";
-  const networkScope = scope.networkAccess === "configured-endpoint-only"
+  const networkScope = profile.networkPolicy === "configured-endpoint-only"
     ? "Studio contacts only the configured model endpoint. No fetch tool is exposed."
     : "The ACP process keeps normal OS network access.";
-  const writeScope = scope.writeAccess === "reviewed-staging"
+  const writeScope = profile.writableRoots === "reviewed-staging-only"
     ? "Writes require an interactive grant and reviewed staging."
     : "Studio-mediated writes require review. The ACP process can bypass that mediation.";
+  const credentialScope = profile.credentialExposure === "configured-endpoint-only"
+    ? "Only the configured endpoint can receive its saved API key."
+    : "The process can access its launch environment and credentials available through the OS.";
   const processScope = {
     "in-process": "No external ACP process runs.",
     "posix-process-group": "Studio owns the agent's POSIX process group and stops it on disconnect.",
@@ -300,6 +322,15 @@ function ThreadSecurityScope({
   const evidenceScope = scope.evidenceSource === "native-provider-host"
     ? "Produced by Studio's native provider host."
     : `Produced by the ACP launcher after ${scope.processContainment === "windows-job-object" ? "Job Object" : "process-group"} attachment.`;
+  const stopConditions = readableSecurityStops(
+    profile.stopConditions.map((condition) => SECURITY_STOP_LABELS[condition]),
+  );
+  const lifetimeScope = stopConditions
+    ? `Connection only. Stops on ${stopConditions}.`
+    : "Connection only. No stop conditions were reported.";
+  const profileScope = `${profileName}. ${profile.unattendedEligible
+    ? "Eligible for unattended work."
+    : "Unattended work is locked."}`;
 
   return (
     <Popover.Root>
@@ -325,12 +356,17 @@ function ThreadSecurityScope({
           <Popover.Popup
             className="ui-popover agent-security-scope"
             aria-label="Thread security scope"
+            tabIndex={0}
           >
             <strong>Thread security scope</strong>
             <dl>
               <div>
                 <dt>Bundle</dt>
                 <dd>{bundleName ?? "No bundle selected"}</dd>
+              </div>
+              <div>
+                <dt>Profile</dt>
+                <dd>{profileScope}</dd>
               </div>
               <div>
                 <dt>Files</dt>
@@ -345,8 +381,16 @@ function ThreadSecurityScope({
                 <dd>{writeScope}</dd>
               </div>
               <div>
+                <dt>Credentials</dt>
+                <dd>{credentialScope}</dd>
+              </div>
+              <div>
                 <dt>Process</dt>
                 <dd>{processScope}</dd>
+              </div>
+              <div>
+                <dt>Lifetime</dt>
+                <dd>{lifetimeScope}</dd>
               </div>
               <div>
                 <dt>Evidence</dt>

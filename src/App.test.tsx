@@ -366,9 +366,15 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Thread security scope" }));
     const nativeScope = screen.getByRole("dialog", { name: "Thread security scope" });
+    expect(within(nativeScope).getByText("Studio mediated (v1). Unattended work is locked."))
+      .toBeInTheDocument();
     expect(within(nativeScope).getByText("Only bounded Studio tools can read the active bundle."))
       .toBeInTheDocument();
+    expect(within(nativeScope).getByText("Only the configured endpoint can receive its saved API key."))
+      .toBeInTheDocument();
     expect(within(nativeScope).getByText("No external ACP process runs."))
+      .toBeInTheDocument();
+    expect(within(nativeScope).getByText("Connection only. Stops on disconnect, app exit, or host failure."))
       .toBeInTheDocument();
     expect(within(nativeScope).getByText("Produced by Studio's native provider host."))
       .toBeInTheDocument();
@@ -546,7 +552,11 @@ describe("OKF Studio app", () => {
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Thread security scope" }));
     const externalScope = screen.getByRole("dialog", { name: "Thread security scope" });
+    expect(within(externalScope).getByText("External interactive (v1). Unattended work is locked."))
+      .toBeInTheDocument();
     expect(within(externalScope).getByText("The ACP process keeps normal OS network access."))
+      .toBeInTheDocument();
+    expect(within(externalScope).getByText("The process can access its launch environment and credentials available through the OS."))
       .toBeInTheDocument();
     expect(within(externalScope).getByText(/Produced by the ACP launcher after (Job Object|process-group) attachment\./))
       .toBeInTheDocument();

@@ -24,10 +24,21 @@ export interface AgentCapabilityInfo {
 
 export interface AgentSecurityScopeInfo {
   evidenceSource: "native-provider-host" | "external-process-launcher";
-  fileAccess: "studio-tools-only" | "operating-system";
-  networkAccess: "configured-endpoint-only" | "operating-system";
-  writeAccess: "reviewed-staging" | "reviewed-mediation-only";
   processContainment: "in-process" | "posix-process-group" | "windows-job-object";
+  profile: AgentSecurityProfileInfo;
+}
+
+export interface AgentSecurityProfileInfo {
+  id: "studio-native-mediated-v1" | "external-interactive-unrestricted-v1";
+  effectiveMounts: "studio-tool-mediated-bundle" | "host-operating-system";
+  writableRoots: "reviewed-staging-only" | "host-operating-system-permissions";
+  networkPolicy: "configured-endpoint-only" | "host-operating-system";
+  credentialExposure:
+    | "configured-endpoint-only"
+    | "host-operating-system-and-launch-environment";
+  lifetime: "connection";
+  stopConditions: readonly ("disconnect" | "application-exit" | "host-failure")[];
+  unattendedEligible: boolean;
 }
 
 export interface AgentConnectionInfo {

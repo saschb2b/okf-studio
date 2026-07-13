@@ -47,7 +47,7 @@ External agents own credentials. Studio invokes ACP-advertised methods and does 
 
 Opening remains read-only. Client filesystem methods canonicalize paths and reject traversal, symlink escape, access outside granted roots, and built-in sensitive-path classes. Studio writes target a staged tree, validate, then apply atomically after review.
 
-An external process may bypass client filesystem methods. Client checks do not sandbox it. Until platform enforcement exists, external write mode remains interactive and carries a containment warning. Unattended writes require enforcement.
+An external process may bypass client filesystem methods. Client checks do not sandbox it. Until platform enforcement exists, external write mode remains interactive and carries a containment warning. The write-grant IPC requires a closed `interactive` or `unattended` mode. Rust rejects every granted `unattended` request for the current external ACP host because it has no enforcement-capable sandbox; a forged webview request cannot weaken that rule. Revocation remains available through either mode. A later sandboxed host must prove its enforcement state at this boundary before the unattended branch can open.
 
 Permission precedence is: non-overridable security rules, deny, confirm, allow, thread grant, tool default, global default. Writes outside roots, Git metadata, credentials, and packaged instructions are built-in denials.
 

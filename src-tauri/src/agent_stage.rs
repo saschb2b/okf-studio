@@ -138,6 +138,13 @@ struct AppliedCheckpoint {
     created_directories: Vec<PathBuf>,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentWriteGrantMode {
+    Interactive,
+    Unattended,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CheckpointFile {
     target: PathBuf,
@@ -284,9 +291,27 @@ impl SessionStages {
         Ok(changes)
     }
 
-    /// Grant or revoke writes for one registered session. Revoking keeps the
-    /// staged files visible so the user can still review or discard them.
-    pub fn set_grant(
+    /// Grant or revoke writes for one registered session through a declared
+    /// interaction mode. External ACP processes are not sandboxed, so an
+    /// unattended grant fails closed until the process host can enforce it.
+    pub fn set_grant_for_mode(
+        &self,
+        session_id: &str,
+        granted: bool,
+        mode: AgentWriteGrantMode,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        if granted && mode == AgentWriteGrantMode::Unattended {
+            return Err(
+                "Unattended writes denied: external ACP agents are not running in an enforcement-capable sandbox. Use the interactive thread grant."
+                    .to_string(),
+            );
+        }
+        self.set_grant(session_id, granted)
+    }
+
+    /// Apply the interactive thread toggle. Revoking keeps staged files
+    /// visible so the user can still review or discard them.
+    fn set_grant(
         &self,
         session_id: &str,
         granted: bool,
@@ -2872,6 +2897,28 @@ mod tests {
             .expect_err("write without grant should fail");
         assert!(error.contains("Allow edits in this thread"));
         assert_eq!(stages.summary("session-1").expect("summary").files.len(), 0);
+    }
+
+    #[test]
+    fn rejects_unattended_grants_without_an_enforcement_sandbox() {
+        let root = canonical_temp_dir("unattended-grant");
+        let stages = registered(&root);
+
+        let error = stages
+            .set_grant_for_mode("session-1", true, AgentWriteGrantMode::Unattended)
+            .expect_err("unattended external writes should fail closed");
+        assert!(error.contains("enforcement-capable sandbox"));
+        assert!(!stages.summary("session-1").expect("summary").granted);
+
+        let changes = stages
+            .set_grant_for_mode("session-1", true, AgentWriteGrantMode::Interactive)
+            .expect("interactive grant should remain available");
+        assert!(changes.granted);
+        assert_eq!(
+            serde_json::from_str::<AgentWriteGrantMode>("\"unattended\"")
+                .expect("deserialize wire mode"),
+            AgentWriteGrantMode::Unattended
+        );
     }
 
     #[test]

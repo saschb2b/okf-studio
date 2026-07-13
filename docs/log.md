@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Creation**: Made the external-agent write-grant mode explicit at IPC. The current toggle requests `interactive`; Rust and the browser mock reject every granted `unattended` request because the ACP process host has no enforcement-capable sandbox. Revocation remains available, and future containment must prove enforcement at this boundary before unattended writes can open.
 * **Creation**: Added non-overridable sensitive-path protection to Agent filesystem mediation. Case-insensitive checks deny Git metadata, credential stores, secret and private-key files, and packaged agent instructions for reads, context links, staged writes, reported diffs, checkpoints, and recovery. One protected path rejects its complete ACP diff batch; ordinary concepts with nearby names remain available.
 * **Update**: Moved saved-thread error focus to a post-render effect so the Retry control receives focus reliably after long conversations and test runs.
 * **Creation**: Added durable intent records around Agent apply and Restore. Apply records exact same-directory artifacts plus the proposed and previous checkpoints before changing the bundle; restart recovery keeps a committed apply or rolls an uncommitted one back and reinstates older undo history. Restore records intent before moving files and resumes to the original state after interruption. Recovery accepts only recorded original, applied, or absent states, blocks on external divergence, and quarantines invalid transaction records.

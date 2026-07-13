@@ -28,7 +28,8 @@ use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 use crate::agent_stage::{
     AgentCheckpointRestoreInfo, AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo,
-    AgentStagedValidationInfo, SessionStages, MAX_STAGED_FILES, protected_bundle_path_reason,
+    AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
+    protected_bundle_path_reason,
 };
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
@@ -556,18 +557,19 @@ pub async fn new_session(
         .map_err(|_| "Agent connection ended before session creation.".to_string())?
 }
 
-/// Grant or revoke **Allow edits in this thread** for one session. The grant
-/// is Rust-owned, deny-by-default, and scoped to a live session; it never
-/// persists. Emits the updated staged-change snapshot.
+/// Grant or revoke writes for one session through a declared interaction
+/// mode. The grant is Rust-owned, deny-by-default, and scoped to a live
+/// session; it never persists. Emits the updated staged-change snapshot.
 pub fn set_write_grant(
     app: &AppHandle,
     state: &AgentHostState,
     connection_id: &str,
     session_id: &str,
     granted: bool,
+    mode: AgentWriteGrantMode,
 ) -> Result<AgentStagedChangesInfo, String> {
     let stages = connection_stages(state, connection_id)?;
-    let changes = stages.set_grant(session_id, granted)?;
+    let changes = stages.set_grant_for_mode(session_id, granted, mode)?;
     let _ = app.emit(STAGE_EVENT, AgentStageEvent {
         connection_id: connection_id.to_string(),
         changes: changes.clone(),

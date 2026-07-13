@@ -602,6 +602,7 @@ export async function setAgentWriteGrant(
   connectionId: string,
   sessionId: string,
   granted: boolean,
+  mode: "interactive" | "unattended",
 ): Promise<AgentStagedChangesInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -609,10 +610,16 @@ export async function setAgentWriteGrant(
       connectionId,
       sessionId,
       granted,
+      mode,
     });
   }
   if (!activeAgentConnectionsById.has(connectionId)) {
     throw new Error("Agent connection was not found.");
+  }
+  if (granted && mode === "unattended") {
+    throw new Error(
+      "Unattended writes denied: external ACP agents are not running in an enforcement-capable sandbox. Use the interactive thread grant.",
+    );
   }
   const state = mockStageState(sessionId);
   state.granted = granted;

@@ -763,6 +763,7 @@ export function AgentConversation({
         connection.connectionId,
         session.sessionId,
         granted,
+        "interactive",
       );
       updateStagedChanges(changes);
     } catch (error: unknown) {

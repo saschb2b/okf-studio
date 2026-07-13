@@ -225,9 +225,9 @@ fn respond_agent_permission(
     agent_protocol::respond_permission(state.inner(), &request_id, option_id)
 }
 
-/// Grant or revoke **Allow edits in this thread** for one live ACP session.
-/// Deny by default; the grant never persists and a restored session starts
-/// revoked. Granted writes stage in memory and never touch the bundle.
+/// Grant or revoke writes for one live ACP session through a declared mode.
+/// The current UI uses the interactive thread grant. Unattended external
+/// writes fail closed until the process host has an enforcement sandbox.
 #[tauri::command]
 fn set_agent_write_grant(
     app: AppHandle,
@@ -235,8 +235,16 @@ fn set_agent_write_grant(
     connection_id: String,
     session_id: String,
     granted: bool,
+    mode: agent_stage::AgentWriteGrantMode,
 ) -> Result<agent_stage::AgentStagedChangesInfo, String> {
-    agent_protocol::set_write_grant(&app, state.inner(), &connection_id, &session_id, granted)
+    agent_protocol::set_write_grant(
+        &app,
+        state.inner(),
+        &connection_id,
+        &session_id,
+        granted,
+        mode,
+    )
 }
 
 /// Discard every staged file for one live ACP session; the grant is untouched.

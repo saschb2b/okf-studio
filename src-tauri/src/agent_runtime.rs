@@ -32,14 +32,28 @@ impl NodeRuntimeReceipt {
         PathBuf::from(&self.node_path)
     }
 
-    pub(crate) fn npm_cli_path(&self) -> Result<PathBuf, String> {
+    pub(crate) fn runtime_root(&self) -> Result<PathBuf, String> {
         let node = self.node_path();
-        let runtime_root = if cfg!(windows) {
+        let root = if cfg!(windows) {
             node.parent()
         } else {
             node.parent().and_then(Path::parent)
         }
         .ok_or_else(|| "The managed Node path has no runtime root.".to_string())?;
+        let root = root
+            .canonicalize()
+            .map_err(|error| format!("The managed Node runtime is unavailable: {error}"))?;
+        let node = node
+            .canonicalize()
+            .map_err(|error| format!("The managed Node executable is unavailable: {error}"))?;
+        if !node.starts_with(&root) || !node.is_file() {
+            return Err("The managed Node executable escapes its runtime root.".to_string());
+        }
+        Ok(root)
+    }
+
+    pub(crate) fn npm_cli_path(&self) -> Result<PathBuf, String> {
+        let runtime_root = self.runtime_root()?;
         let npm_cli = if cfg!(windows) {
             runtime_root
                 .join("node_modules")
@@ -471,6 +485,7 @@ fn remove_path(path: &Path) -> Result<(), String> {
 mod tests {
     use super::*;
     use std::io::Cursor;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn sha256(bytes: &[u8]) -> String {
         format!("{:x}", Sha256::digest(bytes))
@@ -544,5 +559,34 @@ mod tests {
             "node-v1",
         )
         .is_err());
+    }
+
+    #[test]
+    fn derives_the_exact_runtime_root_from_the_verified_node_path() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "okf-studio-runtime-root-{}-{unique}",
+            std::process::id()
+        ));
+        let (node, npm) = runtime_paths(&root);
+        std::fs::create_dir_all(node.parent().expect("node parent")).expect("create runtime");
+        std::fs::write(&node, "node").expect("write node");
+        let receipt = NodeRuntimeReceipt {
+            version: "test".to_string(),
+            target: "test".to_string(),
+            node_path: node.to_string_lossy().into_owned(),
+            npm_path: npm.to_string_lossy().into_owned(),
+            sha256: "test".to_string(),
+            already_installed: true,
+        };
+
+        assert_eq!(
+            receipt.runtime_root().expect("runtime root"),
+            root.canonicalize().expect("canonical runtime")
+        );
+        let _ = std::fs::remove_dir_all(root);
     }
 }

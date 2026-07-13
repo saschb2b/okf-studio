@@ -584,6 +584,8 @@ pub async fn connect_catalog(
         arguments: command.arguments,
         environment: command.environment,
         #[cfg(any(target_os = "linux", test))]
+        read_only_roots: command.read_only_roots,
+        #[cfg(any(target_os = "linux", test))]
         restricted: None,
     };
     connect_process(
@@ -3417,6 +3419,8 @@ struct ProcessSpec {
     arguments: Vec<String>,
     environment: Vec<(String, String)>,
     #[cfg(any(target_os = "linux", test))]
+    read_only_roots: Vec<PathBuf>,
+    #[cfg(any(target_os = "linux", test))]
     restricted: Option<LinuxRestrictedProcessSpec>,
 }
 
@@ -3424,7 +3428,6 @@ struct ProcessSpec {
 #[allow(dead_code)]
 struct LinuxRestrictedProcessSpec {
     bundle_root: PathBuf,
-    runtime_roots: Vec<PathBuf>,
     network: crate::agent_sandbox::LinuxSandboxNetworkMode,
 }
 
@@ -3439,6 +3442,8 @@ impl ProcessSpec {
             executable: PathBuf::from(&profile.executable),
             arguments: profile.arguments.clone(),
             environment,
+            #[cfg(any(target_os = "linux", test))]
+            read_only_roots: Vec::new(),
             #[cfg(any(target_os = "linux", test))]
             restricted: None,
         }
@@ -3545,7 +3550,7 @@ async fn process_command(spec: &ProcessSpec) -> Result<Command, String> {
             &restricted.bundle_root,
             &spec.executable,
             &spec.arguments,
-            &restricted.runtime_roots,
+            &spec.read_only_roots,
             restricted.network,
         )
         .await;

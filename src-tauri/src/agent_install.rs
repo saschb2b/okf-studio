@@ -93,6 +93,8 @@ pub(crate) struct InstalledAgentCommand {
     pub(crate) executable: PathBuf,
     pub(crate) arguments: Vec<String>,
     pub(crate) environment: Vec<(String, String)>,
+    #[cfg(any(target_os = "linux", test))]
+    pub(crate) read_only_roots: Vec<PathBuf>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -365,6 +367,8 @@ pub(crate) fn installed_command(
         executable: runtime.node_path(),
         arguments,
         environment: catalog_environment(&distribution.environment),
+        #[cfg(any(target_os = "linux", test))]
+        read_only_roots: vec![runtime.runtime_root()?, package_root],
     })
 }
 
@@ -405,8 +409,7 @@ fn install_dependencies(
         .stderr
         .take()
         .ok_or_else(|| "Studio could not capture dependency installation errors.".to_string())?;
-    let diagnostics =
-        std::thread::spawn(move || read_process_diagnostics(stderr, &redactions));
+    let diagnostics = std::thread::spawn(move || read_process_diagnostics(stderr, &redactions));
     let started = Instant::now();
     let status = loop {
         if cancelled.load(Ordering::Acquire) {

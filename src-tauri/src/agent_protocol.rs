@@ -810,12 +810,14 @@ async fn run_local_connection(
                                         },
                                     },
                                 });
-                                Ok(result.unwrap_or_else(|error| {
-                                    format!(
-                                        "Studio tool error: {}",
-                                        bounded_tool_field(&error)
-                                    )
-                                }))
+                                Ok(match result {
+                                    Ok(output) => {
+                                        agent_local::LocalToolOutcome::Completed(output)
+                                    }
+                                    Err(error) => agent_local::LocalToolOutcome::Failed(
+                                        bounded_tool_field(&error),
+                                    ),
+                                })
                             },
                         )
                         .map(|answer| (messages, answer))

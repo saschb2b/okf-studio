@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-13T18:36:48Z
+timestamp: 2026-07-13T18:44:23Z
 ---
 
 # Decision
@@ -71,7 +71,7 @@ Rust prepends one Studio-owned system message to every native provider request w
 
 Detailed skill guidance uses progressive disclosure through a closed native tool. The provider receives one `load_okf_skill_resource` function schema whose argument is an enum of `instructions`, `specification`, `commands`, and `templates`. Before any executor runs, the provider loop rejects a call whose name was absent from the exact tool definitions advertised for that turn. The closed dispatcher separately rejects unknown tools, extra fields, malformed arguments, oversized calls, and excessive rounds. It returns only the selected compile-time resource with a stable `okf-studio://` URI.
 
-The same loop advertises six read-only active-bundle tools. Their argument schemas match the ACP MCP names, and their Rust executor calls the same inventory, read, search, source-reference, traversal, and validation methods rather than duplicating query logic. The session retains a canonical bundle root; each native call reparses that root and accepts concept IDs, filters, cursors, and line ranges instead of paths. Structured output above 96 KiB fails with a bounded request to narrow the query. Tool failures return to the model as data so it can correct an argument, while lifecycle status still reports failure to the webview. The model never receives an arbitrary filesystem primitive.
+The same loop advertises six read-only active-bundle tools. Their argument schemas match the ACP MCP names, and their Rust executor calls the same inventory, read, search, source-reference, traversal, and validation methods rather than duplicating query logic. The session retains a canonical bundle root; each native call reparses that root and accepts concept IDs, filters, cursors, and line ranges instead of paths. Structured output above 96 KiB fails with a bounded request to narrow the query. The executor distinguishes a completed call, a recoverable tool failure, and a fatal host error. A recoverable failure produces a failed lifecycle card and bounded `Studio tool error` result so the model can correct its call within the existing round limits. Cancellation and host shutdown remain fatal and never return to the model as tool data. The model never receives an arbitrary filesystem primitive.
 
 An accepted local turn with user-attached extracted text adds two ephemeral source tools. Inventory maps the validated inputs to `source-1` through `source-8` and returns only bounded provenance, warnings, digests, and sizes. Read resolves one of those synthetic IDs in memory and returns a bounded line page of at most 65,536 characters. Unknown IDs and extra arguments fail closed. The source values are captured only by that blocking provider turn, never added to `LocalSession`, and removed with the tool definitions when the turn ends. Images are rejected before acceptance because native providers do not advertise image support yet.
 

@@ -96,6 +96,11 @@ pub(crate) struct LocalToolCall {
     pub arguments: serde_json::Value,
 }
 
+pub(crate) enum LocalToolOutcome {
+    Completed(String),
+    Failed(String),
+}
+
 #[derive(Debug)]
 struct LocalChatStep {
     content: Option<String>,
@@ -222,7 +227,7 @@ pub(crate) fn chat_with_tools(
     runtime: &LocalModelRuntime,
     messages: &[LocalChatMessage],
     tools: &[LocalToolDefinition],
-    mut execute: impl FnMut(&LocalToolCall) -> Result<String, String>,
+    mut execute: impl FnMut(&LocalToolCall) -> Result<LocalToolOutcome, String>,
 ) -> Result<String, String> {
     if tools.is_empty() {
         return chat(runtime, messages);
@@ -261,7 +266,10 @@ pub(crate) fn chat_with_tools(
         }
         request_messages.push(assistant_tool_message(runtime.provider, &response));
         for call in &response.tool_calls {
-            let result = execute(call)?;
+            let result = match execute(call)? {
+                LocalToolOutcome::Completed(result) => result,
+                LocalToolOutcome::Failed(error) => bounded_tool_failure(&error),
+            };
             if result.chars().count() > MAX_TOOL_RESULT_CHARS {
                 return Err("The Studio tool result exceeds the turn limit.".to_string());
             }
@@ -764,6 +772,16 @@ fn clean_chat_content(content: &str) -> String {
         .chars()
         .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
         .collect()
+}
+
+fn bounded_tool_failure(error: &str) -> String {
+    const PREFIX: &str = "Studio tool error: ";
+    let detail = clean_chat_content(error);
+    if detail.is_empty() {
+        return "Studio tool failed.".to_string();
+    }
+    let available = MAX_TOOL_RESULT_CHARS.saturating_sub(PREFIX.chars().count());
+    format!("{PREFIX}{}", detail.chars().take(available).collect::<String>())
 }
 
 fn bounded_tool_name(value: &str) -> Option<String> {
@@ -1295,12 +1313,118 @@ mod tests {
                 calls += 1;
                 assert_eq!(call.name, "load_okf_skill_resource");
                 assert_eq!(call.arguments["resource"], "instructions");
-                Ok("canonical resource body".to_string())
+                Ok(LocalToolOutcome::Completed(
+                    "canonical resource body".to_string(),
+                ))
             },
         )
         .expect("tool-loop response");
         assert_eq!(answer, "I loaded the requested guidance.");
         assert_eq!(calls, 1);
+        server.join().expect("join test server");
+    }
+
+    #[test]
+    fn returns_a_failed_tool_result_to_the_model_for_correction() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            let (mut first, _) = listener.accept().expect("accept first request");
+            let _ = read_http_request(&mut first);
+            write_json_response(
+                &mut first,
+                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"missing"}}}]}}"#,
+            );
+
+            let (mut second, _) = listener.accept().expect("accept correction request");
+            let second_request = read_http_request(&mut second);
+            let second_body = request_json(&second_request);
+            let tool_result = second_body["messages"]
+                .as_array()
+                .and_then(|messages| messages.iter().find(|message| message["role"] == "tool"))
+                .expect("failed tool result message");
+            assert_eq!(tool_result["tool_name"], "load_okf_skill_resource");
+            assert_eq!(
+                tool_result["content"],
+                "Studio tool error: Choose an advertised resource."
+            );
+            write_json_response(
+                &mut second,
+                r#"{"message":{"role":"assistant","content":"I corrected the request."}}"#,
+            );
+        });
+        let runtime = LocalModelRuntime {
+            profile_id: "local-0123456789abcdef".to_string(),
+            profile_name: "Test endpoint".to_string(),
+            provider: LocalModelProvider::Ollama,
+            base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
+            model: "qwen-test".to_string(),
+            api_key: None,
+        };
+        let tools = [LocalToolDefinition {
+            name: "load_okf_skill_resource",
+            description: "Load one resource.",
+            parameters: serde_json::json!({"type": "object"}),
+        }];
+        let mut calls = 0;
+        let answer = chat_with_tools(
+            &runtime,
+            &[LocalChatMessage {
+                role: "user",
+                content: "Load a resource".to_string(),
+            }],
+            &tools,
+            |_| {
+                calls += 1;
+                Ok(LocalToolOutcome::Failed(
+                    "Choose an advertised resource.".to_string(),
+                ))
+            },
+        )
+        .expect("model correction response");
+
+        assert_eq!(answer, "I corrected the request.");
+        assert_eq!(calls, 1);
+        server.join().expect("join test server");
+    }
+
+    #[test]
+    fn stops_the_tool_loop_on_a_fatal_executor_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            let _ = read_http_request(&mut stream);
+            write_json_response(
+                &mut stream,
+                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"instructions"}}}]}}"#,
+            );
+        });
+        let runtime = LocalModelRuntime {
+            profile_id: "local-0123456789abcdef".to_string(),
+            profile_name: "Test endpoint".to_string(),
+            provider: LocalModelProvider::Ollama,
+            base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
+            model: "qwen-test".to_string(),
+            api_key: None,
+        };
+        let tools = [LocalToolDefinition {
+            name: "load_okf_skill_resource",
+            description: "Load one resource.",
+            parameters: serde_json::json!({"type": "object"}),
+        }];
+        let error = chat_with_tools(
+            &runtime,
+            &[LocalChatMessage {
+                role: "user",
+                content: "Load a resource".to_string(),
+            }],
+            &tools,
+            |_| Err("The local Studio Agent turn was cancelled.".to_string()),
+        )
+        .expect_err("fatal executor error");
+
+        assert_eq!(error, "The local Studio Agent turn was cancelled.");
         server.join().expect("join test server");
     }
 
@@ -1339,7 +1463,9 @@ mod tests {
             &tools,
             |_| {
                 dispatched = true;
-                Ok("unexpected dispatch".to_string())
+                Ok(LocalToolOutcome::Completed(
+                    "unexpected dispatch".to_string(),
+                ))
             },
         )
         .expect_err("unadvertised tool must fail closed");

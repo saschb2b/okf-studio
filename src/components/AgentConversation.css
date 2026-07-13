@@ -1063,6 +1063,15 @@
   gap: var(--space-4);
 }
 
+.agent-staged__hunk--unreviewed {
+  padding-inline-start: var(--space-8);
+  border-inline-start: 2px solid var(--warn);
+}
+
+.agent-staged__hunk--unreviewed > p {
+  color: var(--warn);
+}
+
 .agent-staged__hunk header {
   display: flex;
   min-width: 0;

@@ -840,7 +840,13 @@ export function AgentConversation({
     const current = expandedDiff;
     if (!session || current?.state !== "ready" || selectingHunk) return;
     const hunk = current.diff.hunks.find((candidate) => candidate.index === hunkIndex);
-    if (!hunk || hunk.selected === selected || current.diff.truncated) return;
+    const requiresExplicitChoice = stagedChanges?.mode === "enhance" &&
+      current.diff.kind === "modify";
+    if (
+      !hunk ||
+      (hunk.selected === selected && (!requiresExplicitChoice || hunk.reviewed)) ||
+      current.diff.truncated
+    ) return;
     const sessionId = session.sessionId;
     setSelectingHunk({ path: current.path, index: hunkIndex });
     clearStagedValidation();
@@ -1093,7 +1099,7 @@ export function AgentConversation({
   async function generateBundleProposal() {
     const session = sessionRef.current;
     if (!session || !writeGranted || activeTurn || isSubmitting || isPreparingGeneration) return;
-    const mode = threadWorkflow === "create-bundle" ? "create" : "edit";
+    const mode = threadWorkflow === "create-bundle" ? "create" : "enhance";
     if (stagedFileCount > 0 && stagedChanges?.mode !== mode) return;
     setIsPreparingGeneration(true);
     setStageError(null);
@@ -1731,7 +1737,11 @@ export function AgentConversation({
             <section className="agent-staged" aria-labelledby="agent-staged-title">
               <header>
                 <strong id="agent-staged-title">
-                  {stagedChanges.mode === "create" ? "Fresh bundle draft" : "Staged changes"}
+                  {stagedChanges.mode === "create"
+                    ? "Fresh bundle draft"
+                    : stagedChanges.mode === "enhance"
+                      ? "Enhancement draft"
+                      : "Staged changes"}
                 </strong>
                 <span title={stagedSummary}>{stagedSummary}</span>
                 <div className="agent-staged__actions">
@@ -1768,7 +1778,11 @@ export function AgentConversation({
                         <FileText size={14} aria-hidden="true" />
                         <span title={file.path}>{file.path}</span>
                         <small>
-                          {file.kind === "create" ? "New file" : "Modified"} · {stagedBytesLabel(file.bytes)}
+                          {file.kind === "create"
+                            ? "New file"
+                            : stagedChanges.mode === "enhance"
+                              ? "Modified · explicit review required"
+                              : "Modified"} · {stagedBytesLabel(file.bytes)}
                         </small>
                         <div className="agent-staged__file-actions">
                           <button
@@ -1814,7 +1828,7 @@ export function AgentConversation({
                                 {expandedDiff.diff.hunks.map((hunk) => (
                                   <section
                                     key={hunk.index}
-                                    className={`agent-staged__hunk${hunk.selected ? "" : " agent-staged__hunk--rejected"}`}
+                                    className={`agent-staged__hunk${!hunk.reviewed && file.kind === "modify" && stagedChanges.mode === "enhance" ? " agent-staged__hunk--unreviewed" : ""}${hunk.selected ? "" : " agent-staged__hunk--rejected"}`}
                                     aria-labelledby={`${diffId}-hunk-${hunk.index}`}
                                   >
                                     <header>
@@ -1827,7 +1841,12 @@ export function AgentConversation({
                                         <button
                                           type="button"
                                           className="btn ghost"
-                                          aria-pressed={hunk.selected}
+                                          aria-pressed={
+                                            hunk.selected && (
+                                              hunk.reviewed || file.kind !== "modify" ||
+                                              stagedChanges.mode !== "enhance"
+                                            )
+                                          }
                                           disabled={isApplyingStage || selectingHunk !== null}
                                           onClick={() => void setHunkSelection(hunk.index, true)}
                                         >
@@ -1836,7 +1855,12 @@ export function AgentConversation({
                                         <button
                                           type="button"
                                           className="btn ghost"
-                                          aria-pressed={!hunk.selected}
+                                          aria-pressed={
+                                            !hunk.selected && (
+                                              hunk.reviewed || file.kind !== "modify" ||
+                                              stagedChanges.mode !== "enhance"
+                                            )
+                                          }
                                           disabled={isApplyingStage || selectingHunk !== null}
                                           onClick={() => void setHunkSelection(hunk.index, false)}
                                         >
@@ -1844,6 +1868,10 @@ export function AgentConversation({
                                         </button>
                                       </div>
                                     </header>
+                                    {!hunk.reviewed && file.kind === "modify" &&
+                                      stagedChanges.mode === "enhance" && (
+                                      <p>Choose Keep or Reject before this enhancement can validate.</p>
+                                    )}
                                     <pre>
                                       {hunk.unified.split("\n").map((line, lineIndex) => {
                                         let className = "agent-staged__diff-line";
@@ -1878,7 +1906,7 @@ export function AgentConversation({
               )}
               {stagedValidation.status === "error" && (
                 <p className="agent-staged__validation-error" role="alert">
-                  Validation unavailable. {stagedValidation.message}
+                  Validation blocked. {stagedValidation.message}
                 </p>
               )}
               {stagedValidation.status === "ready" && (
@@ -1925,7 +1953,7 @@ export function AgentConversation({
                     </details>
                   )}
                   <StagedGraphPreview preview={stagedValidation.result.preview} />
-                  {stagedValidation.result.errors === 0 && stagedChanges.mode === "edit" && (
+                  {stagedValidation.result.errors === 0 && stagedChanges.mode !== "create" && (
                     <div className="agent-staged__apply">
                       <span>
                         Studio will recheck every file before replacing the bundle contents.

@@ -89,10 +89,19 @@ type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
 const agentPermissionHandlers = new Set<AgentPermissionHandler>();
 type AgentStageHandler = (event: AgentStageEvent) => void;
 const agentStageHandlers = new Set<AgentStageHandler>();
-type MockStagedFile = AgentStagedFileInfo & { content: string; hunkSelected: boolean };
+type MockStagedFile = AgentStagedFileInfo & {
+  content: string;
+  hunkSelected: boolean;
+  hunkReviewed: boolean;
+};
 const mockStagedChanges = new Map<
   string,
-  { granted: boolean; mode: "edit" | "create"; canRestore: boolean; files: MockStagedFile[] }
+  {
+    granted: boolean;
+    mode: "edit" | "enhance" | "create";
+    canRestore: boolean;
+    files: MockStagedFile[];
+  }
 >();
 const mockBundleCheckpoints = new Map<string, number>();
 const mockCancelledTurns = new Set<string>();
@@ -651,7 +660,7 @@ export async function discardAgentStagedChanges(
 export async function setAgentStageMode(
   connectionId: string,
   sessionId: string,
-  mode: "edit" | "create",
+  mode: "edit" | "enhance" | "create",
 ): Promise<AgentStagedChangesInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -674,7 +683,7 @@ export async function setAgentStageMode(
 
 function mockStageState(sessionId: string): {
   granted: boolean;
-  mode: "edit" | "create";
+  mode: "edit" | "enhance" | "create";
   canRestore: boolean;
   files: MockStagedFile[];
 } {
@@ -692,7 +701,7 @@ function emitMockStage(connectionId: string, sessionId: string): AgentStagedChan
     sessionId,
     granted: state.granted,
     mode: state.mode,
-    canRestore: state.mode === "edit" && state.canRestore,
+    canRestore: state.mode !== "create" && state.canRestore,
     files: state.files.map(({ path, bytes, kind }) => ({ path, bytes, kind })),
   };
   for (const handler of agentStageHandlers) handler({ connectionId, changes });
@@ -728,6 +737,7 @@ export async function agentStagedFileDiff(
       header: "@@ -0,0 +1 @@",
       unified: `${added}\n`,
       selected: file.hunkSelected,
+      reviewed: file.hunkReviewed,
     }],
     truncated: false,
   };
@@ -761,6 +771,7 @@ export async function setAgentStagedHunkSelection(
     throw new Error("The staged diff changed. Review the file again.");
   }
   file.hunkSelected = selected;
+  file.hunkReviewed = true;
   return agentStagedFileDiff(connectionId, sessionId, path);
 }
 
@@ -780,6 +791,14 @@ export async function validateAgentStagedChanges(
   }
   const state = mockStageState(sessionId);
   if (state.files.length === 0) throw new Error("There are no staged changes to validate.");
+  const unreviewed = state.files.find((file) => (
+    state.mode === "enhance" && file.kind === "modify" && !file.hunkReviewed
+  ));
+  if (unreviewed) {
+    throw new Error(
+      `Review ${unreviewed.path} and choose Keep or Reject for 1 hunk before validating this enhancement.`,
+    );
+  }
   const issues = state.files.flatMap((file) => {
     if (
       !file.hunkSelected ||
@@ -815,7 +834,7 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
     staged: boolean;
     links: string[];
   }>();
-  if (state.mode === "edit") {
+  if (state.mode !== "create") {
     for (const concept of MOCK_BUNDLE.concepts) {
       concepts.set(concept.id, {
         id: concept.id,
@@ -1062,13 +1081,19 @@ function mockStageWrite(info: AgentTurnInfo, text: string): string | null {
     existing.content = `${existing.content}\n\nRevised.`;
     existing.bytes = existing.content.length;
     existing.hunkSelected = true;
+    existing.hunkReviewed = false;
   } else {
+    const conceptId = path.toLowerCase().endsWith(".md") ? path.slice(0, -3) : path;
+    const kind = state.mode !== "create" && MOCK_BUNDLE.concepts.some(
+      (concept) => concept.id === conceptId,
+    ) ? "modify" : "create";
     state.files.push({
       path,
       bytes: content.length,
-      kind: "create",
+      kind,
       content,
       hunkSelected: true,
+      hunkReviewed: false,
     });
   }
   emitMockStage(info.connectionId, info.sessionId);
@@ -1083,17 +1108,37 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
   if (!state.granted) {
     return "Bundle generation denied: writes require the Allow edits in this thread grant.";
   }
-  const generated = [
+  const generated: { path: string; content: string; kind: "create" | "modify" }[] =
+    state.mode === "enhance" ? [
+      {
+        path: "product/overview.md",
+        kind: "modify",
+        content: "---\ntype: Product\n---\n# Overview\n\nExisting product facts, with a proposed evidence note.\n\nSee [New insight](new-insight.md).",
+      },
+      {
+        path: "product/new-insight.md",
+        kind: "create",
+        content: "---\ntype: Insight\n---\n# New insight\n\nA proposed addition linked to [Overview](overview.md).",
+      },
+      {
+        path: "enhancements/index.md",
+        kind: "create",
+        content: "---\nokf_version: 0.1\n---\n# Enhancements\n\n- [New insight](../product/new-insight.md)",
+      },
+    ] : [
     {
       path: "overview.md",
+      kind: "create",
       content: "---\ntype: Product\n---\n# Product overview\n\nSee [Agent system](agent-system.md).",
     },
     {
       path: "agent-system.md",
+      kind: "create",
       content: "---\ntype: Architecture\n---\n# Agent system\n\nA proposed architecture concept.",
     },
     {
       path: "index.md",
+      kind: "create",
       content: "---\nokf_version: 0.1\n---\n# Generated knowledge\n\n- [Product overview](overview.md)\n- [Agent system](agent-system.md)",
     },
   ];
@@ -1103,13 +1148,15 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
       existing.content = file.content;
       existing.bytes = file.content.length;
       existing.hunkSelected = true;
+      existing.hunkReviewed = false;
     } else {
       state.files.push({
         path: file.path,
         bytes: file.content.length,
-        kind: "create",
+        kind: file.kind,
         content: file.content,
         hunkSelected: true,
+        hunkReviewed: false,
       });
     }
   }
@@ -1123,30 +1170,43 @@ function mockAgentResponse(text: string): string {
     if (text.includes("Malformed proposal")) {
       return "I could not serialize the structure.\n\n```okf-proposal\n{not json}\n```";
     }
+    const enhancement = text.startsWith("Review this OKF bundle and the sources I attach");
+    const proposal = enhancement ? {
+      concepts: [
+        {
+          path: "product/overview.md",
+          title: "Overview",
+          type: "Product",
+          links: ["product/new-insight.md"],
+        },
+        {
+          path: "product/new-insight.md",
+          title: "New insight",
+          type: "Insight",
+          links: ["product/overview.md"],
+        },
+      ],
+      indexes: [{ path: "enhancements/index.md", concepts: ["product/new-insight.md"] }],
+    } : {
+      concepts: [
+        {
+          path: "overview.md",
+          title: "Product overview",
+          type: "Product",
+          links: ["agent-system.md"],
+        },
+        {
+          path: "agent-system.md",
+          title: "Agent system",
+          type: "Architecture",
+          links: [],
+        },
+      ],
+      indexes: [{ path: "index.md", concepts: ["overview.md", "agent-system.md"] }],
+    };
     return "I inspected the available evidence and mapped a small structure for review.\n\n" +
       "```okf-proposal\n" +
-      JSON.stringify({
-        concepts: [
-          {
-            path: "overview.md",
-            title: "Product overview",
-            type: "Product",
-            links: ["agent-system.md"],
-          },
-          {
-            path: "agent-system.md",
-            title: "Agent system",
-            type: "Architecture",
-            links: [],
-          },
-        ],
-        indexes: [
-          {
-            path: "index.md",
-            concepts: ["overview.md", "agent-system.md"],
-          },
-        ],
-      }, null, 2) +
+      JSON.stringify(proposal, null, 2) +
       "\n```";
   }
   if (text.startsWith("Research this question across the active bundle")) {

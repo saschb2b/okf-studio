@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Creation**: Protected authored facts during Enhance generation. Existing-file hunks now start unreviewed with neither Keep nor Reject selected. Rust blocks validation and Apply until every complete modification hunk receives an explicit choice at the current diff revision; a later agent rewrite clears the choices. New files keep the ordinary staged review path.
 * **Creation**: Completed fresh-bundle destination selection. After zero-error validation, Studio asks for a portable folder name and a native parent-folder choice, rechecks the exact reviewed revision, builds the bundle in a private sibling directory, and renames it into place. Existing destinations and active-bundle descendants are rejected; cancellation leaves the draft intact and absolute paths stay out of the webview.
 * **Creation**: Added a graph preview to staged validation. The Rust validator projects bounded concept and resolved-link metadata from the exact selected mirror, marks staged nodes, retains full totals when the drawing is truncated, and sends no Markdown bodies. Create previews only its isolated draft; Enhance previews the selected overlay.
 * **Creation**: Isolated fresh-bundle generation from the active bundle. Create now selects a Rust-owned stage mode that treats every path as new, validates only selected draft files in an empty mirror, hides source-bundle checkpoints, and refuses active-bundle Apply. Enhance keeps the ordinary edit overlay, and a non-empty stage cannot switch modes.

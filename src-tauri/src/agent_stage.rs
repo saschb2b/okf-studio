@@ -41,6 +41,7 @@ pub(crate) const WRITE_GRANT_MESSAGE: &str =
 pub enum AgentStageMode {
     #[default]
     Edit,
+    Enhance,
     Create,
 }
 
@@ -73,6 +74,7 @@ pub struct AgentStagedDiffHunk {
     pub header: String,
     pub unified: String,
     pub selected: bool,
+    pub reviewed: bool,
 }
 
 /// One staged file's bounded, structured diff against the current bundle file.
@@ -179,6 +181,7 @@ struct StagedFile {
 struct HunkSelection {
     revision: String,
     rejected: BTreeSet<usize>,
+    reviewed: BTreeSet<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -542,7 +545,13 @@ impl SessionStages {
             let selection = file
                 .selection
                 .as_ref()
-                .map(|selection| (selection.revision.clone(), selection.rejected.clone()));
+                .map(|selection| {
+                    (
+                        selection.revision.clone(),
+                        selection.rejected.clone(),
+                        selection.reviewed.clone(),
+                    )
+                });
             (
                 stage.bundle_root.clone(),
                 file.content.clone(),
@@ -586,7 +595,13 @@ impl SessionStages {
             let selection = file
                 .selection
                 .as_ref()
-                .map(|selection| (selection.revision.clone(), selection.rejected.clone()));
+                .map(|selection| {
+                    (
+                        selection.revision.clone(),
+                        selection.rejected.clone(),
+                        selection.reviewed.clone(),
+                    )
+                });
             (
                 stage.bundle_root.clone(),
                 file.content.clone(),
@@ -609,6 +624,7 @@ impl SessionStages {
             return Err("Hunk choices are unavailable for a truncated diff.".to_string());
         }
         hunk.selected = selected;
+        hunk.reviewed = true;
 
         let mut sessions = self
             .sessions
@@ -627,11 +643,14 @@ impl SessionStages {
         let selection = file.selection.get_or_insert_with(|| HunkSelection {
             revision: revision.to_string(),
             rejected: BTreeSet::new(),
+            reviewed: BTreeSet::new(),
         });
         if selection.revision != revision {
             selection.revision = revision.to_string();
             selection.rejected.clear();
+            selection.reviewed.clear();
         }
+        selection.reviewed.insert(hunk_index);
         if selected {
             selection.rejected.remove(&hunk_index);
         } else {
@@ -1178,7 +1197,7 @@ fn stage_write_into(stage: &mut SessionStage, path: &Path, content: String) -> R
     // stable across repeated writes to the path.
     let kind = existing.map_or_else(
         || {
-            if stage.mode == AgentStageMode::Edit
+            if stage.mode != AgentStageMode::Create
                 && stage.bundle_root.join(Path::new(&relative)).is_file()
             {
                 "modify"
@@ -1285,6 +1304,9 @@ fn prepare_selected_stage(
     files: &BTreeMap<String, StagedFile>,
     mode: AgentStageMode,
 ) -> Result<Vec<PreparedStagedFile>, String> {
+    if mode == AgentStageMode::Enhance {
+        require_explicit_enhance_reviews(bundle_root, files)?;
+    }
     files
         .iter()
         .map(|(path, file)| {
@@ -1293,7 +1315,7 @@ fn prepare_selected_stage(
             if relative != *path {
                 return Err("A staged path no longer resolves to its reviewed file.".to_string());
             }
-            if mode == AgentStageMode::Edit && file.kind == "create" && target.exists() {
+            if mode != AgentStageMode::Create && file.kind == "create" && target.exists() {
                 return Err(format!(
                     "Staged apply needs a fresh review of {path}; the file now exists."
                 ));
@@ -1310,6 +1332,42 @@ fn prepare_selected_stage(
             })
         })
         .collect()
+}
+
+fn require_explicit_enhance_reviews(
+    bundle_root: &Path,
+    files: &BTreeMap<String, StagedFile>,
+) -> Result<(), String> {
+    for (path, file) in files.iter().filter(|(_, file)| file.kind == "modify") {
+        let original = read_original(bundle_root, path, file.kind)?;
+        let selection = file.selection.as_ref().map(|selection| {
+            (
+                selection.revision.clone(),
+                selection.rejected.clone(),
+                selection.reviewed.clone(),
+            )
+        });
+        let diff = build_staged_diff(
+            path,
+            file.kind,
+            &original,
+            &file.content,
+            selection.as_ref(),
+        );
+        if diff.truncated {
+            return Err(format!(
+                "Enhancement validation cannot review the complete diff for {path}. Reject that file or reduce the proposed change."
+            ));
+        }
+        let unreviewed = diff.hunks.iter().filter(|hunk| !hunk.reviewed).count();
+        if unreviewed > 0 {
+            return Err(format!(
+                "Review {path} and choose Keep or Reject for {unreviewed} hunk{} before validating this enhancement.",
+                if unreviewed == 1 { "" } else { "s" }
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn selected_stage_revision(prepared: &[PreparedStagedFile]) -> String {
@@ -1513,7 +1571,7 @@ fn validate_prepared(
     mode: AgentStageMode,
 ) -> Result<AgentStagedValidationInfo, String> {
     let mirror = ValidationMirror::create()?;
-    if mode == AgentStageMode::Edit {
+    if mode != AgentStageMode::Create {
         copy_markdown_tree(bundle_root, &mirror.path)?;
     }
     for file in prepared {
@@ -2917,7 +2975,7 @@ fn build_staged_diff(
     kind: &'static str,
     original: &str,
     content: &str,
-    selection: Option<&(String, BTreeSet<usize>)>,
+    selection: Option<&(String, BTreeSet<usize>, BTreeSet<usize>)>,
 ) -> AgentStagedFileDiff {
     let mut digest = Sha256::new();
     for part in [
@@ -2931,8 +2989,11 @@ fn build_staged_diff(
     }
     let revision = format!("{:x}", digest.finalize());
     let rejected = selection
-        .filter(|(selection_revision, _)| selection_revision == &revision)
-        .map(|(_, rejected)| rejected);
+        .filter(|(selection_revision, _, _)| selection_revision == &revision)
+        .map(|(_, rejected, _)| rejected);
+    let reviewed = selection
+        .filter(|(selection_revision, _, _)| selection_revision == &revision)
+        .map(|(_, _, reviewed)| reviewed);
 
     let text_diff = similar::TextDiff::from_lines(original, content);
     let mut used_chars = format!("--- a/{path}\n+++ b/{path}\n").chars().count();
@@ -2961,6 +3022,7 @@ fn build_staged_diff(
             header,
             unified,
             selected: rejected.is_none_or(|rejected| !rejected.contains(&index)),
+            reviewed: reviewed.is_some_and(|reviewed| reviewed.contains(&index)),
         });
     }
     AgentStagedFileDiff {
@@ -2977,7 +3039,7 @@ fn snapshot(session_id: &str, stage: &SessionStage) -> AgentStagedChangesInfo {
         session_id: session_id.to_string(),
         granted: stage.granted,
         mode: stage.mode,
-        can_restore: stage.mode == AgentStageMode::Edit && stage.checkpoint.is_some(),
+        can_restore: stage.mode != AgentStageMode::Create && stage.checkpoint.is_some(),
         files: stage
             .files
             .iter()
@@ -3829,6 +3891,51 @@ mod tests {
                 .iter()
                 .any(|node| node.id == "existing" && !node.staged),
             "a fully rejected modification is not a staged graph node"
+        );
+    }
+
+    #[test]
+    fn enhancement_requires_an_explicit_choice_for_every_modified_hunk() {
+        let root = canonical_temp_dir("enhance-review");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .set_mode("session-1", AgentStageMode::Enhance)
+            .expect("select enhance mode");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# Enriched\n\nAdded evidence.\n".to_string(),
+            )
+            .expect("stage enhancement");
+
+        let error = stages
+            .validate_staged("session-1")
+            .expect_err("unreviewed replacement must be blocked");
+        assert!(error.contains("choose Keep or Reject"));
+        let diff = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("review modification");
+        assert_eq!(diff.hunks.len(), 1);
+        assert!(diff.hunks[0].selected);
+        assert!(!diff.hunks[0].reviewed);
+        let reviewed = stages
+            .set_hunk_selection("session-1", "existing.md", &diff.revision, 0, true)
+            .expect("explicitly keep hunk");
+        assert!(reviewed.hunks[0].selected);
+        assert!(reviewed.hunks[0].reviewed);
+
+        let validation = stages.validate_staged("session-1").expect("validate enhancement");
+        assert_eq!(validation.errors, 0);
+        let applied = stages
+            .apply_staged("session-1", &validation.revision)
+            .expect("apply reviewed enhancement");
+        assert!(applied.changes.can_restore);
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read enhancement"),
+            "---\ntype: note\n---\n# Enriched\n\nAdded evidence.\n"
         );
     }
 

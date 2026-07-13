@@ -594,6 +594,58 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Remove Creation Harness" }));
   });
 
+  it("requires explicit existing-file choices before validating an enhancement", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Enhancement Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\enhancement.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Enhancement Harness" }));
+    await screen.findByText(/Connected to Enhancement Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.click(screen.getByRole("button", { name: /Enhance bundle/ }));
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    const proposal = await screen.findByRole("region", {
+      name: "Proposed OKF bundle structure",
+    });
+    expect(within(proposal).getAllByText("product/overview.md").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Allow edits in this thread" }));
+    await user.click(within(proposal).getByRole("button", { name: "Generate in staging" }));
+
+    expect(await screen.findByText("Enhancement draft")).toBeInTheDocument();
+    expect(screen.getByText(/Modified · explicit review required/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Validate" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "choose Keep or Reject for 1 hunk",
+    );
+
+    await user.click(screen.getByRole("button", {
+      name: "Review staged file product/overview.md",
+    }));
+    const choice = await screen.findByRole("group", { name: "Hunk 1 choice" });
+    const keep = within(choice).getByRole("button", { name: "Keep" });
+    const reject = within(choice).getByRole("button", { name: "Reject" });
+    expect(keep).toHaveAttribute("aria-pressed", "false");
+    expect(reject).toHaveAttribute("aria-pressed", "false");
+    await user.click(keep);
+    expect(keep).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "Validate" }));
+    expect(await screen.findByRole("status", { name: "Staged validation result" }))
+      .toHaveTextContent("Validation passed");
+    expect(screen.getByRole("button", { name: "Apply changes" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Enhancement Harness" }));
+  });
+
   it("lists and restores agent-owned sessions for the active bundle", async () => {
     const historySpy = vi.spyOn(ipc, "listAgentSessions")
       .mockRejectedValueOnce(new Error("History service unavailable"))

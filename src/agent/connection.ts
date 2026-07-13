@@ -144,7 +144,7 @@ export interface AgentStagedFileInfo {
 export interface AgentStagedChangesInfo {
   sessionId: string;
   granted: boolean;
-  mode: "edit" | "create";
+  mode: "edit" | "enhance" | "create";
   canRestore: boolean;
   files: readonly AgentStagedFileInfo[];
 }
@@ -167,6 +167,7 @@ export interface AgentStagedDiffHunk {
   header: string;
   unified: string;
   selected: boolean;
+  reviewed: boolean;
 }
 
 export interface AgentStagedValidationIssue {

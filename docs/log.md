@@ -1,5 +1,8 @@
 # Update Log
 
+## 2026-07-14
+* **Update**: Inserted an Agent workspace UX refinement package before isolation and autonomy completion. Its journey contract covers first connection, saved-thread return, research, editing, permission and failure recovery, parallel work, and narrow panels. The gate requires one clear next action, one persistent identity hierarchy, visible blocking state, and screenshot plus keyboard evidence at three panel widths.
+
 ## 2026-07-13
 * **Creation**: Added an Ubuntu 22.04 CI gate that executes the restricted agent branch through the distribution Bubblewrap package. The fixture proves that ordinary bundle content is readable, protected content is absent, bundle writes fail, private temporary storage works, and the sandboxed process exits within its deadline. Normal local test runs do not require Bubblewrap; the dedicated job sets the enforcement requirement explicitly.
 * **Update**: Carried the exact managed Node runtime root and canonical installed package root from verified install records into each catalog process specification. The dormant restricted launcher can now mount those two paths without exposing their shared app-cache parent. Custom profiles still declare no extra runtime mount, and no current profile selects the restricted branch.

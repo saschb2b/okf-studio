@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T22:46:06Z
+timestamp: 2026-07-14T09:00:00Z
 ---
 
 # Outcome
@@ -190,6 +190,38 @@ Gate: mixed, duplicate, malformed, offline, provenance, and deterministic-valida
 
 Gate: end-to-end tests reach useful results with no hidden write or network action.
 
+## WP10A: Agent workspace UX refinement
+
+The Agent Panel now contains the complete workflow, but its controls accumulated as separate feature layers. In a live thread, the connection strip, thread strip, thread toolbar, saved-thread prompt, starters, transcript, and composer can all appear at once. The next pass must establish one visible hierarchy for the user's current task before adding more autonomy.
+
+The journey contract defines what earns persistent space and what stays deferred:
+
+| Journey | Keep visible | Defer or hide |
+| --- | --- | --- |
+| No bundle or connection | Current bundle state, one **Connect an agent** action, and the fact that browsing starts no agent | Thread controls, history, write grants, workflow starters, and the composer |
+| First connected thread | Agent, bundle scope, authentication when required, one short orientation, starters, and the composer | History when none exists, staged-change actions, secondary connection details, and duplicate bundle labels |
+| Returning to saved work | Saved thread title, agent, age or state, **Resume**, **Dismiss**, and a clear **Start new thread** alternative | A second empty-thread explanation and the full starter grid until the user chooses new work |
+| Research | Thread identity, attached evidence, turn state, source requirements, transcript, and composer | Write grants and staged-change actions until the agent requests a write or the user selects an editing workflow |
+| Create or enhance | Workflow identity, edit-grant state, staged-change state, review and validation progress, transcript, and composer | Research-only export guidance and unrelated toolbar actions |
+| Permission or failure | The blocking request or error beside the action that owns it, recovery action, retained draft, and Stop when applicable | Unrelated actions that cannot complete; disabled controls must explain why |
+| Parallel agents and threads | Selected agent and thread, compact status, switch affordances, and one add action per level | Repeated product, bundle, agent, and thread labels across stacked bars |
+| Narrow panel | The same task state, a scrollable or condensed switcher, transcript, and composer with 24px minimum targets | Text labels that can move into an accessible overflow menu without hiding state |
+
+- [ ] Inventory every persistent band and action across disconnected, authentication, empty, resumed, streaming, permission, staged, validation, and error states. Record duplicate labels, actions without a current use, and controls that move between states.
+- [ ] Prototype the workspace hierarchy with real long agent, bundle, and thread names. Compare a merged agent/thread navigator with the current stacked strips at 360px, the default panel width, and 560px before choosing the structure.
+- [ ] Reduce the live workspace to one clear identity header. The selected agent and thread remain discoverable, while the product name, bundle name, connection state, and repeated new-thread actions appear only where they add information.
+- [ ] Make saved-thread continuation a distinct returning-user state. Resume, dismiss, or start new work must resolve that state before the ordinary empty-thread guidance takes over.
+- [ ] Separate research and editing emphasis. Keep read-only research calm by default; reveal the edit grant, staged review, validation, Apply, and Restore controls when the selected workflow or live stage makes them relevant.
+- [ ] Consolidate secondary thread actions into one predictable menu. Keep Stop, Send or Queue, the active blocking request, and staged-review actions direct because they are time-sensitive.
+- [ ] Give the transcript the dominant vertical budget. Empty guidance must be short enough that the composer remains visually connected to it, and long content must scroll without pushing identity or send controls out of reach.
+- [ ] Treat connection, session, turn, permission, staging, and validation as separate status owners. Each failure appears once beside its recovery action and survives switching away and back to its agent or thread.
+- [ ] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
+- [ ] Verify keyboard order, focus return, popover focus, horizontal switcher scrolling, 24px targets, text reflow, and visible focus at narrow and wide widths. No task-critical action may exist only on hover.
+- [ ] Run a visual-consistency pass over spacing, type scale, common edges, dividers, repeated controls, overflow, and focus rings. Use the existing theme tokens and record any hierarchy choice that still needs judgment.
+- [ ] Dogfood the first-use, resume, deep-research, create, enhance, permission, failure-recovery, parallel-thread, and narrow-panel journeys. Capture before and after screenshots and note where the user must hunt, backtrack, or interpret hidden state.
+
+Gate: each journey has one obvious next action, no duplicated persistent identity, no hidden blocking state, and screenshot plus keyboard evidence at 360px, the default panel width, and 560px.
+
 ## WP11: Isolation and autonomy
 
 - [x] Enforce the active bundle root through a Rust-owned grant registry rather than trusting a path supplied by the webview.
@@ -243,8 +275,7 @@ Gate: Studio creates a conformant bundle from mixed sources, improves it through
 flowchart TD
   WP1 --> WP2 --> WP3 --> WP4
   WP4 --> WP5
-  WP4 --> WP6 --> WP7 --> WP8 --> WP9 --> WP10 --> WP12
-  WP8 --> WP11 --> WP12
+  WP4 --> WP6 --> WP7 --> WP8 --> WP9 --> WP10 --> WP10A --> WP11 --> WP12
 ```
 
 # Deferred decisions

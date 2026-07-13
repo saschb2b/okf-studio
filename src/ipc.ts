@@ -122,8 +122,24 @@ interface MockAgentSession {
 const mockAgentSessions = new Map<string, MockAgentSession>();
 const mockPermissionResponses = new Map<
   string,
-  { turnId: string; optionIds: ReadonlySet<string>; resolve: (optionId: string | null) => void }
+  {
+    turnId: string;
+    optionIds: ReadonlySet<string>;
+    optionDecisions: ReadonlyMap<string, "allow" | "reject">;
+    ruleKey: string;
+    resolve: (optionId: string | null) => void;
+  }
 >();
+const mockThreadPermissionRules = new Map<string, "allow" | "reject">();
+
+function clearMockThreadPermissionRules(connectionId: string, sessionId?: string): void {
+  const prefix = sessionId === undefined
+    ? `${connectionId}\0`
+    : `${connectionId}\0${sessionId}\0`;
+  for (const key of mockThreadPermissionRules.keys()) {
+    if (key.startsWith(prefix)) mockThreadPermissionRules.delete(key);
+  }
+}
 
 export async function customAgents(): Promise<readonly CustomAgentProfile[]> {
   if (!isTauri()) return mockCustomAgents;
@@ -379,6 +395,7 @@ export async function newAgentSession(
   }
   if (!connection.authenticated) throw new Error("Authenticate the agent before creating a session.");
   const sessionId = `session-${crypto.randomUUID()}`;
+  clearMockThreadPermissionRules(connectionId, sessionId);
   const stagedState = {
     granted: false,
     mode: "edit" as const,
@@ -465,6 +482,7 @@ export async function loadAgentSession(
     throw new Error("This agent did not advertise session restore support.");
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  clearMockThreadPermissionRules(connectionId, sessionId);
   // Mirrors Rust: a restored session never inherits a write grant or files.
   const stagedState = {
     granted: false,
@@ -680,15 +698,27 @@ export async function cancelAgentTurn(
 export async function respondAgentPermission(
   requestId: string,
   optionId: string | null,
+  rememberForThread: boolean,
 ): Promise<boolean> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
-    return invoke<boolean>("respond_agent_permission", { requestId, optionId });
+    return invoke<boolean>("respond_agent_permission", {
+      requestId,
+      optionId,
+      rememberForThread,
+    });
   }
   const pending = mockPermissionResponses.get(requestId);
   if (!pending) return false;
   if (optionId !== null && !pending.optionIds.has(optionId)) {
     throw new Error("Permission option was not offered by the agent.");
+  }
+  if (rememberForThread) {
+    const decision = optionId === null ? undefined : pending.optionDecisions.get(optionId);
+    if (!decision) {
+      throw new Error("Only an allow-once or reject-once choice can become a thread rule.");
+    }
+    mockThreadPermissionRules.set(pending.ruleKey, decision);
   }
   mockPermissionResponses.delete(requestId);
   pending.resolve(optionId);
@@ -1400,34 +1430,48 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     return;
   }
   if (text.includes("Edit:")) {
+    const ruleKey = `${info.connectionId}\0${info.sessionId}\0write-bundle-files`;
+    const remembered = mockThreadPermissionRules.get(ruleKey);
     const requestId = `permission-${crypto.randomUUID()}`;
-    const optionId = await new Promise<string | null>((resolve) => {
-      mockPermissionResponses.set(requestId, {
-        turnId: info.turnId,
-        optionIds: new Set(["allow-once", "reject-once"]),
-        resolve,
-      });
+    const optionId = remembered === "allow"
+      ? "allow-once"
+      : remembered === "reject"
+        ? "reject-once"
+        : await new Promise<string | null>((resolve) => {
+            mockPermissionResponses.set(requestId, {
+              turnId: info.turnId,
+              optionIds: new Set(["allow-once", "reject-once"]),
+              optionDecisions: new Map([
+                ["allow-once", "allow"],
+                ["reject-once", "reject"],
+              ]),
+              ruleKey,
+              resolve,
+            });
+            emitAgentPermission({
+              requestId,
+              connectionId: info.connectionId,
+              sessionId: info.sessionId,
+              update: {
+                kind: "requested",
+                toolCallId: `tool-${info.turnId}`,
+                title: "Write bundle files",
+                options: [
+                  { optionId: "allow-once", name: "Allow once", kind: "allow-once" },
+                  { optionId: "reject-once", name: "Reject", kind: "reject-once" },
+                ],
+                canRemember: true,
+              },
+            });
+          });
+    if (remembered === undefined) {
       emitAgentPermission({
         requestId,
         connectionId: info.connectionId,
         sessionId: info.sessionId,
-        update: {
-          kind: "requested",
-          toolCallId: `tool-${info.turnId}`,
-          title: "Write bundle files",
-          options: [
-            { optionId: "allow-once", name: "Allow once", kind: "allow-once" },
-            { optionId: "reject-once", name: "Reject", kind: "reject-once" },
-          ],
-        },
+        update: { kind: "resolved", optionId },
       });
-    });
-    emitAgentPermission({
-      requestId,
-      connectionId: info.connectionId,
-      sessionId: info.sessionId,
-      update: { kind: "resolved", optionId },
-    });
+    }
     if (optionId === null || optionId === "reject-once") {
       emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
       mockCancelledTurns.delete(info.turnId);
@@ -1704,6 +1748,7 @@ export async function disconnectAgent(connectionId: string): Promise<boolean> {
   const info = activeAgentConnectionsById.get(connectionId);
   if (!info) return false;
   activeAgentConnectionsById.delete(connectionId);
+  clearMockThreadPermissionRules(connectionId);
   emitMockAgentConnection({
     connectionId,
     profileId: info.profileId,

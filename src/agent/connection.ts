@@ -105,6 +105,7 @@ export interface AgentPermissionEvent {
         toolCallId: string;
         title: string | null;
         options: readonly AgentPermissionOptionInfo[];
+        canRemember: boolean;
       }
     | { kind: "resolved"; optionId: string | null };
 }

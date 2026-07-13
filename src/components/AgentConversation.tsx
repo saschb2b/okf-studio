@@ -2848,6 +2848,7 @@ function applyPermissionEvent(
 function PermissionCard({ permission }: { permission: PendingPermission }) {
   const [status, setStatus] = useState<"idle" | "submitting">("idle");
   const [failure, setFailure] = useState<string | null>(null);
+  const [rememberForThread, setRememberForThread] = useState(false);
   const hasRejectOption = permission.update.options.some((option) =>
     option.kind.startsWith("reject-"),
   );
@@ -2856,7 +2857,11 @@ function PermissionCard({ permission }: { permission: PendingPermission }) {
     setStatus("submitting");
     setFailure(null);
     try {
-      const accepted = await respondAgentPermission(permission.requestId, option?.optionId ?? null);
+      const accepted = await respondAgentPermission(
+        permission.requestId,
+        option?.optionId ?? null,
+        rememberForThread && option?.kind.endsWith("-once") === true,
+      );
       if (!accepted) {
         setStatus("idle");
         setFailure("This permission request is no longer active.");
@@ -2873,6 +2878,17 @@ function PermissionCard({ permission }: { permission: PendingPermission }) {
       <div className="agent-permission__body">
         <h3 id={`permission-${permission.requestId}`}>Permission needed</h3>
         <p>{permission.update.title ?? "The agent wants to run a tool."}</p>
+        {permission.update.canRemember && (
+          <label className="agent-permission__remember">
+            <input
+              type="checkbox"
+              checked={rememberForThread}
+              disabled={status === "submitting"}
+              onChange={(event) => setRememberForThread(event.target.checked)}
+            />
+            Remember an Allow once or Reject choice for this exact request in this thread
+          </label>
+        )}
         <div className="agent-permission__actions">
           {permission.update.options.map((option) => (
             <button

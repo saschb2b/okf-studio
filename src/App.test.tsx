@@ -542,6 +542,10 @@ describe("OKF Studio app", () => {
     const permissionCard = permissionHeading.closest("article");
     if (!permissionCard) throw new Error("Permission card was not rendered.");
     expect(within(permissionCard).getByText("Write bundle files")).toBeInTheDocument();
+    const repeatChoice = within(permissionCard).getByRole("checkbox", {
+      name: /remember an allow once or reject choice/i,
+    });
+    await user.click(repeatChoice);
     expect(screen.getByRole("button", { name: "Change" })).toBeDisabled();
     vi.spyOn(ipc, "respondAgentPermission").mockRejectedValueOnce(new Error("Approval failed"));
     await user.click(within(permissionCard).getByRole("button", { name: "Allow once" }));
@@ -551,6 +555,13 @@ describe("OKF Studio app", () => {
       await screen.findByText(/Browser ACP received:.*Edit: refresh the index/),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Change" })).toBeEnabled();
+
+    await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the links");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(
+      await screen.findByText(/Browser ACP received:.*Edit: refresh the links/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Permission needed" })).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
     await user.click(screen.getByRole("button", { name: "Send" }));

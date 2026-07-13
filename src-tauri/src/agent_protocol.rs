@@ -7,7 +7,7 @@ use agent_client_protocol::schema::v1::{
     ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents, ToolCallStatus,
-    ToolCallContent, ToolCallLocation, ToolKind, UsageUpdate, WriteTextFileRequest,
+    ToolCallContent, ToolCallLocation, ToolCallUpdate, ToolKind, UsageUpdate, WriteTextFileRequest,
     WriteTextFileResponse,
 };
 use base64::Engine;
@@ -16,7 +16,7 @@ use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo}
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -78,6 +78,7 @@ const SOURCE_MEDIA_TYPES: [&str; 9] = [
 ];
 const MAX_PERMISSION_OPTIONS: usize = 16;
 const MAX_PERMISSION_FIELD_CHARS: usize = 512;
+const MAX_PERMISSION_SIGNATURE_BYTES: usize = 64 * 1024;
 const MAX_AUTH_METHODS: usize = 16;
 const MAX_AUTH_FIELD_CHARS: usize = 512;
 const MAX_HISTORY_SESSIONS: usize = 50;
@@ -247,6 +248,7 @@ enum AgentPermissionUpdate {
         tool_call_id: String,
         title: Option<String>,
         options: Vec<AgentPermissionOptionInfo>,
+        can_remember: bool,
     },
     Resolved {
         option_id: Option<String>,
@@ -277,6 +279,7 @@ type StageEventSink = Arc<dyn Fn(AgentStageEvent) + Send + Sync>;
 struct ConnectionRuntime {
     turn_events: TurnEventSink,
     permissions: Arc<Mutex<HashMap<String, PendingPermission>>>,
+    permission_rules: PermissionRules,
     permission_events: PermissionEventSink,
     stages: Arc<SessionStages>,
     stage_events: StageEventSink,
@@ -329,8 +332,26 @@ struct PendingPermission {
     connection_id: String,
     session_id: String,
     option_ids: HashSet<String>,
+    option_decisions: HashMap<String, PermissionRuleDecision>,
+    rule_key: Option<PermissionRuleKey>,
+    rules: PermissionRules,
     response: tokio::sync::oneshot::Sender<Option<String>>,
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PermissionRuleDecision {
+    Allow,
+    Reject,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct PermissionRuleKey {
+    connection_id: String,
+    session_id: String,
+    fingerprint: String,
+}
+
+type PermissionRules = Arc<Mutex<HashMap<PermissionRuleKey, PermissionRuleDecision>>>;
 
 struct AgentWorker {
     profile_id: String,
@@ -1005,6 +1026,7 @@ async fn connect_process(
     });
     let permissions = Arc::clone(&state.permissions);
     let worker_permissions = Arc::clone(&permissions);
+    let permission_rules = Arc::new(Mutex::new(HashMap::new()));
     let (start_tx, start_rx) = tokio::sync::oneshot::channel();
 
     let worker = tokio::spawn(async move {
@@ -1020,6 +1042,7 @@ async fn connect_process(
             ConnectionRuntime {
                 turn_events,
                 permissions: Arc::clone(&worker_permissions),
+                permission_rules,
                 permission_events,
                 stages: worker_stages,
                 stage_events,
@@ -1484,6 +1507,7 @@ pub fn respond_permission(
     state: &AgentHostState,
     request_id: &str,
     option_id: Option<String>,
+    remember_for_thread: bool,
 ) -> Result<bool, String> {
     let pending = {
         let mut permissions = state
@@ -1498,6 +1522,22 @@ pub fn respond_permission(
             .is_some_and(|option_id| !permission.option_ids.contains(option_id))
         {
             return Err("Permission option was not offered by the agent.".to_string());
+        }
+        if remember_for_thread {
+            let option_id = option_id.as_ref().ok_or_else(|| {
+                "A cancelled permission cannot become a thread rule.".to_string()
+            })?;
+            let decision = permission.option_decisions.get(option_id).ok_or_else(|| {
+                "Only an allow-once or reject-once choice can become a thread rule.".to_string()
+            })?;
+            let key = permission.rule_key.clone().ok_or_else(|| {
+                "This permission request has no bounded exact-input signature.".to_string()
+            })?;
+            permission
+                .rules
+                .lock()
+                .map_err(|_| "Agent permission rules are unavailable.".to_string())?
+                .insert(key, *decision);
         }
         permissions.remove(request_id)
     };
@@ -1666,6 +1706,7 @@ async fn run_connection(
     let ConnectionRuntime {
         turn_events,
         permissions,
+        permission_rules,
         permission_events,
         stages,
         stage_events,
@@ -1682,6 +1723,7 @@ async fn run_connection(
     let notification_connection_id = connection_id.clone();
     let request_turns = Arc::clone(&active_turns);
     let request_permissions = Arc::clone(&permissions);
+    let request_permission_rules = Arc::clone(&permission_rules);
     let request_events = Arc::clone(&permission_events);
     let request_connection_id = connection_id.clone();
     let read_sessions = Arc::clone(&sessions);
@@ -1756,12 +1798,32 @@ async fn run_connection(
                     .lock()
                     .ok()
                     .is_some_and(|turns| turns.contains_key(&session_id));
+                let rule_key = permission_rule_key(
+                    &request_connection_id,
+                    &session_id,
+                    &request.tool_call,
+                );
                 let options = permission_options(request.options);
                 if !has_active_turn || options.is_empty() {
                     return responder.respond(RequestPermissionResponse::new(
                         RequestPermissionOutcome::Cancelled,
                     ));
                 }
+                let remembered = rule_key.as_ref().and_then(|key| {
+                    request_permission_rules
+                        .lock()
+                        .ok()
+                        .and_then(|rules| rules.get(key).copied())
+                });
+                if let Some(option_id) = remembered.and_then(|decision| {
+                    automatic_permission_option(&options, decision)
+                }) {
+                    return responder.respond(RequestPermissionResponse::new(
+                        RequestPermissionOutcome::Selected(SelectedPermissionOutcome::new(option_id)),
+                    ));
+                }
+                let option_decisions = permission_option_decisions(&options);
+                let can_remember = rule_key.is_some() && !option_decisions.is_empty();
                 let request_id = format!("permission-{}", uuid::Uuid::new_v4());
                 let option_ids = options
                     .iter()
@@ -1775,6 +1837,9 @@ async fn run_connection(
                             connection_id: request_connection_id.clone(),
                             session_id: session_id.clone(),
                             option_ids,
+                            option_decisions,
+                            rule_key: rule_key.clone(),
+                            rules: Arc::clone(&request_permission_rules),
                             response: response_tx,
                         },
                     );
@@ -1796,6 +1861,7 @@ async fn run_connection(
                             .as_deref()
                             .and_then(bounded_permission_title),
                         options,
+                        can_remember,
                     },
                 });
                 let selected = tokio::time::timeout(PERMISSION_TIMEOUT, response_rx)
@@ -1936,6 +2002,11 @@ async fn run_connection(
                                                 .lock()
                                                 .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
                                                 .insert(info.session_id.clone(), info.bundle_root.clone());
+                                            clear_session_permission_rules(
+                                                &permission_rules,
+                                                &connection_id,
+                                                &info.session_id,
+                                            );
                                             info.staged_changes = Some(changes);
                                             Ok(info)
                                         }
@@ -1989,6 +2060,11 @@ async fn run_connection(
                                                 .lock()
                                                 .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
                                                 .insert(info.session_id.clone(), info.bundle_root.clone());
+                                            clear_session_permission_rules(
+                                                &permission_rules,
+                                                &connection_id,
+                                                &info.session_id,
+                                            );
                                             if let Ok(mut contexts) = attached_contexts.lock() {
                                                 contexts.insert(info.session_id.clone());
                                             }
@@ -2384,12 +2460,15 @@ fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<ContentBlock> {
 fn permission_options(
     options: Vec<agent_client_protocol::schema::v1::PermissionOption>,
 ) -> Vec<AgentPermissionOptionInfo> {
+    let mut seen = HashSet::new();
     options
         .into_iter()
-        .take(MAX_PERMISSION_OPTIONS)
         .filter_map(|option| {
             let option_id = option.option_id.to_string();
-            if option_id.is_empty() || option_id.chars().count() > MAX_PERMISSION_FIELD_CHARS {
+            if option_id.is_empty()
+                || option_id.chars().count() > MAX_PERMISSION_FIELD_CHARS
+                || !seen.insert(option_id.clone())
+            {
                 return None;
             }
             let kind = permission_kind_name(option.kind);
@@ -2404,7 +2483,97 @@ fn permission_options(
                 kind,
             })
         })
+        .take(MAX_PERMISSION_OPTIONS)
         .collect()
+}
+
+fn permission_option_decisions(
+    options: &[AgentPermissionOptionInfo],
+) -> HashMap<String, PermissionRuleDecision> {
+    options
+        .iter()
+        .filter_map(|option| {
+            let decision = match option.kind {
+                "allow-once" => PermissionRuleDecision::Allow,
+                "reject-once" => PermissionRuleDecision::Reject,
+                _ => return None,
+            };
+            Some((option.option_id.clone(), decision))
+        })
+        .collect()
+}
+
+fn automatic_permission_option(
+    options: &[AgentPermissionOptionInfo],
+    decision: PermissionRuleDecision,
+) -> Option<String> {
+    let kind = match decision {
+        PermissionRuleDecision::Allow => "allow-once",
+        PermissionRuleDecision::Reject => "reject-once",
+    };
+    options
+        .iter()
+        .find(|option| option.kind == kind)
+        .map(|option| option.option_id.clone())
+}
+
+fn permission_rule_key(
+    connection_id: &str,
+    session_id: &str,
+    tool_call: &ToolCallUpdate,
+) -> Option<PermissionRuleKey> {
+    let title = tool_call.fields.title.as_deref()?;
+    if title.trim().is_empty() || title.chars().count() > MAX_PERMISSION_FIELD_CHARS {
+        return None;
+    }
+    let kind = tool_call.fields.kind.map(tool_kind_name)?;
+    let raw_input = tool_call.fields.raw_input.as_ref()?;
+    let mut writer = PermissionSignatureWriter::default();
+    serde_json::to_writer(
+        &mut writer,
+        &(title, kind, raw_input, &tool_call.fields.locations),
+    )
+    .ok()?;
+    Some(PermissionRuleKey {
+        connection_id: connection_id.to_string(),
+        session_id: session_id.to_string(),
+        fingerprint: format!("{:x}", writer.hasher.finalize()),
+    })
+}
+
+#[derive(Default)]
+struct PermissionSignatureWriter {
+    hasher: Sha256,
+    bytes: usize,
+}
+
+impl Write for PermissionSignatureWriter {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        let next = self
+            .bytes
+            .checked_add(buffer.len())
+            .filter(|count| *count <= MAX_PERMISSION_SIGNATURE_BYTES)
+            .ok_or_else(|| std::io::Error::other("permission signature input is too large"))?;
+        self.hasher.update(buffer);
+        self.bytes = next;
+        Ok(buffer.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn clear_session_permission_rules(
+    rules: &PermissionRules,
+    connection_id: &str,
+    session_id: &str,
+) {
+    if let Ok(mut rules) = rules.lock() {
+        rules.retain(|key, _| {
+            key.connection_id != connection_id || key.session_id != session_id
+        });
+    }
 }
 
 fn permission_kind_label(kind: &str) -> &'static str {
@@ -3281,9 +3450,11 @@ mod tests {
             tool_call_id: "tool-1".to_string(),
             title: None,
             options: Vec::new(),
+            can_remember: false,
         })
         .expect("serialize permission request");
         assert_eq!(requested["toolCallId"], "tool-1");
+        assert_eq!(requested["canRemember"], false);
 
         let resolved = serde_json::to_value(AgentPermissionUpdate::Resolved {
             option_id: Some("allow".to_string()),
@@ -3864,6 +4035,7 @@ mod tests {
             ConnectionRuntime {
                 turn_events: Arc::new(|_| {}),
                 permissions: Arc::new(Mutex::new(HashMap::new())),
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
                 permission_events: Arc::new(|_| {}),
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
@@ -4117,6 +4289,7 @@ mod tests {
             ConnectionRuntime {
                 turn_events: Arc::new(|_| {}),
                 permissions: Arc::new(Mutex::new(HashMap::new())),
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
                 permission_events: Arc::new(|_| {}),
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
@@ -4312,6 +4485,7 @@ mod tests {
             ConnectionRuntime {
                 turn_events: event_sink,
                 permissions,
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
                 permission_events: permission_sink,
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
@@ -4453,12 +4627,19 @@ mod tests {
                             connection: ConnectionTo<Client>| {
                     let outcome_tx = outcome_tx.clone();
                     tokio::spawn(async move {
+                        let session_id = request.session_id;
                         let permission = connection
                             .send_request(RequestPermissionRequest::new(
-                                request.session_id,
+                                session_id.clone(),
                                 ToolCallUpdate::new(
                                     "tool-call-1",
-                                    ToolCallUpdateFields::new().title("Write the bundle index"),
+                                    ToolCallUpdateFields::new()
+                                        .title("Write the bundle index")
+                                        .kind(ToolKind::Edit)
+                                        .raw_input(serde_json::json!({
+                                            "path": "index.md",
+                                            "operation": "replace"
+                                        })),
                                 ),
                                 vec![
                                     PermissionOption::new(
@@ -4477,6 +4658,37 @@ mod tests {
                             .await;
                         if let Ok(permission) = permission {
                             let _ = outcome_tx.send(permission.outcome);
+                            let repeated = connection
+                                .send_request(RequestPermissionRequest::new(
+                                    session_id,
+                                    ToolCallUpdate::new(
+                                        "tool-call-2",
+                                        ToolCallUpdateFields::new()
+                                            .title("Write the bundle index")
+                                            .kind(ToolKind::Edit)
+                                            .raw_input(serde_json::json!({
+                                                "path": "index.md",
+                                                "operation": "replace"
+                                            })),
+                                    ),
+                                    vec![
+                                        PermissionOption::new(
+                                            "allow-once",
+                                            "Allow once",
+                                            PermissionOptionKind::AllowOnce,
+                                        ),
+                                        PermissionOption::new(
+                                            "reject-once",
+                                            "Reject",
+                                            PermissionOptionKind::RejectOnce,
+                                        ),
+                                    ],
+                                ))
+                                .block_task()
+                                .await;
+                            if let Ok(permission) = repeated {
+                                let _ = outcome_tx.send(permission.outcome);
+                            }
                             let _ = responder.respond(PromptResponse::new(StopReason::EndTurn));
                         }
                     });
@@ -4504,6 +4716,7 @@ mod tests {
             ConnectionRuntime {
                 turn_events: Arc::new(|_| {}),
                 permissions,
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
                 permission_events: permission_sink,
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
@@ -4546,13 +4759,16 @@ mod tests {
         assert_eq!(requested.session_id, "session-permission");
         assert!(matches!(
             &requested.update,
-            AgentPermissionUpdate::Requested { title, options, .. }
-                if title.as_deref() == Some("Write the bundle index") && options.len() == 2
+            AgentPermissionUpdate::Requested { title, options, can_remember, .. }
+                if title.as_deref() == Some("Write the bundle index")
+                    && options.len() == 2
+                    && *can_remember
         ));
         assert!(respond_permission(
             &state,
             &requested.request_id,
-            Some("allow-once".to_string())
+            Some("allow-once".to_string()),
+            true,
         )
         .expect("respond to permission"));
         let outcome = outcome_rx.recv().await.expect("permission outcome");
@@ -4566,6 +4782,15 @@ mod tests {
             AgentPermissionUpdate::Resolved { option_id }
                 if option_id.as_deref() == Some("allow-once")
         ));
+        let repeated = outcome_rx.recv().await.expect("remembered permission outcome");
+        assert!(matches!(
+            repeated,
+            RequestPermissionOutcome::Selected(selected)
+                if selected.option_id.to_string() == "allow-once"
+        ));
+        assert!(tokio::time::timeout(Duration::from_millis(50), permission_rx.recv())
+            .await
+            .is_err());
 
         worker.abort();
         assert!(worker
@@ -4584,11 +4809,22 @@ mod tests {
                 connection_id: "connection-1".to_string(),
                 session_id: "session-1".to_string(),
                 option_ids: HashSet::from(["reject-once".to_string()]),
+                option_decisions: HashMap::from([(
+                    "reject-once".to_string(),
+                    PermissionRuleDecision::Reject,
+                )]),
+                rule_key: None,
+                rules: Arc::new(Mutex::new(HashMap::new())),
                 response,
             },
         );
 
-        let error = respond_permission(&state, "permission-1", Some("allow-once".to_string()))
+        let error = respond_permission(
+            &state,
+            "permission-1",
+            Some("allow-once".to_string()),
+            false,
+        )
             .expect_err("unadvertised option should fail");
         assert_eq!(error, "Permission option was not offered by the agent.");
         assert!(state
@@ -4608,6 +4844,57 @@ mod tests {
 
         assert_eq!(options.len(), 1);
         assert_eq!(options[0].name, "Allow once");
+    }
+
+    #[test]
+    fn permission_choices_drop_duplicate_ids_before_rule_mapping() {
+        let options = permission_options(vec![
+            PermissionOption::new(
+                "same-id",
+                "Allow once",
+                PermissionOptionKind::AllowOnce,
+            ),
+            PermissionOption::new(
+                "same-id",
+                "Reject",
+                PermissionOptionKind::RejectOnce,
+            ),
+        ]);
+
+        assert_eq!(options.len(), 1);
+        assert_eq!(options[0].kind, "allow-once");
+    }
+
+    #[test]
+    fn thread_permission_signatures_require_bounded_exact_input() {
+        let call = |path: &str| {
+            ToolCallUpdate::new(
+                "tool-call",
+                ToolCallUpdateFields::new()
+                    .title("Write the bundle index")
+                    .kind(ToolKind::Edit)
+                    .raw_input(serde_json::json!({ "path": path })),
+            )
+        };
+        let first = permission_rule_key("connection", "session", &call("index.md"))
+            .expect("bounded input should be rememberable");
+        let second = permission_rule_key("connection", "session", &call("product/index.md"))
+            .expect("bounded input should be rememberable");
+        assert_ne!(first, second);
+
+        let missing_input = ToolCallUpdate::new(
+            "tool-call",
+            ToolCallUpdateFields::new()
+                .title("Write the bundle index")
+                .kind(ToolKind::Edit),
+        );
+        assert!(permission_rule_key("connection", "session", &missing_input).is_none());
+        assert!(permission_rule_key(
+            "connection",
+            "session",
+            &call(&"x".repeat(MAX_PERMISSION_SIGNATURE_BYTES)),
+        )
+        .is_none());
     }
 
     #[test]
@@ -4860,6 +5147,7 @@ mod tests {
             ConnectionRuntime {
                 turn_events: event_sink,
                 permissions,
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
                 permission_events: permission_sink,
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),

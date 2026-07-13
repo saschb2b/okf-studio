@@ -270,8 +270,14 @@ fn respond_agent_permission(
     state: State<'_, agent_protocol::AgentHostState>,
     request_id: String,
     option_id: Option<String>,
+    remember_for_thread: bool,
 ) -> Result<bool, String> {
-    agent_protocol::respond_permission(state.inner(), &request_id, option_id)
+    agent_protocol::respond_permission(
+        state.inner(),
+        &request_id,
+        option_id,
+        remember_for_thread,
+    )
 }
 
 /// Grant or revoke writes for one live ACP session through a declared mode.

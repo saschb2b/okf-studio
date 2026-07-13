@@ -889,6 +889,20 @@
   gap: var(--space-8);
 }
 
+.agent-permission__remember {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-permission__remember input {
+  flex: none;
+  margin-top: var(--space-2);
+}
+
 .agent-permission__error {
   color: var(--error);
   font-size: var(--fs-xs);

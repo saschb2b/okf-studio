@@ -194,6 +194,8 @@ Gate: end-to-end tests reach useful results with no hidden write or network acti
 - [ ] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
   - [x] Own each external ACP process tree and terminate descendants on disconnect or host cancellation.
 - [ ] Support allow/deny once, thread grants, and narrow persistent rules.
+  - [x] Reuse an explicit once-decision only for the exact same bounded request in one live thread.
+  - [ ] Add cross-session rules after ACP exposes a stable tool identity and Studio can show their scope.
 - [ ] Add parallel threads only after single-thread cancellation, permissions, and transactions are reliable.
 - [ ] Make unattended mode an explicit profile with visible scope and stop conditions.
 

@@ -91,19 +91,9 @@
     {
       "id": "studio-api",
       "name": "Studio Agent",
-      "summary": "Connect an API-backed model to Studio's scoped OKF tools.",
+      "summary": "Use a local model or an API-backed OpenAI-compatible service with Studio's scoped OKF tools.",
       "runtime": "studio-native",
-      "authMethods": ["api-key"],
-      "source": "Built into OKF Studio",
-      "availability": "planned",
-      "distribution": null
-    },
-    {
-      "id": "local-model",
-      "name": "Local model",
-      "summary": "Keep prompts and bundle context on a compatible local endpoint.",
-      "runtime": "studio-native",
-      "authMethods": ["none"],
+      "authMethods": ["api-key", "none"],
       "source": "Built into OKF Studio",
       "availability": "configurable",
       "distribution": null

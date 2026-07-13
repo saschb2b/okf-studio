@@ -39,6 +39,8 @@ uuid = { version = "1", features = ["v4"] }
 url = "2"
 # Bounded unified diffs for staged-write review (see src/agent_stage.rs).
 similar = "2"
+keyring = "4.1"
+zeroize = "1.8"
 
 # Remote-bundle fetch (Open from URL). Lightweight and blocking — ureq brings
 # rustls TLS with no async runtime; flate2 + tar handle GitHub tarballs, zip

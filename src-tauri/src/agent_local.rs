@@ -1,3 +1,4 @@
+use crate::agent_credentials::{CredentialStore, OsCredentialStore};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -7,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 use url::Url;
+use zeroize::Zeroizing;
 
 const FILE_NAME: &str = "local-models.json";
 const MAX_PROFILES: usize = 32;
@@ -17,6 +19,7 @@ const MAX_RESPONSE_BYTES: u64 = 256 * 1024;
 const MAX_CHAT_RESPONSE_BYTES: u64 = 1024 * 1024;
 const MAX_MODELS: usize = 256;
 const MAX_MODEL_ID_CHARS: usize = 256;
+const MAX_API_KEY_CHARS: usize = 4_096;
 const MAX_TOOL_CALLS: usize = 8;
 const MAX_TOOL_CALLS_PER_STEP: usize = 4;
 const MAX_TOOL_ROUNDS: usize = 6;
@@ -34,12 +37,14 @@ pub enum LocalModelProvider {
     OpenAiCompatible,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalModelProfileInput {
     name: String,
     provider: LocalModelProvider,
     base_url: String,
+    #[serde(default)]
+    api_key: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -49,6 +54,8 @@ pub struct LocalModelProfile {
     name: String,
     provider: LocalModelProvider,
     base_url: String,
+    #[serde(default)]
+    has_credential: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -59,13 +66,14 @@ pub struct LocalModelProbe {
     models: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct LocalModelRuntime {
     pub profile_id: String,
     pub profile_name: String,
     pub provider: LocalModelProvider,
     pub base_url: Url,
     pub model: String,
+    api_key: Option<Zeroizing<String>>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -99,16 +107,31 @@ pub fn list(app: &AppHandle) -> Result<Vec<LocalModelProfile>, String> {
 }
 
 pub fn save(app: &AppHandle, input: LocalModelProfileInput) -> Result<LocalModelProfile, String> {
-    save_in(&profile_file(app)?, input)
+    save_in(&profile_file(app)?, input, &OsCredentialStore)
 }
 
 pub fn remove(app: &AppHandle, profile_id: &str) -> Result<bool, String> {
-    remove_in(&profile_file(app)?, profile_id)
+    remove_in(&profile_file(app)?, profile_id, &OsCredentialStore)
 }
 
-pub fn probe(input: LocalModelProfileInput) -> Result<LocalModelProbe, String> {
+pub fn probe(mut input: LocalModelProfileInput) -> Result<LocalModelProbe, String> {
+    let api_key = take_api_key(&mut input)?;
     let (_, base_url) = validate_input(&input)?;
-    let endpoint = model_endpoint(input.provider, &base_url)?;
+    validate_credential_transport(input.provider, &base_url, secret_ref(&api_key))?;
+    probe_endpoint(input.provider, base_url, secret_ref(&api_key))
+}
+
+pub fn probe_saved(app: &AppHandle, profile_id: &str) -> Result<LocalModelProbe, String> {
+    let (profile, base_url, api_key) = load_runtime_profile(app, profile_id)?;
+    probe_endpoint(profile.provider, base_url, secret_ref(&api_key))
+}
+
+fn probe_endpoint(
+    provider: LocalModelProvider,
+    base_url: Url,
+    api_key: Option<&str>,
+) -> Result<LocalModelProbe, String> {
+    let endpoint = model_endpoint(provider, &base_url)?;
     let agent = ureq::AgentBuilder::new()
         .redirects(0)
         .try_proxy_from_env(false)
@@ -117,7 +140,9 @@ pub fn probe(input: LocalModelProfileInput) -> Result<LocalModelProbe, String> {
         .timeout_write(Duration::from_secs(5))
         .user_agent(concat!("okf-studio/", env!("CARGO_PKG_VERSION")))
         .build();
-    let response = agent.get(endpoint.as_str()).call().map_err(probe_error)?;
+    let response = authenticated_request(agent.get(endpoint.as_str()), api_key)
+        .call()
+        .map_err(probe_error)?;
     if response
         .header("content-length")
         .and_then(|value| value.parse::<u64>().ok())
@@ -134,9 +159,9 @@ pub fn probe(input: LocalModelProfileInput) -> Result<LocalModelProbe, String> {
     if bytes.len() as u64 > MAX_RESPONSE_BYTES {
         return Err("The endpoint model list exceeds the 256 KiB limit.".to_string());
     }
-    let models = parse_models(input.provider, &bytes)?;
+    let models = parse_models(provider, &bytes)?;
     Ok(LocalModelProbe {
-        provider: input.provider,
+        provider,
         base_url: base_url.to_string(),
         models,
     })
@@ -150,29 +175,18 @@ pub(crate) fn prepare_runtime(
     validate_id(profile_id)?;
     let model = bounded_model_id(model)
         .ok_or_else(|| "Choose a valid model from the endpoint model list.".to_string())?;
-    let profile = read_profiles(&profile_file(app)?)?
-        .into_iter()
-        .find(|profile| profile.id == profile_id)
-        .ok_or_else(|| "The local-model profile was not found.".to_string())?;
-    let probe = probe(LocalModelProfileInput {
-        name: profile.name.clone(),
-        provider: profile.provider,
-        base_url: profile.base_url.clone(),
-    })?;
+    let (profile, base_url, api_key) = load_runtime_profile(app, profile_id)?;
+    let probe = probe_endpoint(profile.provider, base_url.clone(), secret_ref(&api_key))?;
     if !probe.models.iter().any(|available| available == &model) {
         return Err("That model is no longer advertised by the endpoint.".to_string());
     }
-    let (_, base_url) = validate_input(&LocalModelProfileInput {
-        name: profile.name.clone(),
-        provider: profile.provider,
-        base_url: profile.base_url,
-    })?;
     Ok(LocalModelRuntime {
         profile_id: profile.id,
         profile_name: profile.name,
         provider: profile.provider,
         base_url,
         model,
+        api_key,
     })
 }
 
@@ -283,11 +297,14 @@ fn chat_step(
         .timeout_write(Duration::from_secs(10))
         .user_agent(concat!("okf-studio/", env!("CARGO_PKG_VERSION")))
         .build();
-    let response = agent
-        .post(endpoint.as_str())
-        .set("content-type", "application/json")
+    let response = authenticated_request(
+        agent
+            .post(endpoint.as_str())
+            .set("content-type", "application/json"),
+        secret_ref(&runtime.api_key),
+    )
         .send_bytes(&body)
-        .map_err(chat_error)?;
+        .map_err(|error| chat_error(error, runtime.api_key.is_some()))?;
     let bytes = read_bounded_response(response, MAX_CHAT_RESPONSE_BYTES, "model response")?;
     parse_chat_step(runtime.provider, &bytes)
 }
@@ -296,14 +313,20 @@ fn profile_file(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
         .map(|directory| directory.join("agents").join(FILE_NAME))
-        .map_err(|error| format!("Studio could not locate its local-model settings: {error}"))
+        .map_err(|error| format!("Studio could not locate its model settings: {error}"))
 }
 
-fn save_in(file: &Path, input: LocalModelProfileInput) -> Result<LocalModelProfile, String> {
+fn save_in(
+    file: &Path,
+    mut input: LocalModelProfileInput,
+    credentials: &impl CredentialStore,
+) -> Result<LocalModelProfile, String> {
+    let api_key = take_api_key(&mut input)?;
     let (name, base_url) = validate_input(&input)?;
+    validate_credential_transport(input.provider, &base_url, secret_ref(&api_key))?;
     let mut profiles = read_profiles(file)?;
     if profiles.len() >= MAX_PROFILES {
-        return Err("Studio supports up to 32 local-model profiles.".to_string());
+        return Err("Studio supports up to 32 model profiles.".to_string());
     }
     if profiles
         .iter()
@@ -316,22 +339,61 @@ fn save_in(file: &Path, input: LocalModelProfileInput) -> Result<LocalModelProfi
         name,
         provider: input.provider,
         base_url: base_url.to_string(),
+        has_credential: api_key.is_some(),
     };
+    if let Some(api_key) = secret_ref(&api_key) {
+        credentials.set(&profile.id, api_key)?;
+    }
     profiles.push(profile.clone());
-    write_profiles(file, &profiles)?;
+    if let Err(error) = write_profiles(file, &profiles) {
+        if profile.has_credential {
+            let _ = credentials.delete(&profile.id);
+        }
+        return Err(error);
+    }
     Ok(profile)
 }
 
-fn remove_in(file: &Path, profile_id: &str) -> Result<bool, String> {
+fn remove_in(
+    file: &Path,
+    profile_id: &str,
+    credentials: &impl CredentialStore,
+) -> Result<bool, String> {
     validate_id(profile_id)?;
     let mut profiles = read_profiles(file)?;
-    let previous_len = profiles.len();
-    profiles.retain(|profile| profile.id != profile_id);
-    if profiles.len() == previous_len {
+    let Some(profile) = profiles.iter().find(|profile| profile.id == profile_id) else {
         return Ok(false);
+    };
+    if profile.has_credential {
+        credentials.delete(profile_id)?;
     }
+    profiles.retain(|profile| profile.id != profile_id);
     write_profiles(file, &profiles)?;
     Ok(true)
+}
+
+fn load_runtime_profile(
+    app: &AppHandle,
+    profile_id: &str,
+) -> Result<(LocalModelProfile, Url, Option<Zeroizing<String>>), String> {
+    validate_id(profile_id)?;
+    let profile = read_profiles(&profile_file(app)?)?
+        .into_iter()
+        .find(|profile| profile.id == profile_id)
+        .ok_or_else(|| "The Studio model profile was not found.".to_string())?;
+    let input = LocalModelProfileInput {
+        name: profile.name.clone(),
+        provider: profile.provider,
+        base_url: profile.base_url.clone(),
+        api_key: None,
+    };
+    let (_, base_url) = validate_input(&input)?;
+    let api_key = profile
+        .has_credential
+        .then(|| OsCredentialStore.get(profile_id))
+        .transpose()?;
+    validate_credential_transport(profile.provider, &base_url, secret_ref(&api_key))?;
+    Ok((profile, base_url, api_key))
 }
 
 fn read_profiles(file: &Path) -> Result<Vec<LocalModelProfile>, String> {
@@ -339,36 +401,37 @@ fn read_profiles(file: &Path) -> Result<Vec<LocalModelProfile>, String> {
         return Ok(Vec::new());
     }
     if fs::metadata(file)
-        .map_err(|error| format!("Studio could not inspect local-model settings: {error}"))?
+        .map_err(|error| format!("Studio could not inspect its model settings: {error}"))?
         .len()
         > MAX_SETTINGS_BYTES
     {
-        return Err("Local-model settings exceed the 128 KB limit.".to_string());
+        return Err("Studio model settings exceed the 128 KB limit.".to_string());
     }
     let bytes = fs::read(file)
-        .map_err(|error| format!("Studio could not read local-model settings: {error}"))?;
+        .map_err(|error| format!("Studio could not read its model settings: {error}"))?;
     let profiles: Vec<LocalModelProfile> = serde_json::from_slice(&bytes)
-        .map_err(|error| format!("Studio could not parse local-model settings: {error}"))?;
+        .map_err(|error| format!("Studio could not parse its model settings: {error}"))?;
     if profiles.len() > MAX_PROFILES {
-        return Err("Local-model settings contain too many profiles.".to_string());
+        return Err("Studio model settings contain too many profiles.".to_string());
     }
     let mut ids = HashSet::new();
     let mut endpoints = HashSet::new();
     for profile in &profiles {
         validate_id(&profile.id)?;
         if !ids.insert(profile.id.as_str()) {
-            return Err("Local-model settings contain duplicate IDs.".to_string());
+            return Err("Studio model settings contain duplicate IDs.".to_string());
         }
         let input = LocalModelProfileInput {
             name: profile.name.clone(),
             provider: profile.provider,
             base_url: profile.base_url.clone(),
+            api_key: None,
         };
         let (_, base_url) = validate_input(&input)?;
         if profile.base_url != base_url.as_str()
             || !endpoints.insert((profile.provider, profile.base_url.as_str()))
         {
-            return Err("Local-model settings contain an invalid duplicate endpoint.".to_string());
+            return Err("Studio model settings contain an invalid duplicate endpoint.".to_string());
         }
     }
     Ok(profiles)
@@ -377,13 +440,13 @@ fn read_profiles(file: &Path) -> Result<Vec<LocalModelProfile>, String> {
 fn write_profiles(file: &Path, profiles: &[LocalModelProfile]) -> Result<(), String> {
     let parent = file
         .parent()
-        .ok_or_else(|| "Local-model settings have no parent directory.".to_string())?;
+        .ok_or_else(|| "Studio model settings have no parent directory.".to_string())?;
     fs::create_dir_all(parent)
-        .map_err(|error| format!("Studio could not create local-model settings: {error}"))?;
+        .map_err(|error| format!("Studio could not create its model settings: {error}"))?;
     let bytes = serde_json::to_vec_pretty(profiles)
-        .map_err(|error| format!("Studio could not encode local-model settings: {error}"))?;
+        .map_err(|error| format!("Studio could not encode its model settings: {error}"))?;
     fs::write(file, bytes)
-        .map_err(|error| format!("Studio could not save local-model settings: {error}"))
+        .map_err(|error| format!("Studio could not save its model settings: {error}"))
 }
 
 fn validate_input(input: &LocalModelProfileInput) -> Result<(String, Url), String> {
@@ -411,6 +474,67 @@ fn validate_input(input: &LocalModelProfileInput) -> Result<(String, Url), Strin
     let path = url.path().trim_end_matches('/').to_string();
     url.set_path(if path.is_empty() { "/" } else { &path });
     Ok((name.to_string(), url))
+}
+
+fn take_api_key(
+    input: &mut LocalModelProfileInput,
+) -> Result<Option<Zeroizing<String>>, String> {
+    let Some(api_key) = input.api_key.take() else {
+        return Ok(None);
+    };
+    let api_key = Zeroizing::new(api_key.trim().to_string());
+    if api_key.is_empty()
+        || api_key.chars().count() > MAX_API_KEY_CHARS
+        || !api_key
+            .bytes()
+            .all(|character| matches!(character, 0x21..=0x7e))
+    {
+        return Err("API keys must contain 1 to 4,096 visible ASCII characters.".to_string());
+    }
+    if input.provider != LocalModelProvider::OpenAiCompatible {
+        return Err("API keys are available only for OpenAI-compatible endpoints.".to_string());
+    }
+    Ok(Some(api_key))
+}
+
+fn validate_credential_transport(
+    provider: LocalModelProvider,
+    base_url: &Url,
+    api_key: Option<&str>,
+) -> Result<(), String> {
+    if api_key.is_none() {
+        return Ok(());
+    }
+    if provider != LocalModelProvider::OpenAiCompatible {
+        return Err("API keys are available only for OpenAI-compatible endpoints.".to_string());
+    }
+    if base_url.scheme() != "https" && !is_loopback_url(base_url) {
+        return Err("API-key endpoints must use HTTPS unless they are on localhost.".to_string());
+    }
+    Ok(())
+}
+
+fn secret_ref(secret: &Option<Zeroizing<String>>) -> Option<&str> {
+    secret.as_ref().map(|secret| secret.as_str())
+}
+
+fn is_loopback_url(url: &Url) -> bool {
+    match url.host() {
+        Some(url::Host::Domain(domain)) => domain.eq_ignore_ascii_case("localhost"),
+        Some(url::Host::Ipv4(address)) => address.is_loopback(),
+        Some(url::Host::Ipv6(address)) => address.is_loopback(),
+        None => false,
+    }
+}
+
+fn authenticated_request(request: ureq::Request, api_key: Option<&str>) -> ureq::Request {
+    match api_key {
+        Some(api_key) => {
+            let authorization = Zeroizing::new(format!("Bearer {api_key}"));
+            request.set("authorization", authorization.as_str())
+        }
+        None => request,
+    }
 }
 
 fn model_endpoint(provider: LocalModelProvider, base_url: &Url) -> Result<Url, String> {
@@ -687,9 +811,12 @@ fn probe_error(error: ureq::Error) -> String {
     }
 }
 
-fn chat_error(error: ureq::Error) -> String {
+fn chat_error(error: ureq::Error, credentialed: bool) -> String {
     match error {
         ureq::Error::Status(status, response) => {
+            if credentialed {
+                return format!("The model endpoint returned HTTP status {status}.");
+            }
             let detail = read_bounded_response(response, 8 * 1024, "error response")
                 .ok()
                 .and_then(|body| serde_json::from_slice::<serde_json::Value>(&body).ok())
@@ -772,6 +899,40 @@ mod tests {
             name: "Private model".to_string(),
             provider,
             base_url: base_url.to_string(),
+            api_key: None,
+        }
+    }
+
+    #[derive(Default)]
+    struct MemoryCredentialStore {
+        secrets: std::sync::Mutex<std::collections::HashMap<String, String>>,
+    }
+
+    impl CredentialStore for MemoryCredentialStore {
+        fn set(&self, profile_id: &str, secret: &str) -> Result<(), String> {
+            self.secrets
+                .lock()
+                .expect("credential lock")
+                .insert(profile_id.to_string(), secret.to_string());
+            Ok(())
+        }
+
+        fn get(&self, profile_id: &str) -> Result<Zeroizing<String>, String> {
+            self.secrets
+                .lock()
+                .expect("credential lock")
+                .get(profile_id)
+                .cloned()
+                .map(Zeroizing::new)
+                .ok_or_else(|| "missing test credential".to_string())
+        }
+
+        fn delete(&self, profile_id: &str) -> Result<(), String> {
+            self.secrets
+                .lock()
+                .expect("credential lock")
+                .remove(profile_id);
+            Ok(())
         }
     }
 
@@ -807,6 +968,22 @@ mod tests {
         String::from_utf8(request).expect("UTF-8 request")
     }
 
+    fn read_http_headers(stream: &mut std::net::TcpStream) -> String {
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("set read timeout");
+        let mut request = Vec::new();
+        let mut buffer = [0_u8; 1024];
+        while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+            let read = stream.read(&mut buffer).expect("read headers");
+            if read == 0 {
+                break;
+            }
+            request.extend_from_slice(&buffer[..read]);
+        }
+        String::from_utf8(request).expect("UTF-8 headers")
+    }
+
     fn write_json_response(stream: &mut std::net::TcpStream, body: &str) {
         write!(
             stream,
@@ -824,15 +1001,44 @@ mod tests {
     #[test]
     fn saves_lists_and_removes_metadata_without_credentials() {
         let file = temp_file("roundtrip");
+        let credentials = MemoryCredentialStore::default();
         let _ = fs::remove_dir_all(file.parent().expect("parent"));
         let profile = save_in(
             &file,
             input(LocalModelProvider::Ollama, "http://127.0.0.1:11434/"),
+            &credentials,
         )
         .expect("save profile");
         assert_eq!(profile.base_url, "http://127.0.0.1:11434/");
         assert_eq!(read_profiles(&file).expect("read profiles").len(), 1);
-        assert!(remove_in(&file, &profile.id).expect("remove profile"));
+        assert!(!profile.has_credential);
+        assert!(remove_in(&file, &profile.id, &credentials).expect("remove profile"));
+        let _ = fs::remove_dir_all(file.parent().expect("parent"));
+    }
+
+    #[test]
+    fn persists_only_a_credential_reference_and_removes_the_secret() {
+        let file = temp_file("credential-roundtrip");
+        let credentials = MemoryCredentialStore::default();
+        let _ = fs::remove_dir_all(file.parent().expect("parent"));
+        let mut draft = input(
+            LocalModelProvider::OpenAiCompatible,
+            "https://models.example.test",
+        );
+        draft.api_key = Some("secret-test-key".to_string());
+
+        let profile = save_in(&file, draft, &credentials).expect("save credentialed profile");
+        assert!(profile.has_credential);
+        assert_eq!(
+            credentials.get(&profile.id).expect("stored secret").as_str(),
+            "secret-test-key"
+        );
+        let settings = fs::read_to_string(&file).expect("settings JSON");
+        assert!(settings.contains("hasCredential"));
+        assert!(!settings.contains("secret-test-key"));
+
+        assert!(remove_in(&file, &profile.id, &credentials).expect("remove profile"));
+        assert!(credentials.get(&profile.id).is_err());
         let _ = fs::remove_dir_all(file.parent().expect("parent"));
     }
 
@@ -864,6 +1070,42 @@ mod tests {
         ))
         .is_err());
         assert!(validate_input(&input(LocalModelProvider::Ollama, "file:///tmp/model")).is_err());
+
+        let mut insecure = input(
+            LocalModelProvider::OpenAiCompatible,
+            "http://models.example.test",
+        );
+        insecure.api_key = Some("secret".to_string());
+        assert!(probe(insecure)
+            .expect_err("remote credentials require TLS")
+            .contains("HTTPS"));
+    }
+
+    #[test]
+    fn sends_a_bearer_key_only_to_the_explicit_compatible_endpoint() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            let request = read_http_headers(&mut stream);
+            assert!(request.starts_with("GET /v1/models HTTP/1.1"));
+            assert!(request
+                .lines()
+                .any(|line| line.eq_ignore_ascii_case("authorization: Bearer secret-test-key")));
+            write_json_response(
+                &mut stream,
+                r#"{"object":"list","data":[{"id":"cloud-model"}]}"#,
+            );
+        });
+        let mut draft = input(
+            LocalModelProvider::OpenAiCompatible,
+            &format!("http://{address}"),
+        );
+        draft.api_key = Some("secret-test-key".to_string());
+
+        let result = probe(draft).expect("credentialed endpoint probe");
+        assert_eq!(result.models, ["cloud-model"]);
+        server.join().expect("join test server");
     }
 
     #[test]
@@ -1010,6 +1252,7 @@ mod tests {
             provider: LocalModelProvider::Ollama,
             base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
             model: "qwen-test".to_string(),
+            api_key: None,
         };
         let tools = [LocalToolDefinition {
             name: "load_okf_skill_resource",
@@ -1061,6 +1304,7 @@ mod tests {
             provider: LocalModelProvider::Ollama,
             base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
             model: "qwen-test".to_string(),
+            api_key: None,
         };
         let answer = chat(
             &runtime,

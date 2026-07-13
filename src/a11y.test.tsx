@@ -67,6 +67,9 @@ describe("accessibility (axe-core)", () => {
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await screen.findByRole("heading", { name: /choose how agents run/i });
+    await user.click(screen.getByRole("button", { name: "Configure" }));
+    await user.selectOptions(screen.getByLabelText("Provider"), "open-ai-compatible");
+    await screen.findByLabelText(/API key/);
     await expectNoViolations(container);
   });
 

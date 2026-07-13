@@ -258,6 +258,11 @@
   line-height: var(--lh-normal);
 }
 
+.local-model-form__optional {
+  margin-left: var(--space-4);
+  color: var(--text-dim);
+}
+
 .local-model-form input,
 .local-model-form select {
   width: 100%;

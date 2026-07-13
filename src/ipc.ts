@@ -202,8 +202,11 @@ export async function saveLocalModelProfile(
   );
   if (duplicate) throw new Error("That provider endpoint is already configured.");
   const profile = {
-    ...input,
+    name: input.name,
+    provider: input.provider,
+    baseUrl: input.baseUrl,
     id: `local-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+    hasCredential: Boolean(input.apiKey?.trim()),
   };
   mockLocalModelProfiles = [...mockLocalModelProfiles, profile];
   return profile;
@@ -230,6 +233,21 @@ export async function testLocalModelEndpoint(
     return invoke<LocalModelProbe>("test_local_model_endpoint", { input });
   }
   await new Promise((resolve) => setTimeout(resolve, 80));
+  if (input.apiKey !== undefined && input.apiKey.trim() !== "") {
+    const apiKey = input.apiKey.trim();
+    if (input.provider !== "open-ai-compatible") {
+      throw new Error("API keys are available only for OpenAI-compatible endpoints.");
+    }
+    if (apiKey.length > 4096 || !/^[\x21-\x7E]+$/u.test(apiKey)) {
+      throw new Error("API keys must contain 1 to 4,096 visible ASCII characters.");
+    }
+    const endpoint = new URL(input.baseUrl);
+    const loopback = endpoint.hostname === "localhost" || endpoint.hostname === "127.0.0.1" ||
+      endpoint.hostname === "[::1]";
+    if (endpoint.protocol !== "https:" && !loopback) {
+      throw new Error("API-key endpoints must use HTTPS unless they are on localhost.");
+    }
+  }
   if (input.baseUrl.includes("unreachable")) {
     throw new Error("Studio could not reach the endpoint. Check that its server is running.");
   }
@@ -241,6 +259,18 @@ export async function testLocalModelEndpoint(
         ? ["qwen3:8b", "gemma3:4b"]
         : ["local-instruct", "local-tool-model"],
   };
+}
+
+export async function testSavedLocalModelEndpoint(
+  profileId: string,
+): Promise<LocalModelProbe> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<LocalModelProbe>("test_saved_local_model_endpoint", { profileId });
+  }
+  const profile = mockLocalModelProfiles.find((candidate) => candidate.id === profileId);
+  if (!profile) throw new Error("The Studio model profile was not found.");
+  return testLocalModelEndpoint(profile);
 }
 
 export async function connectCustomAgent(profileId: string): Promise<AgentConnectionInfo> {
@@ -338,10 +368,10 @@ export async function connectLocalModel(
     return info;
   }
   const profile = mockLocalModelProfiles.find((candidate) => candidate.id === profileId);
-  if (!profile) throw new Error("The local-model profile was not found.");
+  if (!profile) throw new Error("The Studio model profile was not found.");
   if (!model.trim()) throw new Error("Choose a model from the endpoint model list.");
   if ([...activeAgentConnectionsById.values()].some((info) => info.profileId === profileId)) {
-    throw new Error("This local-model profile already has an active connection.");
+    throw new Error("This Studio model profile already has an active connection.");
   }
   await new Promise((resolve) => setTimeout(resolve, 80));
   const info: AgentConnectionInfo = {

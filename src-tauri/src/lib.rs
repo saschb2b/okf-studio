@@ -3,6 +3,7 @@
 
 mod agent_catalog;
 mod agent_custom;
+mod agent_credentials;
 mod agent_csv;
 mod agent_install;
 mod agent_json;
@@ -81,21 +82,25 @@ fn local_model_profiles(
 }
 
 #[tauri::command]
-fn save_local_model_profile(
+async fn save_local_model_profile(
     app: AppHandle,
     input: agent_local::LocalModelProfileInput,
 ) -> Result<agent_local::LocalModelProfile, String> {
-    agent_local::save(&app, input)
+    tauri::async_runtime::spawn_blocking(move || agent_local::save(&app, input))
+        .await
+        .map_err(|_| "Studio could not finish saving the model profile.".to_string())?
 }
 
 #[tauri::command]
-fn remove_local_model_profile(
+async fn remove_local_model_profile(
     app: AppHandle,
     state: State<'_, agent_protocol::AgentHostState>,
     profile_id: String,
 ) -> Result<bool, String> {
     agent_protocol::disconnect_profile(&app, state.inner(), &profile_id)?;
-    agent_local::remove(&app, &profile_id)
+    tauri::async_runtime::spawn_blocking(move || agent_local::remove(&app, &profile_id))
+        .await
+        .map_err(|_| "Studio could not finish removing the model profile.".to_string())?
 }
 
 #[tauri::command]
@@ -278,6 +283,16 @@ fn respond_agent_permission(
         option_id,
         remember_for_thread,
     )
+}
+
+#[tauri::command]
+async fn test_saved_local_model_endpoint(
+    app: AppHandle,
+    profile_id: String,
+) -> Result<agent_local::LocalModelProbe, String> {
+    tauri::async_runtime::spawn_blocking(move || agent_local::probe_saved(&app, &profile_id))
+        .await
+        .map_err(|_| "Studio could not finish the saved endpoint test.".to_string())?
 }
 
 /// Grant or revoke writes for one live ACP session through a declared mode.
@@ -629,6 +644,7 @@ pub fn run() {
             save_local_model_profile,
             remove_local_model_profile,
             test_local_model_endpoint,
+            test_saved_local_model_endpoint,
             connect_local_model,
             connect_custom_agent,
             connect_catalog_agent,

@@ -9,7 +9,12 @@ import {
   type LocalModelProfileInput,
   type LocalModelProvider,
 } from "../agent/local.ts";
-import { connectLocalModel, disconnectAgent, testLocalModelEndpoint } from "../ipc.ts";
+import {
+  connectLocalModel,
+  disconnectAgent,
+  testLocalModelEndpoint,
+  testSavedLocalModelEndpoint,
+} from "../ipc.ts";
 
 type ProbeState =
   | { status: "idle" }
@@ -25,6 +30,11 @@ function inputKey(input: LocalModelProfileInput): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function enteredApiKey(input: HTMLInputElement | null): string | undefined {
+  const value = input?.value;
+  return value === undefined || value === "" ? undefined : value;
 }
 
 export function LocalModelProfiles({
@@ -60,6 +70,7 @@ export function LocalModelProfiles({
   >({ status: "idle" });
   const connections = useAgentConnections();
   const providerRef = useRef<HTMLSelectElement>(null);
+  const credentialRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (formOpen) providerRef.current?.focus();
@@ -72,6 +83,7 @@ export function LocalModelProfiles({
   }
 
   function changeProvider(provider: LocalModelProvider) {
+    if (credentialRef.current) credentialRef.current.value = "";
     const preset = LOCAL_MODEL_PRESETS[provider];
     updateInput({ name: preset.label, provider, baseUrl: preset.baseUrl });
   }
@@ -80,7 +92,10 @@ export function LocalModelProfiles({
     setProbe({ status: "testing" });
     setFormError(undefined);
     try {
-      const result = await testLocalModelEndpoint(input);
+      const result = await testLocalModelEndpoint({
+        ...input,
+        apiKey: enteredApiKey(credentialRef.current),
+      });
       setProbe({ status: "passed", inputKey: inputKey(input), result });
     } catch (error: unknown) {
       setProbe({ status: "failed", message: errorMessage(error) });
@@ -91,7 +106,10 @@ export function LocalModelProfiles({
     if (probe.status !== "passed" || probe.inputKey !== inputKey(input)) return;
     setFormError(undefined);
     try {
-      await onProfileSave(input);
+      await onProfileSave({
+        ...input,
+        apiKey: enteredApiKey(credentialRef.current),
+      });
       onFormOpenChange(false);
       setProbe({ status: "idle" });
     } catch (error: unknown) {
@@ -102,7 +120,7 @@ export function LocalModelProfiles({
   async function testSaved(profile: LocalModelProfile) {
     setSavedProbe({ profileId: profile.id, state: { status: "testing" } });
     try {
-      const result = await testLocalModelEndpoint(profile);
+      const result = await testSavedLocalModelEndpoint(profile.id);
       setSavedProbe({
         profileId: profile.id,
         state: { status: "passed", inputKey: inputKey(profile), result },
@@ -168,10 +186,10 @@ export function LocalModelProfiles({
     <section className="local-models" aria-labelledby="local-models-title">
       <div className="local-models__heading">
         <div>
-          <h3 id="local-models-title">Local model endpoints</h3>
+          <h3 id="local-models-title">Studio model endpoints</h3>
           <p>
-            Probe model metadata without sending prompts. Saved profiles contain only a
-            name, provider type, and endpoint URL.
+            Connect a local model without credentials, or an OpenAI-compatible service
+            with an API key kept by your operating system.
           </p>
         </div>
         {!formOpen && (
@@ -229,9 +247,25 @@ export function LocalModelProfiles({
               onChange={(event) => updateInput({ ...input, baseUrl: event.target.value })}
             />
           </label>
+          {input.provider === "open-ai-compatible" && (
+            <label>
+              <span>
+                API key <span className="local-model-form__optional">Optional</span>
+              </span>
+              <input
+                ref={credentialRef}
+                type="password"
+                maxLength={4096}
+                autoComplete="new-password"
+                spellCheck={false}
+                onInput={() => setProbe({ status: "idle" })}
+              />
+            </label>
+          )}
           <p className="local-model-form__notice">
-            Testing performs one bounded model-list request. It sends no bundle content,
-            prompt, token, or credential and follows no redirects.
+            Testing performs one bounded model-list request and follows no redirects. If
+            supplied, the API key is sent only to this endpoint and saved to the operating
+            system credential store when you save the profile.
           </p>
           {probe.status === "testing" && (
             <p className="local-models__status" role="status">
@@ -298,6 +332,9 @@ export function LocalModelProfiles({
                   <strong>{profile.name}</strong>
                   <span>{localModelProviderLabel(profile.provider)}</span>
                   <code>{profile.baseUrl}</code>
+                  {profile.hasCredential && (
+                    <span>API key stored by the operating system</span>
+                  )}
                   {status?.status === "testing" && (
                     <p className="local-models__status" role="status">
                       Testing endpoint…
@@ -393,9 +430,9 @@ export function LocalModelProfiles({
 
       <p className="local-models__execution-notice">
         Connect starts a Studio Agent using the selected model. Tool-capable models can load
-        packaged OKF guidance, inspect the active bundle, and read explicitly attached extracted
-        text through bounded tools. Bundle attachments, arbitrary files, staged changes, and edits
-        remain unavailable.
+        packaged OKF guidance, inspect the active bundle, read explicitly attached extracted
+        text, and propose reviewed staging through bounded tools. They cannot read arbitrary files
+        or write directly to the bundle.
       </p>
     </section>
   );

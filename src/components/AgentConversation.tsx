@@ -359,7 +359,7 @@ export function AgentConversation({
   onOpenFolder,
 }: AgentConversationProps) {
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
-  const isNativeLocal = connection.protocolVersion === "studio-native/1";
+  const isStudioAgent = connection.protocolVersion === "studio-native/1";
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
     source: "default",
     value: "New thread",
@@ -1075,7 +1075,7 @@ export function AgentConversation({
   );
   let composerStatus = connection.capabilities.promptImage
     ? "Text and images"
-    : isNativeLocal
+    : isStudioAgent
       ? "Scoped tools"
       : "Text only";
   if (activeTurn) composerStatus = "Agent is working";
@@ -1672,9 +1672,9 @@ export function AgentConversation({
                     </div>
                   </section>
                 )}
-                <h3>{isNativeLocal ? "Chat with your local model" : "Ask about this bundle"}</h3>
+                <h3>{isStudioAgent ? "Chat with Studio Agent" : "Ask about this bundle"}</h3>
                 <p>
-                  {isNativeLocal
+                  {isStudioAgent
                     ? "Studio gives the model canonical OKF guidance, bounded bundle and source tools, and reviewed staging. Proposed files stay in memory until you validate, review, and apply them."
                     : "Studio attaches OKF context, read-only access to this bundle, and tools to inspect concepts, trace sources, and validate structure."}
                 </p>
@@ -2142,7 +2142,7 @@ export function AgentConversation({
                 name="prompt"
                 rows={3}
                 maxLength={128 * 1024}
-                placeholder={isNativeLocal ? "Message your local model..." : "Ask about this bundle..."}
+                placeholder={isStudioAgent ? "Message Studio Agent..." : "Ask about this bundle..."}
                 disabled={isSubmitting || queuedPrompt !== null}
                 value={promptText}
                 onChange={(event) => setPromptText(event.target.value)}
@@ -2158,7 +2158,7 @@ export function AgentConversation({
                     sourceCount={attachedSources.length}
                     onCaptureReaderSelection={onCaptureReaderSelection}
                     disabled={isSubmitting || queuedPrompt !== null}
-                    bundleAttachmentsSupported={!isNativeLocal}
+                    bundleAttachmentsSupported={!isStudioAgent}
                     imageSupported={connection.capabilities.promptImage}
                     threadSupport={!supportsHistory ? "unsupported" : activeTurn ? "busy" : "ready"}
                     onLoadThreads={loadAttachableThreads}
@@ -2355,7 +2355,7 @@ function AttachmentPicker({
   else if (availableIssues.length === 0) issueExplanation = "All validation issues are attached.";
   else if (isAtLimit) issueExplanation = "The source limit has been reached.";
   const selectionExplanation = !bundleAttachmentsSupported
-    ? "Reader selections are not available to local models yet."
+    ? "Reader selections are not available to Studio Agent connections yet."
     : isAtLimit
       ? "The source limit has been reached."
       : readerSelection.status === "available"

@@ -87,7 +87,7 @@ mod tests {
     fn bundled_catalog_is_valid_and_has_unique_ids() {
         let catalog = load().expect("catalog should parse");
         assert_eq!(catalog.version, 1);
-        assert_eq!(catalog.entries.len(), 4);
+        assert_eq!(catalog.entries.len(), 3);
         assert_eq!(catalog.node_runtime.version, "v24.11.0");
         assert_eq!(catalog.node_runtime.distributions.len(), 5);
         let mut ids = catalog
@@ -96,6 +96,7 @@ mod tests {
             .map(|entry| entry.id.as_str())
             .collect::<Vec<_>>();
         ids.sort_unstable();
+        assert_eq!(ids, ["claude-agent", "codex", "studio-api"]);
         ids.dedup();
         assert_eq!(ids.len(), catalog.entries.len());
         for entry in catalog

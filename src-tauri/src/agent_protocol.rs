@@ -503,7 +503,7 @@ pub async fn connect_local(
             .any(|worker| worker.profile_id == profile_id)
         {
             worker.abort();
-            return Err("This local-model profile already has an active connection.".to_string());
+            return Err("This Studio model profile already has an active connection.".to_string());
         }
         active.insert(
             connection_id.clone(),

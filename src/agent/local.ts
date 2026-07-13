@@ -8,10 +8,15 @@ export interface LocalModelProfileInput {
   name: string;
   provider: LocalModelProvider;
   baseUrl: string;
+  apiKey?: string;
 }
 
-export interface LocalModelProfile extends LocalModelProfileInput {
+export interface LocalModelProfile {
   id: string;
+  name: string;
+  provider: LocalModelProvider;
+  baseUrl: string;
+  hasCredential: boolean;
 }
 
 export interface LocalModelProbe {

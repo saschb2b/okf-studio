@@ -79,6 +79,13 @@ function isInstallable(entry: AgentCatalogEntry): entry is InstallableEntry {
   return entry.availability === "installable" && entry.distribution !== null;
 }
 
+function authenticationLabel(entry: AgentCatalogEntry): string {
+  if (entry.authMethods.includes("api-key") && entry.authMethods.includes("none")) {
+    return "Optional API key";
+  }
+  return entry.authMethods.map(authMethodLabel).join(" or ");
+}
+
 export function AgentCatalogCard({
   entry,
   onConnected,
@@ -398,7 +405,7 @@ function AgentCardFrame({
           {entry.availability === "installable"
             ? "ACP"
             : entry.availability === "configurable"
-              ? "Local"
+              ? "Studio"
               : "Planned"}
         </span>
       </div>
@@ -410,7 +417,7 @@ function AgentCardFrame({
         </div>
         <div>
           <dt>Sign in</dt>
-          <dd>{entry.authMethods.map(authMethodLabel).join(" or ")}</dd>
+          <dd>{authenticationLabel(entry)}</dd>
         </div>
       </dl>
       {children}

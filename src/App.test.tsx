@@ -80,12 +80,12 @@ describe("OKF Studio app", () => {
 
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    const localCard = screen.getByRole("heading", { name: "Local model" }).closest("article");
-    if (!localCard) throw new Error("Local model card was not rendered.");
+    const localCard = screen.getByRole("heading", { name: "Studio Agent" }).closest("article");
+    if (!localCard) throw new Error("Studio Agent card was not rendered.");
     await user.click(within(localCard).getByRole("button", { name: "Configure" }));
 
     const localSection = screen
-      .getByRole("heading", { name: "Local model endpoints" })
+      .getByRole("heading", { name: "Studio model endpoints" })
       .closest("section");
     if (!localSection) throw new Error("Local endpoint setup was not rendered.");
     await vi.waitFor(() =>
@@ -110,6 +110,40 @@ describe("OKF Studio app", () => {
       .not.toBeInTheDocument();
   });
 
+  it("keeps a Studio Agent API key out of saved profile metadata", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    const localCard = screen.getByRole("heading", { name: "Studio Agent" }).closest("article");
+    if (!localCard) throw new Error("Studio Agent card was not rendered.");
+    await user.click(within(localCard).getByRole("button", { name: "Configure" }));
+    const section = screen
+      .getByRole("heading", { name: "Studio model endpoints" })
+      .closest("section");
+    if (!section) throw new Error("Studio endpoint setup was not rendered.");
+
+    await user.selectOptions(within(section).getByLabelText("Provider"), "open-ai-compatible");
+    await user.type(within(section).getByLabelText("Endpoint"), "https://api.example.test");
+    await user.type(within(section).getByLabelText(/API key/), "secret-browser-test-key");
+    await user.click(within(section).getByRole("button", { name: "Test connection" }));
+    await within(section).findByText("Endpoint reached");
+    await user.click(within(section).getByRole("button", { name: "Save endpoint" }));
+
+    expect(await within(section).findByText("API key stored by the operating system"))
+      .toBeInTheDocument();
+    expect(screen.queryByText("secret-browser-test-key")).not.toBeInTheDocument();
+    const saved = await ipc.localModelProfiles();
+    expect(saved.at(-1)).toMatchObject({
+      baseUrl: "https://api.example.test",
+      hasCredential: true,
+    });
+    expect(saved.at(-1)).not.toHaveProperty("apiKey");
+
+    await user.click(within(section).getByRole("button", { name: "Remove OpenAI-compatible" }));
+  });
+
   it("connects a saved local model for a bounded Studio Agent turn", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -117,11 +151,11 @@ describe("OKF Studio app", () => {
 
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    const localCard = screen.getByRole("heading", { name: "Local model" }).closest("article");
-    if (!localCard) throw new Error("Local model card was not rendered.");
+    const localCard = screen.getByRole("heading", { name: "Studio Agent" }).closest("article");
+    if (!localCard) throw new Error("Studio Agent card was not rendered.");
     await user.click(within(localCard).getByRole("button", { name: "Configure" }));
     const localSection = screen
-      .getByRole("heading", { name: "Local model endpoints" })
+      .getByRole("heading", { name: "Studio model endpoints" })
       .closest("section");
     if (!localSection) throw new Error("Local endpoint setup was not rendered.");
     await user.click(within(localSection).getByRole("button", { name: "Test connection" }));
@@ -132,7 +166,7 @@ describe("OKF Studio app", () => {
     expect(model).toHaveValue("qwen3:8b");
     await user.click(within(localSection).getByRole("button", { name: "Connect" }));
 
-    expect(await screen.findByRole("heading", { name: "Chat with your local model" }))
+    expect(await screen.findByRole("heading", { name: "Chat with Studio Agent" }))
       .toBeInTheDocument();
     expect(screen.getByText(/bounded bundle and source tools, and reviewed staging/i))
       .toBeInTheDocument();
@@ -182,7 +216,7 @@ describe("OKF Studio app", () => {
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     const reloadedLocalSection = screen
-      .getByRole("heading", { name: "Local model endpoints" })
+      .getByRole("heading", { name: "Studio model endpoints" })
       .closest("section");
     if (!reloadedLocalSection) throw new Error("Local endpoint setup was not restored.");
     await user.click(within(reloadedLocalSection).getByRole("button", { name: "Disconnect" }));

@@ -33,7 +33,9 @@ use crate::agent_stage::{
     AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo, AgentStagedCreateInfo,
     AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
 };
-use crate::{agent_custom, agent_install, agent_local, agent_sources::AgentSourceInput};
+use crate::{
+    agent_custom, agent_install, agent_local, agent_sources::AgentSourceInput, agent_studio,
+};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -656,7 +658,9 @@ async fn run_local_connection(
                 let task_live = Arc::clone(&live);
                 tokio::spawn(async move {
                     let result = tokio::task::spawn_blocking(move || {
-                        agent_local::chat(&task_runtime, &messages).map(|answer| (messages, answer))
+                        let request_messages = local_request_messages(&messages);
+                        agent_local::chat(&task_runtime, &request_messages)
+                            .map(|answer| (messages, answer))
                     })
                     .await
                     .map_err(|_| "Local model request did not complete.".to_string())
@@ -815,6 +819,15 @@ fn local_text_chunks(text: &str) -> Vec<String> {
         chunks.push(chunk);
     }
     chunks
+}
+
+fn local_request_messages(
+    conversation: &[agent_local::LocalChatMessage],
+) -> Vec<agent_local::LocalChatMessage> {
+    let mut messages = Vec::with_capacity(conversation.len() + 1);
+    messages.push(agent_studio::text_only_system_message());
+    messages.extend_from_slice(conversation);
+    messages
 }
 
 async fn connect_process(
@@ -4876,6 +4889,20 @@ mod tests {
         assert_eq!(chunks[0].chars().count(), MAX_TURN_CHUNK_CHARS);
         assert_eq!(chunks[1], "xxx");
         assert_eq!(chunks.concat(), text);
+    }
+
+    #[test]
+    fn prepends_the_native_system_boundary_without_persisting_it_as_thread_text() {
+        let conversation = vec![agent_local::LocalChatMessage {
+            role: "user",
+            content: "What can you access?".to_string(),
+        }];
+        let request = local_request_messages(&conversation);
+        assert_eq!(request.len(), 2);
+        assert_eq!(request[0].role, "system");
+        assert!(request[0].content.contains("cannot read the active bundle"));
+        assert_eq!(request[1].role, "user");
+        assert_eq!(conversation.len(), 1);
     }
 
     #[tokio::test(flavor = "current_thread")]

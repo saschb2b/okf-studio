@@ -13,6 +13,7 @@ mod agent_protocol;
 mod agent_runtime;
 mod agent_sources;
 mod agent_stage;
+mod agent_studio;
 mod agent_transcript;
 mod agent_url;
 mod remote;

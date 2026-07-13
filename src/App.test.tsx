@@ -134,6 +134,8 @@ describe("OKF Studio app", () => {
 
     expect(await screen.findByRole("heading", { name: "Chat with your local model" }))
       .toBeInTheDocument();
+    expect(screen.getByText(/supplies its capability boundary and the available skill names/i))
+      .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add context or sources" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
       .not.toBeInTheDocument();

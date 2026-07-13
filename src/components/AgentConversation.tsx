@@ -1675,8 +1675,9 @@ export function AgentConversation({
                 <h3>{isLocalTextOnly ? "Chat with your local model" : "Ask about this bundle"}</h3>
                 {isLocalTextOnly ? (
                   <p>
-                    This first native runtime sends only your message and recent thread text.
-                    Bundle context, sources, edits, and OKF tools are not sent yet.
+                    Studio supplies its capability boundary and the available skill names, then
+                    sends your message and recent thread text. Bundle context, sources, detailed
+                    skill instructions, edits, and OKF tools are not sent yet.
                   </p>
                 ) : (
                   <>

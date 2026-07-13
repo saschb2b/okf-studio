@@ -503,6 +503,26 @@
   gap: var(--space-8);
 }
 
+.custom-agents__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.custom-agents__mode select {
+  min-height: 32px;
+  max-width: 100%;
+  padding: var(--space-4) var(--space-8);
+  color: var(--text);
+  font: inherit;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 .custom-agents__list code {
   overflow: hidden;
   color: var(--text-dim);

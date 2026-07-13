@@ -180,9 +180,10 @@ async fn connect_custom_agent(
     grants: State<'_, bundle_grant::BundleGrantState>,
     profile_id: String,
     bundle_root: String,
+    mode: agent_protocol::AgentConnectionMode,
 ) -> Result<agent_protocol::AgentConnectionInfo, String> {
     let bundle_root = grants.authorize_bundle(Path::new(&bundle_root))?;
-    agent_protocol::connect_custom(&app, state.inner(), &profile_id, bundle_root).await
+    agent_protocol::connect_custom(&app, state.inner(), &profile_id, bundle_root, mode).await
 }
 
 #[tauri::command]

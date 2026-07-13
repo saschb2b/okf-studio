@@ -279,7 +279,32 @@ function sourceTooltip(source: AttachedSource): string {
 const SECURITY_PROFILE_NAMES = {
   "studio-native-mediated-v1": "Studio mediated (v1)",
   "external-interactive-unrestricted-v1": "External interactive (v1)",
+  "external-linux-restricted-offline-v1": "Linux restricted offline (v1)",
 } satisfies Record<AgentSecurityScopeInfo["profile"]["id"], string>;
+
+const SECURITY_FILE_SCOPE = {
+  "studio-tool-mediated-bundle": "Only bounded Studio tools can read the active bundle.",
+  "host-operating-system": "Studio tools are bundle-scoped. The ACP process keeps normal OS file access.",
+  "system-runtime-agent-and-read-only-bundle": "The process can read its system runtime, executable, and active bundle. Protected bundle paths are hidden.",
+} satisfies Record<AgentSecurityScopeInfo["profile"]["effectiveMounts"], string>;
+
+const SECURITY_NETWORK_SCOPE = {
+  "configured-endpoint-only": "Studio contacts only the configured model endpoint. No fetch tool is exposed.",
+  "host-operating-system": "The ACP process keeps normal OS network access.",
+  isolated: "The process has no host network access.",
+} satisfies Record<AgentSecurityScopeInfo["profile"]["networkPolicy"], string>;
+
+const SECURITY_WRITE_SCOPE = {
+  "reviewed-staging-only": "Writes require an interactive grant and reviewed staging.",
+  "host-operating-system-permissions": "Studio-mediated writes require review. The ACP process can bypass that mediation.",
+  "private-temporary-only": "Direct writes are limited to private temporary storage. Bundle changes still require reviewed staging.",
+} satisfies Record<AgentSecurityScopeInfo["profile"]["writableRoots"], string>;
+
+const SECURITY_CREDENTIAL_SCOPE = {
+  "configured-endpoint-only": "Only the configured endpoint can receive its saved API key.",
+  "host-operating-system-and-launch-environment": "The process can access its launch environment and credentials available through the OS.",
+  "launch-environment-only": "The process receives only the environment variables allowlisted for this launch.",
+} satisfies Record<AgentSecurityScopeInfo["profile"]["credentialExposure"], string>;
 
 const SECURITY_STOP_LABELS = {
   disconnect: "disconnect",
@@ -293,6 +318,18 @@ function readableSecurityStops(labels: readonly string[]): string {
   return `${labels.slice(0, -1).join(", ")}, or ${labels.at(-1)}`;
 }
 
+function securityEvidenceCopy(scope: AgentSecurityScopeInfo): string {
+  if (scope.evidenceSource === "native-provider-host") {
+    return "Produced by Studio's native provider host.";
+  }
+  if (scope.profile.id === "external-linux-restricted-offline-v1") {
+    return "Produced by the ACP launcher after Bubblewrap started the process and Studio attached its process group.";
+  }
+  return scope.processContainment === "windows-job-object"
+    ? "Produced by the ACP launcher after Job Object attachment."
+    : "Produced by the ACP launcher after process-group attachment.";
+}
+
 function ThreadSecurityScope({
   bundleName,
   scope,
@@ -302,26 +339,16 @@ function ThreadSecurityScope({
 }) {
   const profile = scope.profile;
   const profileName = SECURITY_PROFILE_NAMES[profile.id];
-  const fileScope = profile.effectiveMounts === "studio-tool-mediated-bundle"
-    ? "Only bounded Studio tools can read the active bundle."
-    : "Studio tools are bundle-scoped. The ACP process keeps normal OS file access.";
-  const networkScope = profile.networkPolicy === "configured-endpoint-only"
-    ? "Studio contacts only the configured model endpoint. No fetch tool is exposed."
-    : "The ACP process keeps normal OS network access.";
-  const writeScope = profile.writableRoots === "reviewed-staging-only"
-    ? "Writes require an interactive grant and reviewed staging."
-    : "Studio-mediated writes require review. The ACP process can bypass that mediation.";
-  const credentialScope = profile.credentialExposure === "configured-endpoint-only"
-    ? "Only the configured endpoint can receive its saved API key."
-    : "The process can access its launch environment and credentials available through the OS.";
+  const fileScope = SECURITY_FILE_SCOPE[profile.effectiveMounts];
+  const networkScope = SECURITY_NETWORK_SCOPE[profile.networkPolicy];
+  const writeScope = SECURITY_WRITE_SCOPE[profile.writableRoots];
+  const credentialScope = SECURITY_CREDENTIAL_SCOPE[profile.credentialExposure];
   const processScope = {
     "in-process": "No external ACP process runs.",
     "posix-process-group": "Studio owns the agent's POSIX process group and stops it on disconnect.",
     "windows-job-object": "Studio owns a kill-on-close Windows Job Object and stops it on disconnect.",
   }[scope.processContainment];
-  const evidenceScope = scope.evidenceSource === "native-provider-host"
-    ? "Produced by Studio's native provider host."
-    : `Produced by the ACP launcher after ${scope.processContainment === "windows-job-object" ? "Job Object" : "process-group"} attachment.`;
+  const evidenceScope = securityEvidenceCopy(scope);
   const stopConditions = readableSecurityStops(
     profile.stopConditions.map((condition) => SECURITY_STOP_LABELS[condition]),
   );

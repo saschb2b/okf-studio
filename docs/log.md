@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-14
+* **Creation**: Added an explicit Restricted offline launch mode for saved custom ACP commands on verified Linux Bubblewrap hosts. Standard remains the default. The restricted branch mounts selected system runtime paths, the exact custom executable, and the active bundle read-only; hides protected bundle paths; provides private temporary storage; disables host networking; and exposes only allowlisted launch environment variables. The thread receives this scope only after the sandboxed process starts and Studio attaches its POSIX process group. Claude Agent, Codex, unsupported platforms, and unattended writes remain outside this profile.
 * **Update**: Inserted an Agent workspace UX refinement package before isolation and autonomy completion. Its journey contract covers first connection, saved-thread return, research, editing, permission and failure recovery, parallel work, and narrow panels. The gate requires one clear next action, one persistent identity hierarchy, visible blocking state, and screenshot plus keyboard evidence at three panel widths.
 
 ## 2026-07-13

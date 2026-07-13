@@ -64,15 +64,15 @@ function securityHostCopy(status: AgentSecurityHostStatus): {
 } {
   if (status.launchProfileAvailable) {
     return {
-      summary: "Restricted profile available",
-      detail: "Studio can launch an external agent through the verified host on this platform.",
+      summary: "Restricted offline profile available",
+      detail: "Saved custom ACP commands can use the verified Linux host with read-only bundle access and no host network.",
     };
   }
   switch (status.state) {
     case "ready":
       return {
-        summary: "Linux backend ready; profile disabled",
-        detail: "System Bubblewrap passed Studio's no-network namespace probe. Restricted connections remain disabled until the launcher binds this backend to the complete profile.",
+        summary: "Linux backend ready",
+        detail: "System Bubblewrap passed Studio's no-network namespace probe, but no restricted launch profile is available in this build.",
       };
     case "not-found":
       return {
@@ -277,6 +277,9 @@ export function AgentConnectionCatalog({
           <CustomAgentProfiles
             bundleRoot={bundleRoot}
             profiles={state.customProfiles}
+            restrictedOfflineAvailable={
+              securityHost.status === "ready" && securityHost.value.launchProfileAvailable
+            }
             onProfileSave={saveProfile}
             onProfileRemove={removeProfile}
             onConnected={onConnectionAvailable}

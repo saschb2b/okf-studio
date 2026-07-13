@@ -24,6 +24,7 @@ import type {
   AgentConnectionInfo,
   AgentSecurityHostStatus,
   AgentSecurityScopeInfo,
+  AgentConnectionMode,
   AgentPermissionEvent,
   AgentLoadedSessionInfo,
   AgentSessionInfo,
@@ -334,12 +335,14 @@ function mockNativeSecurityScope(): AgentSecurityScopeInfo {
 export async function connectCustomAgent(
   profileId: string,
   bundleRoot: string,
+  mode: AgentConnectionMode = "standard",
 ): Promise<AgentConnectionInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
     const info = await invoke<AgentConnectionInfo>("connect_custom_agent", {
       profileId,
       bundleRoot,
+      mode,
     });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
@@ -347,6 +350,9 @@ export async function connectCustomAgent(
   }
   const profile = mockCustomAgents.find((candidate) => candidate.id === profileId);
   if (!profile) throw new Error("Custom agent profile was not found.");
+  if (mode === "restricted-offline") {
+    throw new Error("Restricted offline connections require the desktop Linux app.");
+  }
   await new Promise((resolve) => setTimeout(resolve, 80));
   const info: AgentConnectionInfo = {
     connectionId: `connection-${crypto.randomUUID()}`,

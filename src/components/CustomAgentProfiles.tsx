@@ -1,6 +1,10 @@
 import { Plug, Plus, TerminalSquare, Trash2, Unplug } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
-import type { AgentConnectionEvent, AgentConnectionInfo } from "../agent/connection.ts";
+import type {
+  AgentConnectionEvent,
+  AgentConnectionInfo,
+  AgentConnectionMode,
+} from "../agent/connection.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
 import {
   activeAgentConnections,
@@ -12,6 +16,7 @@ import {
 interface CustomAgentProfilesProps {
   bundleRoot: string | null;
   profiles: readonly CustomAgentProfile[];
+  restrictedOfflineAvailable: boolean;
   onProfileSave: (input: CustomAgentInput) => Promise<void>;
   onProfileRemove: (profileId: string) => Promise<void>;
   onConnected: (connection: AgentConnectionInfo) => void;
@@ -54,6 +59,7 @@ function validateInput(input: CustomAgentInput): string | null {
 export function CustomAgentProfiles({
   bundleRoot,
   profiles,
+  restrictedOfflineAvailable,
   onProfileSave,
   onProfileRemove,
   onConnected,
@@ -68,6 +74,9 @@ export function CustomAgentProfiles({
     ),
   );
   const [listenerError, setListenerError] = useState<string | null>(null);
+  const [connectionModes, setConnectionModes] = useState<
+    Partial<Record<string, AgentConnectionMode>>
+  >({});
 
   useEffect(() => {
     let stopListening: (() => void) | undefined;
@@ -91,11 +100,11 @@ export function CustomAgentProfiles({
     };
   }, []);
 
-  async function connect(profileId: string) {
+  async function connect(profileId: string, mode: AgentConnectionMode) {
     if (!bundleRoot) return;
     setConnections((current) => ({ ...current, [profileId]: { status: "connecting" } }));
     try {
-      const info = await connectCustomAgent(profileId, bundleRoot);
+      const info = await connectCustomAgent(profileId, bundleRoot, mode);
       setConnections((current) =>
         current[profileId]?.status === "connecting"
           ? { ...current, [profileId]: { status: "ready", info } }
@@ -163,9 +172,10 @@ export function CustomAgentProfiles({
 
       {profiles.length > 0 && (
         <p className="custom-agents__execution-notice">
-          Connecting launches the saved executable with normal OS access. Studio limits its
-          inherited environment and ACP permissions, and Disconnect stops its process tree. It does
-          not restrict filesystem or network access.
+          Standard launches with normal OS access. Restricted offline is available through a
+          verified Linux Bubblewrap host for self-contained agents: the bundle and executable are
+          read-only, protected paths are hidden, and host network access is disabled. Both modes
+          limit inherited environment variables and stop the process tree on Disconnect.
         </p>
       )}
 
@@ -174,6 +184,9 @@ export function CustomAgentProfiles({
           {profiles.map((profile) => {
             const connection = connections[profile.id] ?? DISCONNECTED;
             const connectedInfo = activeConnectionInfo(connection);
+            const mode = connectedInfo
+              ? connectionMode(connectedInfo)
+              : connectionModes[profile.id] ?? "standard";
             return (
               <li key={profile.id}>
                 <TerminalSquare size={18} aria-hidden="true" />
@@ -190,6 +203,28 @@ export function CustomAgentProfiles({
                   )}
                 </div>
                 <div className="custom-agents__actions">
+                  <label className="custom-agents__mode">
+                    <span aria-hidden="true">Launch</span>
+                    <select
+                      aria-label={`Launch mode for ${profile.name}`}
+                      value={mode}
+                      disabled={Boolean(connectedInfo) || connection.status === "connecting"}
+                      onChange={(event) => {
+                        const nextMode: AgentConnectionMode = event.target.value === "restricted-offline"
+                          ? "restricted-offline"
+                          : "standard";
+                        setConnectionModes((current) => ({
+                          ...current,
+                          [profile.id]: nextMode,
+                        }));
+                      }}
+                    >
+                      <option value="standard">Standard</option>
+                      <option value="restricted-offline" disabled={!restrictedOfflineAvailable}>
+                        Restricted offline
+                      </option>
+                    </select>
+                  </label>
                   {connectedInfo ? (
                     <button
                       type="button"
@@ -206,7 +241,7 @@ export function CustomAgentProfiles({
                       className="btn"
                       aria-label={`Connect ${profile.name}`}
                       disabled={!bundleRoot || connection.status === "connecting"}
-                      onClick={() => void connect(profile.id)}
+                      onClick={() => void connect(profile.id, mode)}
                     >
                       <Plug size={16} aria-hidden="true" />
                       {connection.status === "connecting" ? "Connecting..." : "Connect"}
@@ -260,6 +295,12 @@ function activeConnectionInfo(connection: ProfileConnection): AgentConnectionInf
     return connection.info;
   }
   return connection.status === "error" ? connection.info : undefined;
+}
+
+function connectionMode(connection: AgentConnectionInfo): AgentConnectionMode {
+  return connection.securityScope.profile.id === "external-linux-restricted-offline-v1"
+    ? "restricted-offline"
+    : "standard";
 }
 
 function applyConnectionEvent(

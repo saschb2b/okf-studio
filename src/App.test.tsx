@@ -1668,6 +1668,43 @@ describe("OKF Studio app", () => {
     });
   });
 
+  it("passes an explicit restricted offline mode for a custom ACP command", async () => {
+    vi.spyOn(ipc, "agentSecurityHostStatus").mockResolvedValue({
+      platform: "linux",
+      backend: "bubblewrap",
+      state: "ready",
+      launchProfileAvailable: true,
+    });
+    const connect = vi.spyOn(ipc, "connectCustomAgent").mockRejectedValueOnce(
+      new Error("Restricted launch stopped for this UI test"),
+    );
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Offline Harness");
+    await user.type(screen.getByLabelText("Executable"), "/usr/bin/offline-agent");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Launch mode for Offline Harness" }),
+      "restricted-offline",
+    );
+    await user.click(screen.getByRole("button", { name: "Connect Offline Harness" }));
+
+    expect(connect).toHaveBeenCalledWith(
+      expect.any(String),
+      "/mock/workspace/docs",
+      "restricted-offline",
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Connection failed. Restricted launch stopped for this UI test",
+    );
+  });
+
   it("moves focus into and out of the agent panel with its shortcut", async () => {
     const user = userEvent.setup();
     renderApp();

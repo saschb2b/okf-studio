@@ -491,7 +491,7 @@ fn linux_result(state: AgentSecurityHostState) -> AgentSecurityHostStatus {
         platform: AgentSecurityPlatform::Linux,
         backend: Some(AgentSecurityBackend::Bubblewrap),
         state,
-        launch_profile_available: false,
+        launch_profile_available: state == AgentSecurityHostState::Ready,
     }
 }
 
@@ -751,6 +751,8 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn restricted_linux_host_enforces_the_compiled_mount_policy() {
+        use std::os::unix::fs::PermissionsExt;
+
         if !matches!(
             std::env::var("OKF_STUDIO_REQUIRE_BWRAP_TEST").as_deref(),
             Ok("1")
@@ -762,9 +764,19 @@ mod tests {
         let visible = fixture.bundle.join("docs").join("overview.md");
         let protected = fixture.bundle.join(".env");
         let blocked_write = fixture.bundle.join("blocked.txt");
-        let shell = Path::new("/bin/sh")
+        let custom_root = Path::new("/var/tmp").join(format!(
+            "okf-studio-restricted-custom-agent-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&custom_root).expect("create custom agent root");
+        let custom_agent = custom_root.join("agent");
+        std::fs::write(&custom_agent, "#!/bin/sh\nexec /bin/sh \"$@\"\n")
+            .expect("write custom agent wrapper");
+        std::fs::set_permissions(&custom_agent, std::fs::Permissions::from_mode(0o700))
+            .expect("make custom agent executable");
+        let custom_agent = custom_agent
             .canonicalize()
-            .expect("canonical system shell");
+            .expect("canonical custom agent executable");
         let script = r#"test -r "$1" && test ! -e "$2" && ! (printf blocked > "$3") 2>/dev/null && printf private > /tmp/probe && test "$(cat /tmp/probe)" = private"#;
         let arguments = vec![
             "-c".to_string(),
@@ -776,9 +788,9 @@ mod tests {
         ];
         let mut command = linux_restricted_command(
             &fixture.bundle,
-            &shell,
+            &custom_agent,
             &arguments,
-            &[],
+            std::slice::from_ref(&custom_agent),
             LinuxSandboxNetworkMode::Disabled,
         )
         .await
@@ -794,6 +806,7 @@ mod tests {
             .await
             .expect("restricted command deadline")
             .expect("start restricted command");
+        let _ = std::fs::remove_dir_all(&custom_root);
         assert!(status.success());
         assert!(!blocked_write.exists());
     }

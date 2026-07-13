@@ -28,14 +28,26 @@ export interface AgentSecurityScopeInfo {
   profile: AgentSecurityProfileInfo;
 }
 
+export type AgentConnectionMode = "standard" | "restricted-offline";
+
 export interface AgentSecurityProfileInfo {
-  id: "studio-native-mediated-v1" | "external-interactive-unrestricted-v1";
-  effectiveMounts: "studio-tool-mediated-bundle" | "host-operating-system";
-  writableRoots: "reviewed-staging-only" | "host-operating-system-permissions";
-  networkPolicy: "configured-endpoint-only" | "host-operating-system";
+  id:
+    | "studio-native-mediated-v1"
+    | "external-interactive-unrestricted-v1"
+    | "external-linux-restricted-offline-v1";
+  effectiveMounts:
+    | "studio-tool-mediated-bundle"
+    | "host-operating-system"
+    | "system-runtime-agent-and-read-only-bundle";
+  writableRoots:
+    | "reviewed-staging-only"
+    | "host-operating-system-permissions"
+    | "private-temporary-only";
+  networkPolicy: "configured-endpoint-only" | "host-operating-system" | "isolated";
   credentialExposure:
     | "configured-endpoint-only"
-    | "host-operating-system-and-launch-environment";
+    | "host-operating-system-and-launch-environment"
+    | "launch-environment-only";
   lifetime: "connection";
   stopConditions: readonly ("disconnect" | "application-exit" | "host-failure")[];
   unattendedEligible: boolean;

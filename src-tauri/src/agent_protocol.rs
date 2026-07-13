@@ -13,7 +13,7 @@ use agent_client_protocol::schema::v1::{
 use base64::Engine;
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
@@ -135,9 +135,11 @@ struct AgentSecurityProfileInfo {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 enum AgentSecurityProfileId {
     StudioNativeMediatedV1,
     ExternalInteractiveUnrestrictedV1,
+    ExternalLinuxRestrictedOfflineV1,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -149,30 +151,38 @@ enum AgentSecurityEvidenceSource {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 enum AgentEffectiveMounts {
     StudioToolMediatedBundle,
     HostOperatingSystem,
+    SystemRuntimeAgentAndReadOnlyBundle,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 enum AgentWritableRoots {
     ReviewedStagingOnly,
     HostOperatingSystemPermissions,
+    PrivateTemporaryOnly,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 enum AgentNetworkPolicy {
     ConfiguredEndpointOnly,
     HostOperatingSystem,
+    Isolated,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 enum AgentCredentialExposure {
     ConfiguredEndpointOnly,
     HostOperatingSystemAndLaunchEnvironment,
+    LaunchEnvironmentOnly,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -199,6 +209,20 @@ enum AgentProcessContainment {
     WindowsJobObject,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentConnectionMode {
+    Standard,
+    RestrictedOffline,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ExternalProcessLaunchProfile {
+    Standard,
+    #[cfg(any(target_os = "linux", test))]
+    LinuxRestrictedOffline,
+}
+
 impl AgentSecurityScopeInfo {
     fn native_provider() -> Self {
         Self {
@@ -221,7 +245,10 @@ impl AgentSecurityScopeInfo {
         }
     }
 
-    fn external_process(containment: agent_process::AgentProcessContainment) -> Self {
+    fn external_process(
+        containment: agent_process::AgentProcessContainment,
+        launch_profile: ExternalProcessLaunchProfile,
+    ) -> Self {
         let process_containment = match containment {
             #[cfg(unix)]
             agent_process::AgentProcessContainment::PosixProcessGroup => {
@@ -232,10 +259,8 @@ impl AgentSecurityScopeInfo {
                 AgentProcessContainment::WindowsJobObject
             }
         };
-        Self {
-            evidence_source: AgentSecurityEvidenceSource::ExternalProcessLauncher,
-            process_containment,
-            profile: AgentSecurityProfileInfo {
+        let profile = match launch_profile {
+            ExternalProcessLaunchProfile::Standard => AgentSecurityProfileInfo {
                 id: AgentSecurityProfileId::ExternalInteractiveUnrestrictedV1,
                 effective_mounts: AgentEffectiveMounts::HostOperatingSystem,
                 writable_roots: AgentWritableRoots::HostOperatingSystemPermissions,
@@ -243,15 +268,35 @@ impl AgentSecurityScopeInfo {
                 credential_exposure:
                     AgentCredentialExposure::HostOperatingSystemAndLaunchEnvironment,
                 lifetime: AgentSecurityLifetime::Connection,
-                stop_conditions: vec![
-                    AgentSecurityStopCondition::Disconnect,
-                    AgentSecurityStopCondition::ApplicationExit,
-                    AgentSecurityStopCondition::HostFailure,
-                ],
+                stop_conditions: external_stop_conditions(),
                 unattended_eligible: false,
             },
+            #[cfg(any(target_os = "linux", test))]
+            ExternalProcessLaunchProfile::LinuxRestrictedOffline => AgentSecurityProfileInfo {
+                id: AgentSecurityProfileId::ExternalLinuxRestrictedOfflineV1,
+                effective_mounts: AgentEffectiveMounts::SystemRuntimeAgentAndReadOnlyBundle,
+                writable_roots: AgentWritableRoots::PrivateTemporaryOnly,
+                network_policy: AgentNetworkPolicy::Isolated,
+                credential_exposure: AgentCredentialExposure::LaunchEnvironmentOnly,
+                lifetime: AgentSecurityLifetime::Connection,
+                stop_conditions: external_stop_conditions(),
+                unattended_eligible: false,
+            },
+        };
+        Self {
+            evidence_source: AgentSecurityEvidenceSource::ExternalProcessLauncher,
+            process_containment,
+            profile,
         }
     }
+}
+
+fn external_stop_conditions() -> Vec<AgentSecurityStopCondition> {
+    vec![
+        AgentSecurityStopCondition::Disconnect,
+        AgentSecurityStopCondition::ApplicationExit,
+        AgentSecurityStopCondition::HostFailure,
+    ]
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -557,9 +602,10 @@ pub async fn connect_custom(
     state: &AgentHostState,
     profile_id: &str,
     bundle_root: PathBuf,
+    mode: AgentConnectionMode,
 ) -> Result<AgentConnectionInfo, String> {
     let profile = agent_custom::find(app, profile_id)?;
-    let spec = ProcessSpec::from_profile(&profile);
+    let spec = ProcessSpec::from_profile(&profile, &bundle_root, mode)?;
     connect_process(
         app,
         state,
@@ -3432,21 +3478,50 @@ struct LinuxRestrictedProcessSpec {
 }
 
 impl ProcessSpec {
-    fn from_profile(profile: &agent_custom::CustomAgentProfile) -> Self {
+    fn from_profile(
+        profile: &agent_custom::CustomAgentProfile,
+        _bundle_root: &Path,
+        mode: AgentConnectionMode,
+    ) -> Result<Self, String> {
         let environment = profile
             .environment
             .iter()
             .filter_map(|name| std::env::var(name).ok().map(|value| (name.clone(), value)))
             .collect();
-        Self {
-            executable: PathBuf::from(&profile.executable),
+        let executable = PathBuf::from(&profile.executable);
+        #[cfg(not(any(target_os = "linux", test)))]
+        if mode == AgentConnectionMode::RestrictedOffline {
+            return Err(
+                "Restricted offline connections require the verified Linux Bubblewrap host."
+                    .to_string(),
+            );
+        }
+        #[cfg(any(target_os = "linux", test))]
+        let (executable, read_only_roots, restricted) = match mode {
+            AgentConnectionMode::Standard => (executable, Vec::new(), None),
+            AgentConnectionMode::RestrictedOffline => {
+                let executable = executable.canonicalize().map_err(|error| {
+                    format!("Studio could not resolve the restricted agent executable: {error}")
+                })?;
+                (
+                    executable.clone(),
+                    vec![executable.clone()],
+                    Some(LinuxRestrictedProcessSpec {
+                        bundle_root: _bundle_root.to_path_buf(),
+                        network: crate::agent_sandbox::LinuxSandboxNetworkMode::Disabled,
+                    }),
+                )
+            }
+        };
+        Ok(Self {
+            executable,
             arguments: profile.arguments.clone(),
             environment,
             #[cfg(any(target_os = "linux", test))]
-            read_only_roots: Vec::new(),
+            read_only_roots,
             #[cfg(any(target_os = "linux", test))]
-            restricted: None,
-        }
+            restricted,
+        })
     }
 }
 
@@ -3466,9 +3541,11 @@ impl ProcessAgent {
 
 impl ConnectTo<Client> for ProcessAgent {
     async fn connect_to(self, client: impl ConnectTo<Agent>) -> agent_client_protocol::Result<()> {
-        let mut command = process_command(&self.spec)
+        let prepared = process_command(&self.spec)
             .await
             .map_err(agent_client_protocol::util::internal_error)?;
+        let launch_profile = prepared.launch_profile;
+        let mut command = prepared.command;
         command
             .env_clear()
             .envs(self.spec.environment.iter().cloned())
@@ -3486,6 +3563,7 @@ impl ConnectTo<Client> for ProcessAgent {
         self.security_scope
             .set(AgentSecurityScopeInfo::external_process(
                 process_tree.containment(),
+                launch_profile,
             ))
             .map_err(|_| {
                 agent_client_protocol::util::internal_error(
@@ -3543,22 +3621,34 @@ impl ConnectTo<Client> for ProcessAgent {
     }
 }
 
-async fn process_command(spec: &ProcessSpec) -> Result<Command, String> {
+struct PreparedProcessCommand {
+    command: Command,
+    launch_profile: ExternalProcessLaunchProfile,
+}
+
+async fn process_command(spec: &ProcessSpec) -> Result<PreparedProcessCommand, String> {
     #[cfg(any(target_os = "linux", test))]
     if let Some(restricted) = &spec.restricted {
-        return crate::agent_sandbox::linux_restricted_command(
+        let command = crate::agent_sandbox::linux_restricted_command(
             &restricted.bundle_root,
             &spec.executable,
             &spec.arguments,
             &spec.read_only_roots,
             restricted.network,
         )
-        .await;
+        .await?;
+        return Ok(PreparedProcessCommand {
+            command,
+            launch_profile: ExternalProcessLaunchProfile::LinuxRestrictedOffline,
+        });
     }
 
     let mut command = Command::new(&spec.executable);
     command.args(&spec.arguments);
-    Ok(command)
+    Ok(PreparedProcessCommand {
+        command,
+        launch_profile: ExternalProcessLaunchProfile::Standard,
+    })
 }
 
 fn diagnostic_summary(diagnostics: &str) -> String {
@@ -3669,7 +3759,10 @@ mod tests {
         let containment = agent_process::AgentProcessContainment::WindowsJobObject;
         let scope = Arc::new(OnceLock::new());
         scope
-            .set(AgentSecurityScopeInfo::external_process(containment))
+            .set(AgentSecurityScopeInfo::external_process(
+                containment,
+                ExternalProcessLaunchProfile::Standard,
+            ))
             .expect("set test security scope");
         scope
     }
@@ -3686,7 +3779,10 @@ mod tests {
             agent_process::AgentProcessContainment::WindowsJobObject,
             "windows-job-object",
         );
-        let scope = AgentSecurityScopeInfo::external_process(containment);
+        let scope = AgentSecurityScopeInfo::external_process(
+            containment,
+            ExternalProcessLaunchProfile::Standard,
+        );
         let value = serde_json::to_value(scope).expect("serialize security scope");
         assert_eq!(value["evidenceSource"], "external-process-launcher");
         assert_eq!(value["processContainment"], expected_process);
@@ -3707,6 +3803,71 @@ mod tests {
             serde_json::json!(["disconnect", "application-exit", "host-failure"])
         );
         assert_eq!(value["profile"]["unattendedEligible"].as_bool(), Some(false));
+    }
+
+    #[test]
+    fn serializes_restricted_offline_launcher_scope() {
+        #[cfg(unix)]
+        let containment = agent_process::AgentProcessContainment::PosixProcessGroup;
+        #[cfg(windows)]
+        let containment = agent_process::AgentProcessContainment::WindowsJobObject;
+        let scope = AgentSecurityScopeInfo::external_process(
+            containment,
+            ExternalProcessLaunchProfile::LinuxRestrictedOffline,
+        );
+        let value = serde_json::to_value(scope).expect("serialize restricted security scope");
+
+        assert_eq!(value["evidenceSource"], "external-process-launcher");
+        assert_eq!(
+            value["profile"]["id"],
+            "external-linux-restricted-offline-v1"
+        );
+        assert_eq!(
+            value["profile"]["effectiveMounts"],
+            "system-runtime-agent-and-read-only-bundle"
+        );
+        assert_eq!(value["profile"]["writableRoots"], "private-temporary-only");
+        assert_eq!(value["profile"]["networkPolicy"], "isolated");
+        assert_eq!(
+            value["profile"]["credentialExposure"],
+            "launch-environment-only"
+        );
+        assert_eq!(value["profile"]["unattendedEligible"].as_bool(), Some(false));
+    }
+
+    #[test]
+    fn custom_restricted_mode_selects_the_linux_launcher_branch() {
+        let executable = std::env::current_exe()
+            .expect("current test executable")
+            .canonicalize()
+            .expect("canonical test executable");
+        let bundle_root = std::env::current_dir()
+            .expect("current directory")
+            .canonicalize()
+            .expect("canonical current directory");
+        let profile = agent_custom::CustomAgentProfile {
+            id: "custom-test".to_string(),
+            name: "Test agent".to_string(),
+            executable: executable.to_string_lossy().into_owned(),
+            arguments: vec!["--stdio".to_string()],
+            environment: Vec::new(),
+        };
+
+        let spec = ProcessSpec::from_profile(
+            &profile,
+            &bundle_root,
+            AgentConnectionMode::RestrictedOffline,
+        )
+        .expect("restricted process specification");
+
+        assert_eq!(spec.executable, executable);
+        assert_eq!(spec.read_only_roots, vec![executable]);
+        let restricted = spec.restricted.expect("restricted launcher selection");
+        assert_eq!(restricted.bundle_root, bundle_root);
+        assert_eq!(
+            restricted.network,
+            crate::agent_sandbox::LinuxSandboxNetworkMode::Disabled
+        );
     }
 
     #[test]

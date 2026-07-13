@@ -11,6 +11,7 @@ mod agent_mcp;
 mod agent_native_stage;
 mod agent_native_sources;
 mod agent_pdf;
+mod agent_process;
 mod agent_protocol;
 mod agent_runtime;
 mod agent_sources;

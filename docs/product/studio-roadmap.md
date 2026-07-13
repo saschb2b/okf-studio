@@ -192,6 +192,7 @@ Gate: end-to-end tests reach useful results with no hidden write or network acti
 ## WP11: Isolation and autonomy
 
 - [ ] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
+  - [x] Own each external ACP process tree and terminate descendants on disconnect or host cancellation.
 - [ ] Support allow/deny once, thread grants, and narrow persistent rules.
 - [ ] Add parallel threads only after single-thread cancellation, permissions, and transactions are reliable.
 - [ ] Make unattended mode an explicit profile with visible scope and stop conditions.

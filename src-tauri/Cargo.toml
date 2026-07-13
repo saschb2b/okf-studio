@@ -62,3 +62,16 @@ tauri-plugin-process = "2"
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = "=2.0.2"
 gtk = "=0.18.2"
+
+# External ACP processes are owned as a tree. Unix uses a dedicated process
+# group; Windows uses a kill-on-close Job Object.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_JobObjects",
+  "Win32_System_Threading",
+] }

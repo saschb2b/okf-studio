@@ -157,8 +157,9 @@ export function CustomAgentProfiles({
 
       {profiles.length > 0 && (
         <p className="custom-agents__execution-notice">
-          Connecting launches the saved executable as an external process. It is not sandboxed;
-          Studio limits only its inherited environment and ACP permissions.
+          Connecting launches the saved executable with normal OS access. Studio limits its
+          inherited environment and ACP permissions, and Disconnect stops its process tree. It does
+          not restrict filesystem or network access.
         </p>
       )}
 

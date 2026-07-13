@@ -35,7 +35,7 @@ use crate::agent_stage::{
 };
 use crate::{
     agent_custom, agent_install, agent_local, agent_mcp, agent_native_sources, agent_native_stage,
-    agent_sources::AgentSourceInput, agent_studio,
+    agent_process, agent_sources::AgentSourceInput, agent_studio,
 };
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
@@ -3074,11 +3074,12 @@ impl ConnectTo<Client> for ProcessAgent {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true);
-        #[cfg(windows)]
-        command.creation_flags(0x0800_0000);
+        agent_process::configure(&mut command);
 
         let mut child = command
             .spawn()
+            .map_err(agent_client_protocol::Error::into_internal_error)?;
+        let mut process_tree = agent_process::AgentProcessTree::attach(&child)
             .map_err(agent_client_protocol::Error::into_internal_error)?;
         let stdin = child.stdin.take().ok_or_else(|| {
             agent_client_protocol::util::internal_error("Failed to open agent stdin")
@@ -3106,12 +3107,16 @@ impl ConnectTo<Client> for ProcessAgent {
 
         tokio::select! {
             result = &mut protocol => {
+                process_tree.terminate();
                 let _ = child.kill().await;
+                let _ = child.wait().await;
                 diagnostics.abort();
                 result
             }
             status = child.wait() => {
                 let status = status.map_err(agent_client_protocol::Error::into_internal_error)?;
+                // Descendants may still hold stderr open after their parent exits.
+                process_tree.terminate();
                 let diagnostics = diagnostics.await.unwrap_or_default();
                 let message = if diagnostics.is_empty() {
                     format!("Agent process exited with {status}")

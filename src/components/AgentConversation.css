@@ -59,6 +59,53 @@
   gap: var(--space-4);
 }
 
+.agent-security-scope {
+  display: grid;
+  width: min(360px, calc(100vw - 2 * var(--space-16)));
+  gap: var(--space-10);
+  padding: var(--space-12);
+}
+
+.agent-security-scope > strong {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-tight);
+}
+
+.agent-security-scope dl {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+}
+
+.agent-security-scope dl > div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+}
+
+.agent-security-scope dt,
+.agent-security-scope dd,
+.agent-security-scope p {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-security-scope dt,
+.agent-security-scope p {
+  color: var(--text-dim);
+}
+
+.agent-security-scope dd {
+  overflow-wrap: anywhere;
+}
+
+.agent-security-scope p {
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--border);
+}
+
 @container (max-width: 460px) {
   .agent-conversation__toolbar-actions .btn {
     padding-inline: var(--space-8);

@@ -74,7 +74,7 @@ describe("accessibility (axe-core)", () => {
     await expectNoViolations(container);
   });
 
-  it("parallel agent threads and their close confirmation have no violations", async () => {
+  it("agent security scope and parallel-thread close confirmation have no violations", async () => {
     const profile = await ipc.saveCustomAgent({
       name: "A11y Harness",
       executable: "C:\\tools\\a11y.exe",
@@ -88,6 +88,10 @@ describe("accessibility (axe-core)", () => {
       const { container } = renderApp();
       await openBundle(user);
       await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+      await user.click(screen.getByRole("button", { name: "Thread security scope" }));
+      await screen.findByRole("dialog", { name: "Thread security scope" });
+      await expectNoViolations(container);
+      await user.keyboard("{Escape}");
       await user.click(screen.getByRole("button", {
         name: "Start another thread with A11y Harness",
       }));

@@ -315,6 +315,13 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
     expect(screen.getByText(/bounded bundle and source tools, and reviewed staging/i))
       .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Thread security scope" }));
+    const nativeScope = screen.getByRole("dialog", { name: "Thread security scope" });
+    expect(within(nativeScope).getByText("The model receives bounded Studio tools, not arbitrary file access."))
+      .toBeInTheDocument();
+    expect(within(nativeScope).getByText("No external ACP process runs."))
+      .toBeInTheDocument();
+    await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: "Add context or sources" })).toBeEnabled();
     const localGrant = screen.getByRole("button", { name: "Allow edits in this thread" });
     expect(localGrant).toBeDisabled();
@@ -486,6 +493,13 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Thread security scope" }));
+    const externalScope = screen.getByRole("dialog", { name: "Thread security scope" });
+    expect(within(externalScope).getByText("The ACP process keeps normal OS network access."))
+      .toBeInTheDocument();
+    expect(within(externalScope).getByText("This is mediation, not a filesystem or network sandbox."))
+      .toBeInTheDocument();
+    await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Enhance bundle/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Request dataset change/ })).toBeInTheDocument();

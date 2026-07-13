@@ -275,6 +275,81 @@ function sourceTooltip(source: AttachedSource): string {
   return source.title;
 }
 
+function ThreadSecurityScope({
+  bundleName,
+  isStudioAgent,
+}: {
+  bundleName: string | null;
+  isStudioAgent: boolean;
+}) {
+  return (
+    <Popover.Root>
+      <Popover.Trigger
+        render={
+          <button
+            type="button"
+            className="btn ghost icon"
+            aria-label="Thread security scope"
+            title="Thread security scope"
+          >
+            <ShieldQuestion size={14} aria-hidden="true" />
+          </button>
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner
+          className="ui-popover-positioner"
+          side="bottom"
+          align="end"
+          sideOffset={6}
+        >
+          <Popover.Popup
+            className="ui-popover agent-security-scope"
+            aria-label="Thread security scope"
+          >
+            <strong>Thread security scope</strong>
+            <dl>
+              <div>
+                <dt>Bundle</dt>
+                <dd>{bundleName ?? "No bundle selected"}</dd>
+              </div>
+              <div>
+                <dt>Files</dt>
+                <dd>
+                  {isStudioAgent
+                    ? "The model receives bounded Studio tools, not arbitrary file access."
+                    : "Studio tools are bundle-scoped. The ACP process keeps normal OS file access."}
+                </dd>
+              </div>
+              <div>
+                <dt>Network</dt>
+                <dd>
+                  {isStudioAgent
+                    ? "Studio contacts the configured model endpoint. No fetch tool is exposed."
+                    : "The ACP process keeps normal OS network access."}
+                </dd>
+              </div>
+              <div>
+                <dt>Writes</dt>
+                <dd>Interactive grant only. Proposed files stay staged until reviewed and applied.</dd>
+              </div>
+              <div>
+                <dt>Process</dt>
+                <dd>
+                  {isStudioAgent
+                    ? "No external ACP process runs."
+                    : "Studio owns and stops the ACP process tree on disconnect."}
+                </dd>
+              </div>
+            </dl>
+            {!isStudioAgent && <p>This is mediation, not a filesystem or network sandbox.</p>}
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 interface ThreadTitleEditorProps {
   title: string;
   onTitleChange: (title: string) => void;
@@ -1524,6 +1599,7 @@ export function AgentConversation({
           )}
         </div>
         <div className="agent-conversation__toolbar-actions">
+          <ThreadSecurityScope bundleName={bundleName} isStudioAgent={isStudioAgent} />
           {bundleRoot && !requiresAuthentication && (
             <button
               type="button"

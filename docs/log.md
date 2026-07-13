@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Update**: Recorded the missing Rust-owned bundle grant boundary. The dialog and store plugins currently return paths to the frontend, while scan, read, asset, watch, and agent-session commands do not independently prove that a root came from a user selection or Rust-created remote cache. WP11 now requires a canonical grant registry, recent and remote regrant rules, revocation, and forged-path tests before Studio describes those reads as enforced bundle scope.
 * **Update**: Removed the last visible Viewer-era product wording from the empty-folder recovery state and the browser mock bundle. Current feature and reference concepts now name Studio directly, while compatibility identifiers, migration language, and historical proposals retain their intentional names.
 * **Update**: Corrected the remote-open trust copy. The idle dialog now says that no request is sent before **Open**, then explains that Studio downloads and caches a local copy instead of making the false claim that nothing is sent anywhere. App tests cover the idle and retryable-error states, and the site copy states the same boundary.
 * **Update**: Removed stale Viewer-era trust-boundary claims from the feature, architecture, reference, and UX contracts. Opening a bundle remains non-mutating and bundle-scoped; explicit source, destination, export, network, agent, and reviewed-write operations now remain distinct, and concurrent windows rely on transaction revision checks rather than an obsolete read-only assumption.

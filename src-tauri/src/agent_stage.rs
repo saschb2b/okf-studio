@@ -26,6 +26,8 @@ pub(crate) const MAX_DIFF_CHARS: usize = 256 * 1024;
 const MAX_VALIDATION_FILES: usize = 4096;
 const MAX_VALIDATION_BYTES: usize = 32 * 1024 * 1024;
 const MAX_VALIDATION_ISSUES: usize = 512;
+const MAX_PREVIEW_NODES: usize = 128;
+const MAX_PREVIEW_EDGES: usize = 512;
 const CHECKPOINT_VERSION: u32 = 1;
 const MAX_CHECKPOINT_CONTENT_BYTES: usize = MAX_STAGED_TOTAL_BYTES * 2;
 const MAX_CHECKPOINT_BYTES: u64 = 100 * 1024 * 1024;
@@ -93,6 +95,32 @@ pub struct AgentStagedValidationIssue {
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct AgentStagedGraphNode {
+    pub id: String,
+    pub title: String,
+    pub concept_type: String,
+    pub staged: bool,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedGraphEdge {
+    pub source: String,
+    pub target: String,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedGraphPreview {
+    pub nodes: Vec<AgentStagedGraphNode>,
+    pub edges: Vec<AgentStagedGraphEdge>,
+    pub total_nodes: usize,
+    pub total_edges: usize,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentStagedValidationInfo {
     pub session_id: String,
     pub revision: String,
@@ -100,6 +128,7 @@ pub struct AgentStagedValidationInfo {
     pub warnings: usize,
     pub issues: Vec<AgentStagedValidationIssue>,
     pub truncated: bool,
+    pub preview: AgentStagedGraphPreview,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -1226,6 +1255,82 @@ fn selected_stage_revision(prepared: &[PreparedStagedFile]) -> String {
     format!("{:x}", digest.finalize())
 }
 
+fn staged_graph_preview(
+    bundle: &okf_core::Bundle,
+    prepared: &[PreparedStagedFile],
+) -> AgentStagedGraphPreview {
+    let staged_ids = prepared
+        .iter()
+        .filter(|file| {
+            file.effective.as_ref().is_some_and(|effective| {
+                file.kind == "create" || effective != &file.original
+            })
+        })
+        .filter_map(|file| {
+            let path = file.path.replace('\\', "/");
+            let (id, extension) = path.rsplit_once('.')?;
+            if extension.eq_ignore_ascii_case("md") {
+                Some(id.to_string())
+            } else {
+                None
+            }
+        })
+        .collect::<BTreeSet<_>>();
+    let total_nodes = bundle.concepts.len();
+    let total_edges = bundle
+        .concepts
+        .iter()
+        .map(|concept| concept.links.len())
+        .sum();
+    let nodes = bundle
+        .concepts
+        .iter()
+        .take(MAX_PREVIEW_NODES)
+        .map(|concept| AgentStagedGraphNode {
+            id: concept.id.clone(),
+            title: bounded_graph_label(&concept.title),
+            concept_type: bounded_graph_label(&concept.concept_type),
+            staged: staged_ids.contains(&concept.id),
+        })
+        .collect::<Vec<_>>();
+    let included = nodes
+        .iter()
+        .map(|node| node.id.as_str())
+        .collect::<BTreeSet<_>>();
+    let edges = bundle
+        .concepts
+        .iter()
+        .filter(|concept| included.contains(concept.id.as_str()))
+        .flat_map(|concept| {
+            concept
+                .links
+                .iter()
+                .filter(|target| included.contains(target.as_str()))
+                .map(|target| AgentStagedGraphEdge {
+                    source: concept.id.clone(),
+                    target: target.clone(),
+                })
+        })
+        .take(MAX_PREVIEW_EDGES)
+        .collect::<Vec<_>>();
+    let truncated = total_nodes > nodes.len() || total_edges > edges.len();
+    AgentStagedGraphPreview {
+        nodes,
+        edges,
+        total_nodes,
+        total_edges,
+        truncated,
+    }
+}
+
+fn bounded_graph_label(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| !character.is_control())
+        .take(256)
+        .collect()
+}
+
 fn validate_prepared(
     session_id: &str,
     bundle_root: &Path,
@@ -1256,6 +1361,7 @@ fn validate_prepared(
     }
 
     let bundle = okf_core::read_bundle(&mirror.path);
+    let preview = staged_graph_preview(&bundle, prepared);
     let errors = bundle
         .issues
         .iter()
@@ -1283,6 +1389,7 @@ fn validate_prepared(
         warnings,
         issues,
         truncated,
+        preview,
     })
 }
 
@@ -3421,6 +3528,10 @@ mod tests {
 
         let validation = stages.validate_staged("session-1").expect("validate draft");
         assert_eq!(validation.errors, 0, "source bundle issues stay outside the draft");
+        assert_eq!(validation.preview.total_nodes, 1);
+        assert_eq!(validation.preview.total_edges, 0);
+        assert_eq!(validation.preview.nodes[0].id, "fresh");
+        assert!(validation.preview.nodes[0].staged);
         assert_eq!(
             stages
                 .apply_staged("session-1", &validation.revision)
@@ -3456,6 +3567,14 @@ mod tests {
 
         let validation = stages.validate_staged("session-1").expect("validate");
         assert_eq!(validation.errors, 0);
+        assert!(
+            validation
+                .preview
+                .nodes
+                .iter()
+                .any(|node| node.id == "existing" && !node.staged),
+            "a fully rejected modification is not a staged graph node"
+        );
     }
 
     #[test]

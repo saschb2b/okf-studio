@@ -567,6 +567,11 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("status", { name: "Staged validation result" }))
       .toHaveTextContent("Validation passed");
+    const graph = screen.getByRole("region", { name: "Staged graph preview" });
+    expect(graph).toHaveTextContent("2 concepts · 1 link");
+    expect(graph).toHaveTextContent("Product overview, Product, staged");
+    expect(graph).toHaveTextContent("Agent system, Architecture, staged");
+    expect(graph).toHaveTextContent("Link from overview to agent-system");
     expect(screen.queryByRole("button", { name: "Apply changes" })).not.toBeInTheDocument();
     expect(screen.getByText(/draft is isolated from the active bundle/i)).toBeInTheDocument();
 

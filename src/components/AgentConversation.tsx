@@ -22,6 +22,7 @@ import type {
 } from "../agent/connection.ts";
 import type { ReaderSelectionCapture } from "../agent/readerSelection.ts";
 import { bundleProposalNarrative, parseBundleProposal } from "../agent/bundleProposal.ts";
+import { StagedGraphPreview } from "./StagedGraphPreview.tsx";
 import type { AgentThreadMetadata, AgentThreadWorkflow } from "../agent/threadMetadata.ts";
 import {
   datasetChangeRequirements,
@@ -1849,10 +1850,11 @@ export function AgentConversation({
               {stagedValidation.status === "ready" && (
                 <section
                   className={`agent-staged__validation agent-staged__validation--${stagedValidation.result.errors === 0 ? "passed" : "failed"}`}
-                  aria-label="Staged validation result"
-                  role={stagedValidation.result.errors === 0 ? "status" : "alert"}
                 >
-                  <div>
+                  <div
+                    aria-label="Staged validation result"
+                    role={stagedValidation.result.errors === 0 ? "status" : "alert"}
+                  >
                     {stagedValidation.result.errors === 0
                       ? <Check size={14} aria-hidden="true" />
                       : <CircleAlert size={14} aria-hidden="true" />}
@@ -1888,6 +1890,7 @@ export function AgentConversation({
                       )}
                     </details>
                   )}
+                  <StagedGraphPreview preview={stagedValidation.result.preview} />
                   {stagedValidation.result.errors === 0 && stagedChanges.mode === "edit" && (
                     <div className="agent-staged__apply">
                       <span>

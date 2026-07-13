@@ -1211,6 +1211,72 @@
   color: var(--warn);
 }
 
+.staged-graph {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding-block: var(--space-8) var(--space-4);
+}
+
+.staged-graph > header {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.staged-graph > header span {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  white-space: nowrap;
+}
+
+.staged-graph__canvas {
+  display: block;
+  width: 100%;
+  min-height: 152px;
+  max-height: 190px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.staged-graph__edge {
+  stroke: var(--text-dim);
+  stroke-width: 1.5;
+  stroke-opacity: 0.7;
+}
+
+.staged-graph__node {
+  fill: var(--bg-elev);
+  stroke: var(--text-dim);
+  stroke-width: 2;
+}
+
+.staged-graph__node--staged {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.staged-graph text {
+  fill: var(--text);
+  font-family: var(--ui);
+  font-size: 9px;
+}
+
+.staged-graph__key {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: var(--space-4);
+  vertical-align: -1px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
 .agent-staged__validation > .agent-staged__apply {
   justify-content: space-between;
   gap: var(--space-8);

@@ -792,6 +792,7 @@ export async function validateAgentStagedChanges(
       message: "Missing required frontmatter field: type.",
     }];
   });
+  const preview = mockStagedGraphPreview(state);
   return {
     sessionId,
     revision: `mock-${state.files.map((file) => (
@@ -801,7 +802,89 @@ export async function validateAgentStagedChanges(
     warnings: 0,
     issues,
     truncated: false,
+    preview,
   };
+}
+
+function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): AgentStagedValidationInfo["preview"] {
+  const concepts = new Map<string, {
+    id: string;
+    title: string;
+    conceptType: string;
+    staged: boolean;
+    links: string[];
+  }>();
+  if (state.mode === "edit") {
+    for (const concept of MOCK_BUNDLE.concepts) {
+      concepts.set(concept.id, {
+        id: concept.id,
+        title: concept.title,
+        conceptType: concept.type,
+        staged: false,
+        links: [...concept.links],
+      });
+    }
+  }
+  for (const file of state.files) {
+    const lowerPath = file.path.toLowerCase();
+    if (!lowerPath.endsWith(".md") || lowerPath.endsWith("index.md")) continue;
+    const id = file.path.slice(0, -3).replaceAll("\\", "/");
+    if (!file.hunkSelected) {
+      if (file.kind === "create") concepts.delete(id);
+      continue;
+    }
+    const titleMatch = /^#\s+(.+)$/m.exec(file.content);
+    const typeMatch = /^type:\s*(.+)$/m.exec(file.content);
+    const title = titleMatch?.[1]?.trim() ?? id.split("/").at(-1) ?? id;
+    const conceptType = typeMatch?.[1]?.trim() ?? "";
+    concepts.set(id, {
+      id,
+      title: title.slice(0, 256),
+      conceptType: conceptType.slice(0, 256),
+      staged: true,
+      links: mockMarkdownConceptLinks(file.path, file.content),
+    });
+  }
+  const ordered = [...concepts.values()].sort((left, right) => left.id.localeCompare(right.id));
+  const includedNodes = ordered.slice(0, 128);
+  const includedIds = new Set(includedNodes.map((node) => node.id));
+  const allEdges = ordered.flatMap((node) => node.links.map((target) => ({
+    source: node.id,
+    target,
+  })));
+  const edges = allEdges
+    .filter((edge) => includedIds.has(edge.source) && includedIds.has(edge.target))
+    .slice(0, 512);
+  return {
+    nodes: includedNodes.map((node) => ({
+      id: node.id,
+      title: node.title,
+      conceptType: node.conceptType,
+      staged: node.staged,
+    })),
+    edges,
+    totalNodes: ordered.length,
+    totalEdges: allEdges.length,
+    truncated: ordered.length > includedNodes.length || allEdges.length > edges.length,
+  };
+}
+
+function mockMarkdownConceptLinks(sourcePath: string, content: string): string[] {
+  const base = sourcePath.replaceAll("\\", "/").split("/").slice(0, -1);
+  const links = new Set<string>();
+  for (const match of content.matchAll(/\]\(([^)]+\.md)(?:#[^)]*)?\)/gi)) {
+    const href = match[1];
+    if (!href || /^(?:[a-z]+:|\/)/i.test(href)) continue;
+    const parts = [...base];
+    for (const part of href.split("/")) {
+      if (part === "." || part === "") continue;
+      if (part === "..") parts.pop();
+      else parts.push(part);
+    }
+    const path = parts.join("/");
+    links.add(path.slice(0, -3));
+  }
+  return [...links];
 }
 
 export async function applyAgentStagedChanges(

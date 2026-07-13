@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Creation**: Added a graph preview to staged validation. The Rust validator projects bounded concept and resolved-link metadata from the exact selected mirror, marks staged nodes, retains full totals when the drawing is truncated, and sends no Markdown bodies. Create previews only its isolated draft; Enhance previews the selected overlay.
 * **Creation**: Isolated fresh-bundle generation from the active bundle. Create now selects a Rust-owned stage mode that treats every path as new, validates only selected draft files in an empty mirror, hides source-bundle checkpoints, and refuses active-bundle Apply. Enhance keeps the ordinary edit overlay, and a non-empty stage cannot switch modes.
 * **Creation**: Connected reviewed Create and Enhance proposals to the staged-write pipeline. Only the newest valid proposal offers **Generate in staging**; it requires the explicit thread grant, records an ordinary follow-up, and leaves generated files in per-file review and validation without applying them. Restorable thread metadata now preserves the two creation workflows.
 * **Creation**: Added a bounded pre-generation bundle proposal contract for Create and Enhance. Studio parses the newest fenced `okf-proposal` JSON block and renders concept paths, titles, types, links, and index membership without generating files or granting write access. Unsafe paths, duplicate entries, malformed JSON, and oversized structures remain outside the preview with an actionable error.

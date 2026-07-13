@@ -182,6 +182,27 @@ export interface AgentStagedValidationInfo {
   warnings: number;
   issues: readonly AgentStagedValidationIssue[];
   truncated: boolean;
+  preview: AgentStagedGraphPreview;
+}
+
+export interface AgentStagedGraphPreview {
+  nodes: readonly AgentStagedGraphNode[];
+  edges: readonly AgentStagedGraphEdge[];
+  totalNodes: number;
+  totalEdges: number;
+  truncated: boolean;
+}
+
+export interface AgentStagedGraphNode {
+  id: string;
+  title: string;
+  conceptType: string;
+  staged: boolean;
+}
+
+export interface AgentStagedGraphEdge {
+  source: string;
+  target: string;
 }
 
 export interface AgentStagedApplyInfo {

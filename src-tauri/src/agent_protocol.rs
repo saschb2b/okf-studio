@@ -583,6 +583,8 @@ pub async fn connect_catalog(
         executable: command.executable,
         arguments: command.arguments,
         environment: command.environment,
+        #[cfg(any(target_os = "linux", test))]
+        restricted: None,
     };
     connect_process(
         app,
@@ -3414,6 +3416,16 @@ struct ProcessSpec {
     executable: PathBuf,
     arguments: Vec<String>,
     environment: Vec<(String, String)>,
+    #[cfg(any(target_os = "linux", test))]
+    restricted: Option<LinuxRestrictedProcessSpec>,
+}
+
+#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
+struct LinuxRestrictedProcessSpec {
+    bundle_root: PathBuf,
+    runtime_roots: Vec<PathBuf>,
+    network: crate::agent_sandbox::LinuxSandboxNetworkMode,
 }
 
 impl ProcessSpec {
@@ -3427,6 +3439,8 @@ impl ProcessSpec {
             executable: PathBuf::from(&profile.executable),
             arguments: profile.arguments.clone(),
             environment,
+            #[cfg(any(target_os = "linux", test))]
+            restricted: None,
         }
     }
 }
@@ -3447,9 +3461,10 @@ impl ProcessAgent {
 
 impl ConnectTo<Client> for ProcessAgent {
     async fn connect_to(self, client: impl ConnectTo<Agent>) -> agent_client_protocol::Result<()> {
-        let mut command = Command::new(&self.spec.executable);
+        let mut command = process_command(&self.spec)
+            .await
+            .map_err(agent_client_protocol::util::internal_error)?;
         command
-            .args(&self.spec.arguments)
             .env_clear()
             .envs(self.spec.environment.iter().cloned())
             .stdin(Stdio::piped())
@@ -3521,6 +3536,24 @@ impl ConnectTo<Client> for ProcessAgent {
             }
         }
     }
+}
+
+async fn process_command(spec: &ProcessSpec) -> Result<Command, String> {
+    #[cfg(any(target_os = "linux", test))]
+    if let Some(restricted) = &spec.restricted {
+        return crate::agent_sandbox::linux_restricted_command(
+            &restricted.bundle_root,
+            &spec.executable,
+            &spec.arguments,
+            &restricted.runtime_roots,
+            restricted.network,
+        )
+        .await;
+    }
+
+    let mut command = Command::new(&spec.executable);
+    command.args(&spec.arguments);
+    Ok(command)
 }
 
 fn diagnostic_summary(diagnostics: &str) -> String {

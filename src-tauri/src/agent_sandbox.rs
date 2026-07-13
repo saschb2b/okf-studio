@@ -1,9 +1,303 @@
-//! Preflights operating-system confinement backends for external agents.
+//! Preflights operating-system confinement backends and compiles restricted
+//! launch policies for external agents.
 //!
-//! A successful probe reports backend readiness only. It does not change an
-//! agent launch, produce connection scope evidence, or unlock unattended work.
+//! A successful probe or policy compilation does not change an agent launch,
+//! produce connection scope evidence, or unlock unattended work.
+
+#[cfg(any(target_os = "linux", test))]
+use std::collections::{HashSet, VecDeque};
+#[cfg(any(target_os = "linux", test))]
+use std::ffi::OsString;
+#[cfg(any(target_os = "linux", test))]
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+
+#[cfg(any(target_os = "linux", test))]
+const MAX_POLICY_ENTRIES: usize = 100_000;
+#[cfg(any(target_os = "linux", test))]
+const MAX_POLICY_DEPTH: usize = 64;
+
+#[cfg(any(target_os = "linux", test))]
+#[cfg_attr(target_os = "linux", allow(dead_code))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum LinuxSandboxNetworkMode {
+    Disabled,
+    Host,
+}
+
+#[cfg(any(target_os = "linux", test))]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct LinuxSandboxLaunchPlan {
+    pub(crate) arguments: Vec<OsString>,
+}
+
+/// Compile the complete Bubblewrap argument list without starting a process.
+///
+/// The root namespace starts empty. Only selected system runtime paths, exact
+/// app-owned runtime roots, and the bound bundle are mounted read-only. Known
+/// protected bundle paths are then hidden behind empty mounts.
+#[cfg(any(target_os = "linux", test))]
+pub(crate) fn linux_launch_plan(
+    bundle_root: &Path,
+    executable: &Path,
+    arguments: &[String],
+    runtime_roots: &[PathBuf],
+    network: LinuxSandboxNetworkMode,
+) -> Result<LinuxSandboxLaunchPlan, String> {
+    linux_launch_plan_with_system_roots(
+        bundle_root,
+        executable,
+        arguments,
+        runtime_roots,
+        &linux_system_runtime_roots(network),
+        network,
+    )
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn linux_launch_plan_with_system_roots(
+    bundle_root: &Path,
+    executable: &Path,
+    command_arguments: &[String],
+    runtime_roots: &[PathBuf],
+    system_roots: &[PathBuf],
+    network: LinuxSandboxNetworkMode,
+) -> Result<LinuxSandboxLaunchPlan, String> {
+    let bundle_root = require_canonical_directory(bundle_root, "bundle root")?;
+    let executable = require_canonical_file(executable, "agent executable")?;
+    let system_roots = canonical_existing_roots(system_roots, "system runtime path", true)?;
+    let runtime_roots = canonical_existing_roots(runtime_roots, "agent runtime path", false)?;
+
+    let executable_visible = executable.starts_with(&bundle_root)
+        || system_roots
+            .iter()
+            .any(|mount| executable.starts_with(&mount.source))
+        || runtime_roots
+            .iter()
+            .any(|mount| executable.starts_with(&mount.source));
+    if !executable_visible {
+        return Err(
+            "The agent executable is outside the restricted profile's read-only mounts."
+                .to_string(),
+        );
+    }
+
+    let mut arguments = Vec::new();
+    for mount in system_roots.iter().chain(runtime_roots.iter()) {
+        push_mount(
+            &mut arguments,
+            "--ro-bind",
+            &mount.source,
+            &mount.destination,
+        );
+    }
+    push_mount(&mut arguments, "--ro-bind", &bundle_root, &bundle_root);
+    arguments.extend([
+        "--proc".into(),
+        "/proc".into(),
+        "--dev".into(),
+        "/dev".into(),
+        "--perms".into(),
+        "0700".into(),
+        "--tmpfs".into(),
+        "/tmp".into(),
+        "--perms".into(),
+        "0700".into(),
+        "--dir".into(),
+        "/run".into(),
+    ]);
+
+    for protected in protected_bundle_paths(&bundle_root)? {
+        if protected.is_dir {
+            arguments.push("--perms".into());
+            arguments.push("0000".into());
+            arguments.push("--tmpfs".into());
+            arguments.push(protected.path.into_os_string());
+        } else {
+            push_mount(
+                &mut arguments,
+                "--ro-bind",
+                Path::new("/dev/null"),
+                &protected.path,
+            );
+        }
+    }
+
+    arguments.push("--unshare-all".into());
+    if network == LinuxSandboxNetworkMode::Host {
+        arguments.push("--share-net".into());
+    }
+    arguments.extend([
+        "--disable-userns".into(),
+        "--new-session".into(),
+        "--die-with-parent".into(),
+        "--chdir".into(),
+        bundle_root.into_os_string(),
+        "--".into(),
+        executable.into_os_string(),
+    ]);
+    arguments.extend(command_arguments.iter().map(OsString::from));
+
+    Ok(LinuxSandboxLaunchPlan { arguments })
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn linux_system_runtime_roots(network: LinuxSandboxNetworkMode) -> Vec<PathBuf> {
+    let mut roots = [
+        "/usr",
+        "/bin",
+        "/sbin",
+        "/lib",
+        "/lib64",
+        "/etc/ld.so.cache",
+        "/etc/ld.so.conf",
+        "/etc/ld.so.conf.d",
+        "/etc/passwd",
+        "/etc/group",
+        "/etc/nsswitch.conf",
+        "/etc/ssl",
+        "/etc/pki",
+        "/etc/ca-certificates",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect::<Vec<_>>();
+    if network == LinuxSandboxNetworkMode::Host {
+        roots.extend(
+            ["/etc/hosts", "/etc/resolv.conf"]
+                .into_iter()
+                .map(PathBuf::from),
+        );
+    }
+    roots
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn require_canonical_directory(path: &Path, label: &str) -> Result<PathBuf, String> {
+    let canonical = path
+        .canonicalize()
+        .map_err(|error| format!("The restricted {label} is unavailable: {error}"))?;
+    if canonical != path || !canonical.is_dir() {
+        return Err(format!(
+            "The restricted {label} must be an existing canonical directory."
+        ));
+    }
+    Ok(canonical)
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn require_canonical_file(path: &Path, label: &str) -> Result<PathBuf, String> {
+    let canonical = path
+        .canonicalize()
+        .map_err(|error| format!("The restricted {label} is unavailable: {error}"))?;
+    if canonical != path || !canonical.is_file() {
+        return Err(format!(
+            "The restricted {label} must be an existing canonical file."
+        ));
+    }
+    Ok(canonical)
+}
+
+#[cfg(any(target_os = "linux", test))]
+struct ReadOnlyMount {
+    source: PathBuf,
+    destination: PathBuf,
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn canonical_existing_roots(
+    paths: &[PathBuf],
+    label: &str,
+    skip_missing: bool,
+) -> Result<Vec<ReadOnlyMount>, String> {
+    let mut seen = HashSet::new();
+    let mut roots = Vec::new();
+    for path in paths {
+        if !path.exists() {
+            if skip_missing {
+                continue;
+            }
+            return Err(format!("The restricted {label} is unavailable."));
+        }
+        let canonical = path
+            .canonicalize()
+            .map_err(|error| format!("The restricted {label} is unavailable: {error}"))?;
+        if !path.is_absolute()
+            || !canonical.is_absolute()
+            || (!canonical.is_dir() && !canonical.is_file())
+        {
+            return Err(format!(
+                "The restricted {label} must be an existing absolute file or directory."
+            ));
+        }
+        if seen.insert(path.clone()) {
+            roots.push(ReadOnlyMount {
+                source: canonical,
+                destination: path.clone(),
+            });
+        }
+    }
+    Ok(roots)
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn push_mount(arguments: &mut Vec<OsString>, option: &str, source: &Path, destination: &Path) {
+    arguments.push(option.into());
+    arguments.push(source.as_os_str().to_owned());
+    arguments.push(destination.as_os_str().to_owned());
+}
+
+#[cfg(any(target_os = "linux", test))]
+struct ProtectedBundlePath {
+    path: PathBuf,
+    is_dir: bool,
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn protected_bundle_paths(bundle_root: &Path) -> Result<Vec<ProtectedBundlePath>, String> {
+    let mut pending = VecDeque::from([(bundle_root.to_path_buf(), 0usize)]);
+    let mut protected = Vec::new();
+    let mut visited = 0usize;
+
+    while let Some((directory, depth)) = pending.pop_front() {
+        if depth > MAX_POLICY_DEPTH {
+            return Err("The bundle is too deeply nested for a restricted launch.".to_string());
+        }
+        let entries = std::fs::read_dir(&directory).map_err(|error| {
+            format!("Studio could not inspect the bundle's protected paths: {error}")
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|error| {
+                format!("Studio could not inspect the bundle's protected paths: {error}")
+            })?;
+            visited += 1;
+            if visited > MAX_POLICY_ENTRIES {
+                return Err("The bundle has too many entries for a restricted launch.".to_string());
+            }
+            let path = entry.path();
+            let relative = path
+                .strip_prefix(bundle_root)
+                .map_err(|_| "A bundle entry escaped the restricted launch root.".to_string())?;
+            let metadata = std::fs::symlink_metadata(&path).map_err(|error| {
+                format!("Studio could not inspect the bundle's protected paths: {error}")
+            })?;
+            if crate::agent_stage::protected_bundle_path_reason(relative).is_some() {
+                protected.push(ProtectedBundlePath {
+                    path,
+                    is_dir: metadata.is_dir(),
+                });
+                continue;
+            }
+            if metadata.is_dir() {
+                pending.push_back((path, depth + 1));
+            }
+        }
+    }
+
+    protected.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(protected)
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,6 +379,36 @@ fn unsupported(platform: AgentSecurityPlatform) -> AgentSecurityHostStatus {
 
 #[cfg(target_os = "linux")]
 async fn linux_status() -> AgentSecurityHostStatus {
+    match trusted_linux_backend().await {
+        Ok(_) => linux_result(AgentSecurityHostState::Ready),
+        Err(state) => linux_result(state),
+    }
+}
+
+#[cfg(any(target_os = "linux", test))]
+pub(crate) async fn linux_restricted_command(
+    bundle_root: &Path,
+    executable: &Path,
+    arguments: &[String],
+    runtime_roots: &[PathBuf],
+    network: LinuxSandboxNetworkMode,
+) -> Result<tokio::process::Command, String> {
+    let binary = trusted_linux_backend()
+        .await
+        .map_err(|state| format!("The restricted Linux agent host is unavailable ({state:?})."))?;
+    let plan = linux_launch_plan(bundle_root, executable, arguments, runtime_roots, network)?;
+    let mut command = tokio::process::Command::new(binary);
+    command.args(plan.arguments);
+    Ok(command)
+}
+
+#[cfg(all(test, not(target_os = "linux")))]
+async fn trusted_linux_backend() -> Result<PathBuf, AgentSecurityHostState> {
+    Err(AgentSecurityHostState::UnsupportedPlatform)
+}
+
+#[cfg(target_os = "linux")]
+async fn trusted_linux_backend() -> Result<PathBuf, AgentSecurityHostState> {
     use std::collections::HashSet;
     use std::fs;
     use std::os::unix::fs::MetadataExt;
@@ -93,7 +417,7 @@ async fn linux_status() -> AgentSecurityHostStatus {
     let mut saw_untrusted = false;
     let mut visited = HashSet::new();
     let Some(path) = std::env::var_os("PATH") else {
-        return linux_result(AgentSecurityHostState::NotFound);
+        return Err(AgentSecurityHostState::NotFound);
     };
 
     for directory in std::env::split_paths(&path).filter(|path| path.is_absolute()) {
@@ -125,19 +449,19 @@ async fn linux_status() -> AgentSecurityHostStatus {
                     continue;
                 }
                 if linux_probe(&candidate).await {
-                    return linux_result(AgentSecurityHostState::Ready);
+                    return Ok(candidate);
                 }
-                return linux_result(AgentSecurityHostState::ProbeFailed);
+                return Err(AgentSecurityHostState::ProbeFailed);
             }
         }
     }
 
     if saw_setuid {
-        linux_result(AgentSecurityHostState::SetuidRejected)
+        Err(AgentSecurityHostState::SetuidRejected)
     } else if saw_untrusted {
-        linux_result(AgentSecurityHostState::UntrustedBinary)
+        Err(AgentSecurityHostState::UntrustedBinary)
     } else {
-        linux_result(AgentSecurityHostState::NotFound)
+        Err(AgentSecurityHostState::NotFound)
     }
 }
 
@@ -224,10 +548,12 @@ fn linux_probe_arguments(binary: &std::path::Path) -> Vec<std::ffi::OsString> {
         "--ro-bind".into(),
         "/".into(),
         "/".into(),
+        "--unshare-user".into(),
         "--unshare-net".into(),
         "--unshare-ipc".into(),
         "--unshare-pid".into(),
         "--unshare-uts".into(),
+        "--disable-userns".into(),
         "--new-session".into(),
         "--die-with-parent".into(),
         "--".into(),
@@ -241,6 +567,186 @@ fn linux_probe_arguments(binary: &std::path::Path) -> Vec<std::ffi::OsString> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    struct PolicyFixture {
+        root: PathBuf,
+        bundle: PathBuf,
+        runtime: PathBuf,
+        executable: PathBuf,
+    }
+
+    impl PolicyFixture {
+        fn new() -> Self {
+            let unique = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system clock")
+                .as_nanos();
+            let root = std::env::temp_dir().join(format!(
+                "okf-studio-sandbox-policy-{}-{unique}",
+                std::process::id()
+            ));
+            let bundle = root.join("bundle");
+            let runtime = root.join("runtime");
+            let executable = runtime.join("bin").join("agent");
+            std::fs::create_dir_all(bundle.join(".git")).expect("create protected directory");
+            std::fs::create_dir_all(bundle.join("docs")).expect("create bundle content");
+            std::fs::create_dir_all(executable.parent().expect("executable parent"))
+                .expect("create runtime");
+            std::fs::write(bundle.join(".git").join("config"), "secret")
+                .expect("write protected metadata");
+            std::fs::write(bundle.join(".env"), "TOKEN=secret").expect("write protected file");
+            std::fs::write(bundle.join("docs").join("overview.md"), "# Overview")
+                .expect("write bundle concept");
+            std::fs::write(&executable, "agent").expect("write executable");
+            Self {
+                root: root.canonicalize().expect("canonical fixture"),
+                bundle: bundle.canonicalize().expect("canonical bundle"),
+                runtime: runtime.canonicalize().expect("canonical runtime"),
+                executable: executable.canonicalize().expect("canonical executable"),
+            }
+        }
+    }
+
+    impl Drop for PolicyFixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    fn contains_sequence(arguments: &[OsString], expected: &[&Path]) -> bool {
+        arguments.windows(expected.len()).any(|window| {
+            window
+                .iter()
+                .zip(expected)
+                .all(|(actual, expected)| Path::new(actual) == *expected)
+        })
+    }
+
+    #[test]
+    fn restricted_plan_starts_empty_and_hides_protected_bundle_paths() {
+        let fixture = PolicyFixture::new();
+        let system_root = fixture.root.join("system");
+        std::fs::create_dir_all(&system_root).expect("create system root");
+        let system_root = system_root.canonicalize().expect("canonical system root");
+        let plan = linux_launch_plan_with_system_roots(
+            &fixture.bundle,
+            &fixture.executable,
+            &["--stdio".to_string()],
+            std::slice::from_ref(&fixture.runtime),
+            std::slice::from_ref(&system_root),
+            LinuxSandboxNetworkMode::Disabled,
+        )
+        .expect("compile restricted launch");
+
+        assert!(contains_sequence(
+            &plan.arguments,
+            &[Path::new("--ro-bind"), &fixture.bundle, &fixture.bundle]
+        ));
+        assert!(contains_sequence(
+            &plan.arguments,
+            &[
+                Path::new("--perms"),
+                Path::new("0000"),
+                Path::new("--tmpfs"),
+                &fixture.bundle.join(".git"),
+            ]
+        ));
+        assert!(contains_sequence(
+            &plan.arguments,
+            &[
+                Path::new("--ro-bind"),
+                Path::new("/dev/null"),
+                &fixture.bundle.join(".env"),
+            ]
+        ));
+        for required in [
+            "--unshare-all",
+            "--disable-userns",
+            "--new-session",
+            "--die-with-parent",
+        ] {
+            assert!(plan.arguments.iter().any(|argument| argument == required));
+        }
+        assert!(!plan
+            .arguments
+            .iter()
+            .any(|argument| argument == "--share-net"));
+        assert!(contains_sequence(
+            &plan.arguments,
+            &[
+                Path::new("--chdir"),
+                &fixture.bundle,
+                Path::new("--"),
+                &fixture.executable,
+                Path::new("--stdio"),
+            ]
+        ));
+    }
+
+    #[test]
+    fn restricted_plan_marks_host_network_as_an_explicit_override() {
+        let fixture = PolicyFixture::new();
+        let plan = linux_launch_plan_with_system_roots(
+            &fixture.bundle,
+            &fixture.executable,
+            &[],
+            std::slice::from_ref(&fixture.runtime),
+            &[],
+            LinuxSandboxNetworkMode::Host,
+        )
+        .expect("compile host-network launch");
+
+        let unshare = plan
+            .arguments
+            .iter()
+            .position(|argument| argument == "--unshare-all")
+            .expect("unshare all");
+        let share = plan
+            .arguments
+            .iter()
+            .position(|argument| argument == "--share-net")
+            .expect("share network");
+        assert_eq!(share, unshare + 1);
+    }
+
+    #[test]
+    fn restricted_plan_rejects_an_executable_outside_visible_mounts() {
+        let fixture = PolicyFixture::new();
+        let outside = fixture.root.join("outside-agent");
+        std::fs::write(&outside, "agent").expect("write outside executable");
+        let outside = outside
+            .canonicalize()
+            .expect("canonical outside executable");
+
+        let error = linux_launch_plan_with_system_roots(
+            &fixture.bundle,
+            &outside,
+            &[],
+            std::slice::from_ref(&fixture.runtime),
+            &[],
+            LinuxSandboxNetworkMode::Disabled,
+        )
+        .expect_err("outside executable should fail");
+        assert!(error.contains("outside the restricted profile"));
+    }
+
+    #[test]
+    fn restricted_plan_rejects_a_missing_declared_runtime_root() {
+        let fixture = PolicyFixture::new();
+        let missing = fixture.root.join("missing-runtime");
+
+        let error = linux_launch_plan_with_system_roots(
+            &fixture.bundle,
+            &fixture.executable,
+            &[],
+            &[fixture.runtime.clone(), missing],
+            &[],
+            LinuxSandboxNetworkMode::Disabled,
+        )
+        .expect_err("missing runtime root should fail");
+        assert!(error.contains("agent runtime path is unavailable"));
+    }
 
     #[cfg(target_os = "windows")]
     #[tokio::test]
@@ -284,10 +790,12 @@ mod tests {
             .collect::<Vec<_>>();
         for required in [
             "--ro-bind",
+            "--unshare-user",
             "--unshare-net",
             "--unshare-ipc",
             "--unshare-pid",
             "--unshare-uts",
+            "--disable-userns",
             "--new-session",
             "--die-with-parent",
         ] {

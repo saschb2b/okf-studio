@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-13T21:19:01Z
+timestamp: 2026-07-13T22:31:56Z
 ---
 
 # Adopted patterns
@@ -45,7 +45,7 @@ timestamp: 2026-07-13T21:19:01Z
 
 Studio profiles describe effective resources instead of a command prefix or provider promise. The current native-mediated and external-interactive profiles make the shipped boundaries visible but do not unlock unattended work. A later enforced external profile must fail closed when its platform host cannot start or prove the declared policy; it must not follow Zed's native-tool fallback to an unsandboxed process because the external process itself is the trust boundary.
 
-Studio selected system Bubblewrap for the first Linux backend. The initial preflight is stricter than Zed's documented non-setuid requirement: it also requires a canonical root-owned binary with no file capabilities, no group or world write access, and ordinary read and execute access. It then proves that the binary can create the namespace set needed for the planned no-network host within a deadline. Passing this check does not enable a launch profile. Bubblewrap remains a low-level construction tool, so the later launcher must supply and verify the complete mount and protected-path policy. Ubuntu AppArmor can distinguish the system path from a copied or vendored binary. macOS requires a separately tested Seatbelt profile. Windows may offer WSL plus Bubblewrap as an opt-in profile, but a native Job Object remains lifecycle ownership only. Authentication bootstrap network access must be separate from the work profile so signing in does not silently turn a restricted thread into a full-network one.
+Studio selected system Bubblewrap for the first Linux backend. The initial preflight is stricter than Zed's documented non-setuid requirement: it also requires a canonical root-owned binary with no file capabilities, no group or world write access, and ordinary read and execute access. It proves that the binary can create the required namespace set, including nested-user-namespace denial, within a deadline. The compiled launch branch follows Bubblewrap's empty-root model instead of read-only binding the whole host. It adds selected system runtime mounts, exact app runtime mounts, one Rust-granted bundle, protected-path masks, private temporary filesystems, and a closed network choice. No profile selects this branch yet. Authentication and network selection must be explicit before Claude or Codex can use it without losing subscription login or provider access. Ubuntu AppArmor can distinguish the system path from a copied or vendored binary. macOS requires a separately tested Seatbelt profile. Windows may offer WSL plus Bubblewrap as an opt-in profile, but a native Job Object remains lifecycle ownership only.
 
 # Citations
 

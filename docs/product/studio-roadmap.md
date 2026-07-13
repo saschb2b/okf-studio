@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T22:00:31Z
+timestamp: 2026-07-13T22:31:56Z
 ---
 
 # Outcome
@@ -218,6 +218,7 @@ The remaining WP11 boxes stay open until their enforcement dependency exists. A 
 
 - [ ] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths, denies Git and credential paths below those mounts, and reports a closed network mode.
   - [x] Select system Bubblewrap for the first Linux backend and preflight its ownership, mode, file capabilities, namespace creation, network isolation, parent-death handling, and deadline without enabling a launch profile.
+  - [x] Compile and test the fail-closed Linux launch branch: empty mount root, read-only system and app runtime paths, one read-only Rust-granted bundle, protected-path masks, private temporary filesystems, bounded policy traversal, nested-user-namespace denial, and an explicit network mode. Keep all current profiles off this branch until authentication and network selection are exposed.
   - [ ] Launch an external ACP process through the proven backend with the complete mount and protected-path policy, then bind its live evidence to the connection profile.
 - [ ] Provide a Windows enforcement path. WSL plus Bubblewrap may be an opt-in profile, but Studio cannot assume WSL exists or describe a native Job Object as a filesystem or network sandbox. A Linux- or macOS-only first slice must remain visibly unavailable on Windows.
 - [x] Bind every isolation claim to launcher-produced evidence. Saved profile text and agent-advertised capabilities are descriptive input, never proof that containment is active.

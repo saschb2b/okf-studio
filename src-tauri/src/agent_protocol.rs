@@ -577,6 +577,24 @@ pub fn set_write_grant(
     Ok(changes)
 }
 
+/// Select edit-overlay or fresh-bundle staging while no files are staged.
+/// Emits the updated snapshot so the webview cannot invent this boundary.
+pub fn set_stage_mode(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+    mode: crate::agent_stage::AgentStageMode,
+) -> Result<AgentStagedChangesInfo, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let changes = stages.set_mode(session_id, mode)?;
+    let _ = app.emit(STAGE_EVENT, AgentStageEvent {
+        connection_id: connection_id.to_string(),
+        changes: changes.clone(),
+    });
+    Ok(changes)
+}
+
 /// Discard every staged file for one session without touching the grant.
 /// Emits the updated staged-change snapshot.
 pub fn discard_staged_changes(
@@ -4359,6 +4377,7 @@ mod tests {
             staged_changes: Some(AgentStagedChangesInfo {
                 session_id: "session-1".to_string(),
                 granted: false,
+                mode: crate::agent_stage::AgentStageMode::Edit,
                 can_restore: true,
                 files: Vec::new(),
             }),
@@ -4367,6 +4386,7 @@ mod tests {
 
         assert_eq!(value["stagedChanges"]["sessionId"], "session-1");
         assert_eq!(value["stagedChanges"]["granted"], false);
+        assert_eq!(value["stagedChanges"]["mode"], "edit");
         assert_eq!(value["stagedChanges"]["canRestore"], true);
     }
 

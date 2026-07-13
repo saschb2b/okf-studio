@@ -33,6 +33,14 @@ const MAX_CHECKPOINT_BYTES: u64 = 100 * 1024 * 1024;
 pub(crate) const WRITE_GRANT_MESSAGE: &str =
     "Bundle write denied: writes require the Allow edits in this thread grant.";
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentStageMode {
+    #[default]
+    Edit,
+    Create,
+}
+
 /// One staged file as it crosses IPC: a bundle-relative forward-slash path,
 /// the staged byte count, and whether the write creates or modifies the file.
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -49,6 +57,7 @@ pub struct AgentStagedFileInfo {
 pub struct AgentStagedChangesInfo {
     pub session_id: String,
     pub granted: bool,
+    pub mode: AgentStageMode,
     pub can_restore: bool,
     pub files: Vec<AgentStagedFileInfo>,
 }
@@ -114,6 +123,7 @@ pub struct AgentCheckpointRestoreInfo {
 struct SessionStage {
     bundle_root: PathBuf,
     granted: bool,
+    mode: AgentStageMode,
     files: BTreeMap<String, StagedFile>,
     checkpoint: Option<AppliedCheckpoint>,
 }
@@ -283,6 +293,7 @@ impl SessionStages {
         let stage = SessionStage {
             bundle_root: bundle_root.to_path_buf(),
             granted: false,
+            mode: AgentStageMode::Edit,
             files: BTreeMap::new(),
             checkpoint,
         };
@@ -324,6 +335,29 @@ impl SessionStages {
             .get_mut(session_id)
             .ok_or_else(|| "The ACP session is not active.".to_string())?;
         stage.granted = granted;
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// Select whether staged writes overlay the open bundle or describe a
+    /// fresh bundle. The mode can change only while the staged tree is empty.
+    pub fn set_mode(
+        &self,
+        session_id: &str,
+        mode: AgentStageMode,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if !stage.files.is_empty() && stage.mode != mode {
+            return Err(
+                "Resolve the current staged changes before changing the staging mode.".to_string(),
+            );
+        }
+        stage.mode = mode;
         Ok(snapshot(session_id, stage))
     }
 
@@ -570,7 +604,7 @@ impl SessionStages {
     /// the bundle. The returned revision binds later apply work to the exact
     /// disk bases, staged text, and hunk choices validated here.
     pub fn validate_staged(&self, session_id: &str) -> Result<AgentStagedValidationInfo, String> {
-        let (bundle_root, files) = {
+        let (bundle_root, mode, files) = {
             let sessions = self
                 .sessions
                 .lock()
@@ -581,11 +615,11 @@ impl SessionStages {
             if stage.files.is_empty() {
                 return Err("There are no staged changes to validate.".to_string());
             }
-            (stage.bundle_root.clone(), stage.files.clone())
+            (stage.bundle_root.clone(), stage.mode, stage.files.clone())
         };
 
-        let prepared = prepare_selected_stage(&bundle_root, &files)?;
-        validate_prepared(session_id, &bundle_root, &prepared)
+        let prepared = prepare_selected_stage(&bundle_root, &files, mode)?;
+        validate_prepared(session_id, &bundle_root, &prepared, mode)
     }
 
     /// Apply the exact zero-error staged revision the user validated. The
@@ -605,6 +639,12 @@ impl SessionStages {
         let stage = sessions
             .get_mut(session_id)
             .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if stage.mode == AgentStageMode::Create {
+            return Err(
+                "Fresh bundle drafts cannot be applied to the active bundle. Choose a destination instead."
+                    .to_string(),
+            );
+        }
         if self.checkpoint_directory.is_some() {
             self.recover_interrupted_transaction(&stage.bundle_root)?;
             stage.checkpoint = self.load_persisted_checkpoint(&stage.bundle_root)?;
@@ -613,12 +653,12 @@ impl SessionStages {
             return Err("There are no staged changes to apply.".to_string());
         }
 
-        let prepared = prepare_selected_stage(&stage.bundle_root, &stage.files)?;
+        let prepared = prepare_selected_stage(&stage.bundle_root, &stage.files, stage.mode)?;
         let revision = selected_stage_revision(&prepared);
         if revision != expected_revision {
             return Err("The staged changes or bundle files changed. Validate them again.".to_string());
         }
-        let validation = validate_prepared(session_id, &stage.bundle_root, &prepared)?;
+        let validation = validate_prepared(session_id, &stage.bundle_root, &prepared, stage.mode)?;
         if validation.errors > 0 {
             return Err(format!(
                 "Apply blocked: staged validation found {} error{}.",
@@ -1028,11 +1068,14 @@ fn stage_write_into(stage: &mut SessionStage, path: &Path, content: String) -> R
     if existing.is_some_and(|file| file.content == content) {
         return Ok(());
     }
-    // Whether this write creates or modifies is decided against the real
-    // bundle once, then kept stable across repeated writes to the path.
+    // A fresh-bundle draft has no originals. Edit mode decides whether this
+    // write creates or modifies against the active bundle once, then keeps it
+    // stable across repeated writes to the path.
     let kind = existing.map_or_else(
         || {
-            if stage.bundle_root.join(Path::new(&relative)).is_file() {
+            if stage.mode == AgentStageMode::Edit
+                && stage.bundle_root.join(Path::new(&relative)).is_file()
+            {
                 "modify"
             } else {
                 "create"
@@ -1052,6 +1095,9 @@ fn stage_write_into(stage: &mut SessionStage, path: &Path, content: String) -> R
 }
 
 fn disk_text(stage: &SessionStage, relative: &str) -> Result<Option<String>, String> {
+    if stage.mode == AgentStageMode::Create {
+        return Ok(None);
+    }
     let path = stage.bundle_root.join(Path::new(relative));
     if !path.exists() {
         return Ok(None);
@@ -1132,6 +1178,7 @@ struct PreparedStagedFile {
 fn prepare_selected_stage(
     bundle_root: &Path,
     files: &BTreeMap<String, StagedFile>,
+    mode: AgentStageMode,
 ) -> Result<Vec<PreparedStagedFile>, String> {
     files
         .iter()
@@ -1141,7 +1188,7 @@ fn prepare_selected_stage(
             if relative != *path {
                 return Err("A staged path no longer resolves to its reviewed file.".to_string());
             }
-            if file.kind == "create" && target.exists() {
+            if mode == AgentStageMode::Edit && file.kind == "create" && target.exists() {
                 return Err(format!(
                     "Staged apply needs a fresh review of {path}; the file now exists."
                 ));
@@ -1183,9 +1230,12 @@ fn validate_prepared(
     session_id: &str,
     bundle_root: &Path,
     prepared: &[PreparedStagedFile],
+    mode: AgentStageMode,
 ) -> Result<AgentStagedValidationInfo, String> {
     let mirror = ValidationMirror::create()?;
-    copy_markdown_tree(bundle_root, &mirror.path)?;
+    if mode == AgentStageMode::Edit {
+        copy_markdown_tree(bundle_root, &mirror.path)?;
+    }
     for file in prepared {
         if !file.path.to_ascii_lowercase().ends_with(".md") {
             continue;
@@ -2644,7 +2694,8 @@ fn snapshot(session_id: &str, stage: &SessionStage) -> AgentStagedChangesInfo {
     AgentStagedChangesInfo {
         session_id: session_id.to_string(),
         granted: stage.granted,
-        can_restore: stage.checkpoint.is_some(),
+        mode: stage.mode,
+        can_restore: stage.mode == AgentStageMode::Edit && stage.checkpoint.is_some(),
         files: stage
             .files
             .iter()
@@ -2875,7 +2926,8 @@ mod tests {
                 selection: None,
             },
         );
-        prepare_selected_stage(root, &files).expect("prepare edit and creation")
+        prepare_selected_stage(root, &files, AgentStageMode::Edit)
+            .expect("prepare edit and creation")
     }
 
     fn prepare_apply_artifacts(transaction: &ApplyTransaction) {
@@ -3335,6 +3387,53 @@ mod tests {
     }
 
     #[test]
+    fn fresh_bundle_mode_validates_in_isolation_and_cannot_apply_to_the_source() {
+        let root = canonical_temp_dir("create-mode");
+        seed_valid_bundle(&root);
+        std::fs::write(root.join("existing.md"), "---\n---\n# Invalid source concept\n")
+            .expect("make source bundle invalid");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let mode = stages
+            .set_mode("session-1", AgentStageMode::Create)
+            .expect("select create mode");
+        assert_eq!(mode.mode, AgentStageMode::Create);
+        assert!(!mode.can_restore);
+
+        let index = "---\nokf_version: 0.1\n---\n# Fresh bundle\n\n- [Fresh](fresh.md)\n";
+        let staged = stages
+            .stage_write("session-1", &root.join("index.md"), index.to_string())
+            .expect("stage fresh index over source index path");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("fresh.md"),
+                "---\ntype: Note\n---\n# Fresh\n".to_string(),
+            )
+            .expect("stage fresh concept");
+        assert_eq!(staged.files[0].kind, "create");
+        assert_eq!(
+            stages
+                .set_mode("session-1", AgentStageMode::Edit)
+                .expect_err("non-empty draft must keep its mode"),
+            "Resolve the current staged changes before changing the staging mode.",
+        );
+
+        let validation = stages.validate_staged("session-1").expect("validate draft");
+        assert_eq!(validation.errors, 0, "source bundle issues stay outside the draft");
+        assert_eq!(
+            stages
+                .apply_staged("session-1", &validation.revision)
+                .expect_err("creation must not apply to source"),
+            "Fresh bundle drafts cannot be applied to the active bundle. Choose a destination instead.",
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("index.md")).expect("read source index"),
+            "---\nokf_version: 0.1\n---\n# Test bundle\n",
+        );
+    }
+
+    #[test]
     fn validation_respects_rejected_hunks() {
         let root = canonical_temp_dir("validate-selection");
         seed_valid_bundle(&root);
@@ -3621,7 +3720,8 @@ mod tests {
                 stage.checkpoint.clone().expect("previous checkpoint"),
             )
         };
-        let prepared = prepare_selected_stage(&root, &files).expect("prepare replacement");
+        let prepared = prepare_selected_stage(&root, &files, AgentStageMode::Edit)
+            .expect("prepare replacement");
         let mut transaction = plan_apply_transaction(&root, &prepared).expect("plan replacement");
         transaction.previous_checkpoint = Some(previous.clone());
         stages
@@ -3964,7 +4064,8 @@ mod tests {
                 },
             );
         }
-        let prepared = prepare_selected_stage(&root, &files).expect("prepare transaction");
+        let prepared = prepare_selected_stage(&root, &files, AgentStageMode::Edit)
+            .expect("prepare transaction");
 
         let error = apply_prepared_transaction(&root, &prepared, Some(1))
             .expect_err("injected transaction failure");

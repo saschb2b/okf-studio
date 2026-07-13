@@ -550,7 +550,7 @@ describe("OKF Studio app", () => {
     const proposal = await screen.findByRole("region", {
       name: "Proposed OKF bundle structure",
     });
-    expect(within(proposal).getByText("generated/overview.md")).toBeInTheDocument();
+    expect(within(proposal).getByText("overview.md")).toBeInTheDocument();
     const generate = within(proposal).getByRole("button", { name: "Generate in staging" });
     expect(generate).toBeDisabled();
     expect(within(proposal).getByText(/Allow edits for this thread/)).toBeInTheDocument();
@@ -559,14 +559,16 @@ describe("OKF Studio app", () => {
     await user.click(generate);
     expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
       .toBeInTheDocument();
-    expect(await screen.findByText("Staged changes")).toBeInTheDocument();
-    expect(screen.getByTitle("generated/overview.md")).toBeInTheDocument();
-    expect(screen.getByTitle("generated/agent-system.md")).toBeInTheDocument();
-    expect(screen.getByTitle("generated/index.md")).toBeInTheDocument();
+    expect(await screen.findByText("Fresh bundle draft")).toBeInTheDocument();
+    expect(screen.getByTitle("overview.md")).toBeInTheDocument();
+    expect(screen.getByTitle("agent-system.md")).toBeInTheDocument();
+    expect(screen.getByTitle("index.md")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("status", { name: "Staged validation result" }))
       .toHaveTextContent("Validation passed");
+    expect(screen.queryByRole("button", { name: "Apply changes" })).not.toBeInTheDocument();
+    expect(screen.getByText(/draft is isolated from the active bundle/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));

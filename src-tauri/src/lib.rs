@@ -247,6 +247,25 @@ fn set_agent_write_grant(
     )
 }
 
+/// Select whether the empty staged tree overlays the active bundle or models
+/// a fresh bundle. A non-empty tree must be resolved before this can change.
+#[tauri::command]
+fn set_agent_stage_mode(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    mode: agent_stage::AgentStageMode,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    agent_protocol::set_stage_mode(
+        &app,
+        state.inner(),
+        &connection_id,
+        &session_id,
+        mode,
+    )
+}
+
 /// Discard every staged file for one live ACP session; the grant is untouched.
 #[tauri::command]
 fn discard_agent_staged_changes(
@@ -546,6 +565,7 @@ pub fn run() {
             cancel_agent_turn,
             respond_agent_permission,
             set_agent_write_grant,
+            set_agent_stage_mode,
             discard_agent_staged_changes,
             discard_agent_staged_file,
             agent_staged_file_diff,

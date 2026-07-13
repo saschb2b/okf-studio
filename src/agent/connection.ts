@@ -144,6 +144,7 @@ export interface AgentStagedFileInfo {
 export interface AgentStagedChangesInfo {
   sessionId: string;
   granted: boolean;
+  mode: "edit" | "create";
   canRestore: boolean;
   files: readonly AgentStagedFileInfo[];
 }

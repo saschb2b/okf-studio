@@ -91,7 +91,7 @@ const agentStageHandlers = new Set<AgentStageHandler>();
 type MockStagedFile = AgentStagedFileInfo & { content: string; hunkSelected: boolean };
 const mockStagedChanges = new Map<
   string,
-  { granted: boolean; canRestore: boolean; files: MockStagedFile[] }
+  { granted: boolean; mode: "edit" | "create"; canRestore: boolean; files: MockStagedFile[] }
 >();
 const mockBundleCheckpoints = new Map<string, number>();
 const mockCancelledTurns = new Set<string>();
@@ -260,6 +260,7 @@ export async function newAgentSession(
   const sessionId = `session-${crypto.randomUUID()}`;
   const stagedState = {
     granted: false,
+    mode: "edit" as const,
     canRestore: mockBundleCheckpoints.has(bundleRoot),
     files: [],
   };
@@ -346,6 +347,7 @@ export async function loadAgentSession(
   // Mirrors Rust: a restored session never inherits a write grant or files.
   const stagedState = {
     granted: false,
+    mode: "edit" as const,
     canRestore: mockBundleCheckpoints.has(bundleRoot),
     files: [],
   };
@@ -645,14 +647,39 @@ export async function discardAgentStagedChanges(
   return emitMockStage(connectionId, sessionId);
 }
 
+export async function setAgentStageMode(
+  connectionId: string,
+  sessionId: string,
+  mode: "edit" | "create",
+): Promise<AgentStagedChangesInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedChangesInfo>("set_agent_stage_mode", {
+      connectionId,
+      sessionId,
+      mode,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const state = mockStageState(sessionId);
+  if (state.files.length > 0 && state.mode !== mode) {
+    throw new Error("Resolve the current staged changes before changing the staging mode.");
+  }
+  state.mode = mode;
+  return emitMockStage(connectionId, sessionId);
+}
+
 function mockStageState(sessionId: string): {
   granted: boolean;
+  mode: "edit" | "create";
   canRestore: boolean;
   files: MockStagedFile[];
 } {
   let state = mockStagedChanges.get(sessionId);
   if (!state) {
-    state = { granted: false, canRestore: false, files: [] };
+    state = { granted: false, mode: "edit", canRestore: false, files: [] };
     mockStagedChanges.set(sessionId, state);
   }
   return state;
@@ -663,7 +690,8 @@ function emitMockStage(connectionId: string, sessionId: string): AgentStagedChan
   const changes: AgentStagedChangesInfo = {
     sessionId,
     granted: state.granted,
-    canRestore: state.canRestore,
+    mode: state.mode,
+    canRestore: state.mode === "edit" && state.canRestore,
     files: state.files.map(({ path, bytes, kind }) => ({ path, bytes, kind })),
   };
   for (const handler of agentStageHandlers) handler({ connectionId, changes });
@@ -755,6 +783,7 @@ export async function validateAgentStagedChanges(
     if (
       !file.hunkSelected ||
       !file.path.toLowerCase().endsWith(".md") ||
+      file.path.toLowerCase().endsWith("index.md") ||
       file.content.includes("type:")
     ) return [];
     return [{
@@ -791,6 +820,12 @@ export async function applyAgentStagedChanges(
   if (!activeAgentConnectionsById.has(connectionId)) {
     throw new Error("Agent connection was not found.");
   }
+  const state = mockStageState(sessionId);
+  if (state.mode === "create") {
+    throw new Error(
+      "Fresh bundle drafts cannot be applied to the active bundle. Choose a destination instead.",
+    );
+  }
   const validation = await validateAgentStagedChanges(connectionId, sessionId);
   if (validation.revision !== revision) {
     throw new Error("The staged changes or bundle files changed. Validate them again.");
@@ -800,7 +835,6 @@ export async function applyAgentStagedChanges(
       `Apply blocked: staged validation found ${validation.errors} error${validation.errors === 1 ? "" : "s"}.`,
     );
   }
-  const state = mockStageState(sessionId);
   const appliedFiles = state.files.filter((file) => file.hunkSelected).length;
   state.files = [];
   state.canRestore = appliedFiles > 0;
@@ -902,16 +936,16 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
   }
   const generated = [
     {
-      path: "generated/overview.md",
+      path: "overview.md",
       content: "---\ntype: Product\n---\n# Product overview\n\nSee [Agent system](agent-system.md).",
     },
     {
-      path: "generated/agent-system.md",
+      path: "agent-system.md",
       content: "---\ntype: Architecture\n---\n# Agent system\n\nA proposed architecture concept.",
     },
     {
-      path: "generated/index.md",
-      content: "---\ntype: Index\n---\n# Generated knowledge\n\n- [Product overview](overview.md)\n- [Agent system](agent-system.md)",
+      path: "index.md",
+      content: "---\nokf_version: 0.1\n---\n# Generated knowledge\n\n- [Product overview](overview.md)\n- [Agent system](agent-system.md)",
     },
   ];
   for (const file of generated) {
@@ -945,13 +979,13 @@ function mockAgentResponse(text: string): string {
       JSON.stringify({
         concepts: [
           {
-            path: "generated/overview.md",
+            path: "overview.md",
             title: "Product overview",
             type: "Product",
-            links: ["generated/agent-system.md"],
+            links: ["agent-system.md"],
           },
           {
-            path: "generated/agent-system.md",
+            path: "agent-system.md",
             title: "Agent system",
             type: "Architecture",
             links: [],
@@ -959,8 +993,8 @@ function mockAgentResponse(text: string): string {
         ],
         indexes: [
           {
-            path: "generated/index.md",
-            concepts: ["generated/overview.md", "generated/agent-system.md"],
+            path: "index.md",
+            concepts: ["overview.md", "agent-system.md"],
           },
         ],
       }, null, 2) +

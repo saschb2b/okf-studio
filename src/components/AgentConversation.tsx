@@ -49,6 +49,7 @@ import {
   onAgentStageUpdate,
   onAgentTurnUpdate,
   setAgentWriteGrant,
+  setAgentStageMode,
   setAgentStagedHunkSelection,
   validateAgentStagedChanges,
   pickAgentSourceFolder,
@@ -388,6 +389,7 @@ export function AgentConversation({
   const [isApplyingStage, setIsApplyingStage] = useState(false);
   const [isRestoringCheckpoint, setIsRestoringCheckpoint] = useState(false);
   const [isSettingGrant, setIsSettingGrant] = useState(false);
+  const [isPreparingGeneration, setIsPreparingGeneration] = useState(false);
   const [expandedDiff, setExpandedDiff] = useState<
     | { path: string; state: "loading" }
     | { path: string; state: "ready"; diff: AgentStagedFileDiff }
@@ -1053,13 +1055,34 @@ export function AgentConversation({
     promptRef.current.focus();
   }
 
-  function generateBundleProposal() {
-    if (!writeGranted || activeTurn || isSubmitting) return;
+  async function generateBundleProposal() {
+    const session = sessionRef.current;
+    if (!session || !writeGranted || activeTurn || isSubmitting || isPreparingGeneration) return;
+    const mode = threadWorkflow === "create-bundle" ? "create" : "edit";
+    if (stagedFileCount > 0 && stagedChanges?.mode !== mode) return;
+    setIsPreparingGeneration(true);
     setStageError(null);
-    startTransition(() => submitPrompt({
-      draft: { text: BUNDLE_GENERATION_PROMPT, concepts: [], sources: [] },
-      source: "composer",
-    }));
+    try {
+      const changes = await setAgentStageMode(
+        connection.connectionId,
+        session.sessionId,
+        mode,
+      );
+      if (sessionRef.current?.sessionId !== session.sessionId) return;
+      updateStagedChanges(changes);
+      startTransition(() => submitPrompt({
+        draft: { text: BUNDLE_GENERATION_PROMPT, concepts: [], sources: [] },
+        source: "composer",
+      }));
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId === session.sessionId) {
+        setStageError(errorMessage(error));
+      }
+    } finally {
+      if (sessionRef.current?.sessionId === session.sessionId) {
+        setIsPreparingGeneration(false);
+      }
+    }
   }
 
   function editQueuedPrompt() {
@@ -1645,13 +1668,20 @@ export function AgentConversation({
                       isRetrying={turnId === retryingTurnId}
                       retryError={turnId ? retryErrors.get(turnId) ?? null : null}
                       onGenerateProposal={item.id === latestBundleProposalMessageId
-                        ? generateBundleProposal
+                        ? () => void generateBundleProposal()
                         : undefined}
-                      generationBlockedReason={item.id === latestBundleProposalMessageId && !writeGranted
-                        ? "Allow edits for this thread before generating staged files."
+                      generationBlockedReason={item.id === latestBundleProposalMessageId
+                        ? !writeGranted
+                          ? "Allow edits for this thread before generating staged files."
+                          : stagedFileCount > 0 && stagedChanges?.mode !== (
+                              threadWorkflow === "create-bundle" ? "create" : "edit"
+                            )
+                            ? "Resolve the current staged changes before generating this proposal."
+                            : null
                         : null}
                       isGeneratingProposal={
-                        item.id === latestBundleProposalMessageId && isSubmitting
+                        item.id === latestBundleProposalMessageId &&
+                        (isSubmitting || isPreparingGeneration)
                       }
                     />
                   );
@@ -1665,7 +1695,9 @@ export function AgentConversation({
           {stagedChanges && stagedChanges.files.length > 0 && (
             <section className="agent-staged" aria-labelledby="agent-staged-title">
               <header>
-                <strong id="agent-staged-title">Staged changes</strong>
+                <strong id="agent-staged-title">
+                  {stagedChanges.mode === "create" ? "Fresh bundle draft" : "Staged changes"}
+                </strong>
                 <span title={stagedSummary}>{stagedSummary}</span>
                 <div className="agent-staged__actions">
                   <button
@@ -1856,7 +1888,7 @@ export function AgentConversation({
                       )}
                     </details>
                   )}
-                  {stagedValidation.result.errors === 0 && (
+                  {stagedValidation.result.errors === 0 && stagedChanges.mode === "edit" && (
                     <div className="agent-staged__apply">
                       <span>
                         Studio will recheck every file before replacing the bundle contents.
@@ -1871,6 +1903,12 @@ export function AgentConversation({
                         {isApplyingStage ? "Applying..." : "Apply changes"}
                       </button>
                     </div>
+                  )}
+                  {stagedValidation.result.errors === 0 && stagedChanges.mode === "create" && (
+                    <p className="agent-staged__destination-boundary">
+                      This draft is isolated from the active bundle. Choose a destination before
+                      creating any files.
+                    </p>
                   )}
                 </section>
               )}

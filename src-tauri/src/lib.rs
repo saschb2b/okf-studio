@@ -326,6 +326,22 @@ async fn apply_agent_staged_changes(
 }
 
 #[tauri::command]
+async fn restore_agent_staged_checkpoint(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+) -> Result<agent_stage::AgentCheckpointRestoreInfo, String> {
+    agent_protocol::restore_staged_checkpoint(
+        &app,
+        state.inner(),
+        &connection_id,
+        &session_id,
+    )
+    .await
+}
+
+#[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
     agent_id: String,
@@ -528,6 +544,7 @@ pub fn run() {
             set_agent_staged_hunk_selection,
             validate_agent_staged_changes,
             apply_agent_staged_changes,
+            restore_agent_staged_checkpoint,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

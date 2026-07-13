@@ -56,6 +56,7 @@ import {
   promptAgent,
   removeAgentThreadMetadata,
   respondAgentPermission,
+  restoreAgentStagedCheckpoint,
   saveAgentThreadMetadata,
 } from "../ipc.ts";
 import type { AgentSourceInput } from "../ipc.ts";
@@ -380,6 +381,7 @@ export function AgentConversation({
   const [stageError, setStageError] = useState<string | null>(null);
   const [stageNotice, setStageNotice] = useState<string | null>(null);
   const [isApplyingStage, setIsApplyingStage] = useState(false);
+  const [isRestoringCheckpoint, setIsRestoringCheckpoint] = useState(false);
   const [isSettingGrant, setIsSettingGrant] = useState(false);
   const [expandedDiff, setExpandedDiff] = useState<
     | { path: string; state: "loading" }
@@ -783,7 +785,7 @@ export function AgentConversation({
 
   function updateStagedChanges(changes: AgentStagedChangesInfo) {
     setStagedChanges(changes);
-    if (changes.files.length > 0) setStageNotice(null);
+    if (changes.files.length > 0 && !changes.canRestore) setStageNotice(null);
     clearStagedValidation();
     setExpandedDiff((current) =>
       current && !changes.files.some((file) => file.path === current.path) ? null : current
@@ -928,6 +930,29 @@ export function AgentConversation({
       setStageError(errorMessage(error));
     } finally {
       setIsApplyingStage(false);
+    }
+  }
+
+  async function restoreCheckpoint() {
+    const session = sessionRef.current;
+    if (!session || isRestoringCheckpoint || !stagedChanges?.canRestore) return;
+    const sessionId = session.sessionId;
+    setIsRestoringCheckpoint(true);
+    setStageError(null);
+    try {
+      const result = await restoreAgentStagedCheckpoint(
+        connection.connectionId,
+        sessionId,
+      );
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      updateStagedChanges(result.changes);
+      setStageNotice(
+        `Restored ${result.restoredFiles} file${result.restoredFiles === 1 ? "" : "s"} from the checkpoint.`,
+      );
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId === sessionId) setStageError(errorMessage(error));
+    } finally {
+      setIsRestoringCheckpoint(false);
     }
   }
 
@@ -1817,7 +1842,23 @@ export function AgentConversation({
           {stageError && (
             <p className="agent-composer__error" role="alert">{stageError}</p>
           )}
-          {stageNotice && (
+          {stagedChanges?.canRestore && (
+            <div className="agent-composer__checkpoint" role="status">
+              <span>{stageNotice ?? "The latest apply has a restorable checkpoint."}</span>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={isRestoringCheckpoint || stagedChanges.files.length > 0}
+                title={stagedChanges.files.length > 0
+                  ? "Resolve the current staged changes before restoring."
+                  : undefined}
+                onClick={() => void restoreCheckpoint()}
+              >
+                {isRestoringCheckpoint ? "Restoring..." : "Restore"}
+              </button>
+            </div>
+          )}
+          {stageNotice && !stagedChanges?.canRestore && (
             <p className="agent-composer__notice" role="status">{stageNotice}</p>
           )}
           <form ref={composerRef} className="agent-composer" action={composerAction}>

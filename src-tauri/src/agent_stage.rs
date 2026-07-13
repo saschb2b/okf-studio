@@ -46,6 +46,7 @@ pub struct AgentStagedFileInfo {
 pub struct AgentStagedChangesInfo {
     pub session_id: String,
     pub granted: bool,
+    pub can_restore: bool,
     pub files: Vec<AgentStagedFileInfo>,
 }
 
@@ -98,11 +99,20 @@ pub struct AgentStagedApplyInfo {
     pub changes: AgentStagedChangesInfo,
 }
 
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCheckpointRestoreInfo {
+    pub session_id: String,
+    pub restored_files: usize,
+    pub changes: AgentStagedChangesInfo,
+}
+
 #[derive(Clone, PartialEq, Eq)]
 struct SessionStage {
     bundle_root: PathBuf,
     granted: bool,
     files: BTreeMap<String, StagedFile>,
+    checkpoint: Option<AppliedCheckpoint>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -116,6 +126,19 @@ struct StagedFile {
 struct HunkSelection {
     revision: String,
     rejected: BTreeSet<usize>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct AppliedCheckpoint {
+    files: Vec<CheckpointFile>,
+    created_directories: Vec<PathBuf>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CheckpointFile {
+    target: PathBuf,
+    backup: Option<PathBuf>,
+    applied_content: String,
 }
 
 /// One full-text ACP diff report before it enters the authoritative staged
@@ -134,18 +157,38 @@ pub struct SessionStages {
     sessions: Mutex<HashMap<String, SessionStage>>,
 }
 
+impl Drop for SessionStages {
+    fn drop(&mut self) {
+        let sessions = self
+            .sessions
+            .get_mut()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for (_, stage) in sessions.drain() {
+            if let Some(checkpoint) = stage.checkpoint {
+                discard_checkpoint(checkpoint);
+            }
+        }
+    }
+}
+
 impl SessionStages {
     /// Register (or reset) a session. Creating and loading both start with the
     /// grant revoked and the staged tree empty: a restored session never
     /// inherits an earlier grant.
     pub fn register_session(&self, session_id: &str, bundle_root: &Path) {
         if let Ok(mut sessions) = self.sessions.lock() {
+            if let Some(previous) = sessions.remove(session_id) {
+                if let Some(checkpoint) = previous.checkpoint {
+                    discard_checkpoint(checkpoint);
+                }
+            }
             sessions.insert(
                 session_id.to_string(),
                 SessionStage {
                     bundle_root: bundle_root.to_path_buf(),
                     granted: false,
                     files: BTreeMap::new(),
+                    checkpoint: None,
                 },
             );
         }
@@ -465,12 +508,47 @@ impl SessionStages {
             ));
         }
 
-        let applied_files = apply_prepared_transaction(&stage.bundle_root, &prepared, None)?;
+        if let Some(checkpoint) = stage.checkpoint.take() {
+            discard_checkpoint(checkpoint);
+        }
+        let checkpoint = apply_prepared_transaction(&stage.bundle_root, &prepared, None)?;
+        let applied_files = checkpoint.files.len();
+        stage.checkpoint = (!checkpoint.files.is_empty()).then_some(checkpoint);
         stage.files.clear();
         Ok(AgentStagedApplyInfo {
             session_id: session_id.to_string(),
             revision,
             applied_files,
+            changes: snapshot(session_id, stage),
+        })
+    }
+
+    /// Restore the latest successful apply while every applied file still
+    /// matches the checkpoint. New staged work must be resolved first.
+    pub fn restore_checkpoint(
+        &self,
+        session_id: &str,
+    ) -> Result<AgentCheckpointRestoreInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if !stage.files.is_empty() {
+            return Err("Discard or apply the current staged changes before restoring.".to_string());
+        }
+        let checkpoint = stage
+            .checkpoint
+            .as_ref()
+            .ok_or_else(|| "There is no restorable checkpoint for this thread.".to_string())?;
+        restore_applied_checkpoint(&stage.bundle_root, checkpoint)?;
+        let restored_files = checkpoint.files.len();
+        stage.checkpoint = None;
+        Ok(AgentCheckpointRestoreInfo {
+            session_id: session_id.to_string(),
+            restored_files,
             changes: snapshot(session_id, stage),
         })
     }
@@ -735,18 +813,20 @@ struct PendingReplacement {
     backup: Option<PathBuf>,
     kind: &'static str,
     original: String,
+    applied_content: String,
 }
 
 struct AppliedReplacement {
     target: PathBuf,
     backup: Option<PathBuf>,
+    applied_content: String,
 }
 
 fn apply_prepared_transaction(
     bundle_root: &Path,
     prepared: &[PreparedStagedFile],
     fail_after: Option<usize>,
-) -> Result<usize, String> {
+) -> Result<AppliedCheckpoint, String> {
     let mut pending = Vec::new();
     let mut created_directories = Vec::new();
     for file in prepared {
@@ -814,6 +894,7 @@ fn apply_prepared_transaction(
             backup,
             kind: file.kind,
             original: file.original.clone(),
+            applied_content: content.clone(),
         });
     }
 
@@ -851,15 +932,21 @@ fn apply_prepared_transaction(
         applied.push(AppliedReplacement {
             target: replacement.target.clone(),
             backup: replacement.backup.clone(),
+            applied_content: replacement.applied_content.clone(),
         });
     }
 
-    for replacement in &applied {
-        if let Some(backup) = &replacement.backup {
-            let _ = std::fs::remove_file(backup);
-        }
-    }
-    Ok(applied.len())
+    Ok(AppliedCheckpoint {
+        files: applied
+            .into_iter()
+            .map(|replacement| CheckpointFile {
+                target: replacement.target,
+                backup: replacement.backup,
+                applied_content: replacement.applied_content,
+            })
+            .collect(),
+        created_directories,
+    })
 }
 
 fn verify_prepared_base(
@@ -960,6 +1047,87 @@ fn cleanup_pending(pending: &[PendingReplacement]) {
 fn cleanup_directories(created: &[PathBuf]) {
     for directory in created.iter().rev() {
         let _ = std::fs::remove_dir(directory);
+    }
+}
+
+struct RestoredReplacement {
+    target: PathBuf,
+    backup: Option<PathBuf>,
+    applied_temporary: PathBuf,
+}
+
+fn restore_applied_checkpoint(
+    bundle_root: &Path,
+    checkpoint: &AppliedCheckpoint,
+) -> Result<(), String> {
+    for file in &checkpoint.files {
+        bundle_relative_write_path(bundle_root, &file.target)?;
+        if file
+            .target
+            .symlink_metadata()
+            .is_ok_and(|metadata| metadata.file_type().is_symlink())
+        {
+            return Err("Checkpoint restore blocked: an applied path is now a symbolic link.".to_string());
+        }
+        let current = std::fs::read_to_string(&file.target)
+            .map_err(|_| "Checkpoint restore blocked: an applied file could not be read.".to_string())?;
+        if current != file.applied_content {
+            return Err("Checkpoint restore blocked: an applied file changed after apply.".to_string());
+        }
+        if file.backup.as_ref().is_some_and(|backup| !backup.is_file()) {
+            return Err("Checkpoint restore blocked: an original file is unavailable.".to_string());
+        }
+    }
+
+    let mut restored = Vec::new();
+    for file in &checkpoint.files {
+        let parent = file
+            .target
+            .parent()
+            .ok_or_else(|| "Checkpoint restore could not resolve a file parent.".to_string())?;
+        let applied_temporary = parent.join(format!(
+            ".okf-studio-{}-undo.tmp",
+            uuid::Uuid::new_v4()
+        ));
+        if std::fs::rename(&file.target, &applied_temporary).is_err() {
+            rollback_checkpoint_restore(&restored);
+            return Err("Checkpoint restore could not move an applied file.".to_string());
+        }
+        if let Some(backup) = &file.backup {
+            if std::fs::rename(backup, &file.target).is_err() {
+                let _ = std::fs::rename(&applied_temporary, &file.target);
+                rollback_checkpoint_restore(&restored);
+                return Err("Checkpoint restore could not replace an applied file.".to_string());
+            }
+        }
+        restored.push(RestoredReplacement {
+            target: file.target.clone(),
+            backup: file.backup.clone(),
+            applied_temporary,
+        });
+    }
+
+    for file in &restored {
+        let _ = std::fs::remove_file(&file.applied_temporary);
+    }
+    cleanup_directories(&checkpoint.created_directories);
+    Ok(())
+}
+
+fn rollback_checkpoint_restore(restored: &[RestoredReplacement]) {
+    for file in restored.iter().rev() {
+        if let Some(backup) = &file.backup {
+            let _ = std::fs::rename(&file.target, backup);
+        }
+        let _ = std::fs::rename(&file.applied_temporary, &file.target);
+    }
+}
+
+fn discard_checkpoint(checkpoint: AppliedCheckpoint) {
+    for file in checkpoint.files {
+        if let Some(backup) = file.backup {
+            let _ = std::fs::remove_file(backup);
+        }
     }
 }
 
@@ -1129,6 +1297,7 @@ fn snapshot(session_id: &str, stage: &SessionStage) -> AgentStagedChangesInfo {
     AgentStagedChangesInfo {
         session_id: session_id.to_string(),
         granted: stage.granted,
+        can_restore: stage.checkpoint.is_some(),
         files: stage
             .files
             .iter()
@@ -1676,6 +1845,7 @@ mod tests {
 
         assert_eq!(applied.applied_files, 2);
         assert!(applied.changes.files.is_empty());
+        assert!(applied.changes.can_restore);
         assert!(applied.changes.granted, "apply keeps the thread grant");
         assert_eq!(
             std::fs::read_to_string(root.join("existing.md")).expect("read modification"),
@@ -1686,6 +1856,74 @@ mod tests {
                 .expect("read creation"),
             "---\ntype: note\n---\n# New\n"
         );
+    }
+
+    #[test]
+    fn restores_the_latest_apply_when_its_files_are_unchanged() {
+        let root = canonical_temp_dir("restore-checkpoint");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# Updated\n".to_string(),
+            )
+            .expect("stage modification");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("nested").join("new.md"),
+                "---\ntype: note\n---\n# New\n".to_string(),
+            )
+            .expect("stage creation");
+        let validation = stages.validate_staged("session-1").expect("validate");
+        stages
+            .apply_staged("session-1", &validation.revision)
+            .expect("apply");
+
+        let restored = stages
+            .restore_checkpoint("session-1")
+            .expect("restore checkpoint");
+        assert_eq!(restored.restored_files, 2);
+        assert!(!restored.changes.can_restore);
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read original"),
+            "---\ntype: note\n---\n# Existing\n"
+        );
+        assert!(!root.join("nested").join("new.md").exists());
+        assert!(!root.join("nested").exists());
+    }
+
+    #[test]
+    fn blocks_checkpoint_restore_after_an_applied_file_changes() {
+        let root = canonical_temp_dir("restore-stale");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# Updated\n".to_string(),
+            )
+            .expect("stage modification");
+        let validation = stages.validate_staged("session-1").expect("validate");
+        stages
+            .apply_staged("session-1", &validation.revision)
+            .expect("apply");
+        std::fs::write(
+            root.join("existing.md"),
+            "---\ntype: note\n---\n# Later edit\n",
+        )
+        .expect("later edit");
+
+        let error = stages
+            .restore_checkpoint("session-1")
+            .expect_err("changed file blocks restore");
+        assert!(error.contains("changed after apply"));
+        assert!(stages.summary("session-1").expect("summary").can_restore);
     }
 
     #[test]

@@ -860,6 +860,22 @@ describe("OKF Studio app", () => {
     );
     expect(screen.getByLabelText("Message the agent")).toHaveFocus();
 
+    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/valid.md");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Browser ACP staged: proposals/valid.md"))
+      .toBeInTheDocument();
+    await screen.findByRole("button", { name: "Send" });
+    await user.click(await screen.findByRole("button", { name: "Validate" }));
+    expect(await screen.findByRole("status", { name: "Staged validation result" }))
+      .toHaveTextContent("Validation passed");
+    await user.click(screen.getByRole("button", { name: "Apply changes" }));
+    expect(await screen.findByText("Applied 1 file to the bundle."))
+      .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    expect(await screen.findByText("Restored 1 file from the checkpoint."))
+      .toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
+
     await user.click(grantToggle);
     await vi.waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "false"));
 

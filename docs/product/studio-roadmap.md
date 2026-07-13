@@ -150,7 +150,8 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 - [x] Reduce ACP diff content into the staged change service; never present it as an applied Studio change.
 - [x] Validate the selected staged tree against the same OKF parser and validator used for the open bundle.
 - [x] Apply the exact validated revision as a rollback transaction.
-- [ ] Retain a durable, restorable checkpoint and recover interrupted transactions.
+- [x] Retain a guarded connection-lifetime checkpoint and restore the latest apply.
+- [ ] Persist checkpoints and recover transactions across process or machine interruption.
 - [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.
 - [ ] Require an enforcement-capable sandbox before unattended external-agent writes.
 

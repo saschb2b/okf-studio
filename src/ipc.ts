@@ -15,6 +15,7 @@ import type { AgentCatalogDocument } from "./agent/catalog.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
 import type {
   AgentConnectionEvent,
+  AgentCheckpointRestoreInfo,
   AgentConnectionInfo,
   AgentPermissionEvent,
   AgentLoadedSessionInfo,
@@ -90,7 +91,7 @@ const agentStageHandlers = new Set<AgentStageHandler>();
 type MockStagedFile = AgentStagedFileInfo & { content: string; hunkSelected: boolean };
 const mockStagedChanges = new Map<
   string,
-  { granted: boolean; files: MockStagedFile[] }
+  { granted: boolean; canRestore: boolean; files: MockStagedFile[] }
 >();
 const mockCancelledTurns = new Set<string>();
 const mockFailedOncePrompts = new Set<string>();
@@ -331,7 +332,7 @@ export async function loadAgentSession(
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
   // Mirrors Rust: a restored session never inherits a write grant or files.
-  mockStagedChanges.set(sessionId, { granted: false, files: [] });
+  mockStagedChanges.set(sessionId, { granted: false, canRestore: false, files: [] });
   const liveSession = mockAgentSessions.get(sessionId);
   if (liveSession?.profileId === connection.profileId &&
     liveSession.bundleRoot === bundleRoot) {
@@ -614,10 +615,14 @@ export async function discardAgentStagedChanges(
   return emitMockStage(connectionId, sessionId);
 }
 
-function mockStageState(sessionId: string): { granted: boolean; files: MockStagedFile[] } {
+function mockStageState(sessionId: string): {
+  granted: boolean;
+  canRestore: boolean;
+  files: MockStagedFile[];
+} {
   let state = mockStagedChanges.get(sessionId);
   if (!state) {
-    state = { granted: false, files: [] };
+    state = { granted: false, canRestore: false, files: [] };
     mockStagedChanges.set(sessionId, state);
   }
   return state;
@@ -628,6 +633,7 @@ function emitMockStage(connectionId: string, sessionId: string): AgentStagedChan
   const changes: AgentStagedChangesInfo = {
     sessionId,
     granted: state.granted,
+    canRestore: state.canRestore,
     files: state.files.map(({ path, bytes, kind }) => ({ path, bytes, kind })),
   };
   for (const handler of agentStageHandlers) handler({ connectionId, changes });
@@ -767,8 +773,35 @@ export async function applyAgentStagedChanges(
   const state = mockStageState(sessionId);
   const appliedFiles = state.files.filter((file) => file.hunkSelected).length;
   state.files = [];
+  state.canRestore = appliedFiles > 0;
   const changes = emitMockStage(connectionId, sessionId);
   return { sessionId, revision, appliedFiles, changes };
+}
+
+export async function restoreAgentStagedCheckpoint(
+  connectionId: string,
+  sessionId: string,
+): Promise<AgentCheckpointRestoreInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentCheckpointRestoreInfo>("restore_agent_staged_checkpoint", {
+      connectionId,
+      sessionId,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const state = mockStageState(sessionId);
+  if (!state.canRestore) {
+    throw new Error("There is no restorable checkpoint for this thread.");
+  }
+  if (state.files.length > 0) {
+    throw new Error("Discard or apply the current staged changes before restoring.");
+  }
+  state.canRestore = false;
+  const changes = emitMockStage(connectionId, sessionId);
+  return { sessionId, restoredFiles: 1, changes };
 }
 
 export async function discardAgentStagedFile(
@@ -803,7 +836,9 @@ function mockStageWrite(info: AgentTurnInfo, text: string): string | null {
     return "Bundle write denied: writes require the Allow edits in this thread grant.";
   }
   const path = text.slice("Stage:".length).trim() || "proposals/draft.md";
-  const content = `# Draft\n\nStaged by the browser mock for ${path}.`;
+  const content = path.endsWith("valid.md")
+    ? `---\ntype: note\n---\n# Draft\n\nStaged by the browser mock for ${path}.`
+    : `# Draft\n\nStaged by the browser mock for ${path}.`;
   const existing = state.files.find((file) => file.path === path);
   if (existing) {
     existing.content = `${existing.content}\n\nRevised.`;

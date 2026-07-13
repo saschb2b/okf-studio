@@ -143,6 +143,7 @@ export interface AgentStagedFileInfo {
 export interface AgentStagedChangesInfo {
   sessionId: string;
   granted: boolean;
+  canRestore: boolean;
   files: readonly AgentStagedFileInfo[];
 }
 
@@ -185,6 +186,12 @@ export interface AgentStagedApplyInfo {
   sessionId: string;
   revision: string;
   appliedFiles: number;
+  changes: AgentStagedChangesInfo;
+}
+
+export interface AgentCheckpointRestoreInfo {
+  sessionId: string;
+  restoredFiles: number;
   changes: AgentStagedChangesInfo;
 }
 

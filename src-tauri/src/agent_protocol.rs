@@ -27,8 +27,8 @@ use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 use crate::agent_stage::{
-    AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo, AgentStagedValidationInfo,
-    SessionStages, MAX_STAGED_FILES,
+    AgentCheckpointRestoreInfo, AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo,
+    AgentStagedValidationInfo, SessionStages, MAX_STAGED_FILES,
 };
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
@@ -666,6 +666,27 @@ pub async fn apply_staged_changes(
     let result = tokio::task::spawn_blocking(move || stages.apply_staged(&session_id, &revision))
         .await
         .map_err(|_| "Staged apply task did not complete.".to_string())??;
+    let _ = app.emit(
+        STAGE_EVENT,
+        AgentStageEvent {
+            connection_id: connection_id.to_string(),
+            changes: result.changes.clone(),
+        },
+    );
+    Ok(result)
+}
+
+pub async fn restore_staged_checkpoint(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+) -> Result<AgentCheckpointRestoreInfo, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let session_id = session_id.to_string();
+    let result = tokio::task::spawn_blocking(move || stages.restore_checkpoint(&session_id))
+        .await
+        .map_err(|_| "Checkpoint restore task did not complete.".to_string())??;
     let _ = app.emit(
         STAGE_EVENT,
         AgentStageEvent {

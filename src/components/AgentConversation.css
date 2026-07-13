@@ -1489,6 +1489,26 @@
   overflow-wrap: break-word;
 }
 
+.agent-composer__checkpoint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  color: var(--ok);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-composer__checkpoint span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-composer__checkpoint .btn {
+  flex: none;
+  min-height: 28px;
+}
+
 .agent-composer__error-row {
   display: flex;
   align-items: center;

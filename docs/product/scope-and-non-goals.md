@@ -1,26 +1,27 @@
 ---
 type: Reference
 title: Scope & Non-Goals
-description: What ships in v1, what is deferred, and what OKF Studio deliberately will not be.
+description: What OKF Studio ships now, what is deferred, and what it deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-11T04:45:00Z
+timestamp: 2026-07-13T18:51:16Z
 ---
 
-# v1 scope (the MVP)
+# Current scope
 
-The first release must deliver the full read loop end to end:
+Studio covers the complete local knowledge loop:
 
-- [Folder Autodetect](../features/folder-autodetect.md) — pick a folder, find all bundles in it.
-- [Bundle Switcher](../features/bundle-switcher.md) — switch between bundles in the folder and recently-opened bundles, from the top-left; also **Open from URL** to fetch a remote bundle (a GitHub repo tarball or a direct archive) into a local cache and read it offline like any folder.
-- [Graph View](../features/graph-view.md) — force-directed, type-colored, cross-linked.
-- [Concept Reader](../features/concept-reader.md) — rendered markdown, frontmatter, backlinks.
-- [Search & Filter](../features/search-and-filter.md) and [Navigation](../features/navigation.md).
-- [Validation](../features/validation.md) surfaced non-blockingly.
-- [Live Reload](../features/live-reload.md) on file changes.
-- Packaged installers for **Windows** (`.msi`/`.exe`) and **Ubuntu** (`.deb`/AppImage) — see [Build & Release](../architecture/build-and-release.md).
+- **Explore:** autodetect local bundles, open a GitHub or archive URL into a local cache, switch among bundles, render graph and hierarchy views, read concepts, search, navigate, validate, and live-reload.
+- **Connect:** run an external ACP agent, a custom local ACP command, or Studio Agent through Ollama, LM Studio, llama.cpp, or a compatible endpoint. External agents own their authentication; Studio-managed API keys stay in the operating-system credential store.
+- **Curate:** attach selected concepts, reader text, prior threads, local files, folders, pasted text, images where supported, or an explicit public HTTPS source. Context stays bounded and visible.
+- **Create and enhance:** use guided threads to create a fresh bundle from sources or enrich the active bundle. Proposals enter staging, validation, graph preview, destination selection, and reviewed apply rather than writing directly.
+- **Query and change:** run cited deep research or request a dataset change through ordinary inspectable threads with plans, tool activity, and exported Markdown.
+- **Ship:** packaged installers for Windows (`.msi`/`.exe`) and Ubuntu (`.deb`/AppImage); macOS builds from source. See [Build & Release](../architecture/build-and-release.md).
 
-# Later (post-v1)
+# Deferred
 
+- Enforcement-backed external-agent isolation profiles, including a tested Windows path, before unattended writes.
+- Cross-session permission rules after ACP supplies a stable tool identity that Studio can display and match.
+- Client-owned terminal or environment-variable authentication if ACP standardizes those methods.
 - Tag-browsing views and saved filters.
 - Export: the current graph as PNG/SVG, or the bundle as a static self-contained HTML.
 - "Cited by" graph focus mode and shortest-path-between-concepts.
@@ -32,7 +33,8 @@ The first release must deliver the full read loop end to end:
 
 - **Not an unreviewed editor.** Opening a bundle remains read-only. Studio authoring happens only through an explicit thread write grant, staged changes, conformance validation, diff review, and atomic apply. See [Agent System](../architecture/agent-system.md).
 - **Not a general markdown wiki.** It renders markdown, but it is organized around OKF concepts, types, and links — not arbitrary note-taking.
-- **Not a cloud / sync product.** No backend, no accounts, no telemetry. Software updates are **opt-in** (a user-initiated "Check for updates"), never silent or automatic. See [Design Principles](principles.md).
-- **Not a git client.** [Open-from-URL](../features/bundle-switcher.md) fetches a GitHub repo **tarball** or a direct archive — a one-shot download, read-only. It deliberately does **not** clone arbitrary git hosts: that would drag in libgit2 and invite pull/sync/branch flows the viewer has no business owning. Cloning is a local `git clone` away; the viewer just reads what's on disk.
+- **Not a cloud / sync product.** No Studio backend, account, telemetry, or bundle synchronization exists. Optional providers and remote sources are explicit connections, not a Studio cloud.
+- **Not a git client.** [Open-from-URL](../features/bundle-switcher.md) fetches a GitHub repo tarball or a direct archive as a one-shot download. It does not clone, pull, push, branch, or merge. Git metadata is protected from staged writes.
+- **Not a general autonomous computer operator.** Studio tools are closed and bundle-scoped. External ACP processes retain normal operating-system access until a verified isolation host exists, so they remain interactive and ineligible for unattended writes.
 - **Not a validator CLI.** It surfaces conformance in the UI, but the canonical checker remains the standalone `scripts/okf-validate.mjs`.
 - **Not tied to one bundle schema.** It must never assume a specific set of `type` values or domain.

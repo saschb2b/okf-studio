@@ -2,7 +2,7 @@
 
 * [Agent Panel](agent-panel.md) - Run parallel agent threads, attach OKF context, approve tools, and review proposed knowledge changes.
 
-One concept per user-facing capability. Together these define the v1 read loop (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
+One concept per user-facing capability. Together these define Studio's explore, create, curate, and query loop (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
 
 * [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.

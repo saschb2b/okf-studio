@@ -3,7 +3,7 @@ type: Feature
 title: Design-System Rendering
 description: Render an ODSF bundle's design artifacts — token swatches/specimens/scales, design status, and live HTML example previews — natively in the reader.
 tags: [feature, odsf, design-system, tokens, reader]
-timestamp: 2026-06-30T19:00:00Z
+timestamp: 2026-07-13T18:51:16Z
 ---
 
 # What it does
@@ -43,7 +43,7 @@ A linked **stylesheet** (`.css`) has no rendered form, so it is shown as a **cod
 
 # What it deliberately is not
 
-- **Not an editor.** The viewer renders a design system; it does not author or modify tokens or assets (the [read-only principle](../product/principles.md)).
+- **Not a direct editor.** The rendering surface never mutates tokens or assets. An agent thread may propose reviewed Markdown changes through the ordinary staged-write flow, but it cannot alter a live preview or bypass validation and Apply (see the [read-only principle](../product/principles.md)).
 - **Not a component runtime.** Example assets are vanilla HTML/CSS the viewer renders as-is; there is no React/Vue/web-components execution, matching ODSF's own non-goals.
 - **Not ODSF-exclusive.** The same machinery renders tokens/examples on any OKF bundle that happens to carry them; ODSF is just the profile that standardizes the shape.
 

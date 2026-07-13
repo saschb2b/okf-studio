@@ -1,6 +1,6 @@
 # OKF Studio
 
-A cross-platform **desktop workspace** (Windows + Ubuntu, macOS for free) that autodetects the OKF bundles in a folder, renders their connected concepts as a graph and reader, and lets the user connect an ACP agent to research the active bundle with explicit context. Built with **Tauri 2.0** — a Rust core plus the system webview.
+A cross-platform **desktop workspace** (Windows + Ubuntu, macOS for free) that autodetects OKF bundles, renders their connected concepts as a graph and reader, and lets the user connect an external ACP agent or Studio Agent to create, curate, and query knowledge through explicit context and reviewed writes. Built with **Tauri 2.0** — a Rust core plus the system webview.
 
 ## How it's put together
 
@@ -117,6 +117,6 @@ When you add or change a feature, decision, or flow, update the bundle **in the 
 ## Conventions
 
 - **Rust owns the filesystem; the frontend owns rendering.** The webview gets no direct fs/network access — only [commands/events](docs/architecture/ipc-and-security.md).
-- **Read-only folder opening and explicit external activity** (see [principles](docs/product/principles.md)). Opening an untrusted bundle must be safe. Agent processes and network requests start only from a user action, and bundle writes remain disabled until reviewed-write grants ship.
+- **Read-only folder opening and explicit external activity** (see [principles](docs/product/principles.md)). Opening an untrusted bundle must be safe. Agent processes and network requests start only from a named user action. Bundle writes require an explicit thread grant, staged revision, validation, review, and Apply.
 - **Tolerant consumer:** never refuse a bundle for soft issues (missing fields, unknown `type`, broken links, missing `index.md`); surface them via [Validation](docs/features/validation.md) instead.
-- **Capabilities stay least-privilege** (`src-tauri/capabilities/`): read-only `fs` scoped to the chosen folder, dialog open, store. Network only where a principle-level exception is recorded (updater, explicit open-from-URL fetch).
+- **Capabilities stay least-privilege** (`src-tauri/capabilities/`): the webview receives typed commands rather than direct filesystem or provider access. Rust owns explicit updater, remote-bundle, source-fetch, installer, ACP, and configured-model network paths; adding another path requires a principle-level decision and a bounded user action.

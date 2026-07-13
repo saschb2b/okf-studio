@@ -500,8 +500,9 @@ fn cancel_agent_install(
 
 /// Fetch a remote bundle (a GitHub repo tarball or a direct archive URL) into a
 /// local cache directory and return that directory's path, which the frontend
-/// then opens like any picked folder. The only non-updater network path, and it
-/// runs only on an explicit user action. Blocking I/O runs off the UI thread.
+/// then opens like any picked folder. It runs only on an explicit user action;
+/// other network paths have separate provider, install, update, or source APIs.
+/// Blocking I/O runs off the UI thread.
 /// See `remote.rs` and docs/architecture/ipc-and-security.md.
 #[tauri::command]
 async fn fetch_remote_bundle(

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "OKF Studio least-privilege capabilities: dialog (folder picker), store (settings/recent), opener (resource URLs in the OS browser), and an opt-in updater (a user-initiated 'Check for updates' — the only network path, never automatic). No webview filesystem access — the Rust core does all reads. 'pop-*' covers the pop-out reader windows (docs/proposals/multi-view.md), which run the same app and need the same window chrome permissions; create-webview-window lets a tab undock into one.",
+  "description": "OKF Studio webview capabilities: dialog, store, opener, an opt-in updater with restart, window controls, and pop-out creation. No webview filesystem or general network API is granted; Rust owns explicit bundle, provider, source, installer, and agent operations. 'pop-*' covers reader windows with the same surface and no extra plugin grants.",
   "windows": ["main", "pop-*"],
   "permissions": [
     "core:default",

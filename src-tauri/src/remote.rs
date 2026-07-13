@@ -1,13 +1,14 @@
 //! Fetch a remote OKF bundle into a local cache directory, which the frontend
 //! then opens exactly like a picked folder (scan → read → watch → recents).
 //!
-//! Deliberately narrow, to stay a *reader*: a GitHub repo (downloaded as a
+//! Deliberately narrow: a GitHub repo (downloaded as a
 //! tarball via GitHub's own archive endpoint — no git binary, no clone/pull/sync
 //! surface) or a direct archive URL (`.tar.gz`/`.tgz`/`.tar`/`.zip`). Cloning
 //! arbitrary git hosts is out of scope; that's a local `git clone` away.
 //!
-//! This is the app's only non-updater network path, and it runs *only* when the
-//! user asks (the Open-from-URL dialog / an example card / Refresh-from-source).
+//! This Rust-owned path runs only when the user asks through Open from URL, an
+//! example card, or Refresh from source. Other network paths have their own
+//! explicit provider, installation, update, or source actions.
 //! Guards: https-only, a size cap, request timeouts, and archive extraction that
 //! refuses any entry escaping the destination (no zip-slip / `../` traversal).
 

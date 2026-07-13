@@ -103,6 +103,10 @@ describe("OKF Studio app", () => {
     expect(installButtons).toHaveLength(2);
     expect(installButtons[0]).toBeEnabled();
     expect(screen.getAllByText(/managed Node v24\.11\.0/i)).toHaveLength(2);
+    const hostSummary = await screen.findByText(/Restricted agent host:/);
+    await user.click(hostSummary);
+    expect(screen.getByText(/no verified confinement backend for this platform/i))
+      .toBeInTheDocument();
   });
 
   it("switches between live agent connections without interrupting their threads", async () => {
@@ -1618,6 +1622,29 @@ describe("OKF Studio app", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Catalog unavailable");
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("retries a failed restricted-host check without blocking the catalog", async () => {
+    vi.spyOn(ipc, "agentSecurityHostStatus").mockRejectedValueOnce(new Error("Probe failed"));
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+
+    expect(await screen.findByRole("heading", { name: "Claude Agent" })).toBeInTheDocument();
+    const hostSummary = await screen.findByText("Restricted agent host: Check failed");
+    await user.click(hostSummary);
+    const hostDetails = hostSummary.closest("details");
+    if (!hostDetails) throw new Error("Restricted host disclosure was not rendered.");
+    expect(within(hostDetails).getByRole("alert")).toHaveTextContent(
+      "Studio could not check the local confinement backend.",
+    );
+    await user.click(within(hostDetails).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(within(hostDetails).getByText(/Restricted agent host:/))
+        .not.toHaveTextContent("Check failed");
+    });
   });
 
   it("moves focus into and out of the agent panel with its shortcut", async () => {

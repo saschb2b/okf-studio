@@ -1,11 +1,12 @@
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { catalogEntries, type AgentCatalogEntry } from "../agent/catalog.ts";
-import type { AgentConnectionInfo } from "../agent/connection.ts";
+import type { AgentConnectionInfo, AgentSecurityHostStatus } from "../agent/connection.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
 import type { LocalModelProfile, LocalModelProfileInput } from "../agent/local.ts";
 import {
   agentCatalog,
+  agentSecurityHostStatus,
   customAgents,
   localModelProfiles,
   removeCustomAgent,
@@ -28,6 +29,11 @@ type CatalogState =
     }
   | { status: "error"; message: string };
 
+type SecurityHostState =
+  | { status: "loading" }
+  | { status: "ready"; value: AgentSecurityHostStatus }
+  | { status: "error" };
+
 async function loadCatalog(): Promise<CatalogState> {
   try {
     const [document, customProfiles, localProfiles] = await Promise.all([
@@ -44,6 +50,81 @@ async function loadCatalog(): Promise<CatalogState> {
   }
 }
 
+async function loadSecurityHost(): Promise<SecurityHostState> {
+  try {
+    return { status: "ready", value: await agentSecurityHostStatus() };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+function securityHostCopy(status: AgentSecurityHostStatus): {
+  summary: string;
+  detail: string;
+} {
+  if (status.launchProfileAvailable) {
+    return {
+      summary: "Restricted profile available",
+      detail: "Studio can launch an external agent through the verified host on this platform.",
+    };
+  }
+  switch (status.state) {
+    case "ready":
+      return {
+        summary: "Linux backend ready; profile disabled",
+        detail: "System Bubblewrap passed Studio's no-network namespace probe. Restricted connections remain disabled until the launcher binds this backend to the complete profile.",
+      };
+    case "not-found":
+      return {
+        summary: "Bubblewrap not found",
+        detail: "Install Bubblewrap from the Linux distribution's package manager. Studio does not download or substitute a sandbox executable.",
+      };
+    case "setuid-rejected":
+      return {
+        summary: "Setuid Bubblewrap rejected",
+        detail: "Studio requires a non-setuid system Bubblewrap binary and will not run the privileged variant.",
+      };
+    case "untrusted-binary":
+      return {
+        summary: "Bubblewrap binary rejected",
+        detail: "The discovered binary is not root-owned, is writable by another account, carries file capabilities, or is not executable by ordinary users.",
+      };
+    case "probe-failed":
+      return {
+        summary: "Bubblewrap probe failed",
+        detail: "The binary could not create the required mount, network, IPC, PID, and UTS namespaces within three seconds. Studio will not fall back to an unrestricted launch.",
+      };
+    case "unsupported-platform":
+      if (status.platform === "windows") {
+        return {
+          summary: "No native Windows restricted host",
+          detail: "A Windows Job Object controls process lifetime only. WSL plus Bubblewrap is not integrated, so restricted external-agent profiles remain unavailable.",
+        };
+      }
+      if (status.platform === "macos") {
+        return {
+          summary: "macOS restricted host not implemented",
+          detail: "Studio has not integrated or verified a Seatbelt profile for external ACP processes.",
+        };
+      }
+      return {
+        summary: "Restricted host unsupported",
+        detail: "Studio has no verified confinement backend for this platform.",
+      };
+  }
+}
+
+function securityHostSummary(state: SecurityHostState): string {
+  switch (state.status) {
+    case "loading":
+      return "Checking";
+    case "error":
+      return "Check failed";
+    case "ready":
+      return securityHostCopy(state.value).summary;
+  }
+}
+
 export function AgentConnectionCatalog({
   onBack,
   onConnectionAvailable,
@@ -54,16 +135,23 @@ export function AgentConnectionCatalog({
   onConnected: (connection: AgentConnectionInfo) => void;
 }) {
   const [state, setState] = useState<CatalogState>({ status: "loading" });
+  const [securityHost, setSecurityHost] = useState<SecurityHostState>({ status: "loading" });
   const [localFormOpen, setLocalFormOpen] = useState(false);
   const requestVersion = useRef(0);
+  const hostRequestVersion = useRef(0);
 
   useEffect(() => {
     const version = ++requestVersion.current;
     void loadCatalog().then((next) => {
       if (requestVersion.current === version) setState(next);
     });
+    const hostVersion = ++hostRequestVersion.current;
+    void loadSecurityHost().then((next) => {
+      if (hostRequestVersion.current === hostVersion) setSecurityHost(next);
+    });
     return () => {
       requestVersion.current += 1;
+      hostRequestVersion.current += 1;
     };
   }, []);
 
@@ -72,6 +160,14 @@ export function AgentConnectionCatalog({
     const version = ++requestVersion.current;
     void loadCatalog().then((next) => {
       if (requestVersion.current === version) setState(next);
+    });
+  }
+
+  function retrySecurityHost() {
+    setSecurityHost({ status: "loading" });
+    const version = ++hostRequestVersion.current;
+    void loadSecurityHost().then((next) => {
+      if (hostRequestVersion.current === version) setSecurityHost(next);
     });
   }
 
@@ -181,6 +277,21 @@ export function AgentConnectionCatalog({
             onProfileRemove={removeProfile}
             onConnected={onConnectionAvailable}
           />
+          <details className="agent-catalog__security-host">
+            <summary>Restricted agent host: {securityHostSummary(securityHost)}</summary>
+            {securityHost.status === "loading" && (
+              <p role="status">Checking the local confinement backend without starting an agent.</p>
+            )}
+            {securityHost.status === "error" && (
+              <div>
+                <p role="alert">Studio could not check the local confinement backend.</p>
+                <button type="button" className="btn" onClick={retrySecurityHost}>Retry</button>
+              </div>
+            )}
+            {securityHost.status === "ready" && (
+              <p>{securityHostCopy(securityHost.value).detail}</p>
+            )}
+          </details>
           <p className="agent-catalog__notice">
             Browsing and saving do not start an agent. Installation, connection, and
             authentication each require a separate explicit action.

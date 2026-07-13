@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-13T20:55:00Z
+timestamp: 2026-07-13T21:19:01Z
 ---
 
 # Adopted patterns
@@ -45,7 +45,7 @@ timestamp: 2026-07-13T20:55:00Z
 
 Studio profiles describe effective resources instead of a command prefix or provider promise. The current native-mediated and external-interactive profiles make the shipped boundaries visible but do not unlock unattended work. A later enforced external profile must fail closed when its platform host cannot start or prove the declared policy; it must not follow Zed's native-tool fallback to an unsandboxed process because the external process itself is the trust boundary.
 
-The first viable Linux host is a preflight-tested system Bubblewrap binary with a complete Studio-owned namespace and mount policy. Bubblewrap is a low-level construction tool, not a policy by itself, and Ubuntu AppArmor can distinguish the system path from a copied or vendored binary. macOS requires a separately tested Seatbelt profile. Windows may offer WSL plus Bubblewrap as an opt-in profile, but a native Job Object remains lifecycle ownership only. Authentication bootstrap network access must be separate from the work profile so signing in does not silently turn a restricted thread into a full-network one.
+Studio selected system Bubblewrap for the first Linux backend. The initial preflight is stricter than Zed's documented non-setuid requirement: it also requires a canonical root-owned binary with no file capabilities, no group or world write access, and ordinary read and execute access. It then proves that the binary can create the namespace set needed for the planned no-network host within a deadline. Passing this check does not enable a launch profile. Bubblewrap remains a low-level construction tool, so the later launcher must supply and verify the complete mount and protected-path policy. Ubuntu AppArmor can distinguish the system path from a copied or vendored binary. macOS requires a separately tested Seatbelt profile. Windows may offer WSL plus Bubblewrap as an opt-in profile, but a native Job Object remains lifecycle ownership only. Authentication bootstrap network access must be separate from the work profile so signing in does not silently turn a restricted thread into a full-network one.
 
 # Citations
 

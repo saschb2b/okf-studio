@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-13T20:55:00Z
+timestamp: 2026-07-13T21:19:01Z
 ---
 
 # Entry and first open
@@ -17,6 +17,8 @@ First open makes no account or network request. It explains three paths and offe
 - **Custom/local agent:** an ACP command with explicit executable, arguments, and environment names.
 
 The connection catalog distinguishes external ACP agents from Studio-managed runtimes and lists each path's credential owner. Claude Agent and Codex are the featured ACP choices. The Studio model path opens endpoint setup for Ollama, LM Studio, llama.cpp, and a custom OpenAI-compatible service. The custom service may use an API key; the local presets remain credential-free. A bundled, versioned manifest supplies the choices through Rust IPC on desktop and the same data in browser development. Loading and retryable catalog errors have explicit states.
+
+A compact **Restricted agent host** disclosure loads independently from the connection catalog. It reports a closed Rust-produced backend state and explains missing, rejected, failed, or unsupported hosts. Linux checks a trusted system Bubblewrap binary with a bounded no-network namespace probe. Native Windows reports no restricted host because its Job Object controls lifetime only; macOS reports that its external-process Seatbelt host is not implemented. A passed backend probe still says that the restricted launch profile is disabled. Failure never blocks ordinary catalog use, starts no agent, and has an explicit retry.
 
 Studio endpoint setup stores only a bounded display name, provider kind, HTTP or HTTPS base URL, and whether the profile has a credential. It rejects credentials embedded in URLs, queries, fragments, duplicate endpoints, invalid persisted records, and more than 32 profiles. An entered API key is not retained in React state. Rust accepts it only for the custom OpenAI-compatible provider, requires 1 to 4,096 visible ASCII characters, and requires HTTPS unless the host is literal localhost or a loopback IP. **Test connection** is a separate explicit network action. It performs one bounded model-list request with environment proxies and redirects disabled, sends no prompt or bundle content, and returns at most 256 bounded model IDs. If supplied, the key is sent as a bearer credential only to that endpoint. Ollama uses its `/api/tags` shape; LM Studio, llama.cpp, and custom compatible services use `/v1/models`. An empty list still distinguishes a reachable server from a failed connection. Saving a tested profile moves the key into the operating-system credential store but does not start a model or create an agent session.
 

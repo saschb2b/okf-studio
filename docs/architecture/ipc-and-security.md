@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-13T20:50:00Z
+timestamp: 2026-07-13T21:19:01Z
 ---
 
 # Command & event surface
@@ -15,6 +15,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `pick_bundle_folder()` / `revoke_bundle_grant(folder)` | Open the Rust-owned native folder dialog and register its canonical result, or remove one exact remembered scope. The frontend cannot add a grant. |
 | `scan_bundles(folder, max_depth)` / `read_bundle(root)` | Require an exact Rust folder grant, register the roots detected below it for this run, then parse only an exact detected root into a full [`Bundle`](data-model.md). |
 | `agent_catalog()` | Read the bundled, versioned agent catalog without network access or process startup. |
+| `agent_security_host_status()` | Preflight the local external-agent confinement backend without starting an agent. It returns only closed platform, backend, readiness, and launch-profile availability values. A ready backend does not count as live launcher evidence. |
 | `custom_agents()` / `save_custom_agent(input)` / `remove_custom_agent(profile_id)` | List, validate, persist, or remove bounded custom ACP argv profiles. Removal disconnects the profile first. Environment values never cross this surface. |
 | `local_model_profiles()` / `save_local_model_profile(input)` / `remove_local_model_profile(profile_id)` | Manage bounded Studio Agent endpoint metadata and its separate operating-system credential entry. Secrets never return to the webview. |
 | `test_local_model_endpoint(input)` / `test_saved_local_model_endpoint(profile_id)` | Perform one explicit bounded model-list probe with proxies and redirects disabled. No prompt or bundle content is sent. |

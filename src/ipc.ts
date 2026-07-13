@@ -22,6 +22,7 @@ import type {
   AgentConnectionEvent,
   AgentCheckpointRestoreInfo,
   AgentConnectionInfo,
+  AgentSecurityHostStatus,
   AgentSecurityScopeInfo,
   AgentPermissionEvent,
   AgentLoadedSessionInfo,
@@ -80,6 +81,26 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
   if (!isTauri()) return catalog as AgentCatalogDocument;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentCatalogDocument>("agent_catalog");
+}
+
+function browserSecurityPlatform(): AgentSecurityHostStatus["platform"] {
+  if (navigator.userAgent.includes("Windows")) return "windows";
+  if (navigator.userAgent.includes("Mac")) return "macos";
+  if (navigator.userAgent.includes("Linux")) return "linux";
+  return "other";
+}
+
+export async function agentSecurityHostStatus(): Promise<AgentSecurityHostStatus> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSecurityHostStatus>("agent_security_host_status");
+  }
+  return {
+    platform: browserSecurityPlatform(),
+    backend: null,
+    state: "unsupported-platform",
+    launchProfileAvailable: false,
+  };
 }
 
 let mockCustomAgents: CustomAgentProfile[] = [];

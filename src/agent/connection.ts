@@ -41,6 +41,19 @@ export interface AgentSecurityProfileInfo {
   unattendedEligible: boolean;
 }
 
+export interface AgentSecurityHostStatus {
+  platform: "linux" | "macos" | "windows" | "other";
+  backend: "bubblewrap" | null;
+  state:
+    | "ready"
+    | "unsupported-platform"
+    | "not-found"
+    | "setuid-rejected"
+    | "untrusted-binary"
+    | "probe-failed";
+  launchProfileAvailable: boolean;
+}
+
 export interface AgentConnectionInfo {
   connectionId: string;
   profileId: string;

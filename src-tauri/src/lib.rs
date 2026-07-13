@@ -15,6 +15,7 @@ mod agent_pdf;
 mod agent_process;
 mod agent_protocol;
 mod agent_runtime;
+mod agent_sandbox;
 mod agent_sources;
 mod agent_stage;
 mod agent_studio;
@@ -94,6 +95,11 @@ fn read_bundle(
 #[tauri::command]
 fn agent_catalog() -> Result<agent_catalog::AgentCatalog, String> {
     agent_catalog::load()
+}
+
+#[tauri::command]
+async fn agent_security_host_status() -> agent_sandbox::AgentSecurityHostStatus {
+    agent_sandbox::status().await
 }
 
 #[tauri::command]
@@ -762,6 +768,7 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             agent_catalog,
+            agent_security_host_status,
             custom_agents,
             save_custom_agent,
             remove_custom_agent,

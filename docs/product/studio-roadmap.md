@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T20:55:00Z
+timestamp: 2026-07-13T21:19:01Z
 ---
 
 # Outcome
@@ -216,6 +216,8 @@ Gate: platform docs and tests state exactly what is contained on Windows, Linux,
 The remaining WP11 boxes stay open until their enforcement dependency exists. A command wrapper, provider self-report, or process-tree owner cannot unlock unattended mode.
 
 - [ ] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths, denies Git and credential paths below those mounts, and reports a closed network mode.
+  - [x] Select system Bubblewrap for the first Linux backend and preflight its ownership, mode, file capabilities, namespace creation, network isolation, parent-death handling, and deadline without enabling a launch profile.
+  - [ ] Launch an external ACP process through the proven backend with the complete mount and protected-path policy, then bind its live evidence to the connection profile.
 - [ ] Provide a Windows enforcement path. WSL plus Bubblewrap may be an opt-in profile, but Studio cannot assume WSL exists or describe a native Job Object as a filesystem or network sandbox. A Linux- or macOS-only first slice must remain visibly unavailable on Windows.
 - [x] Bind every isolation claim to launcher-produced evidence. Saved profile text and agent-advertised capabilities are descriptive input, never proof that containment is active.
 - [x] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. The initial native-mediated and external-interactive profiles both lock unattended work; the external baseline explicitly reports host network access instead of hiding it. A future restricted profile must model authentication bootstrap as a separate network exception.

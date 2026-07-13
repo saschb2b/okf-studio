@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-13T20:55:00Z
+timestamp: 2026-07-13T21:19:01Z
 ---
 
 # Decision
@@ -52,6 +52,8 @@ Bundle creation starts with a separate proposal boundary. Create and Enhance res
 An external process may bypass client filesystem methods. Client checks do not sandbox it. Until platform enforcement exists, external write mode remains interactive and carries a containment warning. The write-grant IPC requires a closed `interactive` or `unattended` mode. Rust rejects every granted `unattended` request for the current external ACP host because it has no enforcement-capable sandbox; a forged webview request cannot weaken that rule. Revocation remains available through either mode. A later sandboxed host must prove its enforcement state at this boundary before the unattended branch can open.
 
 Enforcement state must originate in the process launcher after the platform restriction is active. A saved wrapper command, profile label, agent capability, or provider-owned sandbox claim is not sufficient evidence. A qualifying host profile reports its readable mounts, writable roots, network policy, credential exposure, process lifetime, and stop conditions. It must protect Git metadata and credential paths even when they appear below an otherwise writable mount. Windows requires a tested enforcement path of its own; the current Job Object proves lifecycle ownership only. Any platform without a verified host remains interactive, and a failed verification or lost owner returns the connection to deny.
+
+The catalog runs a separate Rust-owned confinement-backend preflight without starting an agent. On Linux it searches absolute `PATH` entries for a canonical system Bubblewrap binary, then requires a regular root-owned file that is non-setuid, carries no Linux file capabilities, is not group- or world-writable, and is readable and executable by ordinary users. The three-second probe clears the environment and asks that exact binary to create read-only root, network, IPC, PID, and UTS namespaces with a new session and parent-death handling, then execute its own `--version` inside the namespace. All standard streams point to the null device. Missing, rejected, failed, and unsupported states are closed values. Windows reports that native Job Objects provide lifecycle control only; macOS remains unsupported until a Seatbelt policy is implemented and tested. A passing preflight sets backend readiness while `launchProfileAvailable` remains false. It is diagnostic input, never launcher evidence, and cannot select a restricted profile or unlock unattended work.
 
 Permission precedence is: non-overridable security rules, deny, confirm, allow, thread grant, tool default, global default. Writes outside roots, Git metadata, credentials, and packaged instructions are built-in denials.
 

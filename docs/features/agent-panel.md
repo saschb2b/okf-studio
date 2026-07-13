@@ -1,9 +1,9 @@
 ---
 type: Feature
 title: Agent Panel
-description: A docked workspace for connecting agents, attaching OKF context, approving tools, and reviewing knowledge changes.
+description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-13T00:00:00Z
+timestamp: 2026-07-13T16:58:07Z
 ---
 
 # Entry and first open
@@ -50,7 +50,9 @@ The divider accepts pointer dragging and keyboard resizing. `ArrowLeft` widens t
 
 Keyboard opening focuses the first useful control. Closing returns focus to the opener. Pointer opening does not steal focus until the user activates a panel control.
 
-When more than one agent connection is live, a compact strip above the conversation selects which agent is visible and offers a plus action for another connection. Each connection keeps one bundle-scoped conversation mounted, including its session, draft, active turn, pending permission, attachments, and staged review. Switching agents or opening the catalog therefore does not interrupt hidden work. Connection and session IDs still filter every lifecycle event, so one agent cannot update another agent's transcript. A terminated selected connection falls back to another live connection; the disconnected state returns only after the last one ends. The strip scrolls instead of compressing names below the 32-pixel control floor.
+When more than one agent connection is live, a compact strip above the conversation selects which agent is visible and offers a plus action for another connection. Each connection keeps its bundle-scoped conversations mounted, including their sessions, drafts, active turns, pending permissions, attachments, and staged reviews. Switching agents or opening the catalog therefore does not interrupt hidden work. Connection and session IDs still filter every lifecycle event, so one agent or session cannot update another thread's transcript. A terminated selected connection falls back to another live connection; the disconnected state returns only after the last one ends. The strip scrolls instead of compressing names below the 32-pixel control floor.
+
+A second compact strip owns the live threads for the selected connection. Its plus action starts a separate empty surface and selects it; each surface creates its own ACP session on first send, so one turn can run in each session at the same time while the one-turn-per-session rule remains intact. Studio keeps at most eight live surfaces per connection and scrolls their titles rather than shrinking their controls. Renames and first-prompt titles update the matching selector. Closing a surface requires confirmation, stays disabled during a live operation, revokes its write grant, discards its staged tree, and removes its in-memory transcript, draft, attachments, and permission UI without deleting agent-owned history. A failed cleanup leaves the surface open with a retryable error. At least one surface remains. Changing the active bundle resets these live surfaces, as the current bundle root scopes every session.
 
 # Thread anatomy
 
@@ -58,7 +60,7 @@ When more than one agent connection is live, a compact strip above the conversat
 - conversation: plans, messages, tools, permissions, citations, and errors;
 - change summary above the composer when edits are staged;
 - composer: attachments, `@` context, agent/model, capability status, send, queue, stop;
-- connection switcher for parallel work across live agents; later, a thread list within each connection.
+- connection and thread switchers for parallel work across live agents and sessions.
 
 Only advertised capabilities appear. Unsupported restore, model, retry, or logout actions are not implied. Usage remains absent until the agent reports it.
 
@@ -110,7 +112,7 @@ Opening a bundle grants no writes. **Allow edits in this thread** is an explicit
 
 When the agent pauses for ACP permission, an in-thread card shows its bounded human title and exactly the choices it advertised. The card never exposes raw tool arguments or arbitrary metadata. Choosing an option disables the card while the response is sent and leaves a retryable error in place if sending fails. If no reject choice was advertised, Studio adds **Cancel**, which returns ACP `cancelled` rather than inventing a choice. A request with a bounded title, declared tool kind, raw input, and locations can remember an **Allow once** or **Reject** decision for the exact same request in the live thread. Rust hashes those fields without sending them to the webview and automatically selects only a newly advertised once-choice with the matching direction. A changed title, kind, input, or location asks again. These rules remain in memory, reset when the session is created or loaded, and disappear on disconnect. Agent-advertised **Always** choices remain agent-owned and never create a Studio rule. **Stop** cancels every pending permission for that session before cancelling the turn. Switching to another live connection hides but does not detach the permission card from its owning transcript; changing or disconnecting that same agent stays disabled until its active turn ends.
 
-Agent responses render through the same sanitized Markdown pipeline as bundle concepts. DOMPurify removes unsafe HTML, scripts, event handlers, embedded frames, and remote media before it reaches the conversation. User messages stay literal text, so authored Markdown is never mistaken for agent output. Threads remain in memory, and opening a bundle still grants no write access. Multiple conversations on one connection, unattended profiles, and stronger OS containment remain in the [Studio roadmap](../product/studio-roadmap.md).
+Agent responses render through the same sanitized Markdown pipeline as bundle concepts. DOMPurify removes unsafe HTML, scripts, event handlers, embedded frames, and remote media before it reaches the conversation. User messages stay literal text, so authored Markdown is never mistaken for agent output. Live thread surfaces remain in memory, and opening a bundle still grants no write access. Unattended profiles and stronger OS containment remain in the [Studio roadmap](../product/studio-roadmap.md).
 
 After the thread contains a message, **Export** opens the native save dialog and writes the current transcript as Markdown. The editable thread title becomes the document heading and suggested filename. User messages are quoted, structured plans become task lists, tool titles and final states remain labelled, agent responses keep their Markdown, and cancellation or failure records stay labelled as turn status. A guided Deep research export is blocked until at least one agent response contains a `## Sources` bullet with a Markdown link, public URL, or bundle-relative `.md` path and a non-empty `## Inferences` section. A guided dataset-change export is blocked until an agent response contains a non-empty `## Change Plan` list and an `## Affected Concepts` bullet naming a bundle-relative `.md` path. Studio reports the missing structure and asks for a revision. It checks document structure, not the truth, completeness, or feasibility of the proposal. Ordinary thread exports are unchanged. The action is disabled while a turn or export is active. Cancelling the dialog has no effect; a save failure remains visible beside the action and can be retried. The export is a snapshot of current memory, not thread history or persistence, and it grants no write access to the open bundle. Reviewed writes must reuse this dataset-change precondition before accepting a staged edit.
 

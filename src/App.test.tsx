@@ -128,6 +128,81 @@ describe("OKF Studio app", () => {
     }
   });
 
+  it("runs and switches between parallel threads on one agent connection", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Parallel Harness",
+      executable: "C:\\tools\\parallel.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id);
+
+    try {
+      const user = userEvent.setup();
+      renderApp();
+      await openFolder(user);
+      await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+
+      const firstConversation = screen.getByRole("region", { name: "New thread" });
+      await user.type(
+        within(firstConversation).getByLabelText("Message the agent"),
+        "Run a long investigation",
+      );
+      await user.click(within(firstConversation).getByRole("button", { name: "Send" }));
+      expect(await within(firstConversation).findByRole("button", { name: "Stop" }))
+        .toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", {
+        name: "Start another thread with Parallel Harness",
+      }));
+      expect(screen.getByRole("button", {
+        name: "Switch to Thread 1: Run a long investigation",
+      })).toHaveAttribute("aria-pressed", "false");
+      const secondThreadTab = screen.getByRole("button", {
+        name: "Switch to Thread 2: New thread",
+      });
+      expect(secondThreadTab).toHaveAttribute("aria-pressed", "true");
+
+      const secondConversation = screen.getByRole("region", { name: "New thread" });
+      await user.type(
+        within(secondConversation).getByLabelText("Message the agent"),
+        "Review the evidence in parallel",
+      );
+      await user.click(within(secondConversation).getByRole("button", { name: "Send" }));
+      expect(await within(secondConversation).findByText(
+        "Browser ACP received: Review the evidence in parallel",
+      )).toBeInTheDocument();
+
+      const firstThreadTab = screen.getByRole("button", {
+        name: "Switch to Thread 1: Run a long investigation",
+      });
+      await user.click(firstThreadTab);
+      expect(within(firstConversation).getByRole("button", { name: "Stop" }))
+        .toBeInTheDocument();
+      expect(within(firstConversation).getByRole("button", {
+        name: "Close thread surface",
+      })).toBeDisabled();
+
+      await user.click(screen.getByRole("button", {
+        name: "Switch to Thread 2: Review the evidence in parallel",
+      }));
+      await user.click(within(secondConversation).getByRole("button", {
+        name: "Close thread surface",
+      }));
+      await user.click(screen.getByRole("button", { name: "Close thread" }));
+      expect(screen.queryByRole("button", {
+        name: "Switch to Thread 2: Review the evidence in parallel",
+      })).not.toBeInTheDocument();
+      expect(firstThreadTab).toHaveFocus();
+
+      await user.click(within(firstConversation).getByRole("button", { name: "Stop" }));
+      expect(await within(firstConversation).findByText("Turn cancelled.")).toBeInTheDocument();
+    } finally {
+      await ipc.disconnectAgent(connection.connectionId);
+      await ipc.removeCustomAgent(profile.id);
+    }
+  });
+
   it("installs an agent without starting or connecting it", async () => {
     const user = userEvent.setup();
     renderApp();

@@ -69,7 +69,7 @@ import type { Issue } from "../types.ts";
 import { BundleProposalPreview } from "./BundleProposalPreview.tsx";
 import "./AgentConversation.css";
 
-interface AgentConversationProps {
+export interface AgentConversationProps {
   connection: AgentConnectionInfo;
   bundleRoot: string | null;
   bundleName: string | null;
@@ -80,6 +80,9 @@ interface AgentConversationProps {
   onChangeAgent: () => void;
   onConnectionEnd: (event: AgentConnectionEvent) => void;
   onOpenFolder: () => Promise<void>;
+  threadSurfaceCount: number;
+  onThreadTitleChange: (title: string) => void;
+  onCloseThreadSurface: () => void;
 }
 
 type StagedValidationState =
@@ -347,6 +350,87 @@ function ThreadTitleEditor({ title, onTitleChange }: ThreadTitleEditorProps) {
   );
 }
 
+function ThreadSurfaceClose({
+  disabled,
+  onClose,
+}: {
+  disabled: boolean;
+  onClose: () => Promise<void>;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [closeState, setCloseState] = useState<"idle" | "closing">("idle");
+  const [closeError, setCloseError] = useState<string | null>(null);
+
+  async function closeThread() {
+    setCloseState("closing");
+    setCloseError(null);
+    try {
+      await onClose();
+    } catch (error: unknown) {
+      setCloseError(errorMessage(error));
+      setCloseState("idle");
+    }
+  }
+
+  return (
+    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Popover.Trigger
+        render={
+          <button
+            type="button"
+            className="btn ghost icon"
+            aria-label="Close thread surface"
+            title={disabled
+              ? "Finish the current thread operation before closing it."
+              : "Close this live thread surface"}
+            disabled={disabled}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        }
+      />
+      <Popover.Portal>
+        <Popover.Positioner
+          className="ui-popover-positioner"
+          side="bottom"
+          align="end"
+          sideOffset={6}
+        >
+          <Popover.Popup
+            className="ui-popover agent-thread-close"
+            aria-label="Close thread surface"
+          >
+            <strong>Close this live thread?</strong>
+            <p>
+              Its in-memory transcript, draft, and staged review will be removed.
+              Agent-owned history is not deleted.
+            </p>
+            {closeError && <p className="agent-thread-close__error" role="alert">{closeError}</p>}
+            <div className="agent-thread-close__actions">
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={closeState === "closing"}
+                onClick={() => setIsOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn danger"
+                disabled={closeState === "closing"}
+                onClick={() => void closeThread()}
+              >
+                {closeState === "closing" ? "Closing..." : "Close thread"}
+              </button>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 export function AgentConversation({
   connection,
   bundleRoot,
@@ -358,6 +442,9 @@ export function AgentConversation({
   onChangeAgent,
   onConnectionEnd,
   onOpenFolder,
+  threadSurfaceCount,
+  onThreadTitleChange,
+  onCloseThreadSurface,
 }: AgentConversationProps) {
   const conversationTitleId = useId();
   const historyTitleId = `${conversationTitleId}-history`;
@@ -567,9 +654,10 @@ export function AgentConversation({
           ? deriveThreadTitle(text, THREAD_STARTERS)
           : threadTitle.value;
         const nextWorkflow = startsNewSession ? workflowForPrompt(text) : threadWorkflow;
-        setThreadTitle((current) => current.source === "default"
-          ? { source: "derived", value: nextTitle }
-          : current);
+        if (threadTitle.source === "default") {
+          setThreadTitle({ source: "derived", value: nextTitle });
+          onThreadTitleChange(nextTitle);
+        }
         setThreadWorkflow(nextWorkflow);
         void persistThreadMetadata(session, nextTitle, false, nextWorkflow);
         setExportState({ status: "idle" });
@@ -1100,6 +1188,11 @@ export function AgentConversation({
       }
     }
   }
+  const threadSurfaceBusy = isSubmitting || activeTurn !== null || isCancelling ||
+    authentication.status === "authenticating" || exportState.status === "exporting" ||
+    restoringSessionId !== null || isApplyingStage || isCreatingBundle ||
+    isRestoringCheckpoint || isSettingGrant || isPreparingGeneration ||
+    rejectingStagedPath !== null || selectingHunk !== null;
 
   function selectStarter(prompt: string) {
     if (!promptRef.current) return;
@@ -1237,6 +1330,7 @@ export function AgentConversation({
       text: message.text,
     })));
     setThreadTitle({ source: "custom", value: title });
+    onThreadTitleChange(title);
     setThreadWorkflow(workflow);
     setPendingPermissions([]);
     setUsage(null);
@@ -1322,6 +1416,7 @@ export function AgentConversation({
 
   function changeThreadTitle(value: string) {
     setThreadTitle({ source: "custom", value });
+    onThreadTitleChange(value);
     const session = sessionRef.current;
     if (session) void persistThreadMetadata(session, value);
   }
@@ -1344,6 +1439,7 @@ export function AgentConversation({
       failedTurnsRef.current.clear();
       acceptedDraftsRef.current.clear();
       setThreadTitle({ source: "default", value: "New thread" });
+      onThreadTitleChange("New thread");
       setThreadWorkflow(null);
       setMessages([]);
       setExportState({ status: "idle" });
@@ -1369,6 +1465,22 @@ export function AgentConversation({
     } catch {
       // persistThreadMetadata keeps its bounded error beside the toolbar actions.
     }
+  }
+
+  async function closeThreadSurface() {
+    const session = sessionRef.current;
+    if (session && writeGranted) {
+      await setAgentWriteGrant(
+        connection.connectionId,
+        session.sessionId,
+        false,
+        "interactive",
+      );
+    }
+    if (session && stagedFileCount > 0) {
+      await discardAgentStagedChanges(connection.connectionId, session.sessionId);
+    }
+    onCloseThreadSurface();
   }
 
   function retryAcceptedTurn(turnId: string) {
@@ -1478,6 +1590,12 @@ export function AgentConversation({
             >
               <ArchiveIcon aria-hidden="true" size={14} />
             </button>
+          )}
+          {threadSurfaceCount > 1 && (
+            <ThreadSurfaceClose
+              disabled={threadSurfaceBusy}
+              onClose={closeThreadSurface}
+            />
           )}
           <button
             type="button"

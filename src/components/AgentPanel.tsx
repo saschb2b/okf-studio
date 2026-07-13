@@ -8,6 +8,7 @@ import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import { focusAgentPanelOpener } from "../agentPanelFocus.ts";
 import { AgentConnectionCatalog } from "./AgentConnectionCatalog.tsx";
 import { AgentConversation } from "./AgentConversation.tsx";
+import type { AgentConversationProps } from "./AgentConversation.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import "./AgentPanel.css";
 
@@ -155,29 +156,24 @@ export function AgentPanel() {
                 </button>
               </nav>
               {connections.map((connection) => (
-                <div
-                  className="agent-panel__conversation"
-                  key={connection.connectionId}
+                <ConnectionThreads
+                  key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
+                  connection={connection}
+                  bundleRoot={state.activeRoot}
+                  bundleName={state.bundle?.name ?? null}
+                  activeConcept={activeConcept}
+                  onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
+                  concepts={state.bundle?.concepts ?? []}
+                  issues={state.bundle?.issues ?? []}
+                  onChangeAgent={openCatalog}
+                  onConnectionEnd={() => {
+                    setSelectedConnectionId((current) =>
+                      current === connection.connectionId ? null : current,
+                    );
+                  }}
+                  onOpenFolder={() => actions.openFolder()}
                   hidden={connection.connectionId !== selectedConnection?.connectionId}
-                >
-                  <AgentConversation
-                    key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
-                    connection={connection}
-                    bundleRoot={state.activeRoot}
-                    bundleName={state.bundle?.name ?? null}
-                    activeConcept={activeConcept}
-                    onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
-                    concepts={state.bundle?.concepts ?? []}
-                    issues={state.bundle?.issues ?? []}
-                    onChangeAgent={openCatalog}
-                    onConnectionEnd={() => {
-                      setSelectedConnectionId((current) =>
-                        current === connection.connectionId ? null : current,
-                      );
-                    }}
-                    onOpenFolder={() => actions.openFolder()}
-                  />
-                </div>
+                />
               ))}
             </div>
           )}
@@ -207,13 +203,133 @@ export function AgentPanel() {
   );
 }
 
+const MAX_THREAD_SURFACES = 8;
+
+interface ThreadSurface {
+  id: string;
+  ordinal: number;
+  title: string;
+}
+
+type ConnectionThreadsProps = Omit<
+  AgentConversationProps,
+  "threadSurfaceCount" | "onThreadTitleChange" | "onCloseThreadSurface"
+> & {
+  hidden: boolean;
+};
+
+function ConnectionThreads({
+  connection,
+  hidden,
+  ...conversationProps
+}: ConnectionThreadsProps) {
+  const [surfaces, setSurfaces] = useState<ThreadSurface[]>(() => [newThreadSurface(1)]);
+  const [selectedSurfaceId, setSelectedSurfaceId] = useState(() => surfaces[0].id);
+  const threadNavRef = useRef<HTMLElement>(null);
+  const selectedSurface = surfaces.find((surface) => surface.id === selectedSurfaceId) ?? surfaces[0];
+  const connectionName = connectionLabel(connection);
+
+  function addThreadSurface() {
+    if (surfaces.length >= MAX_THREAD_SURFACES) return;
+    const ordinal = Math.max(...surfaces.map((surface) => surface.ordinal)) + 1;
+    const surface = newThreadSurface(ordinal);
+    setSurfaces((current) => [...current, surface]);
+    setSelectedSurfaceId(surface.id);
+    requestAnimationFrame(() => {
+      threadNavRef.current?.querySelector<HTMLElement>("[aria-pressed='true']")?.focus();
+    });
+  }
+
+  function closeThreadSurface(surfaceId: string) {
+    if (surfaces.length <= 1) return;
+    const remaining = surfaces.filter((surface) => surface.id !== surfaceId);
+    setSurfaces(remaining);
+    if (selectedSurfaceId === surfaceId) setSelectedSurfaceId(remaining[0].id);
+    requestAnimationFrame(() => {
+      threadNavRef.current?.querySelector<HTMLElement>("[aria-pressed='true']")?.focus();
+    });
+  }
+
+  function renameThreadSurface(surfaceId: string, title: string) {
+    setSurfaces((current) => current.map((surface) =>
+      surface.id === surfaceId ? { ...surface, title } : surface,
+    ));
+  }
+
+  return (
+    <div className="agent-panel__conversation" hidden={hidden}>
+      <nav
+        ref={threadNavRef}
+        className="agent-panel__threads"
+        aria-label={`${connectionName} threads`}
+      >
+        {surfaces.map((surface) => {
+          const selected = surface.id === selectedSurface.id;
+          const label = `Thread ${surface.ordinal}: ${surface.title}`;
+          return (
+            <button
+              type="button"
+              className="btn ghost agent-panel__thread"
+              key={surface.id}
+              aria-label={`Switch to ${label}`}
+              aria-pressed={selected}
+              title={label}
+              onClick={() => setSelectedSurfaceId(surface.id)}
+            >
+              <span className="agent-panel__thread-number" aria-hidden="true">
+                {surface.ordinal}
+              </span>
+              <span className="agent-panel__thread-label">{surface.title}</span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className="btn ghost agent-panel__thread agent-panel__thread--add"
+          aria-label={`Start another thread with ${connectionName}`}
+          title={surfaces.length >= MAX_THREAD_SURFACES
+            ? `Studio keeps at most ${MAX_THREAD_SURFACES} live threads per connection.`
+            : `Start another thread with ${connectionName}`}
+          disabled={surfaces.length >= MAX_THREAD_SURFACES}
+          onClick={addThreadSurface}
+        >
+          <Plus size={14} aria-hidden="true" />
+        </button>
+      </nav>
+      {surfaces.map((surface) => (
+        <div
+          className="agent-panel__thread-surface"
+          key={surface.id}
+          hidden={surface.id !== selectedSurface.id}
+        >
+          <AgentConversation
+            {...conversationProps}
+            connection={connection}
+            threadSurfaceCount={surfaces.length}
+            onThreadTitleChange={(title) => renameThreadSurface(surface.id, title)}
+            onCloseThreadSurface={() => closeThreadSurface(surface.id)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function newThreadSurface(ordinal: number): ThreadSurface {
+  return {
+    id: crypto.randomUUID(),
+    ordinal,
+    title: "New thread",
+  };
+}
+
 function connectionLabel(connection: AgentConnectionInfo): string {
   return connection.agent?.title ?? connection.agent?.name ?? "Agent";
 }
 
 function focusVisiblePanelContent(panel: HTMLElement | null): void {
   const visibleConversation = panel?.querySelector<HTMLElement>(
-    ".agent-panel__conversation:not([hidden]) [data-agent-initial-focus]",
+    ".agent-panel__conversation:not([hidden]) .agent-panel__thread-surface:not([hidden]) [data-agent-initial-focus]",
   );
   const emptyAction = panel?.querySelector<HTMLElement>(
     ".agent-panel__empty [data-agent-initial-focus]",

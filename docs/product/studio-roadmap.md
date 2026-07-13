@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T00:00:00Z
+timestamp: 2026-07-13T16:58:07Z
 ---
 
 # Outcome
@@ -196,9 +196,9 @@ Gate: end-to-end tests reach useful results with no hidden write or network acti
 - [ ] Support allow/deny once, thread grants, and narrow persistent rules.
   - [x] Reuse an explicit once-decision only for the exact same bounded request in one live thread.
   - [ ] Add cross-session rules after ACP exposes a stable tool identity and Studio can show their scope.
-- [ ] Add parallel threads only after single-thread cancellation, permissions, and transactions are reliable.
+- [x] Add parallel threads only after single-thread cancellation, permissions, and transactions are reliable.
   - [x] Keep one live bundle-scoped conversation per active connection mounted and switch without interrupting its turn.
-  - [ ] Extract conversation state so one connection can own multiple concurrent thread surfaces without weakening its one-turn-per-session rule.
+  - [x] Isolate each live conversation surface so one connection can own multiple concurrent sessions without weakening its one-turn-per-session rule.
 - [ ] Make unattended mode an explicit profile with visible scope and stop conditions.
 
 Gate: platform docs and tests state exactly what is contained on Windows, Linux, and macOS.

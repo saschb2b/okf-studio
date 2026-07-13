@@ -155,6 +155,34 @@
   padding: var(--space-12);
 }
 
+.agent-thread-close {
+  display: grid;
+  width: min(320px, calc(100vw - 2 * var(--space-16)));
+  gap: var(--space-8);
+  padding: var(--space-12);
+}
+
+.agent-thread-close strong,
+.agent-thread-close p {
+  margin: 0;
+}
+
+.agent-thread-close .agent-thread-close__error {
+  color: var(--error);
+}
+
+.agent-thread-close p {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-thread-close__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
 .agent-thread-title form,
 .agent-thread-title label {
   display: grid;

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
+import * as ipc from "./ipc.ts";
 
 // Automated accessibility gate (Microsoft "run axe checks in CI" best practice).
 // Renders the real app over the mock backend and runs axe on the result. Colour
@@ -71,6 +72,32 @@ describe("accessibility (axe-core)", () => {
     await user.selectOptions(screen.getByLabelText("Provider"), "open-ai-compatible");
     await screen.findByLabelText(/API key/);
     await expectNoViolations(container);
+  });
+
+  it("parallel agent threads and their close confirmation have no violations", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "A11y Harness",
+      executable: "C:\\tools\\a11y.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id);
+
+    try {
+      const user = userEvent.setup();
+      const { container } = renderApp();
+      await openBundle(user);
+      await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+      await user.click(screen.getByRole("button", {
+        name: "Start another thread with A11y Harness",
+      }));
+      await user.click(screen.getByRole("button", { name: "Close thread surface" }));
+      await screen.findByRole("button", { name: "Close thread" });
+      await expectNoViolations(container);
+    } finally {
+      await ipc.disconnectAgent(connection.connectionId);
+      await ipc.removeCustomAgent(profile.id);
+    }
   });
 
   it("the settings dialog has no violations", async () => {

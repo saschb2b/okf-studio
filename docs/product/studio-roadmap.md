@@ -170,10 +170,10 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Normalize CSV locally with strict records, original-file hashes, and row-range provenance.
 - [x] Normalize JSON locally with deterministic JSON Pointer provenance and original-file hashes.
 - [x] Show the proposed concepts, types, links, and indexes before generation.
-- [ ] Generate into staging, validate, preview the graph, then choose a destination.
+- [x] Generate into staging, validate, preview the graph, then choose a destination.
 - [ ] Reuse the pipeline to enrich bundles without silently overwriting authored facts.
 
-The current slice hands the newest reviewed proposal to the staged-write and validation flow after an explicit thread grant. Create uses an isolated fresh-bundle stage that cannot apply to the source bundle; Enhance uses the existing edit overlay. Validation now previews the graph parsed from the exact selected mirror. Destination choice remains before the generation package is complete.
+The generation package is complete. The newest reviewed proposal enters staged writes after an explicit thread grant. Create validates and previews an isolated fresh-bundle tree, then writes the exact reviewed revision into a new named folder below a parent the user chooses. Enhance keeps the existing edit overlay. Existing destination folders are never merged with or replaced.
 
 Gate: mixed, duplicate, malformed, offline, provenance, and deterministic-validation fixtures.
 

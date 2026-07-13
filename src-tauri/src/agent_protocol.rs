@@ -22,14 +22,15 @@ use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_dialog::DialogExt;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 use crate::agent_stage::{
-    AgentCheckpointRestoreInfo, AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo,
+    protected_bundle_path_reason, validate_bundle_directory_name, AgentCheckpointRestoreInfo,
+    AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo, AgentStagedCreateInfo,
     AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
-    protected_bundle_path_reason,
 };
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
@@ -702,6 +703,47 @@ pub async fn apply_staged_changes(
         },
     );
     Ok(result)
+}
+
+/// Ask for a parent folder, then atomically materialize the exact validated
+/// fresh-bundle revision below it. Cancelling the native picker changes
+/// nothing and returns no filesystem path to the webview.
+pub async fn create_staged_bundle(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+    revision: &str,
+    folder_name: &str,
+) -> Result<Option<AgentStagedCreateInfo>, String> {
+    let folder_name = validate_bundle_directory_name(folder_name)?;
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_title("Choose the parent folder for the new OKF bundle")
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+    let parent = selected.into_path().map_err(|_| {
+        "The selected destination folder is not available on this platform.".to_string()
+    })?;
+    let stages = connection_stages(state, connection_id)?;
+    let session_id = session_id.to_string();
+    let revision = revision.to_string();
+    let result = tokio::task::spawn_blocking(move || {
+        stages.create_staged_bundle(&session_id, &revision, &parent, &folder_name)
+    })
+    .await
+    .map_err(|_| "Fresh bundle creation task did not complete.".to_string())??;
+    let _ = app.emit(
+        STAGE_EVENT,
+        AgentStageEvent {
+            connection_id: connection_id.to_string(),
+            changes: result.changes.clone(),
+        },
+    );
+    Ok(Some(result))
 }
 
 pub async fn restore_staged_checkpoint(

@@ -28,6 +28,7 @@ const MAX_VALIDATION_BYTES: usize = 32 * 1024 * 1024;
 const MAX_VALIDATION_ISSUES: usize = 512;
 const MAX_PREVIEW_NODES: usize = 128;
 const MAX_PREVIEW_EDGES: usize = 512;
+const MAX_BUNDLE_DIRECTORY_NAME_CHARS: usize = 128;
 const CHECKPOINT_VERSION: u32 = 1;
 const MAX_CHECKPOINT_CONTENT_BYTES: usize = MAX_STAGED_TOTAL_BYTES * 2;
 const MAX_CHECKPOINT_BYTES: u64 = 100 * 1024 * 1024;
@@ -137,6 +138,16 @@ pub struct AgentStagedApplyInfo {
     pub session_id: String,
     pub revision: String,
     pub applied_files: usize,
+    pub changes: AgentStagedChangesInfo,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedCreateInfo {
+    pub session_id: String,
+    pub revision: String,
+    pub folder_name: String,
+    pub created_files: usize,
     pub changes: AgentStagedChangesInfo,
 }
 
@@ -649,6 +660,71 @@ impl SessionStages {
 
         let prepared = prepare_selected_stage(&bundle_root, &files, mode)?;
         validate_prepared(session_id, &bundle_root, &prepared, mode)
+    }
+
+    /// Materialize an exact, zero-error fresh-bundle revision into a new
+    /// directory below a user-selected parent. Files are first written to a
+    /// private sibling directory, then the complete directory is renamed into
+    /// place. An existing destination is never merged with or replaced.
+    pub fn create_staged_bundle(
+        &self,
+        session_id: &str,
+        expected_revision: &str,
+        selected_parent: &Path,
+        requested_name: &str,
+    ) -> Result<AgentStagedCreateInfo, String> {
+        let folder_name = validate_bundle_directory_name(requested_name)?;
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if stage.mode != AgentStageMode::Create {
+            return Err("Only a fresh bundle draft can create a new destination.".to_string());
+        }
+        if stage.files.is_empty() {
+            return Err("There are no staged changes to create.".to_string());
+        }
+
+        let parent = selected_parent
+            .canonicalize()
+            .map_err(|_| "The selected destination folder could not be resolved.".to_string())?;
+        if !parent.is_dir() {
+            return Err("Choose an existing destination folder.".to_string());
+        }
+        if parent.starts_with(&stage.bundle_root) {
+            return Err(
+                "Choose a destination outside the active bundle so the fresh draft stays isolated."
+                    .to_string(),
+            );
+        }
+
+        let prepared = prepare_selected_stage(&stage.bundle_root, &stage.files, stage.mode)?;
+        let revision = selected_stage_revision(&prepared);
+        if revision != expected_revision {
+            return Err("The staged draft changed. Validate it again before creating the bundle."
+                .to_string());
+        }
+        let validation = validate_prepared(session_id, &stage.bundle_root, &prepared, stage.mode)?;
+        if validation.errors > 0 {
+            return Err(format!(
+                "Bundle creation blocked: staged validation found {} error{}.",
+                validation.errors,
+                if validation.errors == 1 { "" } else { "s" }
+            ));
+        }
+
+        let created_files = materialize_fresh_bundle(&parent, &folder_name, &prepared)?;
+        stage.files.clear();
+        Ok(AgentStagedCreateInfo {
+            session_id: session_id.to_string(),
+            revision,
+            folder_name,
+            created_files,
+            changes: snapshot(session_id, stage),
+        })
     }
 
     /// Apply the exact zero-error staged revision the user validated. The
@@ -1329,6 +1405,105 @@ fn bounded_graph_label(value: &str) -> String {
         .filter(|character| !character.is_control())
         .take(256)
         .collect()
+}
+
+pub(crate) fn validate_bundle_directory_name(requested: &str) -> Result<String, String> {
+    if requested.is_empty()
+        || requested.trim() != requested
+        || requested.chars().count() > MAX_BUNDLE_DIRECTORY_NAME_CHARS
+        || requested == "."
+        || requested == ".."
+        || requested.ends_with('.')
+        || requested.chars().any(|character| {
+            character.is_control()
+                || matches!(character, '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*')
+        })
+    {
+        return Err(
+            "Use a folder name of 1 to 128 characters without path separators, control characters, surrounding spaces, or reserved punctuation."
+                .to_string(),
+        );
+    }
+    let device_stem = requested
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
+    let numbered_device = device_stem
+        .strip_prefix("COM")
+        .or_else(|| device_stem.strip_prefix("LPT"))
+        .is_some_and(|suffix| matches!(suffix.as_bytes(), [b'1'..=b'9']));
+    if matches!(device_stem.as_str(), "CON" | "PRN" | "AUX" | "NUL") || numbered_device {
+        return Err("Choose a folder name that is portable across Windows, macOS, and Linux."
+            .to_string());
+    }
+    Ok(requested.to_string())
+}
+
+fn materialize_fresh_bundle(
+    parent: &Path,
+    folder_name: &str,
+    prepared: &[PreparedStagedFile],
+) -> Result<usize, String> {
+    let destination = parent.join(folder_name);
+    if path_entry_exists(&destination)? {
+        return Err(format!(
+            "A folder named {folder_name} already exists there. Choose another name or parent folder."
+        ));
+    }
+    let selected = prepared
+        .iter()
+        .filter_map(|file| file.effective.as_ref().map(|content| (file, content)))
+        .collect::<Vec<_>>();
+    if selected.is_empty() {
+        return Err("No selected draft files remain to create.".to_string());
+    }
+
+    let temporary = parent.join(format!(
+        ".{folder_name}.okf-studio-{}.tmp",
+        uuid::Uuid::new_v4()
+    ));
+    std::fs::create_dir(&temporary)
+        .map_err(|_| "Studio could not prepare the new bundle directory.".to_string())?;
+    let result = (|| -> Result<usize, String> {
+        for (file, content) in &selected {
+            let target = temporary.join(Path::new(&file.path));
+            let target_parent = target
+                .parent()
+                .ok_or_else(|| "A staged bundle path has no parent directory.".to_string())?;
+            std::fs::create_dir_all(target_parent)
+                .map_err(|_| "Studio could not prepare a bundle subdirectory.".to_string())?;
+            let mut output = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&target)
+                .map_err(|_| "Studio could not create a staged bundle file.".to_string())?;
+            output
+                .write_all(content.as_bytes())
+                .and_then(|()| output.sync_all())
+                .map_err(|_| "Studio could not finish writing a staged bundle file.".to_string())?;
+        }
+        if path_entry_exists(&destination)? {
+            return Err(format!(
+                "A folder named {folder_name} appeared there before creation finished. No existing folder was changed."
+            ));
+        }
+        std::fs::rename(&temporary, &destination)
+            .map_err(|_| "Studio could not move the completed bundle into place.".to_string())?;
+        Ok(selected.len())
+    })();
+    if result.is_err() && temporary.exists() {
+        let _ = std::fs::remove_dir_all(&temporary);
+    }
+    result
+}
+
+fn path_entry_exists(path: &Path) -> Result<bool, String> {
+    match std::fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(_) => Err("Studio could not inspect the selected bundle destination.".to_string()),
+    }
 }
 
 fn validate_prepared(
@@ -3542,6 +3717,86 @@ mod tests {
             std::fs::read_to_string(root.join("index.md")).expect("read source index"),
             "---\nokf_version: 0.1\n---\n# Test bundle\n",
         );
+    }
+
+    #[test]
+    fn creates_a_fresh_bundle_in_a_new_named_destination() {
+        let root = canonical_temp_dir("create-source");
+        seed_valid_bundle(&root);
+        let destination_parent = canonical_temp_dir("create-parent");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .set_mode("session-1", AgentStageMode::Create)
+            .expect("select create mode");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("index.md"),
+                "---\nokf_version: 0.1\n---\n# New bundle\n\n- [Concept](concept.md)\n"
+                    .to_string(),
+            )
+            .expect("stage index");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("concept.md"),
+                "---\ntype: Note\n---\n# Concept\n".to_string(),
+            )
+            .expect("stage concept");
+        let validation = stages.validate_staged("session-1").expect("validate draft");
+
+        let inside_error = stages
+            .create_staged_bundle("session-1", &validation.revision, &root, "nested-bundle")
+            .expect_err("destination inside source must be rejected");
+        assert!(inside_error.contains("outside the active bundle"));
+
+        let created = stages
+            .create_staged_bundle(
+                "session-1",
+                &validation.revision,
+                &destination_parent,
+                "new-bundle",
+            )
+            .expect("create bundle");
+
+        assert_eq!(created.folder_name, "new-bundle");
+        assert_eq!(created.created_files, 2);
+        assert!(created.changes.files.is_empty());
+        assert_eq!(
+            std::fs::read_to_string(destination_parent.join("new-bundle/concept.md"))
+                .expect("read created concept"),
+            "---\ntype: Note\n---\n# Concept\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("index.md")).expect("read source index"),
+            "---\nokf_version: 0.1\n---\n# Test bundle\n",
+            "creation leaves the source bundle unchanged"
+        );
+    }
+
+    #[test]
+    fn fresh_bundle_destination_names_are_portable_and_never_merged() {
+        for invalid in ["", " nested", "nested ", "../nested", "CON", "LPT9.txt", "a:b"] {
+            assert!(validate_bundle_directory_name(invalid).is_err(), "{invalid:?}");
+        }
+        assert_eq!(
+            validate_bundle_directory_name("knowledge-bundle").expect("portable name"),
+            "knowledge-bundle"
+        );
+
+        let parent = canonical_temp_dir("existing-destination");
+        std::fs::create_dir(parent.join("knowledge-bundle")).expect("existing folder");
+        let prepared = vec![PreparedStagedFile {
+            path: "concept.md".to_string(),
+            kind: "create",
+            original: String::new(),
+            effective: Some("---\ntype: Note\n---\n# Concept\n".to_string()),
+            diff_revision: "revision".to_string(),
+        }];
+        let error = materialize_fresh_bundle(&parent, "knowledge-bundle", &prepared)
+            .expect_err("existing destination must not be merged");
+        assert!(error.contains("already exists"));
     }
 
     #[test]

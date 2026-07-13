@@ -35,6 +35,7 @@ import {
 import {
   agentStagedFileDiff,
   applyAgentStagedChanges,
+  createAgentStagedBundle,
   cancelAgentTurn,
   authenticateAgent,
   discardAgentStagedChanges,
@@ -388,6 +389,8 @@ export function AgentConversation({
   const [stageError, setStageError] = useState<string | null>(null);
   const [stageNotice, setStageNotice] = useState<string | null>(null);
   const [isApplyingStage, setIsApplyingStage] = useState(false);
+  const [isCreatingBundle, setIsCreatingBundle] = useState(false);
+  const [freshBundleFolderName, setFreshBundleFolderName] = useState("new-okf-bundle");
   const [isRestoringCheckpoint, setIsRestoringCheckpoint] = useState(false);
   const [isSettingGrant, setIsSettingGrant] = useState(false);
   const [isPreparingGeneration, setIsPreparingGeneration] = useState(false);
@@ -944,6 +947,37 @@ export function AgentConversation({
       setStageError(errorMessage(error));
     } finally {
       setIsApplyingStage(false);
+    }
+  }
+
+  async function createStagedBundle() {
+    const session = sessionRef.current;
+    if (
+      !session || activeTurn || isCreatingBundle || stagedChanges?.mode !== "create" ||
+      stagedValidation.status !== "ready" || stagedValidation.result.errors > 0
+    ) return;
+    const sessionId = session.sessionId;
+    const revision = stagedValidation.result.revision;
+    setIsCreatingBundle(true);
+    setStageError(null);
+    setStageNotice(null);
+    try {
+      const result = await createAgentStagedBundle(
+        connection.connectionId,
+        sessionId,
+        revision,
+        freshBundleFolderName,
+      );
+      if (!result || sessionRef.current?.sessionId !== sessionId) return;
+      updateStagedChanges(result.changes);
+      setStageNotice(
+        `Created ${result.createdFiles} file${result.createdFiles === 1 ? "" : "s"} in ${result.folderName}.`,
+      );
+      requestAnimationFrame(() => promptRef.current?.focus());
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId === sessionId) setStageError(errorMessage(error));
+    } finally {
+      setIsCreatingBundle(false);
     }
   }
 
@@ -1908,10 +1942,36 @@ export function AgentConversation({
                     </div>
                   )}
                   {stagedValidation.result.errors === 0 && stagedChanges.mode === "create" && (
-                    <p className="agent-staged__destination-boundary">
-                      This draft is isolated from the active bundle. Choose a destination before
-                      creating any files.
-                    </p>
+                    <div className="agent-staged__destination">
+                      <p>
+                        Studio creates a new folder below the parent you choose. Existing folders
+                        are never merged with or replaced.
+                      </p>
+                      <label htmlFor="fresh-bundle-folder-name">Bundle folder name</label>
+                      <div>
+                        <input
+                          id="fresh-bundle-folder-name"
+                          type="text"
+                          value={freshBundleFolderName}
+                          maxLength={128}
+                          autoComplete="off"
+                          spellCheck={false}
+                          disabled={isCreatingBundle}
+                          onChange={(event) => setFreshBundleFolderName(event.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="btn primary"
+                          disabled={
+                            activeTurn !== null || isCreatingBundle ||
+                            freshBundleFolderName.length === 0
+                          }
+                          onClick={() => void createStagedBundle()}
+                        >
+                          {isCreatingBundle ? "Creating..." : "Choose parent and create"}
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </section>
               )}

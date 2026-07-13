@@ -352,6 +352,27 @@ async fn apply_agent_staged_changes(
     .await
 }
 
+/// Create the exact validated fresh draft below a user-selected parent folder.
+#[tauri::command]
+async fn create_agent_staged_bundle(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    revision: String,
+    folder_name: String,
+) -> Result<Option<agent_stage::AgentStagedCreateInfo>, String> {
+    agent_protocol::create_staged_bundle(
+        &app,
+        state.inner(),
+        &connection_id,
+        &session_id,
+        &revision,
+        &folder_name,
+    )
+    .await
+}
+
 #[tauri::command]
 async fn restore_agent_staged_checkpoint(
     app: AppHandle,
@@ -572,6 +593,7 @@ pub fn run() {
             set_agent_staged_hunk_selection,
             validate_agent_staged_changes,
             apply_agent_staged_changes,
+            create_agent_staged_bundle,
             restore_agent_staged_checkpoint,
             agent_install_preflight,
             install_agent,

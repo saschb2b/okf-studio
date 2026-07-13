@@ -573,7 +573,21 @@ describe("OKF Studio app", () => {
     expect(graph).toHaveTextContent("Agent system, Architecture, staged");
     expect(graph).toHaveTextContent("Link from overview to agent-system");
     expect(screen.queryByRole("button", { name: "Apply changes" })).not.toBeInTheDocument();
-    expect(screen.getByText(/draft is isolated from the active bundle/i)).toBeInTheDocument();
+    expect(screen.getByText(/Existing folders are never merged with or replaced/i))
+      .toBeInTheDocument();
+    const folderName = screen.getByLabelText("Bundle folder name");
+    expect(folderName).toHaveValue("new-okf-bundle");
+    await user.clear(folderName);
+    await user.type(folderName, "CON");
+    await user.click(screen.getByRole("button", { name: "Choose parent and create" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("portable across Windows");
+    await user.clear(folderName);
+    await user.type(folderName, "customer-knowledge");
+    await user.click(screen.getByRole("button", { name: "Choose parent and create" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Created 3 files in customer-knowledge.",
+    );
+    expect(screen.queryByText("Fresh bundle draft")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));

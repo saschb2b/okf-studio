@@ -23,6 +23,7 @@ import type {
   AgentSessionHistoryPage,
   AgentStagedApplyInfo,
   AgentStagedChangesInfo,
+  AgentStagedCreateInfo,
   AgentStagedFileDiff,
   AgentStagedFileInfo,
   AgentStagedValidationInfo,
@@ -925,6 +926,71 @@ export async function applyAgentStagedChanges(
   if (bundleRoot && appliedFiles > 0) mockBundleCheckpoints.set(bundleRoot, appliedFiles);
   const changes = emitMockStage(connectionId, sessionId);
   return { sessionId, revision, appliedFiles, changes };
+}
+
+export async function createAgentStagedBundle(
+  connectionId: string,
+  sessionId: string,
+  revision: string,
+  folderName: string,
+): Promise<AgentStagedCreateInfo | null> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedCreateInfo | null>("create_agent_staged_bundle", {
+      connectionId,
+      sessionId,
+      revision,
+      folderName,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  validateMockBundleFolderName(folderName);
+  const state = mockStageState(sessionId);
+  if (state.mode !== "create") {
+    throw new Error("Only a fresh bundle draft can create a new destination.");
+  }
+  const validation = await validateAgentStagedChanges(connectionId, sessionId);
+  if (validation.revision !== revision) {
+    throw new Error("The staged draft changed. Validate it again before creating the bundle.");
+  }
+  if (validation.errors > 0) {
+    throw new Error(
+      `Bundle creation blocked: staged validation found ${validation.errors} error${validation.errors === 1 ? "" : "s"}.`,
+    );
+  }
+  const createdFiles = state.files.filter((file) => file.hunkSelected).length;
+  if (createdFiles === 0) throw new Error("No selected draft files remain to create.");
+  state.files = [];
+  const changes = emitMockStage(connectionId, sessionId);
+  return { sessionId, revision, folderName, createdFiles, changes };
+}
+
+function validateMockBundleFolderName(folderName: string): void {
+  let characterCount = 0;
+  let invalidCharacter = false;
+  for (const character of folderName) {
+    characterCount += 1;
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint < 32 || codePoint === 127 || '<>:"/\\|?*'.includes(character)) {
+      invalidCharacter = true;
+    }
+  }
+  const deviceStem = folderName.split(".", 1)[0]?.toUpperCase() ?? "";
+  const reservedDevice = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(deviceStem);
+  if (
+    folderName.length === 0 || characterCount > 128 ||
+    folderName.trim() !== folderName || folderName === "." || folderName === ".." ||
+    folderName.endsWith(".") || invalidCharacter
+  ) {
+    throw new Error(
+      "Use a folder name of 1 to 128 characters without path separators, control characters, surrounding spaces, or reserved punctuation.",
+    );
+  }
+  if (reservedDevice) {
+    throw new Error("Choose a folder name that is portable across Windows, macOS, and Linux.");
+  }
 }
 
 export async function restoreAgentStagedCheckpoint(

@@ -212,6 +212,14 @@ export interface AgentStagedApplyInfo {
   changes: AgentStagedChangesInfo;
 }
 
+export interface AgentStagedCreateInfo {
+  sessionId: string;
+  revision: string;
+  folderName: string;
+  createdFiles: number;
+  changes: AgentStagedChangesInfo;
+}
+
 export interface AgentCheckpointRestoreInfo {
   sessionId: string;
   restoredFiles: number;

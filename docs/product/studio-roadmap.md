@@ -101,7 +101,8 @@ Gate: a fake agent covers initialize, auth, session/new, streaming, permission, 
 - [ ] Add client-owned terminal and environment-variable authentication if ACP stabilizes those variants.
 - [x] Never copy external-agent credentials into Studio settings or logs.
 - [ ] Store Studio Agent keys only in the OS credential store.
-- [ ] Add Ollama, LM Studio, llama.cpp, and custom compatible endpoints with connection tests.
+- [x] Configure and probe Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible endpoints without sending prompts or credentials.
+- [ ] Use saved local endpoints for Studio Agent turns.
 
 Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostics, or snapshots.
 

@@ -82,12 +82,24 @@ function isInstallable(entry: AgentCatalogEntry): entry is InstallableEntry {
 export function AgentCatalogCard({
   entry,
   onConnected,
+  onConfigure,
 }: {
   entry: AgentCatalogEntry;
   onConnected: () => void;
+  onConfigure: () => void;
 }) {
   return isInstallable(entry) ? (
     <InstallableAgentCard entry={entry} onConnected={onConnected} />
+  ) : entry.availability === "configurable" ? (
+    <AgentCardFrame entry={entry}>
+      <button
+        type="button"
+        className="btn agent-catalog-card__action"
+        onClick={onConfigure}
+      >
+        Configure
+      </button>
+    </AgentCardFrame>
   ) : (
     <AgentCardFrame entry={entry}>
       <button type="button" className="btn agent-catalog-card__action" disabled>
@@ -383,7 +395,11 @@ function AgentCardFrame({
       <div className="agent-catalog-card__title-row">
         <h3>{entry.name}</h3>
         <span className="badge">
-          {entry.availability === "installable" ? "ACP" : "Planned"}
+          {entry.availability === "installable"
+            ? "ACP"
+            : entry.availability === "configurable"
+              ? "Local"
+              : "Planned"}
         </span>
       </div>
       <p>{entry.summary}</p>

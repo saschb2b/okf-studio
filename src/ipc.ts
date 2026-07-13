@@ -14,6 +14,11 @@ import catalog from "./agent/catalog.json";
 import type { AgentCatalogDocument } from "./agent/catalog.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
 import type {
+  LocalModelProbe,
+  LocalModelProfile,
+  LocalModelProfileInput,
+} from "./agent/local.ts";
+import type {
   AgentConnectionEvent,
   AgentCheckpointRestoreInfo,
   AgentConnectionInfo,
@@ -77,6 +82,7 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
 }
 
 let mockCustomAgents: CustomAgentProfile[] = [];
+let mockLocalModelProfiles: LocalModelProfile[] = [];
 const activeAgentConnectionsById = new Map<string, AgentConnectionInfo>();
 let activeAgentConnectionSnapshot: readonly AgentConnectionInfo[] = [];
 const activeAgentConnectionSubscribers = new Set<() => void>();
@@ -160,6 +166,64 @@ export async function removeCustomAgent(profileId: string): Promise<boolean> {
     if (session.profileId === profileId) mockAgentSessions.delete(sessionId);
   }
   return mockCustomAgents.length !== previousLength;
+}
+
+export async function localModelProfiles(): Promise<readonly LocalModelProfile[]> {
+  if (!isTauri()) return mockLocalModelProfiles;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<LocalModelProfile[]>("local_model_profiles");
+}
+
+export async function saveLocalModelProfile(
+  input: LocalModelProfileInput,
+): Promise<LocalModelProfile> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<LocalModelProfile>("save_local_model_profile", { input });
+  }
+  const duplicate = mockLocalModelProfiles.some(
+    (profile) => profile.provider === input.provider && profile.baseUrl === input.baseUrl,
+  );
+  if (duplicate) throw new Error("That provider endpoint is already configured.");
+  const profile = {
+    ...input,
+    id: `local-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+  };
+  mockLocalModelProfiles = [...mockLocalModelProfiles, profile];
+  return profile;
+}
+
+export async function removeLocalModelProfile(profileId: string): Promise<boolean> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<boolean>("remove_local_model_profile", { profileId });
+  }
+  const previousLength = mockLocalModelProfiles.length;
+  mockLocalModelProfiles = mockLocalModelProfiles.filter(
+    (profile) => profile.id !== profileId,
+  );
+  return mockLocalModelProfiles.length !== previousLength;
+}
+
+export async function testLocalModelEndpoint(
+  input: LocalModelProfileInput,
+): Promise<LocalModelProbe> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<LocalModelProbe>("test_local_model_endpoint", { input });
+  }
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  if (input.baseUrl.includes("unreachable")) {
+    throw new Error("Studio could not reach the endpoint. Check that its server is running.");
+  }
+  return {
+    provider: input.provider,
+    baseUrl: input.baseUrl,
+    models:
+      input.provider === "ollama"
+        ? ["qwen3:8b", "gemma3:4b"]
+        : ["local-instruct", "local-tool-model"],
+  };
 }
 
 export async function connectCustomAgent(profileId: string): Promise<AgentConnectionInfo> {

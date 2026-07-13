@@ -31,7 +31,7 @@ export interface AgentCatalogRecord {
   runtime: AgentRuntime;
   authMethods: readonly AgentAuthMethod[];
   source: string;
-  availability: "installable" | "planned";
+  availability: "installable" | "configurable" | "planned";
   distribution: AgentDistribution | null;
 }
 

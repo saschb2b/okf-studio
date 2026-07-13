@@ -14,6 +14,8 @@ describe("agent connection catalog", () => {
     expect(entries.filter((entry) => entry.runtime === "external-acp")).toHaveLength(2);
     expect(entries.filter((entry) => entry.runtime === "studio-native")).toHaveLength(2);
     expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(2);
+    expect(entries.find((entry) => entry.id === "local-model")?.availability)
+      .toBe("configurable");
     expect(catalog.nodeRuntime.version).toBe("v24.11.0");
     expect(catalog.nodeRuntime.distributions).toHaveLength(5);
     for (const distribution of catalog.nodeRuntime.distributions) {

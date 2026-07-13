@@ -2,9 +2,19 @@ import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { catalogEntries, type AgentCatalogEntry } from "../agent/catalog.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
-import { agentCatalog, customAgents, removeCustomAgent, saveCustomAgent } from "../ipc.ts";
+import type { LocalModelProfile, LocalModelProfileInput } from "../agent/local.ts";
+import {
+  agentCatalog,
+  customAgents,
+  localModelProfiles,
+  removeCustomAgent,
+  removeLocalModelProfile,
+  saveCustomAgent,
+  saveLocalModelProfile,
+} from "../ipc.ts";
 import { AgentCatalogCard } from "./AgentCatalogCard.tsx";
 import { CustomAgentProfiles } from "./CustomAgentProfiles.tsx";
+import { LocalModelProfiles } from "./LocalModelProfiles.tsx";
 import "./AgentConnectionCatalog.css";
 
 type CatalogState =
@@ -13,13 +23,18 @@ type CatalogState =
       status: "ready";
       entries: readonly AgentCatalogEntry[];
       customProfiles: readonly CustomAgentProfile[];
+      localProfiles: readonly LocalModelProfile[];
     }
   | { status: "error"; message: string };
 
 async function loadCatalog(): Promise<CatalogState> {
   try {
-    const [document, customProfiles] = await Promise.all([agentCatalog(), customAgents()]);
-    return { status: "ready", entries: catalogEntries(document), customProfiles };
+    const [document, customProfiles, localProfiles] = await Promise.all([
+      agentCatalog(),
+      customAgents(),
+      localModelProfiles(),
+    ]);
+    return { status: "ready", entries: catalogEntries(document), customProfiles, localProfiles };
   } catch (error: unknown) {
     return {
       status: "error",
@@ -36,6 +51,7 @@ export function AgentConnectionCatalog({
   onConnected: () => void;
 }) {
   const [state, setState] = useState<CatalogState>({ status: "loading" });
+  const [localFormOpen, setLocalFormOpen] = useState(false);
   const requestVersion = useRef(0);
 
   useEffect(() => {
@@ -72,6 +88,27 @@ export function AgentConnectionCatalog({
         ? {
             ...current,
             customProfiles: current.customProfiles.filter((profile) => profile.id !== profileId),
+          }
+        : current,
+    );
+  }
+
+  async function saveLocalProfile(input: LocalModelProfileInput) {
+    const profile = await saveLocalModelProfile(input);
+    setState((current) =>
+      current.status === "ready"
+        ? { ...current, localProfiles: [...current.localProfiles, profile] }
+        : current,
+    );
+  }
+
+  async function removeLocalProfile(profileId: string) {
+    await removeLocalModelProfile(profileId);
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            ...current,
+            localProfiles: current.localProfiles.filter((profile) => profile.id !== profileId),
           }
         : current,
     );
@@ -115,13 +152,25 @@ export function AgentConnectionCatalog({
       {state.status === "ready" && (
         <div className="agent-catalog__list">
           {state.entries.map((entry) => (
-            <AgentCatalogCard entry={entry} key={entry.id} onConnected={onConnected} />
+            <AgentCatalogCard
+              entry={entry}
+              key={entry.id}
+              onConnected={onConnected}
+              onConfigure={() => setLocalFormOpen(true)}
+            />
           ))}
         </div>
       )}
 
       {state.status === "ready" && (
         <>
+          <LocalModelProfiles
+            profiles={state.localProfiles}
+            formOpen={localFormOpen}
+            onFormOpenChange={setLocalFormOpen}
+            onProfileSave={saveLocalProfile}
+            onProfileRemove={removeLocalProfile}
+          />
           <CustomAgentProfiles
             profiles={state.customProfiles}
             onProfileSave={saveProfile}

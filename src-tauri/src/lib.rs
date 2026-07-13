@@ -6,6 +6,7 @@ mod agent_custom;
 mod agent_csv;
 mod agent_install;
 mod agent_json;
+mod agent_local;
 mod agent_mcp;
 mod agent_pdf;
 mod agent_protocol;
@@ -66,6 +67,35 @@ fn remove_custom_agent(
 ) -> Result<bool, String> {
     agent_protocol::disconnect_profile(&app, state.inner(), &profile_id)?;
     agent_custom::remove(&app, &profile_id)
+}
+
+#[tauri::command]
+fn local_model_profiles(
+    app: AppHandle,
+) -> Result<Vec<agent_local::LocalModelProfile>, String> {
+    agent_local::list(&app)
+}
+
+#[tauri::command]
+fn save_local_model_profile(
+    app: AppHandle,
+    input: agent_local::LocalModelProfileInput,
+) -> Result<agent_local::LocalModelProfile, String> {
+    agent_local::save(&app, input)
+}
+
+#[tauri::command]
+fn remove_local_model_profile(app: AppHandle, profile_id: String) -> Result<bool, String> {
+    agent_local::remove(&app, &profile_id)
+}
+
+#[tauri::command]
+async fn test_local_model_endpoint(
+    input: agent_local::LocalModelProfileInput,
+) -> Result<agent_local::LocalModelProbe, String> {
+    tauri::async_runtime::spawn_blocking(move || agent_local::probe(input))
+        .await
+        .map_err(|_| "Studio could not finish the local endpoint test.".to_string())?
 }
 
 #[tauri::command]
@@ -570,6 +600,10 @@ pub fn run() {
             custom_agents,
             save_custom_agent,
             remove_custom_agent,
+            local_model_profiles,
+            save_local_model_profile,
+            remove_local_model_profile,
+            test_local_model_endpoint,
             connect_custom_agent,
             connect_catalog_agent,
             disconnect_agent,

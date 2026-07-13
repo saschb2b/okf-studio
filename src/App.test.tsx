@@ -74,6 +74,42 @@ describe("OKF Studio app", () => {
     expect(within(card).getByText(/No agent has been started/i)).toBeInTheDocument();
   });
 
+  it("tests and saves a local model endpoint without starting an agent", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    const localCard = screen.getByRole("heading", { name: "Local model" }).closest("article");
+    if (!localCard) throw new Error("Local model card was not rendered.");
+    await user.click(within(localCard).getByRole("button", { name: "Configure" }));
+
+    const localSection = screen
+      .getByRole("heading", { name: "Local model endpoints" })
+      .closest("section");
+    if (!localSection) throw new Error("Local endpoint setup was not rendered.");
+    await vi.waitFor(() =>
+      expect(within(localSection).getByLabelText("Provider")).toHaveFocus(),
+    );
+    expect(within(localSection).getByLabelText("Endpoint")).toHaveValue(
+      "http://127.0.0.1:11434",
+    );
+    expect(within(localSection).getByRole("button", { name: "Save endpoint" }))
+      .toBeDisabled();
+
+    await user.click(within(localSection).getByRole("button", { name: "Test connection" }));
+    expect(await within(localSection).findByText("Endpoint reached")).toBeInTheDocument();
+    expect(within(localSection).getByText(/qwen3:8b/)).toBeInTheDocument();
+    await user.click(within(localSection).getByRole("button", { name: "Save endpoint" }));
+
+    expect(await within(localSection).findByText("http://127.0.0.1:11434"))
+      .toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "New thread" })).not.toBeInTheDocument();
+    await user.click(within(localSection).getByRole("button", { name: "Remove Ollama" }));
+    expect(within(localSection).queryByText("http://127.0.0.1:11434"))
+      .not.toBeInTheDocument();
+  });
+
   it("cancels an in-progress agent installation and returns to installable", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -972,13 +1008,17 @@ describe("OKF Studio app", () => {
       expect(screen.queryByText("proposals/draft.md")).not.toBeInTheDocument(),
     );
     expect(screen.getByText("proposals/notes.md")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Discard all" })).toHaveFocus();
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: "Discard all" })).toHaveFocus(),
+    );
 
     await user.click(screen.getByRole("button", { name: "Discard all" }));
     await vi.waitFor(() =>
       expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
     );
-    expect(screen.getByLabelText("Message the agent")).toHaveFocus();
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
+    );
 
     await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/valid.md");
     await user.click(screen.getByRole("button", { name: "Send" }));

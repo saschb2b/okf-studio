@@ -143,6 +143,12 @@ fn probe_endpoint(
     let response = authenticated_request(agent.get(endpoint.as_str()), api_key)
         .call()
         .map_err(probe_error)?;
+    if response.status() >= 300 {
+        return Err(format!(
+            "The endpoint returned HTTP status {}.",
+            response.status()
+        ));
+    }
     if response
         .header("content-length")
         .and_then(|value| value.parse::<u64>().ok())
@@ -243,6 +249,13 @@ pub(crate) fn chat_with_tools(
         {
             return Err("The model requested too many tools in one turn.".to_string());
         }
+        if response
+            .tool_calls
+            .iter()
+            .any(|call| !tools.iter().any(|tool| tool.name == call.name))
+        {
+            return Err("The model requested a tool that Studio did not offer.".to_string());
+        }
         for (index, call) in response.tool_calls.iter_mut().enumerate() {
             call.id = format!("local-tool-{round}-{index}");
         }
@@ -303,8 +316,14 @@ fn chat_step(
             .set("content-type", "application/json"),
         secret_ref(&runtime.api_key),
     )
-        .send_bytes(&body)
-        .map_err(|error| chat_error(error, runtime.api_key.is_some()))?;
+    .send_bytes(&body)
+    .map_err(|error| chat_error(error, runtime.api_key.is_some()))?;
+    if response.status() >= 300 {
+        return Err(format!(
+            "The model endpoint returned HTTP status {}.",
+            response.status()
+        ));
+    }
     let bytes = read_bounded_response(response, MAX_CHAT_RESPONSE_BYTES, "model response")?;
     parse_chat_step(runtime.provider, &bytes)
 }
@@ -1283,6 +1302,101 @@ mod tests {
         assert_eq!(answer, "I loaded the requested guidance.");
         assert_eq!(calls, 1);
         server.join().expect("join test server");
+    }
+
+    #[test]
+    fn rejects_an_unadvertised_model_tool_before_dispatch() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            let _ = read_http_request(&mut stream);
+            write_json_response(
+                &mut stream,
+                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"fetch_url","arguments":{"url":"https://example.test"}}}]}}"#,
+            );
+        });
+        let runtime = LocalModelRuntime {
+            profile_id: "local-0123456789abcdef".to_string(),
+            profile_name: "Test endpoint".to_string(),
+            provider: LocalModelProvider::Ollama,
+            base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
+            model: "qwen-test".to_string(),
+            api_key: None,
+        };
+        let tools = [LocalToolDefinition {
+            name: "load_okf_skill_resource",
+            description: "Load one resource.",
+            parameters: serde_json::json!({"type": "object"}),
+        }];
+        let mut dispatched = false;
+        let error = chat_with_tools(
+            &runtime,
+            &[LocalChatMessage {
+                role: "user",
+                content: "Fetch an external page".to_string(),
+            }],
+            &tools,
+            |_| {
+                dispatched = true;
+                Ok("unexpected dispatch".to_string())
+            },
+        )
+        .expect_err("unadvertised tool must fail closed");
+
+        assert_eq!(
+            error,
+            "The model requested a tool that Studio did not offer."
+        );
+        assert!(!dispatched);
+        server.join().expect("join test server");
+    }
+
+    #[test]
+    fn refuses_model_endpoint_redirects() {
+        let redirected = TcpListener::bind("127.0.0.1:0").expect("bind redirect target");
+        redirected
+            .set_nonblocking(true)
+            .expect("set redirect target nonblocking");
+        let redirected_address = redirected.local_addr().expect("redirect target address");
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            let _ = read_http_request(&mut stream);
+            write!(
+                stream,
+                "HTTP/1.1 302 Found\r\nLocation: http://{redirected_address}/api/chat\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            )
+            .expect("write redirect");
+        });
+        let runtime = LocalModelRuntime {
+            profile_id: "local-0123456789abcdef".to_string(),
+            profile_name: "Test endpoint".to_string(),
+            provider: LocalModelProvider::Ollama,
+            base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
+            model: "qwen-test".to_string(),
+            api_key: None,
+        };
+
+        let error = chat(
+            &runtime,
+            &[LocalChatMessage {
+                role: "user",
+                content: "Do not follow redirects".to_string(),
+            }],
+        )
+        .expect_err("redirect must fail closed");
+
+        assert!(
+            error.contains("HTTP status 302"),
+            "unexpected redirect error: {error}"
+        );
+        server.join().expect("join test server");
+        assert!(matches!(
+            redirected.accept(),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock
+        ));
     }
 
     #[test]

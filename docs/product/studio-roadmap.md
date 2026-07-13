@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T18:07:04Z
+timestamp: 2026-07-13T18:32:12Z
 ---
 
 # Outcome
@@ -194,6 +194,7 @@ Gate: end-to-end tests reach useful results with no hidden write or network acti
 - [ ] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
   - [x] Own each external ACP process tree and terminate descendants on disconnect or host cancellation.
   - [x] Show the effective bundle, file, network, write, and process scope in every live thread.
+  - [x] Reject model-invented native tools before dispatch and refuse provider redirects without contacting their destination.
 - [ ] Support allow/deny once, thread grants, and narrow persistent rules.
   - [x] Reuse an explicit once-decision only for the exact same bounded request in one live thread.
   - [ ] Add cross-session rules after ACP exposes a stable tool identity and Studio can show their scope.

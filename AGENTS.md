@@ -93,6 +93,8 @@ pnpm test        # vitest run
 pnpm build       # tsc --noEmit && vite build
 cargo clippy -p okf-core --all-targets -- -D warnings
 cargo test -p okf-core
+cargo clippy -p okf-viewer --all-targets -- -D warnings
+cargo test -p okf-viewer --no-fail-fast
 ```
 
 `pnpm lint` is the one that most often breaks on *new* files: a directory the root `tsconfig` does not cover, or an unignored config the type-aware parser cannot place. Run it after adding or moving files, not only after editing existing ones; if a new sub-project does not belong to the app's `tsconfig`, add it to `ignores` in `eslint.config.mjs`.

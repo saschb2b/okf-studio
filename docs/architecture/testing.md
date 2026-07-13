@@ -3,12 +3,12 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The test strategy — Rust unit and integration tests, golden link tests, validator parity, tolerance proofs, and dogfooding this bundle.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-13T18:01:11Z
+timestamp: 2026-07-13T19:04:19Z
 ---
 
 # Decision
 
-Confidence comes from testing the contracts, not the implementation details. The core's two load-bearing commands — `scan_bundles` and `read_bundle` ([IPC & Security](ipc-and-security.md)) — are tested directly, the link/backlink logic is pinned with golden tests, and conformance is checked for parity against the canonical validator.
+Confidence comes from testing the contracts, not the implementation details. The core's two load-bearing commands — `scan_bundles` and `read_bundle` ([IPC & Security](ipc-and-security.md)) — are tested directly, the link/backlink logic is pinned with golden tests, and conformance is checked for parity against the canonical validator. The native host has its own merge gate for agent processes, provider requests, source intake, permissions, and reviewed transactions.
 
 # Dogfooding this bundle
 
@@ -45,11 +45,17 @@ Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — 
 
 # Frontend and performance checks
 
-Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks, and **Playwright** for end-to-end flows. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout — plus the major interactive features (layout modes, the reader's context rail, the [bundle switcher](../features/bundle-switcher.md), and the keyboard-shortcuts overlay). **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout, plus layout modes, the reader context rail, the [bundle switcher](../features/bundle-switcher.md), the Agent workspace, and keyboard actions. Browser-level review uses the runnable Vite fixture and `agent-browser` during UI work; Playwright is not part of the automated suite. **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+
+# Native host gate
+
+Pull requests run `cargo clippy -p okf-viewer --all-targets -- -D warnings` and `cargo test -p okf-viewer --no-fail-fast` on Windows. The job covers the official ACP client boundary, process-tree teardown, managed installation, local-model adapters, credential-store mocks, bounded source extraction, MCP tools, staging, validation, transactional Apply, interrupted-operation recovery, and checkpoint Restore. It also runs the PDF helper integration test. The one test that fetches a live GitHub archive remains ignored because ordinary CI must be deterministic and network-independent.
+
+The pure `okf-core` job remains separate on Linux. It needs no Tauri or WebKit dependencies and gives fast feedback for parsing, query, validation, and bundle fixtures. Release packaging still builds the complete application per target platform.
 
 # Automated accessibility gate
 
-An **axe-core** check runs over the rendered app (the empty state and an open bundle) and **fails the suite on any violation**, so the [accessibility](../ux/accessibility.md) commitments are verified, not merely asserted (Microsoft's "run automated accessibility checks in CI" practice). Colour contrast needs real layout that jsdom lacks, so that rule is verified via the [design tokens](../ux/theming.md) instead; the gate covers the structural rules — accessible names, roles, ARIA state, landmarks, and labels. It has already caught real regressions (an inappropriate role on the title bar, a splitter missing `aria-valuenow`).
+An **axe-core** check runs over the first-run state, an open bundle, the agent catalog, thread security disclosure, close confirmation, settings, shortcuts, and the bundle switcher. Any violation fails the suite. Colour contrast needs real layout that jsdom lacks, so that rule is verified through rendered review and the [design tokens](../ux/theming.md). The automated gate covers accessible names, roles, ARIA state, landmarks, and labels.
 
 # Static analysis and linting
 

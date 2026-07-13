@@ -70,6 +70,8 @@ pnpm test                                       # frontend tests (Vitest)
 pnpm build                                      # app build
 cargo clippy -p okf-core --all-targets -- -D warnings
 cargo test -p okf-core                          # Rust core tests (run against docs/)
+cargo clippy -p okf-viewer --all-targets -- -D warnings
+cargo test -p okf-viewer --no-fail-fast         # Native agent, source, and transaction tests
 node scripts/okf-validate.mjs docs              # OKF conformance of the spec bundle
 ```
 

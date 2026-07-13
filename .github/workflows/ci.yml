@@ -54,3 +54,23 @@ jobs:
       # and no built frontend — keeping this job fast.
       - run: cargo clippy -p okf-core --all-targets -- -D warnings
       - run: cargo test -p okf-core
+
+  native-host:
+    name: Native host — clippy · test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      # Windows exercises the native Tauri host without the Linux WebKitGTK
+      # setup used by packaging. This covers ACP process ownership, model
+      # endpoints, source intake, staged transactions, and credential mocks.
+      - run: cargo clippy -p okf-viewer --all-targets -- -D warnings
+      - run: cargo test -p okf-viewer --no-fail-fast

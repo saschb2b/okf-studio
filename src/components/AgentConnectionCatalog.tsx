@@ -126,10 +126,12 @@ function securityHostSummary(state: SecurityHostState): string {
 }
 
 export function AgentConnectionCatalog({
+  bundleRoot,
   onBack,
   onConnectionAvailable,
   onConnected,
 }: {
+  bundleRoot: string | null;
   onBack: () => void;
   onConnectionAvailable: (connection: AgentConnectionInfo) => void;
   onConnected: (connection: AgentConnectionInfo) => void;
@@ -252,6 +254,7 @@ export function AgentConnectionCatalog({
         <div className="agent-catalog__list">
           {state.entries.map((entry) => (
             <AgentCatalogCard
+              bundleRoot={bundleRoot}
               entry={entry}
               key={entry.id}
               onConnected={onConnected}
@@ -272,6 +275,7 @@ export function AgentConnectionCatalog({
             onConnected={onConnected}
           />
           <CustomAgentProfiles
+            bundleRoot={bundleRoot}
             profiles={state.customProfiles}
             onProfileSave={saveProfile}
             onProfileRemove={removeProfile}

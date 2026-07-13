@@ -109,6 +109,25 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
   });
 
+  it("keeps an external connection on its launch bundle", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Bound Harness",
+      executable: "C:\\tools\\bound.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
+
+    try {
+      await expect(ipc.newAgentSession(connection.connectionId, "/mock/handbook")).rejects.toThrow(
+        "This external agent connection belongs to another bundle.",
+      );
+    } finally {
+      await ipc.disconnectAgent(connection.connectionId);
+      await ipc.removeCustomAgent(profile.id);
+    }
+  });
+
   it("switches between live agent connections without interrupting their threads", async () => {
     const firstProfile = await ipc.saveCustomAgent({
       name: "Research Harness",
@@ -122,8 +141,8 @@ describe("OKF Studio app", () => {
       arguments: [],
       environment: [],
     });
-    const firstConnection = await ipc.connectCustomAgent(firstProfile.id);
-    const secondConnection = await ipc.connectCustomAgent(secondProfile.id);
+    const firstConnection = await ipc.connectCustomAgent(firstProfile.id, "/mock/workspace/docs");
+    const secondConnection = await ipc.connectCustomAgent(secondProfile.id, "/mock/workspace/docs");
 
     try {
       const user = userEvent.setup();
@@ -187,7 +206,7 @@ describe("OKF Studio app", () => {
       arguments: [],
       environment: [],
     });
-    const connection = await ipc.connectCustomAgent(profile.id);
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
 
     try {
       const user = userEvent.setup();
@@ -268,7 +287,8 @@ describe("OKF Studio app", () => {
 
     await user.click(await within(card).findByRole("button", { name: "Install" }));
 
-    expect(await within(card).findByRole("button", { name: "Connect Claude Agent" })).toBeEnabled();
+    expect(await within(card).findByRole("button", { name: "Connect Claude Agent" })).toBeDisabled();
+    expect(within(card).getByText("Open an OKF bundle to connect.")).toBeInTheDocument();
     expect(within(card).getByText(/No agent has been started/i)).toBeInTheDocument();
   });
 
@@ -511,6 +531,7 @@ describe("OKF Studio app", () => {
   it("connects and disconnects a custom ACP profile on explicit actions", async () => {
     const user = userEvent.setup();
     renderApp();
+    await openFolder(user);
 
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
@@ -525,8 +546,7 @@ describe("OKF Studio app", () => {
 
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("heading", { name: "New thread" })).toBeInTheDocument();
-    expect(screen.getByText(/Local Harness · No bundle selected/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Open a bundle to start" })).toBeInTheDocument();
+    expect(screen.getByText(/Local Harness · OKF Studio \(sample\)/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Change" }));
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
@@ -1596,6 +1616,7 @@ describe("OKF Studio app", () => {
     vi.spyOn(ipc, "connectCustomAgent").mockRejectedValueOnce(new Error("Handshake rejected"));
     const user = userEvent.setup();
     renderApp();
+    await openFolder(user);
 
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));

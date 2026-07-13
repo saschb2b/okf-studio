@@ -10,6 +10,7 @@ import {
 } from "../ipc.ts";
 
 interface CustomAgentProfilesProps {
+  bundleRoot: string | null;
   profiles: readonly CustomAgentProfile[];
   onProfileSave: (input: CustomAgentInput) => Promise<void>;
   onProfileRemove: (profileId: string) => Promise<void>;
@@ -51,6 +52,7 @@ function validateInput(input: CustomAgentInput): string | null {
 }
 
 export function CustomAgentProfiles({
+  bundleRoot,
   profiles,
   onProfileSave,
   onProfileRemove,
@@ -90,9 +92,10 @@ export function CustomAgentProfiles({
   }, []);
 
   async function connect(profileId: string) {
+    if (!bundleRoot) return;
     setConnections((current) => ({ ...current, [profileId]: { status: "connecting" } }));
     try {
-      const info = await connectCustomAgent(profileId);
+      const info = await connectCustomAgent(profileId, bundleRoot);
       setConnections((current) =>
         current[profileId]?.status === "connecting"
           ? { ...current, [profileId]: { status: "ready", info } }
@@ -181,7 +184,10 @@ export function CustomAgentProfiles({
                     {profile.arguments.length} argument(s), {profile.environment.length} inherited
                     variable(s).
                   </span>
-                  <ConnectionStatus connection={connection} />
+                  <ConnectionStatus bundleRoot={bundleRoot} connection={connection} />
+                  {!connectedInfo && !bundleRoot && (
+                    <span className="custom-agents__connection">Open an OKF bundle to connect.</span>
+                  )}
                 </div>
                 <div className="custom-agents__actions">
                   {connectedInfo ? (
@@ -199,7 +205,7 @@ export function CustomAgentProfiles({
                       type="button"
                       className="btn"
                       aria-label={`Connect ${profile.name}`}
-                      disabled={connection.status === "connecting"}
+                      disabled={!bundleRoot || connection.status === "connecting"}
                       onClick={() => void connect(profile.id)}
                     >
                       <Plug size={16} aria-hidden="true" />
@@ -277,7 +283,13 @@ function applyConnectionEvent(
   };
 }
 
-function ConnectionStatus({ connection }: { connection: ProfileConnection }) {
+function ConnectionStatus({
+  bundleRoot,
+  connection,
+}: {
+  bundleRoot: string | null;
+  connection: ProfileConnection;
+}) {
   if (connection.status === "disconnected") {
     return <span className="custom-agents__connection">Not connected.</span>;
   }
@@ -306,9 +318,13 @@ function ConnectionStatus({ connection }: { connection: ProfileConnection }) {
   const authNotice = !connection.info.authenticated
     ? " Authentication is required before a session can start."
     : "";
+  const bundleNotice = connection.info.bundleRoot !== bundleRoot
+    ? " This connection belongs to another bundle."
+    : "";
   return (
     <span className="custom-agents__connection custom-agents__connection--ready" role="status">
-      Connected to {agentName} over ACP v{connection.info.protocolVersion}.{authNotice}
+      Connected to {agentName} over ACP v{connection.info.protocolVersion}.{bundleNotice}
+      {authNotice}
     </span>
   );
 }

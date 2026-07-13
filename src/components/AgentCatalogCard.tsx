@@ -87,17 +87,31 @@ function authenticationLabel(entry: AgentCatalogEntry): string {
   return entry.authMethods.map(authMethodLabel).join(" or ");
 }
 
+function installedConnectionLabel(
+  connection: AgentConnectionInfo | undefined,
+  bundleRoot: string | null,
+  version: string,
+): string {
+  if (!connection) return `Installed v${version}. No agent has been started.`;
+  if (connection.bundleRoot !== bundleRoot) {
+    return `Connected over ACP v${connection.protocolVersion} to another bundle.`;
+  }
+  return `Connected over ACP v${connection.protocolVersion}.`;
+}
+
 export function AgentCatalogCard({
+  bundleRoot,
   entry,
   onConnected,
   onConfigure,
 }: {
+  bundleRoot: string | null;
   entry: AgentCatalogEntry;
   onConnected: (connection: AgentConnectionInfo) => void;
   onConfigure: () => void;
 }) {
   return isInstallable(entry) ? (
-    <InstallableAgentCard entry={entry} onConnected={onConnected} />
+    <InstallableAgentCard bundleRoot={bundleRoot} entry={entry} onConnected={onConnected} />
   ) : entry.availability === "configurable" ? (
     <AgentCardFrame entry={entry}>
       <button
@@ -118,9 +132,11 @@ export function AgentCatalogCard({
 }
 
 function InstallableAgentCard({
+  bundleRoot,
   entry,
   onConnected,
 }: {
+  bundleRoot: string | null;
   entry: InstallableEntry;
   onConnected: (connection: AgentConnectionInfo) => void;
 }) {
@@ -265,9 +281,10 @@ function InstallableAgentCard({
   }
 
   async function connect() {
+    if (!bundleRoot) return;
     setConnectionState({ status: "connecting" });
     try {
-      const connection = await connectCatalogAgent(entry.id);
+      const connection = await connectCatalogAgent(entry.id, bundleRoot);
       setConnectionState({ status: "idle" });
       onConnected(connection);
     } catch (error: unknown) {
@@ -332,10 +349,11 @@ function InstallableAgentCard({
       {state.status === "installed" && (
         <div className="agent-catalog-card__install-controls">
           <p className="agent-catalog-card__installed" role="status">
-            {connection
-              ? `Connected over ACP v${connection.protocolVersion}.`
-              : `Installed v${state.version}. No agent has been started.`}
+            {installedConnectionLabel(connection, bundleRoot, state.version)}
           </p>
+          {!connection && !bundleRoot && (
+            <p className="agent-catalog-card__disclosure">Open an OKF bundle to connect.</p>
+          )}
           {connectionState.status === "error" && (
             <p className="agent-catalog-card__error" role="alert">
               Connection failed. {connectionState.message}
@@ -356,7 +374,7 @@ function InstallableAgentCard({
               type="button"
               className="btn agent-catalog-card__action"
               aria-label={`Connect ${entry.name}`}
-              disabled={connectionState.status === "connecting"}
+              disabled={!bundleRoot || connectionState.status === "connecting"}
               onClick={() => void connect()}
             >
               <Plug size={16} aria-hidden="true" />

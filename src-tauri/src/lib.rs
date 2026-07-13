@@ -177,18 +177,24 @@ async fn connect_local_model(
 async fn connect_custom_agent(
     app: AppHandle,
     state: State<'_, agent_protocol::AgentHostState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
     profile_id: String,
+    bundle_root: String,
 ) -> Result<agent_protocol::AgentConnectionInfo, String> {
-    agent_protocol::connect_custom(&app, state.inner(), &profile_id).await
+    let bundle_root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    agent_protocol::connect_custom(&app, state.inner(), &profile_id, bundle_root).await
 }
 
 #[tauri::command]
 async fn connect_catalog_agent(
     app: AppHandle,
     state: State<'_, agent_protocol::AgentHostState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
     agent_id: String,
+    bundle_root: String,
 ) -> Result<agent_protocol::AgentConnectionInfo, String> {
-    agent_protocol::connect_catalog(&app, state.inner(), &agent_id).await
+    let bundle_root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    agent_protocol::connect_catalog(&app, state.inner(), &agent_id, bundle_root).await
 }
 
 #[tauri::command]

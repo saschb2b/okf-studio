@@ -14,7 +14,10 @@ import "./AgentPanel.css";
 
 export function AgentPanel() {
   const { state, actions } = useApp();
-  const connections = useAgentConnections();
+  const allConnections = useAgentConnections();
+  const connections = allConnections.filter(
+    (connection) => connection.bundleRoot === null || connection.bundleRoot === state.activeRoot,
+  );
   const activeConcept = state.bundle?.concepts.find(
     (concept) => concept.id === state.activeConceptId,
   ) ?? null;
@@ -112,6 +115,7 @@ export function AgentPanel() {
         >
           {visibleView === "catalog" && (
             <AgentConnectionCatalog
+              bundleRoot={state.activeRoot}
               onBack={closeCatalog}
               onConnectionAvailable={(connection) => {
                 setSelectedConnectionId(connection.connectionId);

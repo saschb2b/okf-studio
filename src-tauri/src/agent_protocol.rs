@@ -17,7 +17,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -103,6 +103,7 @@ type HandshakeSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<HandshakeRe
 pub struct AgentConnectionInfo {
     connection_id: String,
     profile_id: String,
+    bundle_root: Option<PathBuf>,
     protocol_version: String,
     agent: Option<AgentImplementationInfo>,
     auth_methods: Vec<AgentAuthMethodInfo>,
@@ -499,6 +500,7 @@ type PermissionRules = Arc<Mutex<HashMap<PermissionRuleKey, PermissionRuleDecisi
 
 struct AgentWorker {
     profile_id: String,
+    bundle_root: Option<PathBuf>,
     abort: tokio::task::AbortHandle,
     commands: tokio::sync::mpsc::Sender<AgentHostCommand>,
     stages: Arc<SessionStages>,
@@ -554,16 +556,26 @@ pub async fn connect_custom(
     app: &AppHandle,
     state: &AgentHostState,
     profile_id: &str,
+    bundle_root: PathBuf,
 ) -> Result<AgentConnectionInfo, String> {
     let profile = agent_custom::find(app, profile_id)?;
     let spec = ProcessSpec::from_profile(&profile);
-    connect_process(app, state, profile_id, spec, "custom agent profile").await
+    connect_process(
+        app,
+        state,
+        profile_id,
+        bundle_root,
+        spec,
+        "custom agent profile",
+    )
+    .await
 }
 
 pub async fn connect_catalog(
     app: &AppHandle,
     state: &AgentHostState,
     agent_id: &str,
+    bundle_root: PathBuf,
 ) -> Result<AgentConnectionInfo, String> {
     let profile_id = format!("catalog-{agent_id}");
     let command = agent_install::installed_command(app, agent_id)?;
@@ -572,7 +584,15 @@ pub async fn connect_catalog(
         arguments: command.arguments,
         environment: command.environment,
     };
-    connect_process(app, state, &profile_id, spec, "catalog agent").await
+    connect_process(
+        app,
+        state,
+        &profile_id,
+        bundle_root,
+        spec,
+        "catalog agent",
+    )
+    .await
 }
 
 pub async fn connect_local(
@@ -653,6 +673,7 @@ pub async fn connect_local(
             connection_id.clone(),
             AgentWorker {
                 profile_id: profile_id.to_string(),
+                bundle_root: None,
                 abort: worker.abort_handle(),
                 commands: command_tx,
                 stages,
@@ -662,6 +683,7 @@ pub async fn connect_local(
     Ok(AgentConnectionInfo {
         connection_id,
         profile_id: profile_id.to_string(),
+        bundle_root: None,
         protocol_version: "studio-native/1".to_string(),
         agent: Some(AgentImplementationInfo {
             name: "okf-studio-local".to_string(),
@@ -1139,6 +1161,7 @@ async fn connect_process(
     app: &AppHandle,
     state: &AgentHostState,
     profile_id: &str,
+    bundle_root: PathBuf,
     spec: ProcessSpec,
     source_label: &str,
 ) -> Result<AgentConnectionInfo, String> {
@@ -1148,6 +1171,7 @@ async fn connect_process(
     let handshake_tx = Arc::new(Mutex::new(Some(handshake_tx)));
     let worker_id = connection_id.clone();
     let worker_profile_id = profile_id.to_string();
+    let worker_bundle_root = bundle_root.clone();
     let workers = Arc::clone(&state.workers);
     let worker_handshake = Arc::clone(&handshake_tx);
     let worker_app = app.clone();
@@ -1186,6 +1210,7 @@ async fn connect_process(
             ProcessAgent::new(spec, process_security_scope),
             worker_id.clone(),
             worker_profile_id.clone(),
+            worker_bundle_root,
             Arc::clone(&worker_handshake),
             command_rx,
             ConnectionRuntime {
@@ -1240,6 +1265,7 @@ async fn connect_process(
             connection_id.clone(),
             AgentWorker {
                 profile_id: profile_id.to_string(),
+                bundle_root: Some(bundle_root),
                 abort: worker.abort_handle(),
                 commands: command_tx,
                 stages,
@@ -1273,13 +1299,7 @@ pub async fn new_session(
     let bundle_root = tokio::task::spawn_blocking(move || canonical_bundle_root(&bundle_root))
         .await
         .map_err(|_| "Bundle root validation task failed.".to_string())??;
-    let commands = state
-        .workers
-        .lock()
-        .map_err(|_| "Agent host state is unavailable.".to_string())?
-        .get(connection_id)
-        .map(|worker| worker.commands.clone())
-        .ok_or_else(|| "Agent connection was not found.".to_string())?;
+    let commands = connection_commands_for_bundle(state, connection_id, &bundle_root)?;
     let (response_tx, response_rx) = tokio::sync::oneshot::channel();
     commands
         .send(AgentHostCommand::NewSession {
@@ -1524,7 +1544,7 @@ pub async fn list_sessions(
     let bundle_root = tokio::task::spawn_blocking(move || canonical_bundle_root(&bundle_root))
         .await
         .map_err(|_| "Bundle root validation task failed.".to_string())??;
-    let commands = connection_commands(state, connection_id)?;
+    let commands = connection_commands_for_bundle(state, connection_id, &bundle_root)?;
     let (response_tx, response_rx) = tokio::sync::oneshot::channel();
     commands
         .send(AgentHostCommand::ListSessions {
@@ -1551,7 +1571,7 @@ pub async fn load_session(
     let bundle_root = tokio::task::spawn_blocking(move || canonical_bundle_root(&bundle_root))
         .await
         .map_err(|_| "Bundle root validation task failed.".to_string())??;
-    let commands = connection_commands(state, connection_id)?;
+    let commands = connection_commands_for_bundle(state, connection_id, &bundle_root)?;
     let (response_tx, response_rx) = tokio::sync::oneshot::channel();
     commands
         .send(AgentHostCommand::LoadSession {
@@ -1710,6 +1730,32 @@ fn connection_commands(
         .ok_or_else(|| "Agent connection was not found.".to_string())
 }
 
+fn connection_commands_for_bundle(
+    state: &AgentHostState,
+    connection_id: &str,
+    bundle_root: &Path,
+) -> Result<tokio::sync::mpsc::Sender<AgentHostCommand>, String> {
+    let workers = state
+        .workers
+        .lock()
+        .map_err(|_| "Agent host state is unavailable.".to_string())?;
+    let worker = workers
+        .get(connection_id)
+        .ok_or_else(|| "Agent connection was not found.".to_string())?;
+    verify_connection_bundle(worker.bundle_root.as_deref(), bundle_root)?;
+    Ok(worker.commands.clone())
+}
+
+fn verify_connection_bundle(bound_root: Option<&Path>, requested_root: &Path) -> Result<(), String> {
+    if bound_root.is_some_and(|bound_root| bound_root != requested_root) {
+        return Err(
+            "This external agent connection belongs to another bundle. Disconnect it and connect again from the active bundle."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 async fn command_response<T>(
     response: tokio::sync::oneshot::Receiver<Result<T, String>>,
     action: &str,
@@ -1849,6 +1895,7 @@ async fn run_connection(
     agent: impl ConnectTo<Client>,
     connection_id: String,
     profile_id: String,
+    bundle_root: PathBuf,
     handshake: HandshakeSender,
     mut commands: tokio::sync::mpsc::Receiver<AgentHostCommand>,
     runtime: ConnectionRuntime,
@@ -2108,6 +2155,7 @@ async fn run_connection(
                     .send(Ok(connection_info(
                         connection_id.clone(),
                         profile_id,
+                        bundle_root,
                         response,
                         auth_methods,
                         security_scope,
@@ -3285,6 +3333,7 @@ async fn initialize_connection(
 fn connection_info(
     connection_id: String,
     profile_id: String,
+    bundle_root: PathBuf,
     response: InitializeResponse,
     auth_methods: Vec<AgentAuthMethodInfo>,
     security_scope: AgentSecurityScopeInfo,
@@ -3293,6 +3342,7 @@ fn connection_info(
     AgentConnectionInfo {
         connection_id,
         profile_id,
+        bundle_root: Some(bundle_root),
         protocol_version: "1".to_string(),
         agent: response.agent_info.map(|info| AgentImplementationInfo {
             name: info.name,
@@ -3641,6 +3691,20 @@ mod tests {
         assert_eq!(value["profile"]["unattendedEligible"].as_bool(), Some(false));
     }
 
+    #[test]
+    fn external_connections_reject_sessions_for_another_bundle() {
+        let bound = PathBuf::from("bundle-a");
+        let other = PathBuf::from("bundle-b");
+
+        assert!(verify_connection_bundle(Some(&bound), &bound).is_ok());
+        assert_eq!(
+            verify_connection_bundle(Some(&bound), &other)
+                .expect_err("cross-bundle session should fail"),
+            "This external agent connection belongs to another bundle. Disconnect it and connect again from the active bundle."
+        );
+        assert!(verify_connection_bundle(None, &other).is_ok());
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn rejects_an_acp_handshake_without_launcher_evidence() {
         let fake_agent = Agent.builder().on_receive_request(
@@ -3657,6 +3721,7 @@ mod tests {
             fake_agent,
             "connection-without-evidence".to_string(),
             "profile-without-evidence".to_string(),
+            std::env::temp_dir(),
             Arc::new(Mutex::new(Some(handshake_tx))),
             commands_rx,
             ConnectionRuntime {
@@ -4303,6 +4368,7 @@ mod tests {
             fake_agent,
             "connection-read".to_string(),
             "profile-read".to_string(),
+            bundle_root.canonicalize().expect("canonical bundle"),
             Arc::new(Mutex::new(Some(handshake_tx))),
             commands_rx,
             ConnectionRuntime {
@@ -4558,6 +4624,7 @@ mod tests {
             fake_agent,
             "connection-auth".to_string(),
             "profile-auth".to_string(),
+            std::env::temp_dir(),
             Arc::new(Mutex::new(Some(handshake_tx))),
             commands_rx,
             ConnectionRuntime {
@@ -4575,6 +4642,7 @@ mod tests {
             .expect("handshake response")
             .expect("handshake should pass");
         assert!(!info.authenticated);
+        assert_eq!(info.bundle_root, Some(std::env::temp_dir()));
 
         let (session_tx, session_rx) = tokio::sync::oneshot::channel();
         commands_tx
@@ -4755,6 +4823,7 @@ mod tests {
             fake_agent,
             "connection-1".to_string(),
             "profile-1".to_string(),
+            std::env::temp_dir(),
             handshake,
             commands_rx,
             ConnectionRuntime {
@@ -4987,6 +5056,7 @@ mod tests {
             fake_agent,
             "connection-permission".to_string(),
             "profile-permission".to_string(),
+            std::env::temp_dir(),
             Arc::new(Mutex::new(Some(handshake_tx))),
             commands_rx,
             ConnectionRuntime {
@@ -5419,6 +5489,7 @@ mod tests {
             fake_agent,
             "connection-cancel".to_string(),
             "profile-cancel".to_string(),
+            std::env::temp_dir(),
             Arc::new(Mutex::new(Some(handshake_tx))),
             commands_rx,
             ConnectionRuntime {
@@ -5625,6 +5696,7 @@ mod tests {
             "one".to_string(),
             AgentWorker {
                 profile_id: "profile-a".to_string(),
+                bundle_root: None,
                 abort: first.abort_handle(),
                 commands: first_commands,
                 stages: Arc::new(SessionStages::default()),
@@ -5634,6 +5706,7 @@ mod tests {
             "two".to_string(),
             AgentWorker {
                 profile_id: "profile-a".to_string(),
+                bundle_root: None,
                 abort: second.abort_handle(),
                 commands: second_commands,
                 stages: Arc::new(SessionStages::default()),

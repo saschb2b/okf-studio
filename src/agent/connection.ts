@@ -57,6 +57,7 @@ export interface AgentSecurityHostStatus {
 export interface AgentConnectionInfo {
   connectionId: string;
   profileId: string;
+  bundleRoot: string | null;
   protocolVersion: string;
   agent: AgentImplementationInfo | null;
   authMethods: readonly AgentAuthMethodInfo[];

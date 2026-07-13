@@ -331,10 +331,16 @@ function mockNativeSecurityScope(): AgentSecurityScopeInfo {
   };
 }
 
-export async function connectCustomAgent(profileId: string): Promise<AgentConnectionInfo> {
+export async function connectCustomAgent(
+  profileId: string,
+  bundleRoot: string,
+): Promise<AgentConnectionInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
-    const info = await invoke<AgentConnectionInfo>("connect_custom_agent", { profileId });
+    const info = await invoke<AgentConnectionInfo>("connect_custom_agent", {
+      profileId,
+      bundleRoot,
+    });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
     return info;
@@ -345,6 +351,7 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
   const info: AgentConnectionInfo = {
     connectionId: `connection-${crypto.randomUUID()}`,
     profileId,
+    bundleRoot,
     protocolVersion: "1",
     agent: { name: "browser-acp", title: profile.name, version: "0.0.0-dev" },
     authMethods: profile.name.includes("Auth")
@@ -369,10 +376,16 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
   return info;
 }
 
-export async function connectCatalogAgent(agentId: string): Promise<AgentConnectionInfo> {
+export async function connectCatalogAgent(
+  agentId: string,
+  bundleRoot: string,
+): Promise<AgentConnectionInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
-    const info = await invoke<AgentConnectionInfo>("connect_catalog_agent", { agentId });
+    const info = await invoke<AgentConnectionInfo>("connect_catalog_agent", {
+      agentId,
+      bundleRoot,
+    });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
     return info;
@@ -390,6 +403,7 @@ export async function connectCatalogAgent(agentId: string): Promise<AgentConnect
   const info: AgentConnectionInfo = {
     connectionId: `connection-${crypto.randomUUID()}`,
     profileId,
+    bundleRoot,
     protocolVersion: "1",
     agent: { name: agentId, title: entry.name, version: entry.distribution.version },
     authMethods: [{
@@ -437,6 +451,7 @@ export async function connectLocalModel(
   const info: AgentConnectionInfo = {
     connectionId: `connection-${crypto.randomUUID()}`,
     profileId,
+    bundleRoot: null,
     protocolVersion: "studio-native/1",
     agent: {
       name: "okf-studio-local",
@@ -472,6 +487,14 @@ export function subscribeAgentConnections(subscriber: () => void): () => void {
   return () => activeAgentConnectionSubscribers.delete(subscriber);
 }
 
+function assertConnectionBundle(connection: AgentConnectionInfo, bundleRoot: string): void {
+  if (connection.bundleRoot !== null && connection.bundleRoot !== bundleRoot) {
+    throw new Error(
+      "This external agent connection belongs to another bundle. Disconnect it and connect again from the active bundle.",
+    );
+  }
+}
+
 export async function newAgentSession(
   connectionId: string,
   bundleRoot: string,
@@ -484,6 +507,7 @@ export async function newAgentSession(
   if (!connection) {
     throw new Error("Agent connection was not found.");
   }
+  assertConnectionBundle(connection, bundleRoot);
   if (!connection.authenticated) throw new Error("Authenticate the agent before creating a session.");
   const sessionId = `session-${crypto.randomUUID()}`;
   clearMockThreadPermissionRules(connectionId, sessionId);
@@ -523,6 +547,7 @@ export async function listAgentSessions(
   }
   const connection = activeAgentConnectionsById.get(connectionId);
   if (!connection) throw new Error("Agent connection was not found.");
+  assertConnectionBundle(connection, bundleRoot);
   if (!connection.capabilities.sessionList) {
     throw new Error("This agent did not advertise session history support.");
   }
@@ -569,6 +594,7 @@ export async function loadAgentSession(
   }
   const connection = activeAgentConnectionsById.get(connectionId);
   if (!connection) throw new Error("Agent connection was not found.");
+  assertConnectionBundle(connection, bundleRoot);
   if (!connection.capabilities.loadSession) {
     throw new Error("This agent did not advertise session restore support.");
   }

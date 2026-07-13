@@ -81,7 +81,7 @@ describe("accessibility (axe-core)", () => {
       arguments: [],
       environment: [],
     });
-    const connection = await ipc.connectCustomAgent(profile.id);
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
 
     try {
       const user = userEvent.setup();

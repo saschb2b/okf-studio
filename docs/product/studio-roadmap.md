@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T21:19:01Z
+timestamp: 2026-07-13T22:00:31Z
 ---
 
 # Outcome
@@ -199,6 +199,7 @@ Gate: end-to-end tests reach useful results with no hidden write or network acti
   - [x] Cover forged paths, stale recents, symbolic links, pop-out windows, remote-cache eviction, and grant revocation with native tests.
 - [ ] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
   - [x] Own each external ACP process tree and terminate descendants on disconnect or host cancellation.
+  - [x] Bind each external process launch to one canonical Rust-granted bundle root and reject cross-bundle session operations before ACP dispatch.
   - [x] Show the effective bundle, file, network, write, and process scope in every live thread.
   - [x] Reject model-invented native tools before dispatch and refuse provider redirects without contacting their destination.
 - [ ] Support allow/deny once, thread grants, and narrow persistent rules.

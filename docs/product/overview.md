@@ -38,4 +38,4 @@ OKF is markdown with frontmatter, which makes bundles portable but leaves their 
 4. The frontend renders the [graph](../features/graph-view.md) + [reader](../features/concept-reader.md), with [search](../features/search-and-filter.md), [navigation](../features/navigation.md), and [live reload](../features/live-reload.md).
 5. When chosen, the [Agent Panel](../features/agent-panel.md) starts a compatible agent and attaches only the active bundle and explicit sources through the [Agent System](../architecture/agent-system.md).
 
-This product is shaped by its [Design Principles](principles.md) and bounded by its [Scope & Non-Goals](scope-and-non-goals.md).
+This product is shaped by its [Design Principles](principles.md) and bounded by its [Scope & Non-Goals](scope-and-non-goals.md). Existing OKF Viewer installations upgrade in place under the deliberately stable identifiers documented in [OKF Viewer to OKF Studio](migration-notes.md).

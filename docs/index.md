@@ -11,6 +11,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 # Product
 
 * [Overview](product/overview.md) - What OKF Studio is, who it's for, and the one-line pitch.
+* [OKF Viewer to OKF Studio](product/migration-notes.md) - How existing local data, credentials, and compatibility identifiers behave on upgrade.
 * [Personas & Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
 * [How It Compares](product/comparison.md) - OKF Studio vs. the reference visualizer, PKM tools, static-site generators, and a file tree.
 * [Design Principles](product/principles.md) - The non-negotiables: local-first, vendor-neutral, tolerant, read-only, fast.

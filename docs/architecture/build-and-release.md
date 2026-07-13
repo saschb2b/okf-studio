@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-07-11T04:45:00Z
+timestamp: 2026-07-13T17:18:47Z
 ---
 
 # Decision
@@ -53,7 +53,9 @@ Silent/automatic updates remain out of scope — the network call only ever happ
 
 # Install & uninstall
 
-Following platform install best practices: installers target a **per-user install where the platform allows**, avoiding admin elevation and reboots. **Uninstalling removes the app binaries**; the only user data is in the app's own config directory (recent bundles and [settings](../ux/settings.md) via the store plugin — see [IPC & Security](ipc-and-security.md)), which the user can keep or clear. Nothing is written system-wide and nothing phones home, so there is no residue to chase.
+Following platform install best practices, installers target a **per-user install where the platform allows**, avoiding admin elevation and reboots. An existing OKF Viewer installation upgrades in place because Studio retains the application identifier, app-data location, updater repository, and store name. The [migration notes](../product/migration-notes.md) list every compatibility name and retained data surface.
+
+**Uninstalling removes the app binaries.** App data and cache data can remain for a later reinstall, including preferences, recent bundles, agent profiles, managed runtimes, thread pointers, and restore checkpoints. API-key-backed Studio Agent profiles keep their keys in the operating-system credential store until the profile removes them or the user removes them through the operating system. Studio writes no telemetry or license state.
 
 # Offline build, no phone-home
 

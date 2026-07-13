@@ -10,6 +10,7 @@ const shotDs = `${base}screenshot-ds.webp`;
 const repo = "https://github.com/saschb2b/okf-viewer";
 const releasesLatest = `${repo}/releases/latest`;
 const releases = `${repo}/releases`;
+const migrationNotes = `${repo}/blob/main/docs/product/migration-notes.md`;
 const version = "v0.2.7";
 
 const okfSpec = "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf";
@@ -325,6 +326,9 @@ const downloads = [
               inline children, which glued the middots to their neighbors. */}
           <p class="download__note">
             {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases</a> · macOS: <a href={repo}>build from source</a>
+          </p>
+          <p class="download__note">
+            Upgrading from OKF Viewer? Settings and agent profiles stay in place. <a href={migrationNotes}>Migration notes</a>
           </p>
         </div>
       </div>

@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Update**: Corrected the remote-open trust copy. The idle dialog now says that no request is sent before **Open**, then explains that Studio downloads and caches a local copy instead of making the false claim that nothing is sent anywhere. App tests cover the idle and retryable-error states, and the site copy states the same boundary.
 * **Update**: Removed stale Viewer-era trust-boundary claims from the feature, architecture, reference, and UX contracts. Opening a bundle remains non-mutating and bundle-scoped; explicit source, destination, export, network, agent, and reviewed-write operations now remain distinct, and concurrent windows rely on transaction revision checks rather than an obsolete read-only assumption.
 * **Update**: Completed the bundle-root navigation map. Agents starting at `docs/index.md` can now discover the Studio roadmap, Agent System architecture, Zed research, hierarchy views, and design-system rendering without first guessing the relevant section directory.
 * **Update**: Hardened the frontend diagnostic sink. Rust now removes terminal control characters, flattens multiline webview failures into one prefixed line, caps the message at 16,384 characters, and marks truncation before writing to stderr. A unit test covers control injection, empty input, and multibyte truncation.

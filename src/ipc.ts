@@ -1980,9 +1980,10 @@ export async function pickFolder(): Promise<string | null> {
 /**
  * Fetch a remote bundle source into a local cache directory and return that
  * directory's path — which the caller then treats exactly like a picked folder
- * (scan → open → watch → recents). This is a *user-initiated* network call (the
- * app makes no automatic ones); the Rust command applies https-only, size-cap,
- * and archive-extraction containment guards. Off-Tauri it resolves to the mock
+ * (scan → open → watch → recents). Remote retrieval begins only after the user
+ * chooses Open or Refresh; the Rust command applies https-only, size-cap, and
+ * archive-extraction containment guards. Other Studio network operations have
+ * their own explicit actions and boundaries. Off-Tauri this resolves to the mock
  * folder after a short delay, so the dialog's fetch progress is exercised in dev.
  */
 export async function fetchRemoteBundle(

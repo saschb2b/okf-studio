@@ -138,8 +138,8 @@ export function OpenRemoteDialog() {
                 </span>
               ) : (
                 <span className="remote-hint muted">
-                  Fetched once to a local cache, then read like any folder —
-                  read-only, nothing is sent anywhere.
+                  No request is sent until you choose Open. Studio caches the
+                  download locally and opens it without modifying its files.
                 </span>
               )}
             </div>

@@ -41,6 +41,38 @@ describe("OKF Studio app", () => {
     ).toBeInTheDocument();
   });
 
+  it("explains the remote-open network boundary before fetching", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: "Open from URL…" }));
+
+    expect(screen.getByRole("dialog", { name: "Open from URL" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/No request is sent until you choose Open\./),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a remote fetch failure visible and retryable", async () => {
+    vi.spyOn(ipc, "fetchRemoteBundle").mockRejectedValueOnce(
+      new Error("The remote bundle could not be fetched securely."),
+    );
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: "Open from URL…" }));
+    await user.type(
+      screen.getByLabelText("Paste a GitHub URL or a link to an archive"),
+      "https://github.com/owner/repo",
+    );
+    await user.click(screen.getByRole("button", { name: /^Open$/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The remote bundle could not be fetched securely.",
+    );
+    expect(screen.getByRole("button", { name: /^Open$/ })).toBeEnabled();
+  });
+
   it("opens the disconnected agent panel from the status bar", async () => {
     const user = userEvent.setup();
     renderApp();

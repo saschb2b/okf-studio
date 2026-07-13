@@ -42,8 +42,8 @@ export function EmptyState() {
         <h2>No OKF bundles found</h2>
         <p className="empty-line">
           An OKF bundle is a directory of <code>.md</code> concept files, each
-          with a non-empty <code>type</code> in its YAML frontmatter. Point the
-          viewer at a folder that contains one.
+          with a non-empty <code>type</code> in its YAML frontmatter. Point
+          Studio at a folder that contains one.
         </p>
         <p className="empty-path muted">{state.folder}</p>
         <button className="btn primary" onClick={() => void actions.openFolder()}>

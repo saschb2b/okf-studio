@@ -4,7 +4,7 @@ title: OKF Sample Bundles
 description: The three browsable OKF sample bundles — GA4 e-commerce, Stack Overflow, and Bitcoin — that serve as real-world fixtures for exercising OKF Studio beyond this self-describing docs bundle.
 resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf/bundles
 tags: [reference, okf, samples, fixtures, external]
-timestamp: 2026-07-11T04:45:00Z
+timestamp: 2026-07-13T19:42:50Z
 ---
 
 # Summary
@@ -21,13 +21,13 @@ Each is accompanied by a `samples/` recipe — the reproducible procedure that r
 
 # Value to OKF Studio
 
-This `docs/` bundle is **self-describing** — it documents the viewer using the viewer's own format. That makes it a good first fixture but a narrow one. The sample bundles add **real-world fixtures** that exercise paths the self-describing bundle does not:
+This `docs/` bundle is **self-describing** — it documents Studio using Studio's own format. That makes it a good first fixture but a narrow one. The sample bundles add **real-world fixtures** that exercise paths the self-describing bundle does not:
 
 - **Diverse `type` values** — table, column, metric, and reference types beyond this bundle's vocabulary, stressing type-colored nodes and [filters](../features/search-and-filter.md).
 - **Larger graphs** — more nodes and denser link structure, exercising layout and rendering at scale.
 - **Tolerant-consumer paths** — independently authored bundles surface the soft issues (unknown types, missing optional fields, broken links) that [Validation](../features/validation.md) must tolerate rather than reject.
 
-For that reason [Testing](../architecture/testing.md) treats the sample bundles as a primary fixture set, and [Folder Autodetect](../features/folder-autodetect.md) is validated against a folder holding several of them at once. They keep the viewer honest against bundles it did not author. See the [OKF Spec Summary](okf-spec-summary.md) for the rules these bundles conform to.
+For that reason [Testing](../architecture/testing.md) treats the sample bundles as a primary fixture set, and [Folder Autodetect](../features/folder-autodetect.md) is validated against a folder holding several of them at once. They keep Studio honest against bundles it did not author. See the [OKF Spec Summary](okf-spec-summary.md) for the rules these bundles conform to.
 
 # Citations
 

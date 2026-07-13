@@ -3,12 +3,12 @@ type: Feature
 title: Live Reload
 description: Watch the opened folder and refresh the graph and reader in place as bundle files are added, changed, or removed.
 tags: [feature, live, filesystem]
-timestamp: 2026-06-28T13:00:00Z
+timestamp: 2026-07-13T19:42:50Z
 ---
 
 # What it does
 
-While a folder is open, the app watches it for filesystem changes and updates the view automatically — so editing a concept in another editor (or an agent rewriting it) reflects in the viewer within moments, without a manual reload.
+While a folder is open, the app watches it for filesystem changes and updates the view automatically — so editing a concept in another editor (or an agent rewriting it) reflects in Studio within moments, without a manual reload.
 
 # Behavior
 

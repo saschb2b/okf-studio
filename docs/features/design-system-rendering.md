@@ -3,14 +3,14 @@ type: Feature
 title: Design-System Rendering
 description: Render an ODSF bundle's design artifacts — token swatches/specimens/scales, design status, and live HTML example previews — natively in the reader.
 tags: [feature, odsf, design-system, tokens, reader]
-timestamp: 2026-07-13T18:51:16Z
+timestamp: 2026-07-13T19:42:50Z
 ---
 
 # What it does
 
-An [ODSF](../reference/okf-spec-summary.md) bundle (the Open Design System Format — a *profile* of OKF for packaging a design system) carries design artifacts a plain markdown reader would show only as raw frontmatter and dead links: machine-readable **design tokens**, companion **HTML/CSS example assets**, and design-oriented **status**. The viewer renders these natively in the [Concept Reader](concept-reader.md), so opening an ODSF bundle *shows* the design system — swatches, type specimens, scales, and (with [`read_asset`](../architecture/ipc-and-security.md)) the live rendered example — rather than describing it.
+An [ODSF](../reference/okf-spec-summary.md) bundle (the Open Design System Format — a *profile* of OKF for packaging a design system) carries design artifacts a plain markdown reader would show only as raw frontmatter and dead links: machine-readable **design tokens**, companion **HTML/CSS example assets**, and design-oriented **status**. Studio renders these natively in the [Concept Reader](concept-reader.md), so opening an ODSF bundle *shows* the design system — swatches, type specimens, scales, and (with [`read_asset`](../architecture/ipc-and-security.md)) the live rendered example — rather than describing it.
 
-This is **feature-detected, never a mode**: ODSF adds nothing OKF mandates, so the viewer reads each concept and renders whatever design artifacts it declares. A plain OKF concept declares none and renders exactly as before. No setting, no bundle-level switch.
+This is **feature-detected, never a mode**: ODSF adds nothing OKF mandates, so Studio reads each concept and renders whatever design artifacts it declares. A plain OKF concept declares none and renders exactly as before. No setting, no bundle-level switch.
 
 # Token visualizations
 
@@ -25,7 +25,7 @@ When a concept carries a `tokens` map (preserved into `extra` by the [indentatio
 
 ## Token references
 
-A token value may reference another with design.md's `{group.name}` syntax (a component's `background: "{colors.bgColor-success-emphasis}"`). The viewer builds a **bundle-wide token index** from every concept's foundation tokens and resolves references against it, so a component shows the concrete value (and color dot) it will actually render. The **same resolution runs in the body prose**: a `{group.name}` written in inline code is annotated with the value it resolves to (and gets a swatch when that value is a color), so a doc that *mentions* a token still shows it. An unresolved reference is left verbatim, tolerated like a [broken link](../architecture/okf-parsing.md).
+A token value may reference another with design.md's `{group.name}` syntax (a component's `background: "{colors.bgColor-success-emphasis}"`). Studio builds a **bundle-wide token index** from every concept's foundation tokens and resolves references against it, so a component shows the concrete value (and color dot) it will actually render. The **same resolution runs in the body prose**: a `{group.name}` written in inline code is annotated with the value it resolves to (and gets a swatch when that value is a color), so a doc that *mentions* a token still shows it. An unresolved reference is left verbatim, tolerated like a [broken link](../architecture/okf-parsing.md).
 
 # Color values in the body
 
@@ -44,7 +44,7 @@ A linked **stylesheet** (`.css`) has no rendered form, so it is shown as a **cod
 # What it deliberately is not
 
 - **Not a direct editor.** The rendering surface never mutates tokens or assets. An agent thread may propose reviewed Markdown changes through the ordinary staged-write flow, but it cannot alter a live preview or bypass validation and Apply (see the [read-only principle](../product/principles.md)).
-- **Not a component runtime.** Example assets are vanilla HTML/CSS the viewer renders as-is; there is no React/Vue/web-components execution, matching ODSF's own non-goals.
+- **Not a component runtime.** Example assets are vanilla HTML/CSS Studio renders as-is; there is no React/Vue/web-components execution, matching ODSF's own non-goals.
 - **Not ODSF-exclusive.** The same machinery renders tokens/examples on any OKF bundle that happens to carry them; ODSF is just the profile that standardizes the shape.
 
 See the [ODSF spec](https://github.com/saschb2b/Open-Design-System-Format) for the format these artifacts follow.

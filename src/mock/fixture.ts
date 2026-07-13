@@ -29,7 +29,7 @@ const raw: RawConcept[] = [
       "```ts\nconst bundle = await readBundle(root);\nrenderGraph(bundle);\n```\n\n" +
       "### At a glance\n\n" +
       "| Stage | Runs in |\n| --- | --- |\n| Scan | Rust core |\n| Parse | Rust core |\n| Render | Frontend |\n\n" +
-      "> [!WARNING]\n> Broken cross-links are surfaced, never hidden — the viewer is a tolerant consumer.\n\n" +
+      "> [!WARNING]\n> Broken cross-links are surfaced, never hidden — Studio is a tolerant consumer.\n\n" +
       "## Who it's for\n\n" +
       "Engineers and agent builders who keep knowledge in their repos and want to *read* it, not just grep it.",
     links: ["features/graph-view", "reference/glossary"],
@@ -443,7 +443,7 @@ export const MOCK_BUNDLE: Bundle = {
         },
         {
           // A hand-written "Subdirectories" listing whose only entry (product/)
-          // is already a clickable section heading — the viewer drops this whole
+          // is already a clickable section heading — the renderer drops this whole
           // section as redundant, without touching the source bundle.
           heading: "Subdirectories",
           entries: [
@@ -534,7 +534,7 @@ export const MOCK_BUNDLE: Bundle = {
     {
       date: "2026-06-27",
       entries: [
-        "**Creation**: Sample bundle for the viewer's empty-handed dev mode. Starts with the [Concept Reader](features/concept-reader.md) and the [OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog).",
+        "**Creation**: Sample bundle for Studio's empty-handed dev mode. Starts with the [Concept Reader](features/concept-reader.md) and the [OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog).",
       ],
     },
   ],

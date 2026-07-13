@@ -3,7 +3,7 @@ type: Feature
 title: Search & Filter
 description: Type filters and tag browsing that persistently narrow the view, plus full-text concept search through the global launcher.
 tags: [feature, search, filter]
-timestamp: 2026-07-04T20:30:00Z
+timestamp: 2026-07-13T19:42:50Z
 ---
 
 # What it does
@@ -33,7 +33,7 @@ Terms are ANDed; the field parses to one predicate that the [graph](graph-view.m
 
 # Tag browsing
 
-- Tags are first-class in OKF but have no dedicated file; the viewer **synthesizes** a tag index at load time by scanning frontmatter (as the spec intends).
+- Tags are first-class in OKF but have no dedicated file; Studio **synthesizes** a tag index at load time by scanning frontmatter (as the spec intends).
 - Selecting a tag filters the graph and list to concepts carrying it.
 
 All of this is pure frontend filtering over the already-parsed [data model](../architecture/data-model.md) — no re-scan, keeping it [fast](../product/principles.md). The synthesized tag index and the type→color map are client-side derived state (see [Frontend Architecture](../architecture/frontend-architecture.md) and [Performance & Scale](../architecture/performance.md)).

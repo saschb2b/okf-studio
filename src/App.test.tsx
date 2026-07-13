@@ -41,6 +41,19 @@ describe("OKF Studio app", () => {
     ).toBeInTheDocument();
   });
 
+  it("names Studio in the empty-folder recovery state", async () => {
+    vi.spyOn(ipc, "scanBundles").mockResolvedValueOnce([]);
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
+
+    const heading = await screen.findByRole("heading", { name: "No OKF bundles found" });
+    expect(heading.parentElement).toHaveTextContent(
+      "Point Studio at a folder that contains one.",
+    );
+  });
+
   it("explains the remote-open network boundary before fetching", async () => {
     const user = userEvent.setup();
     renderApp();

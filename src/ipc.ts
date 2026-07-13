@@ -1968,13 +1968,15 @@ function browserTarget(): string {
 
 export async function pickFolder(): Promise<string | null> {
   if (!isTauri()) return MOCK_FOLDER;
-  const { open } = await import("@tauri-apps/plugin-dialog");
-  const picked = await open({
-    directory: true,
-    multiple: false,
-    title: "Open a folder of OKF bundles",
-  });
-  return typeof picked === "string" ? picked : null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("pick_bundle_folder");
+}
+
+/** Remove one exact Rust-owned folder grant. Frontend state cannot add one. */
+export async function revokeBundleGrant(folder: string): Promise<boolean> {
+  if (!isTauri()) return true;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<boolean>("revoke_bundle_grant", { folder });
 }
 
 /**

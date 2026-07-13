@@ -1,9 +1,9 @@
 ---
 type: Migration Guide
 title: OKF Viewer to OKF Studio
-description: What changes and what stays compatible when an existing OKF Viewer installation upgrades to OKF Studio.
+description: What changes, including bundle-folder grants, and what stays compatible when OKF Viewer upgrades to OKF Studio.
 tags: [product, migration, upgrade, compatibility, credentials]
-timestamp: 2026-07-13T17:18:47Z
+timestamp: 2026-07-13T19:56:13Z
 ---
 
 # Upgrade in place
@@ -37,6 +37,14 @@ The stored ACP pointers contain no transcript, prompts, attachments, tool activi
 
 OKF bundles need no content migration. Opening a bundle remains read-only. Files change only through a separately granted, reviewed, validated Apply action.
 
+# Bundle folder grants
+
+Studio no longer treats a folder path in the frontend recent-bundle store as filesystem authority. A Rust-owned native picker records the canonical folder in a separate app-data grant file. Completed remote downloads register their cache roots through the same boundary. Scans, reads, assets, watchers, and agent sessions reject a path without a live matching grant.
+
+Recent entries from a build before this boundary still appear after upgrade, but their stored paths cannot authorize access. Open each local folder once through **Open folder...** to establish its Rust grant. Use **Refresh from source** once for each retained remote recent so the completed fetch establishes its cache grant. These one-time actions are required because trusting old frontend data would defeat the boundary.
+
+Forgetting the last inactive recent from a folder removes its remembered grant. A missing or moved folder fails closed and can be selected again at its new location.
+
 # Credentials
 
 External ACP agents own their sign-in and token storage. Studio does not copy those credentials.
@@ -63,7 +71,8 @@ Installing an ACP agent, connecting a remote provider, checking for updates, and
 1. Finish or cancel active turns. Apply or discard any staged draft that should not be lost.
 2. Install the Studio build through [the supported update path](../architecture/build-and-release.md), or replace the existing installation with the release package for the same platform.
 3. Start Studio and confirm the expected recent bundles, agent profiles, and saved thread pointers appear.
-4. Retest credentialed Studio Agent endpoints if the operating-system keyring requests access or reports a missing key.
-5. Leave compatibility-named storage and repository paths unchanged.
+4. Open each retained local bundle folder once to create its Rust-owned grant. Use **Refresh from source** once for every retained remote recent.
+5. Retest credentialed Studio Agent endpoints if the operating-system keyring requests access or reports a missing key.
+6. Leave compatibility-named storage and repository paths unchanged.
 
 For the underlying boundaries, see [Agent System](../architecture/agent-system.md), [IPC & Security](../architecture/ipc-and-security.md), [Settings & Preferences](../ux/settings.md), and the [OKF Studio Transformation](studio-roadmap.md).

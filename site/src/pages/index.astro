@@ -30,7 +30,7 @@ const features = [
   {
     glyph: "⬡",
     title: "Any conformant bundle",
-    body: "Reads Open Knowledge Format & ODSF bundles from any producer. Open a local folder, or explicitly download and cache a GitHub URL on your machine.",
+    body: "Reads Open Knowledge Format & ODSF bundles from any producer. Open a local folder, or explicitly download and cache a GitHub URL on your machine. Rust records that choice and limits readers, assets, watchers, and agents to bundle roots found by its scan.",
   },
   {
     glyph: "⧉",
@@ -328,7 +328,7 @@ const downloads = [
             {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases</a> · macOS: <a href={repo}>build from source</a>
           </p>
           <p class="download__note">
-            Upgrading from OKF Viewer? Settings and agent profiles stay in place. <a href={migrationNotes}>Migration notes</a>
+            Upgrading from OKF Viewer? Settings and agent profiles stay in place; open retained local folders once to grant them to Rust. <a href={migrationNotes}>Migration notes</a>
           </p>
         </div>
       </div>

@@ -192,11 +192,11 @@ Gate: end-to-end tests reach useful results with no hidden write or network acti
 
 ## WP11: Isolation and autonomy
 
-- [ ] Enforce the active bundle root through a Rust-owned grant registry rather than trusting a path supplied by the webview.
-  - [ ] Move local folder selection behind a Rust command that registers only the canonical path returned by the native dialog.
-  - [ ] Register remote-cache roots when the Rust fetch completes and persist enough Rust-owned grant metadata to reopen a recent bundle without trusting the frontend store as authority.
-  - [ ] Require a live grant for scanning, bundle reads, asset reads, watching, and agent session creation; keep source, export, and fresh-destination pickers as separate one-operation grants.
-  - [ ] Cover forged paths, stale recents, symbolic links, pop-out windows, remote-cache eviction, and grant revocation with native tests.
+- [x] Enforce the active bundle root through a Rust-owned grant registry rather than trusting a path supplied by the webview.
+  - [x] Move local folder selection behind a Rust command that registers only the canonical path returned by the native dialog.
+  - [x] Register remote-cache roots when the Rust fetch completes and persist enough Rust-owned grant metadata to reopen a recent bundle without trusting the frontend store as authority.
+  - [x] Require a live grant for scanning, bundle reads, asset reads, watching, and agent session creation; keep source, export, and fresh-destination pickers as separate one-operation grants.
+  - [x] Cover forged paths, stale recents, symbolic links, pop-out windows, remote-cache eviction, and grant revocation with native tests.
 - [ ] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
   - [x] Own each external ACP process tree and terminate descendants on disconnect or host cancellation.
   - [x] Show the effective bundle, file, network, write, and process scope in every live thread.
@@ -221,7 +221,7 @@ The remaining WP11 boxes stay open until their enforcement dependency exists. A 
 - [ ] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. Authentication-dependent ACP agents need an explicit network exception rather than an undocumented full-network default.
 - [ ] Add cross-session permission rules only when ACP supplies a stable tool identity that Studio can display and match independently of agent-controlled titles or raw arguments.
 - [ ] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny.
-- [ ] Treat the active bundle as granted only when the Rust registry produced and still owns the canonical root. Frontend store entries and path strings cannot satisfy this condition.
+- [x] Treat the active bundle as granted only when the Rust registry produced and still owns the canonical root. Frontend store entries and path strings cannot satisfy this condition.
 
 ## WP12: Completion
 

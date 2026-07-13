@@ -1,7 +1,7 @@
 # Product
 
 * [OKF Studio Transformation](studio-roadmap.md) - Sequenced work packages for creation, curation, querying, and reviewed agent edits.
-* [OKF Viewer to OKF Studio](migration-notes.md) - Upgrade behavior for local data, credentials, billing, and compatibility names.
+* [OKF Viewer to OKF Studio](migration-notes.md) - Upgrade behavior for bundle-folder grants, local data, credentials, billing, and compatibility names.
 
 Vision, audience, principles, and scope for OKF Studio.
 

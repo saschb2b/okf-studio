@@ -20,12 +20,14 @@ mod agent_stage;
 mod agent_studio;
 mod agent_transcript;
 mod agent_url;
+mod bundle_grant;
 mod remote;
 mod watch;
 
 use okf_core::{Bundle, BundleRoot};
 use std::path::Path;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_dialog::DialogExt;
 use watch::WatchState;
 
 pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
@@ -37,13 +39,56 @@ pub fn run_pdf_extractor() -> Result<(), String> {
 }
 
 #[tauri::command]
-fn scan_bundles(folder: String, max_depth: usize) -> Vec<BundleRoot> {
-    okf_core::scan_bundles_with_depth(Path::new(&folder), max_depth)
+fn pick_bundle_folder(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+) -> Result<Option<String>, String> {
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_title("Open a folder of OKF bundles")
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+    let folder = selected
+        .into_path()
+        .map_err(|_| "The selected bundle folder is not available on this platform.".to_string())?;
+    grants
+        .grant(&folder, bundle_grant::BundleGrantKind::LocalFolder)
+        .map(Some)
 }
 
 #[tauri::command]
-fn read_bundle(root: String) -> Bundle {
-    okf_core::read_bundle(Path::new(&root))
+fn revoke_bundle_grant(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    folder: String,
+) -> Result<bool, String> {
+    grants.revoke(&folder)
+}
+
+#[tauri::command]
+fn scan_bundles(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    folder: String,
+    max_depth: usize,
+) -> Result<Vec<BundleRoot>, String> {
+    let folder = grants.authorize_folder(Path::new(&folder))?;
+    let roots = okf_core::scan_bundles_with_depth(&folder, max_depth);
+    grants.register_bundle_roots(
+        &folder,
+        roots.iter().map(|root| Path::new(&root.root).to_path_buf()),
+    )?;
+    Ok(roots)
+}
+
+#[tauri::command]
+fn read_bundle(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+) -> Result<Bundle, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    Ok(okf_core::read_bundle(&root))
 }
 
 #[tauri::command]
@@ -152,28 +197,43 @@ fn disconnect_agent(
 #[tauri::command]
 async fn new_agent_session(
     state: State<'_, agent_protocol::AgentHostState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
     connection_id: String,
     bundle_root: String,
 ) -> Result<agent_protocol::AgentSessionInfo, String> {
+    let bundle_root = grants
+        .authorize_bundle(Path::new(&bundle_root))?
+        .to_string_lossy()
+        .into_owned();
     agent_protocol::new_session(state.inner(), &connection_id, bundle_root).await
 }
 
 #[tauri::command]
 async fn list_agent_sessions(
     state: State<'_, agent_protocol::AgentHostState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
     connection_id: String,
     bundle_root: String,
 ) -> Result<agent_protocol::AgentSessionHistoryPage, String> {
+    let bundle_root = grants
+        .authorize_bundle(Path::new(&bundle_root))?
+        .to_string_lossy()
+        .into_owned();
     agent_protocol::list_sessions(state.inner(), &connection_id, bundle_root).await
 }
 
 #[tauri::command]
 async fn load_agent_session(
     state: State<'_, agent_protocol::AgentHostState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
     connection_id: String,
     bundle_root: String,
     session_id: String,
 ) -> Result<agent_protocol::AgentLoadedSessionInfo, String> {
+    let bundle_root = grants
+        .authorize_bundle(Path::new(&bundle_root))?
+        .to_string_lossy()
+        .into_owned();
     agent_protocol::load_session(
         state.inner(),
         &connection_id,
@@ -507,11 +567,16 @@ fn cancel_agent_install(
 #[tauri::command]
 async fn fetch_remote_bundle(
     app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
     source: remote::RemoteSource,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || remote::fetch(&app, source))
+    let folder = tauri::async_runtime::spawn_blocking(move || remote::fetch(&app, source))
         .await
-        .map_err(|e| format!("Fetch task failed: {e}"))?
+        .map_err(|e| format!("Fetch task failed: {e}"))??;
+    grants.grant(
+        Path::new(&folder),
+        bundle_grant::BundleGrantKind::RemoteCache,
+    )
 }
 
 /// Read one companion asset's text (an ODSF `*.example.html` or a `styles/*.css`
@@ -519,23 +584,43 @@ async fn fetch_remote_bundle(
 /// the core guards against escaping the bundle root and only serves text assets.
 /// Returns `null` to the frontend when the asset is absent or not permitted.
 #[tauri::command]
-fn read_asset(root: String, rel: String) -> Option<String> {
-    okf_core::read_asset(Path::new(&root), &rel)
+fn read_asset(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    rel: String,
+) -> Result<Option<String>, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    Ok(okf_core::read_asset(&root, &rel))
 }
 
 /// Read a local bundle image as a `data:` URL so the reader can render it inline
 /// without a network fetch (the offline stance). Returns `null` when the image
 /// is absent, not an image type, or escapes the bundle root.
 #[tauri::command]
-fn read_asset_data_url(root: String, rel: String) -> Option<String> {
-    okf_core::read_asset_data_url(Path::new(&root), &rel)
+fn read_asset_data_url(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    rel: String,
+) -> Result<Option<String>, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    Ok(okf_core::read_asset_data_url(&root, &rel))
 }
 
 /// Begin watching `folder` recursively for filesystem changes, emitting a
 /// debounced `bundle-changed` event on each burst. Replaces any active watch.
 #[tauri::command]
-fn start_watch(app: AppHandle, state: State<'_, WatchState>, folder: String) {
+fn start_watch(
+    app: AppHandle,
+    state: State<'_, WatchState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    folder: String,
+) -> Result<(), String> {
+    let folder = grants
+        .authorize_bundle(Path::new(&folder))?
+        .to_string_lossy()
+        .into_owned();
     watch::start(app, state.inner(), folder);
+    Ok(())
 }
 
 /// Stop the active watch, if any.
@@ -629,6 +714,9 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            app.manage(bundle_grant::BundleGrantState::load(app.handle()).map_err(
+                |error| std::io::Error::other(format!("could not load bundle grants: {error}")),
+            )?);
             app.manage(WatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
@@ -669,6 +757,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            pick_bundle_folder,
+            revoke_bundle_grant,
             scan_bundles,
             read_bundle,
             agent_catalog,

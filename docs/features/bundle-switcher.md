@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-timestamp: 2026-07-13T19:24:54Z
+timestamp: 2026-07-13T19:56:13Z
 ---
 
 # What it does
@@ -12,7 +12,7 @@ The top-left of the [top bar](../ux/browsing-layout.md) names the **currently op
 
 # Why "bundle", and the folder underneath
 
-OKF's unit is the **bundle** ([glossary](../reference/glossary.md)), so the switcher's unit is the bundle: the trigger names a bundle and recents are bundles. The **folder** stays underneath as the [security scope](../architecture/ipc-and-security.md) — the OS only ever grants read access to a folder the user picked, and one folder may hold several bundles ([Folder Autodetect](folder-autodetect.md)). So each recent bundle also records the folder that granted its scope, and reopening one silently re-establishes that folder's read scope before loading the bundle. In the common case (a folder holding exactly one bundle) the two collapse and the distinction is invisible. Promoting the folder to a first-class entity that *groups* the bundles it contains — so tied contexts are visually connected — is a deliberate [post-v1 direction](../product/scope-and-non-goals.md).
+OKF's unit is the **bundle** ([glossary](../reference/glossary.md)), so the switcher's unit is the bundle: the trigger names a bundle and recents are bundles. The **folder** stays underneath as the [security scope](../architecture/ipc-and-security.md). Rust registers only a folder returned by the native picker or a cache created by a completed remote fetch, and one folder may hold several bundles ([Folder Autodetect](folder-autodetect.md)). Each recent bundle records the folder that locates its Rust-owned grant. Reopening works only while that independent grant remains valid. In the common case (a folder holding exactly one bundle) the two collapse and the distinction is invisible. Promoting the folder to a first-class entity that groups the bundles it contains is a deliberate [post-v1 direction](../product/scope-and-non-goals.md).
 
 # The trigger
 
@@ -47,8 +47,8 @@ A **remote bundle** is fetched, never streamed: Studio downloads it once into a 
 # Behavior
 
 - Selecting a bundle drives the single shared selection the rest of the app uses, loading it into the [Graph View](graph-view.md) and [Reader](concept-reader.md); switching is instant because parsed bundles are cached per root by the [core](../architecture/performance.md).
-- Selecting a **recent** bundle re-grants its folder's read scope, re-detects if needed, and reopens the bundle — returning to its last-active concept where possible. A **remote** recent whose cache has been evicted transparently re-fetches from its origin first.
-- **Recents persist** (bundle root + granting folder scope + timestamp) via the [store plugin](../architecture/ipc-and-security.md), recency-ordered, with the current folder's bundles excluded; per-entry **remove**, and **pin** to keep one above the recency churn.
+- Selecting a **recent** bundle asks Rust to use the independently remembered grant for its folder, re-detects if needed, and reopens the bundle. A forged or revoked frontend entry cannot create access. A **remote** recent whose cache has been evicted re-fetches from its origin first, and the completed fetch registers the replacement cache root.
+- **Recents persist** (bundle root + folder locator + timestamp) via the [store plugin](../architecture/ipc-and-security.md), recency-ordered, with the current folder's bundles excluded. **Pin** keeps one above the recency churn. Removing the last inactive recent from a folder also revokes its Rust grant; removing an entry for the open folder keeps that live access until the folder is closed.
 - A folder that no longer exists fails into the recoverable ["path is gone"](../ux/empty-and-error-states.md) prompt, offering to forget the stale entry rather than erroring.
 
 # Empty states

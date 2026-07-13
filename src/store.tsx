@@ -882,6 +882,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ t: "recents", v: await ipc.pinBundle(root) });
     },
     async forgetBundle(root) {
+      const forgotten = stateRef.current.recents.find((entry) => entry.root === root);
+      // Forgetting the last inactive recent from a folder also removes its
+      // Rust-owned read grant. Keep the active folder live until it is closed.
+      if (
+        forgotten &&
+        forgotten.folder !== stateRef.current.folder &&
+        !stateRef.current.recents.some(
+          (entry) => entry.root !== root && entry.folder === forgotten.folder,
+        )
+      ) {
+        await ipc.revokeBundleGrant(forgotten.folder);
+      }
       dispatch({ t: "recents", v: await ipc.forgetBundle(root) });
     },
     setSwitcher(open) {

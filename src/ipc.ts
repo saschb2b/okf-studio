@@ -85,7 +85,7 @@ type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
 const agentPermissionHandlers = new Set<AgentPermissionHandler>();
 type AgentStageHandler = (event: AgentStageEvent) => void;
 const agentStageHandlers = new Set<AgentStageHandler>();
-type MockStagedFile = AgentStagedFileInfo & { content: string };
+type MockStagedFile = AgentStagedFileInfo & { content: string; hunkSelected: boolean };
 const mockStagedChanges = new Map<
   string,
   { granted: boolean; files: MockStagedFile[] }
@@ -651,12 +651,50 @@ export async function agentStagedFileDiff(
   const file = mockStageState(sessionId).files.find((candidate) => candidate.path === path);
   if (!file) throw new Error("This file is not staged.");
   const added = file.content.split("\n").map((line) => `+${line}`).join("\n");
+  const revision = `mock:${path}:${file.content.length}`;
   return {
     path,
     kind: file.kind,
-    unified: `--- a/${path}\n+++ b/${path}\n@@ -0,0 +1 @@\n${added}\n`,
+    revision,
+    hunks: [{
+      index: 0,
+      header: "@@ -0,0 +1 @@",
+      unified: `${added}\n`,
+      selected: file.hunkSelected,
+    }],
     truncated: false,
   };
+}
+
+export async function setAgentStagedHunkSelection(
+  connectionId: string,
+  sessionId: string,
+  path: string,
+  revision: string,
+  hunkIndex: number,
+  selected: boolean,
+): Promise<AgentStagedFileDiff> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedFileDiff>("set_agent_staged_hunk_selection", {
+      connectionId,
+      sessionId,
+      path,
+      revision,
+      hunkIndex,
+      selected,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const file = mockStageState(sessionId).files.find((candidate) => candidate.path === path);
+  if (!file) throw new Error("This file is not staged.");
+  if (revision !== `mock:${path}:${file.content.length}` || hunkIndex !== 0) {
+    throw new Error("The staged diff changed. Review the file again.");
+  }
+  file.hunkSelected = selected;
+  return agentStagedFileDiff(connectionId, sessionId, path);
 }
 
 export async function discardAgentStagedFile(
@@ -696,8 +734,15 @@ function mockStageWrite(info: AgentTurnInfo, text: string): string | null {
   if (existing) {
     existing.content = `${existing.content}\n\nRevised.`;
     existing.bytes = existing.content.length;
+    existing.hunkSelected = true;
   } else {
-    state.files.push({ path, bytes: content.length, kind: "create", content });
+    state.files.push({
+      path,
+      bytes: content.length,
+      kind: "create",
+      content,
+      hunkSelected: true,
+    });
   }
   emitMockStage(info.connectionId, info.sessionId);
   return `Browser ACP staged: ${path}`;

@@ -46,6 +46,7 @@ import {
   onAgentStageUpdate,
   onAgentTurnUpdate,
   setAgentWriteGrant,
+  setAgentStagedHunkSelection,
   pickAgentSourceFolder,
   pickAgentImageSources,
   pickAgentTextSources,
@@ -372,6 +373,10 @@ export function AgentConversation({
     | null
   >(null);
   const [rejectingStagedPath, setRejectingStagedPath] = useState<string | null>(null);
+  const [selectingHunk, setSelectingHunk] = useState<{
+    path: string;
+    index: number;
+  } | null>(null);
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
   >([]);
@@ -464,6 +469,7 @@ export function AgentConversation({
           setStageError(null);
           setExpandedDiff(null);
           setRejectingStagedPath(null);
+          setSelectingHunk(null);
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
         }
@@ -772,6 +778,7 @@ export function AgentConversation({
     if (!session || expandedDiff?.state === "loading") return;
     const sessionId = session.sessionId;
     setStageError(null);
+    setSelectingHunk(null);
     setExpandedDiff({ path, state: "loading" });
     try {
       const diff = await agentStagedFileDiff(connection.connectionId, sessionId, path);
@@ -780,6 +787,34 @@ export function AgentConversation({
     } catch (error: unknown) {
       if (sessionRef.current?.sessionId !== sessionId) return;
       setExpandedDiff({ path, state: "error", message: errorMessage(error) });
+    }
+  }
+
+  async function setHunkSelection(hunkIndex: number, selected: boolean) {
+    const session = sessionRef.current;
+    const current = expandedDiff;
+    if (!session || current?.state !== "ready" || selectingHunk) return;
+    const hunk = current.diff.hunks.find((candidate) => candidate.index === hunkIndex);
+    if (!hunk || hunk.selected === selected || current.diff.truncated) return;
+    const sessionId = session.sessionId;
+    setSelectingHunk({ path: current.path, index: hunkIndex });
+    setStageError(null);
+    try {
+      const diff = await setAgentStagedHunkSelection(
+        connection.connectionId,
+        sessionId,
+        current.path,
+        current.diff.revision,
+        hunkIndex,
+        selected,
+      );
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      setExpandedDiff({ path: current.path, state: "ready", diff });
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      setExpandedDiff({ path: current.path, state: "error", message: errorMessage(error) });
+    } finally {
+      if (sessionRef.current?.sessionId === sessionId) setSelectingHunk(null);
     }
   }
 
@@ -990,6 +1025,7 @@ export function AgentConversation({
     setStageError(null);
     setExpandedDiff(null);
     setRejectingStagedPath(null);
+    setSelectingHunk(null);
     setAttachedConcepts([]);
     setAttachedSources([]);
     setPromptText("");
@@ -1100,6 +1136,7 @@ export function AgentConversation({
       setStageError(null);
       setExpandedDiff(null);
       setRejectingStagedPath(null);
+      setSelectingHunk(null);
       setIsCancelling(false);
       setHistory({ status: "closed" });
       setRestoringSessionId(null);
@@ -1535,21 +1572,63 @@ export function AgentConversation({
                           )}
                           {expandedDiff.state === "ready" && (
                             <>
-                              <pre aria-label={`Unified diff for ${file.path}`}>
-                                {expandedDiff.diff.unified.split("\n").map((line, lineIndex) => {
-                                  let className = "agent-staged__diff-line";
-                                  if (line.startsWith("+") && !line.startsWith("+++")) {
-                                    className += " agent-staged__diff-line--added";
-                                  } else if (line.startsWith("-") && !line.startsWith("---")) {
-                                    className += " agent-staged__diff-line--removed";
-                                  } else if (line.startsWith("@@")) {
-                                    className += " agent-staged__diff-line--hunk";
-                                  }
-                                  return <span key={lineIndex} className={className}>{line || " "}</span>;
-                                })}
-                              </pre>
+                              <div
+                                className="agent-staged__hunks"
+                                aria-label={`Unified diff for ${file.path}`}
+                              >
+                                {expandedDiff.diff.hunks.map((hunk) => (
+                                  <section
+                                    key={hunk.index}
+                                    className={`agent-staged__hunk${hunk.selected ? "" : " agent-staged__hunk--rejected"}`}
+                                    aria-labelledby={`${diffId}-hunk-${hunk.index}`}
+                                  >
+                                    <header>
+                                      <code id={`${diffId}-hunk-${hunk.index}`}>{hunk.header}</code>
+                                      <div
+                                        className="agent-staged__hunk-actions"
+                                        role="group"
+                                        aria-label={`Hunk ${hunk.index + 1} choice`}
+                                      >
+                                        <button
+                                          type="button"
+                                          className="btn ghost"
+                                          aria-pressed={hunk.selected}
+                                          disabled={selectingHunk !== null}
+                                          onClick={() => void setHunkSelection(hunk.index, true)}
+                                        >
+                                          Keep
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn ghost"
+                                          aria-pressed={!hunk.selected}
+                                          disabled={selectingHunk !== null}
+                                          onClick={() => void setHunkSelection(hunk.index, false)}
+                                        >
+                                          Reject
+                                        </button>
+                                      </div>
+                                    </header>
+                                    <pre>
+                                      {hunk.unified.split("\n").map((line, lineIndex) => {
+                                        let className = "agent-staged__diff-line";
+                                        if (line.startsWith("+")) {
+                                          className += " agent-staged__diff-line--added";
+                                        } else if (line.startsWith("-")) {
+                                          className += " agent-staged__diff-line--removed";
+                                        } else if (line.startsWith("@@")) {
+                                          className += " agent-staged__diff-line--hunk";
+                                        }
+                                        return <span key={lineIndex} className={className}>{line || " "}</span>;
+                                      })}
+                                    </pre>
+                                  </section>
+                                ))}
+                              </div>
                               {expandedDiff.diff.truncated && (
-                                <p role="status">Diff truncated at the review limit.</p>
+                                <p role="status">
+                                  Diff truncated at the review limit. Hunk choices are unavailable.
+                                </p>
                               )}
                             </>
                           )}

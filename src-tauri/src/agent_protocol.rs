@@ -612,6 +612,27 @@ pub async fn staged_file_diff(
         .map_err(|_| "Staged diff task did not complete.".to_string())?
 }
 
+/// Change one revision-bound hunk choice for a staged file (no event).
+pub async fn set_staged_hunk_selection(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+    path: &str,
+    revision: &str,
+    hunk_index: usize,
+    selected: bool,
+) -> Result<crate::agent_stage::AgentStagedFileDiff, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let session_id = session_id.to_string();
+    let path = path.to_string();
+    let revision = revision.to_string();
+    tokio::task::spawn_blocking(move || {
+        stages.set_hunk_selection(&session_id, &path, &revision, hunk_index, selected)
+    })
+    .await
+    .map_err(|_| "Staged hunk selection task did not complete.".to_string())?
+}
+
 fn connection_stages(
     state: &AgentHostState,
     connection_id: &str,

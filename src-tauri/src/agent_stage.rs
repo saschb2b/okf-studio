@@ -7,11 +7,12 @@
 //! reviewed apply ships. Reads overlay staged content so the agent observes
 //! its own writes. See docs/architecture/agent-system.md.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 
 pub(crate) const MAX_STAGED_FILE_BYTES: usize = 1024 * 1024;
 pub(crate) const MAX_STAGED_TOTAL_BYTES: usize = 8 * 1024 * 1024;
@@ -42,13 +43,24 @@ pub struct AgentStagedChangesInfo {
     pub files: Vec<AgentStagedFileInfo>,
 }
 
-/// One staged file's bounded unified diff against the current bundle file.
+/// One selectable change cluster in a staged file diff.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedDiffHunk {
+    pub index: usize,
+    pub header: String,
+    pub unified: String,
+    pub selected: bool,
+}
+
+/// One staged file's bounded, structured diff against the current bundle file.
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentStagedFileDiff {
     pub path: String,
     pub kind: &'static str,
-    pub unified: String,
+    pub revision: String,
+    pub hunks: Vec<AgentStagedDiffHunk>,
     pub truncated: bool,
 }
 
@@ -61,6 +73,12 @@ struct SessionStage {
 struct StagedFile {
     content: String,
     kind: &'static str,
+    selection: Option<HunkSelection>,
+}
+
+struct HunkSelection {
+    revision: String,
+    rejected: BTreeSet<usize>,
 }
 
 /// All write-grant and staged-tree state for one agent connection. Sessions
@@ -77,11 +95,14 @@ impl SessionStages {
     /// inherits an earlier grant.
     pub fn register_session(&self, session_id: &str, bundle_root: &Path) {
         if let Ok(mut sessions) = self.sessions.lock() {
-            sessions.insert(session_id.to_string(), SessionStage {
-                bundle_root: bundle_root.to_path_buf(),
-                granted: false,
-                files: BTreeMap::new(),
-            });
+            sessions.insert(
+                session_id.to_string(),
+                SessionStage {
+                    bundle_root: bundle_root.to_path_buf(),
+                    granted: false,
+                    files: BTreeMap::new(),
+                },
+            );
         }
     }
 
@@ -170,7 +191,14 @@ impl SessionStages {
             },
             |file| file.kind,
         );
-        stage.files.insert(relative, StagedFile { content, kind });
+        stage.files.insert(
+            relative,
+            StagedFile {
+                content,
+                kind,
+                selection: None,
+            },
+        );
         Ok(snapshot(session_id, stage))
     }
 
@@ -197,13 +225,9 @@ impl SessionStages {
     /// A bounded unified diff between the current bundle file and the staged
     /// content, identified by the bundle-relative path the snapshot reported.
     /// Never touches the filesystem beyond one bounded read of the original.
-    pub fn staged_diff(
-        &self,
-        session_id: &str,
-        path: &str,
-    ) -> Result<AgentStagedFileDiff, String> {
+    pub fn staged_diff(&self, session_id: &str, path: &str) -> Result<AgentStagedFileDiff, String> {
         // Copy what the diff needs, then release the lock before file I/O.
-        let (bundle_root, content, kind) = {
+        let (bundle_root, content, kind, selection) = {
             let sessions = self
                 .sessions
                 .lock()
@@ -215,36 +239,105 @@ impl SessionStages {
                 .files
                 .get(path)
                 .ok_or_else(|| "This file is not staged.".to_string())?;
-            (stage.bundle_root.clone(), file.content.clone(), file.kind)
+            let selection = file
+                .selection
+                .as_ref()
+                .map(|selection| (selection.revision.clone(), selection.rejected.clone()));
+            (
+                stage.bundle_root.clone(),
+                file.content.clone(),
+                file.kind,
+                selection,
+            )
         };
-        let original = if kind == "modify" {
-            let bytes = std::fs::read(bundle_root.join(Path::new(path)))
-                .map_err(|_| "The original bundle file could not be read.".to_string())?;
-            if bytes.len() > MAX_STAGED_FILE_BYTES {
-                return Err("The original bundle file is too large to diff.".to_string());
-            }
-            String::from_utf8(bytes)
-                .map_err(|_| "The original bundle file is not UTF-8 text.".to_string())?
-        } else {
-            String::new()
-        };
-        let text_diff = similar::TextDiff::from_lines(&original, &content);
-        let unified = text_diff
-            .unified_diff()
-            .context_radius(3)
-            .header(&format!("a/{path}"), &format!("b/{path}"))
-            .to_string();
-        let truncated = unified.chars().count() > MAX_DIFF_CHARS;
-        Ok(AgentStagedFileDiff {
-            path: path.to_string(),
+        let original = read_original(&bundle_root, path, kind)?;
+        Ok(build_staged_diff(
+            path,
             kind,
-            unified: if truncated {
-                unified.chars().take(MAX_DIFF_CHARS).collect()
-            } else {
-                unified
-            },
-            truncated,
-        })
+            &original,
+            &content,
+            selection.as_ref(),
+        ))
+    }
+
+    /// Select or reject one hunk for a future apply. The supplied revision
+    /// binds the choice to the exact original and staged text reviewed by the
+    /// user. A later agent write or external file edit makes it stale.
+    pub fn set_hunk_selection(
+        &self,
+        session_id: &str,
+        path: &str,
+        revision: &str,
+        hunk_index: usize,
+        selected: bool,
+    ) -> Result<AgentStagedFileDiff, String> {
+        let (bundle_root, content, kind, current_selection) = {
+            let sessions = self
+                .sessions
+                .lock()
+                .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+            let stage = sessions
+                .get(session_id)
+                .ok_or_else(|| "The ACP session is not active.".to_string())?;
+            let file = stage
+                .files
+                .get(path)
+                .ok_or_else(|| "This file is not staged.".to_string())?;
+            let selection = file
+                .selection
+                .as_ref()
+                .map(|selection| (selection.revision.clone(), selection.rejected.clone()));
+            (
+                stage.bundle_root.clone(),
+                file.content.clone(),
+                file.kind,
+                selection,
+            )
+        };
+        let original = read_original(&bundle_root, path, kind)?;
+        let mut diff =
+            build_staged_diff(path, kind, &original, &content, current_selection.as_ref());
+        if diff.revision != revision {
+            return Err("The staged diff changed. Review the file again.".to_string());
+        }
+        let hunk = diff
+            .hunks
+            .iter_mut()
+            .find(|hunk| hunk.index == hunk_index)
+            .ok_or_else(|| "This staged diff hunk is unavailable.".to_string())?;
+        if diff.truncated {
+            return Err("Hunk choices are unavailable for a truncated diff.".to_string());
+        }
+        hunk.selected = selected;
+
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        let file = stage
+            .files
+            .get_mut(path)
+            .ok_or_else(|| "This file is not staged.".to_string())?;
+        if file.content != content || file.kind != kind {
+            return Err("The staged diff changed. Review the file again.".to_string());
+        }
+        let selection = file.selection.get_or_insert_with(|| HunkSelection {
+            revision: revision.to_string(),
+            rejected: BTreeSet::new(),
+        });
+        if selection.revision != revision {
+            selection.revision = revision.to_string();
+            selection.rejected.clear();
+        }
+        if selected {
+            selection.rejected.remove(&hunk_index);
+        } else {
+            selection.rejected.insert(hunk_index);
+        }
+        Ok(diff)
     }
 
     /// The staged content for a path, if that exact bundle file was staged.
@@ -253,10 +346,7 @@ impl SessionStages {
         let sessions = self.sessions.lock().ok()?;
         let stage = sessions.get(session_id)?;
         let relative = bundle_relative_write_path(&stage.bundle_root, path).ok()?;
-        stage
-            .files
-            .get(&relative)
-            .map(|file| file.content.clone())
+        stage.files.get(&relative).map(|file| file.content.clone())
     }
 
     /// The current snapshot for one session, when registered.
@@ -266,6 +356,78 @@ impl SessionStages {
         sessions
             .get(session_id)
             .map(|stage| snapshot(session_id, stage))
+    }
+}
+
+fn read_original(bundle_root: &Path, path: &str, kind: &str) -> Result<String, String> {
+    if kind != "modify" {
+        return Ok(String::new());
+    }
+    let bytes = std::fs::read(bundle_root.join(Path::new(path)))
+        .map_err(|_| "The original bundle file could not be read.".to_string())?;
+    if bytes.len() > MAX_STAGED_FILE_BYTES {
+        return Err("The original bundle file is too large to diff.".to_string());
+    }
+    String::from_utf8(bytes).map_err(|_| "The original bundle file is not UTF-8 text.".to_string())
+}
+
+fn build_staged_diff(
+    path: &str,
+    kind: &'static str,
+    original: &str,
+    content: &str,
+    selection: Option<&(String, BTreeSet<usize>)>,
+) -> AgentStagedFileDiff {
+    let mut digest = Sha256::new();
+    for part in [
+        path.as_bytes(),
+        kind.as_bytes(),
+        original.as_bytes(),
+        content.as_bytes(),
+    ] {
+        digest.update((part.len() as u64).to_le_bytes());
+        digest.update(part);
+    }
+    let revision = format!("{:x}", digest.finalize());
+    let rejected = selection
+        .filter(|(selection_revision, _)| selection_revision == &revision)
+        .map(|(_, rejected)| rejected);
+
+    let text_diff = similar::TextDiff::from_lines(original, content);
+    let mut used_chars = format!("--- a/{path}\n+++ b/{path}\n").chars().count();
+    let mut truncated = false;
+    let mut hunks = Vec::new();
+    for (index, hunk) in text_diff
+        .unified_diff()
+        .context_radius(3)
+        .iter_hunks()
+        .enumerate()
+    {
+        let header = hunk.header().to_string();
+        let rendered = hunk.to_string();
+        let unified = rendered
+            .strip_prefix(&format!("{header}\n"))
+            .unwrap_or(&rendered)
+            .to_string();
+        let hunk_chars = header.chars().count() + 1 + unified.chars().count();
+        if used_chars + hunk_chars > MAX_DIFF_CHARS {
+            truncated = true;
+            break;
+        }
+        used_chars += hunk_chars;
+        hunks.push(AgentStagedDiffHunk {
+            index,
+            header,
+            unified,
+            selected: rejected.is_none_or(|rejected| !rejected.contains(&index)),
+        });
+    }
+    AgentStagedFileDiff {
+        path: path.to_string(),
+        kind,
+        revision,
+        hunks,
+        truncated,
     }
 }
 
@@ -300,17 +462,23 @@ fn bundle_relative_write_path(bundle_root: &Path, path: &Path) -> Result<String,
     let mut parts: Vec<&str> = Vec::new();
     for component in relative.components() {
         let std::path::Component::Normal(part) = component else {
-            return Err("Bundle write denied: the path may not traverse outside the bundle.".to_string());
+            return Err(
+                "Bundle write denied: the path may not traverse outside the bundle.".to_string(),
+            );
         };
         let part = part
             .to_str()
             .ok_or_else(|| "Bundle write denied: paths must be Unicode.".to_string())?;
         // Verbatim Windows paths parse `..` and `.` as normal components.
         if part == ".." || part == "." {
-            return Err("Bundle write denied: the path may not traverse outside the bundle.".to_string());
+            return Err(
+                "Bundle write denied: the path may not traverse outside the bundle.".to_string(),
+            );
         }
         if part.is_empty() || part.chars().any(char::is_control) {
-            return Err("Bundle write denied: the path contains unsupported characters.".to_string());
+            return Err(
+                "Bundle write denied: the path contains unsupported characters.".to_string(),
+            );
         }
         if part.eq_ignore_ascii_case(".git") {
             return Err("Bundle write denied: Git metadata is protected.".to_string());
@@ -401,14 +569,24 @@ mod tests {
         let stages = registered(&root);
         stages.set_grant("session-1", true).expect("grant");
         let info = stages
-            .stage_write("session-1", &root.join("notes").join("new.md"), "# New".to_string())
+            .stage_write(
+                "session-1",
+                &root.join("notes").join("new.md"),
+                "# New".to_string(),
+            )
             .expect("granted write should stage");
-        assert_eq!(info.files, vec![AgentStagedFileInfo {
-            path: "notes/new.md".to_string(),
-            bytes: 5,
-            kind: "create",
-        }]);
-        assert!(!root.join("notes").exists(), "staging must not touch the filesystem");
+        assert_eq!(
+            info.files,
+            vec![AgentStagedFileInfo {
+                path: "notes/new.md".to_string(),
+                bytes: 5,
+                kind: "create",
+            }]
+        );
+        assert!(
+            !root.join("notes").exists(),
+            "staging must not touch the filesystem"
+        );
         assert_eq!(
             stages.staged_content("session-1", &root.join("notes").join("new.md")),
             Some("# New".to_string()),
@@ -444,7 +622,10 @@ mod tests {
         ));
         for (path, expected) in [
             (traversal, "traverse"),
-            (root.parent().expect("parent").join("outside.md"), "outside the active bundle root"),
+            (
+                root.parent().expect("parent").join("outside.md"),
+                "outside the active bundle root",
+            ),
             (root.join(".git").join("config"), "Git metadata"),
             (root.clone(), "root itself"),
             (PathBuf::from("relative.md"), "must be absolute"),
@@ -491,7 +672,11 @@ mod tests {
         assert!(error.contains("bytes"));
         for index in 0..MAX_STAGED_FILES {
             stages
-                .stage_write("session-1", &root.join(format!("file-{index}.md")), "x".to_string())
+                .stage_write(
+                    "session-1",
+                    &root.join(format!("file-{index}.md")),
+                    "x".to_string(),
+                )
                 .expect("staged file within count");
         }
         let error = stages
@@ -511,25 +696,79 @@ mod tests {
         let stages = registered(&root);
         stages.set_grant("session-1", true).expect("grant");
         stages
-            .stage_write("session-1", &root.join("existing.md"), "alpha\ngamma\n".to_string())
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "alpha\ngamma\n".to_string(),
+            )
             .expect("stage modification");
         stages
             .stage_write("session-1", &root.join("new.md"), "# New\n".to_string())
             .expect("stage creation");
 
-        let modified = stages.staged_diff("session-1", "existing.md").expect("diff");
+        let modified = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("diff");
         assert_eq!(modified.kind, "modify");
         assert!(!modified.truncated);
-        assert!(modified.unified.contains("-beta"));
-        assert!(modified.unified.contains("+gamma"));
+        assert_eq!(modified.hunks.len(), 1);
+        assert!(modified.hunks[0].unified.contains("-beta"));
+        assert!(modified.hunks[0].unified.contains("+gamma"));
+        assert!(modified.hunks[0].selected);
 
         let created = stages.staged_diff("session-1", "new.md").expect("diff");
         assert_eq!(created.kind, "create");
-        assert!(created.unified.contains("+# New"));
+        assert!(created.hunks[0].unified.contains("+# New"));
 
         assert_eq!(
-            stages.staged_diff("session-1", "missing.md").expect_err("unknown path"),
+            stages
+                .staged_diff("session-1", "missing.md")
+                .expect_err("unknown path"),
             "This file is not staged.",
+        );
+    }
+
+    #[test]
+    fn persists_revision_bound_hunk_choices_and_rejects_stale_revisions() {
+        let root = canonical_temp_dir("hunk-selection");
+        let original =
+            "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\neleven\ntwelve\n";
+        let staged = "ONE\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\neleven\nTWELVE\n";
+        std::fs::write(root.join("existing.md"), original).expect("seed bundle file");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write("session-1", &root.join("existing.md"), staged.to_string())
+            .expect("stage modification");
+
+        let initial = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("diff");
+        assert_eq!(initial.hunks.len(), 2);
+        let selected = stages
+            .set_hunk_selection("session-1", "existing.md", &initial.revision, 0, false)
+            .expect("reject first hunk");
+        assert!(!selected.hunks[0].selected);
+        assert!(selected.hunks[1].selected);
+
+        let reopened = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("reopen diff");
+        assert!(!reopened.hunks[0].selected);
+        assert!(reopened.hunks[1].selected);
+
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                format!("{staged}\nrevised\n"),
+            )
+            .expect("replace staged content");
+        assert_eq!(
+            stages
+                .set_hunk_selection("session-1", "existing.md", &initial.revision, 0, true,)
+                .expect_err("stale revision"),
+            "The staged diff changed. Review the file again.",
         );
     }
 
@@ -544,12 +783,16 @@ mod tests {
         stages
             .stage_write("session-1", &root.join("drop.md"), "drop".to_string())
             .expect("stage second");
-        let info = stages.discard_file("session-1", "drop.md").expect("discard one");
+        let info = stages
+            .discard_file("session-1", "drop.md")
+            .expect("discard one");
         assert_eq!(info.files.len(), 1);
         assert_eq!(info.files[0].path, "keep.md");
         assert!(info.granted);
         assert_eq!(
-            stages.discard_file("session-1", "drop.md").expect_err("already gone"),
+            stages
+                .discard_file("session-1", "drop.md")
+                .expect_err("already gone"),
             "This file is not staged.",
         );
     }

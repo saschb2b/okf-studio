@@ -153,8 +153,16 @@ export interface AgentStageEvent {
 export interface AgentStagedFileDiff {
   path: string;
   kind: "create" | "modify";
-  unified: string;
+  revision: string;
+  hunks: readonly AgentStagedDiffHunk[];
   truncated: boolean;
+}
+
+export interface AgentStagedDiffHunk {
+  index: number;
+  header: string;
+  unified: string;
+  selected: boolean;
 }
 
 export type AgentConnectionEvent =

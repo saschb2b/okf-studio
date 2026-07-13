@@ -786,12 +786,31 @@ describe("OKF Studio app", () => {
     }));
     const diff = await screen.findByLabelText("Unified diff for proposals/draft.md");
     expect(diff).toHaveTextContent("+# Draft");
+    const hunkChoice = within(diff).getByRole("group", { name: "Hunk 1 choice" });
+    const keepHunk = within(hunkChoice).getByRole("button", { name: "Keep" });
+    const rejectHunk = within(hunkChoice).getByRole("button", { name: "Reject" });
+    expect(keepHunk).toHaveAttribute("aria-pressed", "true");
+    expect(rejectHunk).toHaveAttribute("aria-pressed", "false");
+    await user.click(rejectHunk);
+    await vi.waitFor(() => expect(rejectHunk).toHaveAttribute("aria-pressed", "true"));
+    expect(keepHunk).toHaveAttribute("aria-pressed", "false");
+
+    // The Rust-owned choice survives closing and reopening the review.
     expect(screen.getByRole("button", {
       name: "Close staged file proposals/draft.md",
     })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
+    await user.click(screen.getByRole("button", {
+      name: "Close staged file proposals/draft.md",
+    }));
+    await user.click(screen.getByRole("button", {
+      name: "Review staged file proposals/draft.md",
+    }));
+    const reopenedDiff = await screen.findByLabelText("Unified diff for proposals/draft.md");
+    expect(within(reopenedDiff).getByRole("button", { name: "Reject" }))
+      .toHaveAttribute("aria-pressed", "true");
 
     await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/notes.md");
     await user.click(screen.getByRole("button", { name: "Send" }));

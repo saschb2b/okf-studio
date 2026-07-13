@@ -273,6 +273,29 @@ async fn agent_staged_file_diff(
     agent_protocol::staged_file_diff(state.inner(), &connection_id, &session_id, &path).await
 }
 
+/// Select or reject one hunk from the exact staged revision under review.
+#[tauri::command]
+async fn set_agent_staged_hunk_selection(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    path: String,
+    revision: String,
+    hunk_index: usize,
+    selected: bool,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    agent_protocol::set_staged_hunk_selection(
+        state.inner(),
+        &connection_id,
+        &session_id,
+        &path,
+        &revision,
+        hunk_index,
+        selected,
+    )
+    .await
+}
+
 #[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
@@ -473,6 +496,7 @@ pub fn run() {
             discard_agent_staged_changes,
             discard_agent_staged_file,
             agent_staged_file_diff,
+            set_agent_staged_hunk_selection,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

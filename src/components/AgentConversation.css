@@ -877,9 +877,60 @@
   gap: var(--space-4);
 }
 
-.agent-staged__diff pre {
+.agent-staged__hunks {
   display: grid;
   max-height: 240px;
+  min-width: 0;
+  gap: var(--space-8);
+  overflow: auto;
+}
+
+.agent-staged__hunk {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.agent-staged__hunk header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.agent-staged__hunk header code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-staged__hunk-actions {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.agent-staged__hunk-actions .btn {
+  min-height: 28px;
+  padding: var(--space-4) var(--space-6);
+}
+
+.agent-staged__hunk-actions .btn[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.agent-staged__hunk--rejected pre {
+  opacity: 0.64;
+}
+
+.agent-staged__hunk pre {
+  display: grid;
   margin: 0;
   padding: var(--space-6);
   overflow: auto;

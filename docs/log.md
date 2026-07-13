@@ -1,5 +1,8 @@
 # Update Log
 
+## 2026-07-13
+* **Creation**: Added revision-bound hunk choices to staged-file review. Unified diffs now cross IPC as bounded change clusters that default to Keep. Each hunk can be kept or rejected without changing the staged text, and the Rust staging service preserves those choices when review closes. A SHA-256 revision rejects stale commands after the agent or original file changes. Truncated diffs remain visible but do not accept hunk choices. Validation and atomic apply remain separate packages.
+
 ## 2026-07-12
 * **Creation**: Added per-file review to the staged-write boundary. Studio loads a bounded unified diff only when requested, marks truncated output, and lets the user reject one staged file without revoking the thread grant. Diff failures stay local and retryable; rejecting returns focus to the remaining review surface or composer. Per-hunk selection, validation, and apply remain separate packages.
 * **Creation**: Added the thread-scoped write grant and staged tree that open reviewed writes. **Allow edits in this thread** is an explicit, revocable toolbar toggle for the live session; Studio now advertises ACP `fs/write_text_file` but denies every write with an error naming the grant until it is given. A granted write lands in a bounded in-memory staged tree instead of the bundle, with traversal, symbolic-link, and Git-metadata protection, per-file and per-session size caps, and read overlay so the agent observes its own drafts. A staged-change summary above the composer lists each file and offers Discard. Grants never persist, and created or restored sessions start read-only. Review, validation, and apply remain the next slices, so the marketing site intentionally does not advertise writes yet.

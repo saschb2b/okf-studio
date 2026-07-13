@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-12T00:00:00Z
+timestamp: 2026-07-13T00:00:00Z
 ---
 
 # Outcome
@@ -146,7 +146,7 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 
 - [x] Keep tools read-only until **Allow edits in this thread** is granted.
 - [x] Stage Studio writes; show bounded per-file diffs and reject controls.
-- [ ] Add per-hunk accept and reject selection before apply.
+- [x] Add revision-bound per-hunk keep and reject selection before apply.
 - [ ] Reduce ACP diff content into the staged change service; never present it as an applied Studio change.
 - [ ] Validate the staged tree, apply accepted files atomically, and retain a restorable checkpoint.
 - [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.

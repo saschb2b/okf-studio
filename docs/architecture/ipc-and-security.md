@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The Tauri command/event surface between Rust and the frontend, and the read-only, scoped capability model.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-12T00:00:00Z
+timestamp: 2026-07-13T00:00:00Z
 ---
 
 # Command & event surface
@@ -37,6 +37,8 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 # Security model
 
 Honors the [read-only and local-first principles](../product/principles.md) through Tauri 2.0's capability system:
+
+ACP reads, explicit context links, staged writes, reported diffs, checkpoints, and recovery records pass through Rust-owned root and path checks. The case-insensitive policy always denies Git metadata, common credential and secret paths, private-key formats, and packaged agent instructions. A thread edit grant cannot override it, and any invalid path rejects its whole proposed diff batch.
 
 - **Read-only filesystem.** Only read/stat/watch operations are permitted on the chosen folder; no write/delete capability is granted there. Pointing the app at a folder cannot modify it. The store plugin's small writes (recent bundles, [settings](../ux/settings.md)) go to the app's own config directory, never into the scanned bundle scope.
 - **Transcript export is an explicit destination write.** The webview supplies bounded Markdown and a safe basename only after the user chooses **Export**. Rust owns the native save dialog and the write, enforces a `.md` extension, and returns no absolute path. This grant applies to that one file selection; it does not grant bundle write access or persistent filesystem scope.

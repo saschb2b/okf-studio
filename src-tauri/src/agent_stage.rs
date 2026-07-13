@@ -2635,8 +2635,8 @@ fn snapshot(session_id: &str, stage: &SessionStage) -> AgentStagedChangesInfo {
 /// Reduce an agent-supplied absolute write path to a bundle-relative
 /// forward-slash path, mirroring the tool-location discipline: every
 /// component must be a normal, non-control Unicode segment lexically under
-/// the canonical root, and no component may target Git metadata. A symbolic
-/// link anywhere on an existing prefix of the path must not escape the root.
+/// the canonical root, and protected paths are always denied. A symbolic link
+/// anywhere on an existing prefix of the path must not escape the root.
 fn bundle_relative_write_path(bundle_root: &Path, path: &Path) -> Result<String, String> {
     if !path.is_absolute() {
         return Err("Bundle write denied: ACP file paths must be absolute.".to_string());
@@ -2665,9 +2665,6 @@ fn bundle_relative_write_path(bundle_root: &Path, path: &Path) -> Result<String,
                 "Bundle write denied: the path contains unsupported characters.".to_string(),
             );
         }
-        if part.eq_ignore_ascii_case(".git") {
-            return Err("Bundle write denied: Git metadata is protected.".to_string());
-        }
         parts.push(part);
     }
     if parts.is_empty() {
@@ -2676,6 +2673,9 @@ fn bundle_relative_write_path(bundle_root: &Path, path: &Path) -> Result<String,
     let joined = parts.join("/");
     if joined.chars().count() > MAX_STAGED_PATH_CHARS {
         return Err("Bundle write denied: the path is too long.".to_string());
+    }
+    if let Some(reason) = protected_bundle_path_reason(Path::new(&joined)) {
+        return Err(format!("Bundle write denied: {reason}"));
     }
     // The target may not exist yet, so canonicalize the deepest existing
     // ancestor and require it to stay under the canonical root. This rejects
@@ -2695,6 +2695,86 @@ fn bundle_relative_write_path(bundle_root: &Path, path: &Path) -> Result<String,
         return Err("Bundle write denied: the file is outside the active bundle root.".to_string());
     }
     Ok(joined)
+}
+
+/// Return the non-overridable denial for a bundle-relative path. The policy is
+/// case-insensitive on every platform so a proposal cannot become more
+/// permissive when it moves between Windows and Unix.
+pub(crate) fn protected_bundle_path_reason(relative: &Path) -> Option<&'static str> {
+    let parts = relative
+        .components()
+        .filter_map(|component| match component {
+            std::path::Component::Normal(part) => part.to_str(),
+            _ => None,
+        })
+        .map(str::to_ascii_lowercase)
+        .collect::<Vec<_>>();
+    let filename = parts.last()?;
+
+    if parts.iter().any(|part| part == ".git") {
+        return Some("Git metadata is protected.");
+    }
+
+    if parts.iter().any(|part| {
+        matches!(
+            part.as_str(),
+            ".ssh"
+                | ".gnupg"
+                | ".aws"
+                | ".azure"
+                | ".kube"
+                | ".docker"
+                | ".secrets"
+                | "secrets"
+        )
+    }) || filename == ".env"
+        || filename.starts_with(".env.")
+        || matches!(
+            filename.as_str(),
+            ".npmrc"
+                | ".pypirc"
+                | ".netrc"
+                | "_netrc"
+                | ".git-credentials"
+                | "credentials.json"
+                | "client_secret.json"
+                | "client_secrets.json"
+                | "secrets.json"
+                | "id_rsa"
+                | "id_dsa"
+                | "id_ecdsa"
+                | "id_ed25519"
+        )
+        || filename
+            .strip_prefix("client_secret_")
+            .is_some_and(|suffix| suffix.ends_with(".json"))
+        || Path::new(filename)
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| {
+                matches!(
+                    extension,
+                    "pem" | "key" | "p12" | "pfx" | "jks" | "keystore" | "kdbx"
+                )
+            })
+    {
+        return Some("credential and secret files are protected.");
+    }
+
+    if parts
+        .iter()
+        .any(|part| matches!(part.as_str(), ".agents" | ".claude" | ".codex"))
+        || matches!(
+            filename.as_str(),
+            "agents.md" | "claude.md" | "codex.md" | ".cursorrules"
+        )
+        || (filename == "copilot-instructions.md"
+            && parts.iter().any(|part| part == ".github"))
+    {
+        return Some("agent instructions and packaged skills are protected.");
+    }
+
+    None
 }
 
 /// Strip the canonical bundle root off an agent-supplied absolute path. The
@@ -2944,6 +3024,41 @@ mod tests {
     }
 
     #[test]
+    fn rejects_a_reported_diff_batch_when_one_path_is_protected() {
+        let root = canonical_temp_dir("reported-protected-path");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+
+        let error = stages
+            .stage_reported_diffs(
+                "session-1",
+                vec![
+                    AgentReportedDiff {
+                        path: root.join("allowed.md"),
+                        old_text: None,
+                        new_text: "# Allowed\n".to_string(),
+                    },
+                    AgentReportedDiff {
+                        path: root.join(".ENV.Local"),
+                        old_text: None,
+                        new_text: "TOKEN=secret\n".to_string(),
+                    },
+                ],
+            )
+            .expect_err("protected path should reject the batch");
+
+        assert!(error.contains("credential and secret files"));
+        assert!(
+            stages
+                .summary("session-1")
+                .expect("summary")
+                .files
+                .is_empty(),
+            "a rejected report must not retain earlier files from the batch"
+        );
+    }
+
+    #[test]
     fn labels_writes_to_existing_files_as_modifications() {
         let root = canonical_temp_dir("modify");
         std::fs::write(root.join("existing.md"), "old").expect("seed bundle file");
@@ -2960,7 +3075,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_traversal_outside_root_and_git_metadata() {
+    fn rejects_traversal_outside_root_and_protected_paths() {
         let root = canonical_temp_dir("paths");
         let stages = registered(&root);
         stages.set_grant("session-1", true).expect("grant");
@@ -2977,6 +3092,26 @@ mod tests {
                 "outside the active bundle root",
             ),
             (root.join(".git").join("config"), "Git metadata"),
+            (root.join(".Env"), "credential and secret files"),
+            (
+                root.join("nested").join("private.PEM"),
+                "credential and secret files",
+            ),
+            (
+                root.join(".SSH").join("config"),
+                "credential and secret files",
+            ),
+            (
+                root.join(".agents")
+                    .join("skills")
+                    .join("okf")
+                    .join("SKILL.md"),
+                "agent instructions and packaged skills",
+            ),
+            (
+                root.join("AGENTS.md"),
+                "agent instructions and packaged skills",
+            ),
             (root.clone(), "root itself"),
             (PathBuf::from("relative.md"), "must be absolute"),
         ] {
@@ -2984,6 +3119,12 @@ mod tests {
                 .stage_write("session-1", &path, "text".to_string())
                 .expect_err("invalid path should fail");
             assert!(error.contains(expected), "{path:?}: {error}");
+        }
+
+        for path in ["credentials.md", "security/secrets.md", "agents/overview.md"] {
+            stages
+                .stage_write("session-1", &root.join(path), "text".to_string())
+                .unwrap_or_else(|error| panic!("{path} should remain writable: {error}"));
         }
     }
 

@@ -153,7 +153,7 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 - [x] Retain a guarded connection-lifetime checkpoint and restore the latest apply.
 - [x] Persist the latest successful checkpoint outside the bundle and restore it after restart.
 - [x] Recover transactions interrupted while apply or restore is in progress.
-- [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.
+- [x] Protect `.git`, credentials, packaged skills, and paths outside granted roots.
 - [ ] Require an enforcement-capable sandbox before unattended external-agent writes.
 
 Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile-agent tests.

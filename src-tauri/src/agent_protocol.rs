@@ -28,7 +28,7 @@ use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 use crate::agent_stage::{
     AgentCheckpointRestoreInfo, AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo,
-    AgentStagedValidationInfo, SessionStages, MAX_STAGED_FILES,
+    AgentStagedValidationInfo, SessionStages, MAX_STAGED_FILES, protected_bundle_path_reason,
 };
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
@@ -1529,6 +1529,12 @@ fn read_bundle_text(
     if !path.starts_with(&bundle_root) {
         return Err("Bundle read denied: the file is outside the active bundle root.".to_string());
     }
+    let relative = path
+        .strip_prefix(&bundle_root)
+        .map_err(|_| "Bundle read denied: the file is outside the active bundle root.".to_string())?;
+    if let Some(reason) = protected_bundle_path_reason(relative) {
+        return Err(format!("Bundle read denied: {reason}"));
+    }
     if !path.is_file() {
         return Err("Bundle read denied: the requested path is not a file.".to_string());
     }
@@ -1576,6 +1582,12 @@ fn context_resource_links(
                 .map_err(|_| "Context attachment is unavailable.".to_string())?;
             if !path.starts_with(bundle_root) || !path.is_file() {
                 return Err("Context attachment denied: the file is outside the active bundle root.".to_string());
+            }
+            let canonical_relative = path
+                .strip_prefix(bundle_root)
+                .map_err(|_| "Context attachment denied: the file is outside the active bundle root.".to_string())?;
+            if let Some(reason) = protected_bundle_path_reason(canonical_relative) {
+                return Err(format!("Context attachment denied: {reason}"));
             }
             let uri = url::Url::from_file_path(&path)
                 .map_err(|()| "Context attachment could not be represented as a file URL.".to_string())?;
@@ -3318,6 +3330,59 @@ mod tests {
         std::fs::remove_dir_all(base).expect("remove test files");
     }
 
+    #[test]
+    fn rejects_acp_reads_of_sensitive_bundle_paths() {
+        let bundle_root = std::env::temp_dir().join(format!(
+            "okf-studio-read-sensitive-{}",
+            uuid::Uuid::new_v4()
+        ));
+        for relative in [
+            ".git/config",
+            ".env.local",
+            "keys/private.pem",
+            ".agents/skills/okf/SKILL.md",
+        ] {
+            let path = bundle_root.join(relative);
+            std::fs::create_dir_all(path.parent().expect("sensitive path parent"))
+                .expect("create sensitive path parent");
+            std::fs::write(path, "sensitive").expect("write sensitive file");
+        }
+        std::fs::write(bundle_root.join("credentials.md"), "safe concept")
+            .expect("write nearby concept");
+        let sessions = Mutex::new(HashMap::from([(
+            "session-1".to_string(),
+            bundle_root.canonicalize().expect("canonical bundle"),
+        )]));
+
+        for (relative, expected) in [
+            (".git/config", "Git metadata"),
+            (".env.local", "credential and secret files"),
+            ("keys/private.pem", "credential and secret files"),
+            (
+                ".agents/skills/okf/SKILL.md",
+                "agent instructions and packaged skills",
+            ),
+        ] {
+            let error = read_bundle_text(
+                &sessions,
+                &SessionStages::default(),
+                &ReadTextFileRequest::new("session-1", bundle_root.join(relative)),
+            )
+            .expect_err("sensitive read should fail");
+            assert!(error.contains(expected), "{relative}: {error}");
+        }
+        assert_eq!(
+            read_bundle_text(
+                &sessions,
+                &SessionStages::default(),
+                &ReadTextFileRequest::new("session-1", bundle_root.join("credentials.md")),
+            )
+            .expect("ordinary concept should remain readable"),
+            "safe concept"
+        );
+        std::fs::remove_dir_all(bundle_root).expect("remove test files");
+    }
+
     #[cfg(unix)]
     #[test]
     fn rejects_acp_reads_through_a_symlink_outside_the_session_root() {
@@ -4076,6 +4141,8 @@ mod tests {
         std::fs::create_dir_all(&concept_dir).expect("create concept directory");
         std::fs::write(concept_dir.join("overview.md"), "---\ntype: Product\n---\n")
             .expect("write concept");
+        let instructions = bundle_root.join("AGENTS.md");
+        std::fs::write(&instructions, "agent instructions").expect("write instructions");
         let canonical_root = bundle_root.canonicalize().expect("canonical bundle");
 
         let context = context_resource_links(
@@ -4093,6 +4160,11 @@ mod tests {
             context_resource_links(&canonical_root, &["../outside.md".to_string()])
                 .expect_err("traversal should fail"),
             "Context attachment denied: paths must be bundle-relative files."
+        );
+        assert_eq!(
+            context_resource_links(&canonical_root, &["AGENTS.md".to_string()])
+                .expect_err("agent instructions should not attach"),
+            "Context attachment denied: agent instructions and packaged skills are protected."
         );
         std::fs::remove_dir_all(bundle_root).expect("remove bundle");
     }

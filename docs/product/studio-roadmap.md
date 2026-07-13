@@ -152,7 +152,7 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 - [x] Apply the exact validated revision as a rollback transaction.
 - [x] Retain a guarded connection-lifetime checkpoint and restore the latest apply.
 - [x] Persist the latest successful checkpoint outside the bundle and restore it after restart.
-- [ ] Recover transactions interrupted while apply or restore is in progress.
+- [x] Recover transactions interrupted while apply or restore is in progress.
 - [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.
 - [ ] Require an enforcement-capable sandbox before unattended external-agent writes.
 

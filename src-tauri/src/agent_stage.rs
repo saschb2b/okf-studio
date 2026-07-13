@@ -13,7 +13,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use similar::{DiffOp, DiffTag, TextDiff};
 
@@ -164,6 +164,39 @@ struct PersistedCheckpointFile {
     applied_content: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PersistedApplyTransaction {
+    version: u32,
+    checkpoint: PersistedCheckpoint,
+    previous_checkpoint: Option<PersistedCheckpoint>,
+    artifacts: Vec<PersistedApplyArtifact>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PersistedApplyArtifact {
+    path: String,
+    temporary: String,
+    backup: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PersistedRestoreTransaction {
+    version: u32,
+    checkpoint: PersistedCheckpoint,
+    artifacts: Vec<PersistedRestoreArtifact>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PersistedRestoreArtifact {
+    path: String,
+    original_temporary: Option<String>,
+    applied_temporary: String,
+}
+
 /// One full-text ACP diff report before it enters the authoritative staged
 /// tree. `old_text` is used only as a compare-and-stage precondition.
 pub(crate) struct AgentReportedDiff {
@@ -221,6 +254,7 @@ impl SessionStages {
         session_id: &str,
         bundle_root: &Path,
     ) -> Result<AgentStagedChangesInfo, String> {
+        self.recover_interrupted_transaction(bundle_root)?;
         let checkpoint = match self.load_persisted_checkpoint(bundle_root) {
             Ok(checkpoint) => checkpoint,
             Err(error) => {
@@ -546,6 +580,10 @@ impl SessionStages {
         let stage = sessions
             .get_mut(session_id)
             .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if self.checkpoint_directory.is_some() {
+            self.recover_interrupted_transaction(&stage.bundle_root)?;
+            stage.checkpoint = self.load_persisted_checkpoint(&stage.bundle_root)?;
+        }
         if stage.files.is_empty() {
             return Err("There are no staged changes to apply.".to_string());
         }
@@ -565,17 +603,30 @@ impl SessionStages {
         }
         validate_checkpoint_size(&prepared)?;
 
-        if let Some(checkpoint) = stage.checkpoint.as_ref() {
-            self.remove_persisted_checkpoint(&stage.bundle_root, &checkpoint.id)?;
+        let mut transaction = plan_apply_transaction(&stage.bundle_root, &prepared)?;
+        transaction.previous_checkpoint = stage.checkpoint.clone();
+        if self.checkpoint_directory.is_some() {
+            self.persist_apply_transaction(&stage.bundle_root, &transaction)?;
         }
-        if let Some(checkpoint) = stage.checkpoint.take() {
-            discard_checkpoint(checkpoint);
-        }
-        let mut checkpoint = apply_prepared_transaction(&stage.bundle_root, &prepared, None)?;
+        let mut checkpoint = match execute_apply_transaction(&transaction, None) {
+            Ok(checkpoint) => checkpoint,
+            Err(error) => {
+                return match self.remove_apply_transaction(&stage.bundle_root) {
+                    Ok(()) => Err(error),
+                    Err(remove_error) => Err(format!("{error} {remove_error}")),
+                };
+            }
+        };
         let applied_files = checkpoint.files.len();
         if !checkpoint.files.is_empty() && self.checkpoint_directory.is_some() {
-            if let Err(error) = self.persist_checkpoint(&stage.bundle_root, &checkpoint) {
-                let rollback = restore_applied_checkpoint(&stage.bundle_root, &checkpoint);
+            let commit = (|| -> Result<(), String> {
+                if let Some(previous) = stage.checkpoint.as_ref() {
+                    self.remove_persisted_checkpoint(&stage.bundle_root, &previous.id)?;
+                }
+                self.persist_checkpoint(&stage.bundle_root, &checkpoint)
+            })();
+            if let Err(error) = commit {
+                let rollback = self.rollback_apply_transaction(&stage.bundle_root, &transaction);
                 discard_checkpoint(checkpoint);
                 return match rollback {
                     Ok(()) => Err(error),
@@ -584,7 +635,12 @@ impl SessionStages {
                     )),
                 };
             }
+            recover_committed_apply(&transaction)?;
+            self.remove_apply_transaction(&stage.bundle_root)?;
             discard_checkpoint_backups(&mut checkpoint);
+        }
+        if let Some(previous) = stage.checkpoint.take() {
+            discard_checkpoint(previous);
         }
         stage.checkpoint = (!checkpoint.files.is_empty()).then_some(checkpoint);
         stage.files.clear();
@@ -609,6 +665,10 @@ impl SessionStages {
         let stage = sessions
             .get_mut(session_id)
             .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if self.checkpoint_directory.is_some() {
+            self.recover_interrupted_transaction(&stage.bundle_root)?;
+            stage.checkpoint = self.load_persisted_checkpoint(&stage.bundle_root)?;
+        }
         if !stage.files.is_empty() {
             return Err("Discard or apply the current staged changes before restoring.".to_string());
         }
@@ -617,16 +677,19 @@ impl SessionStages {
             .as_ref()
             .ok_or_else(|| "There is no restorable checkpoint for this thread.".to_string())?;
         self.require_persisted_checkpoint(&stage.bundle_root, &checkpoint.id)?;
-        self.remove_persisted_checkpoint(&stage.bundle_root, &checkpoint.id)?;
-        if let Err(error) = restore_applied_checkpoint(&stage.bundle_root, checkpoint) {
-            return match self.persist_checkpoint(&stage.bundle_root, checkpoint) {
+        let transaction = plan_restore_transaction(&stage.bundle_root, checkpoint)?;
+        if self.checkpoint_directory.is_some() {
+            self.persist_restore_transaction(&stage.bundle_root, &transaction)?;
+        }
+        if let Err(error) = execute_restore_transaction(&transaction, None) {
+            return match self.remove_restore_transaction(&stage.bundle_root) {
                 Ok(()) => Err(error),
-                Err(persist_error) => Err(format!(
-                    "{error} The checkpoint could not be retained: {persist_error}"
-                )),
+                Err(remove_error) => Err(format!("{error} {remove_error}")),
             };
         }
         let restored_files = checkpoint.files.len();
+        self.remove_persisted_checkpoint(&stage.bundle_root, &checkpoint.id)?;
+        self.remove_restore_transaction(&stage.bundle_root)?;
         stage.checkpoint = None;
         Ok(AgentCheckpointRestoreInfo {
             session_id: session_id.to_string(),
@@ -641,6 +704,115 @@ impl SessionStages {
         })
     }
 
+    fn apply_transaction_file(&self, bundle_root: &Path) -> Option<PathBuf> {
+        self.checkpoint_directory.as_ref().map(|directory| {
+            directory.join(format!(
+                "{}.apply.json",
+                bundle_fingerprint(bundle_root)
+            ))
+        })
+    }
+
+    fn restore_transaction_file(&self, bundle_root: &Path) -> Option<PathBuf> {
+        self.checkpoint_directory.as_ref().map(|directory| {
+            directory.join(format!(
+                "{}.restore.json",
+                bundle_fingerprint(bundle_root)
+            ))
+        })
+    }
+
+    fn recover_interrupted_transaction(&self, bundle_root: &Path) -> Result<(), String> {
+        let Some(apply_file) = self.apply_transaction_file(bundle_root) else {
+            return Ok(());
+        };
+        let restore_file = self
+            .restore_transaction_file(bundle_root)
+            .expect("persistent transaction paths are paired");
+        if apply_file.exists() && restore_file.exists() {
+            return Err(
+                "Studio found overlapping interrupted bundle transactions. No files were changed."
+                    .to_string(),
+            );
+        }
+        if apply_file.exists() {
+            let transaction = match read_private_json_file::<PersistedApplyTransaction>(
+                &apply_file,
+                "apply transaction",
+            )
+            .and_then(|persisted| persisted_apply_transaction(bundle_root, persisted))
+            {
+                Ok(transaction) => transaction,
+                Err(error) => {
+                    quarantine_transaction_file(&apply_file, "apply")?;
+                    return Err(format!(
+                        "{error} Studio quarantined the transaction; retry the session."
+                    ));
+                }
+            };
+            let saved_checkpoint = self.load_persisted_checkpoint(bundle_root)?;
+            if saved_checkpoint
+                .as_ref()
+                .is_some_and(|checkpoint| checkpoint.id == transaction.checkpoint.id)
+            {
+                recover_committed_apply(&transaction)?;
+            } else {
+                if let Some(checkpoint) = &saved_checkpoint {
+                    let previous_matches = transaction
+                        .previous_checkpoint
+                        .as_ref()
+                        .is_some_and(|previous| previous.id == checkpoint.id);
+                    if !previous_matches {
+                        return Err(
+                            "Interrupted apply recovery found a different saved checkpoint. No files were changed."
+                                .to_string(),
+                        );
+                    }
+                }
+                recover_uncommitted_apply(&transaction)?;
+                if saved_checkpoint.is_none() {
+                    if let Some(previous) = &transaction.previous_checkpoint {
+                        self.persist_checkpoint(bundle_root, previous)?;
+                    }
+                }
+            }
+            std::fs::remove_file(&apply_file).map_err(|_| {
+                "Studio recovered an interrupted apply but could not clear its transaction record."
+                    .to_string()
+            })?;
+        } else if restore_file.exists() {
+            let transaction = match read_private_json_file::<PersistedRestoreTransaction>(
+                &restore_file,
+                "restore transaction",
+            )
+            .and_then(|persisted| persisted_restore_transaction(bundle_root, persisted))
+            {
+                Ok(transaction) => transaction,
+                Err(error) => {
+                    quarantine_transaction_file(&restore_file, "restore")?;
+                    return Err(format!(
+                        "{error} Studio quarantined the transaction; retry the session."
+                    ));
+                }
+            };
+            if let Some(checkpoint) = self.load_persisted_checkpoint(bundle_root)? {
+                if checkpoint.id != transaction.checkpoint.id {
+                    return Err(
+                        "Interrupted restore recovery found a different saved checkpoint. No files were changed."
+                            .to_string(),
+                    );
+                }
+            }
+            recover_interrupted_restore(&transaction)?;
+            self.remove_persisted_checkpoint(bundle_root, &transaction.checkpoint.id)?;
+            std::fs::remove_file(&restore_file).map_err(|_| {
+                "Studio recovered an interrupted restore but could not clear its transaction record."
+                    .to_string()
+            })?;
+        }
+        Ok(())
+    }
+
     fn load_persisted_checkpoint(
         &self,
         bundle_root: &Path,
@@ -651,19 +823,70 @@ impl SessionStages {
         if !file.exists() {
             return Ok(None);
         }
-        let metadata = std::fs::symlink_metadata(&file)
-            .map_err(|_| "Studio could not inspect its saved apply checkpoint.".to_string())?;
-        if metadata.file_type().is_symlink() || !metadata.is_file() {
-            return Err("Studio's saved apply checkpoint is not a regular file.".to_string());
-        }
-        if metadata.len() > MAX_CHECKPOINT_BYTES {
-            return Err("Studio's saved apply checkpoint exceeds its size limit.".to_string());
-        }
-        let bytes = std::fs::read(&file)
-            .map_err(|_| "Studio could not read its saved apply checkpoint.".to_string())?;
-        let persisted: PersistedCheckpoint = serde_json::from_slice(&bytes)
-            .map_err(|_| "Studio's saved apply checkpoint is invalid.".to_string())?;
+        let persisted: PersistedCheckpoint =
+            read_private_json_file(&file, "apply checkpoint")?;
         persisted_checkpoint(bundle_root, persisted).map(Some)
+    }
+
+    fn persist_apply_transaction(
+        &self,
+        bundle_root: &Path,
+        transaction: &ApplyTransaction,
+    ) -> Result<(), String> {
+        let Some(file) = self.apply_transaction_file(bundle_root) else {
+            return Ok(());
+        };
+        let persisted = serialize_apply_transaction(bundle_root, transaction)?;
+        write_private_json_file(&file, &persisted, "apply transaction")
+    }
+
+    fn persist_restore_transaction(
+        &self,
+        bundle_root: &Path,
+        transaction: &RestoreTransaction,
+    ) -> Result<(), String> {
+        let Some(file) = self.restore_transaction_file(bundle_root) else {
+            return Ok(());
+        };
+        let persisted = serialize_restore_transaction(bundle_root, transaction)?;
+        write_private_json_file(&file, &persisted, "restore transaction")
+    }
+
+    fn remove_apply_transaction(&self, bundle_root: &Path) -> Result<(), String> {
+        remove_transaction_file(self.apply_transaction_file(bundle_root), "apply")
+    }
+
+    fn remove_restore_transaction(&self, bundle_root: &Path) -> Result<(), String> {
+        remove_transaction_file(self.restore_transaction_file(bundle_root), "restore")
+    }
+
+    fn rollback_apply_transaction(
+        &self,
+        bundle_root: &Path,
+        transaction: &ApplyTransaction,
+    ) -> Result<(), String> {
+        let saved = self.load_persisted_checkpoint(bundle_root)?;
+        if let Some(checkpoint) = &saved {
+            if checkpoint.id == transaction.checkpoint.id {
+                self.remove_persisted_checkpoint(bundle_root, &checkpoint.id)?;
+            } else if transaction
+                .previous_checkpoint
+                .as_ref()
+                .is_none_or(|previous| previous.id != checkpoint.id)
+            {
+                return Err(
+                    "A different checkpoint appeared while apply was being rolled back."
+                        .to_string(),
+                );
+            }
+        }
+        recover_uncommitted_apply(transaction)?;
+        if self.load_persisted_checkpoint(bundle_root)?.is_none() {
+            if let Some(previous) = &transaction.previous_checkpoint {
+                self.persist_checkpoint(bundle_root, previous)?;
+            }
+        }
+        self.remove_apply_transaction(bundle_root)
     }
 
     fn persist_checkpoint(
@@ -1000,8 +1223,12 @@ struct PendingReplacement {
 struct AppliedReplacement {
     target: PathBuf,
     backup: Option<PathBuf>,
-    original_content: Option<String>,
-    applied_content: String,
+}
+
+struct ApplyTransaction {
+    checkpoint: AppliedCheckpoint,
+    previous_checkpoint: Option<AppliedCheckpoint>,
+    pending: Vec<PendingReplacement>,
 }
 
 fn validate_checkpoint_size(prepared: &[PreparedStagedFile]) -> Result<(), String> {
@@ -1029,11 +1256,20 @@ fn validate_checkpoint_size(prepared: &[PreparedStagedFile]) -> Result<(), Strin
     Ok(())
 }
 
+#[cfg(test)]
 fn apply_prepared_transaction(
     bundle_root: &Path,
     prepared: &[PreparedStagedFile],
     fail_after: Option<usize>,
 ) -> Result<AppliedCheckpoint, String> {
+    let transaction = plan_apply_transaction(bundle_root, prepared)?;
+    execute_apply_transaction(&transaction, fail_after)
+}
+
+fn plan_apply_transaction(
+    bundle_root: &Path,
+    prepared: &[PreparedStagedFile],
+) -> Result<ApplyTransaction, String> {
     let mut pending = Vec::new();
     let mut created_directories = Vec::new();
     for file in prepared {
@@ -1041,27 +1277,13 @@ fn apply_prepared_transaction(
             continue;
         };
         let target = bundle_root.join(Path::new(&file.path));
-        if let Err(error) = verify_prepared_base(bundle_root, file, &target) {
-            cleanup_pending(&pending);
-            cleanup_directories(&created_directories);
-            return Err(error);
-        }
+        verify_prepared_base(bundle_root, file, &target)?;
         let Some(parent) = target.parent() else {
-            cleanup_pending(&pending);
-            cleanup_directories(&created_directories);
             return Err("A staged file has no parent directory.".to_string());
         };
-        if let Err(error) =
-            create_transaction_directories(bundle_root, parent, &mut created_directories)
-        {
-            cleanup_pending(&pending);
-            cleanup_directories(&created_directories);
-            return Err(error);
-        }
+        plan_transaction_directories(bundle_root, parent, &mut created_directories)?;
         let relative = bundle_relative_write_path(bundle_root, &target)?;
         if relative != file.path {
-            cleanup_pending(&pending);
-            cleanup_directories(&created_directories);
             return Err("A staged path changed while preparing the transaction.".to_string());
         }
 
@@ -1069,32 +1291,6 @@ fn apply_prepared_transaction(
         let temporary = parent.join(format!(".okf-studio-{transaction_id}.tmp"));
         let backup = (file.kind == "modify")
             .then(|| parent.join(format!(".okf-studio-{transaction_id}.bak")));
-        let write_result = (|| -> Result<(), String> {
-            let mut output = OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&temporary)
-                .map_err(|_| "A staged transaction file could not be created.".to_string())?;
-            output
-                .write_all(content.as_bytes())
-                .and_then(|()| output.sync_all())
-                .map_err(|_| "A staged transaction file could not be written.".to_string())?;
-            if file.kind == "modify" {
-                let permissions = std::fs::metadata(&target)
-                    .map_err(|_| "A staged file's permissions could not be read.".to_string())?
-                    .permissions();
-                std::fs::set_permissions(&temporary, permissions).map_err(|_| {
-                    "A staged transaction file's permissions could not be set.".to_string()
-                })?;
-            }
-            Ok(())
-        })();
-        if let Err(error) = write_result {
-            let _ = std::fs::remove_file(&temporary);
-            cleanup_pending(&pending);
-            cleanup_directories(&created_directories);
-            return Err(error);
-        }
         pending.push(PendingReplacement {
             target,
             temporary,
@@ -1105,24 +1301,96 @@ fn apply_prepared_transaction(
         });
     }
 
+    let checkpoint = AppliedCheckpoint {
+        id: uuid::Uuid::new_v4().to_string(),
+        files: pending
+            .iter()
+            .map(|replacement| CheckpointFile {
+                target: replacement.target.clone(),
+                backup: replacement.backup.clone(),
+                original_content: (replacement.kind == "modify")
+                    .then(|| replacement.original.clone()),
+                applied_content: replacement.applied_content.clone(),
+            })
+            .collect(),
+        created_directories,
+    };
+    Ok(ApplyTransaction {
+        checkpoint,
+        previous_checkpoint: None,
+        pending,
+    })
+}
+
+fn execute_apply_transaction(
+    transaction: &ApplyTransaction,
+    fail_after: Option<usize>,
+) -> Result<AppliedCheckpoint, String> {
+    let mut created_directories = Vec::new();
+    for directory in &transaction.checkpoint.created_directories {
+        if directory.exists() {
+            cleanup_directories(&created_directories);
+            return Err("A staged directory was created while apply was pending.".to_string());
+        }
+        if std::fs::create_dir(directory).is_err() {
+            cleanup_directories(&created_directories);
+            return Err("A staged file's directory could not be created.".to_string());
+        }
+        created_directories.push(directory.clone());
+    }
+
+    for (prepared_count, replacement) in transaction.pending.iter().enumerate() {
+        if let Err(error) = verify_transaction_base(replacement) {
+            cleanup_pending(&transaction.pending[..prepared_count]);
+            cleanup_directories(&created_directories);
+            return Err(error);
+        }
+        let write_result = (|| -> Result<(), String> {
+            let mut output = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&replacement.temporary)
+                .map_err(|_| "A staged transaction file could not be created.".to_string())?;
+            output
+                .write_all(replacement.applied_content.as_bytes())
+                .and_then(|()| output.sync_all())
+                .map_err(|_| "A staged transaction file could not be written.".to_string())?;
+            if replacement.kind == "modify" {
+                let permissions = std::fs::metadata(&replacement.target)
+                    .map_err(|_| "A staged file's permissions could not be read.".to_string())?
+                    .permissions();
+                std::fs::set_permissions(&replacement.temporary, permissions).map_err(|_| {
+                    "A staged transaction file's permissions could not be set.".to_string()
+                })?;
+            }
+            Ok(())
+        })();
+        if let Err(error) = write_result {
+            let _ = std::fs::remove_file(&replacement.temporary);
+            cleanup_pending(&transaction.pending[..prepared_count]);
+            cleanup_directories(&created_directories);
+            return Err(error);
+        }
+    }
+
     let mut applied = Vec::new();
-    for (index, replacement) in pending.iter().enumerate() {
+    for (index, replacement) in transaction.pending.iter().enumerate() {
         if fail_after.is_some_and(|limit| index >= limit) {
             rollback_replacements(&applied);
-            cleanup_pending(&pending);
+            cleanup_pending(&transaction.pending);
             cleanup_directories(&created_directories);
             return Err("The staged transaction was interrupted.".to_string());
         }
         if let Err(error) = verify_transaction_base(replacement) {
             rollback_replacements(&applied);
-            cleanup_pending(&pending);
+            cleanup_pending(&transaction.pending);
             cleanup_directories(&created_directories);
             return Err(error);
         }
         if let Some(backup) = &replacement.backup {
             if std::fs::rename(&replacement.target, backup).is_err() {
                 rollback_replacements(&applied);
-                cleanup_pending(&pending);
+                cleanup_pending(&transaction.pending);
                 cleanup_directories(&created_directories);
                 return Err("A bundle file could not enter the apply transaction.".to_string());
             }
@@ -1132,32 +1400,18 @@ fn apply_prepared_transaction(
                 let _ = std::fs::rename(backup, &replacement.target);
             }
             rollback_replacements(&applied);
-            cleanup_pending(&pending);
+            cleanup_pending(&transaction.pending);
             cleanup_directories(&created_directories);
             return Err("A staged file could not be applied; the batch was restored.".to_string());
         }
         applied.push(AppliedReplacement {
             target: replacement.target.clone(),
             backup: replacement.backup.clone(),
-            original_content: (replacement.kind == "modify")
-                .then(|| replacement.original.clone()),
-            applied_content: replacement.applied_content.clone(),
         });
     }
 
-    Ok(AppliedCheckpoint {
-        id: uuid::Uuid::new_v4().to_string(),
-        files: applied
-            .into_iter()
-            .map(|replacement| CheckpointFile {
-                target: replacement.target,
-                backup: replacement.backup,
-                original_content: replacement.original_content,
-                applied_content: replacement.applied_content,
-            })
-            .collect(),
-        created_directories,
-    })
+    debug_assert_eq!(applied.len(), transaction.checkpoint.files.len());
+    Ok(transaction.checkpoint.clone())
 }
 
 fn verify_prepared_base(
@@ -1210,10 +1464,10 @@ fn verify_transaction_base(replacement: &PendingReplacement) -> Result<(), Strin
     Ok(())
 }
 
-fn create_transaction_directories(
+fn plan_transaction_directories(
     bundle_root: &Path,
     parent: &Path,
-    created: &mut Vec<PathBuf>,
+    planned: &mut Vec<PathBuf>,
 ) -> Result<(), String> {
     let relative = parent
         .strip_prefix(bundle_root)
@@ -1221,15 +1475,16 @@ fn create_transaction_directories(
     let mut current = bundle_root.to_path_buf();
     for component in relative.components() {
         current.push(component);
+        if planned.contains(&current) {
+            continue;
+        }
         if current.exists() {
             if !current.is_dir() {
                 return Err("A staged file's parent is not a directory.".to_string());
             }
             continue;
         }
-        std::fs::create_dir(&current)
-            .map_err(|_| "A staged file's directory could not be created.".to_string())?;
-        created.push(current.clone());
+        planned.push(current.clone());
     }
     Ok(())
 }
@@ -1266,15 +1521,305 @@ struct RestoredReplacement {
     applied_temporary: PathBuf,
 }
 
+fn recover_committed_apply(transaction: &ApplyTransaction) -> Result<(), String> {
+    for file in &transaction.pending {
+        let target = recovery_text(&file.target, "applied file")?;
+        if target.as_deref() != Some(file.applied_content.as_str()) {
+            return Err(
+                "Interrupted apply recovery stopped because an applied file changed. No recovery files were overwritten."
+                    .to_string(),
+            );
+        }
+        let temporary = recovery_text(&file.temporary, "apply transaction file")?;
+        if temporary
+            .as_deref()
+            .is_some_and(|content| content != file.applied_content)
+        {
+            return Err(
+                "Interrupted apply recovery found a changed transaction file. No recovery files were overwritten."
+                    .to_string(),
+            );
+        }
+        if let Some(backup) = &file.backup {
+            let original = file.original.as_str();
+            let backup_content = recovery_text(backup, "apply backup")?;
+            if backup_content
+                .as_deref()
+                .is_some_and(|content| content != original)
+            {
+                return Err(
+                    "Interrupted apply recovery found a changed backup. No recovery files were overwritten."
+                        .to_string(),
+                );
+            }
+        }
+    }
+    for file in &transaction.pending {
+        remove_recovery_file(&file.temporary, "apply transaction file")?;
+        if let Some(backup) = &file.backup {
+            remove_recovery_file(backup, "apply backup")?;
+        }
+    }
+    Ok(())
+}
+
+fn recover_uncommitted_apply(transaction: &ApplyTransaction) -> Result<(), String> {
+    for file in &transaction.pending {
+        let target = recovery_text(&file.target, "bundle file")?;
+        let target_is_expected = if file.kind == "modify" {
+            target.as_deref().is_none_or(|content| {
+                content == file.original || content == file.applied_content
+            })
+        } else {
+            target
+                .as_deref()
+                .is_none_or(|content| content == file.applied_content)
+        };
+        if !target_is_expected {
+            return Err(
+                "Interrupted apply recovery stopped because a bundle file changed. Restore its pre-apply or applied text, then retry."
+                    .to_string(),
+            );
+        }
+        let temporary = recovery_text(&file.temporary, "apply transaction file")?;
+        if temporary
+            .as_deref()
+            .is_some_and(|content| content != file.applied_content)
+        {
+            return Err(
+                "Interrupted apply recovery found a changed transaction file. No recovery files were overwritten."
+                    .to_string(),
+            );
+        }
+        if let Some(backup) = &file.backup {
+            let backup_content = recovery_text(backup, "apply backup")?;
+            if backup_content
+                .as_deref()
+                .is_some_and(|content| content != file.original)
+            {
+                return Err(
+                    "Interrupted apply recovery found a changed backup. No recovery files were overwritten."
+                        .to_string(),
+                );
+            }
+        }
+    }
+
+    for file in &transaction.pending {
+        if file.kind == "modify" {
+            let target = recovery_text(&file.target, "bundle file")?;
+            if target.as_deref() != Some(file.original.as_str()) {
+                write_recovery_text(
+                    &file.temporary,
+                    &file.original,
+                    target.as_ref().map(|_| file.target.as_path()).or_else(|| {
+                        file.backup.as_deref().filter(|backup| backup.exists())
+                    }),
+                )?;
+                remove_recovery_file(&file.target, "applied bundle file")?;
+                std::fs::rename(&file.temporary, &file.target).map_err(|_| {
+                    "Interrupted apply recovery could not restore an original file.".to_string()
+                })?;
+            } else {
+                remove_recovery_file(&file.temporary, "apply transaction file")?;
+            }
+            if let Some(backup) = &file.backup {
+                remove_recovery_file(backup, "apply backup")?;
+            }
+        } else {
+            remove_recovery_file(&file.target, "applied bundle file")?;
+            remove_recovery_file(&file.temporary, "apply transaction file")?;
+        }
+    }
+    cleanup_recovery_directories(&transaction.checkpoint.created_directories)?;
+    verify_recovered_originals(transaction)?;
+    Ok(())
+}
+
+fn recover_interrupted_restore(transaction: &RestoreTransaction) -> Result<(), String> {
+    for file in &transaction.pending {
+        let target = recovery_text(&file.target, "bundle file")?;
+        let original_temporary = file
+            .original_temporary
+            .as_ref()
+            .map(|path| recovery_text(path, "restore transaction file"))
+            .transpose()?
+            .flatten();
+        let applied_temporary = recovery_text(&file.applied_temporary, "restore undo file")?;
+        if original_temporary
+            .as_deref()
+            .zip(file.original_content.as_deref())
+            .is_some_and(|(actual, expected)| actual != expected)
+            || applied_temporary
+                .as_deref()
+                .is_some_and(|content| content != file.applied_content)
+        {
+            return Err(
+                "Interrupted restore recovery found a changed transaction file. No recovery files were overwritten."
+                    .to_string(),
+            );
+        }
+        let expected_target = target.as_deref().is_some_and(|content| {
+            content == file.applied_content
+                || file.original_content.as_deref() == Some(content)
+        });
+        let completed_creation = file.original_content.is_none() && target.is_none();
+        let interrupted_gap = target.is_none()
+            && (applied_temporary.is_some() || original_temporary.is_some());
+        if !expected_target && !completed_creation && !interrupted_gap {
+            return Err(
+                "Interrupted restore recovery stopped because a bundle file changed. Restore its applied or original text, then retry."
+                    .to_string(),
+            );
+        }
+    }
+
+    for file in &transaction.pending {
+        if let Some(original) = &file.original_content {
+            let target = recovery_text(&file.target, "bundle file")?;
+            if target.as_deref() != Some(original.as_str()) {
+                let temporary = file
+                    .original_temporary
+                    .as_ref()
+                    .expect("modified checkpoints have a restore transaction file");
+                write_recovery_text(
+                    temporary,
+                    original,
+                    target.as_ref().map(|_| file.target.as_path()),
+                )?;
+                remove_recovery_file(&file.target, "applied bundle file")?;
+                std::fs::rename(temporary, &file.target).map_err(|_| {
+                    "Interrupted restore recovery could not restore an original file.".to_string()
+                })?;
+            }
+        } else {
+            remove_recovery_file(&file.target, "applied bundle file")?;
+        }
+        if let Some(temporary) = &file.original_temporary {
+            remove_recovery_file(temporary, "restore transaction file")?;
+        }
+        remove_recovery_file(&file.applied_temporary, "restore undo file")?;
+    }
+    cleanup_recovery_directories(&transaction.checkpoint.created_directories)?;
+    verify_restored_checkpoint(&transaction.checkpoint)
+}
+
+fn verify_recovered_originals(transaction: &ApplyTransaction) -> Result<(), String> {
+    for file in &transaction.pending {
+        let current = recovery_text(&file.target, "bundle file")?;
+        let restored = if file.kind == "modify" {
+            current.as_deref() == Some(file.original.as_str())
+        } else {
+            current.is_none()
+        };
+        if !restored || file.temporary.exists() || file.backup.as_ref().is_some_and(|p| p.exists()) {
+            return Err("Studio could not finish interrupted apply recovery.".to_string());
+        }
+    }
+    Ok(())
+}
+
+fn verify_restored_checkpoint(checkpoint: &AppliedCheckpoint) -> Result<(), String> {
+    for file in &checkpoint.files {
+        let current = recovery_text(&file.target, "bundle file")?;
+        let restored = file.original_content.as_deref().map_or_else(
+            || current.is_none(),
+            |original| current.as_deref() == Some(original),
+        );
+        if !restored {
+            return Err("Studio could not finish interrupted restore recovery.".to_string());
+        }
+    }
+    Ok(())
+}
+
+fn recovery_text(path: &Path, label: &str) -> Result<Option<String>, String> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|_| format!("Studio could not inspect a recovery {label}."))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(format!("A recovery {label} is not a regular file."));
+    }
+    if metadata.len() > MAX_STAGED_FILE_BYTES as u64 {
+        return Err(format!("A recovery {label} exceeds its size limit."));
+    }
+    std::fs::read_to_string(path)
+        .map(Some)
+        .map_err(|_| format!("Studio could not read a recovery {label}."))
+}
+
+fn write_recovery_text(
+    temporary: &Path,
+    content: &str,
+    permissions_source: Option<&Path>,
+) -> Result<(), String> {
+    remove_recovery_file(temporary, "transaction file")?;
+    let mut output = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(temporary)
+        .map_err(|_| "Studio could not create a recovery transaction file.".to_string())?;
+    output
+        .write_all(content.as_bytes())
+        .and_then(|()| output.sync_all())
+        .map_err(|_| "Studio could not write a recovery transaction file.".to_string())?;
+    if let Some(source) = permissions_source {
+        let permissions = std::fs::metadata(source)
+            .map_err(|_| "Studio could not inspect recovery file permissions.".to_string())?
+            .permissions();
+        std::fs::set_permissions(temporary, permissions)
+            .map_err(|_| "Studio could not preserve recovery file permissions.".to_string())?;
+    }
+    Ok(())
+}
+
+fn remove_recovery_file(path: &Path, label: &str) -> Result<(), String> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(format!("Studio could not remove a recovery {label}.")),
+    }
+}
+
+fn cleanup_recovery_directories(created: &[PathBuf]) -> Result<(), String> {
+    for directory in created.iter().rev() {
+        match std::fs::remove_dir(directory) {
+            Ok(()) => {}
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::NotFound | std::io::ErrorKind::DirectoryNotEmpty
+                ) => {}
+            Err(_) => {
+                return Err(
+                    "Studio could not clean up a directory from an interrupted transaction."
+                        .to_string(),
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
 struct PendingCheckpointRestore {
     target: PathBuf,
     original_temporary: Option<PathBuf>,
+    applied_temporary: PathBuf,
+    original_content: Option<String>,
+    applied_content: String,
 }
 
-fn restore_applied_checkpoint(
+struct RestoreTransaction {
+    checkpoint: AppliedCheckpoint,
+    pending: Vec<PendingCheckpointRestore>,
+}
+
+fn plan_restore_transaction(
     bundle_root: &Path,
     checkpoint: &AppliedCheckpoint,
-) -> Result<(), String> {
+) -> Result<RestoreTransaction, String> {
     let mut pending = Vec::new();
     for file in &checkpoint.files {
         bundle_relative_write_path(bundle_root, &file.target)?;
@@ -1290,20 +1835,43 @@ fn restore_applied_checkpoint(
         if current != file.applied_content {
             return Err("Checkpoint restore blocked: an applied file changed after apply.".to_string());
         }
-        let original_temporary = if let Some(original) = &file.original_content {
-            let parent = file
-                .target
-                .parent()
-                .ok_or_else(|| "Checkpoint restore could not resolve a file parent.".to_string())?;
-            let temporary = parent.join(format!(
-                ".okf-studio-{}-restore.tmp",
-                uuid::Uuid::new_v4()
-            ));
+        let parent = file
+            .target
+            .parent()
+            .ok_or_else(|| "Checkpoint restore could not resolve a file parent.".to_string())?;
+        let transaction_id = uuid::Uuid::new_v4();
+        let original_temporary = file.original_content.as_ref().map(|_| {
+            parent.join(format!(".okf-studio-{transaction_id}-restore.tmp"))
+        });
+        let applied_temporary =
+            parent.join(format!(".okf-studio-{transaction_id}-undo.tmp"));
+        pending.push(PendingCheckpointRestore {
+            target: file.target.clone(),
+            original_temporary,
+            applied_temporary,
+            original_content: file.original_content.clone(),
+            applied_content: file.applied_content.clone(),
+        });
+    }
+    Ok(RestoreTransaction {
+        checkpoint: checkpoint.clone(),
+        pending,
+    })
+}
+
+fn execute_restore_transaction(
+    transaction: &RestoreTransaction,
+    fail_after: Option<usize>,
+) -> Result<(), String> {
+    for (prepared_count, file) in transaction.pending.iter().enumerate() {
+        if let (Some(original), Some(temporary)) =
+            (&file.original_content, &file.original_temporary)
+        {
             let write_result = (|| -> Result<(), String> {
                 let mut output = OpenOptions::new()
                     .write(true)
                     .create_new(true)
-                    .open(&temporary)
+                    .open(temporary)
                     .map_err(|_| {
                         "Checkpoint restore could not create an original file.".to_string()
                     })?;
@@ -1318,63 +1886,69 @@ fn restore_applied_checkpoint(
                         "Checkpoint restore could not inspect an applied file.".to_string()
                     })?
                     .permissions();
-                std::fs::set_permissions(&temporary, permissions).map_err(|_| {
+                std::fs::set_permissions(temporary, permissions).map_err(|_| {
                     "Checkpoint restore could not preserve file permissions.".to_string()
                 })
             })();
             if let Err(error) = write_result {
-                let _ = std::fs::remove_file(&temporary);
-                cleanup_checkpoint_restore(&pending);
+                let _ = std::fs::remove_file(temporary);
+                cleanup_checkpoint_restore(&transaction.pending[..prepared_count]);
                 return Err(error);
             }
-            Some(temporary)
-        } else {
-            None
-        };
-        pending.push(PendingCheckpointRestore {
-            target: file.target.clone(),
-            original_temporary,
-        });
+        }
     }
 
     let mut restored = Vec::new();
-    for file in &pending {
-        let parent = file
-            .target
-            .parent()
-            .ok_or_else(|| "Checkpoint restore could not resolve a file parent.".to_string())?;
-        let applied_temporary = parent.join(format!(
-            ".okf-studio-{}-undo.tmp",
-            uuid::Uuid::new_v4()
-        ));
-        if std::fs::rename(&file.target, &applied_temporary).is_err() {
+    for (index, file) in transaction.pending.iter().enumerate() {
+        if fail_after.is_some_and(|limit| index >= limit) {
             rollback_checkpoint_restore(&restored);
-            cleanup_checkpoint_restore(&pending);
+            cleanup_checkpoint_restore(&transaction.pending);
+            return Err("The checkpoint restore transaction was interrupted.".to_string());
+        }
+        let current = match std::fs::read_to_string(&file.target) {
+            Ok(current) => current,
+            Err(_) => {
+                rollback_checkpoint_restore(&restored);
+                cleanup_checkpoint_restore(&transaction.pending);
+                return Err(
+                    "Checkpoint restore blocked: an applied file could not be rechecked."
+                        .to_string(),
+                );
+            }
+        };
+        if current != file.applied_content {
+            rollback_checkpoint_restore(&restored);
+            cleanup_checkpoint_restore(&transaction.pending);
+            return Err("Checkpoint restore blocked: an applied file changed during restore.".to_string());
+        }
+        if std::fs::rename(&file.target, &file.applied_temporary).is_err() {
+            rollback_checkpoint_restore(&restored);
+            cleanup_checkpoint_restore(&transaction.pending);
             return Err("Checkpoint restore could not move an applied file.".to_string());
         }
         if let Some(original) = &file.original_temporary {
             if std::fs::rename(original, &file.target).is_err() {
-                let _ = std::fs::rename(&applied_temporary, &file.target);
+                let _ = std::fs::rename(&file.applied_temporary, &file.target);
                 rollback_checkpoint_restore(&restored);
-                cleanup_checkpoint_restore(&pending);
+                cleanup_checkpoint_restore(&transaction.pending);
                 return Err("Checkpoint restore could not replace an applied file.".to_string());
             }
         }
         restored.push(RestoredReplacement {
             target: file.target.clone(),
-            applied_temporary,
+            applied_temporary: file.applied_temporary.clone(),
         });
     }
 
     for file in &restored {
         let _ = std::fs::remove_file(&file.applied_temporary);
     }
-    for file in &checkpoint.files {
+    for file in &transaction.checkpoint.files {
         if let Some(backup) = &file.backup {
             let _ = std::fs::remove_file(backup);
         }
     }
-    cleanup_directories(&checkpoint.created_directories);
+    cleanup_directories(&transaction.checkpoint.created_directories);
     Ok(())
 }
 
@@ -1433,6 +2007,225 @@ fn serialize_checkpoint(
         files,
         created_directories,
     })
+}
+
+fn serialize_apply_transaction(
+    bundle_root: &Path,
+    transaction: &ApplyTransaction,
+) -> Result<PersistedApplyTransaction, String> {
+    let artifacts = transaction
+        .pending
+        .iter()
+        .map(|file| {
+            Ok(PersistedApplyArtifact {
+                path: bundle_relative_write_path(bundle_root, &file.target)?,
+                temporary: bundle_relative_write_path(bundle_root, &file.temporary)?,
+                backup: file
+                    .backup
+                    .as_ref()
+                    .map(|path| bundle_relative_write_path(bundle_root, path))
+                    .transpose()?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(PersistedApplyTransaction {
+        version: CHECKPOINT_VERSION,
+        checkpoint: serialize_checkpoint(bundle_root, &transaction.checkpoint)?,
+        previous_checkpoint: transaction
+            .previous_checkpoint
+            .as_ref()
+            .map(|checkpoint| serialize_checkpoint(bundle_root, checkpoint))
+            .transpose()?,
+        artifacts,
+    })
+}
+
+fn persisted_apply_transaction(
+    bundle_root: &Path,
+    persisted: PersistedApplyTransaction,
+) -> Result<ApplyTransaction, String> {
+    if persisted.version != CHECKPOINT_VERSION {
+        return Err("Studio's saved apply transaction is invalid.".to_string());
+    }
+    let checkpoint = persisted_checkpoint(bundle_root, persisted.checkpoint)?;
+    let previous_checkpoint = persisted
+        .previous_checkpoint
+        .map(|checkpoint| persisted_checkpoint(bundle_root, checkpoint))
+        .transpose()?;
+    if previous_checkpoint
+        .as_ref()
+        .is_some_and(|previous| previous.id == checkpoint.id)
+    {
+        return Err("Studio's saved apply transaction repeats its checkpoint.".to_string());
+    }
+    if persisted.artifacts.len() != checkpoint.files.len() {
+        return Err("Studio's saved apply transaction has an invalid file count.".to_string());
+    }
+    let mut pending = Vec::with_capacity(checkpoint.files.len());
+    for (artifact, file) in persisted.artifacts.into_iter().zip(&checkpoint.files) {
+        let path = bundle_relative_write_path(bundle_root, &file.target)?;
+        if artifact.path != path {
+            return Err("Studio's saved apply transaction contains mismatched paths.".to_string());
+        }
+        let (temporary, transaction_id) = checked_transaction_artifact(
+            bundle_root,
+            &file.target,
+            &artifact.temporary,
+            ".tmp",
+        )?;
+        let backup = artifact
+            .backup
+            .as_deref()
+            .map(|relative| {
+                let (backup, backup_id) = checked_transaction_artifact(
+                    bundle_root,
+                    &file.target,
+                    relative,
+                    ".bak",
+                )?;
+                if backup_id != transaction_id {
+                    return Err(
+                        "Studio's saved apply transaction contains mismatched artifacts."
+                            .to_string(),
+                    );
+                }
+                Ok(backup)
+            })
+            .transpose()?;
+        if backup.is_some() != file.original_content.is_some() {
+            return Err("Studio's saved apply transaction contains invalid artifacts.".to_string());
+        }
+        pending.push(PendingReplacement {
+            target: file.target.clone(),
+            temporary,
+            backup,
+            kind: if file.original_content.is_some() {
+                "modify"
+            } else {
+                "create"
+            },
+            original: file.original_content.clone().unwrap_or_default(),
+            applied_content: file.applied_content.clone(),
+        });
+    }
+    Ok(ApplyTransaction {
+        checkpoint,
+        previous_checkpoint,
+        pending,
+    })
+}
+
+fn serialize_restore_transaction(
+    bundle_root: &Path,
+    transaction: &RestoreTransaction,
+) -> Result<PersistedRestoreTransaction, String> {
+    let artifacts = transaction
+        .pending
+        .iter()
+        .map(|file| {
+            Ok(PersistedRestoreArtifact {
+                path: bundle_relative_write_path(bundle_root, &file.target)?,
+                original_temporary: file
+                    .original_temporary
+                    .as_ref()
+                    .map(|path| bundle_relative_write_path(bundle_root, path))
+                    .transpose()?,
+                applied_temporary: bundle_relative_write_path(
+                    bundle_root,
+                    &file.applied_temporary,
+                )?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(PersistedRestoreTransaction {
+        version: CHECKPOINT_VERSION,
+        checkpoint: serialize_checkpoint(bundle_root, &transaction.checkpoint)?,
+        artifacts,
+    })
+}
+
+fn persisted_restore_transaction(
+    bundle_root: &Path,
+    persisted: PersistedRestoreTransaction,
+) -> Result<RestoreTransaction, String> {
+    if persisted.version != CHECKPOINT_VERSION {
+        return Err("Studio's saved restore transaction is invalid.".to_string());
+    }
+    let checkpoint = persisted_checkpoint(bundle_root, persisted.checkpoint)?;
+    if persisted.artifacts.len() != checkpoint.files.len() {
+        return Err("Studio's saved restore transaction has an invalid file count.".to_string());
+    }
+    let mut pending = Vec::with_capacity(checkpoint.files.len());
+    for (artifact, file) in persisted.artifacts.into_iter().zip(&checkpoint.files) {
+        let path = bundle_relative_write_path(bundle_root, &file.target)?;
+        if artifact.path != path {
+            return Err("Studio's saved restore transaction contains mismatched paths.".to_string());
+        }
+        let (applied_temporary, transaction_id) = checked_transaction_artifact(
+            bundle_root,
+            &file.target,
+            &artifact.applied_temporary,
+            "-undo.tmp",
+        )?;
+        let original_temporary = artifact
+            .original_temporary
+            .as_deref()
+            .map(|relative| {
+                let (temporary, original_id) = checked_transaction_artifact(
+                    bundle_root,
+                    &file.target,
+                    relative,
+                    "-restore.tmp",
+                )?;
+                if original_id != transaction_id {
+                    return Err(
+                        "Studio's saved restore transaction contains mismatched artifacts."
+                            .to_string(),
+                    );
+                }
+                Ok(temporary)
+            })
+            .transpose()?;
+        if original_temporary.is_some() != file.original_content.is_some() {
+            return Err("Studio's saved restore transaction contains invalid artifacts.".to_string());
+        }
+        pending.push(PendingCheckpointRestore {
+            target: file.target.clone(),
+            original_temporary,
+            applied_temporary,
+            original_content: file.original_content.clone(),
+            applied_content: file.applied_content.clone(),
+        });
+    }
+    Ok(RestoreTransaction {
+        checkpoint,
+        pending,
+    })
+}
+
+fn checked_transaction_artifact(
+    bundle_root: &Path,
+    target: &Path,
+    relative: &str,
+    suffix: &str,
+) -> Result<(PathBuf, String), String> {
+    let artifact = bundle_root.join(Path::new(relative));
+    let reduced = bundle_relative_write_path(bundle_root, &artifact)
+        .map_err(|_| "Studio's saved transaction contains an invalid artifact path.".to_string())?;
+    if reduced != relative || artifact.parent() != target.parent() {
+        return Err("Studio's saved transaction contains an invalid artifact path.".to_string());
+    }
+    let name = artifact
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "Studio's saved transaction contains an invalid artifact name.".to_string())?;
+    let id = name
+        .strip_prefix(".okf-studio-")
+        .and_then(|name| name.strip_suffix(suffix))
+        .ok_or_else(|| "Studio's saved transaction contains an invalid artifact name.".to_string())?;
+    let id = uuid::Uuid::parse_str(id)
+        .map_err(|_| "Studio's saved transaction contains an invalid artifact name.".to_string())?;
+    Ok((artifact, id.to_string()))
 }
 
 fn persisted_checkpoint(
@@ -1554,30 +2347,80 @@ fn bundle_fingerprint(bundle_root: &Path) -> String {
 }
 
 fn write_checkpoint_file(file: &Path, checkpoint: &PersistedCheckpoint) -> Result<(), String> {
+    write_private_json_file(file, checkpoint, "apply checkpoint")
+}
+
+fn read_private_json_file<T: DeserializeOwned>(file: &Path, label: &str) -> Result<T, String> {
+    let metadata = std::fs::symlink_metadata(file)
+        .map_err(|_| format!("Studio could not inspect its saved {label}."))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(format!("Studio's saved {label} is not a regular file."));
+    }
+    if metadata.len() > MAX_CHECKPOINT_BYTES {
+        return Err(format!("Studio's saved {label} exceeds its size limit."));
+    }
+    let bytes = std::fs::read(file)
+        .map_err(|_| format!("Studio could not read its saved {label}."))?;
+    serde_json::from_slice(&bytes).map_err(|_| format!("Studio's saved {label} is invalid."))
+}
+
+fn remove_transaction_file(file: Option<PathBuf>, operation: &str) -> Result<(), String> {
+    let Some(file) = file else {
+        return Ok(());
+    };
+    match std::fs::remove_file(file) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(format!(
+            "Studio could not remove its saved {operation} transaction."
+        )),
+    }
+}
+
+fn quarantine_transaction_file(file: &Path, operation: &str) -> Result<(), String> {
+    let parent = file.parent().ok_or_else(|| {
+        format!("Studio could not quarantine its invalid {operation} transaction.")
+    })?;
+    let quarantined = parent.join(format!(
+        ".okf-studio-invalid-{operation}-transaction-{}.json",
+        uuid::Uuid::new_v4()
+    ));
+    std::fs::rename(file, quarantined).map_err(|_| {
+        format!("Studio could not quarantine its invalid {operation} transaction.")
+    })
+}
+
+fn write_private_json_file<T: Serialize>(
+    file: &Path,
+    value: &T,
+    label: &str,
+) -> Result<(), String> {
     let parent = file
         .parent()
-        .ok_or_else(|| "Studio's apply checkpoint has no storage directory.".to_string())?;
+        .ok_or_else(|| format!("Studio's {label} has no storage directory."))?;
     std::fs::create_dir_all(parent)
-        .map_err(|_| "Studio could not create its apply checkpoint directory.".to_string())?;
+        .map_err(|_| format!("Studio could not create its {label} directory."))?;
     let metadata = std::fs::symlink_metadata(parent)
-        .map_err(|_| "Studio could not inspect its apply checkpoint directory.".to_string())?;
+        .map_err(|_| format!("Studio could not inspect its {label} directory."))?;
     if metadata.file_type().is_symlink() || !metadata.is_dir() {
-        return Err("Studio's apply checkpoint directory is not a regular directory.".to_string());
+        return Err(format!(
+            "Studio's {label} directory is not a regular directory."
+        ));
     }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700)).map_err(|_| {
-            "Studio could not protect its apply checkpoint directory.".to_string()
+            format!("Studio could not protect its {label} directory.")
         })?;
     }
     if file.exists() {
-        return Err("A saved apply checkpoint already exists for this bundle.".to_string());
+        return Err(format!("A saved {label} already exists for this bundle."));
     }
-    let bytes = serde_json::to_vec(checkpoint)
-        .map_err(|_| "Studio could not encode its apply checkpoint.".to_string())?;
+    let bytes = serde_json::to_vec(value)
+        .map_err(|_| format!("Studio could not encode its {label}."))?;
     if bytes.len() as u64 > MAX_CHECKPOINT_BYTES {
-        return Err("Studio's apply checkpoint exceeds its size limit.".to_string());
+        return Err(format!("Studio's {label} exceeds its size limit."));
     }
     let temporary = parent.join(format!(
         ".okf-studio-checkpoint-{}.tmp",
@@ -1593,16 +2436,16 @@ fn write_checkpoint_file(file: &Path, checkpoint: &PersistedCheckpoint) -> Resul
         }
         let mut output = options
             .open(&temporary)
-            .map_err(|_| "Studio could not create its apply checkpoint.".to_string())?;
+            .map_err(|_| format!("Studio could not create its {label}."))?;
         output
             .write_all(&bytes)
             .and_then(|()| output.sync_all())
-            .map_err(|_| "Studio could not write its apply checkpoint.".to_string())?;
+            .map_err(|_| format!("Studio could not write its {label}."))?;
         if file.exists() {
-            return Err("A saved apply checkpoint already exists for this bundle.".to_string());
+            return Err(format!("A saved {label} already exists for this bundle."));
         }
         std::fs::rename(&temporary, file)
-            .map_err(|_| "Studio could not activate its apply checkpoint.".to_string())
+            .map_err(|_| format!("Studio could not activate its {label}."))
     })();
     if result.is_err() {
         let _ = std::fs::remove_file(temporary);
@@ -1907,6 +2750,37 @@ mod tests {
             "---\ntype: note\n---\n# Existing\n",
         )
         .expect("seed valid concept");
+    }
+
+    fn prepared_edit_and_create(root: &Path) -> Vec<PreparedStagedFile> {
+        let mut files = BTreeMap::new();
+        files.insert(
+            "existing.md".to_string(),
+            StagedFile {
+                content: "---\ntype: note\n---\n# Updated\n".to_string(),
+                kind: "modify",
+                selection: None,
+            },
+        );
+        files.insert(
+            "nested/new.md".to_string(),
+            StagedFile {
+                content: "---\ntype: note\n---\n# New\n".to_string(),
+                kind: "create",
+                selection: None,
+            },
+        );
+        prepare_selected_stage(root, &files).expect("prepare edit and creation")
+    }
+
+    fn prepare_apply_artifacts(transaction: &ApplyTransaction) {
+        for directory in &transaction.checkpoint.created_directories {
+            std::fs::create_dir(directory).expect("create planned directory");
+        }
+        for file in &transaction.pending {
+            std::fs::write(&file.temporary, &file.applied_content)
+                .expect("write apply transaction file");
+        }
     }
 
     #[test]
@@ -2444,6 +3318,295 @@ mod tests {
     }
 
     #[test]
+    fn rolls_back_an_apply_interrupted_before_its_commit_point() {
+        let root = canonical_temp_dir("recover-interrupted-apply");
+        let checkpoint_directory = canonical_temp_dir("recover-apply-storage");
+        seed_valid_bundle(&root);
+        let stages = SessionStages::persistent(checkpoint_directory.clone());
+        let transaction =
+            plan_apply_transaction(&root, &prepared_edit_and_create(&root)).expect("plan apply");
+        stages
+            .persist_apply_transaction(&root, &transaction)
+            .expect("persist apply intent");
+        prepare_apply_artifacts(&transaction);
+
+        let modified = &transaction.pending[0];
+        std::fs::rename(
+            &modified.target,
+            modified.backup.as_ref().expect("modification backup"),
+        )
+        .expect("move original into backup");
+        std::fs::rename(&modified.temporary, &modified.target).expect("apply first file");
+
+        let resumed = SessionStages::persistent(checkpoint_directory.clone());
+        let changes = resumed
+            .register_session("session-2", &root)
+            .expect("recover interrupted apply");
+        assert!(!changes.can_restore);
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read original"),
+            "---\ntype: note\n---\n# Existing\n"
+        );
+        assert!(!root.join("nested").exists());
+        assert_eq!(
+            std::fs::read_dir(&checkpoint_directory)
+                .expect("read transaction storage")
+                .count(),
+            0
+        );
+    }
+
+    #[test]
+    fn finishes_a_committed_apply_interrupted_before_artifact_cleanup() {
+        let root = canonical_temp_dir("recover-committed-apply");
+        let checkpoint_directory = canonical_temp_dir("recover-committed-storage");
+        seed_valid_bundle(&root);
+        let stages = SessionStages::persistent(checkpoint_directory.clone());
+        let transaction =
+            plan_apply_transaction(&root, &prepared_edit_and_create(&root)).expect("plan apply");
+        stages
+            .persist_apply_transaction(&root, &transaction)
+            .expect("persist apply intent");
+        let checkpoint =
+            execute_apply_transaction(&transaction, None).expect("execute full apply");
+        stages
+            .persist_checkpoint(&root, &checkpoint)
+            .expect("cross apply commit point");
+
+        let resumed = SessionStages::persistent(checkpoint_directory.clone());
+        let changes = resumed
+            .register_session("session-2", &root)
+            .expect("finish committed apply");
+        assert!(changes.can_restore);
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read applied file"),
+            "---\ntype: note\n---\n# Updated\n"
+        );
+        assert!(transaction
+            .pending
+            .iter()
+            .all(|file| !file.temporary.exists()
+                && file.backup.as_ref().is_none_or(|backup| !backup.exists())));
+        assert_eq!(
+            std::fs::read_dir(&checkpoint_directory)
+                .expect("read checkpoint storage")
+                .count(),
+            1,
+            "only the durable applied checkpoint remains"
+        );
+    }
+
+    #[test]
+    fn recovers_the_previous_checkpoint_when_a_replacement_apply_is_interrupted() {
+        let root = canonical_temp_dir("recover-replaced-checkpoint");
+        let checkpoint_directory = canonical_temp_dir("recover-replaced-storage");
+        seed_valid_bundle(&root);
+        let stages = SessionStages::persistent(checkpoint_directory.clone());
+        stages
+            .register_session("session-1", &root)
+            .expect("register session");
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# First apply\n".to_string(),
+            )
+            .expect("stage first apply");
+        let validation = stages.validate_staged("session-1").expect("validate first");
+        stages
+            .apply_staged("session-1", &validation.revision)
+            .expect("commit first apply");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# Second apply\n".to_string(),
+            )
+            .expect("stage replacement apply");
+
+        let (files, previous) = {
+            let sessions = stages.sessions.lock().expect("lock stages");
+            let stage = sessions.get("session-1").expect("active stage");
+            (
+                stage.files.clone(),
+                stage.checkpoint.clone().expect("previous checkpoint"),
+            )
+        };
+        let prepared = prepare_selected_stage(&root, &files).expect("prepare replacement");
+        let mut transaction = plan_apply_transaction(&root, &prepared).expect("plan replacement");
+        transaction.previous_checkpoint = Some(previous.clone());
+        stages
+            .persist_apply_transaction(&root, &transaction)
+            .expect("persist replacement intent");
+        execute_apply_transaction(&transaction, None).expect("execute replacement");
+        stages
+            .remove_persisted_checkpoint(&root, &previous.id)
+            .expect("simulate interruption after removing old checkpoint");
+        drop(stages);
+
+        let resumed = SessionStages::persistent(checkpoint_directory.clone());
+        let changes = resumed
+            .register_session("session-2", &root)
+            .expect("recover previous checkpoint");
+        assert!(changes.can_restore);
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read first apply"),
+            "---\ntype: note\n---\n# First apply\n"
+        );
+        resumed
+            .restore_checkpoint("session-2")
+            .expect("restore original checkpoint");
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read original"),
+            "---\ntype: note\n---\n# Existing\n"
+        );
+    }
+
+    #[test]
+    fn finishes_a_restore_interrupted_between_file_replacements() {
+        let root = canonical_temp_dir("recover-interrupted-restore");
+        let checkpoint_directory = canonical_temp_dir("recover-restore-storage");
+        seed_valid_bundle(&root);
+        let stages = SessionStages::persistent(checkpoint_directory.clone());
+        stages
+            .register_session("session-1", &root)
+            .expect("register session");
+        stages.set_grant("session-1", true).expect("grant");
+        for (path, content) in [
+            ("existing.md", "---\ntype: note\n---\n# Updated\n"),
+            ("nested/new.md", "---\ntype: note\n---\n# New\n"),
+        ] {
+            stages
+                .stage_write("session-1", &root.join(path), content.to_string())
+                .expect("stage file");
+        }
+        let validation = stages.validate_staged("session-1").expect("validate");
+        stages
+            .apply_staged("session-1", &validation.revision)
+            .expect("apply");
+        let checkpoint = stages
+            .sessions
+            .lock()
+            .expect("lock stages")
+            .get("session-1")
+            .and_then(|stage| stage.checkpoint.clone())
+            .expect("applied checkpoint");
+        let transaction = plan_restore_transaction(&root, &checkpoint).expect("plan restore");
+        stages
+            .persist_restore_transaction(&root, &transaction)
+            .expect("persist restore intent");
+
+        let modified = &transaction.pending[0];
+        std::fs::write(
+            modified
+                .original_temporary
+                .as_ref()
+                .expect("original transaction file"),
+            modified.original_content.as_ref().expect("original text"),
+        )
+        .expect("write original transaction file");
+        std::fs::rename(&modified.target, &modified.applied_temporary)
+            .expect("move applied file");
+        std::fs::rename(
+            modified
+                .original_temporary
+                .as_ref()
+                .expect("original transaction file"),
+            &modified.target,
+        )
+        .expect("restore first file");
+
+        drop(stages);
+        let resumed = SessionStages::persistent(checkpoint_directory.clone());
+        let changes = resumed
+            .register_session("session-2", &root)
+            .expect("finish interrupted restore");
+        assert!(!changes.can_restore);
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read original"),
+            "---\ntype: note\n---\n# Existing\n"
+        );
+        assert!(!root.join("nested").exists());
+        assert_eq!(
+            std::fs::read_dir(&checkpoint_directory)
+                .expect("read checkpoint storage")
+                .count(),
+            0
+        );
+    }
+
+    #[test]
+    fn blocks_interrupted_apply_recovery_after_external_divergence() {
+        let root = canonical_temp_dir("recover-apply-conflict");
+        let checkpoint_directory = canonical_temp_dir("recover-conflict-storage");
+        seed_valid_bundle(&root);
+        let stages = SessionStages::persistent(checkpoint_directory.clone());
+        let transaction =
+            plan_apply_transaction(&root, &prepared_edit_and_create(&root)).expect("plan apply");
+        stages
+            .persist_apply_transaction(&root, &transaction)
+            .expect("persist apply intent");
+        std::fs::write(
+            root.join("existing.md"),
+            "---\ntype: note\n---\n# External edit\n",
+        )
+        .expect("diverge bundle file");
+
+        let resumed = SessionStages::persistent(checkpoint_directory.clone());
+        let error = resumed
+            .register_session("session-2", &root)
+            .expect_err("external divergence blocks recovery");
+        assert!(error.contains("bundle file changed"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read external edit"),
+            "---\ntype: note\n---\n# External edit\n"
+        );
+        assert!(stages
+            .apply_transaction_file(&root)
+            .expect("apply transaction path")
+            .exists());
+    }
+
+    #[test]
+    fn quarantines_an_invalid_interrupted_transaction_before_retry() {
+        let root = canonical_temp_dir("recover-invalid-transaction");
+        let checkpoint_directory = canonical_temp_dir("recover-invalid-storage");
+        seed_valid_bundle(&root);
+        let stages = SessionStages::persistent(checkpoint_directory.clone());
+        let transaction =
+            plan_apply_transaction(&root, &prepared_edit_and_create(&root)).expect("plan apply");
+        let mut persisted =
+            serialize_apply_transaction(&root, &transaction).expect("serialize apply intent");
+        persisted.artifacts[0].temporary = "../outside.tmp".to_string();
+        write_private_json_file(
+            &stages
+                .apply_transaction_file(&root)
+                .expect("apply transaction path"),
+            &persisted,
+            "apply transaction",
+        )
+        .expect("write invalid apply intent");
+
+        let error = stages
+            .register_session("session-1", &root)
+            .expect_err("invalid intent must fail closed");
+        assert!(error.contains("invalid artifact path"));
+        assert!(error.contains("retry the session"));
+        let changes = stages
+            .register_session("session-2", &root)
+            .expect("retry after quarantine");
+        assert!(!changes.can_restore);
+        assert!(std::fs::read_dir(checkpoint_directory)
+            .expect("read quarantine storage")
+            .filter_map(Result::ok)
+            .any(|entry| entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".okf-studio-invalid-apply-transaction-")));
+    }
+
+    #[test]
     fn rolls_apply_back_when_its_durable_checkpoint_cannot_be_saved() {
         let root = canonical_temp_dir("checkpoint-save-failure");
         seed_valid_bundle(&root);
@@ -2467,7 +3630,7 @@ mod tests {
         let error = stages
             .apply_staged("session-1", &validation.revision)
             .expect_err("checkpoint failure should roll apply back");
-        assert!(error.contains("checkpoint directory"));
+        assert!(error.contains("transaction directory"));
         assert_eq!(
             std::fs::read_to_string(root.join("existing.md")).expect("read rolled back file"),
             "---\ntype: note\n---\n# Existing\n"

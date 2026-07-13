@@ -423,6 +423,10 @@ export function AgentConversation({
       : 0;
   }, [messages, pendingPermissions, savedThread.status]);
 
+  useEffect(() => {
+    if (savedThread.status === "error") savedThreadActionRef.current?.focus();
+  }, [savedThread.status]);
+
   async function loadSavedThread() {
     if (!bundleRoot || !supportsHistory) {
       setSavedThread({ status: "none" });
@@ -1177,7 +1181,6 @@ export function AgentConversation({
             ? "The saved session is not in the agent's first 50 matching sessions. Open History to find it."
             : "The agent no longer reports this session for the active bundle.",
         });
-        requestAnimationFrame(() => savedThreadActionRef.current?.focus());
         return;
       }
       const loaded = await loadAgentSession(
@@ -1188,7 +1191,6 @@ export function AgentConversation({
       applyRestoredSession(loaded, session.sessionId, metadata.title, metadata.workflow);
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error), metadata });
-      requestAnimationFrame(() => savedThreadActionRef.current?.focus());
     }
   }
 
@@ -1204,7 +1206,6 @@ export function AgentConversation({
       requestAnimationFrame(() => promptRef.current?.focus());
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error) });
-      requestAnimationFrame(() => savedThreadActionRef.current?.focus());
     }
   }
 

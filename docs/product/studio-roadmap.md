@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-13T17:18:47Z
+timestamp: 2026-07-13T17:54:57Z
 ---
 
 # Outcome
@@ -205,8 +205,8 @@ Gate: platform docs and tests state exactly what is contained on Windows, Linux,
 
 ## WP12: Completion
 
-- [ ] Update the site with each user-facing package and recapture changed surfaces.
-- [ ] Run app, Rust, site, OKF, and ODSF gates.
+- [x] Update the site with each user-facing package and recapture changed surfaces.
+- [x] Run app, Rust, site, OKF, and ODSF gates.
 - [ ] Dogfood creation and reviewed editing against `docs/`.
 - [x] Publish migration notes for local data, credentials, billing, and compatibility names.
 

@@ -66,4 +66,11 @@ describe("agent thread metadata", () => {
     ))
       .not.toContainEqual(replacement);
   });
+
+  it("preserves creation workflows across archive and resume", () => {
+    for (const workflow of ["create-bundle", "enhance-bundle"] as const) {
+      expect(parseAgentThreadMetadata([{ ...BASE, workflow, updatedAt: 42 }]))
+        .toEqual([{ ...BASE, archived: false, workflow, updatedAt: 42 }]);
+    }
+  });
 });

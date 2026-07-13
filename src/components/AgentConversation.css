@@ -589,6 +589,22 @@
   margin: 0;
 }
 
+.bundle-proposal > footer,
+.bundle-proposal__generation {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.bundle-proposal__generation {
+  justify-items: start;
+}
+
+.bundle-proposal__generation .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .bundle-proposal--invalid > svg,
 .bundle-proposal--invalid strong {
   color: var(--warn);

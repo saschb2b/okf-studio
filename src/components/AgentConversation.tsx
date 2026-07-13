@@ -163,20 +163,22 @@ type AgentUsage = Extract<AgentTurnEvent["update"], { kind: "usage" }>;
 
 const BUNDLE_PROPOSAL_INSTRUCTIONS =
   "End with exactly one fenced `okf-proposal` JSON block shaped as `{\"concepts\":[{\"path\":\"concept.md\",\"title\":\"Concept\",\"type\":\"Concept type\",\"links\":[\"related.md\"]}],\"indexes\":[{\"path\":\"index.md\",\"concepts\":[\"concept.md\"]}]}`. Use bundle-relative Markdown paths and make every index member name a proposed concept.";
+const BUNDLE_GENERATION_PROMPT =
+  "Generate the newest reviewed `okf-proposal` into Studio staging now. Create conformant Markdown with the proposed paths, titles, types, links, and indexes. Preserve authored facts, include source provenance where the attached evidence supports it, and use only Studio-mediated staged writes. Do not apply changes to the bundle.";
 
 const THREAD_STARTERS = [
   {
     title: "Create bundle",
     description: "Turn attached evidence into a proposed OKF structure.",
     prompt: `Create a new OKF bundle from the sources I attach. First inspect the evidence, then propose the concepts, types, links, and indexes. Do not write files yet. ${BUNDLE_PROPOSAL_INSTRUCTIONS}`,
-    workflow: null,
+    workflow: "create-bundle",
     icon: WandSparkles,
   },
   {
     title: "Enhance bundle",
     description: "Find useful additions without replacing authored facts.",
     prompt: `Review this OKF bundle and the sources I attach. Propose additions or corrections without overwriting authored facts. Include only additions or changed concepts and do not write files yet. ${BUNDLE_PROPOSAL_INSTRUCTIONS}`,
-    workflow: null,
+    workflow: "enhance-bundle",
     icon: Sparkles,
   },
   {
@@ -196,9 +198,7 @@ const THREAD_STARTERS = [
 ] as const;
 
 function workflowForPrompt(prompt: string): AgentThreadWorkflow {
-  return THREAD_STARTERS.find((starter) =>
-    starter.workflow !== null && prompt.startsWith(starter.prompt)
-  )?.workflow ?? null;
+  return THREAD_STARTERS.find((starter) => prompt.startsWith(starter.prompt))?.workflow ?? null;
 }
 
 const MAX_THREAD_TITLE_CHARS = 80;
@@ -1034,11 +1034,32 @@ export function AgentConversation({
   if (queuedPrompt) composerStatus = "Follow-up queued";
   if (isSubmitting) composerStatus = "Starting turn";
   const usageLabel = usage ? usageLabels(usage) : null;
+  const supportsBundleGeneration = threadWorkflow === "create-bundle" ||
+    threadWorkflow === "enhance-bundle";
+  let latestBundleProposalMessageId: string | null = null;
+  if (supportsBundleGeneration) {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const item = messages[index];
+      if (item.role === "agent" && parseBundleProposal(item.text).status === "ready") {
+        latestBundleProposalMessageId = item.id;
+        break;
+      }
+    }
+  }
 
   function selectStarter(prompt: string) {
     if (!promptRef.current) return;
     setPromptText(prompt);
     promptRef.current.focus();
+  }
+
+  function generateBundleProposal() {
+    if (!writeGranted || activeTurn || isSubmitting) return;
+    setStageError(null);
+    startTransition(() => submitPrompt({
+      draft: { text: BUNDLE_GENERATION_PROMPT, concepts: [], sources: [] },
+      source: "composer",
+    }));
   }
 
   function editQueuedPrompt() {
@@ -1623,6 +1644,15 @@ export function AgentConversation({
                       }
                       isRetrying={turnId === retryingTurnId}
                       retryError={turnId ? retryErrors.get(turnId) ?? null : null}
+                      onGenerateProposal={item.id === latestBundleProposalMessageId
+                        ? generateBundleProposal
+                        : undefined}
+                      generationBlockedReason={item.id === latestBundleProposalMessageId && !writeGranted
+                        ? "Allow edits for this thread before generating staged files."
+                        : null}
+                      isGeneratingProposal={
+                        item.id === latestBundleProposalMessageId && isSubmitting
+                      }
                     />
                   );
                 })}
@@ -2834,6 +2864,9 @@ interface ConversationItemViewProps {
   onRetry?: () => void;
   isRetrying: boolean;
   retryError: string | null;
+  onGenerateProposal?: () => void;
+  generationBlockedReason: string | null;
+  isGeneratingProposal: boolean;
 }
 
 function ConversationItemView({
@@ -2841,6 +2874,9 @@ function ConversationItemView({
   onRetry,
   isRetrying,
   retryError,
+  onGenerateProposal,
+  generationBlockedReason,
+  isGeneratingProposal,
 }: ConversationItemViewProps) {
   if (item.role === "plan") return <PlanCard plan={item} />;
   if (item.role === "tool") return <ToolCard tool={item} />;
@@ -2850,6 +2886,9 @@ function ConversationItemView({
       onRetry={onRetry}
       isRetrying={isRetrying}
       retryError={retryError}
+      onGenerateProposal={onGenerateProposal}
+      generationBlockedReason={generationBlockedReason}
+      isGeneratingProposal={isGeneratingProposal}
     />
   );
 }
@@ -2975,9 +3014,20 @@ interface MessageProps {
   onRetry?: () => void;
   isRetrying: boolean;
   retryError: string | null;
+  onGenerateProposal?: () => void;
+  generationBlockedReason: string | null;
+  isGeneratingProposal: boolean;
 }
 
-function Message({ message, onRetry, isRetrying, retryError }: MessageProps) {
+function Message({
+  message,
+  onRetry,
+  isRetrying,
+  retryError,
+  onGenerateProposal,
+  generationBlockedReason,
+  isGeneratingProposal,
+}: MessageProps) {
   const agentNarrative = message.role === "agent"
     ? bundleProposalNarrative(message.text)
     : message.text;
@@ -3013,7 +3063,12 @@ function Message({ message, onRetry, isRetrying, retryError }: MessageProps) {
             />
           ) : null
         ) : <p>{message.text}</p>}
-        <BundleProposalPreview result={bundleProposal} />
+        <BundleProposalPreview
+          result={bundleProposal}
+          onGenerate={onGenerateProposal}
+          generationBlockedReason={generationBlockedReason}
+          isGenerating={isGeneratingProposal}
+        />
         {onRetry && (
           <div className="agent-message__actions">
             <button

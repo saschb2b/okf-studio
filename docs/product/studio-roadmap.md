@@ -173,6 +173,8 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [ ] Generate into staging, validate, preview the graph, then choose a destination.
 - [ ] Reuse the pipeline to enrich bundles without silently overwriting authored facts.
 
+The current slice hands the newest reviewed Create or Enhance proposal to the existing staged-write and validation flow after an explicit thread grant. Graph preview and destination choice remain before the generation package is complete.
+
 Gate: mixed, duplicate, malformed, offline, provenance, and deterministic-validation fixtures.
 
 ## WP10: Guided knowledge work

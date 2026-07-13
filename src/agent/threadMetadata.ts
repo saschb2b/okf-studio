@@ -1,4 +1,9 @@
-export type AgentThreadWorkflow = "deep-research" | "dataset-change" | null;
+export type AgentThreadWorkflow =
+  | "create-bundle"
+  | "enhance-bundle"
+  | "deep-research"
+  | "dataset-change"
+  | null;
 
 export interface AgentThreadMetadata {
   bundleRoot: string;
@@ -38,7 +43,8 @@ function parseMetadata(value: unknown): AgentThreadMetadata | null {
     typeof candidate.updatedAt === "number" && Number.isSafeInteger(candidate.updatedAt) &&
     candidate.updatedAt >= 0 &&
     (candidate.archived === undefined || typeof candidate.archived === "boolean") &&
-    (workflow === undefined || workflow === null || workflow === "deep-research" ||
+    (workflow === undefined || workflow === null || workflow === "create-bundle" ||
+      workflow === "enhance-bundle" || workflow === "deep-research" ||
       workflow === "dataset-change"))) {
     return null;
   }

@@ -1,11 +1,19 @@
-import { FileText, FolderTree, Link2, TriangleAlert } from "lucide-react";
+import { FileText, FolderTree, Link2, TriangleAlert, WandSparkles } from "lucide-react";
 import type { BundleProposalParseResult } from "../agent/bundleProposal.ts";
 
 interface BundleProposalPreviewProps {
   result: BundleProposalParseResult;
+  onGenerate?: () => void;
+  generationBlockedReason?: string | null;
+  isGenerating?: boolean;
 }
 
-export function BundleProposalPreview({ result }: BundleProposalPreviewProps) {
+export function BundleProposalPreview({
+  result,
+  onGenerate,
+  generationBlockedReason = null,
+  isGenerating = false,
+}: BundleProposalPreviewProps) {
   if (result.status === "none") return null;
   if (result.status === "invalid") {
     return (
@@ -69,9 +77,25 @@ export function BundleProposalPreview({ result }: BundleProposalPreviewProps) {
           ))}
         </ul>
       </details>
-      <p className="bundle-proposal__boundary">
-        Preview only. No files have been generated or staged.
-      </p>
+      <footer>
+        <p className="bundle-proposal__boundary">
+          Preview only. No files have been generated or staged.
+        </p>
+        {onGenerate && (
+          <div className="bundle-proposal__generation">
+            <button
+              type="button"
+              className="btn primary"
+              disabled={generationBlockedReason !== null || isGenerating}
+              onClick={onGenerate}
+            >
+              <WandSparkles size={14} aria-hidden="true" />
+              {isGenerating ? "Starting..." : "Generate in staging"}
+            </button>
+            {generationBlockedReason && <small>{generationBlockedReason}</small>}
+          </div>
+        )}
+      </footer>
     </section>
   );
 }

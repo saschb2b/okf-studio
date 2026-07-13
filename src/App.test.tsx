@@ -530,6 +530,49 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
   }, 25_000);
 
+  it("hands the newest bundle proposal to reviewed staging", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Creation Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\creation.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Creation Harness" }));
+    await screen.findByText(/Connected to Creation Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await user.click(screen.getByRole("button", { name: /Create bundle/ }));
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    const proposal = await screen.findByRole("region", {
+      name: "Proposed OKF bundle structure",
+    });
+    expect(within(proposal).getByText("generated/overview.md")).toBeInTheDocument();
+    const generate = within(proposal).getByRole("button", { name: "Generate in staging" });
+    expect(generate).toBeDisabled();
+    expect(within(proposal).getByText(/Allow edits for this thread/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Allow edits in this thread" }));
+    await user.click(generate);
+    expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
+      .toBeInTheDocument();
+    expect(await screen.findByText("Staged changes")).toBeInTheDocument();
+    expect(screen.getByTitle("generated/overview.md")).toBeInTheDocument();
+    expect(screen.getByTitle("generated/agent-system.md")).toBeInTheDocument();
+    expect(screen.getByTitle("generated/index.md")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Validate" }));
+    expect(await screen.findByRole("status", { name: "Staged validation result" }))
+      .toHaveTextContent("Validation passed");
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Creation Harness" }));
+  });
+
   it("lists and restores agent-owned sessions for the active bundle", async () => {
     const historySpy = vi.spyOn(ipc, "listAgentSessions")
       .mockRejectedValueOnce(new Error("History service unavailable"))

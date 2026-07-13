@@ -892,6 +892,48 @@ function mockStageWrite(info: AgentTurnInfo, text: string): string | null {
   return `Browser ACP staged: ${path}`;
 }
 
+function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null {
+  if (!text.startsWith("Generate the newest reviewed `okf-proposal` into Studio staging now.")) {
+    return null;
+  }
+  const state = mockStageState(info.sessionId);
+  if (!state.granted) {
+    return "Bundle generation denied: writes require the Allow edits in this thread grant.";
+  }
+  const generated = [
+    {
+      path: "generated/overview.md",
+      content: "---\ntype: Product\n---\n# Product overview\n\nSee [Agent system](agent-system.md).",
+    },
+    {
+      path: "generated/agent-system.md",
+      content: "---\ntype: Architecture\n---\n# Agent system\n\nA proposed architecture concept.",
+    },
+    {
+      path: "generated/index.md",
+      content: "---\ntype: Index\n---\n# Generated knowledge\n\n- [Product overview](overview.md)\n- [Agent system](agent-system.md)",
+    },
+  ];
+  for (const file of generated) {
+    const existing = state.files.find((candidate) => candidate.path === file.path);
+    if (existing) {
+      existing.content = file.content;
+      existing.bytes = file.content.length;
+      existing.hunkSelected = true;
+    } else {
+      state.files.push({
+        path: file.path,
+        bytes: file.content.length,
+        kind: "create",
+        content: file.content,
+        hunkSelected: true,
+      });
+    }
+  }
+  emitMockStage(info.connectionId, info.sessionId);
+  return `Generated ${generated.length} proposed files in Studio staging.`;
+}
+
 function mockAgentResponse(text: string): string {
   if (text.startsWith("Create a new OKF bundle from the sources I attach") ||
     text.startsWith("Review this OKF bundle and the sources I attach")) {
@@ -903,13 +945,13 @@ function mockAgentResponse(text: string): string {
       JSON.stringify({
         concepts: [
           {
-            path: "product/overview.md",
+            path: "generated/overview.md",
             title: "Product overview",
             type: "Product",
-            links: ["architecture/agent-system.md"],
+            links: ["generated/agent-system.md"],
           },
           {
-            path: "architecture/agent-system.md",
+            path: "generated/agent-system.md",
             title: "Agent system",
             type: "Architecture",
             links: [],
@@ -917,12 +959,8 @@ function mockAgentResponse(text: string): string {
         ],
         indexes: [
           {
-            path: "index.md",
-            concepts: ["product/overview.md", "architecture/agent-system.md"],
-          },
-          {
-            path: "architecture/index.md",
-            concepts: ["architecture/agent-system.md"],
+            path: "generated/index.md",
+            concepts: ["generated/overview.md", "generated/agent-system.md"],
           },
         ],
       }, null, 2) +
@@ -948,7 +986,10 @@ function mockAgentResponse(text: string): string {
 }
 
 async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
-  const reportsChange = text.startsWith("Stage:");
+  const generatesBundle = text.startsWith(
+    "Generate the newest reviewed `okf-proposal` into Studio staging now.",
+  );
+  const reportsChange = text.startsWith("Stage:") || generatesBundle;
   const changeState = reportsChange
     ? (mockStageState(info.sessionId).granted ? "staged" : "not-staged")
     : null;
@@ -968,7 +1009,9 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     update: {
       kind: "tool-call",
       toolCallId: `search-${info.turnId}`,
-      title: reportsChange ? "Edit the bundle" : "Search the bundle",
+      title: generatesBundle
+        ? "Generate staged bundle files"
+        : reportsChange ? "Edit the bundle" : "Search the bundle",
       toolKind: reportsChange ? "edit" : "search",
       status: "in-progress",
       changeState,
@@ -1082,7 +1125,8 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       cost: { amount: 0.08, currency: "USD" },
     },
   });
-  const responseText = mockStageWrite(info, text) ?? mockAgentResponse(text);
+  const responseText = mockStageWrite(info, text) ?? mockBundleGeneration(info, text) ??
+    mockAgentResponse(text);
   emitAgentTurn({
     ...info,
     update: {

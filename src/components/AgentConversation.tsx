@@ -16,6 +16,7 @@ import type {
   AgentSessionHistoryInfo,
   AgentStagedChangesInfo,
   AgentStagedFileDiff,
+  AgentStagedValidationInfo,
   AgentTurnEvent,
   AgentTurnInfo,
 } from "../agent/connection.ts";
@@ -47,6 +48,7 @@ import {
   onAgentTurnUpdate,
   setAgentWriteGrant,
   setAgentStagedHunkSelection,
+  validateAgentStagedChanges,
   pickAgentSourceFolder,
   pickAgentImageSources,
   pickAgentTextSources,
@@ -72,6 +74,12 @@ interface AgentConversationProps {
   onConnectionEnd: (event: AgentConnectionEvent) => void;
   onOpenFolder: () => Promise<void>;
 }
+
+type StagedValidationState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; result: AgentStagedValidationInfo }
+  | { status: "error"; message: string };
 
 interface ConversationMessage {
   id: string;
@@ -365,6 +373,9 @@ export function AgentConversation({
     () => new Map(),
   );
   const [stagedChanges, setStagedChanges] = useState<AgentStagedChangesInfo | null>(null);
+  const [stagedValidation, setStagedValidation] = useState<StagedValidationState>({
+    status: "idle",
+  });
   const [stageError, setStageError] = useState<string | null>(null);
   const [isSettingGrant, setIsSettingGrant] = useState(false);
   const [expandedDiff, setExpandedDiff] = useState<
@@ -394,6 +405,7 @@ export function AgentConversation({
   const messagesRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
+  const stagedValidationRequestRef = useRef(0);
   const stagedDiscardRef = useRef<HTMLButtonElement>(null);
   const queuedEditRef = useRef<HTMLButtonElement>(null);
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
@@ -467,6 +479,7 @@ export function AgentConversation({
           startsNewSession = true;
           setUsage(null);
           setStagedChanges(null);
+          clearStagedValidation();
           setStageError(null);
           setExpandedDiff(null);
           setRejectingStagedPath(null);
@@ -599,6 +612,7 @@ export function AgentConversation({
     setIsCancelling(false);
     if (queuedPrompt) startQueuedPrompt(queuedPrompt);
   });
+  const updateStagedChangesEffect = useEffectEvent(updateStagedChanges);
 
   useEffect(() => {
     let stopTurnUpdates: (() => void) | undefined;
@@ -624,7 +638,7 @@ export function AgentConversation({
       onAgentStageUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.changes.sessionId) return;
-        updateStagedChanges(event.changes);
+        updateStagedChangesEffect(event.changes);
       }),
       onAgentConnectionState((event) => {
         if (event.connectionId === connection.connectionId) onConnectionEnd(event);
@@ -765,9 +779,15 @@ export function AgentConversation({
 
   function updateStagedChanges(changes: AgentStagedChangesInfo) {
     setStagedChanges(changes);
+    clearStagedValidation();
     setExpandedDiff((current) =>
       current && !changes.files.some((file) => file.path === current.path) ? null : current
     );
+  }
+
+  function clearStagedValidation() {
+    stagedValidationRequestRef.current += 1;
+    setStagedValidation({ status: "idle" });
   }
 
   async function toggleStagedFileReview(path: string) {
@@ -799,6 +819,7 @@ export function AgentConversation({
     if (!hunk || hunk.selected === selected || current.diff.truncated) return;
     const sessionId = session.sessionId;
     setSelectingHunk({ path: current.path, index: hunkIndex });
+    clearStagedValidation();
     setStageError(null);
     try {
       const diff = await setAgentStagedHunkSelection(
@@ -841,6 +862,33 @@ export function AgentConversation({
       if (sessionRef.current?.sessionId === sessionId) setStageError(errorMessage(error));
     } finally {
       if (sessionRef.current?.sessionId === sessionId) setRejectingStagedPath(null);
+    }
+  }
+
+  async function validateStagedChanges() {
+    const session = sessionRef.current;
+    if (!session || stagedValidation.status === "loading") return;
+    const sessionId = session.sessionId;
+    const requestId = stagedValidationRequestRef.current + 1;
+    stagedValidationRequestRef.current = requestId;
+    setStageError(null);
+    setStagedValidation({ status: "loading" });
+    try {
+      const result = await validateAgentStagedChanges(
+        connection.connectionId,
+        sessionId,
+      );
+      if (
+        sessionRef.current?.sessionId !== sessionId ||
+        stagedValidationRequestRef.current !== requestId
+      ) return;
+      setStagedValidation({ status: "ready", result });
+    } catch (error: unknown) {
+      if (
+        sessionRef.current?.sessionId !== sessionId ||
+        stagedValidationRequestRef.current !== requestId
+      ) return;
+      setStagedValidation({ status: "error", message: errorMessage(error) });
     }
   }
 
@@ -1515,14 +1563,28 @@ export function AgentConversation({
               <header>
                 <strong id="agent-staged-title">Staged changes</strong>
                 <span title={stagedSummary}>{stagedSummary}</span>
-                <button
-                  ref={stagedDiscardRef}
-                  type="button"
-                  className="btn ghost"
-                  onClick={() => void discardStagedChanges()}
-                >
-                  Discard all
-                </button>
+                <div className="agent-staged__actions">
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={stagedValidation.status === "loading"}
+                    onClick={() => void validateStagedChanges()}
+                  >
+                    {stagedValidation.status === "loading"
+                      ? "Validating..."
+                      : stagedValidation.status === "error"
+                        ? "Retry validation"
+                        : "Validate"}
+                  </button>
+                  <button
+                    ref={stagedDiscardRef}
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => void discardStagedChanges()}
+                  >
+                    Discard all
+                  </button>
+                </div>
               </header>
               <ul>
                 {stagedChanges.files.map((file, index) => {
@@ -1639,7 +1701,59 @@ export function AgentConversation({
                   );
                 })}
               </ul>
-              <p>Review or reject staged files. Validation and apply ship in a later update.</p>
+              {stagedValidation.status === "loading" && (
+                <p role="status">Validating the selected staged tree...</p>
+              )}
+              {stagedValidation.status === "error" && (
+                <p className="agent-staged__validation-error" role="alert">
+                  Validation unavailable. {stagedValidation.message}
+                </p>
+              )}
+              {stagedValidation.status === "ready" && (
+                <section
+                  className={`agent-staged__validation agent-staged__validation--${stagedValidation.result.errors === 0 ? "passed" : "failed"}`}
+                  aria-label="Staged validation result"
+                  role={stagedValidation.result.errors === 0 ? "status" : "alert"}
+                >
+                  <div>
+                    {stagedValidation.result.errors === 0
+                      ? <Check size={14} aria-hidden="true" />
+                      : <CircleAlert size={14} aria-hidden="true" />}
+                    <strong>
+                      {stagedValidation.result.errors === 0
+                        ? "Validation passed"
+                        : "Validation found errors"}
+                    </strong>
+                    <span>
+                      {stagedValidation.result.errors} error{stagedValidation.result.errors === 1 ? "" : "s"}
+                      {" · "}
+                      {stagedValidation.result.warnings} warning{stagedValidation.result.warnings === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  {stagedValidation.result.issues.length > 0 && (
+                    <details>
+                      <summary>Review validation issues</summary>
+                      <ul>
+                        {stagedValidation.result.issues.map((issue, index) => (
+                          <li key={`${issue.path ?? "bundle"}-${issue.level}-${index}`}>
+                            <span className={`agent-staged__validation-level agent-staged__validation-level--${issue.level}`}>
+                              {issue.level}
+                            </span>
+                            <span>
+                              {issue.path && <code>{issue.path}: </code>}
+                              {issue.message}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      {stagedValidation.result.truncated && (
+                        <p>More issues were omitted at the display limit.</p>
+                      )}
+                    </details>
+                  )}
+                </section>
+              )}
+              <p>Review or reject staged files, then validate the selected result.</p>
             </section>
           )}
           {stageError && (

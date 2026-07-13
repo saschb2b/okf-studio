@@ -23,6 +23,7 @@ import type {
   AgentStagedChangesInfo,
   AgentStagedFileDiff,
   AgentStagedFileInfo,
+  AgentStagedValidationInfo,
   AgentStageEvent,
   AgentTurnEvent,
   AgentTurnInfo,
@@ -695,6 +696,46 @@ export async function setAgentStagedHunkSelection(
   }
   file.hunkSelected = selected;
   return agentStagedFileDiff(connectionId, sessionId, path);
+}
+
+export async function validateAgentStagedChanges(
+  connectionId: string,
+  sessionId: string,
+): Promise<AgentStagedValidationInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedValidationInfo>("validate_agent_staged_changes", {
+      connectionId,
+      sessionId,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const state = mockStageState(sessionId);
+  if (state.files.length === 0) throw new Error("There are no staged changes to validate.");
+  const issues = state.files.flatMap((file) => {
+    if (
+      !file.hunkSelected ||
+      !file.path.toLowerCase().endsWith(".md") ||
+      file.content.includes("type:")
+    ) return [];
+    return [{
+      path: file.path,
+      level: "error" as const,
+      message: "Missing required frontmatter field: type.",
+    }];
+  });
+  return {
+    sessionId,
+    revision: `mock-${state.files.map((file) => (
+      `${file.path}:${file.content.length}:${file.hunkSelected ? "keep" : "reject"}`
+    )).join("|")}`,
+    errors: issues.length,
+    warnings: 0,
+    issues,
+    truncated: false,
+  };
 }
 
 export async function discardAgentStagedFile(

@@ -814,7 +814,8 @@
 }
 
 .agent-staged header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-8);
 }
@@ -825,7 +826,6 @@
 }
 
 .agent-staged header span {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   color: var(--text-dim);
@@ -833,6 +833,16 @@
   line-height: var(--lh-normal);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.agent-staged__actions {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.agent-staged__actions .btn {
+  min-height: 28px;
+  padding: var(--space-4) var(--space-6);
 }
 
 .agent-staged ul {
@@ -974,6 +984,99 @@
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
+}
+
+.agent-staged .agent-staged__validation-error {
+  color: var(--error);
+}
+
+.agent-staged__validation {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.agent-staged__validation > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-staged__validation > div span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-staged__validation--passed > div > svg {
+  color: var(--ok);
+}
+
+.agent-staged__validation--failed > div > svg {
+  color: var(--error);
+}
+
+.agent-staged__validation details {
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-staged__validation summary {
+  width: fit-content;
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.agent-staged__validation ul {
+  max-height: 160px;
+  margin-top: var(--space-4);
+  overflow: auto;
+}
+
+.agent-staged__validation li {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.agent-staged__validation-level {
+  align-self: start;
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+
+.agent-staged__validation-level--error {
+  color: var(--error);
+}
+
+.agent-staged__validation-level--warning {
+  color: var(--warn);
+}
+
+@container (max-width: 420px) {
+  .agent-staged > header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-4);
+  }
+
+  .agent-staged > header > span {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .agent-staged__actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
 }
 
 .agent-conversation__write-grant--on {

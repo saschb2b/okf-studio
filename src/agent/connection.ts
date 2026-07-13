@@ -166,6 +166,21 @@ export interface AgentStagedDiffHunk {
   selected: boolean;
 }
 
+export interface AgentStagedValidationIssue {
+  path: string | null;
+  level: "error" | "warning";
+  message: string;
+}
+
+export interface AgentStagedValidationInfo {
+  sessionId: string;
+  revision: string;
+  errors: number;
+  warnings: number;
+  issues: readonly AgentStagedValidationIssue[];
+  truncated: boolean;
+}
+
 export type AgentConnectionEvent =
   | {
       connectionId: string;

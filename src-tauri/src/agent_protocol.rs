@@ -27,7 +27,8 @@ use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 use crate::agent_stage::{
-    AgentReportedDiff, AgentStagedChangesInfo, SessionStages, MAX_STAGED_FILES,
+    AgentReportedDiff, AgentStagedChangesInfo, AgentStagedValidationInfo, SessionStages,
+    MAX_STAGED_FILES,
 };
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
@@ -635,6 +636,19 @@ pub async fn set_staged_hunk_selection(
     })
     .await
     .map_err(|_| "Staged hunk selection task did not complete.".to_string())?
+}
+
+/// Validate the currently selected staged outcome in an isolated bundle mirror.
+pub async fn validate_staged_changes(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+) -> Result<AgentStagedValidationInfo, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let session_id = session_id.to_string();
+    tokio::task::spawn_blocking(move || stages.validate_staged(&session_id))
+        .await
+        .map_err(|_| "Staged validation task did not complete.".to_string())?
 }
 
 fn connection_stages(

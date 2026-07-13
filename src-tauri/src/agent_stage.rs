@@ -13,6 +13,7 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use similar::{DiffOp, DiffTag, TextDiff};
 
 pub(crate) const MAX_STAGED_FILE_BYTES: usize = 1024 * 1024;
 pub(crate) const MAX_STAGED_TOTAL_BYTES: usize = 8 * 1024 * 1024;
@@ -20,6 +21,9 @@ pub(crate) const MAX_STAGED_FILES: usize = 64;
 pub(crate) const MAX_STAGED_PATH_CHARS: usize = 1024;
 
 pub(crate) const MAX_DIFF_CHARS: usize = 256 * 1024;
+const MAX_VALIDATION_FILES: usize = 4096;
+const MAX_VALIDATION_BYTES: usize = 32 * 1024 * 1024;
+const MAX_VALIDATION_ISSUES: usize = 512;
 
 pub(crate) const WRITE_GRANT_MESSAGE: &str =
     "Bundle write denied: writes require the Allow edits in this thread grant.";
@@ -61,6 +65,25 @@ pub struct AgentStagedFileDiff {
     pub kind: &'static str,
     pub revision: String,
     pub hunks: Vec<AgentStagedDiffHunk>,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedValidationIssue {
+    pub path: Option<String>,
+    pub level: &'static str,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedValidationInfo {
+    pub session_id: String,
+    pub revision: String,
+    pub errors: usize,
+    pub warnings: usize,
+    pub issues: Vec<AgentStagedValidationIssue>,
     pub truncated: bool,
 }
 
@@ -374,6 +397,92 @@ impl SessionStages {
         Ok(diff)
     }
 
+    /// Validate the selected staged outcome in an isolated Markdown mirror of
+    /// the bundle. The returned revision binds later apply work to the exact
+    /// disk bases, staged text, and hunk choices validated here.
+    pub fn validate_staged(&self, session_id: &str) -> Result<AgentStagedValidationInfo, String> {
+        let (bundle_root, files) = {
+            let sessions = self
+                .sessions
+                .lock()
+                .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+            let stage = sessions
+                .get(session_id)
+                .ok_or_else(|| "The ACP session is not active.".to_string())?;
+            if stage.files.is_empty() {
+                return Err("There are no staged changes to validate.".to_string());
+            }
+            (stage.bundle_root.clone(), stage.files.clone())
+        };
+
+        let mirror = ValidationMirror::create()?;
+        copy_markdown_tree(&bundle_root, &mirror.path)?;
+        let mut digest = Sha256::new();
+        for (path, file) in &files {
+            let original = read_original(&bundle_root, path, file.kind)?;
+            let (effective, revision) = selected_staged_content(path, file, &original)?;
+            for part in [path.as_bytes(), revision.as_bytes()] {
+                digest.update((part.len() as u64).to_le_bytes());
+                digest.update(part);
+            }
+            match &effective {
+                Some(content) => {
+                    digest.update([1]);
+                    digest.update((content.len() as u64).to_le_bytes());
+                    digest.update(content.as_bytes());
+                }
+                None => digest.update([0]),
+            }
+            if path.to_ascii_lowercase().ends_with(".md") && effective.is_some() {
+                let target = mirror.path.join(Path::new(path));
+                if let Some(parent) = target.parent() {
+                    std::fs::create_dir_all(parent).map_err(|_| {
+                        "Staged validation workspace could not be prepared.".to_string()
+                    })?;
+                }
+                std::fs::write(target, effective.as_deref().unwrap_or_default())
+                    .map_err(|_| "Staged validation workspace could not be written.".to_string())?;
+            } else if path.to_ascii_lowercase().ends_with(".md") {
+                let target = mirror.path.join(Path::new(path));
+                if target.exists() {
+                    std::fs::remove_file(target).map_err(|_| {
+                        "Staged validation workspace could not be updated.".to_string()
+                    })?;
+                }
+            }
+        }
+
+        let bundle = okf_core::read_bundle(&mirror.path);
+        let errors = bundle
+            .issues
+            .iter()
+            .filter(|issue| issue.level == okf_core::IssueLevel::Error)
+            .count();
+        let warnings = bundle.issues.len().saturating_sub(errors);
+        let truncated = bundle.issues.len() > MAX_VALIDATION_ISSUES;
+        let issues = bundle
+            .issues
+            .into_iter()
+            .take(MAX_VALIDATION_ISSUES)
+            .map(|issue| AgentStagedValidationIssue {
+                path: issue.concept_id.map(|id| format!("{id}.md")),
+                level: match issue.level {
+                    okf_core::IssueLevel::Error => "error",
+                    okf_core::IssueLevel::Warning => "warning",
+                },
+                message: bounded_validation_message(&issue.message),
+            })
+            .collect();
+        Ok(AgentStagedValidationInfo {
+            session_id: session_id.to_string(),
+            revision: format!("{:x}", digest.finalize()),
+            errors,
+            warnings,
+            issues,
+            truncated,
+        })
+    }
+
     /// The staged content for a path, if that exact bundle file was staged.
     /// Used by the read bridge so a granted agent observes its own writes.
     pub fn staged_content(&self, session_id: &str, path: &Path) -> Option<String> {
@@ -459,6 +568,147 @@ fn disk_text(stage: &SessionStage, relative: &str) -> Result<Option<String>, Str
     String::from_utf8(bytes)
         .map(Some)
         .map_err(|_| "ACP diff not staged: its current file is not UTF-8 text.".to_string())
+}
+
+fn selected_staged_content(
+    path: &str,
+    file: &StagedFile,
+    original: &str,
+) -> Result<(Option<String>, String), String> {
+    let current = build_staged_diff(path, file.kind, original, &file.content, None);
+    let Some(selection) = &file.selection else {
+        return Ok((Some(file.content.clone()), current.revision));
+    };
+    if selection.revision != current.revision {
+        return Err(format!(
+            "Staged validation needs a fresh review of {path}; its diff changed."
+        ));
+    }
+
+    let diff = TextDiff::from_lines(original, &file.content);
+    let mut hunk_for_op = HashMap::<DiffOp, usize>::new();
+    for (hunk_index, ops) in diff.grouped_ops(3).into_iter().enumerate() {
+        for op in ops {
+            if op.tag() != DiffTag::Equal {
+                hunk_for_op.insert(op, hunk_index);
+            }
+        }
+    }
+    let mut output = String::new();
+    for op in diff.ops() {
+        let selected = hunk_for_op
+            .get(op)
+            .is_none_or(|index| !selection.rejected.contains(index));
+        let range = if op.tag() == DiffTag::Equal || !selected {
+            op.old_range()
+        } else {
+            op.new_range()
+        };
+        let slices = if op.tag() == DiffTag::Equal || !selected {
+            diff.old_slices()
+        } else {
+            diff.new_slices()
+        };
+        for line in &slices[range] {
+            output.push_str(line);
+        }
+    }
+    let content = if file.kind == "create" && output.is_empty() {
+        None
+    } else {
+        Some(output)
+    };
+    Ok((content, current.revision))
+}
+
+struct ValidationMirror {
+    path: PathBuf,
+}
+
+impl ValidationMirror {
+    fn create() -> Result<Self, String> {
+        let path = std::env::temp_dir().join(format!(
+            "okf-studio-stage-validation-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::create_dir(&path)
+            .map_err(|_| "Staged validation workspace could not be created.".to_string())?;
+        Ok(Self { path })
+    }
+}
+
+impl Drop for ValidationMirror {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.path);
+    }
+}
+
+fn copy_markdown_tree(source: &Path, destination: &Path) -> Result<(), String> {
+    let mut pending = vec![(source.to_path_buf(), PathBuf::new())];
+    let mut file_count = 0usize;
+    let mut total_bytes = 0usize;
+    while let Some((directory, relative_directory)) = pending.pop() {
+        let entries = std::fs::read_dir(&directory)
+            .map_err(|_| "The bundle could not be read for staged validation.".to_string())?;
+        for entry in entries {
+            let entry = entry
+                .map_err(|_| "The bundle could not be read for staged validation.".to_string())?;
+            let file_type = entry
+                .file_type()
+                .map_err(|_| "The bundle could not be read for staged validation.".to_string())?;
+            if file_type.is_symlink() {
+                continue;
+            }
+            let name = entry.file_name();
+            let relative = relative_directory.join(&name);
+            if file_type.is_dir() {
+                let name = name.to_string_lossy();
+                if okf_core::parse::IGNORED_DIRS.contains(&name.as_ref())
+                    || (name.starts_with('.') && name.len() > 1)
+                {
+                    continue;
+                }
+                pending.push((entry.path(), relative));
+                continue;
+            }
+            if !file_type.is_file()
+                || !entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("md"))
+            {
+                continue;
+            }
+            file_count += 1;
+            if file_count > MAX_VALIDATION_FILES {
+                return Err("Staged validation is limited to 4,096 Markdown files.".to_string());
+            }
+            let bytes = std::fs::read(entry.path()).map_err(|_| {
+                "A bundle file could not be read for staged validation.".to_string()
+            })?;
+            total_bytes = total_bytes.saturating_add(bytes.len());
+            if total_bytes > MAX_VALIDATION_BYTES {
+                return Err("Staged validation is limited to 32 MiB of Markdown.".to_string());
+            }
+            let target = destination.join(relative);
+            if let Some(parent) = target.parent() {
+                std::fs::create_dir_all(parent).map_err(|_| {
+                    "Staged validation workspace could not be prepared.".to_string()
+                })?;
+            }
+            std::fs::write(target, bytes)
+                .map_err(|_| "Staged validation workspace could not be written.".to_string())?;
+        }
+    }
+    Ok(())
+}
+
+fn bounded_validation_message(message: &str) -> String {
+    message
+        .chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .take(2048)
+        .collect()
 }
 
 fn read_original(bundle_root: &Path, path: &str, kind: &str) -> Result<String, String> {
@@ -654,6 +904,19 @@ mod tests {
         dir.canonicalize().expect("canonicalize temp bundle root")
     }
 
+    fn seed_valid_bundle(root: &Path) {
+        std::fs::write(
+            root.join("index.md"),
+            "---\nokf_version: 0.1\n---\n# Test bundle\n",
+        )
+        .expect("seed bundle index");
+        std::fs::write(
+            root.join("existing.md"),
+            "---\ntype: note\n---\n# Existing\n",
+        )
+        .expect("seed valid concept");
+    }
+
     #[test]
     fn denies_writes_without_the_thread_grant() {
         let root = canonical_temp_dir("deny");
@@ -730,13 +993,7 @@ mod tests {
             .staged_diff("session-1", "existing.md")
             .expect("review reported diff");
         stages
-            .set_hunk_selection(
-                "session-1",
-                "existing.md",
-                &initial.revision,
-                0,
-                false,
-            )
+            .set_hunk_selection("session-1", "existing.md", &initial.revision, 0, false)
             .expect("reject hunk");
         stages
             .stage_reported_diffs("session-1", reported())
@@ -762,7 +1019,10 @@ mod tests {
         let replaced = stages
             .staged_diff("session-1", "existing.md")
             .expect("review replacement");
-        assert!(replaced.hunks[0].selected, "a revised proposal resets choices");
+        assert!(
+            replaced.hunks[0].selected,
+            "a revised proposal resets choices"
+        );
         assert!(replaced.hunks[0].unified.contains("newer proposal"));
 
         let error = stages
@@ -810,7 +1070,11 @@ mod tests {
             )
             .expect_err("already-applied report must not become a Studio stage");
         assert!(error.contains("base does not match"));
-        assert!(stages.summary("session-1").expect("summary").files.is_empty());
+        assert!(stages
+            .summary("session-1")
+            .expect("summary")
+            .files
+            .is_empty());
     }
 
     #[test]
@@ -990,6 +1254,55 @@ mod tests {
                 .expect_err("stale revision"),
             "The staged diff changed. Review the file again.",
         );
+    }
+
+    #[test]
+    fn validates_the_staged_tree_without_writing_to_the_bundle() {
+        let root = canonical_temp_dir("validate");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let invalid = "---\n---\n# Existing\n";
+        stages
+            .stage_write("session-1", &root.join("existing.md"), invalid.to_string())
+            .expect("stage invalid concept");
+
+        let validation = stages.validate_staged("session-1").expect("validate");
+        assert!(validation.errors > 0);
+        assert!(validation
+            .issues
+            .iter()
+            .any(|issue| issue.path.as_deref() == Some("existing.md")));
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read bundle concept"),
+            "---\ntype: note\n---\n# Existing\n",
+            "validation must not update the bundle",
+        );
+    }
+
+    #[test]
+    fn validation_respects_rejected_hunks() {
+        let root = canonical_temp_dir("validate-selection");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\n---\n# Existing\n".to_string(),
+            )
+            .expect("stage invalid concept");
+        let diff = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("review staged concept");
+        assert_eq!(diff.hunks.len(), 1);
+        stages
+            .set_hunk_selection("session-1", "existing.md", &diff.revision, 0, false)
+            .expect("reject invalid hunk");
+
+        let validation = stages.validate_staged("session-1").expect("validate");
+        assert_eq!(validation.errors, 0);
     }
 
     #[test]

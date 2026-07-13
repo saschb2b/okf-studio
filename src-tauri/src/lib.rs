@@ -296,6 +296,16 @@ async fn set_agent_staged_hunk_selection(
     .await
 }
 
+/// Validate the selected staged tree without changing the open bundle.
+#[tauri::command]
+async fn validate_agent_staged_changes(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+) -> Result<agent_stage::AgentStagedValidationInfo, String> {
+    agent_protocol::validate_staged_changes(state.inner(), &connection_id, &session_id).await
+}
+
 #[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
@@ -497,6 +507,7 @@ pub fn run() {
             discard_agent_staged_file,
             agent_staged_file_diff,
             set_agent_staged_hunk_selection,
+            validate_agent_staged_changes,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

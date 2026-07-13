@@ -777,10 +777,18 @@ describe("OKF Studio app", () => {
     expect(screen.getByText("proposals/draft.md")).toBeInTheDocument();
     expect(screen.getByText(/not applied to the bundle/)).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Validate" }));
+    expect(await screen.findByRole("alert", { name: "Staged validation result" }))
+      .toHaveTextContent("Validation found errors");
+    expect(screen.getByText(/1 error · 0 warnings/)).toBeInTheDocument();
+    await user.click(screen.getByText("Review validation issues"));
+    expect(screen.getByText(/Missing required frontmatter field: type/)).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", {
       name: "Review staged file proposals/draft.md",
     }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
+    expect(await screen.findByText(/Diff unavailable\. Diff fixture unavailable\./))
+      .toHaveTextContent(
       "Diff unavailable. Diff fixture unavailable.",
     );
     await user.click(screen.getByRole("button", {
@@ -796,6 +804,10 @@ describe("OKF Studio app", () => {
     await user.click(rejectHunk);
     await vi.waitFor(() => expect(rejectHunk).toHaveAttribute("aria-pressed", "true"));
     expect(keepHunk).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByText("Validation found errors")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Validate" }));
+    expect(await screen.findByRole("status", { name: "Staged validation result" }))
+      .toHaveTextContent("Validation passed");
 
     // The Rust-owned choice survives closing and reopening the review.
     expect(screen.getByRole("button", {

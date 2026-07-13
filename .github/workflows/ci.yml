@@ -74,3 +74,35 @@ jobs:
       # endpoints, source intake, staged transactions, and credential mocks.
       - run: cargo clippy -p okf-viewer --all-targets -- -D warnings
       - run: cargo test -p okf-viewer --no-fail-fast
+
+  linux-agent-sandbox:
+    name: Linux agent sandbox
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install native host and sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bubblewrap \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            build-essential \
+            libxdo-dev \
+            libssl-dev
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Prove the restricted Bubblewrap mount policy
+        env:
+          OKF_STUDIO_REQUIRE_BWRAP_TEST: "1"
+        run: >-
+          cargo test -p okf-viewer
+          agent_sandbox::tests::restricted_linux_host_enforces_the_compiled_mount_policy
+          -- --exact

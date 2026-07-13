@@ -748,6 +748,56 @@ mod tests {
         assert!(error.contains("agent runtime path is unavailable"));
     }
 
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn restricted_linux_host_enforces_the_compiled_mount_policy() {
+        if !matches!(
+            std::env::var("OKF_STUDIO_REQUIRE_BWRAP_TEST").as_deref(),
+            Ok("1")
+        ) {
+            return;
+        }
+
+        let fixture = PolicyFixture::new();
+        let visible = fixture.bundle.join("docs").join("overview.md");
+        let protected = fixture.bundle.join(".env");
+        let blocked_write = fixture.bundle.join("blocked.txt");
+        let shell = Path::new("/bin/sh")
+            .canonicalize()
+            .expect("canonical system shell");
+        let script = r#"test -r "$1" && test ! -e "$2" && ! (printf blocked > "$3") 2>/dev/null && printf private > /tmp/probe && test "$(cat /tmp/probe)" = private"#;
+        let arguments = vec![
+            "-c".to_string(),
+            script.to_string(),
+            "okf-studio-sandbox-test".to_string(),
+            visible.to_string_lossy().into_owned(),
+            protected.to_string_lossy().into_owned(),
+            blocked_write.to_string_lossy().into_owned(),
+        ];
+        let mut command = linux_restricted_command(
+            &fixture.bundle,
+            &shell,
+            &arguments,
+            &[],
+            LinuxSandboxNetworkMode::Disabled,
+        )
+        .await
+        .expect("prepare restricted command");
+        command
+            .env_clear()
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+
+        let status = tokio::time::timeout(std::time::Duration::from_secs(5), command.status())
+            .await
+            .expect("restricted command deadline")
+            .expect("start restricted command");
+        assert!(status.success());
+        assert!(!blocked_write.exists());
+    }
+
     #[cfg(target_os = "windows")]
     #[tokio::test]
     async fn native_windows_reports_no_enforcement_host() {

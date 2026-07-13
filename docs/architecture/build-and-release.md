@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is versioned, packaged per OS, released, and updated without automatic network requests.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-07-13T19:06:19Z
+timestamp: 2026-07-13T22:46:06Z
 ---
 
 # Decision
@@ -20,6 +20,8 @@ The app ships as native installers per platform, built by `tauri build` on a per
 Each is a [self-contained, portable](../product/principles.md) artifact using the system webview — no bundled runtime the user must manage.
 
 # CI and release workflows
+
+Pull-request CI includes a dedicated Ubuntu 22.04 agent-sandbox job. It installs the distribution Bubblewrap package and the native Tauri build dependencies, then requires the restricted-host fixture to execute through the trusted backend. The fixture checks the empty-root mount policy against real kernel namespaces rather than treating the cross-platform argument-builder tests as Linux enforcement proof.
 
 Two GitHub Actions workflows (`.github/workflows/`):
 

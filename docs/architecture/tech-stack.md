@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Tech Stack
 description: Tauri 2.0 with a Rust core and a React + TypeScript frontend — the chosen stack and the reasoning behind it.
 tags: [architecture, decision, tauri, rust, react, typescript]
-timestamp: 2026-07-11T04:45:00Z
+timestamp: 2026-07-13T19:21:18Z
 ---
 
 # Decision
@@ -19,7 +19,7 @@ Build OKF Studio on **[Tauri 2.0](../reference/tauri-2.md)**: a **Rust core** fo
 
 - **Cross-platform desktop** from one codebase, with first-class **Windows** and **Linux/Ubuntu** targets (the product requirement), plus macOS for free.
 - **Small, fast binaries** using the system webview — no bundled Chromium, unlike Electron. Fits the [self-contained / fast principles](../product/principles.md).
-- **Security model** that matches our [read-only, scoped](ipc-and-security.md) needs: explicit capabilities/permissions, no ambient filesystem or network access.
+- **Security model** that matches the [Studio trust boundary](ipc-and-security.md): the webview has no direct filesystem or general network access, and typed Rust commands own each explicit operation. External ACP agents run as separate OS processes with their own disclosed access rather than inheriting webview privileges.
 - **Rust** gives us fast directory walking, parsing, and file-watching (via mature crates) without a separate runtime — see [Performance & Scale](performance.md) for how this keeps the app fast end to end.
 
 See also: [Testing & Dogfooding](testing.md) for how the core and frontend are verified.

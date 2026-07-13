@@ -3,7 +3,7 @@ type: UX Flow
 title: Empty & Error States
 description: Every no-content, loading, and failure state — what it shows and how to recover.
 tags: [ux, flow, errors, empty-states]
-timestamp: 2026-07-12T00:00:00Z
+timestamp: 2026-07-13T19:21:18Z
 ---
 
 # Stance
@@ -25,5 +25,5 @@ Report, never refuse. Like the [tolerant-consumer principle](../product/principl
 
 # Failures
 
-- **Permission denied / path gone.** If the chosen folder can't be read, or a previously-opened path no longer exists, the app explains why and offers to pick another folder — or to forget the stale entry in the [Bundle Switcher](../features/bundle-switcher.md) — rather than crashing. Access is read-only and [scoped](../architecture/ipc-and-security.md), so this is a recoverable prompt, not a fatal state.
+- **Permission denied / path gone.** If the chosen folder can't be read, or a previously-opened path no longer exists, the app explains why and offers to pick another folder — or to forget the stale entry in the [Bundle Switcher](../features/bundle-switcher.md) — rather than crashing. Opening and browsing use the active bundle [scope](../architecture/ipc-and-security.md) without modifying it; source, export, destination, and reviewed-write operations are authorized separately. A missing read path is therefore a recoverable prompt, not a fatal state.
 - **File-watcher error.** If the watcher behind [Live Reload](../features/live-reload.md) drops, the app reports that live reload is paused and offers a manual **Re-scan**; the open bundle stays readable.

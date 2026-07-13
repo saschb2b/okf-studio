@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-07-11T05:10:00Z
+timestamp: 2026-07-13T19:21:18Z
 ---
 
 # The three panes
@@ -30,7 +30,7 @@ There is one shared "active concept" **per window.** Selecting it anywhere — a
 
 # Pop-out windows
 
-A tab can undock into its **own OS window** — the browser tear-off, for a second monitor or a reference kept beside the main workspace. The new window runs the full app on the same bundle: it boots reader-only with the sidebar tucked away (a "document window"), but has all the chrome and can grow back into a full workspace. Windows are independent — no cross-window selection sync — and the bundle stays read-only, so they cannot conflict; [live reload](../features/live-reload.md) broadcasts to every window. See the [multi-view proposal](../proposals/multi-view.md).
+A tab can undock into its **own OS window** — the browser tear-off, for a second monitor or a reference kept beside the main workspace. The new window runs the full app on the same bundle: it boots reader-only with the sidebar tucked away (a "document window"), but has all the chrome and can grow back into a full workspace. Windows are independent — no cross-window selection sync — while [live reload](../features/live-reload.md) broadcasts to every window. If two windows stage changes against the same bundle, transaction base and revision checks let the first valid apply proceed and reject the stale transaction instead of silently overwriting it. See the [multi-view proposal](../proposals/multi-view.md).
 
 # Layout modes
 

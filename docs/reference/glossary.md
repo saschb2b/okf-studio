@@ -3,7 +3,7 @@ type: Glossary
 title: Glossary
 description: Terms used across the OKF Studio bundle.
 tags: [reference, glossary]
-timestamp: 2026-07-11T04:45:00Z
+timestamp: 2026-07-13T19:21:18Z
 ---
 
 # Terms
@@ -27,6 +27,6 @@ timestamp: 2026-07-11T04:45:00Z
 - **Progressive disclosure** — Navigating via `index.md` files, revealing detail on demand rather than reading everything. See [Navigation](../features/navigation.md).
 - **Reference concept** — A concept that mirrors external material (a webpage, tool, or spec), authored with `type: Reference` and the source URL in `resource`. Used throughout this section.
 - **Reserved file** — `index.md` (directory listing / progressive disclosure) or `log.md` (dated change history). Never a concept.
-- **Scope** — The read-only folder subtree OKF Studio is granted access to; nothing outside it is readable. See [IPC & Security](../architecture/ipc-and-security.md).
+- **Scope** — The canonical active bundle root used by Studio's mediated reads and reviewed writes. Source, export, and destination pickers authorize separate operations; external ACP processes are not confined by the bundle scope. See [IPC & Security](../architecture/ipc-and-security.md).
 - **Tolerant consumer** — A reader that never rejects a bundle for soft issues (missing fields, unknown types, broken links). A core [principle](../product/principles.md) and a spec requirement.
 - **Type** — The kind of a concept (`Feature`, `Reference`, `Metric`, …). Open-ended; drives node [color](../ux/theming.md) and [filters](../features/search-and-filter.md). The only field OKF requires.

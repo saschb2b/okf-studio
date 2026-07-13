@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-timestamp: 2026-07-04T18:00:00Z
+timestamp: 2026-07-13T19:21:18Z
 ---
 
 # What it does
@@ -41,7 +41,7 @@ A **remote bundle** is fetched, never streamed: the viewer downloads it once int
   - **No bundle.** A URL that downloads fine but holds no bundle ([detection](../architecture/bundle-detection.md) found no `index.md` with `okf_version` and no typed concept — a repo of plain files, or the wrong subpath) keeps the dialog open with a **calm "No OKF bundle at that URL"** panel — distinct from a red fetch/network error, since the download *succeeded* — that names what was fetched and what a bundle is, and (when no subpath was given) hints it may live in a subfolder. The previous bundle stays put rather than being silently swapped for nothing ([report, never refuse](../ux/empty-and-error-states.md)).
   - **One bundle.** Opens directly and the dialog closes.
   - **Several bundles** (e.g. a URL pointing at a folder-of-bundles like `okf/bundles`): the dialog shows a **picker** — one row per bundle with its name and `N concepts · M types` — instead of guessing which to open. Picking a row opens that bundle; the fetched copy is shared, so switching between them later is instant. This is why a folder-of-bundles URL never merges into one giant view.
-- **Fetch guards** live in the [Rust core](../architecture/ipc-and-security.md): https-only, request timeouts, a download size cap, and archive extraction that refuses any entry escaping the destination (no zip-slip / `../` traversal). This is the app's only non-updater network path, and it runs **only** on an explicit user action.
+- **Fetch guards** live in the [Rust core](../architecture/ipc-and-security.md): https-only, request timeouts, a download size cap, and archive extraction that refuses any entry escaping the destination (no zip-slip / `../` traversal). This is one of Studio's explicit Rust-owned network paths. It runs **only** after **Open** or **Refresh from source**; provider setup, agent installation, model use, source fetches, and updates have their own separate user actions and limits.
 - **Remote recents** are first-class: a remote entry carries its origin URL (a 🌐 badge and the `owner/repo` origin as its sub-line) and a **Refresh from source** action that re-fetches the latest — always an explicit click, never silent. Reopening a remote recent reuses the local cache instantly, and re-fetches only if the cache is gone.
 
 # Behavior

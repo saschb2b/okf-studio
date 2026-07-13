@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The test strategy — Rust unit and integration tests, golden link tests, validator parity, tolerance proofs, and dogfooding this bundle.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-06-29T23:59:00Z
+timestamp: 2026-07-13T18:01:11Z
 ---
 
 # Decision
@@ -13,6 +13,12 @@ Confidence comes from testing the contracts, not the implementation details. The
 # Dogfooding this bundle
 
 The primary integration fixture is **this `docs/` bundle itself**. The app's own spec doubles as its built-in sample, so the tests assert that `scan_bundles` **detects `docs/` as a bundle root** and that `read_bundle` produces the **expected concepts and edges** — the cross-links written here are the assertion set. If a section is reorganized, the test surfaces it. This is dogfooding: the product is exercised on the [product's own knowledge](../product/overview.md).
+
+# Studio creation and reviewed-edit dogfood
+
+The Studio staging test copies `docs/` to a temporary directory and exercises both authoring modes against real bundle structure. The Create path derives a separate two-concept bundle from a plain-text interview note and a CSV ownership table, validates the isolated draft, materializes it in a new destination, and reads the result through `okf-core`. The Enhance path stages changes to two existing `docs/` concepts plus one linked concept, explicitly keeps every modification hunk, validates and applies the selected revision, reads the resulting 49-concept bundle, and restores the checkpoint. The test compares the original files before and after the exercise, so a passing run also proves that dogfooding did not modify the checked-in bundle.
+
+Frontend interaction tests cover the corresponding guided Create and Enhance starters, proposal generation, grant requirement, staged review, explicit hunk choices, validation, portable destination checks, and Apply controls. Together these tests provide deterministic coverage of Studio's reviewed-authoring boundary. They do not substitute for live-provider quality checks.
 
 # Golden tests for link and backlink resolution
 

@@ -3277,6 +3277,23 @@ mod tests {
         .expect("seed valid concept");
     }
 
+    fn copy_directory(source: &Path, destination: &Path) {
+        for entry in std::fs::read_dir(source).expect("read source directory") {
+            let entry = entry.expect("read source entry");
+            let source_path = entry.path();
+            let destination_path = destination.join(entry.file_name());
+            let file_type = entry.file_type().expect("read source entry type");
+            if file_type.is_dir() {
+                std::fs::create_dir(&destination_path).expect("create copied directory");
+                copy_directory(&source_path, &destination_path);
+            } else if file_type.is_file() {
+                std::fs::copy(&source_path, &destination_path).expect("copy source file");
+            } else {
+                panic!("dogfood fixture contains an unsupported filesystem entry");
+            }
+        }
+    }
+
     fn prepared_edit_and_create(root: &Path) -> Vec<PreparedStagedFile> {
         let mut files = BTreeMap::new();
         files.insert(
@@ -3860,6 +3877,176 @@ mod tests {
             "---\nokf_version: 0.1\n---\n# Test bundle\n",
             "creation leaves the source bundle unchanged"
         );
+    }
+
+    #[test]
+    fn dogfoods_creation_and_reviewed_enhancement_against_docs_copy() {
+        let source_docs = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../docs"))
+            .canonicalize()
+            .expect("canonical docs bundle");
+        let source_overview = std::fs::read_to_string(source_docs.join("product/overview.md"))
+            .expect("read source overview");
+        let source_product_index = std::fs::read_to_string(source_docs.join("product/index.md"))
+            .expect("read source product index");
+        let docs_copy = canonical_temp_dir("dogfood-docs-copy");
+        copy_directory(&source_docs, &docs_copy);
+
+        let sources = canonical_temp_dir("dogfood-sources");
+        std::fs::write(
+            sources.join("interviews.txt"),
+            "Owner interviews identify delayed escalation as the main operational risk.\n",
+        )
+        .expect("write text source");
+        std::fs::write(
+            sources.join("owners.csv"),
+            "service,owner\nPayments,Revenue Operations\nGateway,Platform Operations\n",
+        )
+        .expect("write CSV source");
+        let interview_source =
+            std::fs::read_to_string(sources.join("interviews.txt")).expect("read text source");
+        let owner_source =
+            std::fs::read_to_string(sources.join("owners.csv")).expect("read CSV source");
+
+        let destination_parent = canonical_temp_dir("dogfood-created-parent");
+        let create_stages = registered(&docs_copy);
+        create_stages
+            .set_grant("session-1", true)
+            .expect("grant creation thread");
+        create_stages
+            .set_mode("session-1", AgentStageMode::Create)
+            .expect("select create mode");
+        create_stages
+            .stage_write(
+                "session-1",
+                &docs_copy.join("index.md"),
+                "---\nokf_version: \"0.1\"\n---\n\n# Operations evidence\n\n* [Interview evidence](interview-evidence.md)\n* [Service ownership](service-ownership.md)\n"
+                    .to_string(),
+            )
+            .expect("stage created index");
+        create_stages
+            .stage_write(
+                "session-1",
+                &docs_copy.join("interview-evidence.md"),
+                format!(
+                    "---\ntype: Source Note\ntitle: Interview evidence\n---\n\n# Interview evidence\n\n{}",
+                    interview_source.trim(),
+                ),
+            )
+            .expect("stage text-derived concept");
+        create_stages
+            .stage_write(
+                "session-1",
+                &docs_copy.join("service-ownership.md"),
+                format!(
+                    "---\ntype: Dataset\ntitle: Service ownership\n---\n\n# Service ownership\n\nThe ownership source is:\n\n```csv\n{owner_source}```\n\nOperational context comes from [Interview evidence](interview-evidence.md).\n",
+                ),
+            )
+            .expect("stage CSV-derived concept");
+        let created_validation = create_stages
+            .validate_staged("session-1")
+            .expect("validate created bundle");
+        assert_eq!(created_validation.errors, 0);
+        let created = create_stages
+            .create_staged_bundle(
+                "session-1",
+                &created_validation.revision,
+                &destination_parent,
+                "operations-evidence",
+            )
+            .expect("materialize created bundle");
+        assert_eq!(created.created_files, 3);
+        let created_bundle = okf_core::read_bundle(&destination_parent.join("operations-evidence"));
+        assert_eq!(created_bundle.concepts.len(), 2);
+        assert!(created_bundle
+            .issues
+            .iter()
+            .all(|issue| issue.level != okf_core::model::IssueLevel::Error));
+        assert_eq!(
+            std::fs::read_to_string(docs_copy.join("product/overview.md"))
+                .expect("read untouched docs copy"),
+            source_overview,
+            "fresh-bundle creation must not change the active docs copy"
+        );
+
+        let enhance_stages = registered(&docs_copy);
+        enhance_stages
+            .set_grant("session-1", true)
+            .expect("grant enhancement thread");
+        enhance_stages
+            .set_mode("session-1", AgentStageMode::Enhance)
+            .expect("select enhance mode");
+        let enhanced_overview = format!(
+            "{source_overview}\n# Dogfood evidence\n\nSee [Studio dogfood evidence](dogfood-evidence.md) for the reviewed creation and enhancement exercise.\n",
+        );
+        let enhanced_product_index = format!(
+            "{source_product_index}\n* [Studio Dogfood Evidence](dogfood-evidence.md) - Reviewed creation and enhancement evidence.\n",
+        );
+        for (path, content) in [
+            ("product/overview.md", enhanced_overview),
+            ("product/index.md", enhanced_product_index),
+            (
+                "product/dogfood-evidence.md",
+                "---\ntype: Test Evidence\ntitle: Studio Dogfood Evidence\ndescription: Evidence from a disposable reviewed creation and enhancement exercise.\ntags: [studio, dogfood, creation, enhancement]\ntimestamp: 2026-07-13T17:54:57Z\n---\n\n# Evidence\n\nStudio created a conformant bundle from text and CSV sources, then applied this linked concept through explicit review.\n"
+                    .to_string(),
+            ),
+        ] {
+            enhance_stages
+                .stage_write("session-1", &docs_copy.join(path), content)
+                .unwrap_or_else(|error| panic!("stage {path}: {error}"));
+        }
+        for path in ["product/overview.md", "product/index.md"] {
+            let diff = enhance_stages
+                .staged_diff("session-1", path)
+                .unwrap_or_else(|error| panic!("review {path}: {error}"));
+            assert!(!diff.hunks.is_empty());
+            for (index, hunk) in diff.hunks.iter().enumerate() {
+                assert!(!hunk.reviewed, "enhancement hunk starts unreviewed");
+                enhance_stages
+                    .set_hunk_selection("session-1", path, &diff.revision, index, true)
+                    .unwrap_or_else(|error| panic!("keep {path} hunk {index}: {error}"));
+            }
+        }
+        let enhanced_validation = enhance_stages
+            .validate_staged("session-1")
+            .expect("validate reviewed enhancement");
+        assert_eq!(enhanced_validation.errors, 0);
+        let applied = enhance_stages
+            .apply_staged("session-1", &enhanced_validation.revision)
+            .expect("apply reviewed enhancement");
+        assert_eq!(applied.applied_files, 3);
+        let enhanced_bundle = okf_core::read_bundle(&docs_copy);
+        assert_eq!(enhanced_bundle.concepts.len(), 49);
+        assert!(enhanced_bundle
+            .issues
+            .iter()
+            .all(|issue| issue.level != okf_core::model::IssueLevel::Error));
+        assert!(docs_copy.join("product/dogfood-evidence.md").exists());
+
+        let restored = enhance_stages
+            .restore_checkpoint("session-1")
+            .expect("restore disposable docs copy");
+        assert_eq!(restored.restored_files, 3);
+        assert_eq!(
+            std::fs::read_to_string(docs_copy.join("product/overview.md"))
+                .expect("read restored overview"),
+            source_overview
+        );
+        assert_eq!(
+            std::fs::read_to_string(docs_copy.join("product/index.md"))
+                .expect("read restored product index"),
+            source_product_index
+        );
+        assert!(!docs_copy.join("product/dogfood-evidence.md").exists());
+        assert_eq!(
+            std::fs::read_to_string(source_docs.join("product/overview.md"))
+                .expect("reread source overview"),
+            source_overview,
+            "dogfood must never mutate the source docs bundle"
+        );
+
+        std::fs::remove_dir_all(destination_parent).expect("remove created bundle fixture");
+        std::fs::remove_dir_all(sources).expect("remove source fixtures");
+        std::fs::remove_dir_all(docs_copy).expect("remove disposable docs copy");
     }
 
     #[test]

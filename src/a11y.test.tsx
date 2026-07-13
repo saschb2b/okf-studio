@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { App } from "./App.tsx";
@@ -99,6 +99,7 @@ describe("accessibility (axe-core)", () => {
       await screen.findByRole("button", { name: "Close thread" });
       await expectNoViolations(container);
     } finally {
+      cleanup();
       await ipc.disconnectAgent(connection.connectionId);
       await ipc.removeCustomAgent(profile.id);
     }

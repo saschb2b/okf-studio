@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
@@ -32,8 +32,10 @@ async function openAttachmentMenu(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("OKF Studio app", () => {
-  it("shows the first-run empty state", () => {
+  it("shows the first-run empty state", async () => {
+    const recentBundles = vi.spyOn(ipc, "recentBundles");
     renderApp();
+    await waitFor(() => expect(recentBundles).toHaveBeenCalledOnce());
     expect(
       screen.getByText(/Explore connected knowledge with the agents you already use\./i),
     ).toBeInTheDocument();
@@ -107,7 +109,7 @@ describe("OKF Studio app", () => {
         "Review the evidence",
       );
       await user.click(within(reviewConversation).getByRole("button", { name: "Send" }));
-      await vi.waitFor(
+      await waitFor(
         () => expect(within(reviewConversation).getByRole("button", { name: "Send" })).toBeEnabled(),
         { timeout: 5_000 },
       );
@@ -121,6 +123,7 @@ describe("OKF Studio app", () => {
       await user.click(within(researchConversation).getByRole("button", { name: "Stop" }));
       expect(await within(researchConversation).findByText("Turn cancelled.")).toBeInTheDocument();
     } finally {
+      cleanup();
       await ipc.disconnectAgent(firstConnection.connectionId);
       await ipc.disconnectAgent(secondConnection.connectionId);
       await ipc.removeCustomAgent(firstProfile.id);
@@ -198,6 +201,7 @@ describe("OKF Studio app", () => {
       await user.click(within(firstConversation).getByRole("button", { name: "Stop" }));
       expect(await within(firstConversation).findByText("Turn cancelled.")).toBeInTheDocument();
     } finally {
+      cleanup();
       await ipc.disconnectAgent(connection.connectionId);
       await ipc.removeCustomAgent(profile.id);
     }
@@ -233,7 +237,7 @@ describe("OKF Studio app", () => {
       .getByRole("heading", { name: "Studio model endpoints" })
       .closest("section");
     if (!localSection) throw new Error("Local endpoint setup was not rendered.");
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(within(localSection).getByLabelText("Provider")).toHaveFocus(),
     );
     expect(within(localSection).getByLabelText("Endpoint")).toHaveValue(
@@ -331,7 +335,7 @@ describe("OKF Studio app", () => {
     const proposal = await screen.findByRole("region", {
       name: "Proposed OKF bundle structure",
     });
-    await vi.waitFor(() => expect(localGrant).toBeEnabled());
+    await waitFor(() => expect(localGrant).toBeEnabled());
     await user.click(localGrant);
     const generate = within(proposal).getByRole("button", { name: "Generate in staging" });
     await user.click(generate);
@@ -524,11 +528,11 @@ describe("OKF Studio app", () => {
     await user.clear(screen.getByLabelText("Message the agent"));
     expect(screen.queryByRole("button", { name: "Add files" })).not.toBeInTheDocument();
     await openAttachmentMenu(user);
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(screen.getByRole("button", { name: "Attach context" })).toHaveFocus(),
     );
     await user.click(screen.getByRole("button", { name: "Attach context" }));
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(screen.getByLabelText("Search concepts to attach")).toHaveFocus(),
     );
     await user.click(screen.getByRole("button", { name: "Add Overview to context" }));
@@ -552,7 +556,7 @@ describe("OKF Studio app", () => {
     await openAttachmentMenu(user);
     expect(screen.getByRole("button", { name: "Attach issue" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Add source" }));
-    await vi.waitFor(() => expect(screen.getByLabelText("Title")).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText("Title")).toHaveFocus());
     await user.type(screen.getByLabelText("Title"), "Interview notes");
     await user.type(
       screen.getByLabelText("Content"),
@@ -589,7 +593,7 @@ describe("OKF Studio app", () => {
     await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Add source" }));
     await user.click(screen.getByRole("button", { name: "Fetch URL" }));
-    await vi.waitFor(() => expect(screen.getByLabelText("HTTPS URL")).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText("HTTPS URL")).toHaveFocus());
     await user.type(screen.getByLabelText("HTTPS URL"), "https://example.com/research.html");
     await user.click(screen.getByRole("button", { name: "Fetch and attach" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -772,13 +776,13 @@ describe("OKF Studio app", () => {
     await user.click(await screen.findByRole("button", { name: "Queue" }));
     expect(await screen.findByText("Follow-up queued")).toBeInTheDocument();
     const queuedMessage = screen.getByRole("region", { name: "Next message" });
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(within(queuedMessage).getByRole("button", { name: "Edit" })).toHaveFocus(),
     );
     expect(document.querySelectorAll(".agent-message--user")).toHaveLength(userMessageCount);
     expect(screen.getByLabelText("Message the agent")).toBeDisabled();
     await user.click(within(queuedMessage).getByRole("button", { name: "Edit" }));
-    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
     expect(screen.getByLabelText("Message the agent")).toHaveValue("Explain the implications");
     fireEvent.change(screen.getByLabelText("Message the agent"), {
       target: { value: "Explain the implications and cite sources" },
@@ -789,7 +793,7 @@ describe("OKF Studio app", () => {
         .getByRole("button", { name: "Remove" }),
     );
     expect(screen.queryByRole("region", { name: "Next message" })).not.toBeInTheDocument();
-    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
     fireEvent.change(screen.getByLabelText("Message the agent"), {
       target: { value: "Explain the implications and cite sources" },
     });
@@ -1002,7 +1006,7 @@ describe("OKF Studio app", () => {
     expect(screen.getByText(/Trace the evidence behind/)).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
     expect(screen.getByLabelText("Message the agent")).toBeEnabled();
-    await vi.waitFor(
+    await waitFor(
       () => expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
       { timeout: 3_000 },
     );
@@ -1011,7 +1015,7 @@ describe("OKF Studio app", () => {
     await user.clear(screen.getByLabelText("Thread title"));
     await user.type(screen.getByLabelText("Thread title"), "Evidence notebook");
     await user.click(screen.getByRole("button", { name: "Save title" }));
-    await vi.waitFor(() => expect(
+    await waitFor(() => expect(
       JSON.parse(localStorage.getItem("okf-studio:agent-threads") ?? "[]"),
     ).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -1023,7 +1027,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Archive current thread" }));
     expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
-    await vi.waitFor(() => expect(
+    await waitFor(() => expect(
       JSON.parse(localStorage.getItem("okf-studio:agent-threads") ?? "[]"),
     ).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -1058,7 +1062,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Saved thread unavailable. The agent no longer reports this session",
     );
-    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
 
@@ -1068,7 +1072,7 @@ describe("OKF Studio app", () => {
     await screen.findByText(/Connected to History Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
     await user.click(await screen.findByRole("button", { name: "Dismiss" }));
-    await vi.waitFor(
+    await waitFor(
       () => expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
       { timeout: 3_000 },
     );
@@ -1215,9 +1219,9 @@ describe("OKF Studio app", () => {
     expect(screen.getByText("Change not staged")).toBeInTheDocument();
     expect(screen.queryByText("Staged changes")).not.toBeInTheDocument();
 
-    await vi.waitFor(() => expect(grantToggle).toBeEnabled());
+    await waitFor(() => expect(grantToggle).toBeEnabled());
     await user.click(grantToggle);
-    await vi.waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "true"));
 
     await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -1253,7 +1257,7 @@ describe("OKF Studio app", () => {
     expect(keepHunk).toHaveAttribute("aria-pressed", "true");
     expect(rejectHunk).toHaveAttribute("aria-pressed", "false");
     await user.click(rejectHunk);
-    await vi.waitFor(() => expect(rejectHunk).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() => expect(rejectHunk).toHaveAttribute("aria-pressed", "true"));
     expect(keepHunk).toHaveAttribute("aria-pressed", "false");
     expect(screen.queryByText("Validation found errors")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Validate" }));
@@ -1280,7 +1284,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Apply changes" }));
     expect(await screen.findByText("The rejected staged changes were cleared."))
       .toBeInTheDocument();
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
     );
 
@@ -1299,19 +1303,19 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", {
       name: "Reject staged file proposals/draft.md",
     }));
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(screen.queryByText("proposals/draft.md")).not.toBeInTheDocument(),
     );
     expect(screen.getByText("proposals/notes.md")).toBeInTheDocument();
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(screen.getByRole("button", { name: "Discard all" })).toHaveFocus(),
     );
 
     await user.click(screen.getByRole("button", { name: "Discard all" }));
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
     );
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
     );
 
@@ -1569,8 +1573,10 @@ describe("OKF Studio app", () => {
   });
 
   it("persists the agent panel width and visibility", async () => {
+    const recentBundles = vi.spyOn(ipc, "recentBundles");
     const user = userEvent.setup();
     const first = renderApp();
+    await waitFor(() => expect(recentBundles).toHaveBeenCalledOnce());
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
 
     const splitter = screen.getByRole("separator", { name: /resize agent panel/i });
@@ -1581,6 +1587,7 @@ describe("OKF Studio app", () => {
 
     first.unmount();
     renderApp();
+    await waitFor(() => expect(recentBundles).toHaveBeenCalledTimes(2));
     expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
     expect(screen.getByRole("separator", { name: /resize agent panel/i })).toHaveAttribute(
       "aria-valuenow",

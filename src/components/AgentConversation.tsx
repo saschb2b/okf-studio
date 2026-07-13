@@ -5,6 +5,7 @@ import type { Dispatch, SetStateAction, SubmitEvent } from "react";
 import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
+  AgentSecurityScopeInfo,
   AgentPlanEntryInfo,
   AgentToolKind,
   AgentToolLocationInfo,
@@ -277,11 +278,29 @@ function sourceTooltip(source: AttachedSource): string {
 
 function ThreadSecurityScope({
   bundleName,
-  isStudioAgent,
+  scope,
 }: {
   bundleName: string | null;
-  isStudioAgent: boolean;
+  scope: AgentSecurityScopeInfo;
 }) {
+  const fileScope = scope.fileAccess === "studio-tools-only"
+    ? "Only bounded Studio tools can read the active bundle."
+    : "Studio tools are bundle-scoped. The ACP process keeps normal OS file access.";
+  const networkScope = scope.networkAccess === "configured-endpoint-only"
+    ? "Studio contacts only the configured model endpoint. No fetch tool is exposed."
+    : "The ACP process keeps normal OS network access.";
+  const writeScope = scope.writeAccess === "reviewed-staging"
+    ? "Writes require an interactive grant and reviewed staging."
+    : "Studio-mediated writes require review. The ACP process can bypass that mediation.";
+  const processScope = {
+    "in-process": "No external ACP process runs.",
+    "posix-process-group": "Studio owns the agent's POSIX process group and stops it on disconnect.",
+    "windows-job-object": "Studio owns a kill-on-close Windows Job Object and stops it on disconnect.",
+  }[scope.processContainment];
+  const evidenceScope = scope.evidenceSource === "native-provider-host"
+    ? "Produced by Studio's native provider host."
+    : `Produced by the ACP launcher after ${scope.processContainment === "windows-job-object" ? "Job Object" : "process-group"} attachment.`;
+
   return (
     <Popover.Root>
       <Popover.Trigger
@@ -315,34 +334,28 @@ function ThreadSecurityScope({
               </div>
               <div>
                 <dt>Files</dt>
-                <dd>
-                  {isStudioAgent
-                    ? "The model receives bounded Studio tools, not arbitrary file access."
-                    : "Studio tools are bundle-scoped. The ACP process keeps normal OS file access."}
-                </dd>
+                <dd>{fileScope}</dd>
               </div>
               <div>
                 <dt>Network</dt>
-                <dd>
-                  {isStudioAgent
-                    ? "Studio contacts the configured model endpoint. No fetch tool is exposed."
-                    : "The ACP process keeps normal OS network access."}
-                </dd>
+                <dd>{networkScope}</dd>
               </div>
               <div>
                 <dt>Writes</dt>
-                <dd>Interactive grant only. Proposed files stay staged until reviewed and applied.</dd>
+                <dd>{writeScope}</dd>
               </div>
               <div>
                 <dt>Process</dt>
-                <dd>
-                  {isStudioAgent
-                    ? "No external ACP process runs."
-                    : "Studio owns and stops the ACP process tree on disconnect."}
-                </dd>
+                <dd>{processScope}</dd>
+              </div>
+              <div>
+                <dt>Evidence</dt>
+                <dd>{evidenceScope}</dd>
               </div>
             </dl>
-            {!isStudioAgent && <p>This is mediation, not a filesystem or network sandbox.</p>}
+            {scope.evidenceSource === "external-process-launcher" && (
+              <p>This proves process-tree ownership, not a filesystem or network sandbox.</p>
+            )}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
@@ -1599,7 +1612,7 @@ export function AgentConversation({
           )}
         </div>
         <div className="agent-conversation__toolbar-actions">
-          <ThreadSecurityScope bundleName={bundleName} isStudioAgent={isStudioAgent} />
+          <ThreadSecurityScope bundleName={bundleName} scope={connection.securityScope} />
           {bundleRoot && !requiresAuthentication && (
             <button
               type="button"

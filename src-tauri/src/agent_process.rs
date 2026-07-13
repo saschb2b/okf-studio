@@ -27,6 +27,14 @@ pub(crate) struct AgentProcessTree {
     platform: PlatformProcessTree,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum AgentProcessContainment {
+    #[cfg(unix)]
+    PosixProcessGroup,
+    #[cfg(windows)]
+    WindowsJobObject,
+}
+
 impl AgentProcessTree {
     pub(crate) fn attach(child: &Child) -> io::Result<Self> {
         Ok(Self {
@@ -36,6 +44,10 @@ impl AgentProcessTree {
 
     pub(crate) fn terminate(&mut self) {
         self.platform.terminate();
+    }
+
+    pub(crate) fn containment(&self) -> AgentProcessContainment {
+        self.platform.containment()
     }
 }
 
@@ -72,6 +84,10 @@ impl PlatformProcessTree {
         unsafe {
             libc::kill(-process_group, libc::SIGKILL);
         }
+    }
+
+    fn containment(&self) -> AgentProcessContainment {
+        AgentProcessContainment::PosixProcessGroup
     }
 }
 
@@ -144,6 +160,10 @@ impl PlatformProcessTree {
             TerminateJobObject(job, 1);
             CloseHandle(job);
         }
+    }
+
+    fn containment(&self) -> AgentProcessContainment {
+        AgentProcessContainment::WindowsJobObject
     }
 }
 

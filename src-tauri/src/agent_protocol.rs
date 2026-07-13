@@ -20,7 +20,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
@@ -108,6 +108,87 @@ pub struct AgentConnectionInfo {
     auth_methods: Vec<AgentAuthMethodInfo>,
     authenticated: bool,
     capabilities: AgentCapabilityInfo,
+    security_scope: AgentSecurityScopeInfo,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentSecurityScopeInfo {
+    evidence_source: AgentSecurityEvidenceSource,
+    file_access: AgentFileAccess,
+    network_access: AgentNetworkAccess,
+    write_access: AgentWriteAccess,
+    process_containment: AgentProcessContainment,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentSecurityEvidenceSource {
+    NativeProviderHost,
+    ExternalProcessLauncher,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentFileAccess {
+    StudioToolsOnly,
+    OperatingSystem,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentNetworkAccess {
+    ConfiguredEndpointOnly,
+    OperatingSystem,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentWriteAccess {
+    ReviewedStaging,
+    ReviewedMediationOnly,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum AgentProcessContainment {
+    InProcess,
+    #[cfg(unix)]
+    PosixProcessGroup,
+    #[cfg(windows)]
+    WindowsJobObject,
+}
+
+impl AgentSecurityScopeInfo {
+    fn native_provider() -> Self {
+        Self {
+            evidence_source: AgentSecurityEvidenceSource::NativeProviderHost,
+            file_access: AgentFileAccess::StudioToolsOnly,
+            network_access: AgentNetworkAccess::ConfiguredEndpointOnly,
+            write_access: AgentWriteAccess::ReviewedStaging,
+            process_containment: AgentProcessContainment::InProcess,
+        }
+    }
+
+    fn external_process(containment: agent_process::AgentProcessContainment) -> Self {
+        let process_containment = match containment {
+            #[cfg(unix)]
+            agent_process::AgentProcessContainment::PosixProcessGroup => {
+                AgentProcessContainment::PosixProcessGroup
+            }
+            #[cfg(windows)]
+            agent_process::AgentProcessContainment::WindowsJobObject => {
+                AgentProcessContainment::WindowsJobObject
+            }
+        };
+        Self {
+            evidence_source: AgentSecurityEvidenceSource::ExternalProcessLauncher,
+            file_access: AgentFileAccess::OperatingSystem,
+            network_access: AgentNetworkAccess::OperatingSystem,
+            write_access: AgentWriteAccess::ReviewedMediationOnly,
+            process_containment,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -283,6 +364,7 @@ struct ConnectionRuntime {
     permission_events: PermissionEventSink,
     stages: Arc<SessionStages>,
     stage_events: StageEventSink,
+    security_scope: Arc<OnceLock<AgentSecurityScopeInfo>>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -537,6 +619,7 @@ pub async fn connect_local(
             session_resume: false,
             session_close: false,
         },
+        security_scope: AgentSecurityScopeInfo::native_provider(),
     })
 }
 
@@ -1029,6 +1112,8 @@ async fn connect_process(
     let permissions = Arc::clone(&state.permissions);
     let worker_permissions = Arc::clone(&permissions);
     let permission_rules = Arc::new(Mutex::new(HashMap::new()));
+    let security_scope = Arc::new(OnceLock::new());
+    let process_security_scope = Arc::clone(&security_scope);
     let (start_tx, start_rx) = tokio::sync::oneshot::channel();
 
     let worker = tokio::spawn(async move {
@@ -1036,7 +1121,7 @@ async fn connect_process(
             return;
         }
         let result = run_connection(
-            ProcessAgent::new(spec),
+            ProcessAgent::new(spec, process_security_scope),
             worker_id.clone(),
             worker_profile_id.clone(),
             Arc::clone(&worker_handshake),
@@ -1048,6 +1133,7 @@ async fn connect_process(
                 permission_events,
                 stages: worker_stages,
                 stage_events,
+                security_scope,
             },
         )
         .await;
@@ -1712,6 +1798,7 @@ async fn run_connection(
         permission_events,
         stages,
         stage_events,
+        security_scope,
     } = runtime;
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let sessions = Arc::new(Mutex::new(HashMap::<String, PathBuf>::new()));
@@ -1949,6 +2036,11 @@ async fn run_connection(
             let supports_images = response.agent_capabilities.prompt_capabilities.image;
             let supports_session_list = response.agent_capabilities.session_capabilities.list.is_some();
             let supports_session_load = response.agent_capabilities.load_session;
+            let security_scope = security_scope.get().cloned().ok_or_else(|| {
+                agent_client_protocol::util::internal_error(
+                    "ACP launcher did not produce security scope evidence",
+                )
+            })?;
             if let Some(sender) = take_sender(&handshake) {
                 sender
                     .send(Ok(connection_info(
@@ -1956,6 +2048,7 @@ async fn run_connection(
                         profile_id,
                         response,
                         auth_methods,
+                        security_scope,
                     )))
                     .map_err(|_| {
                         agent_client_protocol::util::internal_error(
@@ -3132,6 +3225,7 @@ fn connection_info(
     profile_id: String,
     response: InitializeResponse,
     auth_methods: Vec<AgentAuthMethodInfo>,
+    security_scope: AgentSecurityScopeInfo,
 ) -> AgentConnectionInfo {
     let authenticated = auth_methods.is_empty();
     AgentConnectionInfo {
@@ -3146,6 +3240,7 @@ fn connection_info(
         auth_methods,
         authenticated,
         capabilities: capability_info(&response.agent_capabilities),
+        security_scope,
     }
 }
 
@@ -3226,11 +3321,15 @@ impl ProcessSpec {
 
 struct ProcessAgent {
     spec: ProcessSpec,
+    security_scope: Arc<OnceLock<AgentSecurityScopeInfo>>,
 }
 
 impl ProcessAgent {
-    fn new(spec: ProcessSpec) -> Self {
-        Self { spec }
+    fn new(spec: ProcessSpec, security_scope: Arc<OnceLock<AgentSecurityScopeInfo>>) -> Self {
+        Self {
+            spec,
+            security_scope,
+        }
     }
 }
 
@@ -3252,6 +3351,15 @@ impl ConnectTo<Client> for ProcessAgent {
             .map_err(agent_client_protocol::Error::into_internal_error)?;
         let mut process_tree = agent_process::AgentProcessTree::attach(&child)
             .map_err(agent_client_protocol::Error::into_internal_error)?;
+        self.security_scope
+            .set(AgentSecurityScopeInfo::external_process(
+                process_tree.containment(),
+            ))
+            .map_err(|_| {
+                agent_client_protocol::util::internal_error(
+                    "ACP launcher produced duplicate security scope evidence",
+                )
+            })?;
         let stdin = child.stdin.take().ok_or_else(|| {
             agent_client_protocol::util::internal_error("Failed to open agent stdin")
         })?;
@@ -3403,6 +3511,73 @@ mod tests {
         ToolCallUpdateFields, ToolKind, UsageUpdate,
     };
     use agent_client_protocol::{Dispatch, Responder};
+
+    fn test_security_scope() -> Arc<OnceLock<AgentSecurityScopeInfo>> {
+        #[cfg(unix)]
+        let containment = agent_process::AgentProcessContainment::PosixProcessGroup;
+        #[cfg(windows)]
+        let containment = agent_process::AgentProcessContainment::WindowsJobObject;
+        let scope = Arc::new(OnceLock::new());
+        scope
+            .set(AgentSecurityScopeInfo::external_process(containment))
+            .expect("set test security scope");
+        scope
+    }
+
+    #[test]
+    fn serializes_launcher_produced_security_scope() {
+        #[cfg(unix)]
+        let (containment, expected_process) = (
+            agent_process::AgentProcessContainment::PosixProcessGroup,
+            "posix-process-group",
+        );
+        #[cfg(windows)]
+        let (containment, expected_process) = (
+            agent_process::AgentProcessContainment::WindowsJobObject,
+            "windows-job-object",
+        );
+        let scope = AgentSecurityScopeInfo::external_process(containment);
+        let value = serde_json::to_value(scope).expect("serialize security scope");
+        assert_eq!(value["evidenceSource"], "external-process-launcher");
+        assert_eq!(value["fileAccess"], "operating-system");
+        assert_eq!(value["networkAccess"], "operating-system");
+        assert_eq!(value["writeAccess"], "reviewed-mediation-only");
+        assert_eq!(value["processContainment"], expected_process);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn rejects_an_acp_handshake_without_launcher_evidence() {
+        let fake_agent = Agent.builder().on_receive_request(
+            async move |_request: InitializeRequest,
+                        responder: Responder<InitializeResponse>,
+                        _connection: ConnectionTo<Client>| {
+                responder.respond(InitializeResponse::new(ProtocolVersion::V1))
+            },
+            agent_client_protocol::on_receive_request!(),
+        );
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let (_commands_tx, commands_rx) = tokio::sync::mpsc::channel(1);
+        let error = run_connection(
+            fake_agent,
+            "connection-without-evidence".to_string(),
+            "profile-without-evidence".to_string(),
+            Arc::new(Mutex::new(Some(handshake_tx))),
+            commands_rx,
+            ConnectionRuntime {
+                turn_events: Arc::new(|_| {}),
+                permissions: Arc::new(Mutex::new(HashMap::new())),
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
+                permission_events: Arc::new(|_| {}),
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
+                security_scope: Arc::new(OnceLock::new()),
+            },
+        )
+        .await
+        .expect_err("missing launcher evidence should fail the handshake");
+        assert!(error.contains("did not produce security scope evidence"));
+        assert!(handshake_rx.await.is_err());
+    }
 
     /// The frontend reads these payloads with camelCase field names
     /// (src/agent/connection.ts). `rename_all` on a tagged enum only renames
@@ -4041,6 +4216,7 @@ mod tests {
                 permission_events: Arc::new(|_| {}),
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
+                security_scope: test_security_scope(),
             },
         ));
         handshake_rx
@@ -4295,6 +4471,7 @@ mod tests {
                 permission_events: Arc::new(|_| {}),
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
+                security_scope: test_security_scope(),
             },
         ));
         let info = handshake_rx
@@ -4491,6 +4668,7 @@ mod tests {
                 permission_events: permission_sink,
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
+                security_scope: test_security_scope(),
             },
         ));
         handshake_rx
@@ -4722,6 +4900,7 @@ mod tests {
                 permission_events: permission_sink,
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
+                security_scope: test_security_scope(),
             },
         ));
         handshake_rx
@@ -5153,6 +5332,7 @@ mod tests {
                 permission_events: permission_sink,
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
+                security_scope: test_security_scope(),
             },
         ));
         handshake_rx

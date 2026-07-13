@@ -304,6 +304,15 @@ export async function connectCustomAgent(profileId: string): Promise<AgentConnec
       sessionResume: false,
       sessionClose: false,
     },
+    securityScope: {
+      evidenceSource: "external-process-launcher",
+      fileAccess: "operating-system",
+      networkAccess: "operating-system",
+      writeAccess: "reviewed-mediation-only",
+      processContainment: navigator.userAgent.includes("Windows")
+        ? "windows-job-object"
+        : "posix-process-group",
+    },
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
@@ -350,6 +359,15 @@ export async function connectCatalogAgent(agentId: string): Promise<AgentConnect
       sessionResume: false,
       sessionClose: false,
     },
+    securityScope: {
+      evidenceSource: "external-process-launcher",
+      fileAccess: "operating-system",
+      networkAccess: "operating-system",
+      writeAccess: "reviewed-mediation-only",
+      processContainment: navigator.userAgent.includes("Windows")
+        ? "windows-job-object"
+        : "posix-process-group",
+    },
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
@@ -395,6 +413,13 @@ export async function connectLocalModel(
       sessionList: false,
       sessionResume: false,
       sessionClose: false,
+    },
+    securityScope: {
+      evidenceSource: "native-provider-host",
+      fileAccess: "studio-tools-only",
+      networkAccess: "configured-endpoint-only",
+      writeAccess: "reviewed-staging",
+      processContainment: "in-process",
     },
   };
   activeAgentConnectionsById.set(info.connectionId, info);

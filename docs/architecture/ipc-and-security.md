@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-13T20:20:00Z
+timestamp: 2026-07-13T20:50:00Z
 ---
 
 # Command & event surface
@@ -19,7 +19,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `local_model_profiles()` / `save_local_model_profile(input)` / `remove_local_model_profile(profile_id)` | Manage bounded Studio Agent endpoint metadata and its separate operating-system credential entry. Secrets never return to the webview. |
 | `test_local_model_endpoint(input)` / `test_saved_local_model_endpoint(profile_id)` | Perform one explicit bounded model-list probe with proxies and redirects disabled. No prompt or bundle content is sent. |
 | `agent_install_preflight(agent_id)` / `install_agent(agent_id, install_id)` / `cancel_agent_install(install_id)` | Report pinned download requirements, run a verified managed-runtime and package installation, or cancel the named install transaction. Installation does not start an agent. |
-| `connect_custom_agent(profile_id)` / `connect_catalog_agent(agent_id)` / `connect_local_model(profile_id, model)` | Start one explicit external ACP or native Studio Agent connection after revalidating the selected profile, installation, endpoint, and model. |
+| `connect_custom_agent(profile_id)` / `connect_catalog_agent(agent_id)` / `connect_local_model(profile_id, model)` | Start one explicit external ACP or native Studio Agent connection after revalidating the selected profile, installation, endpoint, and model. The result includes a closed Rust-produced scope record; an external connection cannot complete before its launcher attaches the reported process-tree owner. |
 | `disconnect_agent(connection_id)` / `authenticate_agent(connection_id, method_id)` | Stop the owned connection process tree or invoke one exact agent-advertised authentication method. |
 | `new_agent_session(connection_id, bundle_root)` | Create one session at the canonical active bundle root and attach the scoped OKF MCP server where supported. |
 | `list_agent_sessions(connection_id, bundle_root)` / `load_agent_session(connection_id, bundle_root, session_id)` | List only agent-owned sessions whose reported working directory matches the active bundle, then load only an ID from that filtered result. |

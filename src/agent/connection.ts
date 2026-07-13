@@ -22,6 +22,14 @@ export interface AgentCapabilityInfo {
   sessionClose: boolean;
 }
 
+export interface AgentSecurityScopeInfo {
+  evidenceSource: "native-provider-host" | "external-process-launcher";
+  fileAccess: "studio-tools-only" | "operating-system";
+  networkAccess: "configured-endpoint-only" | "operating-system";
+  writeAccess: "reviewed-staging" | "reviewed-mediation-only";
+  processContainment: "in-process" | "posix-process-group" | "windows-job-object";
+}
+
 export interface AgentConnectionInfo {
   connectionId: string;
   profileId: string;
@@ -30,6 +38,7 @@ export interface AgentConnectionInfo {
   authMethods: readonly AgentAuthMethodInfo[];
   authenticated: boolean;
   capabilities: AgentCapabilityInfo;
+  securityScope: AgentSecurityScopeInfo;
 }
 
 export interface AgentSessionInfo {

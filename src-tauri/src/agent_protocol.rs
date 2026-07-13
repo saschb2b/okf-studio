@@ -21,7 +21,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
@@ -116,6 +116,7 @@ pub struct AgentSessionInfo {
     connection_id: String,
     session_id: String,
     bundle_root: PathBuf,
+    staged_changes: Option<AgentStagedChangesInfo>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -140,6 +141,7 @@ pub struct AgentLoadedSessionInfo {
     session_id: String,
     bundle_root: PathBuf,
     messages: Vec<AgentHistoryMessage>,
+    staged_changes: Option<AgentStagedChangesInfo>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -424,7 +426,13 @@ async fn connect_process(
     let permission_events: PermissionEventSink = Arc::new(move |event| {
         let _ = permission_app.emit(PERMISSION_EVENT, event);
     });
-    let stages = Arc::new(SessionStages::default());
+    let checkpoint_directory = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Studio could not locate its apply checkpoints: {error}"))?
+        .join("agents")
+        .join("apply-checkpoints");
+    let stages = Arc::new(SessionStages::persistent(checkpoint_directory));
     let worker_stages = Arc::clone(&stages);
     let stage_app = app.clone();
     let stage_events: StageEventSink = Arc::new(move |event| {
@@ -1294,13 +1302,22 @@ async fn run_connection(
                                 } else {
                                     Err("Authenticate the agent before creating a session.".to_string())
                                 };
-                                if let Ok(info) = &result {
-                                    sessions
-                                        .lock()
-                                        .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
-                                        .insert(info.session_id.clone(), info.bundle_root.clone());
-                                    stages.register_session(&info.session_id, &info.bundle_root);
-                                }
+                                let result = match result {
+                                    Ok(mut info) => match stages
+                                        .register_session(&info.session_id, &info.bundle_root)
+                                    {
+                                        Ok(changes) => {
+                                            sessions
+                                                .lock()
+                                                .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
+                                                .insert(info.session_id.clone(), info.bundle_root.clone());
+                                            info.staged_changes = Some(changes);
+                                            Ok(info)
+                                        }
+                                        Err(error) => Err(error),
+                                    },
+                                    Err(error) => Err(error),
+                                };
                                 let _ = response.send(result);
                             }
                             AgentHostCommand::ListSessions { bundle_root, response } => {
@@ -1338,18 +1355,27 @@ async fn run_connection(
                                         session_id,
                                     ).await
                                 };
-                                if let Ok(info) = &result {
-                                    sessions
-                                        .lock()
-                                        .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
-                                        .insert(info.session_id.clone(), info.bundle_root.clone());
-                                    if let Ok(mut contexts) = attached_contexts.lock() {
-                                        contexts.insert(info.session_id.clone());
-                                    }
-                                    // A restored session never inherits an
-                                    // earlier write grant or staged files.
-                                    stages.register_session(&info.session_id, &info.bundle_root);
-                                }
+                                let result = match result {
+                                    Ok(mut info) => match stages
+                                        .register_session(&info.session_id, &info.bundle_root)
+                                    {
+                                        Ok(changes) => {
+                                            sessions
+                                                .lock()
+                                                .map_err(|_| agent_client_protocol::util::internal_error("Agent session state is unavailable"))?
+                                                .insert(info.session_id.clone(), info.bundle_root.clone());
+                                            if let Ok(mut contexts) = attached_contexts.lock() {
+                                                contexts.insert(info.session_id.clone());
+                                            }
+                                            // A restored session never inherits an
+                                            // earlier write grant or staged files.
+                                            info.staged_changes = Some(changes);
+                                            Ok(info)
+                                        }
+                                        Err(error) => Err(error),
+                                    },
+                                    Err(error) => Err(error),
+                                };
                                 let _ = response.send(result);
                             }
                             AgentHostCommand::Prompt { session_id, turn_id, text, context_paths, sources, response } => {
@@ -2125,6 +2151,7 @@ async fn create_session(
         connection_id: connection_id.to_string(),
         session_id: response.session_id.to_string(),
         bundle_root,
+        staged_changes: None,
     })
 }
 
@@ -2188,6 +2215,7 @@ async fn load_bundle_session(
         session_id,
         bundle_root,
         messages,
+        staged_changes: None,
     })
 }
 
@@ -4246,6 +4274,26 @@ mod tests {
         assert_eq!(value["status"], "failed");
         assert_eq!(value["connectionId"], "connection-1");
         assert_eq!(value["profileId"], "profile-1");
+    }
+
+    #[test]
+    fn serializes_the_initial_session_checkpoint_snapshot() {
+        let value = serde_json::to_value(AgentSessionInfo {
+            connection_id: "connection-1".to_string(),
+            session_id: "session-1".to_string(),
+            bundle_root: PathBuf::from("bundle"),
+            staged_changes: Some(AgentStagedChangesInfo {
+                session_id: "session-1".to_string(),
+                granted: false,
+                can_restore: true,
+                files: Vec::new(),
+            }),
+        })
+        .expect("session should serialize");
+
+        assert_eq!(value["stagedChanges"]["sessionId"], "session-1");
+        assert_eq!(value["stagedChanges"]["granted"], false);
+        assert_eq!(value["stagedChanges"]["canRestore"], true);
     }
 
     #[tokio::test(flavor = "current_thread")]

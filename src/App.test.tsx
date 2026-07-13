@@ -871,13 +871,19 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Apply changes" }));
     expect(await screen.findByText("Applied 1 file to the bundle."))
       .toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Write Harness" }));
+    await screen.findByText(/Connected to Write Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.type(screen.getByLabelText("Message the agent"), "Resume after restart");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Browser ACP received: Resume after restart");
     await user.click(screen.getByRole("button", { name: "Restore" }));
     expect(await screen.findByText("Restored 1 file from the checkpoint."))
       .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
-
-    await user.click(grantToggle);
-    await vi.waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "false"));
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));

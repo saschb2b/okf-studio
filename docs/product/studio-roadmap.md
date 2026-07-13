@@ -151,7 +151,8 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 - [x] Validate the selected staged tree against the same OKF parser and validator used for the open bundle.
 - [x] Apply the exact validated revision as a rollback transaction.
 - [x] Retain a guarded connection-lifetime checkpoint and restore the latest apply.
-- [ ] Persist checkpoints and recover transactions across process or machine interruption.
+- [x] Persist the latest successful checkpoint outside the bundle and restore it after restart.
+- [ ] Recover transactions interrupted while apply or restore is in progress.
 - [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.
 - [ ] Require an enforcement-capable sandbox before unattended external-agent writes.
 

@@ -13,7 +13,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use similar::{DiffOp, DiffTag, TextDiff};
 
@@ -26,6 +26,9 @@ pub(crate) const MAX_DIFF_CHARS: usize = 256 * 1024;
 const MAX_VALIDATION_FILES: usize = 4096;
 const MAX_VALIDATION_BYTES: usize = 32 * 1024 * 1024;
 const MAX_VALIDATION_ISSUES: usize = 512;
+const CHECKPOINT_VERSION: u32 = 1;
+const MAX_CHECKPOINT_CONTENT_BYTES: usize = MAX_STAGED_TOTAL_BYTES * 2;
+const MAX_CHECKPOINT_BYTES: u64 = 100 * 1024 * 1024;
 
 pub(crate) const WRITE_GRANT_MESSAGE: &str =
     "Bundle write denied: writes require the Allow edits in this thread grant.";
@@ -130,6 +133,7 @@ struct HunkSelection {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct AppliedCheckpoint {
+    id: String,
     files: Vec<CheckpointFile>,
     created_directories: Vec<PathBuf>,
 }
@@ -138,6 +142,25 @@ struct AppliedCheckpoint {
 struct CheckpointFile {
     target: PathBuf,
     backup: Option<PathBuf>,
+    original_content: Option<String>,
+    applied_content: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PersistedCheckpoint {
+    version: u32,
+    id: String,
+    bundle_fingerprint: String,
+    files: Vec<PersistedCheckpointFile>,
+    created_directories: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PersistedCheckpointFile {
+    path: String,
+    original_content: Option<String>,
     applied_content: String,
 }
 
@@ -152,9 +175,18 @@ pub(crate) struct AgentReportedDiff {
 /// All write-grant and staged-tree state for one agent connection. Sessions
 /// register on creation or load with their canonical bundle root; the state
 /// drops with the connection, so grants never outlive their process.
-#[derive(Default)]
 pub struct SessionStages {
     sessions: Mutex<HashMap<String, SessionStage>>,
+    checkpoint_directory: Option<PathBuf>,
+}
+
+impl Default for SessionStages {
+    fn default() -> Self {
+        Self {
+            sessions: Mutex::new(HashMap::new()),
+            checkpoint_directory: None,
+        }
+    }
 }
 
 impl Drop for SessionStages {
@@ -172,26 +204,50 @@ impl Drop for SessionStages {
 }
 
 impl SessionStages {
+    /// Persist the latest successful apply for each bundle in app-owned data.
+    /// Grants and staged files remain connection-only.
+    pub fn persistent(checkpoint_directory: PathBuf) -> Self {
+        Self {
+            sessions: Mutex::new(HashMap::new()),
+            checkpoint_directory: Some(checkpoint_directory),
+        }
+    }
+
     /// Register (or reset) a session. Creating and loading both start with the
     /// grant revoked and the staged tree empty: a restored session never
     /// inherits an earlier grant.
-    pub fn register_session(&self, session_id: &str, bundle_root: &Path) {
-        if let Ok(mut sessions) = self.sessions.lock() {
-            if let Some(previous) = sessions.remove(session_id) {
-                if let Some(checkpoint) = previous.checkpoint {
-                    discard_checkpoint(checkpoint);
-                }
+    pub fn register_session(
+        &self,
+        session_id: &str,
+        bundle_root: &Path,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let checkpoint = match self.load_persisted_checkpoint(bundle_root) {
+            Ok(checkpoint) => checkpoint,
+            Err(error) => {
+                self.quarantine_persisted_checkpoint(bundle_root)?;
+                return Err(format!(
+                    "{error} Studio quarantined the record; retry the session."
+                ));
             }
-            sessions.insert(
-                session_id.to_string(),
-                SessionStage {
-                    bundle_root: bundle_root.to_path_buf(),
-                    granted: false,
-                    files: BTreeMap::new(),
-                    checkpoint: None,
-                },
-            );
+        };
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        if let Some(previous) = sessions.remove(session_id) {
+            if let Some(checkpoint) = previous.checkpoint {
+                discard_checkpoint(checkpoint);
+            }
         }
+        let stage = SessionStage {
+            bundle_root: bundle_root.to_path_buf(),
+            granted: false,
+            files: BTreeMap::new(),
+            checkpoint,
+        };
+        let changes = snapshot(session_id, &stage);
+        sessions.insert(session_id.to_string(), stage);
+        Ok(changes)
     }
 
     /// Grant or revoke writes for one registered session. Revoking keeps the
@@ -507,12 +563,29 @@ impl SessionStages {
                 if validation.errors == 1 { "" } else { "s" }
             ));
         }
+        validate_checkpoint_size(&prepared)?;
 
+        if let Some(checkpoint) = stage.checkpoint.as_ref() {
+            self.remove_persisted_checkpoint(&stage.bundle_root, &checkpoint.id)?;
+        }
         if let Some(checkpoint) = stage.checkpoint.take() {
             discard_checkpoint(checkpoint);
         }
-        let checkpoint = apply_prepared_transaction(&stage.bundle_root, &prepared, None)?;
+        let mut checkpoint = apply_prepared_transaction(&stage.bundle_root, &prepared, None)?;
         let applied_files = checkpoint.files.len();
+        if !checkpoint.files.is_empty() && self.checkpoint_directory.is_some() {
+            if let Err(error) = self.persist_checkpoint(&stage.bundle_root, &checkpoint) {
+                let rollback = restore_applied_checkpoint(&stage.bundle_root, &checkpoint);
+                discard_checkpoint(checkpoint);
+                return match rollback {
+                    Ok(()) => Err(error),
+                    Err(rollback_error) => Err(format!(
+                        "{error} The applied files could not be rolled back: {rollback_error}"
+                    )),
+                };
+            }
+            discard_checkpoint_backups(&mut checkpoint);
+        }
         stage.checkpoint = (!checkpoint.files.is_empty()).then_some(checkpoint);
         stage.files.clear();
         Ok(AgentStagedApplyInfo {
@@ -543,7 +616,16 @@ impl SessionStages {
             .checkpoint
             .as_ref()
             .ok_or_else(|| "There is no restorable checkpoint for this thread.".to_string())?;
-        restore_applied_checkpoint(&stage.bundle_root, checkpoint)?;
+        self.require_persisted_checkpoint(&stage.bundle_root, &checkpoint.id)?;
+        self.remove_persisted_checkpoint(&stage.bundle_root, &checkpoint.id)?;
+        if let Err(error) = restore_applied_checkpoint(&stage.bundle_root, checkpoint) {
+            return match self.persist_checkpoint(&stage.bundle_root, checkpoint) {
+                Ok(()) => Err(error),
+                Err(persist_error) => Err(format!(
+                    "{error} The checkpoint could not be retained: {persist_error}"
+                )),
+            };
+        }
         let restored_files = checkpoint.files.len();
         stage.checkpoint = None;
         Ok(AgentCheckpointRestoreInfo {
@@ -551,6 +633,105 @@ impl SessionStages {
             restored_files,
             changes: snapshot(session_id, stage),
         })
+    }
+
+    fn checkpoint_file(&self, bundle_root: &Path) -> Option<PathBuf> {
+        self.checkpoint_directory.as_ref().map(|directory| {
+            directory.join(format!("{}.json", bundle_fingerprint(bundle_root)))
+        })
+    }
+
+    fn load_persisted_checkpoint(
+        &self,
+        bundle_root: &Path,
+    ) -> Result<Option<AppliedCheckpoint>, String> {
+        let Some(file) = self.checkpoint_file(bundle_root) else {
+            return Ok(None);
+        };
+        if !file.exists() {
+            return Ok(None);
+        }
+        let metadata = std::fs::symlink_metadata(&file)
+            .map_err(|_| "Studio could not inspect its saved apply checkpoint.".to_string())?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err("Studio's saved apply checkpoint is not a regular file.".to_string());
+        }
+        if metadata.len() > MAX_CHECKPOINT_BYTES {
+            return Err("Studio's saved apply checkpoint exceeds its size limit.".to_string());
+        }
+        let bytes = std::fs::read(&file)
+            .map_err(|_| "Studio could not read its saved apply checkpoint.".to_string())?;
+        let persisted: PersistedCheckpoint = serde_json::from_slice(&bytes)
+            .map_err(|_| "Studio's saved apply checkpoint is invalid.".to_string())?;
+        persisted_checkpoint(bundle_root, persisted).map(Some)
+    }
+
+    fn persist_checkpoint(
+        &self,
+        bundle_root: &Path,
+        checkpoint: &AppliedCheckpoint,
+    ) -> Result<(), String> {
+        let Some(file) = self.checkpoint_file(bundle_root) else {
+            return Ok(());
+        };
+        let persisted = serialize_checkpoint(bundle_root, checkpoint)?;
+        write_checkpoint_file(&file, &persisted)
+    }
+
+    fn quarantine_persisted_checkpoint(&self, bundle_root: &Path) -> Result<(), String> {
+        let Some(file) = self.checkpoint_file(bundle_root) else {
+            return Ok(());
+        };
+        if !file.exists() {
+            return Ok(());
+        }
+        let parent = file
+            .parent()
+            .ok_or_else(|| "Studio could not quarantine its invalid apply checkpoint.".to_string())?;
+        let quarantined = parent.join(format!(
+            ".okf-studio-invalid-checkpoint-{}.json",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::rename(file, quarantined)
+            .map_err(|_| "Studio could not quarantine its invalid apply checkpoint.".to_string())
+    }
+
+    fn require_persisted_checkpoint(
+        &self,
+        bundle_root: &Path,
+        expected_id: &str,
+    ) -> Result<(), String> {
+        if self.checkpoint_directory.is_none() {
+            return Ok(());
+        }
+        let checkpoint = self
+            .load_persisted_checkpoint(bundle_root)?
+            .ok_or_else(|| "The saved apply checkpoint is no longer available.".to_string())?;
+        if checkpoint.id != expected_id {
+            return Err("A newer apply checkpoint replaced this one.".to_string());
+        }
+        Ok(())
+    }
+
+    fn remove_persisted_checkpoint(
+        &self,
+        bundle_root: &Path,
+        expected_id: &str,
+    ) -> Result<(), String> {
+        let Some(file) = self.checkpoint_file(bundle_root) else {
+            return Ok(());
+        };
+        if !file.exists() {
+            return Ok(());
+        }
+        let checkpoint = self
+            .load_persisted_checkpoint(bundle_root)?
+            .ok_or_else(|| "The saved apply checkpoint is no longer available.".to_string())?;
+        if checkpoint.id != expected_id {
+            return Err("A newer apply checkpoint replaced this one.".to_string());
+        }
+        std::fs::remove_file(file)
+            .map_err(|_| "Studio could not remove its saved apply checkpoint.".to_string())
     }
 
     /// The staged content for a path, if that exact bundle file was staged.
@@ -819,7 +1000,33 @@ struct PendingReplacement {
 struct AppliedReplacement {
     target: PathBuf,
     backup: Option<PathBuf>,
+    original_content: Option<String>,
     applied_content: String,
+}
+
+fn validate_checkpoint_size(prepared: &[PreparedStagedFile]) -> Result<(), String> {
+    let mut bytes = 0usize;
+    for file in prepared {
+        let Some(effective) = &file.effective else {
+            continue;
+        };
+        bytes = bytes
+            .checked_add(effective.len())
+            .and_then(|total| {
+                total.checked_add(if file.kind == "modify" {
+                    file.original.len()
+                } else {
+                    0
+                })
+            })
+            .ok_or_else(|| "Apply blocked: the restore checkpoint is too large.".to_string())?;
+        if bytes > MAX_CHECKPOINT_CONTENT_BYTES {
+            return Err(format!(
+                "Apply blocked: original and applied text exceed the {MAX_CHECKPOINT_CONTENT_BYTES}-byte restore checkpoint limit."
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn apply_prepared_transaction(
@@ -932,16 +1139,20 @@ fn apply_prepared_transaction(
         applied.push(AppliedReplacement {
             target: replacement.target.clone(),
             backup: replacement.backup.clone(),
+            original_content: (replacement.kind == "modify")
+                .then(|| replacement.original.clone()),
             applied_content: replacement.applied_content.clone(),
         });
     }
 
     Ok(AppliedCheckpoint {
+        id: uuid::Uuid::new_v4().to_string(),
         files: applied
             .into_iter()
             .map(|replacement| CheckpointFile {
                 target: replacement.target,
                 backup: replacement.backup,
+                original_content: replacement.original_content,
                 applied_content: replacement.applied_content,
             })
             .collect(),
@@ -1052,14 +1263,19 @@ fn cleanup_directories(created: &[PathBuf]) {
 
 struct RestoredReplacement {
     target: PathBuf,
-    backup: Option<PathBuf>,
     applied_temporary: PathBuf,
+}
+
+struct PendingCheckpointRestore {
+    target: PathBuf,
+    original_temporary: Option<PathBuf>,
 }
 
 fn restore_applied_checkpoint(
     bundle_root: &Path,
     checkpoint: &AppliedCheckpoint,
 ) -> Result<(), String> {
+    let mut pending = Vec::new();
     for file in &checkpoint.files {
         bundle_relative_write_path(bundle_root, &file.target)?;
         if file
@@ -1074,13 +1290,55 @@ fn restore_applied_checkpoint(
         if current != file.applied_content {
             return Err("Checkpoint restore blocked: an applied file changed after apply.".to_string());
         }
-        if file.backup.as_ref().is_some_and(|backup| !backup.is_file()) {
-            return Err("Checkpoint restore blocked: an original file is unavailable.".to_string());
-        }
+        let original_temporary = if let Some(original) = &file.original_content {
+            let parent = file
+                .target
+                .parent()
+                .ok_or_else(|| "Checkpoint restore could not resolve a file parent.".to_string())?;
+            let temporary = parent.join(format!(
+                ".okf-studio-{}-restore.tmp",
+                uuid::Uuid::new_v4()
+            ));
+            let write_result = (|| -> Result<(), String> {
+                let mut output = OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&temporary)
+                    .map_err(|_| {
+                        "Checkpoint restore could not create an original file.".to_string()
+                    })?;
+                output
+                    .write_all(original.as_bytes())
+                    .and_then(|()| output.sync_all())
+                    .map_err(|_| {
+                        "Checkpoint restore could not write an original file.".to_string()
+                    })?;
+                let permissions = std::fs::metadata(&file.target)
+                    .map_err(|_| {
+                        "Checkpoint restore could not inspect an applied file.".to_string()
+                    })?
+                    .permissions();
+                std::fs::set_permissions(&temporary, permissions).map_err(|_| {
+                    "Checkpoint restore could not preserve file permissions.".to_string()
+                })
+            })();
+            if let Err(error) = write_result {
+                let _ = std::fs::remove_file(&temporary);
+                cleanup_checkpoint_restore(&pending);
+                return Err(error);
+            }
+            Some(temporary)
+        } else {
+            None
+        };
+        pending.push(PendingCheckpointRestore {
+            target: file.target.clone(),
+            original_temporary,
+        });
     }
 
     let mut restored = Vec::new();
-    for file in &checkpoint.files {
+    for file in &pending {
         let parent = file
             .target
             .parent()
@@ -1091,18 +1349,19 @@ fn restore_applied_checkpoint(
         ));
         if std::fs::rename(&file.target, &applied_temporary).is_err() {
             rollback_checkpoint_restore(&restored);
+            cleanup_checkpoint_restore(&pending);
             return Err("Checkpoint restore could not move an applied file.".to_string());
         }
-        if let Some(backup) = &file.backup {
-            if std::fs::rename(backup, &file.target).is_err() {
+        if let Some(original) = &file.original_temporary {
+            if std::fs::rename(original, &file.target).is_err() {
                 let _ = std::fs::rename(&applied_temporary, &file.target);
                 rollback_checkpoint_restore(&restored);
+                cleanup_checkpoint_restore(&pending);
                 return Err("Checkpoint restore could not replace an applied file.".to_string());
             }
         }
         restored.push(RestoredReplacement {
             target: file.target.clone(),
-            backup: file.backup.clone(),
             applied_temporary,
         });
     }
@@ -1110,25 +1369,245 @@ fn restore_applied_checkpoint(
     for file in &restored {
         let _ = std::fs::remove_file(&file.applied_temporary);
     }
+    for file in &checkpoint.files {
+        if let Some(backup) = &file.backup {
+            let _ = std::fs::remove_file(backup);
+        }
+    }
     cleanup_directories(&checkpoint.created_directories);
     Ok(())
 }
 
+fn cleanup_checkpoint_restore(pending: &[PendingCheckpointRestore]) {
+    for file in pending {
+        if let Some(original) = &file.original_temporary {
+            let _ = std::fs::remove_file(original);
+        }
+    }
+}
+
 fn rollback_checkpoint_restore(restored: &[RestoredReplacement]) {
     for file in restored.iter().rev() {
-        if let Some(backup) = &file.backup {
-            let _ = std::fs::rename(&file.target, backup);
-        }
+        let _ = std::fs::remove_file(&file.target);
         let _ = std::fs::rename(&file.applied_temporary, &file.target);
     }
 }
 
-fn discard_checkpoint(checkpoint: AppliedCheckpoint) {
-    for file in checkpoint.files {
-        if let Some(backup) = file.backup {
+fn discard_checkpoint_backups(checkpoint: &mut AppliedCheckpoint) {
+    for file in &mut checkpoint.files {
+        if let Some(backup) = file.backup.take() {
             let _ = std::fs::remove_file(backup);
         }
     }
+}
+
+fn discard_checkpoint(mut checkpoint: AppliedCheckpoint) {
+    discard_checkpoint_backups(&mut checkpoint);
+}
+
+fn serialize_checkpoint(
+    bundle_root: &Path,
+    checkpoint: &AppliedCheckpoint,
+) -> Result<PersistedCheckpoint, String> {
+    let files = checkpoint
+        .files
+        .iter()
+        .map(|file| {
+            let path = bundle_relative_write_path(bundle_root, &file.target)?;
+            Ok(PersistedCheckpointFile {
+                path,
+                original_content: file.original_content.clone(),
+                applied_content: file.applied_content.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let created_directories = checkpoint
+        .created_directories
+        .iter()
+        .map(|directory| bundle_relative_write_path(bundle_root, directory))
+        .collect::<Result<Vec<_>, String>>()?;
+    Ok(PersistedCheckpoint {
+        version: CHECKPOINT_VERSION,
+        id: checkpoint.id.clone(),
+        bundle_fingerprint: bundle_fingerprint(bundle_root),
+        files,
+        created_directories,
+    })
+}
+
+fn persisted_checkpoint(
+    bundle_root: &Path,
+    persisted: PersistedCheckpoint,
+) -> Result<AppliedCheckpoint, String> {
+    if persisted.version != CHECKPOINT_VERSION
+        || persisted.bundle_fingerprint != bundle_fingerprint(bundle_root)
+        || uuid::Uuid::parse_str(&persisted.id).is_err()
+    {
+        return Err("Studio's saved apply checkpoint is invalid.".to_string());
+    }
+    if persisted.files.is_empty() || persisted.files.len() > MAX_STAGED_FILES {
+        return Err("Studio's saved apply checkpoint has an invalid file count.".to_string());
+    }
+
+    let mut paths = BTreeSet::new();
+    let mut total_bytes = 0usize;
+    let mut created_ancestors = BTreeSet::new();
+    let mut files = Vec::with_capacity(persisted.files.len());
+    for file in persisted.files {
+        if file.applied_content.len() > MAX_STAGED_FILE_BYTES
+            || file
+                .original_content
+                .as_ref()
+                .is_some_and(|content| content.len() > MAX_STAGED_FILE_BYTES)
+        {
+            return Err("Studio's saved apply checkpoint contains an oversized file.".to_string());
+        }
+        total_bytes = total_bytes
+            .checked_add(file.applied_content.len())
+            .and_then(|total| {
+                total.checked_add(file.original_content.as_ref().map_or(0, String::len))
+            })
+            .ok_or_else(|| "Studio's saved apply checkpoint is too large.".to_string())?;
+        if total_bytes > MAX_CHECKPOINT_CONTENT_BYTES {
+            return Err("Studio's saved apply checkpoint is too large.".to_string());
+        }
+        let target = bundle_root.join(Path::new(&file.path));
+        let reduced = bundle_relative_write_path(bundle_root, &target)
+            .map_err(|_| "Studio's saved apply checkpoint contains an invalid path.".to_string())?;
+        if reduced != file.path || !paths.insert(file.path.clone()) {
+            return Err("Studio's saved apply checkpoint contains an invalid path.".to_string());
+        }
+        if file.original_content.is_none() {
+            let mut ancestor = Path::new(&file.path).parent();
+            while let Some(directory) = ancestor {
+                if directory.as_os_str().is_empty() {
+                    break;
+                }
+                created_ancestors.insert(path_to_forward_slashes(directory)?);
+                ancestor = directory.parent();
+            }
+        }
+        files.push(CheckpointFile {
+            target,
+            backup: None,
+            original_content: file.original_content,
+            applied_content: file.applied_content,
+        });
+    }
+
+    let mut directories = BTreeSet::new();
+    let mut created_directories = Vec::with_capacity(persisted.created_directories.len());
+    for relative in persisted.created_directories {
+        let directory = bundle_root.join(Path::new(&relative));
+        let reduced = bundle_relative_write_path(bundle_root, &directory).map_err(|_| {
+            "Studio's saved apply checkpoint contains an invalid directory.".to_string()
+        })?;
+        if reduced != relative
+            || !created_ancestors.contains(&relative)
+            || !directories.insert(relative)
+        {
+            return Err(
+                "Studio's saved apply checkpoint contains an invalid directory.".to_string(),
+            );
+        }
+        created_directories.push(directory);
+    }
+
+    Ok(AppliedCheckpoint {
+        id: persisted.id,
+        files,
+        created_directories,
+    })
+}
+
+fn path_to_forward_slashes(path: &Path) -> Result<String, String> {
+    let mut parts = Vec::new();
+    for component in path.components() {
+        let std::path::Component::Normal(part) = component else {
+            return Err("Studio's saved apply checkpoint contains an invalid path.".to_string());
+        };
+        let part = part
+            .to_str()
+            .ok_or_else(|| "Studio's saved apply checkpoint contains a non-Unicode path.".to_string())?;
+        parts.push(part);
+    }
+    Ok(parts.join("/"))
+}
+
+fn bundle_fingerprint(bundle_root: &Path) -> String {
+    let mut hasher = Sha256::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        hasher.update(bundle_root.as_os_str().as_bytes());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        for unit in bundle_root.as_os_str().encode_wide() {
+            hasher.update(unit.to_le_bytes());
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
+    hasher.update(bundle_root.to_string_lossy().as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+fn write_checkpoint_file(file: &Path, checkpoint: &PersistedCheckpoint) -> Result<(), String> {
+    let parent = file
+        .parent()
+        .ok_or_else(|| "Studio's apply checkpoint has no storage directory.".to_string())?;
+    std::fs::create_dir_all(parent)
+        .map_err(|_| "Studio could not create its apply checkpoint directory.".to_string())?;
+    let metadata = std::fs::symlink_metadata(parent)
+        .map_err(|_| "Studio could not inspect its apply checkpoint directory.".to_string())?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err("Studio's apply checkpoint directory is not a regular directory.".to_string());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700)).map_err(|_| {
+            "Studio could not protect its apply checkpoint directory.".to_string()
+        })?;
+    }
+    if file.exists() {
+        return Err("A saved apply checkpoint already exists for this bundle.".to_string());
+    }
+    let bytes = serde_json::to_vec(checkpoint)
+        .map_err(|_| "Studio could not encode its apply checkpoint.".to_string())?;
+    if bytes.len() as u64 > MAX_CHECKPOINT_BYTES {
+        return Err("Studio's apply checkpoint exceeds its size limit.".to_string());
+    }
+    let temporary = parent.join(format!(
+        ".okf-studio-checkpoint-{}.tmp",
+        uuid::Uuid::new_v4()
+    ));
+    let result = (|| -> Result<(), String> {
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut output = options
+            .open(&temporary)
+            .map_err(|_| "Studio could not create its apply checkpoint.".to_string())?;
+        output
+            .write_all(&bytes)
+            .and_then(|()| output.sync_all())
+            .map_err(|_| "Studio could not write its apply checkpoint.".to_string())?;
+        if file.exists() {
+            return Err("A saved apply checkpoint already exists for this bundle.".to_string());
+        }
+        std::fs::rename(&temporary, file)
+            .map_err(|_| "Studio could not activate its apply checkpoint.".to_string())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(temporary);
+    }
+    result
 }
 
 struct ValidationMirror {
@@ -1405,7 +1884,9 @@ mod tests {
 
     fn registered(root: &Path) -> SessionStages {
         let stages = SessionStages::default();
-        stages.register_session("session-1", root);
+        stages
+            .register_session("session-1", root)
+            .expect("register session");
         stages
     }
 
@@ -1897,6 +2378,139 @@ mod tests {
     }
 
     #[test]
+    fn restores_a_persisted_checkpoint_after_the_staging_service_restarts() {
+        let root = canonical_temp_dir("restore-persisted-checkpoint");
+        let checkpoint_directory = canonical_temp_dir("checkpoint-storage");
+        seed_valid_bundle(&root);
+        {
+            let stages = SessionStages::persistent(checkpoint_directory.clone());
+            stages
+                .register_session("session-1", &root)
+                .expect("register session");
+            stages.set_grant("session-1", true).expect("grant");
+            stages
+                .stage_write(
+                    "session-1",
+                    &root.join("existing.md"),
+                    "---\ntype: note\n---\n# Updated\n".to_string(),
+                )
+                .expect("stage modification");
+            stages
+                .stage_write(
+                    "session-1",
+                    &root.join("nested").join("new.md"),
+                    "---\ntype: note\n---\n# New\n".to_string(),
+                )
+                .expect("stage creation");
+            let validation = stages.validate_staged("session-1").expect("validate");
+            stages
+                .apply_staged("session-1", &validation.revision)
+                .expect("apply");
+
+            assert_eq!(
+                std::fs::read_dir(&checkpoint_directory)
+                    .expect("read checkpoint directory")
+                    .count(),
+                1
+            );
+            assert!(std::fs::read_dir(&root)
+                .expect("read bundle root")
+                .filter_map(Result::ok)
+                .all(|entry| !entry.file_name().to_string_lossy().starts_with(".okf-studio-")));
+        }
+
+        let resumed = SessionStages::persistent(checkpoint_directory.clone());
+        let changes = resumed
+            .register_session("session-2", &root)
+            .expect("load checkpoint");
+        assert!(changes.can_restore);
+        assert!(!changes.granted);
+        assert!(changes.files.is_empty());
+
+        resumed
+            .restore_checkpoint("session-2")
+            .expect("restore persisted checkpoint");
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read original"),
+            "---\ntype: note\n---\n# Existing\n"
+        );
+        assert!(!root.join("nested").exists());
+        assert_eq!(
+            std::fs::read_dir(checkpoint_directory)
+                .expect("read checkpoint directory")
+                .count(),
+            0
+        );
+    }
+
+    #[test]
+    fn rolls_apply_back_when_its_durable_checkpoint_cannot_be_saved() {
+        let root = canonical_temp_dir("checkpoint-save-failure");
+        seed_valid_bundle(&root);
+        let storage_parent = canonical_temp_dir("checkpoint-save-file");
+        let checkpoint_directory = storage_parent.join("not-a-directory");
+        std::fs::write(&checkpoint_directory, "occupied").expect("seed blocking file");
+        let stages = SessionStages::persistent(checkpoint_directory);
+        stages
+            .register_session("session-1", &root)
+            .expect("register session");
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# Updated\n".to_string(),
+            )
+            .expect("stage modification");
+        let validation = stages.validate_staged("session-1").expect("validate");
+
+        let error = stages
+            .apply_staged("session-1", &validation.revision)
+            .expect_err("checkpoint failure should roll apply back");
+        assert!(error.contains("checkpoint directory"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read rolled back file"),
+            "---\ntype: note\n---\n# Existing\n"
+        );
+        assert_eq!(stages.summary("session-1").expect("summary").files.len(), 1);
+    }
+
+    #[test]
+    fn rejects_a_persisted_checkpoint_with_an_escaping_path() {
+        let root = canonical_temp_dir("checkpoint-invalid-path");
+        let checkpoint_directory = canonical_temp_dir("checkpoint-invalid-storage");
+        seed_valid_bundle(&root);
+        let stages = SessionStages::persistent(checkpoint_directory);
+        let file = stages.checkpoint_file(&root).expect("checkpoint path");
+        write_checkpoint_file(
+            &file,
+            &PersistedCheckpoint {
+                version: CHECKPOINT_VERSION,
+                id: uuid::Uuid::new_v4().to_string(),
+                bundle_fingerprint: bundle_fingerprint(&root),
+                files: vec![PersistedCheckpointFile {
+                    path: "../outside.md".to_string(),
+                    original_content: None,
+                    applied_content: "outside".to_string(),
+                }],
+                created_directories: Vec::new(),
+            },
+        )
+        .expect("write malicious checkpoint fixture");
+
+        let error = stages
+            .register_session("session-1", &root)
+            .expect_err("escaping checkpoint path must fail");
+        assert!(error.contains("invalid path"));
+        assert!(error.contains("retry the session"));
+        assert!(!root.parent().expect("root parent").join("outside.md").exists());
+        let changes = stages
+            .register_session("session-2", &root)
+            .expect("retry after quarantine");
+        assert!(!changes.can_restore);
+    }
+
+    #[test]
     fn blocks_checkpoint_restore_after_an_applied_file_changes() {
         let root = canonical_temp_dir("restore-stale");
         seed_valid_bundle(&root);
@@ -2055,7 +2669,9 @@ mod tests {
         assert!(info.files.is_empty());
         assert!(info.granted, "discard keeps the grant");
         // Re-registration (session load/restore) revokes the earlier grant.
-        stages.register_session("session-1", &root);
+        stages
+            .register_session("session-1", &root)
+            .expect("reset session");
         assert!(!stages.summary("session-1").expect("summary").granted);
         let error = stages
             .stage_write("session-1", &root.join("a.md"), "text".to_string())

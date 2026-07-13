@@ -492,6 +492,7 @@ export function AgentConversation({
           setSelectingHunk(null);
           session = await newAgentSession(connection.connectionId, bundleRoot);
           sessionRef.current = session;
+          setStagedChanges(session.stagedChanges);
         }
         const contextPaths = concepts.map((concept) => `${concept.id}.md`);
         const sources = draftSources.map(
@@ -1134,7 +1135,7 @@ export function AgentConversation({
     setPendingPermissions([]);
     setUsage(null);
     setQueuedPrompt(null);
-    setStagedChanges(null);
+    setStagedChanges(loaded.stagedChanges);
     setStageError(null);
     setStageNotice(null);
     setExpandedDiff(null);

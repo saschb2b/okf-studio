@@ -93,6 +93,7 @@ const mockStagedChanges = new Map<
   string,
   { granted: boolean; canRestore: boolean; files: MockStagedFile[] }
 >();
+const mockBundleCheckpoints = new Map<string, number>();
 const mockCancelledTurns = new Set<string>();
 const mockFailedOncePrompts = new Set<string>();
 interface MockAgentSession {
@@ -256,11 +257,22 @@ export async function newAgentSession(
     throw new Error("Agent connection was not found.");
   }
   if (!connection.authenticated) throw new Error("Authenticate the agent before creating a session.");
-  const session = {
-    connectionId,
-    sessionId: `session-${crypto.randomUUID()}`,
-    bundleRoot,
+  const sessionId = `session-${crypto.randomUUID()}`;
+  const stagedState = {
+    granted: false,
+    canRestore: mockBundleCheckpoints.has(bundleRoot),
+    files: [],
   };
+  const session: AgentSessionInfo = {
+    connectionId,
+    sessionId,
+    bundleRoot,
+    stagedChanges: {
+      sessionId,
+      ...stagedState,
+    },
+  };
+  mockStagedChanges.set(session.sessionId, stagedState);
   mockAgentSessions.set(session.sessionId, {
     profileId: connection.profileId,
     bundleRoot,
@@ -332,7 +344,16 @@ export async function loadAgentSession(
   }
   await new Promise<void>((resolve) => setTimeout(resolve, 80));
   // Mirrors Rust: a restored session never inherits a write grant or files.
-  mockStagedChanges.set(sessionId, { granted: false, canRestore: false, files: [] });
+  const stagedState = {
+    granted: false,
+    canRestore: mockBundleCheckpoints.has(bundleRoot),
+    files: [],
+  };
+  const stagedChanges: AgentStagedChangesInfo = {
+    sessionId,
+    ...stagedState,
+  };
+  mockStagedChanges.set(sessionId, stagedState);
   const liveSession = mockAgentSessions.get(sessionId);
   if (liveSession?.profileId === connection.profileId &&
     liveSession.bundleRoot === bundleRoot) {
@@ -341,12 +362,14 @@ export async function loadAgentSession(
       sessionId,
       bundleRoot,
       messages: liveSession.messages,
+      stagedChanges,
     };
   }
   return {
     connectionId,
     sessionId,
     bundleRoot,
+    stagedChanges,
     messages: [
       { role: "user", text: "Trace the evidence behind the bundle's product principles." },
       { role: "agent", text: "I traced the principles through the product overview and architecture concepts." },
@@ -774,6 +797,8 @@ export async function applyAgentStagedChanges(
   const appliedFiles = state.files.filter((file) => file.hunkSelected).length;
   state.files = [];
   state.canRestore = appliedFiles > 0;
+  const bundleRoot = mockAgentSessions.get(sessionId)?.bundleRoot;
+  if (bundleRoot && appliedFiles > 0) mockBundleCheckpoints.set(bundleRoot, appliedFiles);
   const changes = emitMockStage(connectionId, sessionId);
   return { sessionId, revision, appliedFiles, changes };
 }
@@ -800,8 +825,11 @@ export async function restoreAgentStagedCheckpoint(
     throw new Error("Discard or apply the current staged changes before restoring.");
   }
   state.canRestore = false;
+  const bundleRoot = mockAgentSessions.get(sessionId)?.bundleRoot;
+  const restoredFiles = bundleRoot ? (mockBundleCheckpoints.get(bundleRoot) ?? 1) : 1;
+  if (bundleRoot) mockBundleCheckpoints.delete(bundleRoot);
   const changes = emitMockStage(connectionId, sessionId);
-  return { sessionId, restoredFiles: 1, changes };
+  return { sessionId, restoredFiles, changes };
 }
 
 export async function discardAgentStagedFile(

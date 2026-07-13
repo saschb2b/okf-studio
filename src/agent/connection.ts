@@ -36,6 +36,7 @@ export interface AgentSessionInfo {
   connectionId: string;
   sessionId: string;
   bundleRoot: string;
+  stagedChanges: AgentStagedChangesInfo | null;
 }
 
 export interface AgentSessionHistoryInfo {

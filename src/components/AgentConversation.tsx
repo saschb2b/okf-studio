@@ -1076,7 +1076,7 @@ export function AgentConversation({
   let composerStatus = connection.capabilities.promptImage
     ? "Text and images"
     : isLocalTextOnly
-      ? "Local text only"
+      ? "Bundle access off"
       : "Text only";
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
@@ -1675,9 +1675,9 @@ export function AgentConversation({
                 <h3>{isLocalTextOnly ? "Chat with your local model" : "Ask about this bundle"}</h3>
                 {isLocalTextOnly ? (
                   <p>
-                    Studio supplies its capability boundary and the available skill names, then
-                    sends your message and recent thread text. Bundle context, sources, detailed
-                    skill instructions, edits, and OKF tools are not sent yet.
+                    Studio supplies its capability boundary and can load canonical OKF guidance
+                    when the model requests it. Your bundle, sources, validation, edits, and
+                    filesystem remain unavailable.
                   </p>
                 ) : (
                   <>

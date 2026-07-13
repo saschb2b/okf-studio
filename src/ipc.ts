@@ -1520,7 +1520,43 @@ async function emitMockLocalTurn(info: AgentTurnInfo, text: string): Promise<voi
     mockCancelledTurns.delete(info.turnId);
     return;
   }
-  const responseText = `Local model received: ${text}`;
+  const loadsSkill = /\b(?:load|use)\b.*\bOKF\b.*\b(?:guidance|instructions?)\b/iu.test(text);
+  if (loadsSkill) {
+    const toolCallId = `local-tool-${info.turnId}-0`;
+    emitAgentTurn({
+      ...info,
+      update: {
+        kind: "tool-call",
+        toolCallId,
+        title: "Load OKF instructions",
+        toolKind: "read",
+        status: "in-progress",
+        locations: null,
+        changeState: null,
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (mockCancelledTurns.has(info.turnId)) {
+      emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+      mockCancelledTurns.delete(info.turnId);
+      return;
+    }
+    emitAgentTurn({
+      ...info,
+      update: {
+        kind: "tool-call",
+        toolCallId,
+        title: null,
+        toolKind: null,
+        status: "completed",
+        locations: null,
+        changeState: null,
+      },
+    });
+  }
+  const responseText = loadsSkill
+    ? "Loaded packaged OKF instructions. Bundle access remains off."
+    : `Local model received: ${text}`;
   emitAgentTurn({
     ...info,
     update: { kind: "text", text: responseText, messageId: null },

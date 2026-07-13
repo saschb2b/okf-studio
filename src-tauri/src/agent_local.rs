@@ -17,6 +17,13 @@ const MAX_RESPONSE_BYTES: u64 = 256 * 1024;
 const MAX_CHAT_RESPONSE_BYTES: u64 = 1024 * 1024;
 const MAX_MODELS: usize = 256;
 const MAX_MODEL_ID_CHARS: usize = 256;
+const MAX_TOOL_CALLS: usize = 8;
+const MAX_TOOL_CALLS_PER_STEP: usize = 4;
+const MAX_TOOL_ROUNDS: usize = 6;
+const MAX_TOOL_NAME_CHARS: usize = 64;
+const MAX_TOOL_ID_CHARS: usize = 128;
+const MAX_TOOL_ARGUMENT_BYTES: usize = 8 * 1024;
+const MAX_TOOL_RESULT_CHARS: usize = 32 * 1024;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "kebab-case")]
@@ -65,6 +72,26 @@ pub(crate) struct LocalModelRuntime {
 pub(crate) struct LocalChatMessage {
     pub role: &'static str,
     pub content: String,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct LocalToolDefinition {
+    pub name: &'static str,
+    pub description: &'static str,
+    pub parameters: serde_json::Value,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct LocalToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: serde_json::Value,
+}
+
+#[derive(Debug)]
+struct LocalChatStep {
+    content: Option<String>,
+    tool_calls: Vec<LocalToolCall>,
 }
 
 pub fn list(app: &AppHandle) -> Result<Vec<LocalModelProfile>, String> {
@@ -153,12 +180,100 @@ pub(crate) fn chat(
     runtime: &LocalModelRuntime,
     messages: &[LocalChatMessage],
 ) -> Result<String, String> {
+    let messages = messages
+        .iter()
+        .map(|message| {
+            serde_json::json!({
+                "role": message.role,
+                "content": message.content,
+            })
+        })
+        .collect::<Vec<_>>();
+    let response = chat_step(runtime, &messages, &[])?;
+    if !response.tool_calls.is_empty() {
+        return Err("The model requested a tool during a text-only turn.".to_string());
+    }
+    response
+        .content
+        .ok_or_else(|| "The model returned an empty response.".to_string())
+}
+
+pub(crate) fn chat_with_tools(
+    runtime: &LocalModelRuntime,
+    messages: &[LocalChatMessage],
+    tools: &[LocalToolDefinition],
+    mut execute: impl FnMut(&LocalToolCall) -> Result<String, String>,
+) -> Result<String, String> {
+    if tools.is_empty() {
+        return chat(runtime, messages);
+    }
+    let mut request_messages = messages
+        .iter()
+        .map(|message| {
+            serde_json::json!({
+                "role": message.role,
+                "content": message.content,
+            })
+        })
+        .collect::<Vec<_>>();
+    let mut total_calls = 0;
+    for round in 0..MAX_TOOL_ROUNDS {
+        let mut response = chat_step(runtime, &request_messages, tools)?;
+        if response.tool_calls.is_empty() {
+            return response
+                .content
+                .ok_or_else(|| "The model returned an empty response.".to_string());
+        }
+        if response.tool_calls.len() > MAX_TOOL_CALLS_PER_STEP
+            || total_calls + response.tool_calls.len() > MAX_TOOL_CALLS
+        {
+            return Err("The model requested too many tools in one turn.".to_string());
+        }
+        for (index, call) in response.tool_calls.iter_mut().enumerate() {
+            call.id = format!("local-tool-{round}-{index}");
+        }
+        request_messages.push(assistant_tool_message(runtime.provider, &response));
+        for call in &response.tool_calls {
+            let result = execute(call)?;
+            let result = result
+                .chars()
+                .take(MAX_TOOL_RESULT_CHARS)
+                .collect::<String>();
+            request_messages.push(tool_result_message(runtime.provider, call, result));
+        }
+        total_calls += response.tool_calls.len();
+    }
+    Err("The model exceeded Studio's tool-round limit.".to_string())
+}
+
+fn chat_step(
+    runtime: &LocalModelRuntime,
+    messages: &[serde_json::Value],
+    tools: &[LocalToolDefinition],
+) -> Result<LocalChatStep, String> {
     let endpoint = chat_endpoint(runtime.provider, &runtime.base_url);
-    let body = serde_json::json!({
+    let mut body = serde_json::json!({
         "model": &runtime.model,
         "messages": messages,
         "stream": false,
     });
+    if !tools.is_empty() {
+        body["tools"] = serde_json::Value::Array(
+            tools
+                .iter()
+                .map(|tool| {
+                    serde_json::json!({
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        },
+                    })
+                })
+                .collect(),
+        );
+    }
     let body = serde_json::to_vec(&body)
         .map_err(|_| "Studio could not encode the local-model request.".to_string())?;
     let agent = ureq::AgentBuilder::new()
@@ -175,7 +290,7 @@ pub(crate) fn chat(
         .send_bytes(&body)
         .map_err(chat_error)?;
     let bytes = read_bounded_response(response, MAX_CHAT_RESPONSE_BYTES, "model response")?;
-    parse_chat_response(runtime.provider, &bytes)
+    parse_chat_step(runtime.provider, &bytes)
 }
 
 fn profile_file(app: &AppHandle) -> Result<PathBuf, String> {
@@ -357,31 +472,172 @@ fn read_bounded_response(
     Ok(bytes)
 }
 
+#[cfg(test)]
 fn parse_chat_response(provider: LocalModelProvider, bytes: &[u8]) -> Result<String, String> {
+    let response = parse_chat_step(provider, bytes)?;
+    if !response.tool_calls.is_empty() {
+        return Err("The model requested a tool during a text-only turn.".to_string());
+    }
+    response
+        .content
+        .ok_or_else(|| "The model returned an empty response.".to_string())
+}
+
+fn parse_chat_step(provider: LocalModelProvider, bytes: &[u8]) -> Result<LocalChatStep, String> {
     let value: serde_json::Value = serde_json::from_slice(bytes)
         .map_err(|_| "The endpoint returned an invalid JSON model response.".to_string())?;
-    let content = match provider {
-        LocalModelProvider::Ollama => value
-            .get("message")
-            .and_then(|message| message.get("content")),
+    let message = match provider {
+        LocalModelProvider::Ollama => value.get("message"),
         _ => value
             .get("choices")
             .and_then(serde_json::Value::as_array)
             .and_then(|choices| choices.first())
-            .and_then(|choice| choice.get("message"))
-            .and_then(|message| message.get("content")),
+            .and_then(|choice| choice.get("message")),
     }
-    .and_then(serde_json::Value::as_str)
     .ok_or_else(|| "The endpoint returned an unsupported model-response shape.".to_string())?;
-    let content = content
+    let content = message
+        .get("content")
+        .and_then(serde_json::Value::as_str)
+        .map(clean_chat_content)
+        .filter(|content| !content.is_empty());
+    let tool_calls = message
+        .get("tool_calls")
+        .and_then(serde_json::Value::as_array)
+        .map(|calls| parse_tool_calls(provider, calls))
+        .transpose()?
+        .unwrap_or_default();
+    if content.is_none() && tool_calls.is_empty() {
+        return Err("The model returned an empty response.".to_string());
+    }
+    Ok(LocalChatStep {
+        content,
+        tool_calls,
+    })
+}
+
+fn parse_tool_calls(
+    provider: LocalModelProvider,
+    calls: &[serde_json::Value],
+) -> Result<Vec<LocalToolCall>, String> {
+    if calls.len() > MAX_TOOL_CALLS_PER_STEP {
+        return Err("The model requested too many tools in one step.".to_string());
+    }
+    calls
+        .iter()
+        .map(|call| {
+            let function = call
+                .get("function")
+                .ok_or_else(|| "The model returned an invalid tool call.".to_string())?;
+            let name = function
+                .get("name")
+                .and_then(serde_json::Value::as_str)
+                .and_then(bounded_tool_name)
+                .ok_or_else(|| "The model returned an invalid tool name.".to_string())?;
+            let arguments = match provider {
+                LocalModelProvider::Ollama => function.get("arguments").cloned(),
+                _ => function
+                    .get("arguments")
+                    .and_then(serde_json::Value::as_str)
+                    .and_then(|arguments| serde_json::from_str(arguments).ok()),
+            }
+            .filter(serde_json::Value::is_object)
+            .ok_or_else(|| "The model returned invalid tool arguments.".to_string())?;
+            if serde_json::to_vec(&arguments)
+                .is_ok_and(|encoded| encoded.len() > MAX_TOOL_ARGUMENT_BYTES)
+            {
+                return Err("The model tool arguments exceed the size limit.".to_string());
+            }
+            let id = match provider {
+                LocalModelProvider::Ollama => String::new(),
+                _ => call
+                    .get("id")
+                    .and_then(serde_json::Value::as_str)
+                    .and_then(bounded_tool_id)
+                    .ok_or_else(|| "The model returned an invalid tool-call ID.".to_string())?,
+            };
+            Ok(LocalToolCall {
+                id,
+                name,
+                arguments,
+            })
+        })
+        .collect()
+}
+
+fn assistant_tool_message(
+    provider: LocalModelProvider,
+    response: &LocalChatStep,
+) -> serde_json::Value {
+    let content = response.content.as_deref().unwrap_or("");
+    let tool_calls = response
+        .tool_calls
+        .iter()
+        .map(|call| match provider {
+            LocalModelProvider::Ollama => serde_json::json!({
+                "type": "function",
+                "function": {
+                    "name": call.name,
+                    "arguments": call.arguments,
+                },
+            }),
+            _ => serde_json::json!({
+                "id": call.id,
+                "type": "function",
+                "function": {
+                    "name": call.name,
+                    "arguments": serde_json::to_string(&call.arguments).unwrap_or_else(|_| "{}".to_string()),
+                },
+            }),
+        })
+        .collect::<Vec<_>>();
+    serde_json::json!({
+        "role": "assistant",
+        "content": content,
+        "tool_calls": tool_calls,
+    })
+}
+
+fn tool_result_message(
+    provider: LocalModelProvider,
+    call: &LocalToolCall,
+    content: String,
+) -> serde_json::Value {
+    match provider {
+        LocalModelProvider::Ollama => serde_json::json!({
+            "role": "tool",
+            "tool_name": call.name,
+            "content": content,
+        }),
+        _ => serde_json::json!({
+            "role": "tool",
+            "tool_call_id": call.id,
+            "content": content,
+        }),
+    }
+}
+
+fn clean_chat_content(content: &str) -> String {
+    content
         .trim()
         .chars()
         .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
-        .collect::<String>();
-    if content.is_empty() {
-        return Err("The model returned an empty response.".to_string());
-    }
-    Ok(content)
+        .collect()
+}
+
+fn bounded_tool_name(value: &str) -> Option<String> {
+    (!value.is_empty()
+        && value.len() <= MAX_TOOL_NAME_CHARS
+        && value.bytes().all(|character| {
+            character.is_ascii_alphanumeric() || character == b'_' || character == b'-'
+        }))
+    .then(|| value.to_string())
+}
+
+fn bounded_tool_id(value: &str) -> Option<String> {
+    (!value.is_empty()
+        && value.chars().count() <= MAX_TOOL_ID_CHARS
+        && !value.chars().any(char::is_control))
+    .then(|| value.to_string())
 }
 
 fn parse_models(provider: LocalModelProvider, bytes: &[u8]) -> Result<Vec<String>, String> {
@@ -520,6 +776,52 @@ mod tests {
         }
     }
 
+    fn read_http_request(stream: &mut std::net::TcpStream) -> String {
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("set read timeout");
+        let mut request = Vec::new();
+        let mut buffer = [0_u8; 1024];
+        loop {
+            let read = stream.read(&mut buffer).expect("read request");
+            if read == 0 {
+                break;
+            }
+            request.extend_from_slice(&buffer[..read]);
+            let Some(header_end) = request.windows(4).position(|window| window == b"\r\n\r\n")
+            else {
+                continue;
+            };
+            let headers = String::from_utf8_lossy(&request[..header_end]);
+            let content_length = headers
+                .lines()
+                .find_map(|line| {
+                    line.strip_prefix("Content-Length: ")
+                        .or_else(|| line.strip_prefix("content-length: "))
+                })
+                .and_then(|value| value.parse::<usize>().ok())
+                .expect("content length");
+            if request.len() >= header_end + 4 + content_length {
+                break;
+            }
+        }
+        String::from_utf8(request).expect("UTF-8 request")
+    }
+
+    fn write_json_response(stream: &mut std::net::TcpStream, body: &str) {
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+        .expect("write response");
+    }
+
+    fn request_json(request: &str) -> serde_json::Value {
+        let (_, body) = request.split_once("\r\n\r\n").expect("request body");
+        serde_json::from_str(body).expect("JSON request")
+    }
+
     #[test]
     fn saves_lists_and_removes_metadata_without_credentials() {
         let file = temp_file("roundtrip");
@@ -616,6 +918,100 @@ mod tests {
             .expect("parse compatible response"),
             "Compatible answer"
         );
+
+        let ollama_tool = parse_chat_step(
+            LocalModelProvider::Ollama,
+            br#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"instructions"}}}]}}"#,
+        )
+        .expect("parse Ollama tool call");
+        assert_eq!(ollama_tool.tool_calls[0].name, "load_okf_skill_resource");
+        assert_eq!(
+            ollama_tool.tool_calls[0].arguments["resource"],
+            "instructions"
+        );
+
+        let compatible_tool = parse_chat_step(
+            LocalModelProvider::OpenAiCompatible,
+            br#"{"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call-1","type":"function","function":{"name":"load_okf_skill_resource","arguments":"{\"resource\":\"commands\"}"}}]}}]}"#,
+        )
+        .expect("parse compatible tool call");
+        assert_eq!(compatible_tool.tool_calls[0].id, "call-1");
+        let tool_result = tool_result_message(
+            LocalModelProvider::OpenAiCompatible,
+            &compatible_tool.tool_calls[0],
+            "commands body".to_string(),
+        );
+        assert_eq!(tool_result["role"], "tool");
+        assert_eq!(tool_result["tool_call_id"], "call-1");
+    }
+
+    #[test]
+    fn runs_a_bounded_ollama_tool_loop() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            let (mut first, _) = listener.accept().expect("accept first request");
+            let first_request = read_http_request(&mut first);
+            let first_body = request_json(&first_request);
+            assert_eq!(
+                first_body["tools"][0]["function"]["name"],
+                "load_okf_skill_resource"
+            );
+            write_json_response(
+                &mut first,
+                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"instructions"}}}]}}"#,
+            );
+
+            let (mut second, _) = listener.accept().expect("accept second request");
+            let second_request = read_http_request(&mut second);
+            let second_body = request_json(&second_request);
+            let tool_result = second_body["messages"]
+                .as_array()
+                .and_then(|messages| messages.iter().find(|message| message["role"] == "tool"))
+                .expect("tool result message");
+            assert_eq!(tool_result["tool_name"], "load_okf_skill_resource");
+            assert_eq!(tool_result["content"], "canonical resource body");
+            write_json_response(
+                &mut second,
+                r#"{"message":{"role":"assistant","content":"I loaded the requested guidance."}}"#,
+            );
+        });
+        let runtime = LocalModelRuntime {
+            profile_id: "local-0123456789abcdef".to_string(),
+            profile_name: "Test endpoint".to_string(),
+            provider: LocalModelProvider::Ollama,
+            base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
+            model: "qwen-test".to_string(),
+        };
+        let tools = [LocalToolDefinition {
+            name: "load_okf_skill_resource",
+            description: "Load one resource.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {"resource": {"type": "string"}},
+                "required": ["resource"],
+                "additionalProperties": false
+            }),
+        }];
+        let mut calls = 0;
+        let answer = chat_with_tools(
+            &runtime,
+            &[LocalChatMessage {
+                role: "user",
+                content: "Load the instructions".to_string(),
+            }],
+            &tools,
+            |call| {
+                calls += 1;
+                assert_eq!(call.name, "load_okf_skill_resource");
+                assert_eq!(call.arguments["resource"], "instructions");
+                Ok("canonical resource body".to_string())
+            },
+        )
+        .expect("tool-loop response");
+        assert_eq!(answer, "I loaded the requested guidance.");
+        assert_eq!(calls, 1);
+        server.join().expect("join test server");
     }
 
     #[test]
@@ -624,45 +1020,12 @@ mod tests {
         let address = listener.local_addr().expect("server address");
         let server = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept request");
-            stream
-                .set_read_timeout(Some(Duration::from_secs(5)))
-                .expect("set read timeout");
-            let mut request = Vec::new();
-            let mut buffer = [0_u8; 1024];
-            loop {
-                let read = stream.read(&mut buffer).expect("read request");
-                if read == 0 {
-                    break;
-                }
-                request.extend_from_slice(&buffer[..read]);
-                let Some(header_end) = request.windows(4).position(|window| window == b"\r\n\r\n")
-                else {
-                    continue;
-                };
-                let headers = String::from_utf8_lossy(&request[..header_end]);
-                let content_length = headers
-                    .lines()
-                    .find_map(|line| {
-                        line.strip_prefix("Content-Length: ")
-                            .or_else(|| line.strip_prefix("content-length: "))
-                    })
-                    .and_then(|value| value.parse::<usize>().ok())
-                    .expect("content length");
-                if request.len() >= header_end + 4 + content_length {
-                    break;
-                }
-            }
-            let request = String::from_utf8(request).expect("UTF-8 request");
+            let request = read_http_request(&mut stream);
             assert!(request.starts_with("POST /api/chat HTTP/1.1"));
             assert!(request.contains(r#""model":"qwen-test""#));
             assert!(request.contains(r#""content":"Hello locally""#));
             let body = r#"{"message":{"role":"assistant","content":"Private response"}}"#;
-            write!(
-                stream,
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                body.len()
-            )
-            .expect("write response");
+            write_json_response(&mut stream, body);
         });
         let runtime = LocalModelRuntime {
             profile_id: "local-0123456789abcdef".to_string(),

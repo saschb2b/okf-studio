@@ -657,10 +657,71 @@ async fn run_local_connection(
                 let task_connection = connection_id.clone();
                 let task_live = Arc::clone(&live);
                 tokio::spawn(async move {
+                    let tool_events = Arc::clone(&task_events);
+                    let tool_connection = task_connection.clone();
+                    let tool_session = session_id.clone();
+                    let tool_turn = turn_id.clone();
+                    let tool_cancelled = Arc::clone(&cancelled);
+                    let tool_live = Arc::clone(&task_live);
                     let result = tokio::task::spawn_blocking(move || {
                         let request_messages = local_request_messages(&messages);
-                        agent_local::chat(&task_runtime, &request_messages)
-                            .map(|answer| (messages, answer))
+                        let tools = agent_studio::native_skill_tools();
+                        agent_local::chat_with_tools(
+                            &task_runtime,
+                            &request_messages,
+                            &tools,
+                            |call| {
+                                if tool_cancelled.load(Ordering::Acquire)
+                                    || !tool_live.load(Ordering::Acquire)
+                                {
+                                    return Err(
+                                        "The local Studio Agent turn was cancelled.".to_string()
+                                    );
+                                }
+                                let tool_call_id = bounded_tool_field(&call.id);
+                                let title = agent_studio::skill_tool_title(call);
+                                tool_events(AgentTurnEvent {
+                                    connection_id: tool_connection.clone(),
+                                    session_id: tool_session.clone(),
+                                    turn_id: tool_turn.clone(),
+                                    update: AgentTurnUpdate::ToolCall {
+                                        tool_call_id: tool_call_id.clone(),
+                                        title: Some(title),
+                                        tool_kind: Some("read"),
+                                        status: Some("in-progress"),
+                                        locations: None,
+                                        change_state: None,
+                                    },
+                                });
+                                let result = agent_studio::execute_skill_tool(call);
+                                if tool_cancelled.load(Ordering::Acquire)
+                                    || !tool_live.load(Ordering::Acquire)
+                                {
+                                    return Err(
+                                        "The local Studio Agent turn was cancelled.".to_string()
+                                    );
+                                }
+                                tool_events(AgentTurnEvent {
+                                    connection_id: tool_connection.clone(),
+                                    session_id: tool_session.clone(),
+                                    turn_id: tool_turn.clone(),
+                                    update: AgentTurnUpdate::ToolCall {
+                                        tool_call_id,
+                                        title: None,
+                                        tool_kind: None,
+                                        status: Some(if result.is_ok() {
+                                            "completed"
+                                        } else {
+                                            "failed"
+                                        }),
+                                        locations: None,
+                                        change_state: None,
+                                    },
+                                });
+                                result
+                            },
+                        )
+                        .map(|answer| (messages, answer))
                     })
                     .await
                     .map_err(|_| "Local model request did not complete.".to_string())
@@ -825,7 +886,7 @@ fn local_request_messages(
     conversation: &[agent_local::LocalChatMessage],
 ) -> Vec<agent_local::LocalChatMessage> {
     let mut messages = Vec::with_capacity(conversation.len() + 1);
-    messages.push(agent_studio::text_only_system_message());
+    messages.push(agent_studio::native_system_message());
     messages.extend_from_slice(conversation);
     messages
 }
@@ -4901,6 +4962,7 @@ mod tests {
         assert_eq!(request.len(), 2);
         assert_eq!(request[0].role, "system");
         assert!(request[0].content.contains("cannot read the active bundle"));
+        assert!(request[0].content.contains("load_okf_skill_resource"));
         assert_eq!(request[1].role, "user");
         assert_eq!(conversation.len(), 1);
     }

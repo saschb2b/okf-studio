@@ -110,7 +110,7 @@ describe("OKF Studio app", () => {
       .not.toBeInTheDocument();
   });
 
-  it("connects a saved local model for a text-only Studio Agent turn", async () => {
+  it("connects a saved local model for a bounded Studio Agent turn", async () => {
     const user = userEvent.setup();
     renderApp();
     await openFolder(user);
@@ -134,7 +134,7 @@ describe("OKF Studio app", () => {
 
     expect(await screen.findByRole("heading", { name: "Chat with your local model" }))
       .toBeInTheDocument();
-    expect(screen.getByText(/supplies its capability boundary and the available skill names/i))
+    expect(screen.getByText(/can load canonical OKF guidance/i))
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add context or sources" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
@@ -142,6 +142,15 @@ describe("OKF Studio app", () => {
     await user.type(screen.getByLabelText("Message the agent"), "Hello from Studio");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Local model received: Hello from Studio"))
+      .toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText("Message the agent"),
+      "Load the OKF instructions and summarize the guidance",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Load OKF instructions")).toBeInTheDocument();
+    expect(await screen.findByText("Loaded packaged OKF instructions. Bundle access remains off."))
       .toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));

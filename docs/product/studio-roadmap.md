@@ -132,7 +132,7 @@ Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and 
 - [x] Provide ACP agents with canonical, session-scoped, read-only text access to the active bundle.
 - [x] Attach up to eight concepts through a searchable picker as visible, removable, scoped resource links.
 - [x] Give Studio Agent a native system boundary and a metadata-only catalog generated from the canonical OKF skill.
-- [ ] Progressively load the detailed OKF skill resources through the native tool loop.
+- [x] Progressively load the detailed OKF skill resources through the native tool loop.
 - [ ] Add the native Studio Agent tool loop before enabling bundle context, sources, or edits for local models.
 - [x] Add bounded native search and graph traversal tools and offer them to every ACP session over standard stdio MCP.
 - [x] Add bounded inventory and validation inspection with filtered cursor paging.

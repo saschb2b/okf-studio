@@ -547,9 +547,43 @@ fn stop_watch(state: State<'_, WatchState>) {
 /// Diagnostic sink: print a frontend message to the host terminal. The webview
 /// console is invisible in `tauri dev` output, so crash forensics (uncaught
 /// errors, heap samples) route through here.
+const MAX_FRONTEND_LOG_CHARS: usize = 16 * 1024;
+const FRONTEND_LOG_TRUNCATION_MARKER: &str = " … [truncated]";
+
+fn bounded_frontend_diagnostic(message: &str) -> String {
+    let mut diagnostic = String::new();
+    let mut separated = false;
+    let mut characters = message.trim().chars();
+    for character in characters.by_ref().take(MAX_FRONTEND_LOG_CHARS) {
+        if character.is_whitespace() {
+            if !separated && !diagnostic.is_empty() {
+                diagnostic.push(' ');
+                separated = true;
+            }
+            continue;
+        }
+        if character.is_control() {
+            continue;
+        }
+        diagnostic.push(character);
+        separated = false;
+    }
+    if characters.next().is_some() {
+        let available = MAX_FRONTEND_LOG_CHARS
+            .saturating_sub(FRONTEND_LOG_TRUNCATION_MARKER.chars().count());
+        diagnostic = diagnostic.chars().take(available).collect();
+        diagnostic.push_str(FRONTEND_LOG_TRUNCATION_MARKER);
+    }
+    if diagnostic.is_empty() {
+        "(empty diagnostic)".to_string()
+    } else {
+        diagnostic
+    }
+}
+
 #[tauri::command]
 fn frontend_log(message: String) {
-    eprintln!("[frontend] {message}");
+    eprintln!("[frontend] {}", bounded_frontend_diagnostic(&message));
 }
 
 /// Whether the running install can update itself in place. The Tauri updater
@@ -685,4 +719,29 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        bounded_frontend_diagnostic, FRONTEND_LOG_TRUNCATION_MARKER, MAX_FRONTEND_LOG_CHARS,
+    };
+
+    #[test]
+    fn frontend_diagnostics_are_single_line_control_free_and_bounded() {
+        assert_eq!(
+            bounded_frontend_diagnostic(" first\u{1b}[31m\r\nsecond\tline\u{2028}three\0 "),
+            "first[31m second line three"
+        );
+        assert_eq!(bounded_frontend_diagnostic("\r\n\t"), "(empty diagnostic)");
+
+        let oversized = "é".repeat(MAX_FRONTEND_LOG_CHARS + 1);
+        let bounded = bounded_frontend_diagnostic(&oversized);
+        assert!(bounded.ends_with(FRONTEND_LOG_TRUNCATION_MARKER));
+        assert_eq!(bounded.chars().count(), MAX_FRONTEND_LOG_CHARS);
+        assert_eq!(
+            bounded.matches('é').count(),
+            MAX_FRONTEND_LOG_CHARS - FRONTEND_LOG_TRUNCATION_MARKER.chars().count()
+        );
+    }
 }

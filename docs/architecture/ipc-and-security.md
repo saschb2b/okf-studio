@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-13T19:12:42Z
+timestamp: 2026-07-13T19:15:54Z
 ---
 
 # Command & event surface
@@ -44,7 +44,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `read_settings()` / `write_settings(s)` | Read/persist user [settings](../ux/settings.md) — theme, scan limits, reduce-motion (via the store plugin). |
 | `start_watch(folder)` / `stop_watch()` | Begin/end [file watching](../features/live-reload.md). |
 | `can_self_update()` | Report whether the current package can be replaced by the updater; it performs no update check. |
-| `frontend_log(message)` | Mirror a frontend diagnostic to the host terminal during development. It does not persist a transcript. |
+| `frontend_log(message)` | Mirror one frontend diagnostic to the host terminal during development as a control-free line capped at 16,384 characters. It does not persist a transcript. |
 
 | Event | Payload |
 |-------|---------|
@@ -63,6 +63,7 @@ ACP reads, explicit context links, staged writes, reported diffs, checkpoints, a
 
 - **Read-only folder opening.** The webview has no direct filesystem capability. Rust scans, parses, reads assets, and watches the chosen folder. Pointing Studio at a folder cannot modify it. A later bundle write requires the separate thread grant, staged revision, validation, review, and transactional Apply path. App metadata and checkpoints live in Rust-owned application directories.
 - **Transcript export is an explicit destination write.** The webview supplies bounded Markdown and a safe basename only after the user chooses **Export**. Rust owns the native save dialog and the write, enforces a `.md` extension, and returns no absolute path. This grant applies to that one file selection; it does not grant bundle write access or persistent filesystem scope.
+- **Frontend diagnostics are terminal-safe.** Uncaught webview failures may be mirrored to the host terminal for development. Rust removes control characters, flattens line breaks, caps the message at 16,384 characters, and retains nothing. Agent diagnostics use their separate bounded and redacted path.
 - **Scoped bundle mediation.** Bundle read and staged-write commands canonicalize the active root and reject traversal, symbolic-link escape, and protected paths. Explicit source, export, fresh-bundle destination, and open-folder dialogs may select another path for that one bounded operation. External ACP processes are separate: they retain normal operating-system access until an enforcement host exists, so Studio discloses that scope and rejects unattended writes.
 - **Asset reads are doubly contained.** `read_asset` (text) and `read_asset_data_url` (images) both resolve the requested path against the bundle root, canonicalize it (collapsing `..` and symlinks), and refuse anything that lands outside the root or whose extension is not on a small allowlist (text: `.html`/`.css`/`.svg`; images: `.png`/`.jpg`/`.gif`/`.webp`/`.avif`/`.svg`/…) — never `.md` (concepts are read via `read_bundle`) or arbitrary files. So even a hand-crafted bundle linking `../../etc/passwd` from an example reads as a clean miss, not a leak.
 - **Images — and all embedded media — render offline.** A body image is rendered by **inlining a local bundle file** as a `data:` URL via `read_asset_data_url` — never by fetching a URL. A **remote** image is *not* auto-loaded (that would be an automatic network call); it degrades to an "open in browser" affordance, like a `resource` link. The render step strips every fetching attribute up front — `<img src>` (to `data-mdsrc`) and `srcset`, and `src`/`srcset`/`poster` on embedded `<video>`/`<audio>`/`<source>`/`<track>`, which have no offline resolver and render inert — so the webview never even attempts a fetch, whether the media came from markdown syntax or [embedded raw HTML](../features/concept-reader.md). Embedded HTML's inline styles are also contained: out-of-flow positioning is dropped so bundle content cannot overlay the app's UI.

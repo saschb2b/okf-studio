@@ -22,7 +22,7 @@ const MAX_TOOL_CALLS_PER_STEP: usize = 4;
 const MAX_TOOL_ROUNDS: usize = 6;
 const MAX_TOOL_NAME_CHARS: usize = 64;
 const MAX_TOOL_ID_CHARS: usize = 128;
-const MAX_TOOL_ARGUMENT_BYTES: usize = 8 * 1024;
+const MAX_TOOL_ARGUMENT_BYTES: usize = 256 * 1024;
 const MAX_TOOL_RESULT_CHARS: usize = 96 * 1024;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -942,6 +942,35 @@ mod tests {
         );
         assert_eq!(tool_result["role"], "tool");
         assert_eq!(tool_result["tool_call_id"], "call-1");
+    }
+
+    #[test]
+    fn accepts_bounded_native_proposals_and_rejects_oversized_arguments() {
+        let proposal = serde_json::json!([{
+            "function": {
+                "name": "studio_stage_propose",
+                "arguments": {"files": [{"path": "concept.md", "content": "x".repeat(64 * 1024)}]}
+            }
+        }]);
+        let calls = parse_tool_calls(
+            LocalModelProvider::Ollama,
+            proposal.as_array().expect("proposal calls"),
+        )
+        .expect("bounded proposal arguments");
+        assert_eq!(calls[0].arguments["files"][0]["path"], "concept.md");
+
+        let oversized = serde_json::json!([{
+            "function": {
+                "name": "studio_stage_propose",
+                "arguments": {"content": "x".repeat(MAX_TOOL_ARGUMENT_BYTES)}
+            }
+        }]);
+        let error = parse_tool_calls(
+            LocalModelProvider::Ollama,
+            oversized.as_array().expect("oversized calls"),
+        )
+        .expect_err("oversized arguments must fail");
+        assert!(error.contains("size limit"));
     }
 
     #[test]

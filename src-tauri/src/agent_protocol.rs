@@ -34,7 +34,7 @@ use crate::agent_stage::{
     AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
 };
 use crate::{
-    agent_custom, agent_install, agent_local, agent_mcp, agent_native_sources,
+    agent_custom, agent_install, agent_local, agent_mcp, agent_native_sources, agent_native_stage,
     agent_sources::AgentSourceInput, agent_studio,
 };
 
@@ -437,6 +437,10 @@ pub async fn connect_local(
     let turn_events: TurnEventSink = Arc::new(move |event| {
         let _ = turn_app.emit(TURN_EVENT, event);
     });
+    let stage_app = app.clone();
+    let stage_events: StageEventSink = Arc::new(move |event| {
+        let _ = stage_app.emit(STAGE_EVENT, event);
+    });
     let worker_id = connection_id.clone();
     let worker_profile_id = runtime.profile_id.clone();
     let worker_profile_name = runtime.profile_name.clone();
@@ -450,6 +454,7 @@ pub async fn connect_local(
             command_rx,
             worker_stages,
             turn_events,
+            stage_events,
         )
         .await;
         if let Ok(mut active) = workers.lock() {
@@ -539,6 +544,7 @@ async fn run_local_connection(
     mut commands: tokio::sync::mpsc::Receiver<AgentHostCommand>,
     stages: Arc<SessionStages>,
     turn_events: TurnEventSink,
+    stage_events: StageEventSink,
 ) -> Result<(), String> {
     let live = Arc::new(AtomicBool::new(true));
     let _lifetime = LocalWorkerLifetime(Arc::clone(&live));
@@ -668,6 +674,8 @@ async fn run_local_connection(
                 let task_sessions = Arc::clone(&sessions);
                 let task_turns = Arc::clone(&active_turns);
                 let task_events = Arc::clone(&turn_events);
+                let task_stage_events = Arc::clone(&stage_events);
+                let task_stages = Arc::clone(&stages);
                 let task_connection = connection_id.clone();
                 let task_live = Arc::clone(&live);
                 tokio::spawn(async move {
@@ -682,6 +690,7 @@ async fn run_local_connection(
                         let mut tools = agent_studio::native_skill_tools();
                         tools.extend(agent_mcp::native_tool_definitions());
                         tools.extend(source_tools);
+                        tools.extend(agent_native_stage::native_tool_definitions());
                         agent_local::chat_with_tools(
                             &task_runtime,
                             &request_messages,
@@ -703,6 +712,8 @@ async fn run_local_connection(
                                     let (title, tool_kind) =
                                         agent_native_sources::native_tool_display(call);
                                     (title.to_string(), tool_kind)
+                                } else if agent_native_stage::is_native_stage_tool(&call.name) {
+                                    agent_native_stage::native_tool_display(call)
                                 } else {
                                     let (title, tool_kind) = agent_mcp::native_tool_display(call);
                                     (title.to_string(), tool_kind)
@@ -720,14 +731,35 @@ async fn run_local_connection(
                                         change_state: None,
                                     },
                                 });
-                                let result = if call.name
+                                let (result, change_state) = if call.name
                                     == agent_studio::LOAD_SKILL_RESOURCE_TOOL
                                 {
-                                    agent_studio::execute_skill_tool(call)
+                                    (agent_studio::execute_skill_tool(call), None)
                                 } else if agent_native_sources::is_native_source_tool(&call.name) {
-                                    agent_native_sources::execute_native_tool(&sources, call)
+                                    (
+                                        agent_native_sources::execute_native_tool(&sources, call),
+                                        None,
+                                    )
+                                } else if agent_native_stage::is_native_stage_tool(&call.name) {
+                                    match agent_native_stage::execute_native_tool(
+                                        &task_stages,
+                                        &tool_session,
+                                        &bundle_root,
+                                        call,
+                                    ) {
+                                        Ok(execution) => {
+                                            if let Some(changes) = execution.changes {
+                                                task_stage_events(AgentStageEvent {
+                                                    connection_id: tool_connection.clone(),
+                                                    changes,
+                                                });
+                                            }
+                                            (Ok(execution.output), execution.change_state)
+                                        }
+                                        Err(error) => (Err(error), None),
+                                    }
                                 } else {
-                                    agent_mcp::execute_native_tool(&bundle_root, call)
+                                    (agent_mcp::execute_native_tool(&bundle_root, call), None)
                                 };
                                 if tool_cancelled.load(Ordering::Acquire)
                                     || !tool_live.load(Ordering::Acquire)
@@ -750,7 +782,11 @@ async fn run_local_connection(
                                             "failed"
                                         }),
                                         locations: None,
-                                        change_state: None,
+                                        change_state: if result.is_ok() {
+                                            change_state
+                                        } else {
+                                            None
+                                        },
                                     },
                                 });
                                 Ok(result.unwrap_or_else(|error| {

@@ -1517,7 +1517,10 @@ async function emitMockLocalTool(
   info: AgentTurnInfo,
   index: number,
   title: string,
-  toolKind: "read" | "search",
+  toolKind: "read" | "search" | "edit",
+  changeState: "staged" | null = null,
+  beforeComplete?: () => void,
+  succeeds = true,
 ): Promise<boolean> {
   const toolCallId = `local-tool-${info.turnId}-${index}`;
   emitAgentTurn({
@@ -1534,6 +1537,7 @@ async function emitMockLocalTool(
   });
   await new Promise((resolve) => setTimeout(resolve, 100));
   if (mockCancelledTurns.has(info.turnId)) return false;
+  beforeComplete?.();
   emitAgentTurn({
     ...info,
     update: {
@@ -1541,9 +1545,9 @@ async function emitMockLocalTool(
       toolCallId,
       title: null,
       toolKind: null,
-      status: "completed",
+      status: succeeds ? "completed" : "failed",
       locations: null,
-      changeState: null,
+      changeState,
     },
   });
   return true;
@@ -1562,6 +1566,13 @@ async function emitMockLocalTurn(
   }
   const loadsSkill = /\b(?:load|use)\b.*\bOKF\b.*\b(?:guidance|instructions?)\b/iu.test(text);
   const searchesBundle = /\b(?:search|inspect)\b.*\b(?:bundle|concepts?)\b/iu.test(text);
+  const guidedWorkflow = text.startsWith("Create a new OKF bundle from the sources I attach") ||
+    text.startsWith("Review this OKF bundle and the sources I attach") ||
+    text.startsWith("Research this question across the active bundle") ||
+    text.startsWith("Assess this dataset documentation and propose a change plan");
+  const generatesBundle = text.startsWith(
+    "Generate the newest reviewed `okf-proposal` into Studio staging now.",
+  );
   let toolIndex = 0;
   if (loadsSkill) {
     const completed = await emitMockLocalTool(
@@ -1615,8 +1626,45 @@ async function emitMockLocalTurn(
       mockCancelledTurns.delete(info.turnId);
       return;
     }
+    toolIndex += 1;
   }
-  const responseText = sources.length > 0
+  const generation = { response: null as string | null };
+  if (generatesBundle) {
+    const writeGranted = mockStageState(info.sessionId).granted;
+    const generated = await emitMockLocalTool(
+      info,
+      toolIndex,
+      "Propose staged bundle files",
+      "edit",
+      writeGranted ? "staged" : null,
+      () => {
+        generation.response = mockBundleGeneration(info, text);
+      },
+      writeGranted,
+    );
+    if (!generated) {
+      emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+      mockCancelledTurns.delete(info.turnId);
+      return;
+    }
+    if (writeGranted) {
+      toolIndex += 1;
+      const validated = await emitMockLocalTool(
+        info,
+        toolIndex,
+        "Validate staged proposal",
+        "search",
+      );
+      if (!validated) {
+        emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+        mockCancelledTurns.delete(info.turnId);
+        return;
+      }
+    }
+  }
+  const responseText = generation.response ?? (guidedWorkflow
+    ? mockAgentResponse(text)
+    : sources.length > 0
     ? `Inspected ${sources.length} attached source${sources.length === 1 ? "" : "s"}, including ${sources[0]?.title ?? "the supplied evidence"}.`
     : loadsSkill && searchesBundle
     ? "Loaded packaged OKF instructions and found the Agent Panel concept at `features/agent-panel`."
@@ -1624,7 +1672,7 @@ async function emitMockLocalTurn(
       ? "Loaded packaged OKF instructions."
       : searchesBundle
         ? "Found the Agent Panel concept at `features/agent-panel`."
-        : `Local model received: ${text}`;
+        : mockAgentResponse(text));
   emitAgentTurn({
     ...info,
     update: { kind: "text", text: responseText, messageId: null },

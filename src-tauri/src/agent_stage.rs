@@ -440,6 +440,32 @@ impl SessionStages {
         Ok(snapshot(session_id, stage))
     }
 
+    /// Stage one atomic batch of proposed writes. Every file passes through
+    /// the same grant, containment, protected-path, and size checks as a
+    /// single ACP write. A rejected file leaves the existing stage unchanged.
+    pub fn stage_writes(
+        &self,
+        session_id: &str,
+        writes: Vec<(PathBuf, String)>,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "Bundle write denied: the ACP session is not active.".to_string())?;
+        if !stage.granted {
+            return Err(WRITE_GRANT_MESSAGE.to_string());
+        }
+        let mut candidate = stage.clone();
+        for (path, content) in writes {
+            stage_write_into(&mut candidate, &path, content)?;
+        }
+        *stage = candidate;
+        Ok(snapshot(session_id, stage))
+    }
+
     /// Reduce a complete ACP diff-content replacement into the staged tree.
     /// The batch is atomic and accepted only when every agent-supplied old
     /// text matches the current disk-or-staged view. This makes ACP content a
@@ -1156,7 +1182,6 @@ impl SessionStages {
     }
 
     /// The current snapshot for one session, when registered.
-    #[cfg(test)]
     pub fn summary(&self, session_id: &str) -> Option<AgentStagedChangesInfo> {
         let sessions = self.sessions.lock().ok()?;
         sessions

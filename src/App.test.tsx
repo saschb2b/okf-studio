@@ -134,15 +134,27 @@ describe("OKF Studio app", () => {
 
     expect(await screen.findByRole("heading", { name: "Chat with your local model" }))
       .toBeInTheDocument();
-    expect(screen.getByText(/inspect this bundle through bounded read-only tools/i))
+    expect(screen.getByText(/bounded bundle and source tools, and reviewed staging/i))
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add context or sources" })).toBeEnabled();
-    expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
-      .not.toBeInTheDocument();
-    await user.type(screen.getByLabelText("Message the agent"), "Hello from Studio");
+    const localGrant = screen.getByRole("button", { name: "Allow edits in this thread" });
+    expect(localGrant).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /Create bundle/ }));
     await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Local model received: Hello from Studio"))
+    expect(await screen.findByText(/I inspected the available evidence/)).toBeInTheDocument();
+    const proposal = await screen.findByRole("region", {
+      name: "Proposed OKF bundle structure",
+    });
+    await vi.waitFor(() => expect(localGrant).toBeEnabled());
+    await user.click(localGrant);
+    const generate = within(proposal).getByRole("button", { name: "Generate in staging" });
+    await user.click(generate);
+    expect(await screen.findByText("Propose staged bundle files")).toBeInTheDocument();
+    expect(await screen.findByText("Validate staged proposal")).toBeInTheDocument();
+    expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
       .toBeInTheDocument();
+    expect(await screen.findByText("Fresh bundle draft")).toBeInTheDocument();
+    expect(screen.getByText("Change staged for review")).toBeInTheDocument();
 
     await openAttachmentMenu(user);
     expect(screen.getByRole("button", { name: "Attach context" })).toBeDisabled();

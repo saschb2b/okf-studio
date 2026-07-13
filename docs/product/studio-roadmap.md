@@ -137,7 +137,7 @@ Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and 
 - [x] Add bounded native search and graph traversal tools and offer them to every ACP session over standard stdio MCP.
 - [x] Add bounded inventory and validation inspection with filtered cursor paging.
 - [x] Add bounded concept reads and native source discovery without arbitrary file access or network fetching.
-- [ ] Add source extraction, proposed write, and review tools.
+- [x] Add source extraction, proposed write, and review tools.
 - [x] Attach the active bundle, selected concepts, sources, and validation issues explicitly.
 - [x] Attach bounded reader selections explicitly through the compact context menu.
 - [x] Attach previous-thread context explicitly after thread persistence lands.

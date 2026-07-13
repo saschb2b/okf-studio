@@ -8,6 +8,7 @@ mod agent_install;
 mod agent_json;
 mod agent_local;
 mod agent_mcp;
+mod agent_native_stage;
 mod agent_native_sources;
 mod agent_pdf;
 mod agent_protocol;

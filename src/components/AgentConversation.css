@@ -969,9 +969,9 @@
 
 .agent-staged header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4);
 }
 
 .agent-staged header strong {
@@ -980,17 +980,18 @@
 }
 
 .agent-staged header span {
+  grid-column: 1 / -1;
+  grid-row: 2;
   min-width: 0;
-  overflow: hidden;
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .agent-staged__actions {
   display: flex;
+  grid-column: 2;
+  grid-row: 1;
   gap: var(--space-4);
 }
 
@@ -1350,21 +1351,6 @@
 }
 
 @container (max-width: 420px) {
-  .agent-staged > header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-4);
-  }
-
-  .agent-staged > header > span {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .agent-staged__actions {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
   .agent-staged__validation > .agent-staged__apply {
     align-items: stretch;
     flex-direction: column;

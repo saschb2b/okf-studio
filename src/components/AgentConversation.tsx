@@ -1076,7 +1076,7 @@ export function AgentConversation({
   let composerStatus = connection.capabilities.promptImage
     ? "Text and images"
     : isNativeLocal
-      ? "Read-only tools"
+      ? "Scoped tools"
       : "Text only";
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
@@ -1406,7 +1406,7 @@ export function AgentConversation({
           )}
         </div>
         <div className="agent-conversation__toolbar-actions">
-          {bundleRoot && !requiresAuthentication && !isNativeLocal && (
+          {bundleRoot && !requiresAuthentication && (
             <button
               type="button"
               className={`btn ghost agent-conversation__write-grant${writeGranted ? " agent-conversation__write-grant--on" : ""}`}
@@ -1673,40 +1673,31 @@ export function AgentConversation({
                   </section>
                 )}
                 <h3>{isNativeLocal ? "Chat with your local model" : "Ask about this bundle"}</h3>
-                {isNativeLocal ? (
-                  <p>
-                    Studio can load canonical OKF guidance and inspect this bundle through bounded
-                    read-only tools. Add extracted text sources for one turn when needed. Bundle
-                    attachments, arbitrary files, staged changes, and edits remain unavailable.
-                  </p>
-                ) : (
-                  <>
-                    <p>
-                      Studio attaches OKF context, read-only access to this bundle, and tools to
-                      inspect concepts, trace sources, and validate structure.
-                    </p>
-                    <div className="agent-starters" role="group" aria-label="Start a guided thread">
-                      {THREAD_STARTERS.map((starter) => {
-                        const Icon = starter.icon;
-                        return (
-                          <button
-                            key={starter.title}
-                            type="button"
-                            className="agent-starter"
-                            aria-label={`${starter.title}: ${starter.description}`}
-                            onClick={() => selectStarter(starter.prompt)}
-                          >
-                            <Icon size={16} aria-hidden="true" />
-                            <span>
-                              <strong>{starter.title}</strong>
-                              <small>{starter.description}</small>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                <p>
+                  {isNativeLocal
+                    ? "Studio gives the model canonical OKF guidance, bounded bundle and source tools, and reviewed staging. Proposed files stay in memory until you validate, review, and apply them."
+                    : "Studio attaches OKF context, read-only access to this bundle, and tools to inspect concepts, trace sources, and validate structure."}
+                </p>
+                <div className="agent-starters" role="group" aria-label="Start a guided thread">
+                  {THREAD_STARTERS.map((starter) => {
+                    const Icon = starter.icon;
+                    return (
+                      <button
+                        key={starter.title}
+                        type="button"
+                        className="agent-starter"
+                        aria-label={`${starter.title}: ${starter.description}`}
+                        onClick={() => selectStarter(starter.prompt)}
+                      >
+                        <Icon size={16} aria-hidden="true" />
+                        <span>
+                          <strong>{starter.title}</strong>
+                          <small>{starter.description}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <>
@@ -1730,7 +1721,7 @@ export function AgentConversation({
                         ? !writeGranted
                           ? "Allow edits for this thread before generating staged files."
                           : stagedFileCount > 0 && stagedChanges?.mode !== (
-                              threadWorkflow === "create-bundle" ? "create" : "edit"
+                              threadWorkflow === "create-bundle" ? "create" : "enhance"
                             )
                             ? "Resolve the current staged changes before generating this proposal."
                             : null

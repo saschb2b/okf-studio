@@ -465,6 +465,139 @@
   margin-bottom: 0;
 }
 
+.bundle-proposal {
+  display: grid;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  padding: var(--space-12);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bundle-proposal > header,
+.bundle-proposal--invalid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+}
+
+.bundle-proposal > header > svg,
+.bundle-proposal--invalid > svg {
+  margin-top: var(--space-2);
+  color: var(--accent);
+}
+
+.bundle-proposal > header > div,
+.bundle-proposal--invalid > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.bundle-proposal small,
+.bundle-proposal__boundary,
+.bundle-proposal--invalid p {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.bundle-proposal details {
+  min-width: 0;
+}
+
+.bundle-proposal summary {
+  min-height: 32px;
+  align-content: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: var(--lh-normal);
+  cursor: pointer;
+}
+
+.bundle-proposal ul {
+  display: grid;
+  gap: var(--space-6);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.bundle-proposal__concepts > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bundle-proposal__concepts > li > svg {
+  margin-top: var(--space-2);
+  color: var(--text-dim);
+}
+
+.bundle-proposal__concepts > li > div,
+.bundle-proposal__indexes > li {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.bundle-proposal__identity {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.bundle-proposal code,
+.bundle-proposal__links,
+.bundle-proposal__indexes small {
+  overflow-wrap: anywhere;
+}
+
+.bundle-proposal__identity span {
+  padding: var(--space-2) var(--space-4);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-tight);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.bundle-proposal__links {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.bundle-proposal__indexes > li {
+  padding: var(--space-8);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bundle-proposal__boundary {
+  margin: 0;
+}
+
+.bundle-proposal--invalid > svg,
+.bundle-proposal--invalid strong {
+  color: var(--warn);
+}
+
+.bundle-proposal--invalid p {
+  margin: 0;
+}
+
 .agent-message--user .agent-message__icon {
   color: var(--text-dim);
 }

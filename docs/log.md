@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Creation**: Added a bounded pre-generation bundle proposal contract for Create and Enhance. Studio parses the newest fenced `okf-proposal` JSON block and renders concept paths, titles, types, links, and index membership without generating files or granting write access. Unsafe paths, duplicate entries, malformed JSON, and oversized structures remain outside the preview with an actionable error.
 * **Creation**: Made the external-agent write-grant mode explicit at IPC. The current toggle requests `interactive`; Rust and the browser mock reject every granted `unattended` request because the ACP process host has no enforcement-capable sandbox. Revocation remains available, and future containment must prove enforcement at this boundary before unattended writes can open.
 * **Creation**: Added non-overridable sensitive-path protection to Agent filesystem mediation. Case-insensitive checks deny Git metadata, credential stores, secret and private-key files, and packaged agent instructions for reads, context links, staged writes, reported diffs, checkpoints, and recovery. One protected path rejects its complete ACP diff batch; ordinary concepts with nearby names remain available.
 * **Update**: Moved saved-thread error focus to a post-render effect so the Retry control receives focus reliably after long conversations and test runs.

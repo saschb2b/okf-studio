@@ -21,6 +21,7 @@ import type {
   AgentTurnInfo,
 } from "../agent/connection.ts";
 import type { ReaderSelectionCapture } from "../agent/readerSelection.ts";
+import { bundleProposalNarrative, parseBundleProposal } from "../agent/bundleProposal.ts";
 import type { AgentThreadMetadata, AgentThreadWorkflow } from "../agent/threadMetadata.ts";
 import {
   datasetChangeRequirements,
@@ -62,6 +63,7 @@ import {
 import type { AgentSourceInput } from "../ipc.ts";
 import { renderMarkdown } from "../markdown.ts";
 import type { Issue } from "../types.ts";
+import { BundleProposalPreview } from "./BundleProposalPreview.tsx";
 import "./AgentConversation.css";
 
 interface AgentConversationProps {
@@ -159,18 +161,21 @@ type PendingPermission = AgentPermissionEvent & {
 };
 type AgentUsage = Extract<AgentTurnEvent["update"], { kind: "usage" }>;
 
+const BUNDLE_PROPOSAL_INSTRUCTIONS =
+  "End with exactly one fenced `okf-proposal` JSON block shaped as `{\"concepts\":[{\"path\":\"concept.md\",\"title\":\"Concept\",\"type\":\"Concept type\",\"links\":[\"related.md\"]}],\"indexes\":[{\"path\":\"index.md\",\"concepts\":[\"concept.md\"]}]}`. Use bundle-relative Markdown paths and make every index member name a proposed concept.";
+
 const THREAD_STARTERS = [
   {
     title: "Create bundle",
     description: "Turn attached evidence into a proposed OKF structure.",
-    prompt: "Create a new OKF bundle from the sources I attach. First inspect the evidence, then propose the concepts, types, links, and indexes. Do not write files yet.",
+    prompt: `Create a new OKF bundle from the sources I attach. First inspect the evidence, then propose the concepts, types, links, and indexes. Do not write files yet. ${BUNDLE_PROPOSAL_INSTRUCTIONS}`,
     workflow: null,
     icon: WandSparkles,
   },
   {
     title: "Enhance bundle",
     description: "Find useful additions without replacing authored facts.",
-    prompt: "Review this OKF bundle and the sources I attach. Propose additions or corrections without overwriting authored facts. Do not write files yet.",
+    prompt: `Review this OKF bundle and the sources I attach. Propose additions or corrections without overwriting authored facts. Include only additions or changed concepts and do not write files yet. ${BUNDLE_PROPOSAL_INSTRUCTIONS}`,
     workflow: null,
     icon: Sparkles,
   },
@@ -2973,9 +2978,15 @@ interface MessageProps {
 }
 
 function Message({ message, onRetry, isRetrying, retryError }: MessageProps) {
+  const agentNarrative = message.role === "agent"
+    ? bundleProposalNarrative(message.text)
+    : message.text;
   const renderedAgentText = message.role === "agent"
-    ? { __html: renderMarkdown(message.text) }
+    ? { __html: renderMarkdown(agentNarrative) }
     : null;
+  const bundleProposal = message.role === "agent"
+    ? parseBundleProposal(message.text)
+    : { status: "none" } as const;
   const label = message.role === "user" ? "You" : message.role === "agent" ? "Agent" : "Turn";
   return (
     <article
@@ -2993,15 +3004,16 @@ function Message({ message, onRetry, isRetrying, retryError }: MessageProps) {
       </span>
       <div>
         <strong>{label}</strong>
-        {renderedAgentText ? (
-          <div
-            className="markdown agent-message__markdown"
-            // renderMarkdown sanitizes untrusted agent output with DOMPurify.
-            dangerouslySetInnerHTML={renderedAgentText}
-          />
-        ) : (
-          <p>{message.text}</p>
-        )}
+        {message.role === "agent" ? (
+          agentNarrative ? (
+            <div
+              className="markdown agent-message__markdown"
+              // renderMarkdown sanitizes untrusted agent output with DOMPurify.
+              dangerouslySetInnerHTML={renderedAgentText ?? undefined}
+            />
+          ) : null
+        ) : <p>{message.text}</p>}
+        <BundleProposalPreview result={bundleProposal} />
         {onRetry && (
           <div className="agent-message__actions">
             <button

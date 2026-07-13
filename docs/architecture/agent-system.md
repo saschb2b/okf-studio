@@ -47,6 +47,8 @@ External agents own credentials. Studio invokes ACP-advertised methods and does 
 
 Opening remains read-only. Client filesystem methods canonicalize paths and reject traversal, symlink escape, access outside granted roots, and built-in sensitive-path classes. Studio writes target a staged tree, validate, then apply atomically after review.
 
+Bundle creation starts with a separate proposal boundary. Create and Enhance responses may include one fenced `okf-proposal` JSON object containing bounded concept metadata, proposed Markdown links, and index membership. The webview parser selects the newest block, validates counts and bundle-relative path shapes, and renders structured display metadata beside the transcript. It does not accept file bodies or call the Rust staging commands. Generation remains a later, explicit transition through the reviewed-write pipeline.
+
 An external process may bypass client filesystem methods. Client checks do not sandbox it. Until platform enforcement exists, external write mode remains interactive and carries a containment warning. The write-grant IPC requires a closed `interactive` or `unattended` mode. Rust rejects every granted `unattended` request for the current external ACP host because it has no enforcement-capable sandbox; a forged webview request cannot weaken that rule. Revocation remains available through either mode. A later sandboxed host must prove its enforcement state at this boundary before the unattended branch can open.
 
 Permission precedence is: non-overridable security rules, deny, confirm, allow, thread grant, tool default, global default. Writes outside roots, Git metadata, credentials, and packaged instructions are built-in denials.

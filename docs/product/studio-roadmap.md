@@ -169,7 +169,7 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Accept bounded PNG, JPEG, and WebP images when the connected ACP agent advertises image prompt support.
 - [x] Normalize CSV locally with strict records, original-file hashes, and row-range provenance.
 - [x] Normalize JSON locally with deterministic JSON Pointer provenance and original-file hashes.
-- [ ] Show the proposed concepts, types, links, and indexes before generation.
+- [x] Show the proposed concepts, types, links, and indexes before generation.
 - [ ] Generate into staging, validate, preview the graph, then choose a destination.
 - [ ] Reuse the pipeline to enrich bundles without silently overwriting authored facts.
 

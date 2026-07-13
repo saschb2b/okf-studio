@@ -893,6 +893,41 @@ function mockStageWrite(info: AgentTurnInfo, text: string): string | null {
 }
 
 function mockAgentResponse(text: string): string {
+  if (text.startsWith("Create a new OKF bundle from the sources I attach") ||
+    text.startsWith("Review this OKF bundle and the sources I attach")) {
+    if (text.includes("Malformed proposal")) {
+      return "I could not serialize the structure.\n\n```okf-proposal\n{not json}\n```";
+    }
+    return "I inspected the available evidence and mapped a small structure for review.\n\n" +
+      "```okf-proposal\n" +
+      JSON.stringify({
+        concepts: [
+          {
+            path: "product/overview.md",
+            title: "Product overview",
+            type: "Product",
+            links: ["architecture/agent-system.md"],
+          },
+          {
+            path: "architecture/agent-system.md",
+            title: "Agent system",
+            type: "Architecture",
+            links: [],
+          },
+        ],
+        indexes: [
+          {
+            path: "index.md",
+            concepts: ["product/overview.md", "architecture/agent-system.md"],
+          },
+          {
+            path: "architecture/index.md",
+            concepts: ["architecture/agent-system.md"],
+          },
+        ],
+      }, null, 2) +
+      "\n```";
+  }
   if (text.startsWith("Research this question across the active bundle")) {
     if (text.includes("Omit research sections")) {
       return "**Finding:** Missing required sections.";

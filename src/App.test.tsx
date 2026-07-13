@@ -195,6 +195,10 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Enhance bundle/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Request dataset change/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Create bundle/ }));
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Message the agent").value)
+      .toContain("fenced `okf-proposal` JSON block");
+    await user.clear(screen.getByLabelText("Message the agent"));
     await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
     expect(screen.getByLabelText("Message the agent")).toHaveValue(
       "Assess this dataset documentation and propose a change plan. Identify dependencies, validation risks, and supporting evidence. End with `## Change Plan` containing actionable steps and `## Affected Concepts` containing one bundle-relative `.md` path per bullet. Do not write files yet: ",

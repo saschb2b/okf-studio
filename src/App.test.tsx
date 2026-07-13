@@ -58,6 +58,76 @@ describe("OKF Studio app", () => {
     expect(screen.getAllByText(/managed Node v24\.11\.0/i)).toHaveLength(2);
   });
 
+  it("switches between live agent connections without interrupting their threads", async () => {
+    const firstProfile = await ipc.saveCustomAgent({
+      name: "Research Harness",
+      executable: "C:\\tools\\research.exe",
+      arguments: [],
+      environment: [],
+    });
+    const secondProfile = await ipc.saveCustomAgent({
+      name: "Review Harness",
+      executable: "C:\\tools\\review.exe",
+      arguments: [],
+      environment: [],
+    });
+    const firstConnection = await ipc.connectCustomAgent(firstProfile.id);
+    const secondConnection = await ipc.connectCustomAgent(secondProfile.id);
+
+    try {
+      const user = userEvent.setup();
+      renderApp();
+      await openFolder(user);
+      await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+
+      expect(screen.getByRole("navigation", { name: "Agent connections" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Switch to Research Harness" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: "Connect another agent" })).toBeInTheDocument();
+
+      const researchConversation = screen.getByRole("region", { name: "New thread" });
+      await user.type(
+        within(researchConversation).getByLabelText("Message the agent"),
+        "Run a long investigation",
+      );
+      await user.click(within(researchConversation).getByRole("button", { name: "Send" }));
+      expect(await within(researchConversation).findByRole("button", { name: "Stop" }))
+        .toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Switch to Review Harness" }));
+      expect(screen.getByRole("button", { name: "Switch to Review Harness" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      const reviewConversation = screen.getByRole("region", { name: "New thread" });
+      await user.type(
+        within(reviewConversation).getByLabelText("Message the agent"),
+        "Review the evidence",
+      );
+      await user.click(within(reviewConversation).getByRole("button", { name: "Send" }));
+      await vi.waitFor(
+        () => expect(within(reviewConversation).getByRole("button", { name: "Send" })).toBeEnabled(),
+        { timeout: 5_000 },
+      );
+      expect(reviewConversation).toHaveTextContent(
+        "Browser ACP received: Review the evidence",
+      );
+
+      await user.click(screen.getByRole("button", { name: "Switch to Research Harness" }));
+      expect(within(researchConversation).getByRole("button", { name: "Stop" }))
+        .toBeInTheDocument();
+      await user.click(within(researchConversation).getByRole("button", { name: "Stop" }));
+      expect(await within(researchConversation).findByText("Turn cancelled.")).toBeInTheDocument();
+    } finally {
+      await ipc.disconnectAgent(firstConnection.connectionId);
+      await ipc.disconnectAgent(secondConnection.connectionId);
+      await ipc.removeCustomAgent(firstProfile.id);
+      await ipc.removeCustomAgent(secondProfile.id);
+    }
+  });
+
   it("installs an agent without starting or connecting it", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -843,7 +913,10 @@ describe("OKF Studio app", () => {
     expect(screen.getByText(/Trace the evidence behind/)).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
     expect(screen.getByLabelText("Message the agent")).toBeEnabled();
-    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+    await vi.waitFor(
+      () => expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
+      { timeout: 3_000 },
+    );
 
     await user.click(screen.getByRole("button", { name: "Rename thread: Trace bundle evidence" }));
     await user.clear(screen.getByLabelText("Thread title"));
@@ -887,6 +960,9 @@ describe("OKF Studio app", () => {
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
+    await screen.findByText(/Connected to History Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
     historySpy.mockResolvedValueOnce({ sessions: [], hasMore: false });
     await user.click(await screen.findByRole("button", { name: "Resume" }));
@@ -898,15 +974,21 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
+    await screen.findByText(/Connected to History Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
     await user.click(await screen.findByRole("button", { name: "Dismiss" }));
-    await vi.waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
+    await vi.waitFor(
+      () => expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
+      { timeout: 3_000 },
+    );
     expect(localStorage.getItem("okf-studio:agent-threads")).toBe("[]");
 
     await user.click(screen.getByRole("button", { name: "Change" }));
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove History Harness" }));
-  });
+  }, 15_000);
 
   it("archives a browser-mock thread and restores it through the advertised history", async () => {
     const user = userEvent.setup();

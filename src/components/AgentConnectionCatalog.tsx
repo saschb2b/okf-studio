@@ -1,6 +1,7 @@
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { catalogEntries, type AgentCatalogEntry } from "../agent/catalog.ts";
+import type { AgentConnectionInfo } from "../agent/connection.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
 import type { LocalModelProfile, LocalModelProfileInput } from "../agent/local.ts";
 import {
@@ -45,10 +46,12 @@ async function loadCatalog(): Promise<CatalogState> {
 
 export function AgentConnectionCatalog({
   onBack,
+  onConnectionAvailable,
   onConnected,
 }: {
   onBack: () => void;
-  onConnected: () => void;
+  onConnectionAvailable: (connection: AgentConnectionInfo) => void;
+  onConnected: (connection: AgentConnectionInfo) => void;
 }) {
   const [state, setState] = useState<CatalogState>({ status: "loading" });
   const [localFormOpen, setLocalFormOpen] = useState(false);
@@ -176,6 +179,7 @@ export function AgentConnectionCatalog({
             profiles={state.customProfiles}
             onProfileSave={saveProfile}
             onProfileRemove={removeProfile}
+            onConnected={onConnectionAvailable}
           />
           <p className="agent-catalog__notice">
             Browsing and saving do not start an agent. Installation, connection, and

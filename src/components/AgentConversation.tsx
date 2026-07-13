@@ -1,6 +1,6 @@
 import { Archive as ArchiveIcon, Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, History, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
-import { startTransition, useActionState, useEffect, useEffectEvent, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import type { Dispatch, SetStateAction, SubmitEvent } from "react";
 import type {
   AgentConnectionEvent,
@@ -278,6 +278,7 @@ interface ThreadTitleEditorProps {
 }
 
 function ThreadTitleEditor({ title, onTitleChange }: ThreadTitleEditorProps) {
+  const titleInputId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -322,10 +323,10 @@ function ThreadTitleEditor({ title, onTitleChange }: ThreadTitleEditorProps) {
             initialFocus={inputRef}
           >
             <form onSubmit={saveTitle}>
-              <label htmlFor="agent-thread-title">Thread title</label>
+              <label htmlFor={titleInputId}>Thread title</label>
               <input
                 ref={inputRef}
-                id="agent-thread-title"
+                id={titleInputId}
                 maxLength={MAX_THREAD_TITLE_CHARS}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -358,6 +359,11 @@ export function AgentConversation({
   onConnectionEnd,
   onOpenFolder,
 }: AgentConversationProps) {
+  const conversationTitleId = useId();
+  const historyTitleId = `${conversationTitleId}-history`;
+  const stagedTitleId = `${conversationTitleId}-staged`;
+  const bundleFolderInputId = `${conversationTitleId}-bundle-folder`;
+  const promptInputId = `${conversationTitleId}-prompt`;
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
   const isStudioAgent = connection.protocolVersion === "studio-native/1";
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
@@ -1378,11 +1384,11 @@ export function AgentConversation({
   }
 
   return (
-    <section className="agent-conversation" aria-labelledby="agent-conversation-title">
+    <section className="agent-conversation" aria-labelledby={conversationTitleId}>
       <header className="agent-conversation__toolbar">
         <div>
           <div className="agent-conversation__title-row">
-            <h2 id="agent-conversation-title" title={threadTitle.value}>{threadTitle.value}</h2>
+            <h2 id={conversationTitleId} title={threadTitle.value}>{threadTitle.value}</h2>
             <ThreadTitleEditor
               title={threadTitle.value}
               onTitleChange={changeThreadTitle}
@@ -1535,10 +1541,10 @@ export function AgentConversation({
       )}
 
       {bundleRoot && !requiresAuthentication && history.status !== "closed" && (
-        <section className="agent-history" aria-labelledby="agent-history-title">
+        <section className="agent-history" aria-labelledby={historyTitleId}>
           <header>
             <div>
-              <h3 id="agent-history-title">Agent session history</h3>
+              <h3 id={historyTitleId}>Agent session history</h3>
               <p>Sessions reported by this agent for the active bundle.</p>
             </div>
             <button
@@ -1740,9 +1746,9 @@ export function AgentConversation({
             )}
           </div>
           {stagedChanges && stagedChanges.files.length > 0 && (
-            <section className="agent-staged" aria-labelledby="agent-staged-title">
+            <section className="agent-staged" aria-labelledby={stagedTitleId}>
               <header>
-                <strong id="agent-staged-title">
+                <strong id={stagedTitleId}>
                   {stagedChanges.mode === "create"
                     ? "Fresh bundle draft"
                     : stagedChanges.mode === "enhance"
@@ -1981,10 +1987,10 @@ export function AgentConversation({
                         Studio creates a new folder below the parent you choose. Existing folders
                         are never merged with or replaced.
                       </p>
-                      <label htmlFor="fresh-bundle-folder-name">Bundle folder name</label>
+                      <label htmlFor={bundleFolderInputId}>Bundle folder name</label>
                       <div>
                         <input
-                          id="fresh-bundle-folder-name"
+                          id={bundleFolderInputId}
                           type="text"
                           value={freshBundleFolderName}
                           maxLength={128}
@@ -2135,10 +2141,10 @@ export function AgentConversation({
               <p className="agent-composer__error" role="alert">{sourcePickerError}</p>
             )}
             <div className="agent-composer__input-shell">
-              <label className="sr-only" htmlFor="agent-prompt">Message the agent</label>
+              <label className="sr-only" htmlFor={promptInputId}>Message the agent</label>
               <textarea
                 ref={promptRef}
-                id="agent-prompt"
+                id={promptInputId}
                 name="prompt"
                 rows={3}
                 maxLength={128 * 1024}

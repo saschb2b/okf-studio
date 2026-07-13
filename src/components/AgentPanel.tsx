@@ -1,6 +1,7 @@
-import { ArrowLeft, CircleAlert, PanelRightClose, Sparkles } from "lucide-react";
+import { ArrowLeft, CircleAlert, PanelRightClose, Plus, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type * as React from "react";
+import type { AgentConnectionInfo } from "../agent/connection.ts";
 import { AGENT_PANEL_CLAMP, useApp } from "../store.tsx";
 import { captureReaderSelection } from "../agent/readerSelection.ts";
 import { useAgentConnections } from "../agent/useAgentConnections.ts";
@@ -18,6 +19,7 @@ export function AgentPanel() {
   ) ?? null;
   const panelRef = useRef<HTMLElement>(null);
   const [view, setView] = useState<"empty" | "catalog" | "conversation">("empty");
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState(0);
   if (!state.panels.agent) return null;
 
@@ -41,19 +43,26 @@ export function AgentPanel() {
   function closeCatalog() {
     setView(connections.length > 0 ? "conversation" : "empty");
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>("[data-agent-initial-focus]")?.focus();
+      focusVisiblePanelContent(panelRef.current);
     });
   }
 
-  const connection = connections.at(0);
+  const selectedConnection = connections.find(
+    (connection) => connection.connectionId === selectedConnectionId,
+  ) ?? connections.at(0);
+  const visibleView = view === "catalog"
+    ? "catalog"
+    : selectedConnection
+      ? "conversation"
+      : "empty";
 
   // Land on a safe view and remount the failed subtree. Thread UI state is
   // lost, but saved-thread metadata lets the user resume the conversation.
   function resetPanel() {
-    setView(connection ? "conversation" : "empty");
+    setView(selectedConnection ? "conversation" : "empty");
     setResetToken((token) => token + 1);
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>("[data-agent-initial-focus]")?.focus();
+      focusVisiblePanelContent(panelRef.current);
     });
   }
 
@@ -100,26 +109,79 @@ export function AgentPanel() {
             </div>
           }
         >
-          {view === "catalog" ? (
+          {visibleView === "catalog" && (
             <AgentConnectionCatalog
               onBack={closeCatalog}
-              onConnected={() => setView("conversation")}
+              onConnectionAvailable={(connection) => {
+                setSelectedConnectionId(connection.connectionId);
+              }}
+              onConnected={(connection) => {
+                setSelectedConnectionId(connection.connectionId);
+                setView("conversation");
+              }}
             />
-          ) : view === "conversation" && connection ? (
-            <AgentConversation
-              key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
-              connection={connection}
-              bundleRoot={state.activeRoot}
-              bundleName={state.bundle?.name ?? null}
-              activeConcept={activeConcept}
-              onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
-              concepts={state.bundle?.concepts ?? []}
-              issues={state.bundle?.issues ?? []}
-              onChangeAgent={openCatalog}
-              onConnectionEnd={() => setView("empty")}
-              onOpenFolder={() => actions.openFolder()}
-            />
-          ) : (
+          )}
+          {connections.length > 0 && (
+            <div
+              className="agent-panel__conversation-stack"
+              hidden={visibleView !== "conversation"}
+            >
+              <nav className="agent-panel__connections" aria-label="Agent connections">
+                {connections.map((connection) => {
+                  const label = connectionLabel(connection);
+                  const selected = connection.connectionId === selectedConnection?.connectionId;
+                  return (
+                    <button
+                      type="button"
+                      className="btn ghost agent-panel__connection"
+                      key={connection.connectionId}
+                      aria-label={`Switch to ${label}`}
+                      aria-pressed={selected}
+                      title={label}
+                      onClick={() => setSelectedConnectionId(connection.connectionId)}
+                    >
+                      <span className="agent-panel__connection-label">{label}</span>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="btn ghost agent-panel__connection agent-panel__connection--add"
+                  aria-label="Connect another agent"
+                  title="Connect another agent"
+                  onClick={openCatalog}
+                >
+                  <Plus size={16} aria-hidden="true" />
+                </button>
+              </nav>
+              {connections.map((connection) => (
+                <div
+                  className="agent-panel__conversation"
+                  key={connection.connectionId}
+                  hidden={connection.connectionId !== selectedConnection?.connectionId}
+                >
+                  <AgentConversation
+                    key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
+                    connection={connection}
+                    bundleRoot={state.activeRoot}
+                    bundleName={state.bundle?.name ?? null}
+                    activeConcept={activeConcept}
+                    onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
+                    concepts={state.bundle?.concepts ?? []}
+                    issues={state.bundle?.issues ?? []}
+                    onChangeAgent={openCatalog}
+                    onConnectionEnd={() => {
+                      setSelectedConnectionId((current) =>
+                        current === connection.connectionId ? null : current,
+                      );
+                    }}
+                    onOpenFolder={() => actions.openFolder()}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {visibleView === "empty" && (
             <div className="agent-panel__empty">
               <span className="agent-panel__mark" aria-hidden="true">
                 <Sparkles size={24} />
@@ -143,6 +205,20 @@ export function AgentPanel() {
       </aside>
     </>
   );
+}
+
+function connectionLabel(connection: AgentConnectionInfo): string {
+  return connection.agent?.title ?? connection.agent?.name ?? "Agent";
+}
+
+function focusVisiblePanelContent(panel: HTMLElement | null): void {
+  const visibleConversation = panel?.querySelector<HTMLElement>(
+    ".agent-panel__conversation:not([hidden]) [data-agent-initial-focus]",
+  );
+  const emptyAction = panel?.querySelector<HTMLElement>(
+    ".agent-panel__empty [data-agent-initial-focus]",
+  );
+  (visibleConversation ?? emptyAction)?.focus();
 }
 
 function AgentPanelDivider({

@@ -12,6 +12,7 @@ import type {
   AgentInstallPreflight,
   AgentInstallProgress,
 } from "../agent/install.ts";
+import type { AgentConnectionInfo } from "../agent/connection.ts";
 import {
   agentInstallPreflight,
   cancelAgentInstall,
@@ -92,7 +93,7 @@ export function AgentCatalogCard({
   onConfigure,
 }: {
   entry: AgentCatalogEntry;
-  onConnected: () => void;
+  onConnected: (connection: AgentConnectionInfo) => void;
   onConfigure: () => void;
 }) {
   return isInstallable(entry) ? (
@@ -121,7 +122,7 @@ function InstallableAgentCard({
   onConnected,
 }: {
   entry: InstallableEntry;
-  onConnected: () => void;
+  onConnected: (connection: AgentConnectionInfo) => void;
 }) {
   const [state, setState] = useState<InstallState>({ status: "preflighting" });
   const [connectionState, setConnectionState] = useState<
@@ -266,9 +267,9 @@ function InstallableAgentCard({
   async function connect() {
     setConnectionState({ status: "connecting" });
     try {
-      await connectCatalogAgent(entry.id);
+      const connection = await connectCatalogAgent(entry.id);
       setConnectionState({ status: "idle" });
-      onConnected();
+      onConnected(connection);
     } catch (error: unknown) {
       setConnectionState({ status: "error", message: errorMessage(error) });
     }

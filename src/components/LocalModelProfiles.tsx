@@ -1,5 +1,6 @@
 import { Cpu, Plug, Plus, RefreshCw, Trash2, Unplug } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { AgentConnectionInfo } from "../agent/connection.ts";
 import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import {
   LOCAL_MODEL_PRESETS,
@@ -50,7 +51,7 @@ export function LocalModelProfiles({
   onFormOpenChange: (open: boolean) => void;
   onProfileSave: (input: LocalModelProfileInput) => Promise<void>;
   onProfileRemove: (profileId: string) => Promise<void>;
-  onConnected: () => void;
+  onConnected: (connection: AgentConnectionInfo) => void;
 }) {
   const [input, setInput] = useState<LocalModelProfileInput>({
     name: LOCAL_MODEL_PRESETS[DEFAULT_PROVIDER].label,
@@ -156,9 +157,9 @@ export function LocalModelProfiles({
     if (!model) return;
     setConnectionState({ status: "connecting", profileId: profile.id });
     try {
-      await connectLocalModel(profile.id, model);
+      const connection = await connectLocalModel(profile.id, model);
       setConnectionState({ status: "idle" });
-      onConnected();
+      onConnected(connection);
     } catch (error: unknown) {
       setConnectionState({
         status: "failed",

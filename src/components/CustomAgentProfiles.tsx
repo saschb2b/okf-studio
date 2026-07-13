@@ -13,6 +13,7 @@ interface CustomAgentProfilesProps {
   profiles: readonly CustomAgentProfile[];
   onProfileSave: (input: CustomAgentInput) => Promise<void>;
   onProfileRemove: (profileId: string) => Promise<void>;
+  onConnected: (connection: AgentConnectionInfo) => void;
 }
 
 type FormState = { status: "idle" } | { status: "error"; message: string };
@@ -53,6 +54,7 @@ export function CustomAgentProfiles({
   profiles,
   onProfileSave,
   onProfileRemove,
+  onConnected,
 }: CustomAgentProfilesProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [removeState, setRemoveState] = useState<
@@ -96,6 +98,7 @@ export function CustomAgentProfiles({
           ? { ...current, [profileId]: { status: "ready", info } }
           : current,
       );
+      onConnected(info);
     } catch (error: unknown) {
       setConnections((current) => ({
         ...current,

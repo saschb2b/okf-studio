@@ -197,6 +197,8 @@ Gate: end-to-end tests reach useful results with no hidden write or network acti
   - [x] Reuse an explicit once-decision only for the exact same bounded request in one live thread.
   - [ ] Add cross-session rules after ACP exposes a stable tool identity and Studio can show their scope.
 - [ ] Add parallel threads only after single-thread cancellation, permissions, and transactions are reliable.
+  - [x] Keep one live bundle-scoped conversation per active connection mounted and switch without interrupting its turn.
+  - [ ] Extract conversation state so one connection can own multiple concurrent thread surfaces without weakening its one-turn-per-session rule.
 - [ ] Make unattended mode an explicit profile with visible scope and stop conditions.
 
 Gate: platform docs and tests state exactly what is contained on Windows, Linux, and macOS.

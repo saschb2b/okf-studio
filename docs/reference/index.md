@@ -2,7 +2,7 @@
 
 * [Zed Agent System Research](zed-agent-system.md) - Primary-source patterns and constraints adopted for OKF Studio.
 
-External specifications the viewer must honor, the OKF ecosystem it builds on, and a glossary of terms.
+External specifications Studio must honor, the OKF ecosystem it builds on, and a glossary of terms.
 
 * [OKF Spec Summary](okf-spec-summary.md) - The OKF v0.1 rules that constrain the viewer.
 * [OKF Reference HTML Visualizer](okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.

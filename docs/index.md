@@ -11,6 +11,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 # Product
 
 * [Overview](product/overview.md) - A local-first workspace for exploring, creating, curating, and querying connected OKF bundles with user-chosen agents.
+* [OKF Studio Transformation](product/studio-roadmap.md) - Sequenced work packages for creation, curation, querying, reviewed writes, and external-agent isolation.
 * [OKF Viewer to OKF Studio](product/migration-notes.md) - How existing local data, credentials, and compatibility identifiers behave on upgrade.
 * [Personas & Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
 * [How It Compares](product/comparison.md) - OKF Studio vs. the reference visualizer, PKM tools, static-site generators, editors, and agent chat surfaces.
@@ -23,7 +24,9 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
+* [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.
 * [Concept Reader](features/concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
+* [Design-System Rendering](features/design-system-rendering.md) - Native ODSF token visualizations and sandboxed example previews.
 * [Search & Filter](features/search-and-filter.md) - Full-text search, type filters, and tag browsing.
 * [Navigation](features/navigation.md) - Progressive disclosure from index.md, link following, and history.
 * [Command Palette](features/command-palette.md) - Jump to any concept and run quick actions from the keyboard.
@@ -43,6 +46,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 
 # Architecture
 
+* [Agent System](architecture/agent-system.md) - External ACP agents, Studio Agent, credentials, scoped tools, permissions, and reviewed writes.
 * [Tech Stack](architecture/tech-stack.md) - Tauri 2.0, the Rust core, the frontend, and why.
 * [Bundle Detection](architecture/bundle-detection.md) - The algorithm that finds OKF bundles in a folder.
 * [OKF Parsing](architecture/okf-parsing.md) - How concepts, links, and indexes are parsed.
@@ -55,7 +59,8 @@ This bundle is the product's source of truth: what it does ([features](features/
 
 # Reference
 
-* [OKF Spec Summary](reference/okf-spec-summary.md) - The v0.1 rules the viewer must honor.
+* [Zed Agent System Research](reference/zed-agent-system.md) - Primary-source patterns and constraints adopted for OKF Studio.
+* [OKF Spec Summary](reference/okf-spec-summary.md) - The v0.1 rules Studio must honor.
 * [OKF Reference HTML Visualizer](reference/okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.
 * [OKF Sample Bundles](reference/okf-sample-bundles.md) - The GA4, Stack Overflow, and Bitcoin bundles used as additional fixtures.
 * [Tauri 2.0](reference/tauri-2.md) - Key facts about the framework and its plugins.

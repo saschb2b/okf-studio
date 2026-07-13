@@ -34,7 +34,8 @@ use crate::agent_stage::{
     AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
 };
 use crate::{
-    agent_custom, agent_install, agent_local, agent_sources::AgentSourceInput, agent_studio,
+    agent_custom, agent_install, agent_local, agent_mcp, agent_sources::AgentSourceInput,
+    agent_studio,
 };
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
@@ -516,6 +517,7 @@ pub async fn connect_local(
 #[derive(Clone)]
 struct LocalSession {
     messages: Vec<agent_local::LocalChatMessage>,
+    bundle_root: PathBuf,
 }
 
 struct LocalTurn {
@@ -562,6 +564,7 @@ async fn run_local_connection(
                                 session_id.clone(),
                                 LocalSession {
                                     messages: Vec::new(),
+                                    bundle_root: bundle_root.clone(),
                                 },
                             );
                         AgentSessionInfo {
@@ -598,12 +601,16 @@ async fn run_local_connection(
                     ));
                     continue;
                 }
-                let messages = sessions
+                let session = sessions
                     .lock()
                     .map_err(|_| "Local Studio Agent session state is unavailable.".to_string())?
                     .get(&session_id)
-                    .map(|session| session.messages.clone());
-                let Some(mut messages) = messages else {
+                    .cloned();
+                let Some(LocalSession {
+                    mut messages,
+                    bundle_root,
+                }) = session
+                else {
                     let _ = response.send(Err(
                         "Agent session was not found on this connection.".to_string()
                     ));
@@ -665,7 +672,8 @@ async fn run_local_connection(
                     let tool_live = Arc::clone(&task_live);
                     let result = tokio::task::spawn_blocking(move || {
                         let request_messages = local_request_messages(&messages);
-                        let tools = agent_studio::native_skill_tools();
+                        let mut tools = agent_studio::native_skill_tools();
+                        tools.extend(agent_mcp::native_tool_definitions());
                         agent_local::chat_with_tools(
                             &task_runtime,
                             &request_messages,
@@ -679,7 +687,14 @@ async fn run_local_connection(
                                     );
                                 }
                                 let tool_call_id = bounded_tool_field(&call.id);
-                                let title = agent_studio::skill_tool_title(call);
+                                let (title, tool_kind) = if call.name
+                                    == agent_studio::LOAD_SKILL_RESOURCE_TOOL
+                                {
+                                    (agent_studio::skill_tool_title(call), "read")
+                                } else {
+                                    let (title, tool_kind) = agent_mcp::native_tool_display(call);
+                                    (title.to_string(), tool_kind)
+                                };
                                 tool_events(AgentTurnEvent {
                                     connection_id: tool_connection.clone(),
                                     session_id: tool_session.clone(),
@@ -687,13 +702,19 @@ async fn run_local_connection(
                                     update: AgentTurnUpdate::ToolCall {
                                         tool_call_id: tool_call_id.clone(),
                                         title: Some(title),
-                                        tool_kind: Some("read"),
+                                        tool_kind: Some(tool_kind),
                                         status: Some("in-progress"),
                                         locations: None,
                                         change_state: None,
                                     },
                                 });
-                                let result = agent_studio::execute_skill_tool(call);
+                                let result = if call.name
+                                    == agent_studio::LOAD_SKILL_RESOURCE_TOOL
+                                {
+                                    agent_studio::execute_skill_tool(call)
+                                } else {
+                                    agent_mcp::execute_native_tool(&bundle_root, call)
+                                };
                                 if tool_cancelled.load(Ordering::Acquire)
                                     || !tool_live.load(Ordering::Acquire)
                                 {
@@ -718,7 +739,12 @@ async fn run_local_connection(
                                         change_state: None,
                                     },
                                 });
-                                result
+                                Ok(result.unwrap_or_else(|error| {
+                                    format!(
+                                        "Studio tool error: {}",
+                                        bounded_tool_field(&error)
+                                    )
+                                }))
                             },
                         )
                         .map(|answer| (messages, answer))
@@ -4961,7 +4987,7 @@ mod tests {
         let request = local_request_messages(&conversation);
         assert_eq!(request.len(), 2);
         assert_eq!(request[0].role, "system");
-        assert!(request[0].content.contains("cannot read the active bundle"));
+        assert!(request[0].content.contains("only through the advertised `okf_*` tools"));
         assert!(request[0].content.contains("load_okf_skill_resource"));
         assert_eq!(request[1].role, "user");
         assert_eq!(conversation.len(), 1);

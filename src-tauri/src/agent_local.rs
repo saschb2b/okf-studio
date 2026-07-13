@@ -23,7 +23,7 @@ const MAX_TOOL_ROUNDS: usize = 6;
 const MAX_TOOL_NAME_CHARS: usize = 64;
 const MAX_TOOL_ID_CHARS: usize = 128;
 const MAX_TOOL_ARGUMENT_BYTES: usize = 8 * 1024;
-const MAX_TOOL_RESULT_CHARS: usize = 32 * 1024;
+const MAX_TOOL_RESULT_CHARS: usize = 96 * 1024;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "kebab-case")]
@@ -235,10 +235,9 @@ pub(crate) fn chat_with_tools(
         request_messages.push(assistant_tool_message(runtime.provider, &response));
         for call in &response.tool_calls {
             let result = execute(call)?;
-            let result = result
-                .chars()
-                .take(MAX_TOOL_RESULT_CHARS)
-                .collect::<String>();
+            if result.chars().count() > MAX_TOOL_RESULT_CHARS {
+                return Err("The Studio tool result exceeds the turn limit.".to_string());
+            }
             request_messages.push(tool_result_message(runtime.provider, call, result));
         }
         total_calls += response.tool_calls.len();

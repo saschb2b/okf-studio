@@ -134,7 +134,7 @@ describe("OKF Studio app", () => {
 
     expect(await screen.findByRole("heading", { name: "Chat with your local model" }))
       .toBeInTheDocument();
-    expect(screen.getByText(/can load canonical OKF guidance/i))
+    expect(screen.getByText(/inspect this bundle through bounded read-only tools/i))
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add context or sources" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
@@ -146,11 +146,14 @@ describe("OKF Studio app", () => {
 
     await user.type(
       screen.getByLabelText("Message the agent"),
-      "Load the OKF instructions and summarize the guidance",
+      "Load the OKF instructions, then search the active bundle for agent panel guidance",
     );
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Load OKF instructions")).toBeInTheDocument();
-    expect(await screen.findByText("Loaded packaged OKF instructions. Bundle access remains off."))
+    expect(await screen.findByText("Search OKF bundle")).toBeInTheDocument();
+    expect(await screen.findByText(
+      /Loaded packaged OKF instructions and found the Agent Panel concept/,
+    ))
       .toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Change" }));

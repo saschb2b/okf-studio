@@ -359,7 +359,7 @@ export function AgentConversation({
   onOpenFolder,
 }: AgentConversationProps) {
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
-  const isLocalTextOnly = connection.protocolVersion === "studio-native/1";
+  const isNativeLocal = connection.protocolVersion === "studio-native/1";
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
     source: "default",
     value: "New thread",
@@ -1075,8 +1075,8 @@ export function AgentConversation({
   );
   let composerStatus = connection.capabilities.promptImage
     ? "Text and images"
-    : isLocalTextOnly
-      ? "Bundle access off"
+    : isNativeLocal
+      ? "Read-only bundle tools"
       : "Text only";
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
@@ -1406,7 +1406,7 @@ export function AgentConversation({
           )}
         </div>
         <div className="agent-conversation__toolbar-actions">
-          {bundleRoot && !requiresAuthentication && !isLocalTextOnly && (
+          {bundleRoot && !requiresAuthentication && !isNativeLocal && (
             <button
               type="button"
               className={`btn ghost agent-conversation__write-grant${writeGranted ? " agent-conversation__write-grant--on" : ""}`}
@@ -1672,12 +1672,12 @@ export function AgentConversation({
                     </div>
                   </section>
                 )}
-                <h3>{isLocalTextOnly ? "Chat with your local model" : "Ask about this bundle"}</h3>
-                {isLocalTextOnly ? (
+                <h3>{isNativeLocal ? "Chat with your local model" : "Ask about this bundle"}</h3>
+                {isNativeLocal ? (
                   <p>
-                    Studio supplies its capability boundary and can load canonical OKF guidance
-                    when the model requests it. Your bundle, sources, validation, edits, and
-                    filesystem remain unavailable.
+                    Studio can load canonical OKF guidance and inspect this bundle through bounded
+                    read-only tools. Attachments, arbitrary files, staged changes, and edits remain
+                    unavailable.
                   </p>
                 ) : (
                   <>
@@ -2151,7 +2151,7 @@ export function AgentConversation({
                 name="prompt"
                 rows={3}
                 maxLength={128 * 1024}
-                placeholder={isLocalTextOnly ? "Message your local model..." : "Ask about this bundle..."}
+                placeholder={isNativeLocal ? "Message your local model..." : "Ask about this bundle..."}
                 disabled={isSubmitting || queuedPrompt !== null}
                 value={promptText}
                 onChange={(event) => setPromptText(event.target.value)}
@@ -2166,7 +2166,7 @@ export function AgentConversation({
                     attachedIssueKeys={attachedIssueKeys}
                     sourceCount={attachedSources.length}
                     onCaptureReaderSelection={onCaptureReaderSelection}
-                    disabled={isLocalTextOnly || isSubmitting || queuedPrompt !== null}
+                    disabled={isNativeLocal || isSubmitting || queuedPrompt !== null}
                     imageSupported={connection.capabilities.promptImage}
                     threadSupport={!supportsHistory ? "unsupported" : activeTurn ? "busy" : "ready"}
                     onLoadThreads={loadAttachableThreads}

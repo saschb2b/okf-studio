@@ -7,8 +7,10 @@ use rmcp::{
     tool, tool_handler, tool_router, Json, ServerHandler, ServiceExt,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use crate::agent_local::{LocalToolCall, LocalToolDefinition};
 
 const DEFAULT_SEARCH_LIMIT: usize = 12;
 const MAX_SEARCH_LIMIT: usize = 50;
@@ -32,8 +34,10 @@ const MAX_READ_LIMIT: usize = 1000;
 const MAX_READ_CONTENT_CHARS: usize = 65_536;
 const DEFAULT_SOURCE_LIMIT: usize = 50;
 const MAX_SOURCE_LIMIT: usize = 200;
+const MAX_NATIVE_OUTPUT_BYTES: usize = 96 * 1024;
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct InventoryInput {
     /// Optional case-insensitive concept ID prefix, such as tables/ or product/.
     prefix: Option<String>,
@@ -84,6 +88,7 @@ struct InventoryItem {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct ReadInput {
     /// Bundle-relative concept ID without the .md suffix.
     concept_id: String,
@@ -112,6 +117,7 @@ struct ReadOutput {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct SearchInput {
     /// Case-insensitive text to find in concept titles, paths, types, tags, descriptions, or bodies.
     query: String,
@@ -137,6 +143,7 @@ struct SearchItem {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct SourcesInput {
     /// Optional exact bundle-relative concept ID without the .md suffix.
     concept_id: Option<String>,
@@ -163,6 +170,7 @@ struct SourceItem {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct TraverseInput {
     /// Bundle-relative concept ID without the .md suffix.
     concept_id: String,
@@ -199,6 +207,7 @@ struct TraversalEdge {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct ValidateInput {
     /// Severity filter: all, error, or warning. Defaults to all.
     level: Option<String>,
@@ -567,6 +576,161 @@ fn bounded_utf8_bytes(value: &str, max_bytes: usize) -> String {
     value[..end].to_string()
 }
 
+pub(crate) fn native_tool_definitions() -> Vec<LocalToolDefinition> {
+    vec![
+        LocalToolDefinition {
+            name: "okf_inventory",
+            description: "Inspect the active OKF bundle before reading concepts. Returns bounded metadata, validation counts, type and tag counts, and paged concept summaries.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "prefix": {"type": "string", "maxLength": MAX_FILTER_CHARS},
+                    "type": {"type": "string", "maxLength": MAX_FILTER_CHARS},
+                    "tag": {"type": "string", "maxLength": MAX_FILTER_CHARS},
+                    "offset": {"type": "integer", "minimum": 0, "maximum": MAX_OFFSET},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_INVENTORY_LIMIT}
+                },
+                "additionalProperties": false
+            }),
+        },
+        LocalToolDefinition {
+            name: "okf_read",
+            description: "Read one parsed concept in the active OKF bundle by concept_id. Returns bounded metadata and a line-paged Markdown body without arbitrary file access.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "concept_id": {"type": "string", "minLength": 1, "maxLength": MAX_CONCEPT_ID_CHARS},
+                    "line": {"type": "integer", "minimum": 1, "maximum": MAX_OFFSET},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_READ_LIMIT}
+                },
+                "required": ["concept_id"],
+                "additionalProperties": false
+            }),
+        },
+        LocalToolDefinition {
+            name: "okf_search",
+            description: "Search the active OKF bundle without reading every concept. Returns bounded metadata and matching Markdown snippets in relevance order.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "minLength": 1, "maxLength": MAX_QUERY_CHARS},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_SEARCH_LIMIT}
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            }),
+        },
+        LocalToolDefinition {
+            name: "okf_sources",
+            description: "List resource URIs and external citations authored in the active OKF bundle. Reports referring concept IDs without fetching any source.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "concept_id": {"type": "string", "minLength": 1, "maxLength": MAX_CONCEPT_ID_CHARS},
+                    "offset": {"type": "integer", "minimum": 0, "maximum": MAX_OFFSET},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_SOURCE_LIMIT}
+                },
+                "additionalProperties": false
+            }),
+        },
+        LocalToolDefinition {
+            name: "okf_traverse",
+            description: "Traverse resolved links and backlinks from one concept in the active OKF bundle with bounded cycle-safe breadth-first search.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "concept_id": {"type": "string", "minLength": 1, "maxLength": MAX_CONCEPT_ID_CHARS},
+                    "direction": {"type": "string", "enum": ["outgoing", "incoming", "both"]},
+                    "depth": {"type": "integer", "minimum": 1, "maximum": MAX_TRAVERSAL_DEPTH},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_TRAVERSAL_LIMIT}
+                },
+                "required": ["concept_id"],
+                "additionalProperties": false
+            }),
+        },
+        LocalToolDefinition {
+            name: "okf_validate",
+            description: "Inspect conformance errors and warnings computed for the active OKF bundle. Returns severity totals and paged issue details.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "level": {"type": "string", "enum": ["all", "error", "warning"]},
+                    "offset": {"type": "integer", "minimum": 0, "maximum": MAX_OFFSET},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_VALIDATION_LIMIT}
+                },
+                "additionalProperties": false
+            }),
+        },
+    ]
+}
+
+pub(crate) fn execute_native_tool(
+    bundle_root: &Path,
+    call: &LocalToolCall,
+) -> Result<String, String> {
+    let canonical_root = bundle_root
+        .canonicalize()
+        .map_err(|_| "The active OKF bundle is unavailable.".to_string())?;
+    if canonical_root != bundle_root || !canonical_root.is_dir() {
+        return Err("The active OKF bundle is unavailable.".to_string());
+    }
+    let server = OkfMcpServer::new(okf_core::read_bundle(&canonical_root));
+    let output = match call.name.as_str() {
+        "okf_inventory" => {
+            let Json(output) = server.okf_inventory(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_read" => {
+            let Json(output) = server.okf_read(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_search" => {
+            let Json(output) = server.okf_search(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_sources" => {
+            let Json(output) = server.okf_sources(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_traverse" => {
+            let Json(output) = server.okf_traverse(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_validate" => {
+            let Json(output) = server.okf_validate(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        _ => return Err("The model requested a tool that Studio did not offer.".to_string()),
+    }
+    .map_err(|_| "Studio could not encode the OKF tool result.".to_string())?;
+    let output = serde_json::to_string(&output)
+        .map_err(|_| "Studio could not encode the OKF tool result.".to_string())?;
+    if output.len() > MAX_NATIVE_OUTPUT_BYTES {
+        return Err(
+            "The OKF tool result is too large. Narrow the filter, page, or line range."
+                .to_string(),
+        );
+    }
+    Ok(output)
+}
+
+pub(crate) fn native_tool_display(call: &LocalToolCall) -> (&'static str, &'static str) {
+    match call.name.as_str() {
+        "okf_inventory" => ("Inspect OKF bundle", "search"),
+        "okf_read" => ("Read OKF concept", "read"),
+        "okf_search" => ("Search OKF bundle", "search"),
+        "okf_sources" => ("List OKF sources", "search"),
+        "okf_traverse" => ("Traverse OKF graph", "search"),
+        "okf_validate" => ("Inspect OKF validation", "read"),
+        _ => ("Use OKF tool", "other"),
+    }
+}
+
+fn native_input<T: for<'de> Deserialize<'de>>(call: &LocalToolCall) -> Result<T, String> {
+    serde_json::from_value(call.arguments.clone())
+        .map_err(|_| format!("The model returned invalid arguments for {}.", call.name))
+}
+
 #[tool_handler]
 impl ServerHandler for OkfMcpServer {
     fn get_info(&self) -> ServerInfo {
@@ -611,7 +775,10 @@ mod tests {
 
     #[test]
     fn tools_inspect_read_search_sources_traverse_and_validate_the_docs_bundle() {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs");
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../docs")
+            .canonicalize()
+            .expect("canonical docs root");
         let server = OkfMcpServer::new(okf_core::read_bundle(&root));
         let Json(inventory) = server
             .okf_inventory(Parameters(InventoryInput {
@@ -745,6 +912,52 @@ mod tests {
                 limit: None,
             }))
             .is_err());
+    }
+
+    #[test]
+    fn native_tools_share_the_mcp_implementations_and_reject_extra_arguments() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../docs")
+            .canonicalize()
+            .expect("canonical docs root");
+        let names = native_tool_definitions()
+            .iter()
+            .map(|tool| tool.name)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            names,
+            [
+                "okf_inventory",
+                "okf_read",
+                "okf_search",
+                "okf_sources",
+                "okf_traverse",
+                "okf_validate"
+            ]
+        );
+        let call = LocalToolCall {
+            id: "local-tool-0-0".to_string(),
+            name: "okf_search".to_string(),
+            arguments: serde_json::json!({"query": "agent panel", "limit": 3}),
+        };
+        let output = execute_native_tool(&root, &call).expect("native search");
+        let output: serde_json::Value = serde_json::from_str(&output).expect("JSON output");
+        assert!(output["matches"]
+            .as_array()
+            .is_some_and(|matches| matches.iter().any(|item| item["id"] == "features/agent-panel")));
+        assert_eq!(native_tool_display(&call), ("Search OKF bundle", "search"));
+
+        let mut invalid = call;
+        invalid.arguments = serde_json::json!({"query": "agent", "path": "../secret"});
+        assert!(execute_native_tool(&root, &invalid).is_err());
+
+        let noncanonical_root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs");
+        assert_eq!(
+            execute_native_tool(&noncanonical_root, &invalid)
+                .expect_err("session root must stay canonical"),
+            "The active OKF bundle is unavailable."
+        );
     }
 
     #[test]

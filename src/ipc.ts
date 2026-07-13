@@ -1513,6 +1513,42 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
   }
 }
 
+async function emitMockLocalTool(
+  info: AgentTurnInfo,
+  index: number,
+  title: string,
+  toolKind: "read" | "search",
+): Promise<boolean> {
+  const toolCallId = `local-tool-${info.turnId}-${index}`;
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "tool-call",
+      toolCallId,
+      title,
+      toolKind,
+      status: "in-progress",
+      locations: null,
+      changeState: null,
+    },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  if (mockCancelledTurns.has(info.turnId)) return false;
+  emitAgentTurn({
+    ...info,
+    update: {
+      kind: "tool-call",
+      toolCallId,
+      title: null,
+      toolKind: null,
+      status: "completed",
+      locations: null,
+      changeState: null,
+    },
+  });
+  return true;
+}
+
 async function emitMockLocalTurn(info: AgentTurnInfo, text: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 100));
   if (mockCancelledTurns.has(info.turnId)) {
@@ -1521,42 +1557,42 @@ async function emitMockLocalTurn(info: AgentTurnInfo, text: string): Promise<voi
     return;
   }
   const loadsSkill = /\b(?:load|use)\b.*\bOKF\b.*\b(?:guidance|instructions?)\b/iu.test(text);
+  const searchesBundle = /\b(?:search|inspect)\b.*\b(?:bundle|concepts?)\b/iu.test(text);
+  let toolIndex = 0;
   if (loadsSkill) {
-    const toolCallId = `local-tool-${info.turnId}-0`;
-    emitAgentTurn({
-      ...info,
-      update: {
-        kind: "tool-call",
-        toolCallId,
-        title: "Load OKF instructions",
-        toolKind: "read",
-        status: "in-progress",
-        locations: null,
-        changeState: null,
-      },
-    });
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    if (mockCancelledTurns.has(info.turnId)) {
+    const completed = await emitMockLocalTool(
+      info,
+      toolIndex,
+      "Load OKF instructions",
+      "read",
+    );
+    if (!completed) {
       emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
       mockCancelledTurns.delete(info.turnId);
       return;
     }
-    emitAgentTurn({
-      ...info,
-      update: {
-        kind: "tool-call",
-        toolCallId,
-        title: null,
-        toolKind: null,
-        status: "completed",
-        locations: null,
-        changeState: null,
-      },
-    });
+    toolIndex += 1;
   }
-  const responseText = loadsSkill
-    ? "Loaded packaged OKF instructions. Bundle access remains off."
-    : `Local model received: ${text}`;
+  if (searchesBundle) {
+    const completed = await emitMockLocalTool(
+      info,
+      toolIndex,
+      "Search OKF bundle",
+      "search",
+    );
+    if (!completed) {
+      emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+      mockCancelledTurns.delete(info.turnId);
+      return;
+    }
+  }
+  const responseText = loadsSkill && searchesBundle
+    ? "Loaded packaged OKF instructions and found the Agent Panel concept at `features/agent-panel`."
+    : loadsSkill
+      ? "Loaded packaged OKF instructions."
+      : searchesBundle
+        ? "Found the Agent Panel concept at `features/agent-panel`."
+        : `Local model received: ${text}`;
   emitAgentTurn({
     ...info,
     update: { kind: "text", text: responseText, messageId: null },

@@ -48,10 +48,10 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [OKF Parsing](architecture/okf-parsing.md) - How concepts, links, and indexes are parsed.
 * [Data Model](architecture/data-model.md) - Bundle, Concept, and Graph shapes shared across the IPC boundary.
 * [Frontend Architecture](architecture/frontend-architecture.md) - The frontend as a thin client over the Rust command/event surface.
-* [IPC & Security](architecture/ipc-and-security.md) - Typed Tauri commands, scoped reads, explicit network paths, and reviewed-write boundaries.
+* [IPC & Security](architecture/ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit network and process actions, and reviewed writes.
 * [Performance & Scale](architecture/performance.md) - How the app stays fast, from the bounded scan to graph rendering.
-* [Testing & Dogfooding](architecture/testing.md) - The test strategy — unit tests, golden link tests, validator parity, and fixtures.
-* [Build & Release](architecture/build-and-release.md) - Building, per-OS packaging, versioning, and shipping — offline.
+* [Testing & Dogfooding](architecture/testing.md) - Frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
+* [Build & Release](architecture/build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.
 
 # Reference
 

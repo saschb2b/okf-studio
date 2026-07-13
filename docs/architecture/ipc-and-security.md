@@ -1,9 +1,9 @@
 ---
 type: Reference
 title: IPC & Security
-description: The Tauri command/event surface between Rust and the frontend, and the read-only, scoped capability model.
+description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-13T00:00:00Z
+timestamp: 2026-07-13T19:06:19Z
 ---
 
 # Command & event surface

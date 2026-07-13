@@ -1,9 +1,9 @@
 ---
 type: Architecture Decision
 title: Build & Release
-description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
+description: How the app is versioned, packaged per OS, released, and updated without automatic network requests.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-07-13T17:18:47Z
+timestamp: 2026-07-13T19:06:19Z
 ---
 
 # Decision

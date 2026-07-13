@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Update**: Refreshed the architecture map after the Studio transformation. IPC now describes scoped reads, explicit process and network actions, and reviewed writes; Testing names the frontend, core, native, accessibility, conformance, and authoring gates; Build and Release distinguishes opt-in updates from Studio's explicit provider and source connections.
 * **Update**: Added the native Studio host to pull-request CI. A Windows job now runs clippy and the complete `okf-viewer` test suite, covering ACP process ownership, local providers, source intake, MCP tools, credentials, staging, validation, transactions, recovery, and the PDF helper. The testing guide now reflects the actual Vitest, browser-review, axe, core, and native gates.
 * **Update**: Updated the repository README to present the shipped Agent workspace rather than a research-only preview. It now names external ACP and Studio Agent paths, source-backed creation and improvement, guided knowledge work, and the staged validation and review boundary.
 * **Update**: Reconciled the top-level product contract with the shipped Studio loop. The overview, principles, scope, personas, comparison, feature map, contributor guide, and site now describe explicit network actions, replaceable ACP and Studio Agent paths, source-backed creation, cited research, and validated reviewed writes. Opening a local folder remains offline and read-only; unattended external-agent work remains deferred until enforcement exists.

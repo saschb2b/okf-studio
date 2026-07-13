@@ -1,9 +1,9 @@
 ---
 type: Architecture Decision
 title: Testing & Dogfooding
-description: The test strategy — Rust unit and integration tests, golden link tests, validator parity, tolerance proofs, and dogfooding this bundle.
+description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-13T19:04:19Z
+timestamp: 2026-07-13T19:06:19Z
 ---
 
 # Decision

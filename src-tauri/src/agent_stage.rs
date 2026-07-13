@@ -64,21 +64,32 @@ pub struct AgentStagedFileDiff {
     pub truncated: bool,
 }
 
+#[derive(Clone)]
 struct SessionStage {
     bundle_root: PathBuf,
     granted: bool,
     files: BTreeMap<String, StagedFile>,
 }
 
+#[derive(Clone)]
 struct StagedFile {
     content: String,
     kind: &'static str,
     selection: Option<HunkSelection>,
 }
 
+#[derive(Clone)]
 struct HunkSelection {
     revision: String,
     rejected: BTreeSet<usize>,
+}
+
+/// One full-text ACP diff report before it enters the authoritative staged
+/// tree. `old_text` is used only as a compare-and-stage precondition.
+pub(crate) struct AgentReportedDiff {
+    pub path: PathBuf,
+    pub old_text: Option<String>,
+    pub new_text: String,
 }
 
 /// All write-grant and staged-tree state for one agent connection. Sessions
@@ -156,49 +167,72 @@ impl SessionStages {
         if !stage.granted {
             return Err(WRITE_GRANT_MESSAGE.to_string());
         }
-        let relative = bundle_relative_write_path(&stage.bundle_root, path)?;
-        if content.len() > MAX_STAGED_FILE_BYTES {
+        stage_write_into(stage, path, content)?;
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// Reduce a complete ACP diff-content replacement into the staged tree.
+    /// The batch is atomic and accepted only when every agent-supplied old
+    /// text matches the current disk-or-staged view. This makes ACP content a
+    /// proposal rather than evidence that Studio applied a filesystem change.
+    pub fn stage_reported_diffs(
+        &self,
+        session_id: &str,
+        diffs: Vec<AgentReportedDiff>,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "Bundle write denied: the ACP session is not active.".to_string())?;
+        if !stage.granted {
+            return Err(WRITE_GRANT_MESSAGE.to_string());
+        }
+        if diffs.len() > MAX_STAGED_FILES {
             return Err(format!(
-                "Bundle write denied: staged files are limited to {MAX_STAGED_FILE_BYTES} bytes."
+                "Bundle write denied: one ACP update may report at most {MAX_STAGED_FILES} files."
             ));
         }
-        let existing = stage.files.get(&relative);
-        let used: usize = stage
-            .files
-            .iter()
-            .filter(|(staged_path, _)| *staged_path != &relative)
-            .map(|(_, file)| file.content.len())
-            .sum();
-        if used + content.len() > MAX_STAGED_TOTAL_BYTES {
-            return Err(format!(
-                "Bundle write denied: staged changes are limited to {MAX_STAGED_TOTAL_BYTES} bytes in total."
-            ));
+
+        let mut candidate = stage.clone();
+        let mut seen = BTreeSet::new();
+        for diff in diffs {
+            let relative = bundle_relative_write_path(&candidate.bundle_root, &diff.path)?;
+            if !seen.insert(relative.clone()) {
+                return Err(
+                    "Bundle write denied: an ACP diff reported the same path twice.".to_string(),
+                );
+            }
+            if diff
+                .old_text
+                .as_ref()
+                .is_some_and(|text| text.len() > MAX_STAGED_FILE_BYTES)
+            {
+                return Err("Bundle write denied: an ACP diff base is too large.".to_string());
+            }
+            if candidate
+                .files
+                .get(&relative)
+                .is_some_and(|file| file.content == diff.new_text)
+            {
+                continue;
+            }
+            let matches_staged = candidate
+                .files
+                .get(&relative)
+                .is_some_and(|file| diff.old_text.as_deref() == Some(file.content.as_str()));
+            let disk = disk_text(&candidate, &relative)?;
+            if !matches_staged && diff.old_text.as_deref() != disk.as_deref() {
+                return Err(
+                    "ACP diff not staged: its base does not match the current bundle or staged tree."
+                        .to_string(),
+                );
+            }
+            stage_write_into(&mut candidate, &diff.path, diff.new_text)?;
         }
-        if existing.is_none() && stage.files.len() >= MAX_STAGED_FILES {
-            return Err(format!(
-                "Bundle write denied: staged changes are limited to {MAX_STAGED_FILES} files."
-            ));
-        }
-        // Whether this write creates or modifies is decided against the real
-        // bundle once, then kept stable across repeated writes to the path.
-        let kind = existing.map_or_else(
-            || {
-                if stage.bundle_root.join(Path::new(&relative)).is_file() {
-                    "modify"
-                } else {
-                    "create"
-                }
-            },
-            |file| file.kind,
-        );
-        stage.files.insert(
-            relative,
-            StagedFile {
-                content,
-                kind,
-                selection: None,
-            },
-        );
+        *stage = candidate;
         Ok(snapshot(session_id, stage))
     }
 
@@ -357,6 +391,74 @@ impl SessionStages {
             .get(session_id)
             .map(|stage| snapshot(session_id, stage))
     }
+}
+
+fn stage_write_into(stage: &mut SessionStage, path: &Path, content: String) -> Result<(), String> {
+    let relative = bundle_relative_write_path(&stage.bundle_root, path)?;
+    if content.len() > MAX_STAGED_FILE_BYTES {
+        return Err(format!(
+            "Bundle write denied: staged files are limited to {MAX_STAGED_FILE_BYTES} bytes."
+        ));
+    }
+    let existing = stage.files.get(&relative);
+    let used: usize = stage
+        .files
+        .iter()
+        .filter(|(staged_path, _)| *staged_path != &relative)
+        .map(|(_, file)| file.content.len())
+        .sum();
+    if used + content.len() > MAX_STAGED_TOTAL_BYTES {
+        return Err(format!(
+            "Bundle write denied: staged changes are limited to {MAX_STAGED_TOTAL_BYTES} bytes in total."
+        ));
+    }
+    if existing.is_none() && stage.files.len() >= MAX_STAGED_FILES {
+        return Err(format!(
+            "Bundle write denied: staged changes are limited to {MAX_STAGED_FILES} files."
+        ));
+    }
+    if existing.is_some_and(|file| file.content == content) {
+        return Ok(());
+    }
+    // Whether this write creates or modifies is decided against the real
+    // bundle once, then kept stable across repeated writes to the path.
+    let kind = existing.map_or_else(
+        || {
+            if stage.bundle_root.join(Path::new(&relative)).is_file() {
+                "modify"
+            } else {
+                "create"
+            }
+        },
+        |file| file.kind,
+    );
+    stage.files.insert(
+        relative,
+        StagedFile {
+            content,
+            kind,
+            selection: None,
+        },
+    );
+    Ok(())
+}
+
+fn disk_text(stage: &SessionStage, relative: &str) -> Result<Option<String>, String> {
+    let path = stage.bundle_root.join(Path::new(relative));
+    if !path.exists() {
+        return Ok(None);
+    }
+    if !path.is_file() {
+        return Err("ACP diff not staged: its target is not a text file.".to_string());
+    }
+    let bytes = std::fs::read(path)
+        .map_err(|_| "ACP diff not staged: its current file could not be read.".to_string())?;
+    if bytes.len() > MAX_STAGED_FILE_BYTES {
+        return Err("ACP diff not staged: its current file is too large.".to_string());
+    }
+    String::from_utf8(bytes)
+        .map(Some)
+        .map_err(|_| "ACP diff not staged: its current file is not UTF-8 text.".to_string())
 }
 
 fn read_original(bundle_root: &Path, path: &str, kind: &str) -> Result<String, String> {
@@ -591,6 +693,124 @@ mod tests {
             stages.staged_content("session-1", &root.join("notes").join("new.md")),
             Some("# New".to_string()),
         );
+    }
+
+    #[test]
+    fn reduces_reported_diffs_atomically_and_preserves_identical_reviews() {
+        let root = canonical_temp_dir("reported-diffs");
+        std::fs::write(root.join("existing.md"), "old\n").expect("seed bundle file");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        let reported = || {
+            vec![
+                AgentReportedDiff {
+                    path: root.join("existing.md"),
+                    old_text: Some("old\n".to_string()),
+                    new_text: "new\n".to_string(),
+                },
+                AgentReportedDiff {
+                    path: root.join("created.md"),
+                    old_text: None,
+                    new_text: "# Created\n".to_string(),
+                },
+            ]
+        };
+
+        let staged = stages
+            .stage_reported_diffs("session-1", reported())
+            .expect("matching report should stage");
+        assert_eq!(staged.files.len(), 2);
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("unchanged bundle file"),
+            "old\n",
+        );
+        assert!(!root.join("created.md").exists());
+
+        let initial = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("review reported diff");
+        stages
+            .set_hunk_selection(
+                "session-1",
+                "existing.md",
+                &initial.revision,
+                0,
+                false,
+            )
+            .expect("reject hunk");
+        stages
+            .stage_reported_diffs("session-1", reported())
+            .expect("identical report should be idempotent");
+        assert!(
+            !stages
+                .staged_diff("session-1", "existing.md")
+                .expect("reopen review")
+                .hunks[0]
+                .selected
+        );
+
+        stages
+            .stage_reported_diffs(
+                "session-1",
+                vec![AgentReportedDiff {
+                    path: root.join("existing.md"),
+                    old_text: Some("old\n".to_string()),
+                    new_text: "newer proposal\n".to_string(),
+                }],
+            )
+            .expect("replacement may retain the unchanged disk base");
+        let replaced = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("review replacement");
+        assert!(replaced.hunks[0].selected, "a revised proposal resets choices");
+        assert!(replaced.hunks[0].unified.contains("newer proposal"));
+
+        let error = stages
+            .stage_reported_diffs(
+                "session-1",
+                vec![
+                    AgentReportedDiff {
+                        path: root.join("existing.md"),
+                        old_text: Some("wrong base\n".to_string()),
+                        new_text: "replacement\n".to_string(),
+                    },
+                    AgentReportedDiff {
+                        path: root.join("must-not-stage.md"),
+                        old_text: None,
+                        new_text: "partial\n".to_string(),
+                    },
+                ],
+            )
+            .expect_err("mismatched batch should fail");
+        assert!(error.contains("base does not match"));
+        assert!(stages
+            .summary("session-1")
+            .expect("summary")
+            .files
+            .iter()
+            .all(|file| file.path != "must-not-stage.md"));
+    }
+
+    #[test]
+    fn rejects_a_report_after_an_external_process_already_changed_the_file() {
+        let root = canonical_temp_dir("reported-diff-external-write");
+        let path = root.join("existing.md");
+        std::fs::write(&path, "changed outside Studio\n").expect("seed external change");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+
+        let error = stages
+            .stage_reported_diffs(
+                "session-1",
+                vec![AgentReportedDiff {
+                    path,
+                    old_text: Some("original\n".to_string()),
+                    new_text: "changed outside Studio\n".to_string(),
+                }],
+            )
+            .expect_err("already-applied report must not become a Studio stage");
+        assert!(error.contains("base does not match"));
+        assert!(stages.summary("session-1").expect("summary").files.is_empty());
     }
 
     #[test]

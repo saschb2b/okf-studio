@@ -769,6 +769,10 @@ function mockAgentResponse(text: string): string {
 }
 
 async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
+  const reportsChange = text.startsWith("Stage:");
+  const changeState = reportsChange
+    ? (mockStageState(info.sessionId).granted ? "staged" : "not-staged")
+    : null;
   await new Promise((resolve) => setTimeout(resolve, 0));
   emitAgentTurn({
     ...info,
@@ -785,13 +789,16 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     update: {
       kind: "tool-call",
       toolCallId: `search-${info.turnId}`,
-      title: "Search the bundle",
-      toolKind: "search",
+      title: reportsChange ? "Edit the bundle" : "Search the bundle",
+      toolKind: reportsChange ? "edit" : "search",
       status: "in-progress",
-      locations: [
-        { path: "product/overview.md", line: 12 },
-        { path: "features/agent-panel.md", line: 49 },
-      ],
+      changeState,
+      locations: reportsChange
+        ? []
+        : [
+            { path: "product/overview.md", line: 12 },
+            { path: "features/agent-panel.md", line: 49 },
+          ],
     },
   });
   emitAgentTurn({
@@ -884,6 +891,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       toolKind: null,
       status: "completed",
       locations: null,
+      changeState,
     },
   });
   emitAgentTurn({

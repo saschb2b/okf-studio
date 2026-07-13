@@ -7,7 +7,8 @@ use agent_client_protocol::schema::v1::{
     ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionNotification, SessionUpdate, StopReason, TextContent, TextResourceContents, ToolCallStatus,
-    ToolCallLocation, ToolKind, UsageUpdate, WriteTextFileRequest, WriteTextFileResponse,
+    ToolCallContent, ToolCallLocation, ToolKind, UsageUpdate, WriteTextFileRequest,
+    WriteTextFileResponse,
 };
 use base64::Engine;
 use agent_client_protocol::schema::ProtocolVersion;
@@ -25,7 +26,9 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
-use crate::agent_stage::{AgentStagedChangesInfo, SessionStages};
+use crate::agent_stage::{
+    AgentReportedDiff, AgentStagedChangesInfo, SessionStages, MAX_STAGED_FILES,
+};
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
@@ -178,6 +181,7 @@ enum AgentTurnUpdate {
         tool_kind: Option<&'static str>,
         status: Option<&'static str>,
         locations: Option<Vec<AgentToolLocationInfo>>,
+        change_state: Option<&'static str>,
     },
     Usage {
         used_tokens: u64,
@@ -980,6 +984,8 @@ async fn run_connection(
     let notification_sessions = Arc::clone(&sessions);
     let notification_events = Arc::clone(&turn_events);
     let notification_replays = Arc::clone(&history_replays);
+    let notification_stages = Arc::clone(&stages);
+    let notification_stage_events = Arc::clone(&stage_events);
     let notification_connection_id = connection_id.clone();
     let request_turns = Arc::clone(&active_turns);
     let request_permissions = Arc::clone(&permissions);
@@ -998,12 +1004,52 @@ async fn run_connection(
                 if collect_history_replay(&notification_replays, &notification) {
                     return Ok(());
                 }
-                if let Some(event) = turn_event(
-                    &notification_connection_id,
-                    &notification_turns,
-                    &notification_sessions,
-                    notification,
-                ) {
+                let session_id = notification.session_id.to_string();
+                let has_active_turn = notification_turns
+                    .lock()
+                    .ok()
+                    .is_some_and(|turns| turns.contains_key(&session_id));
+                let change_state = if has_active_turn {
+                    reported_diffs(&notification)
+                } else {
+                    None
+                };
+                let change_state = if let Some(diffs) = change_state {
+                    let stages = Arc::clone(&notification_stages);
+                    match tokio::task::spawn_blocking(move || {
+                        stages.stage_reported_diffs(&session_id, diffs)
+                    })
+                    .await
+                    {
+                        Ok(Ok(changes)) => {
+                            notification_stage_events(AgentStageEvent {
+                                connection_id: notification_connection_id.clone(),
+                                changes,
+                            });
+                            Some("staged")
+                        }
+                        Ok(Err(_)) | Err(_) => Some("not-staged"),
+                    }
+                } else {
+                    None
+                };
+                let event = if change_state.is_some() {
+                    turn_event_with_change_state(
+                        &notification_connection_id,
+                        &notification_turns,
+                        &notification_sessions,
+                        notification,
+                        change_state,
+                    )
+                } else {
+                    turn_event(
+                        &notification_connection_id,
+                        &notification_turns,
+                        &notification_sessions,
+                        notification,
+                    )
+                };
+                if let Some(event) = event {
                     notification_events(event);
                 }
                 Ok(())
@@ -1768,6 +1814,16 @@ fn turn_event(
     sessions: &Mutex<HashMap<String, PathBuf>>,
     notification: SessionNotification,
 ) -> Option<AgentTurnEvent> {
+    turn_event_with_change_state(connection_id, active_turns, sessions, notification, None)
+}
+
+fn turn_event_with_change_state(
+    connection_id: &str,
+    active_turns: &Mutex<HashMap<String, String>>,
+    sessions: &Mutex<HashMap<String, PathBuf>>,
+    notification: SessionNotification,
+    change_state: Option<&'static str>,
+) -> Option<AgentTurnEvent> {
     let session_id = notification.session_id.to_string();
     let turn_id = active_turns.lock().ok()?.get(&session_id)?.clone();
     let update = match notification.update {
@@ -1797,6 +1853,7 @@ fn turn_event(
             tool_kind: Some(tool_kind_name(tool.kind)),
             status: Some(tool_status_name(tool.status)),
             locations: Some(reduced_tool_locations(sessions, &session_id, tool.locations)),
+            change_state,
         },
         SessionUpdate::ToolCallUpdate(update) => AgentTurnUpdate::ToolCall {
             tool_call_id: bounded_tool_field(&update.tool_call_id.to_string()),
@@ -1807,6 +1864,7 @@ fn turn_event(
                 .fields
                 .locations
                 .map(|locations| reduced_tool_locations(sessions, &session_id, locations)),
+            change_state,
         },
         SessionUpdate::UsageUpdate(usage) => reduced_usage_update(usage),
         _ => return None,
@@ -1817,6 +1875,27 @@ fn turn_event(
         turn_id,
         update,
     })
+}
+
+fn reported_diffs(notification: &SessionNotification) -> Option<Vec<AgentReportedDiff>> {
+    let content = match &notification.update {
+        SessionUpdate::ToolCall(tool) => Some(&tool.content),
+        SessionUpdate::ToolCallUpdate(update) => update.fields.content.as_ref(),
+        _ => None,
+    }?;
+    let diffs = content
+        .iter()
+        .filter_map(|content| match content {
+            ToolCallContent::Diff(diff) => Some(AgentReportedDiff {
+                path: diff.path.clone(),
+                old_text: diff.old_text.clone(),
+                new_text: diff.new_text.clone(),
+            }),
+            _ => None,
+        })
+        .take(MAX_STAGED_FILES + 1)
+        .collect::<Vec<_>>();
+    (!diffs.is_empty()).then_some(diffs)
 }
 
 fn reduced_tool_locations(
@@ -2417,8 +2496,8 @@ async fn negotiate_with_timeout(
 mod tests {
     use super::*;
     use agent_client_protocol::schema::v1::{
-        AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, NewSessionResponse,
-        Cost, ListSessionsResponse, LoadSessionResponse, PermissionOption, Plan, PlanEntry,
+        AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, Cost, Diff,
+        ListSessionsResponse, LoadSessionResponse, NewSessionResponse, PermissionOption, Plan, PlanEntry,
         PromptCapabilities, PromptResponse, SessionInfo, ToolCall, ToolCallStatus, ToolCallUpdate,
         ToolCallUpdateFields, ToolKind, UsageUpdate,
     };
@@ -2444,11 +2523,13 @@ mod tests {
             tool_kind: Some("read"),
             status: Some("pending"),
             locations: None,
+            change_state: None,
         })
         .expect("serialize tool call");
         assert_eq!(tool_call["kind"], "tool-call");
         assert_eq!(tool_call["toolCallId"], "tool-1");
         assert_eq!(tool_call["toolKind"], "read");
+        assert!(tool_call["changeState"].is_null());
 
         let text = serde_json::to_value(AgentTurnUpdate::Text {
             text: "chunk".to_string(),
@@ -2564,6 +2645,7 @@ mod tests {
             tool_kind,
             status,
             locations,
+            change_state,
         } = event.update else {
             panic!("expected a tool update");
         };
@@ -2571,6 +2653,7 @@ mod tests {
         assert_eq!(title.expect("title").chars().count(), MAX_TOOL_FIELD_CHARS);
         assert_eq!(tool_kind, Some("search"));
         assert_eq!(status, Some("in-progress"));
+        assert_eq!(change_state, None);
         let locations = locations.expect("full location update");
         assert_eq!(locations.len(), MAX_TOOL_LOCATIONS);
         assert_eq!(locations[0].path, "product/overview.md");
@@ -2599,6 +2682,52 @@ mod tests {
                 ..
             } if locations.is_empty()
         ));
+    }
+
+    #[test]
+    fn extracts_only_bounded_acp_diff_content_for_staging() {
+        let path = std::env::temp_dir().join("reported.md");
+        let notification = SessionNotification::new(
+            "session-tool",
+            SessionUpdate::ToolCall(
+                ToolCall::new("tool-diff", "Edit the bundle").content(vec![
+                    ContentBlock::Text(TextContent::new("must not enter staging")).into(),
+                    Diff::new(&path, "new text\n")
+                        .old_text("old text\n")
+                        .into(),
+                ]),
+            ),
+        );
+
+        let diffs = reported_diffs(&notification).expect("reported diff");
+        assert_eq!(diffs.len(), 1);
+        assert_eq!(diffs[0].path, path);
+        assert_eq!(diffs[0].old_text.as_deref(), Some("old text\n"));
+        assert_eq!(diffs[0].new_text, "new text\n");
+
+        let active_turns = Mutex::new(HashMap::from([(
+            "session-tool".to_string(),
+            "turn-tool".to_string(),
+        )]));
+        let event = turn_event_with_change_state(
+            "connection-tool",
+            &active_turns,
+            &Mutex::new(HashMap::new()),
+            notification,
+            Some("staged"),
+        )
+        .expect("tool event");
+        let debug = format!("{event:?}");
+        assert!(matches!(
+            event.update,
+            AgentTurnUpdate::ToolCall {
+                change_state: Some("staged"),
+                ..
+            }
+        ));
+        assert!(!debug.contains("old text"));
+        assert!(!debug.contains("new text"));
+        assert!(!debug.contains("must not enter staging"));
     }
 
     #[test]
@@ -3467,6 +3596,7 @@ mod tests {
                 tool_kind: Some("search"),
                 status: Some("in-progress"),
                 locations: Some(locations),
+                change_state: None,
             } if tool_call_id == "tool-search"
                 && title == "Search the bundle"
                 && locations.len() == 1
@@ -3482,6 +3612,7 @@ mod tests {
                 tool_kind: None,
                 status: Some("completed"),
                 locations: None,
+                change_state: None,
             } if tool_call_id == "tool-search"
         ));
         let usage = events_rx.recv().await.expect("usage event");

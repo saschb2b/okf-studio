@@ -96,6 +96,7 @@ interface ConversationTool {
   toolKind: AgentToolKind;
   status: AgentToolStatus | "cancelled";
   locations: readonly AgentToolLocationInfo[];
+  changeState: "staged" | "not-staged" | null;
 }
 
 type ConversationItem = ConversationMessage | ConversationPlan | ConversationTool;
@@ -2546,6 +2547,7 @@ function applyTurnEvent(
         toolKind: toolUpdate.toolKind ?? existing?.toolKind ?? "other",
         status: toolUpdate.status ?? existing?.status ?? "pending",
         locations: toolUpdate.locations ?? existing?.locations ?? [],
+        changeState: toolUpdate.changeState ?? existing?.changeState ?? null,
       };
       if (index < 0) return [...current, tool];
       return current.map((item, itemIndex) => itemIndex === index ? tool : item);
@@ -2661,6 +2663,16 @@ function ToolCard({ tool }: { tool: ConversationTool }) {
       <div>
         <strong>{tool.title}</strong>
         <small>{kindLabel}</small>
+        {tool.changeState && (
+          <small
+            className={`agent-tool__change agent-tool__change--${tool.changeState}`}
+            title={tool.changeState === "staged"
+              ? "Studio accepted this reported change for review. It is not applied."
+              : "Studio did not accept this reported change. Check the thread grant and staging limits."}
+          >
+            {tool.changeState === "staged" ? "Change staged for review" : "Change not staged"}
+          </small>
+        )}
         <ToolLocations locations={tool.locations} />
       </div>
       <small className="agent-tool__status">{statusLabel}</small>

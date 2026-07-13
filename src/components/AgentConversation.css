@@ -559,6 +559,14 @@
   text-align: end;
 }
 
+.agent-tool .agent-tool__change--staged {
+  color: var(--ok);
+}
+
+.agent-tool .agent-tool__change--not-staged {
+  color: var(--warn);
+}
+
 .agent-tool__location {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

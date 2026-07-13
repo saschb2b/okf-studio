@@ -761,6 +761,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByText(
       /Bundle write denied: writes require the Allow edits in this thread grant/,
     )).toBeInTheDocument();
+    expect(screen.getByText("Change not staged")).toBeInTheDocument();
     expect(screen.queryByText("Staged changes")).not.toBeInTheDocument();
 
     await vi.waitFor(() => expect(grantToggle).toBeEnabled());
@@ -771,6 +772,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Browser ACP staged: proposals/draft.md"))
       .toBeInTheDocument();
+    expect(screen.getByText("Change staged for review")).toBeInTheDocument();
     expect(await screen.findByText("Staged changes")).toBeInTheDocument();
     expect(screen.getByText("proposals/draft.md")).toBeInTheDocument();
     expect(screen.getByText(/not applied to the bundle/)).toBeInTheDocument();

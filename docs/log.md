@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Creation**: Routed ACP tool-call diffs into the Rust staged-change boundary. A granted, bounded batch stages only when every reported base matches Studio's current disk-or-staged text; otherwise the whole report remains unstaged. Raw diff content stays out of webview IPC, and tool cards distinguish **Change staged for review** from **Change not staged** without treating ACP completion as an applied Studio write. Identical reports preserve hunk choices, while an already changed disk file is detected as a boundary bypass.
 * **Creation**: Added revision-bound hunk choices to staged-file review. Unified diffs now cross IPC as bounded change clusters that default to Keep. Each hunk can be kept or rejected without changing the staged text, and the Rust staging service preserves those choices when review closes. A SHA-256 revision rejects stale commands after the agent or original file changes. Truncated diffs remain visible but do not accept hunk choices. Validation and atomic apply remain separate packages.
 
 ## 2026-07-12

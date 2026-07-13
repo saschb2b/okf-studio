@@ -119,6 +119,7 @@ export interface AgentTurnEvent extends AgentTurnInfo {
         toolKind: AgentToolKind | null;
         status: AgentToolStatus | null;
         locations: readonly AgentToolLocationInfo[] | null;
+        changeState: "staged" | "not-staged" | null;
       }
     | {
         kind: "usage";

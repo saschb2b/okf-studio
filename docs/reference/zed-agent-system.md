@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-13T18:07:04Z
+timestamp: 2026-07-13T18:36:48Z
 ---
 
 # Adopted patterns
@@ -29,6 +29,8 @@ timestamp: 2026-07-13T18:07:04Z
 - ACP assumes a trusted process. Protocol permissions do not sandbox it.
 - Zed combines its native-agent tool permissions with terminal sandboxing. Native Windows terminal isolation currently requires WSL and Bubblewrap.
 - Zed does not currently provide generic process confinement for external ACP agents; its repository still tracks that as an open feature request. Studio therefore copies the visible-scope principle, not a nonexistent external-agent sandbox.
+- The external-agent sandbox discussion remained open on 2026-07-13. Its most concrete current proposal separates execution isolation, visible resource policy, and reusable profiles. This is community design input, not a shipped Zed contract.
+- A provider may bring its own sandbox. Codex ACP has exercised Codex's Landlock path on Linux, for example, but that provider-owned behavior cannot prove containment for another ACP executable or for the host process itself.
 - Zed stores provider keys in the system keychain.
 - Zed Skills apply to its native agent, not automatically to external agents.
 - The ACP Registry snapshot checked on 2026-07-11 distributes Claude Agent as `@agentclientprotocol/claude-agent-acp@0.58.1` and Codex as `@agentclientprotocol/codex-acp@1.1.2`. Both are pinned `npx` packages, so a self-contained client needs an app-managed runtime or declared prerequisite.
@@ -46,6 +48,7 @@ timestamp: 2026-07-13T18:07:04Z
 - [Zed tool permissions](https://github.com/zed-industries/zed/blob/main/docs/src/ai/tool-permissions.md)
 - [Zed sandboxing](https://github.com/zed-industries/zed/blob/main/docs/src/ai/sandboxing.md)
 - [Zed external-agent sandboxing request](https://github.com/zed-industries/zed/discussions/40482)
+- [Codex ACP Landlock integration issue](https://github.com/zed-industries/zed/issues/43021)
 - [Zed skills](https://github.com/zed-industries/zed/blob/main/docs/src/ai/skills.md)
 - [Zed agent server trait](https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/agent_servers.rs)
 - [Zed ACP connection](https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/acp.rs)

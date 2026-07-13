@@ -27,8 +27,8 @@ use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 use crate::agent_stage::{
-    AgentReportedDiff, AgentStagedChangesInfo, AgentStagedValidationInfo, SessionStages,
-    MAX_STAGED_FILES,
+    AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo, AgentStagedValidationInfo,
+    SessionStages, MAX_STAGED_FILES,
 };
 use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
 
@@ -649,6 +649,31 @@ pub async fn validate_staged_changes(
     tokio::task::spawn_blocking(move || stages.validate_staged(&session_id))
         .await
         .map_err(|_| "Staged validation task did not complete.".to_string())?
+}
+
+/// Apply the exact zero-error staged revision and emit the now-empty staged
+/// snapshot. Validation and transactional disk work run off the async thread.
+pub async fn apply_staged_changes(
+    app: &AppHandle,
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: &str,
+    revision: &str,
+) -> Result<AgentStagedApplyInfo, String> {
+    let stages = connection_stages(state, connection_id)?;
+    let session_id = session_id.to_string();
+    let revision = revision.to_string();
+    let result = tokio::task::spawn_blocking(move || stages.apply_staged(&session_id, &revision))
+        .await
+        .map_err(|_| "Staged apply task did not complete.".to_string())??;
+    let _ = app.emit(
+        STAGE_EVENT,
+        AgentStageEvent {
+            connection_id: connection_id.to_string(),
+            changes: result.changes.clone(),
+        },
+    );
+    Ok(result)
 }
 
 fn connection_stages(

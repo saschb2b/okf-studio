@@ -20,6 +20,7 @@ import type {
   AgentLoadedSessionInfo,
   AgentSessionInfo,
   AgentSessionHistoryPage,
+  AgentStagedApplyInfo,
   AgentStagedChangesInfo,
   AgentStagedFileDiff,
   AgentStagedFileInfo,
@@ -736,6 +737,38 @@ export async function validateAgentStagedChanges(
     issues,
     truncated: false,
   };
+}
+
+export async function applyAgentStagedChanges(
+  connectionId: string,
+  sessionId: string,
+  revision: string,
+): Promise<AgentStagedApplyInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentStagedApplyInfo>("apply_agent_staged_changes", {
+      connectionId,
+      sessionId,
+      revision,
+    });
+  }
+  if (!activeAgentConnectionsById.has(connectionId)) {
+    throw new Error("Agent connection was not found.");
+  }
+  const validation = await validateAgentStagedChanges(connectionId, sessionId);
+  if (validation.revision !== revision) {
+    throw new Error("The staged changes or bundle files changed. Validate them again.");
+  }
+  if (validation.errors > 0) {
+    throw new Error(
+      `Apply blocked: staged validation found ${validation.errors} error${validation.errors === 1 ? "" : "s"}.`,
+    );
+  }
+  const state = mockStageState(sessionId);
+  const appliedFiles = state.files.filter((file) => file.hunkSelected).length;
+  state.files = [];
+  const changes = emitMockStage(connectionId, sessionId);
+  return { sessionId, revision, appliedFiles, changes };
 }
 
 export async function discardAgentStagedFile(

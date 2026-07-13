@@ -826,6 +826,19 @@ describe("OKF Studio app", () => {
     expect(within(reopenedDiff).getByRole("button", { name: "Reject" }))
       .toHaveAttribute("aria-pressed", "true");
 
+    await user.click(screen.getByRole("button", { name: "Apply changes" }));
+    expect(await screen.findByText("The rejected staged changes were cleared."))
+      .toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
+    );
+
+    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Browser ACP staged: proposals/draft.md"))
+      .toBeInTheDocument();
+    await screen.findByRole("button", { name: "Send" });
+
     await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/notes.md");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Browser ACP staged: proposals/notes.md"))

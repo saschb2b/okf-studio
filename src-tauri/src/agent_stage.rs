@@ -8,6 +8,8 @@
 //! its own writes. See docs/architecture/agent-system.md.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -87,21 +89,30 @@ pub struct AgentStagedValidationInfo {
     pub truncated: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedApplyInfo {
+    pub session_id: String,
+    pub revision: String,
+    pub applied_files: usize,
+    pub changes: AgentStagedChangesInfo,
+}
+
+#[derive(Clone, PartialEq, Eq)]
 struct SessionStage {
     bundle_root: PathBuf,
     granted: bool,
     files: BTreeMap<String, StagedFile>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct StagedFile {
     content: String,
     kind: &'static str,
     selection: Option<HunkSelection>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct HunkSelection {
     revision: String,
     rejected: BTreeSet<usize>,
@@ -415,71 +426,52 @@ impl SessionStages {
             (stage.bundle_root.clone(), stage.files.clone())
         };
 
-        let mirror = ValidationMirror::create()?;
-        copy_markdown_tree(&bundle_root, &mirror.path)?;
-        let mut digest = Sha256::new();
-        for (path, file) in &files {
-            let original = read_original(&bundle_root, path, file.kind)?;
-            let (effective, revision) = selected_staged_content(path, file, &original)?;
-            for part in [path.as_bytes(), revision.as_bytes()] {
-                digest.update((part.len() as u64).to_le_bytes());
-                digest.update(part);
-            }
-            match &effective {
-                Some(content) => {
-                    digest.update([1]);
-                    digest.update((content.len() as u64).to_le_bytes());
-                    digest.update(content.as_bytes());
-                }
-                None => digest.update([0]),
-            }
-            if path.to_ascii_lowercase().ends_with(".md") && effective.is_some() {
-                let target = mirror.path.join(Path::new(path));
-                if let Some(parent) = target.parent() {
-                    std::fs::create_dir_all(parent).map_err(|_| {
-                        "Staged validation workspace could not be prepared.".to_string()
-                    })?;
-                }
-                std::fs::write(target, effective.as_deref().unwrap_or_default())
-                    .map_err(|_| "Staged validation workspace could not be written.".to_string())?;
-            } else if path.to_ascii_lowercase().ends_with(".md") {
-                let target = mirror.path.join(Path::new(path));
-                if target.exists() {
-                    std::fs::remove_file(target).map_err(|_| {
-                        "Staged validation workspace could not be updated.".to_string()
-                    })?;
-                }
-            }
+        let prepared = prepare_selected_stage(&bundle_root, &files)?;
+        validate_prepared(session_id, &bundle_root, &prepared)
+    }
+
+    /// Apply the exact zero-error staged revision the user validated. The
+    /// session lock freezes agent staging while validation and the transaction
+    /// run. Disk bases and path containment are checked again immediately
+    /// before same-directory replacements; ordinary failures roll back every
+    /// file already replaced.
+    pub fn apply_staged(
+        &self,
+        session_id: &str,
+        expected_revision: &str,
+    ) -> Result<AgentStagedApplyInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        if stage.files.is_empty() {
+            return Err("There are no staged changes to apply.".to_string());
         }
 
-        let bundle = okf_core::read_bundle(&mirror.path);
-        let errors = bundle
-            .issues
-            .iter()
-            .filter(|issue| issue.level == okf_core::IssueLevel::Error)
-            .count();
-        let warnings = bundle.issues.len().saturating_sub(errors);
-        let truncated = bundle.issues.len() > MAX_VALIDATION_ISSUES;
-        let issues = bundle
-            .issues
-            .into_iter()
-            .take(MAX_VALIDATION_ISSUES)
-            .map(|issue| AgentStagedValidationIssue {
-                path: issue.concept_id.map(|id| format!("{id}.md")),
-                level: match issue.level {
-                    okf_core::IssueLevel::Error => "error",
-                    okf_core::IssueLevel::Warning => "warning",
-                },
-                message: bounded_validation_message(&issue.message),
-            })
-            .collect();
-        Ok(AgentStagedValidationInfo {
+        let prepared = prepare_selected_stage(&stage.bundle_root, &stage.files)?;
+        let revision = selected_stage_revision(&prepared);
+        if revision != expected_revision {
+            return Err("The staged changes or bundle files changed. Validate them again.".to_string());
+        }
+        let validation = validate_prepared(session_id, &stage.bundle_root, &prepared)?;
+        if validation.errors > 0 {
+            return Err(format!(
+                "Apply blocked: staged validation found {} error{}.",
+                validation.errors,
+                if validation.errors == 1 { "" } else { "s" }
+            ));
+        }
+
+        let applied_files = apply_prepared_transaction(&stage.bundle_root, &prepared, None)?;
+        stage.files.clear();
+        Ok(AgentStagedApplyInfo {
             session_id: session_id.to_string(),
-            revision: format!("{:x}", digest.finalize()),
-            errors,
-            warnings,
-            issues,
-            truncated,
+            revision,
+            applied_files,
+            changes: snapshot(session_id, stage),
         })
     }
 
@@ -619,6 +611,356 @@ fn selected_staged_content(
         Some(output)
     };
     Ok((content, current.revision))
+}
+
+#[derive(Clone)]
+struct PreparedStagedFile {
+    path: String,
+    kind: &'static str,
+    original: String,
+    effective: Option<String>,
+    diff_revision: String,
+}
+
+fn prepare_selected_stage(
+    bundle_root: &Path,
+    files: &BTreeMap<String, StagedFile>,
+) -> Result<Vec<PreparedStagedFile>, String> {
+    files
+        .iter()
+        .map(|(path, file)| {
+            let target = bundle_root.join(Path::new(path));
+            let relative = bundle_relative_write_path(bundle_root, &target)?;
+            if relative != *path {
+                return Err("A staged path no longer resolves to its reviewed file.".to_string());
+            }
+            if file.kind == "create" && target.exists() {
+                return Err(format!(
+                    "Staged apply needs a fresh review of {path}; the file now exists."
+                ));
+            }
+            let original = read_original(bundle_root, path, file.kind)?;
+            let (effective, diff_revision) =
+                selected_staged_content(path, file, &original)?;
+            Ok(PreparedStagedFile {
+                path: path.clone(),
+                kind: file.kind,
+                original,
+                effective,
+                diff_revision,
+            })
+        })
+        .collect()
+}
+
+fn selected_stage_revision(prepared: &[PreparedStagedFile]) -> String {
+    let mut digest = Sha256::new();
+    for file in prepared {
+        for part in [file.path.as_bytes(), file.diff_revision.as_bytes()] {
+            digest.update((part.len() as u64).to_le_bytes());
+            digest.update(part);
+        }
+        match &file.effective {
+            Some(content) => {
+                digest.update([1]);
+                digest.update((content.len() as u64).to_le_bytes());
+                digest.update(content.as_bytes());
+            }
+            None => digest.update([0]),
+        }
+    }
+    format!("{:x}", digest.finalize())
+}
+
+fn validate_prepared(
+    session_id: &str,
+    bundle_root: &Path,
+    prepared: &[PreparedStagedFile],
+) -> Result<AgentStagedValidationInfo, String> {
+    let mirror = ValidationMirror::create()?;
+    copy_markdown_tree(bundle_root, &mirror.path)?;
+    for file in prepared {
+        if !file.path.to_ascii_lowercase().ends_with(".md") {
+            continue;
+        }
+        let target = mirror.path.join(Path::new(&file.path));
+        if let Some(content) = &file.effective {
+            if let Some(parent) = target.parent() {
+                std::fs::create_dir_all(parent).map_err(|_| {
+                    "Staged validation workspace could not be prepared.".to_string()
+                })?;
+            }
+            std::fs::write(target, content)
+                .map_err(|_| "Staged validation workspace could not be written.".to_string())?;
+        } else if target.exists() {
+            std::fs::remove_file(target)
+                .map_err(|_| "Staged validation workspace could not be updated.".to_string())?;
+        }
+    }
+
+    let bundle = okf_core::read_bundle(&mirror.path);
+    let errors = bundle
+        .issues
+        .iter()
+        .filter(|issue| issue.level == okf_core::IssueLevel::Error)
+        .count();
+    let warnings = bundle.issues.len().saturating_sub(errors);
+    let truncated = bundle.issues.len() > MAX_VALIDATION_ISSUES;
+    let issues = bundle
+        .issues
+        .into_iter()
+        .take(MAX_VALIDATION_ISSUES)
+        .map(|issue| AgentStagedValidationIssue {
+            path: issue.concept_id.map(|id| format!("{id}.md")),
+            level: match issue.level {
+                okf_core::IssueLevel::Error => "error",
+                okf_core::IssueLevel::Warning => "warning",
+            },
+            message: bounded_validation_message(&issue.message),
+        })
+        .collect();
+    Ok(AgentStagedValidationInfo {
+        session_id: session_id.to_string(),
+        revision: selected_stage_revision(prepared),
+        errors,
+        warnings,
+        issues,
+        truncated,
+    })
+}
+
+struct PendingReplacement {
+    target: PathBuf,
+    temporary: PathBuf,
+    backup: Option<PathBuf>,
+    kind: &'static str,
+    original: String,
+}
+
+struct AppliedReplacement {
+    target: PathBuf,
+    backup: Option<PathBuf>,
+}
+
+fn apply_prepared_transaction(
+    bundle_root: &Path,
+    prepared: &[PreparedStagedFile],
+    fail_after: Option<usize>,
+) -> Result<usize, String> {
+    let mut pending = Vec::new();
+    let mut created_directories = Vec::new();
+    for file in prepared {
+        let Some(content) = &file.effective else {
+            continue;
+        };
+        let target = bundle_root.join(Path::new(&file.path));
+        if let Err(error) = verify_prepared_base(bundle_root, file, &target) {
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err(error);
+        }
+        let Some(parent) = target.parent() else {
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err("A staged file has no parent directory.".to_string());
+        };
+        if let Err(error) =
+            create_transaction_directories(bundle_root, parent, &mut created_directories)
+        {
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err(error);
+        }
+        let relative = bundle_relative_write_path(bundle_root, &target)?;
+        if relative != file.path {
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err("A staged path changed while preparing the transaction.".to_string());
+        }
+
+        let transaction_id = uuid::Uuid::new_v4();
+        let temporary = parent.join(format!(".okf-studio-{transaction_id}.tmp"));
+        let backup = (file.kind == "modify")
+            .then(|| parent.join(format!(".okf-studio-{transaction_id}.bak")));
+        let write_result = (|| -> Result<(), String> {
+            let mut output = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&temporary)
+                .map_err(|_| "A staged transaction file could not be created.".to_string())?;
+            output
+                .write_all(content.as_bytes())
+                .and_then(|()| output.sync_all())
+                .map_err(|_| "A staged transaction file could not be written.".to_string())?;
+            if file.kind == "modify" {
+                let permissions = std::fs::metadata(&target)
+                    .map_err(|_| "A staged file's permissions could not be read.".to_string())?
+                    .permissions();
+                std::fs::set_permissions(&temporary, permissions).map_err(|_| {
+                    "A staged transaction file's permissions could not be set.".to_string()
+                })?;
+            }
+            Ok(())
+        })();
+        if let Err(error) = write_result {
+            let _ = std::fs::remove_file(&temporary);
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err(error);
+        }
+        pending.push(PendingReplacement {
+            target,
+            temporary,
+            backup,
+            kind: file.kind,
+            original: file.original.clone(),
+        });
+    }
+
+    let mut applied = Vec::new();
+    for (index, replacement) in pending.iter().enumerate() {
+        if fail_after.is_some_and(|limit| index >= limit) {
+            rollback_replacements(&applied);
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err("The staged transaction was interrupted.".to_string());
+        }
+        if let Err(error) = verify_transaction_base(replacement) {
+            rollback_replacements(&applied);
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err(error);
+        }
+        if let Some(backup) = &replacement.backup {
+            if std::fs::rename(&replacement.target, backup).is_err() {
+                rollback_replacements(&applied);
+                cleanup_pending(&pending);
+                cleanup_directories(&created_directories);
+                return Err("A bundle file could not enter the apply transaction.".to_string());
+            }
+        }
+        if std::fs::rename(&replacement.temporary, &replacement.target).is_err() {
+            if let Some(backup) = &replacement.backup {
+                let _ = std::fs::rename(backup, &replacement.target);
+            }
+            rollback_replacements(&applied);
+            cleanup_pending(&pending);
+            cleanup_directories(&created_directories);
+            return Err("A staged file could not be applied; the batch was restored.".to_string());
+        }
+        applied.push(AppliedReplacement {
+            target: replacement.target.clone(),
+            backup: replacement.backup.clone(),
+        });
+    }
+
+    for replacement in &applied {
+        if let Some(backup) = &replacement.backup {
+            let _ = std::fs::remove_file(backup);
+        }
+    }
+    Ok(applied.len())
+}
+
+fn verify_prepared_base(
+    bundle_root: &Path,
+    file: &PreparedStagedFile,
+    target: &Path,
+) -> Result<(), String> {
+    let relative = bundle_relative_write_path(bundle_root, target)?;
+    if relative != file.path {
+        return Err("A staged path no longer resolves to its reviewed file.".to_string());
+    }
+    if target
+        .symlink_metadata()
+        .is_ok_and(|metadata| metadata.file_type().is_symlink())
+    {
+        return Err(format!("Apply blocked: {} is a symbolic link.", file.path));
+    }
+    if file.kind == "create" {
+        if target.exists() {
+            return Err(format!(
+                "Apply blocked: {} was created after validation.",
+                file.path
+            ));
+        }
+        return Ok(());
+    }
+    let current = std::fs::read_to_string(target)
+        .map_err(|_| format!("Apply blocked: {} could not be read.", file.path))?;
+    if current != file.original {
+        return Err(format!(
+            "Apply blocked: {} changed after validation.",
+            file.path
+        ));
+    }
+    Ok(())
+}
+
+fn verify_transaction_base(replacement: &PendingReplacement) -> Result<(), String> {
+    if replacement.kind == "create" {
+        if replacement.target.exists() {
+            return Err("A staged file was created while apply was in progress.".to_string());
+        }
+        return Ok(());
+    }
+    let current = std::fs::read_to_string(&replacement.target)
+        .map_err(|_| "A bundle file could not be rechecked before apply.".to_string())?;
+    if current != replacement.original {
+        return Err("A bundle file changed while apply was in progress.".to_string());
+    }
+    Ok(())
+}
+
+fn create_transaction_directories(
+    bundle_root: &Path,
+    parent: &Path,
+    created: &mut Vec<PathBuf>,
+) -> Result<(), String> {
+    let relative = parent
+        .strip_prefix(bundle_root)
+        .map_err(|_| "A staged directory is outside the bundle.".to_string())?;
+    let mut current = bundle_root.to_path_buf();
+    for component in relative.components() {
+        current.push(component);
+        if current.exists() {
+            if !current.is_dir() {
+                return Err("A staged file's parent is not a directory.".to_string());
+            }
+            continue;
+        }
+        std::fs::create_dir(&current)
+            .map_err(|_| "A staged file's directory could not be created.".to_string())?;
+        created.push(current.clone());
+    }
+    Ok(())
+}
+
+fn rollback_replacements(applied: &[AppliedReplacement]) {
+    for replacement in applied.iter().rev() {
+        let _ = std::fs::remove_file(&replacement.target);
+        if let Some(backup) = &replacement.backup {
+            let _ = std::fs::rename(backup, &replacement.target);
+        }
+    }
+}
+
+fn cleanup_pending(pending: &[PendingReplacement]) {
+    for replacement in pending {
+        let _ = std::fs::remove_file(&replacement.temporary);
+        if replacement.target.exists() {
+            continue;
+        }
+        if let Some(backup) = &replacement.backup {
+            let _ = std::fs::rename(backup, &replacement.target);
+        }
+    }
+}
+
+fn cleanup_directories(created: &[PathBuf]) {
+    for directory in created.iter().rev() {
+        let _ = std::fs::remove_dir(directory);
+    }
 }
 
 struct ValidationMirror {
@@ -1303,6 +1645,139 @@ mod tests {
 
         let validation = stages.validate_staged("session-1").expect("validate");
         assert_eq!(validation.errors, 0);
+    }
+
+    #[test]
+    fn applies_the_exact_validated_revision_and_clears_the_stage() {
+        let root = canonical_temp_dir("apply");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# Updated\n".to_string(),
+            )
+            .expect("stage modification");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("nested").join("new.md"),
+                "---\ntype: note\n---\n# New\n".to_string(),
+            )
+            .expect("stage creation");
+
+        let validation = stages.validate_staged("session-1").expect("validate");
+        assert_eq!(validation.errors, 0);
+        let applied = stages
+            .apply_staged("session-1", &validation.revision)
+            .expect("apply validated stage");
+
+        assert_eq!(applied.applied_files, 2);
+        assert!(applied.changes.files.is_empty());
+        assert!(applied.changes.granted, "apply keeps the thread grant");
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read modification"),
+            "---\ntype: note\n---\n# Updated\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("nested").join("new.md"))
+                .expect("read creation"),
+            "---\ntype: note\n---\n# New\n"
+        );
+    }
+
+    #[test]
+    fn blocks_apply_when_the_bundle_changed_after_validation() {
+        let root = canonical_temp_dir("apply-stale");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\n---\n# Proposed\n".to_string(),
+            )
+            .expect("stage modification");
+        let validation = stages.validate_staged("session-1").expect("validate");
+        std::fs::write(
+            root.join("existing.md"),
+            "---\ntype: note\n---\n# External edit\n",
+        )
+        .expect("external edit");
+
+        let error = stages
+            .apply_staged("session-1", &validation.revision)
+            .expect_err("stale apply must fail");
+        assert!(error.contains("Validate them again"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read external edit"),
+            "---\ntype: note\n---\n# External edit\n"
+        );
+        assert_eq!(stages.summary("session-1").expect("summary").files.len(), 1);
+    }
+
+    #[test]
+    fn blocks_apply_for_a_matching_revision_with_validation_errors() {
+        let root = canonical_temp_dir("apply-invalid");
+        seed_valid_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\n---\n# Invalid\n".to_string(),
+            )
+            .expect("stage invalid concept");
+        let validation = stages.validate_staged("session-1").expect("validate");
+        assert!(validation.errors > 0);
+
+        let error = stages
+            .apply_staged("session-1", &validation.revision)
+            .expect_err("invalid stage must fail");
+        assert!(error.contains("validation found"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("read original"),
+            "---\ntype: note\n---\n# Existing\n"
+        );
+    }
+
+    #[test]
+    fn restores_every_replacement_when_a_transaction_is_interrupted() {
+        let root = canonical_temp_dir("apply-rollback");
+        std::fs::write(root.join("one.md"), "one\n").expect("seed first file");
+        std::fs::write(root.join("two.md"), "two\n").expect("seed second file");
+        let mut files = BTreeMap::new();
+        for (path, content) in [("one.md", "ONE\n"), ("two.md", "TWO\n")] {
+            files.insert(
+                path.to_string(),
+                StagedFile {
+                    content: content.to_string(),
+                    kind: "modify",
+                    selection: None,
+                },
+            );
+        }
+        let prepared = prepare_selected_stage(&root, &files).expect("prepare transaction");
+
+        let error = apply_prepared_transaction(&root, &prepared, Some(1))
+            .expect_err("injected transaction failure");
+        assert!(error.contains("interrupted"));
+        assert_eq!(std::fs::read_to_string(root.join("one.md")).expect("first"), "one\n");
+        assert_eq!(std::fs::read_to_string(root.join("two.md")).expect("second"), "two\n");
+        assert!(
+            std::fs::read_dir(&root)
+                .expect("read root")
+                .all(|entry| !entry
+                    .expect("entry")
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".okf-studio-")),
+            "transaction artifacts must be removed"
+        );
     }
 
     #[test]

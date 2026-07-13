@@ -306,6 +306,25 @@ async fn validate_agent_staged_changes(
     agent_protocol::validate_staged_changes(state.inner(), &connection_id, &session_id).await
 }
 
+/// Apply the exact staged revision that passed validation.
+#[tauri::command]
+async fn apply_agent_staged_changes(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    revision: String,
+) -> Result<agent_stage::AgentStagedApplyInfo, String> {
+    agent_protocol::apply_staged_changes(
+        &app,
+        state.inner(),
+        &connection_id,
+        &session_id,
+        &revision,
+    )
+    .await
+}
+
 #[tauri::command]
 fn agent_install_preflight(
     app: AppHandle,
@@ -508,6 +527,7 @@ pub fn run() {
             agent_staged_file_diff,
             set_agent_staged_hunk_selection,
             validate_agent_staged_changes,
+            apply_agent_staged_changes,
             agent_install_preflight,
             install_agent,
             cancel_agent_install,

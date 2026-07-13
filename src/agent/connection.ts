@@ -181,6 +181,13 @@ export interface AgentStagedValidationInfo {
   truncated: boolean;
 }
 
+export interface AgentStagedApplyInfo {
+  sessionId: string;
+  revision: string;
+  appliedFiles: number;
+  changes: AgentStagedChangesInfo;
+}
+
 export type AgentConnectionEvent =
   | {
       connectionId: string;

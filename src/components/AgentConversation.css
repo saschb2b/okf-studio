@@ -1062,6 +1062,21 @@
   color: var(--warn);
 }
 
+.agent-staged__validation > .agent-staged__apply {
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding-top: var(--space-4);
+}
+
+.agent-staged__validation > .agent-staged__apply span {
+  white-space: normal;
+}
+
+.agent-staged__apply .btn {
+  flex: none;
+  min-height: 32px;
+}
+
 @container (max-width: 420px) {
   .agent-staged > header {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1076,6 +1091,11 @@
   .agent-staged__actions {
     grid-column: 2;
     grid-row: 1;
+  }
+
+  .agent-staged__validation > .agent-staged__apply {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
@@ -1460,6 +1480,12 @@
 
 .agent-composer__error {
   color: var(--error);
+  overflow-wrap: break-word;
+}
+
+.agent-composer__notice {
+  margin: 0;
+  color: var(--ok);
   overflow-wrap: break-word;
 }
 

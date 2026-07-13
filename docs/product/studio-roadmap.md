@@ -149,7 +149,8 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 - [x] Add revision-bound per-hunk keep and reject selection before apply.
 - [x] Reduce ACP diff content into the staged change service; never present it as an applied Studio change.
 - [x] Validate the selected staged tree against the same OKF parser and validator used for the open bundle.
-- [ ] Apply accepted files atomically and retain a restorable checkpoint.
+- [x] Apply the exact validated revision as a rollback transaction.
+- [ ] Retain a durable, restorable checkpoint and recover interrupted transactions.
 - [ ] Protect `.git`, credentials, packaged skills, and paths outside granted roots.
 - [ ] Require an enforcement-capable sandbox before unattended external-agent writes.
 

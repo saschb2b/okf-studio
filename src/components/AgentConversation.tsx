@@ -32,6 +32,7 @@ import {
 } from "../agent/thread.ts";
 import {
   agentStagedFileDiff,
+  applyAgentStagedChanges,
   cancelAgentTurn,
   authenticateAgent,
   discardAgentStagedChanges,
@@ -377,6 +378,8 @@ export function AgentConversation({
     status: "idle",
   });
   const [stageError, setStageError] = useState<string | null>(null);
+  const [stageNotice, setStageNotice] = useState<string | null>(null);
+  const [isApplyingStage, setIsApplyingStage] = useState(false);
   const [isSettingGrant, setIsSettingGrant] = useState(false);
   const [expandedDiff, setExpandedDiff] = useState<
     | { path: string; state: "loading" }
@@ -481,6 +484,7 @@ export function AgentConversation({
           setStagedChanges(null);
           clearStagedValidation();
           setStageError(null);
+          setStageNotice(null);
           setExpandedDiff(null);
           setRejectingStagedPath(null);
           setSelectingHunk(null);
@@ -779,6 +783,7 @@ export function AgentConversation({
 
   function updateStagedChanges(changes: AgentStagedChangesInfo) {
     setStagedChanges(changes);
+    if (changes.files.length > 0) setStageNotice(null);
     clearStagedValidation();
     setExpandedDiff((current) =>
       current && !changes.files.some((file) => file.path === current.path) ? null : current
@@ -889,6 +894,40 @@ export function AgentConversation({
         stagedValidationRequestRef.current !== requestId
       ) return;
       setStagedValidation({ status: "error", message: errorMessage(error) });
+    }
+  }
+
+  async function applyStagedChanges() {
+    const session = sessionRef.current;
+    if (
+      !session || activeTurn || isApplyingStage ||
+      stagedValidation.status !== "ready" || stagedValidation.result.errors > 0
+    ) return;
+    const sessionId = session.sessionId;
+    const revision = stagedValidation.result.revision;
+    setIsApplyingStage(true);
+    setStageError(null);
+    setStageNotice(null);
+    try {
+      const result = await applyAgentStagedChanges(
+        connection.connectionId,
+        sessionId,
+        revision,
+      );
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      updateStagedChanges(result.changes);
+      setStageNotice(
+        result.appliedFiles === 0
+          ? "The rejected staged changes were cleared."
+          : `Applied ${result.appliedFiles} file${result.appliedFiles === 1 ? "" : "s"} to the bundle.`,
+      );
+      requestAnimationFrame(() => promptRef.current?.focus());
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId !== sessionId) return;
+      clearStagedValidation();
+      setStageError(errorMessage(error));
+    } finally {
+      setIsApplyingStage(false);
     }
   }
 
@@ -1072,6 +1111,7 @@ export function AgentConversation({
     setQueuedPrompt(null);
     setStagedChanges(null);
     setStageError(null);
+    setStageNotice(null);
     setExpandedDiff(null);
     setRejectingStagedPath(null);
     setSelectingHunk(null);
@@ -1183,6 +1223,7 @@ export function AgentConversation({
       setUsage(null);
       setStagedChanges(null);
       setStageError(null);
+      setStageNotice(null);
       setExpandedDiff(null);
       setRejectingStagedPath(null);
       setSelectingHunk(null);
@@ -1567,7 +1608,7 @@ export function AgentConversation({
                   <button
                     type="button"
                     className="btn ghost"
-                    disabled={stagedValidation.status === "loading"}
+                    disabled={stagedValidation.status === "loading" || isApplyingStage}
                     onClick={() => void validateStagedChanges()}
                   >
                     {stagedValidation.status === "loading"
@@ -1580,6 +1621,7 @@ export function AgentConversation({
                     ref={stagedDiscardRef}
                     type="button"
                     className="btn ghost"
+                    disabled={isApplyingStage}
                     onClick={() => void discardStagedChanges()}
                   >
                     Discard all
@@ -1605,7 +1647,7 @@ export function AgentConversation({
                             aria-label={`${stagedReviewLabel(file.path)} staged file ${file.path}`}
                             aria-expanded={isExpanded}
                             aria-controls={diffId}
-                            disabled={expandedDiff?.state === "loading" || rejectingStagedPath !== null}
+                            disabled={isApplyingStage || expandedDiff?.state === "loading" || rejectingStagedPath !== null}
                             onClick={() => void toggleStagedFileReview(file.path)}
                           >
                             {stagedReviewLabel(file.path)}
@@ -1613,7 +1655,7 @@ export function AgentConversation({
                           <button
                             type="button"
                             className="btn ghost"
-                            disabled={rejectingStagedPath !== null || expandedDiff?.state === "loading"}
+                            disabled={isApplyingStage || rejectingStagedPath !== null || expandedDiff?.state === "loading"}
                             aria-label={`Reject staged file ${file.path}`}
                             onClick={() => void rejectStagedFile(file.path)}
                           >
@@ -1656,7 +1698,7 @@ export function AgentConversation({
                                           type="button"
                                           className="btn ghost"
                                           aria-pressed={hunk.selected}
-                                          disabled={selectingHunk !== null}
+                                          disabled={isApplyingStage || selectingHunk !== null}
                                           onClick={() => void setHunkSelection(hunk.index, true)}
                                         >
                                           Keep
@@ -1665,7 +1707,7 @@ export function AgentConversation({
                                           type="button"
                                           className="btn ghost"
                                           aria-pressed={!hunk.selected}
-                                          disabled={selectingHunk !== null}
+                                          disabled={isApplyingStage || selectingHunk !== null}
                                           onClick={() => void setHunkSelection(hunk.index, false)}
                                         >
                                           Reject
@@ -1751,6 +1793,22 @@ export function AgentConversation({
                       )}
                     </details>
                   )}
+                  {stagedValidation.result.errors === 0 && (
+                    <div className="agent-staged__apply">
+                      <span>
+                        Studio will recheck every file before replacing the bundle contents.
+                      </span>
+                      <button
+                        type="button"
+                        className="btn primary"
+                        disabled={activeTurn !== null || isApplyingStage}
+                        title={activeTurn ? "Wait for the current agent turn to finish." : undefined}
+                        onClick={() => void applyStagedChanges()}
+                      >
+                        {isApplyingStage ? "Applying..." : "Apply changes"}
+                      </button>
+                    </div>
+                  )}
                 </section>
               )}
               <p>Review or reject staged files, then validate the selected result.</p>
@@ -1758,6 +1816,9 @@ export function AgentConversation({
           )}
           {stageError && (
             <p className="agent-composer__error" role="alert">{stageError}</p>
+          )}
+          {stageNotice && (
+            <p className="agent-composer__notice" role="status">{stageNotice}</p>
           )}
           <form ref={composerRef} className="agent-composer" action={composerAction}>
             {queuedPrompt && (

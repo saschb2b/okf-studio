@@ -34,8 +34,8 @@ use crate::agent_stage::{
     AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
 };
 use crate::{
-    agent_custom, agent_install, agent_local, agent_mcp, agent_sources::AgentSourceInput,
-    agent_studio,
+    agent_custom, agent_install, agent_local, agent_mcp, agent_native_sources,
+    agent_sources::AgentSourceInput, agent_studio,
 };
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
@@ -594,13 +594,20 @@ async fn run_local_connection(
                 sources,
                 response,
             } => {
-                if !context_paths.is_empty() || !sources.is_empty() {
+                if !context_paths.is_empty() {
                     let _ = response.send(Err(
-                        "Local Studio Agent attachments require the upcoming scoped tool loop."
+                        "Local Studio Agent bundle attachments are unavailable; use its scoped OKF tools."
                             .to_string(),
                     ));
                     continue;
                 }
+                let source_tools = match agent_native_sources::native_tool_definitions(&sources) {
+                    Ok(tools) => tools,
+                    Err(error) => {
+                        let _ = response.send(Err(error));
+                        continue;
+                    }
+                };
                 let session = sessions
                     .lock()
                     .map_err(|_| "Local Studio Agent session state is unavailable.".to_string())?
@@ -674,6 +681,7 @@ async fn run_local_connection(
                         let request_messages = local_request_messages(&messages);
                         let mut tools = agent_studio::native_skill_tools();
                         tools.extend(agent_mcp::native_tool_definitions());
+                        tools.extend(source_tools);
                         agent_local::chat_with_tools(
                             &task_runtime,
                             &request_messages,
@@ -691,6 +699,10 @@ async fn run_local_connection(
                                     == agent_studio::LOAD_SKILL_RESOURCE_TOOL
                                 {
                                     (agent_studio::skill_tool_title(call), "read")
+                                } else if agent_native_sources::is_native_source_tool(&call.name) {
+                                    let (title, tool_kind) =
+                                        agent_native_sources::native_tool_display(call);
+                                    (title.to_string(), tool_kind)
                                 } else {
                                     let (title, tool_kind) = agent_mcp::native_tool_display(call);
                                     (title.to_string(), tool_kind)
@@ -712,6 +724,8 @@ async fn run_local_connection(
                                     == agent_studio::LOAD_SKILL_RESOURCE_TOOL
                                 {
                                     agent_studio::execute_skill_tool(call)
+                                } else if agent_native_sources::is_native_source_tool(&call.name) {
+                                    agent_native_sources::execute_native_tool(&sources, call)
                                 } else {
                                     agent_mcp::execute_native_tool(&bundle_root, call)
                                 };

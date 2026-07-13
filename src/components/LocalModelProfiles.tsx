@@ -393,8 +393,9 @@ export function LocalModelProfiles({
 
       <p className="local-models__execution-notice">
         Connect starts a Studio Agent using the selected model. Tool-capable models can load
-        packaged OKF guidance and inspect the active bundle through bounded read-only tools.
-        Source attachments, arbitrary files, staged changes, and edits remain unavailable.
+        packaged OKF guidance, inspect the active bundle, and read explicitly attached extracted
+        text through bounded tools. Bundle attachments, arbitrary files, staged changes, and edits
+        remain unavailable.
       </p>
     </section>
   );

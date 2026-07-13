@@ -1076,7 +1076,7 @@ export function AgentConversation({
   let composerStatus = connection.capabilities.promptImage
     ? "Text and images"
     : isNativeLocal
-      ? "Read-only bundle tools"
+      ? "Read-only tools"
       : "Text only";
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
@@ -1676,8 +1676,8 @@ export function AgentConversation({
                 {isNativeLocal ? (
                   <p>
                     Studio can load canonical OKF guidance and inspect this bundle through bounded
-                    read-only tools. Attachments, arbitrary files, staged changes, and edits remain
-                    unavailable.
+                    read-only tools. Add extracted text sources for one turn when needed. Bundle
+                    attachments, arbitrary files, staged changes, and edits remain unavailable.
                   </p>
                 ) : (
                   <>
@@ -2166,7 +2166,8 @@ export function AgentConversation({
                     attachedIssueKeys={attachedIssueKeys}
                     sourceCount={attachedSources.length}
                     onCaptureReaderSelection={onCaptureReaderSelection}
-                    disabled={isNativeLocal || isSubmitting || queuedPrompt !== null}
+                    disabled={isSubmitting || queuedPrompt !== null}
+                    bundleAttachmentsSupported={!isNativeLocal}
                     imageSupported={connection.capabilities.promptImage}
                     threadSupport={!supportsHistory ? "unsupported" : activeTurn ? "busy" : "ready"}
                     onLoadThreads={loadAttachableThreads}
@@ -2261,6 +2262,7 @@ interface AttachmentPickerProps {
   sourceCount: number;
   onCaptureReaderSelection: () => ReaderSelectionCapture;
   disabled: boolean;
+  bundleAttachmentsSupported: boolean;
   imageSupported: boolean;
   threadSupport: ThreadAttachSupport;
   onLoadThreads: () => Promise<AgentThreadMetadata[]>;
@@ -2281,6 +2283,7 @@ function AttachmentPicker({
   sourceCount,
   onCaptureReaderSelection,
   disabled,
+  bundleAttachmentsSupported,
   imageSupported,
   threadSupport,
   onLoadThreads,
@@ -2355,14 +2358,18 @@ function AttachmentPicker({
     (issue) => !attachedIssueKeys.has(validationIssueKey(issue)),
   );
   let issueExplanation = "Attach a validation finding to the next message.";
-  if (issues.length === 0) issueExplanation = "This bundle has no validation issues.";
+  if (!bundleAttachmentsSupported) {
+    issueExplanation = "Use the local agent's read-only validation tool.";
+  } else if (issues.length === 0) issueExplanation = "This bundle has no validation issues.";
   else if (availableIssues.length === 0) issueExplanation = "All validation issues are attached.";
   else if (isAtLimit) issueExplanation = "The source limit has been reached.";
-  const selectionExplanation = isAtLimit
-    ? "The source limit has been reached."
-    : readerSelection.status === "available"
-      ? "Attach the selected text from the current concept"
-      : readerSelection.reason;
+  const selectionExplanation = !bundleAttachmentsSupported
+    ? "Reader selections are not available to local models yet."
+    : isAtLimit
+      ? "The source limit has been reached."
+      : readerSelection.status === "available"
+        ? "Attach the selected text from the current concept"
+        : readerSelection.reason;
   const threadExplanation = threadSupport === "unsupported"
     ? "This agent does not expose session history."
     : isAtLimit
@@ -2507,10 +2514,13 @@ function AttachmentPicker({
             {view === "menu" && (
               <div className="agent-attachment-picker__menu">
                 <button
-                  ref={menuFirstRef}
+                  ref={bundleAttachmentsSupported ? menuFirstRef : undefined}
                   type="button"
                   aria-label="Attach context"
-                  disabled={attachedConcepts.length >= 8}
+                  title={bundleAttachmentsSupported
+                    ? undefined
+                    : "Use the local agent's read-only OKF tools."}
+                  disabled={!bundleAttachmentsSupported || attachedConcepts.length >= 8}
                   onClick={() => openView("concepts")}
                 >
                   <Paperclip size={16} aria-hidden="true" />
@@ -2520,7 +2530,7 @@ function AttachmentPicker({
                   type="button"
                   aria-label="Attach reader selection"
                   title={selectionExplanation}
-                  disabled={isAtLimit || readerSelection.status === "unavailable"}
+                  disabled={!bundleAttachmentsSupported || isAtLimit || readerSelection.status === "unavailable"}
                   onClick={() => {
                     if (readerSelection.status !== "available") return;
                     onSourceAttach(readerSelection.source, "selection");
@@ -2534,7 +2544,7 @@ function AttachmentPicker({
                   type="button"
                   aria-label="Attach issue"
                   title={issueExplanation}
-                  disabled={isAtLimit || availableIssues.length === 0}
+                  disabled={!bundleAttachmentsSupported || isAtLimit || availableIssues.length === 0}
                   onClick={() => openView("issues")}
                 >
                   <TriangleAlert size={16} aria-hidden="true" />
@@ -2551,6 +2561,7 @@ function AttachmentPicker({
                   <span><strong>Previous thread</strong><small>{threadExplanation}</small></span>
                 </button>
                 <button
+                  ref={!bundleAttachmentsSupported ? menuFirstRef : undefined}
                   type="button"
                   aria-label="Add source"
                   disabled={isAtLimit}

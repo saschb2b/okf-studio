@@ -136,13 +136,25 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
     expect(screen.getByText(/inspect this bundle through bounded read-only tools/i))
       .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add context or sources" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add context or sources" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
       .not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Message the agent"), "Hello from Studio");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Local model received: Hello from Studio"))
       .toBeInTheDocument();
+
+    await openAttachmentMenu(user);
+    expect(screen.getByRole("button", { name: "Attach context" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Add source" }));
+    await user.type(screen.getByLabelText("Title"), "research-notes.txt");
+    await user.type(screen.getByLabelText("Content"), "The source documents an evidence trail.");
+    await user.click(screen.getByRole("button", { name: "Attach source" }));
+    await user.type(screen.getByLabelText("Message the agent"), "Summarize the attached evidence");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Inspect attached sources")).toBeInTheDocument();
+    expect(await screen.findByText("Read attached source")).toBeInTheDocument();
+    expect(await screen.findByText(/including research-notes\.txt/)).toBeInTheDocument();
 
     await user.type(
       screen.getByLabelText("Message the agent"),
@@ -163,7 +175,7 @@ describe("OKF Studio app", () => {
     if (!reloadedLocalSection) throw new Error("Local endpoint setup was not restored.");
     await user.click(within(reloadedLocalSection).getByRole("button", { name: "Disconnect" }));
     await user.click(within(reloadedLocalSection).getByRole("button", { name: "Remove Ollama" }));
-  });
+  }, 10_000);
 
   it("cancels an in-progress agent installation and returns to installable", async () => {
     const user = userEvent.setup();

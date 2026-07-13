@@ -558,7 +558,7 @@ export async function promptAgent(
   }
   mockCancelledTurns.delete(info.turnId);
   void (connection.protocolVersion === "studio-native/1"
-    ? emitMockLocalTurn(info, text)
+    ? emitMockLocalTurn(info, text, sources)
     : emitMockTurn(info, text));
   return info;
 }
@@ -1549,7 +1549,11 @@ async function emitMockLocalTool(
   return true;
 }
 
-async function emitMockLocalTurn(info: AgentTurnInfo, text: string): Promise<void> {
+async function emitMockLocalTurn(
+  info: AgentTurnInfo,
+  text: string,
+  sources: readonly AgentSourceInput[],
+): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 100));
   if (mockCancelledTurns.has(info.turnId)) {
     emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
@@ -1585,8 +1589,36 @@ async function emitMockLocalTurn(info: AgentTurnInfo, text: string): Promise<voi
       mockCancelledTurns.delete(info.turnId);
       return;
     }
+    toolIndex += 1;
   }
-  const responseText = loadsSkill && searchesBundle
+  if (sources.length > 0) {
+    const inventoryCompleted = await emitMockLocalTool(
+      info,
+      toolIndex,
+      "Inspect attached sources",
+      "search",
+    );
+    if (!inventoryCompleted) {
+      emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+      mockCancelledTurns.delete(info.turnId);
+      return;
+    }
+    toolIndex += 1;
+    const readCompleted = await emitMockLocalTool(
+      info,
+      toolIndex,
+      "Read attached source",
+      "read",
+    );
+    if (!readCompleted) {
+      emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+      mockCancelledTurns.delete(info.turnId);
+      return;
+    }
+  }
+  const responseText = sources.length > 0
+    ? `Inspected ${sources.length} attached source${sources.length === 1 ? "" : "s"}, including ${sources[0]?.title ?? "the supplied evidence"}.`
+    : loadsSkill && searchesBundle
     ? "Loaded packaged OKF instructions and found the Agent Panel concept at `features/agent-panel`."
     : loadsSkill
       ? "Loaded packaged OKF instructions."

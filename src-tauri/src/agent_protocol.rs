@@ -19,6 +19,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
@@ -32,7 +33,7 @@ use crate::agent_stage::{
     AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo, AgentStagedCreateInfo,
     AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
 };
-use crate::{agent_custom, agent_install, agent_sources::AgentSourceInput};
+use crate::{agent_custom, agent_install, agent_local, agent_sources::AgentSourceInput};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -80,6 +81,8 @@ const MAX_HISTORY_SESSIONS: usize = 50;
 const MAX_HISTORY_FIELD_CHARS: usize = 512;
 const MAX_HISTORY_MESSAGES: usize = 200;
 const MAX_HISTORY_TOTAL_CHARS: usize = 512 * 1024;
+const MAX_LOCAL_HISTORY_MESSAGES: usize = 32;
+const MAX_LOCAL_HISTORY_CHARS: usize = 256 * 1024;
 const OKF_SKILL: &str = include_str!("../../.agents/skills/okf/SKILL.md");
 const OKF_SPEC: &str = include_str!("../../.agents/skills/okf/spec.md");
 const OKF_COMMANDS: &str = include_str!("../../.agents/skills/okf/commands.md");
@@ -402,6 +405,416 @@ pub async fn connect_catalog(
         environment: command.environment,
     };
     connect_process(app, state, &profile_id, spec, "catalog agent").await
+}
+
+pub async fn connect_local(
+    app: &AppHandle,
+    state: &AgentHostState,
+    profile_id: &str,
+    model: String,
+) -> Result<AgentConnectionInfo, String> {
+    let app_for_prepare = app.clone();
+    let profile_for_prepare = profile_id.to_string();
+    let runtime = tokio::task::spawn_blocking(move || {
+        agent_local::prepare_runtime(&app_for_prepare, &profile_for_prepare, &model)
+    })
+    .await
+    .map_err(|_| "Local-model connection test did not complete.".to_string())??;
+    let connection_id = format!("connection-{}", uuid::Uuid::new_v4());
+    let (command_tx, command_rx) = tokio::sync::mpsc::channel(8);
+    let checkpoint_directory = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Studio could not locate its apply checkpoints: {error}"))?
+        .join("agents")
+        .join("apply-checkpoints");
+    let stages = Arc::new(SessionStages::persistent(checkpoint_directory));
+    let worker_stages = Arc::clone(&stages);
+    let turn_app = app.clone();
+    let turn_events: TurnEventSink = Arc::new(move |event| {
+        let _ = turn_app.emit(TURN_EVENT, event);
+    });
+    let worker_id = connection_id.clone();
+    let worker_profile_id = runtime.profile_id.clone();
+    let worker_profile_name = runtime.profile_name.clone();
+    let worker_model = runtime.model.clone();
+    let workers = Arc::clone(&state.workers);
+    let event_app = app.clone();
+    let worker = tokio::spawn(async move {
+        let result = run_local_connection(
+            runtime,
+            worker_id.clone(),
+            command_rx,
+            worker_stages,
+            turn_events,
+        )
+        .await;
+        if let Ok(mut active) = workers.lock() {
+            active.remove(&worker_id);
+        }
+        if let Err(error) = result {
+            emit_connection_event(
+                &event_app,
+                AgentConnectionEvent {
+                    connection_id: worker_id,
+                    profile_id: worker_profile_id,
+                    status: AgentConnectionStatus::Failed,
+                    message: Some(connection_message(&error)),
+                },
+            );
+        }
+    });
+    {
+        let mut active = state
+            .workers
+            .lock()
+            .map_err(|_| "Agent host state is unavailable.".to_string())?;
+        if active
+            .values()
+            .any(|worker| worker.profile_id == profile_id)
+        {
+            worker.abort();
+            return Err("This local-model profile already has an active connection.".to_string());
+        }
+        active.insert(
+            connection_id.clone(),
+            AgentWorker {
+                profile_id: profile_id.to_string(),
+                abort: worker.abort_handle(),
+                commands: command_tx,
+                stages,
+            },
+        );
+    }
+    Ok(AgentConnectionInfo {
+        connection_id,
+        profile_id: profile_id.to_string(),
+        protocol_version: "studio-native/1".to_string(),
+        agent: Some(AgentImplementationInfo {
+            name: "okf-studio-local".to_string(),
+            title: Some(format!("{worker_profile_name} · {worker_model}")),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        }),
+        auth_methods: Vec::new(),
+        authenticated: true,
+        capabilities: AgentCapabilityInfo {
+            load_session: false,
+            prompt_image: false,
+            prompt_audio: false,
+            prompt_embedded_context: false,
+            mcp_http: false,
+            mcp_sse: false,
+            session_list: false,
+            session_resume: false,
+            session_close: false,
+        },
+    })
+}
+
+#[derive(Clone)]
+struct LocalSession {
+    messages: Vec<agent_local::LocalChatMessage>,
+}
+
+struct LocalTurn {
+    turn_id: String,
+    cancelled: Arc<AtomicBool>,
+}
+
+struct LocalWorkerLifetime(Arc<AtomicBool>);
+
+impl Drop for LocalWorkerLifetime {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
+
+async fn run_local_connection(
+    runtime: agent_local::LocalModelRuntime,
+    connection_id: String,
+    mut commands: tokio::sync::mpsc::Receiver<AgentHostCommand>,
+    stages: Arc<SessionStages>,
+    turn_events: TurnEventSink,
+) -> Result<(), String> {
+    let live = Arc::new(AtomicBool::new(true));
+    let _lifetime = LocalWorkerLifetime(Arc::clone(&live));
+    let sessions = Arc::new(Mutex::new(HashMap::<String, LocalSession>::new()));
+    let active_turns = Arc::new(Mutex::new(HashMap::<String, LocalTurn>::new()));
+    while let Some(command) = commands.recv().await {
+        match command {
+            AgentHostCommand::Authenticate { response, .. } => {
+                let _ = response.send(Ok(true));
+            }
+            AgentHostCommand::NewSession {
+                bundle_root,
+                response,
+            } => {
+                let session_id = format!("session-{}", uuid::Uuid::new_v4());
+                let result = stages
+                    .register_session(&session_id, &bundle_root)
+                    .map(|changes| {
+                        sessions
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner)
+                            .insert(
+                                session_id.clone(),
+                                LocalSession {
+                                    messages: Vec::new(),
+                                },
+                            );
+                        AgentSessionInfo {
+                            connection_id: connection_id.clone(),
+                            session_id,
+                            bundle_root,
+                            staged_changes: Some(changes),
+                        }
+                    });
+                let _ = response.send(result);
+            }
+            AgentHostCommand::ListSessions { response, .. } => {
+                let _ = response.send(Err(
+                    "Local Studio Agent sessions are not persisted yet.".to_string()
+                ));
+            }
+            AgentHostCommand::LoadSession { response, .. } => {
+                let _ = response.send(Err(
+                    "Local Studio Agent sessions cannot be restored yet.".to_string()
+                ));
+            }
+            AgentHostCommand::Prompt {
+                session_id,
+                turn_id,
+                text,
+                context_paths,
+                sources,
+                response,
+            } => {
+                if !context_paths.is_empty() || !sources.is_empty() {
+                    let _ = response.send(Err(
+                        "Local Studio Agent attachments require the upcoming scoped tool loop."
+                            .to_string(),
+                    ));
+                    continue;
+                }
+                let messages = sessions
+                    .lock()
+                    .map_err(|_| "Local Studio Agent session state is unavailable.".to_string())?
+                    .get(&session_id)
+                    .map(|session| session.messages.clone());
+                let Some(mut messages) = messages else {
+                    let _ = response.send(Err(
+                        "Agent session was not found on this connection.".to_string()
+                    ));
+                    continue;
+                };
+                let cancelled = Arc::new(AtomicBool::new(false));
+                let accepted = {
+                    let mut turns = active_turns
+                        .lock()
+                        .map_err(|_| "Local Studio Agent turn state is unavailable.".to_string())?;
+                    if turns.contains_key(&session_id) {
+                        false
+                    } else {
+                        turns.insert(
+                            session_id.clone(),
+                            LocalTurn {
+                                turn_id: turn_id.clone(),
+                                cancelled: Arc::clone(&cancelled),
+                            },
+                        );
+                        true
+                    }
+                };
+                if !accepted {
+                    let _ = response.send(Err(
+                        "This local Studio Agent session already has an active turn.".to_string(),
+                    ));
+                    continue;
+                }
+                let info = AgentTurnInfo {
+                    connection_id: connection_id.clone(),
+                    session_id: session_id.clone(),
+                    turn_id: turn_id.clone(),
+                };
+                if response.send(Ok(info)).is_err() {
+                    active_turns
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .remove(&session_id);
+                    continue;
+                }
+                messages.push(agent_local::LocalChatMessage {
+                    role: "user",
+                    content: text.clone(),
+                });
+                trim_local_history(&mut messages);
+                let task_runtime = runtime.clone();
+                let task_sessions = Arc::clone(&sessions);
+                let task_turns = Arc::clone(&active_turns);
+                let task_events = Arc::clone(&turn_events);
+                let task_connection = connection_id.clone();
+                let task_live = Arc::clone(&live);
+                tokio::spawn(async move {
+                    let result = tokio::task::spawn_blocking(move || {
+                        agent_local::chat(&task_runtime, &messages).map(|answer| (messages, answer))
+                    })
+                    .await
+                    .map_err(|_| "Local model request did not complete.".to_string())
+                    .and_then(std::convert::identity);
+                    if !task_live.load(Ordering::Acquire) {
+                        return;
+                    }
+                    let won_completion = {
+                        let mut turns = task_turns
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner);
+                        if turns
+                            .get(&session_id)
+                            .is_some_and(|active| active.turn_id == turn_id)
+                        {
+                            turns.remove(&session_id)
+                        } else {
+                            None
+                        }
+                    };
+                    if won_completion.is_none() || cancelled.load(Ordering::Acquire) {
+                        return;
+                    }
+                    match result {
+                        Ok((mut messages, answer)) => {
+                            messages.push(agent_local::LocalChatMessage {
+                                role: "assistant",
+                                content: answer.clone(),
+                            });
+                            trim_local_history(&mut messages);
+                            if let Ok(mut sessions) = task_sessions.lock() {
+                                if let Some(session) = sessions.get_mut(&session_id) {
+                                    session.messages = messages;
+                                }
+                            }
+                            for chunk in local_text_chunks(&answer) {
+                                task_events(AgentTurnEvent {
+                                    connection_id: task_connection.clone(),
+                                    session_id: session_id.clone(),
+                                    turn_id: turn_id.clone(),
+                                    update: AgentTurnUpdate::Text {
+                                        text: chunk,
+                                        message_id: None,
+                                    },
+                                });
+                            }
+                            task_events(AgentTurnEvent {
+                                connection_id: task_connection,
+                                session_id,
+                                turn_id,
+                                update: AgentTurnUpdate::Completed {
+                                    stop_reason: "end-turn".to_string(),
+                                },
+                            });
+                        }
+                        Err(message) => task_events(AgentTurnEvent {
+                            connection_id: task_connection,
+                            session_id,
+                            turn_id,
+                            update: AgentTurnUpdate::Failed {
+                                message: connection_message(&message),
+                            },
+                        }),
+                    }
+                });
+            }
+            AgentHostCommand::CancelTurn {
+                session_id,
+                turn_id,
+                response,
+            } => {
+                let cancelled = {
+                    let mut turns = active_turns
+                        .lock()
+                        .map_err(|_| "Local Studio Agent turn state is unavailable.".to_string())?;
+                    if turns
+                        .get(&session_id)
+                        .is_some_and(|active| active.turn_id == turn_id)
+                    {
+                        turns.remove(&session_id)
+                    } else {
+                        None
+                    }
+                };
+                if let Some(turn) = cancelled {
+                    turn.cancelled.store(true, Ordering::Release);
+                    turn_events(AgentTurnEvent {
+                        connection_id: connection_id.clone(),
+                        session_id,
+                        turn_id,
+                        update: AgentTurnUpdate::Completed {
+                            stop_reason: "cancelled".to_string(),
+                        },
+                    });
+                    let _ = response.send(Ok(true));
+                } else {
+                    let _ = response.send(Ok(false));
+                }
+            }
+        }
+    }
+    for (_, turn) in active_turns
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .drain()
+    {
+        turn.cancelled.store(true, Ordering::Release);
+    }
+    Ok(())
+}
+
+fn trim_local_history(messages: &mut Vec<agent_local::LocalChatMessage>) {
+    let minimum = if messages.last().is_some_and(|message| message.role == "assistant") {
+        2
+    } else {
+        1
+    };
+    while messages.len() > MAX_LOCAL_HISTORY_MESSAGES
+        || messages
+            .iter()
+            .map(|message| message.content.chars().count())
+            .sum::<usize>()
+            > MAX_LOCAL_HISTORY_CHARS
+    {
+        if messages.len() <= minimum {
+            break;
+        }
+        let remove = (messages.len() - minimum).min(2);
+        messages.drain(..remove);
+    }
+    let retained_without_last = messages
+        .iter()
+        .rev()
+        .skip(1)
+        .map(|message| message.content.chars().count())
+        .sum::<usize>();
+    if let Some(last) = messages.last_mut() {
+        let available = MAX_LOCAL_HISTORY_CHARS.saturating_sub(retained_without_last);
+        if last.content.chars().count() > available {
+            last.content = last.content.chars().take(available).collect();
+        }
+    }
+}
+
+fn local_text_chunks(text: &str) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut characters = text.chars();
+    loop {
+        let chunk = characters
+            .by_ref()
+            .take(MAX_TURN_CHUNK_CHARS)
+            .collect::<String>();
+        if chunk.is_empty() {
+            break;
+        }
+        chunks.push(chunk);
+    }
+    chunks
 }
 
 async fn connect_process(
@@ -4430,6 +4843,39 @@ mod tests {
         assert_eq!(value["stagedChanges"]["granted"], false);
         assert_eq!(value["stagedChanges"]["mode"], "edit");
         assert_eq!(value["stagedChanges"]["canRestore"], true);
+    }
+
+    #[test]
+    fn trims_local_history_as_complete_recent_turns() {
+        let mut messages = (0..17)
+            .flat_map(|index| {
+                [
+                    agent_local::LocalChatMessage {
+                        role: "user",
+                        content: format!("question {index}"),
+                    },
+                    agent_local::LocalChatMessage {
+                        role: "assistant",
+                        content: format!("answer {index}"),
+                    },
+                ]
+            })
+            .collect::<Vec<_>>();
+        trim_local_history(&mut messages);
+        assert_eq!(messages.len(), MAX_LOCAL_HISTORY_MESSAGES);
+        assert_eq!(messages.first().expect("first retained").role, "user");
+        assert_eq!(messages.last().expect("last retained").role, "assistant");
+        assert_eq!(messages.first().expect("first retained").content, "question 1");
+    }
+
+    #[test]
+    fn chunks_local_model_text_at_the_turn_event_limit() {
+        let text = "x".repeat(MAX_TURN_CHUNK_CHARS + 3);
+        let chunks = local_text_chunks(&text);
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].chars().count(), MAX_TURN_CHUNK_CHARS);
+        assert_eq!(chunks[1], "xxx");
+        assert_eq!(chunks.concat(), text);
     }
 
     #[tokio::test(flavor = "current_thread")]

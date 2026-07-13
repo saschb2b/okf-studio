@@ -110,6 +110,47 @@ describe("OKF Studio app", () => {
       .not.toBeInTheDocument();
   });
 
+  it("connects a saved local model for a text-only Studio Agent turn", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    const localCard = screen.getByRole("heading", { name: "Local model" }).closest("article");
+    if (!localCard) throw new Error("Local model card was not rendered.");
+    await user.click(within(localCard).getByRole("button", { name: "Configure" }));
+    const localSection = screen
+      .getByRole("heading", { name: "Local model endpoints" })
+      .closest("section");
+    if (!localSection) throw new Error("Local endpoint setup was not rendered.");
+    await user.click(within(localSection).getByRole("button", { name: "Test connection" }));
+    await within(localSection).findByText("Endpoint reached");
+    await user.click(within(localSection).getByRole("button", { name: "Save endpoint" }));
+    await user.click(await within(localSection).findByRole("button", { name: "Test" }));
+    const model = await within(localSection).findByLabelText("Model");
+    expect(model).toHaveValue("qwen3:8b");
+    await user.click(within(localSection).getByRole("button", { name: "Connect" }));
+
+    expect(await screen.findByRole("heading", { name: "Chat with your local model" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add context or sources" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
+      .not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Message the agent"), "Hello from Studio");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Local model received: Hello from Studio"))
+      .toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    const reloadedLocalSection = screen
+      .getByRole("heading", { name: "Local model endpoints" })
+      .closest("section");
+    if (!reloadedLocalSection) throw new Error("Local endpoint setup was not restored.");
+    await user.click(within(reloadedLocalSection).getByRole("button", { name: "Disconnect" }));
+    await user.click(within(reloadedLocalSection).getByRole("button", { name: "Remove Ollama" }));
+  });
+
   it("cancels an in-progress agent installation and returns to installable", async () => {
     const user = userEvent.setup();
     renderApp();

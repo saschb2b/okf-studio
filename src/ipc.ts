@@ -202,6 +202,7 @@ export async function removeLocalModelProfile(profileId: string): Promise<boolea
   mockLocalModelProfiles = mockLocalModelProfiles.filter(
     (profile) => profile.id !== profileId,
   );
+  forgetProfileConnections(profileId);
   return mockLocalModelProfiles.length !== previousLength;
 }
 
@@ -292,6 +293,52 @@ export async function connectCatalogAgent(agentId: string): Promise<AgentConnect
       description: "The agent opens its own sign-in flow.",
     }],
     authenticated: false,
+    capabilities: {
+      loadSession: false,
+      promptImage: false,
+      promptAudio: false,
+      promptEmbeddedContext: false,
+      mcpHttp: false,
+      mcpSse: false,
+      sessionList: false,
+      sessionResume: false,
+      sessionClose: false,
+    },
+  };
+  activeAgentConnectionsById.set(info.connectionId, info);
+  publishAgentConnections();
+  return info;
+}
+
+export async function connectLocalModel(
+  profileId: string,
+  model: string,
+): Promise<AgentConnectionInfo> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const info = await invoke<AgentConnectionInfo>("connect_local_model", { profileId, model });
+    activeAgentConnectionsById.set(info.connectionId, info);
+    publishAgentConnections();
+    return info;
+  }
+  const profile = mockLocalModelProfiles.find((candidate) => candidate.id === profileId);
+  if (!profile) throw new Error("The local-model profile was not found.");
+  if (!model.trim()) throw new Error("Choose a model from the endpoint model list.");
+  if ([...activeAgentConnectionsById.values()].some((info) => info.profileId === profileId)) {
+    throw new Error("This local-model profile already has an active connection.");
+  }
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const info: AgentConnectionInfo = {
+    connectionId: `connection-${crypto.randomUUID()}`,
+    profileId,
+    protocolVersion: "studio-native/1",
+    agent: {
+      name: "okf-studio-local",
+      title: `${profile.name} · ${model}`,
+      version: "0.2.7-dev",
+    },
+    authMethods: [],
+    authenticated: true,
     capabilities: {
       loadSession: false,
       promptImage: false,
@@ -494,7 +541,8 @@ export async function promptAgent(
       sources,
     });
   }
-  if (!activeAgentConnectionsById.has(connectionId)) {
+  const connection = activeAgentConnectionsById.get(connectionId);
+  if (!connection) {
     throw new Error("Agent connection was not found.");
   }
   if (text.startsWith("Reject:")) {
@@ -509,7 +557,9 @@ export async function promptAgent(
     mockSession.messages = [...mockSession.messages, { role: "user", text }];
   }
   mockCancelledTurns.delete(info.turnId);
-  void emitMockTurn(info, text);
+  void (connection.protocolVersion === "studio-native/1"
+    ? emitMockLocalTurn(info, text)
+    : emitMockTurn(info, text));
   return info;
 }
 
@@ -1460,6 +1510,26 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       ...mockSession.messages,
       { role: "agent", text: responseText },
     ];
+  }
+}
+
+async function emitMockLocalTurn(info: AgentTurnInfo, text: string): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  if (mockCancelledTurns.has(info.turnId)) {
+    emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
+    mockCancelledTurns.delete(info.turnId);
+    return;
+  }
+  const responseText = `Local model received: ${text}`;
+  emitAgentTurn({
+    ...info,
+    update: { kind: "text", text: responseText, messageId: null },
+  });
+  emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "end-turn" } });
+  const mockSession = mockAgentSessions.get(info.sessionId);
+  if (mockSession) {
+    mockSession.updatedAt = new Date().toISOString();
+    mockSession.messages = [...mockSession.messages, { role: "agent", text: responseText }];
   }
 }
 

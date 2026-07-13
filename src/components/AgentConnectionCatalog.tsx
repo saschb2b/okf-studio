@@ -170,6 +170,7 @@ export function AgentConnectionCatalog({
             onFormOpenChange={setLocalFormOpen}
             onProfileSave={saveLocalProfile}
             onProfileRemove={removeLocalProfile}
+            onConnected={onConnected}
           />
           <CustomAgentProfiles
             profiles={state.customProfiles}

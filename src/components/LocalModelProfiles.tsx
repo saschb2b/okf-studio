@@ -1,5 +1,6 @@
-import { Cpu, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Cpu, Plug, Plus, RefreshCw, Trash2, Unplug } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import {
   LOCAL_MODEL_PRESETS,
   localModelProviderLabel,
@@ -8,7 +9,7 @@ import {
   type LocalModelProfileInput,
   type LocalModelProvider,
 } from "../agent/local.ts";
-import { testLocalModelEndpoint } from "../ipc.ts";
+import { connectLocalModel, disconnectAgent, testLocalModelEndpoint } from "../ipc.ts";
 
 type ProbeState =
   | { status: "idle" }
@@ -32,12 +33,14 @@ export function LocalModelProfiles({
   onFormOpenChange,
   onProfileSave,
   onProfileRemove,
+  onConnected,
 }: {
   profiles: readonly LocalModelProfile[];
   formOpen: boolean;
   onFormOpenChange: (open: boolean) => void;
   onProfileSave: (input: LocalModelProfileInput) => Promise<void>;
   onProfileRemove: (profileId: string) => Promise<void>;
+  onConnected: () => void;
 }) {
   const [input, setInput] = useState<LocalModelProfileInput>({
     name: LOCAL_MODEL_PRESETS[DEFAULT_PROVIDER].label,
@@ -49,6 +52,13 @@ export function LocalModelProfiles({
     { profileId: string; state: ProbeState } | undefined
   >();
   const [formError, setFormError] = useState<string>();
+  const [selectedModels, setSelectedModels] = useState<Partial<Record<string, string>>>({});
+  const [connectionState, setConnectionState] = useState<
+    | { status: "idle" }
+    | { status: "connecting" | "disconnecting"; profileId: string }
+    | { status: "failed"; profileId: string; message: string }
+  >({ status: "idle" });
+  const connections = useAgentConnections();
   const providerRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
@@ -97,6 +107,12 @@ export function LocalModelProfiles({
         profileId: profile.id,
         state: { status: "passed", inputKey: inputKey(profile), result },
       });
+      setSelectedModels((current) => ({
+        ...current,
+        [profile.id]: result.models.includes(current[profile.id] ?? "")
+          ? current[profile.id]
+          : result.models.length > 0 ? result.models[0] : "",
+      }));
     } catch (error: unknown) {
       setSavedProbe({
         profileId: profile.id,
@@ -113,6 +129,37 @@ export function LocalModelProfiles({
       setSavedProbe({
         profileId,
         state: { status: "failed", message: errorMessage(error) },
+      });
+    }
+  }
+
+  async function connect(profile: LocalModelProfile) {
+    const model = selectedModels[profile.id];
+    if (!model) return;
+    setConnectionState({ status: "connecting", profileId: profile.id });
+    try {
+      await connectLocalModel(profile.id, model);
+      setConnectionState({ status: "idle" });
+      onConnected();
+    } catch (error: unknown) {
+      setConnectionState({
+        status: "failed",
+        profileId: profile.id,
+        message: errorMessage(error),
+      });
+    }
+  }
+
+  async function disconnect(profileId: string, connectionId: string) {
+    setConnectionState({ status: "disconnecting", profileId });
+    try {
+      await disconnectAgent(connectionId);
+      setConnectionState({ status: "idle" });
+    } catch (error: unknown) {
+      setConnectionState({
+        status: "failed",
+        profileId,
+        message: errorMessage(error),
       });
     }
   }
@@ -237,6 +284,13 @@ export function LocalModelProfiles({
         <ul className="local-models__list">
           {profiles.map((profile) => {
             const status = savedProbe?.profileId === profile.id ? savedProbe.state : undefined;
+            const connection = connections.find(
+              (candidate) => candidate.profileId === profile.id,
+            );
+            const profileConnectionState =
+              connectionState.status !== "idle" && connectionState.profileId === profile.id
+                ? connectionState
+                : undefined;
             return (
               <li key={profile.id}>
                 <Cpu size={16} aria-hidden="true" />
@@ -255,6 +309,34 @@ export function LocalModelProfiles({
                       Connection test failed. {status.message}
                     </p>
                   )}
+                  {status?.status === "passed" && status.result.models.length > 0 && !connection && (
+                    <label className="local-models__model">
+                      Model
+                      <select
+                        value={selectedModels[profile.id] ?? status.result.models[0]}
+                        onChange={(event) =>
+                          setSelectedModels((current) => ({
+                            ...current,
+                            [profile.id]: event.target.value,
+                          }))
+                        }
+                      >
+                        {status.result.models.map((model) => (
+                          <option value={model} key={model}>{model}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {connection && (
+                    <p className="local-models__connected" role="status">
+                      Connected to {connection.agent?.title ?? profile.name}.
+                    </p>
+                  )}
+                  {profileConnectionState?.status === "failed" && (
+                    <p className="local-models__error" role="alert">
+                      Connection failed. {profileConnectionState.message}
+                    </p>
+                  )}
                   <div className="local-models__actions">
                     <button
                       type="button"
@@ -264,6 +346,35 @@ export function LocalModelProfiles({
                     >
                       Test
                     </button>
+                    {connection ? (
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        disabled={profileConnectionState?.status === "disconnecting"}
+                        onClick={() => void disconnect(profile.id, connection.connectionId)}
+                      >
+                        <Unplug size={16} aria-hidden="true" />
+                        {profileConnectionState?.status === "disconnecting"
+                          ? "Disconnecting..."
+                          : "Disconnect"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={
+                          status?.status !== "passed" ||
+                          status.result.models.length === 0 ||
+                          profileConnectionState?.status === "connecting"
+                        }
+                        onClick={() => void connect(profile)}
+                      >
+                        <Plug size={16} aria-hidden="true" />
+                        {profileConnectionState?.status === "connecting"
+                          ? "Connecting..."
+                          : "Connect"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn ghost"
@@ -281,8 +392,9 @@ export function LocalModelProfiles({
       )}
 
       <p className="local-models__execution-notice">
-        Endpoint setup does not start a model or create an agent session. Studio Agent
-        runtime support is a separate explicit connection step.
+        Connect starts a text-only Studio Agent using the selected model. Bundle context,
+        source attachments, edits, and tools remain unavailable until Studio can mediate
+        them through its scoped native tool loop.
       </p>
     </section>
   );

@@ -359,6 +359,7 @@ export function AgentConversation({
   onOpenFolder,
 }: AgentConversationProps) {
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
+  const isLocalTextOnly = connection.protocolVersion === "studio-native/1";
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
     source: "default",
     value: "New thread",
@@ -1072,7 +1073,11 @@ export function AgentConversation({
   const attachedIssueKeys = new Set(
     attachedSources.flatMap((source) => source.issueKey ? [source.issueKey] : []),
   );
-  let composerStatus = connection.capabilities.promptImage ? "Text and images" : "Text only";
+  let composerStatus = connection.capabilities.promptImage
+    ? "Text and images"
+    : isLocalTextOnly
+      ? "Local text only"
+      : "Text only";
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
   if (isSubmitting) composerStatus = "Starting turn";
@@ -1401,7 +1406,7 @@ export function AgentConversation({
           )}
         </div>
         <div className="agent-conversation__toolbar-actions">
-          {bundleRoot && !requiresAuthentication && (
+          {bundleRoot && !requiresAuthentication && !isLocalTextOnly && (
             <button
               type="button"
               className={`btn ghost agent-conversation__write-grant${writeGranted ? " agent-conversation__write-grant--on" : ""}`}
@@ -1667,31 +1672,40 @@ export function AgentConversation({
                     </div>
                   </section>
                 )}
-                <h3>Ask about this bundle</h3>
-                <p>
-                  Studio attaches OKF context, read-only access to this bundle, and tools to
-                  inspect concepts, trace sources, and validate structure.
-                </p>
-                <div className="agent-starters" role="group" aria-label="Start a guided thread">
-                  {THREAD_STARTERS.map((starter) => {
-                    const Icon = starter.icon;
-                    return (
-                      <button
-                        key={starter.title}
-                        type="button"
-                        className="agent-starter"
-                        aria-label={`${starter.title}: ${starter.description}`}
-                        onClick={() => selectStarter(starter.prompt)}
-                      >
-                        <Icon size={16} aria-hidden="true" />
-                        <span>
-                          <strong>{starter.title}</strong>
-                          <small>{starter.description}</small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <h3>{isLocalTextOnly ? "Chat with your local model" : "Ask about this bundle"}</h3>
+                {isLocalTextOnly ? (
+                  <p>
+                    This first native runtime sends only your message and recent thread text.
+                    Bundle context, sources, edits, and OKF tools are not sent yet.
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      Studio attaches OKF context, read-only access to this bundle, and tools to
+                      inspect concepts, trace sources, and validate structure.
+                    </p>
+                    <div className="agent-starters" role="group" aria-label="Start a guided thread">
+                      {THREAD_STARTERS.map((starter) => {
+                        const Icon = starter.icon;
+                        return (
+                          <button
+                            key={starter.title}
+                            type="button"
+                            className="agent-starter"
+                            aria-label={`${starter.title}: ${starter.description}`}
+                            onClick={() => selectStarter(starter.prompt)}
+                          >
+                            <Icon size={16} aria-hidden="true" />
+                            <span>
+                              <strong>{starter.title}</strong>
+                              <small>{starter.description}</small>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <>
@@ -2136,7 +2150,7 @@ export function AgentConversation({
                 name="prompt"
                 rows={3}
                 maxLength={128 * 1024}
-                placeholder="Ask about this bundle..."
+                placeholder={isLocalTextOnly ? "Message your local model..." : "Ask about this bundle..."}
                 disabled={isSubmitting || queuedPrompt !== null}
                 value={promptText}
                 onChange={(event) => setPromptText(event.target.value)}
@@ -2151,7 +2165,7 @@ export function AgentConversation({
                     attachedIssueKeys={attachedIssueKeys}
                     sourceCount={attachedSources.length}
                     onCaptureReaderSelection={onCaptureReaderSelection}
-                    disabled={isSubmitting || queuedPrompt !== null}
+                    disabled={isLocalTextOnly || isSubmitting || queuedPrompt !== null}
                     imageSupported={connection.capabilities.promptImage}
                     threadSupport={!supportsHistory ? "unsupported" : activeTurn ? "busy" : "ready"}
                     onLoadThreads={loadAttachableThreads}

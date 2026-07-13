@@ -102,7 +102,7 @@ Gate: a fake agent covers initialize, auth, session/new, streaming, permission, 
 - [x] Never copy external-agent credentials into Studio settings or logs.
 - [ ] Store Studio Agent keys only in the OS credential store.
 - [x] Configure and probe Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible endpoints without sending prompts or credentials.
-- [ ] Use saved local endpoints for Studio Agent turns.
+- [x] Use a selected model from a saved local endpoint for bounded text-only Studio Agent turns.
 
 Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostics, or snapshots.
 
@@ -132,6 +132,7 @@ Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and 
 - [x] Provide ACP agents with canonical, session-scoped, read-only text access to the active bundle.
 - [x] Attach up to eight concepts through a searchable picker as visible, removable, scoped resource links.
 - [ ] Give Studio Agent its OKF system prompt and progressive-disclosure skill catalog.
+- [ ] Add the native Studio Agent tool loop before enabling bundle context, sources, or edits for local models.
 - [x] Add bounded native search and graph traversal tools and offer them to every ACP session over standard stdio MCP.
 - [x] Add bounded inventory and validation inspection with filtered cursor paging.
 - [x] Add bounded concept reads and native source discovery without arbitrary file access or network fetching.

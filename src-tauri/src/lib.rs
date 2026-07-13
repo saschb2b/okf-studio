@@ -85,7 +85,12 @@ fn save_local_model_profile(
 }
 
 #[tauri::command]
-fn remove_local_model_profile(app: AppHandle, profile_id: String) -> Result<bool, String> {
+fn remove_local_model_profile(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    profile_id: String,
+) -> Result<bool, String> {
+    agent_protocol::disconnect_profile(&app, state.inner(), &profile_id)?;
     agent_local::remove(&app, &profile_id)
 }
 
@@ -96,6 +101,16 @@ async fn test_local_model_endpoint(
     tauri::async_runtime::spawn_blocking(move || agent_local::probe(input))
         .await
         .map_err(|_| "Studio could not finish the local endpoint test.".to_string())?
+}
+
+#[tauri::command]
+async fn connect_local_model(
+    app: AppHandle,
+    state: State<'_, agent_protocol::AgentHostState>,
+    profile_id: String,
+    model: String,
+) -> Result<agent_protocol::AgentConnectionInfo, String> {
+    agent_protocol::connect_local(&app, state.inner(), &profile_id, model).await
 }
 
 #[tauri::command]
@@ -604,6 +619,7 @@ pub fn run() {
             save_local_model_profile,
             remove_local_model_profile,
             test_local_model_endpoint,
+            connect_local_model,
             connect_custom_agent,
             connect_catalog_agent,
             disconnect_agent,

@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-13
+* **Update**: Updated the repository README to present the shipped Agent workspace rather than a research-only preview. It now names external ACP and Studio Agent paths, source-backed creation and improvement, guided knowledge work, and the staged validation and review boundary.
 * **Update**: Reconciled the top-level product contract with the shipped Studio loop. The overview, principles, scope, personas, comparison, feature map, contributor guide, and site now describe explicit network actions, replaceable ACP and Studio Agent paths, source-backed creation, cited research, and validated reviewed writes. Opening a local folder remains offline and read-only; unattended external-agent work remains deferred until enforcement exists.
 * **Update**: Made the native tool-loop outcome boundary explicit. Completed calls and recoverable tool failures now use separate typed outcomes; failed calls remain visible and return bounded error context for model correction, while cancellation and host shutdown still terminate the turn. Provider-loop tests cover both paths.
 * **Update**: Defined the WP11 isolation exit contract after rechecking Zed's open external-agent sandbox discussion. Unattended mode now has explicit prerequisites for launcher-produced enforcement evidence, effective mounts, writable roots, network and credential policy, lifecycle stops, Windows parity, and stable ACP tool identity. Wrapper labels, provider self-reports, and process-tree ownership cannot satisfy the contract.

@@ -18,11 +18,11 @@
 
 <p align="center">
   <a href="https://saschb2b.github.io/okf-viewer/">
-    <img src="site/public/screenshot-graph.webp" width="840" alt="OKF Studio showing a knowledge bundle as a concept graph beside the reader">
+    <img src="site/public/screenshot-graph.webp" width="840" alt="OKF Studio showing a concept graph and reader beside the agent catalog">
   </a>
 </p>
 
-OKF Studio is a local-first desktop workspace for [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Open a folder and it detects the bundles inside, then renders each as an interactive graph and markdown reader with backlinks, search, validation, and live reload. Connect a compatible ACP agent when you want to research the active bundle with selected concepts, files, structured data, PDFs, images, or bounded web sources. Folder opening remains read-only, connections start only when chosen, and there is no Studio account. Built with [Tauri 2](https://tauri.app/) for Windows, macOS, and Linux.
+OKF Studio is a local-first desktop workspace for [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Open a folder and it detects the bundles inside, then renders each as an interactive graph and markdown reader with backlinks, search, validation, and live reload. Connect an external ACP agent or Studio Agent to research, create, or improve knowledge from selected concepts, files, structured data, PDFs, images, or bounded web sources. Proposed files stay staged until validation, diff review, and an explicit apply or create action. Folder opening remains read-only, connections and network requests start only when chosen, and there is no Studio account. Built with [Tauri 2](https://tauri.app/) for Windows, macOS, and Linux.
 
 ## Download
 
@@ -38,6 +38,7 @@ Unsigned for now, so your OS may show an "unverified publisher" prompt on first 
 
 ## Features
 
+- **Agent workspace.** Connect a subscription agent, custom ACP command, API-key-backed compatible endpoint, or local model beside the graph and reader. Guided threads cover bundle creation, enhancement, dataset changes, and cited research; tools, permissions, and proposed writes remain visible.
 - **Knowledge as a graph.** A force-directed graph of concepts and links, colored by type. Explore structure instead of scrolling a wall of files.
 - **A focused reader.** Markdown with frontmatter, syntax-highlighted code, zoomable images, and a relationship panel showing what a concept links to and what cites it.
 - **Any conformant bundle.** Reads OKF and [ODSF](https://saschb2b.github.io/Open-Design-System-Format/) bundles from any producer, yours or someone else's. A tolerant reader never rejects a sloppy bundle; it surfaces issues instead.

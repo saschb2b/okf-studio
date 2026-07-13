@@ -1,7 +1,7 @@
 import { Archive as ArchiveIcon, Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, History, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
-import type { Dispatch, SetStateAction, SubmitEvent } from "react";
+import type { Dispatch, RefObject, SetStateAction, SubmitEvent } from "react";
 import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
@@ -159,7 +159,8 @@ type HistoryState =
   | { status: "ready"; sessions: readonly AgentSessionHistoryInfo[]; hasMore: boolean }
   | { status: "error"; message: string };
 type SavedThreadState =
-  | { status: "none" | "loading" }
+  | { status: "none" }
+  | { status: "loading" }
   | { status: "ready"; metadata: readonly AgentThreadMetadata[] }
   | { status: "resuming"; metadata: readonly AgentThreadMetadata[]; sessionId: string }
   | { status: "error"; message: string; metadata?: AgentThreadMetadata };
@@ -263,6 +264,170 @@ function threadDateLabel(updatedAt: number): string | null {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(updatedAt));
+}
+
+function SavedThreadWelcome({
+  state,
+  actionRef,
+  onResume,
+  onDismiss,
+  onRetry,
+  onStartNew,
+}: {
+  state: Exclude<SavedThreadState, { status: "none" }>;
+  actionRef: RefObject<HTMLButtonElement | null>;
+  onResume: (metadata: AgentThreadMetadata) => void;
+  onDismiss: (metadata: AgentThreadMetadata) => void;
+  onRetry: () => void;
+  onStartNew: () => void;
+}) {
+  if (state.status === "loading") {
+    return (
+      <>
+        <History size={24} aria-hidden="true" />
+        <h3>Checking saved work</h3>
+        <p role="status">Looking for a previous thread for this bundle and agent.</p>
+      </>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <>
+        <CircleAlert size={24} aria-hidden="true" />
+        <h3>Saved thread unavailable</h3>
+        <p role="alert">{state.message}</p>
+        <div className="agent-saved-thread__recovery">
+          <button
+            ref={actionRef}
+            type="button"
+            className="btn primary"
+            onClick={onRetry}
+          >
+            Retry
+          </button>
+          <button type="button" className="btn ghost" onClick={onStartNew}>
+            Start new thread
+          </button>
+          {state.metadata && (
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                if (state.metadata) onDismiss(state.metadata);
+              }}
+            >
+              {state.metadata.archived ? "Forget" : "Dismiss"}
+            </button>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <History size={24} aria-hidden="true" />
+      <h3>Pick up where you left off</h3>
+      <p>
+        Resume saved work, or start a new thread. Starting fresh keeps the saved
+        conversation available in History.
+      </p>
+      <div className="agent-saved-threads">
+        {state.metadata.map((metadata, index) => {
+          const isResuming = state.status === "resuming" &&
+            state.sessionId === metadata.sessionId;
+          const titleId = `agent-saved-thread-title-${index}`;
+          const updatedAt = threadDateLabel(metadata.updatedAt);
+          return (
+            <section
+              key={`${metadata.sessionId}-${metadata.archived ? "archived" : "current"}`}
+              className="agent-saved-thread"
+              aria-labelledby={titleId}
+            >
+              {metadata.archived
+                ? <ArchiveIcon size={16} aria-hidden="true" />
+                : <History size={16} aria-hidden="true" />}
+              <div>
+                <h4 id={titleId}>
+                  {metadata.archived ? "Archived thread" : "Continue previous thread"}
+                </h4>
+                <span title={metadata.title}>{metadata.title}</span>
+                {updatedAt && <small>Updated {updatedAt}</small>}
+              </div>
+              <div className="agent-saved-thread__actions">
+                <button
+                  ref={index === 0 ? actionRef : undefined}
+                  type="button"
+                  className="btn primary"
+                  disabled={state.status === "resuming"}
+                  onClick={() => onResume(metadata)}
+                >
+                  {isResuming ? "Resuming..." : "Resume"}
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={state.status === "resuming"}
+                  onClick={() => onDismiss(metadata)}
+                >
+                  {metadata.archived ? "Forget" : "Dismiss"}
+                </button>
+              </div>
+            </section>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        className="btn ghost agent-saved-thread__start-new"
+        disabled={state.status === "resuming"}
+        onClick={onStartNew}
+      >
+        Start new thread
+      </button>
+    </>
+  );
+}
+
+function EmptyThreadWelcome({
+  isStudioAgent,
+  onSelectStarter,
+}: {
+  isStudioAgent: boolean;
+  onSelectStarter: (prompt: string) => void;
+}) {
+  return (
+    <>
+      <Bot size={24} aria-hidden="true" />
+      <h3>{isStudioAgent ? "Chat with Studio Agent" : "Ask about this bundle"}</h3>
+      <p>
+        {isStudioAgent
+          ? "Studio gives the model canonical OKF guidance, bounded bundle and source tools, and reviewed staging. Proposed files stay in memory until you validate, review, and apply them."
+          : "Studio attaches OKF context, read-only access to this bundle, and tools to inspect concepts, trace sources, and validate structure."}
+      </p>
+      <div className="agent-starters" role="group" aria-label="Start a guided thread">
+        {THREAD_STARTERS.map((starter) => {
+          const Icon = starter.icon;
+          return (
+            <button
+              key={starter.title}
+              type="button"
+              className="agent-starter"
+              aria-label={`${starter.title}: ${starter.description}`}
+              onClick={() => onSelectStarter(starter.prompt)}
+            >
+              <Icon size={16} aria-hidden="true" />
+              <span>
+                <strong>{starter.title}</strong>
+                <small>{starter.description}</small>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
 }
 
 function sourceTooltip(source: AttachedSource): string {
@@ -1573,6 +1738,11 @@ export function AgentConversation({
     requestAnimationFrame(() => savedThreadActionRef.current?.focus());
   }
 
+  function startFreshThread() {
+    setSavedThread({ status: "none" });
+    requestAnimationFrame(() => promptRef.current?.focus());
+  }
+
   function changeThreadTitle(value: string) {
     setThreadTitle({ source: "custom", value });
     onThreadTitleChange(value);
@@ -1884,104 +2054,21 @@ export function AgentConversation({
           <div ref={messagesRef} className="agent-conversation__messages" aria-live="polite">
             {messages.length === 0 && pendingPermissions.length === 0 ? (
               <div className="agent-conversation__welcome">
-                <Bot size={24} aria-hidden="true" />
-                {(savedThread.status === "ready" || savedThread.status === "resuming") &&
-                  savedThread.metadata.map((metadata, index) => {
-                    const isResuming = savedThread.status === "resuming" &&
-                      savedThread.sessionId === metadata.sessionId;
-                    const titleId = `agent-saved-thread-title-${index}`;
-                    return (
-                      <section
-                        key={`${metadata.sessionId}-${metadata.archived ? "archived" : "current"}`}
-                        className="agent-saved-thread"
-                        aria-labelledby={titleId}
-                      >
-                        {metadata.archived
-                          ? <ArchiveIcon size={16} aria-hidden="true" />
-                          : <History size={16} aria-hidden="true" />}
-                        <div>
-                          <h4 id={titleId}>
-                            {metadata.archived ? "Archived thread" : "Continue previous thread"}
-                          </h4>
-                          <span title={metadata.title}>{metadata.title}</span>
-                        </div>
-                        <div className="agent-saved-thread__actions">
-                          <button
-                            ref={index === 0 ? savedThreadActionRef : undefined}
-                            type="button"
-                            className="btn"
-                            disabled={savedThread.status === "resuming"}
-                            onClick={() => void resumeSavedThread(metadata)}
-                          >
-                            {isResuming ? "Resuming..." : "Resume"}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            disabled={savedThread.status === "resuming"}
-                            onClick={() => void dismissSavedThread(metadata)}
-                          >
-                            {metadata.archived ? "Forget" : "Dismiss"}
-                          </button>
-                        </div>
-                      </section>
-                    );
-                  })}
-                {savedThread.status === "error" && (
-                  <section className="agent-saved-thread agent-saved-thread--error">
-                    <CircleAlert size={16} aria-hidden="true" />
-                    <p role="alert">Saved thread unavailable. {savedThread.message}</p>
-                    <div className="agent-saved-thread__actions">
-                      <button
-                        ref={savedThreadActionRef}
-                        type="button"
-                        className="btn"
-                        onClick={() => void retrySavedThreadLoad()}
-                      >
-                        Retry
-                      </button>
-                      {savedThread.metadata && (
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          onClick={() => {
-                            if (savedThread.metadata) {
-                              void dismissSavedThread(savedThread.metadata);
-                            }
-                          }}
-                        >
-                          {savedThread.metadata.archived ? "Forget" : "Dismiss"}
-                        </button>
-                      )}
-                    </div>
-                  </section>
+                {savedThread.status === "none" ? (
+                  <EmptyThreadWelcome
+                    isStudioAgent={isStudioAgent}
+                    onSelectStarter={selectStarter}
+                  />
+                ) : (
+                  <SavedThreadWelcome
+                    state={savedThread}
+                    actionRef={savedThreadActionRef}
+                    onResume={(metadata) => void resumeSavedThread(metadata)}
+                    onDismiss={(metadata) => void dismissSavedThread(metadata)}
+                    onRetry={() => void retrySavedThreadLoad()}
+                    onStartNew={startFreshThread}
+                  />
                 )}
-                <h3>{isStudioAgent ? "Chat with Studio Agent" : "Ask about this bundle"}</h3>
-                <p>
-                  {isStudioAgent
-                    ? "Studio gives the model canonical OKF guidance, bounded bundle and source tools, and reviewed staging. Proposed files stay in memory until you validate, review, and apply them."
-                    : "Studio attaches OKF context, read-only access to this bundle, and tools to inspect concepts, trace sources, and validate structure."}
-                </p>
-                <div className="agent-starters" role="group" aria-label="Start a guided thread">
-                  {THREAD_STARTERS.map((starter) => {
-                    const Icon = starter.icon;
-                    return (
-                      <button
-                        key={starter.title}
-                        type="button"
-                        className="agent-starter"
-                        aria-label={`${starter.title}: ${starter.description}`}
-                        onClick={() => selectStarter(starter.prompt)}
-                      >
-                        <Icon size={16} aria-hidden="true" />
-                        <span>
-                          <strong>{starter.title}</strong>
-                          <small>{starter.description}</small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             ) : (
               <>

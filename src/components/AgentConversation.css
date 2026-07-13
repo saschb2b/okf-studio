@@ -340,6 +340,12 @@
   text-align: start;
 }
 
+.agent-saved-threads {
+  display: grid;
+  width: 100%;
+  gap: var(--space-8);
+}
+
 .agent-saved-thread {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -366,12 +372,17 @@
 }
 
 .agent-saved-thread span,
+.agent-saved-thread small,
 .agent-saved-thread p {
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
+}
+
+.agent-saved-thread small {
+  color: var(--text-muted);
 }
 
 .agent-saved-thread h4 {
@@ -383,6 +394,17 @@
 .agent-saved-thread__actions {
   display: flex;
   grid-column: 2;
+  gap: var(--space-8);
+}
+
+.agent-saved-thread__start-new {
+  align-self: center;
+}
+
+.agent-saved-thread__recovery {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-8);
 }
 

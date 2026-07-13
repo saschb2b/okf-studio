@@ -599,7 +599,7 @@ describe("OKF Studio app", () => {
       "Assess this dataset documentation and propose a change plan. Identify dependencies, validation risks, and supporting evidence. End with `## Change Plan` containing actionable steps and `## Affected Concepts` containing one bundle-relative `.md` path per bullet. Do not write files yet: ",
     );
     await user.clear(screen.getByLabelText("Message the agent"));
-    await user.click(screen.getByRole("button", { name: /Deep research/ }));
+    await user.click(await screen.findByRole("button", { name: /Deep research/ }));
     expect(screen.getByLabelText("Message the agent")).toHaveValue(
       "Research this question across the active bundle and attached sources. Cite the evidence for each finding. End with `## Sources` containing one bullet per cited source and `## Inferences` containing each inference or `None.`: ",
     );
@@ -1110,6 +1110,9 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Archive current thread" }));
     expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pick up where you left off" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Ask about this bundle" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Create bundle/ })).not.toBeInTheDocument();
     await waitFor(() => expect(
       JSON.parse(localStorage.getItem("okf-studio:agent-threads") ?? "[]"),
     ).toEqual(expect.arrayContaining([
@@ -1119,6 +1122,18 @@ describe("OKF Studio app", () => {
         archived: true,
       }),
     ])));
+    await user.click(screen.getByRole("button", { name: "Start new thread" }));
+    expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
+    expect(localStorage.getItem("okf-studio:agent-threads")).not.toBe("[]");
+
+    await user.click(screen.getByRole("button", { name: "Change" }));
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
+    await screen.findByText(/Connected to History Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("heading", { name: "Pick up where you left off" }))
+      .toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Resume" }));
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
@@ -1130,6 +1145,8 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("heading", { name: "Continue previous thread" }))
       .toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pick up where you left off" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Ask about this bundle" })).not.toBeInTheDocument();
     expect(screen.getByText("Evidence notebook")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Resume" }));
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
@@ -1142,9 +1159,12 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
     historySpy.mockResolvedValueOnce({ sessions: [], hasMore: false });
     await user.click(await screen.findByRole("button", { name: "Resume" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Saved thread unavailable. The agent no longer reports this session",
+    expect(await screen.findByRole("heading", { name: "Saved thread unavailable" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The agent no longer reports this session",
     );
+    expect(screen.queryByRole("heading", { name: "Ask about this bundle" })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
@@ -1459,6 +1479,7 @@ describe("OKF Studio app", () => {
     expect(exportSpy).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await user.click(await screen.findByRole("button", { name: "Start new thread" }));
     await user.click(screen.getByRole("button", { name: /Deep research/ }));
     await user.type(screen.getByLabelText("Message the agent"), "Which decisions are documented?");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -1492,7 +1513,7 @@ describe("OKF Studio app", () => {
     await screen.findByText(/Connected to Dataset Change Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
+    await user.click(await screen.findByRole("button", { name: /Request dataset change/ }));
     await user.type(screen.getByLabelText("Message the agent"), "Omit change sections");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("The requested change needs review.")).toBeInTheDocument();
@@ -1503,6 +1524,7 @@ describe("OKF Studio app", () => {
     expect(exportSpy).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await user.click(await screen.findByRole("button", { name: "Start new thread" }));
     await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
     await user.type(screen.getByLabelText("Message the agent"), "Clarify the documented scope");
     await user.click(screen.getByRole("button", { name: "Send" }));

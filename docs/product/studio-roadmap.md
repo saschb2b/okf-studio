@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T12:40:00Z
+timestamp: 2026-07-14T13:10:00Z
 ---
 
 # Outcome
@@ -209,8 +209,10 @@ The journey contract defines what earns persistent space and what stays deferred
 
 The persistent-band audit assigns one owner to each identity: the global switcher owns the bundle, the connection strip owns the agent, and the thread strip owns the thread. The panel header owns entry and exit, the task-aware action row owns direct thread boundaries, the transcript owns work and blocking state, staged review owns edits, and the composer owns intake plus turn submission. The removed duplication was the toolbar's second agent, bundle, and thread label. Empty read-only threads no longer show disabled edit, export, or archive commands. History, Export, Archive, and Change agent now share one predictable secondary menu; the History surface keeps a direct Back action.
 
+The hierarchy prototype uses the state gallery's deliberately long agent and thread names. At 360px and the 440px default, the merged navigator needs 477px of content and therefore hides part of the other identity level behind horizontal scrolling. The stacked strips fit without horizontal overflow at both widths. The merged row fits at 560px, but changing hierarchy by width would move the same controls between rows. Studio therefore keeps the two stable strips: one agent owner and one thread owner, each with its own add action.
+
 - [x] Inventory every persistent band and action across disconnected, authentication, empty, resumed, streaming, permission, staged, validation, and error states. Record duplicate labels, actions without a current use, and controls that move between states.
-- [ ] Prototype the workspace hierarchy with real long agent, bundle, and thread names. Compare a merged agent/thread navigator with the current stacked strips at 360px, the default panel width, and 560px before choosing the structure.
+- [x] Prototype the workspace hierarchy with real long agent, bundle, and thread names. Compare a merged agent/thread navigator with the current stacked strips at 360px, the default panel width, and 560px before choosing the structure.
 - [x] Reduce the live workspace to one clear identity header. The selected agent and thread remain discoverable, while the product name, bundle name, connection state, and repeated new-thread actions appear only where they add information.
 - [x] Make saved-thread continuation a distinct returning-user state. Resume, dismiss, or start new work must resolve that state before the ordinary empty-thread guidance takes over.
 - [x] Separate research and editing emphasis. Keep read-only research calm by default; reveal the edit grant, staged review, validation, Apply, and Restore controls when the selected workflow or live stage makes them relevant.
@@ -222,7 +224,7 @@ The persistent-band audit assigns one owner to each identity: the global switche
   - [x] Keep turn-control failures beside Stop or Retry without duplicating terminal turn records.
   - [x] Keep permission-response failures inside their request card while that request remains active.
   - [x] Move staging operation failures into the staged-review or proposal surface that owns the retry; keep validation failures inside validation.
-- [ ] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
+- [x] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
 - [ ] Verify keyboard order, focus return, popover focus, horizontal switcher scrolling, 24px targets, text reflow, and visible focus at narrow and wide widths. No task-critical action may exist only on hover.
 - [ ] Run a visual-consistency pass over spacing, type scale, common edges, dividers, repeated controls, overflow, and focus rings. Use the existing theme tokens and record any hierarchy choice that still needs judgment.
 - [ ] Dogfood the first-use, resume, deep-research, create, enhance, permission, failure-recovery, parallel-thread, and narrow-panel journeys. Capture before and after screenshots and note where the user must hunt, backtrack, or interpret hidden state.

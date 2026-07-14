@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-13T19:06:19Z
+timestamp: 2026-07-14T13:10:00Z
 ---
 
 # Decision
@@ -46,6 +46,8 @@ Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — 
 # Frontend and performance checks
 
 Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout, plus layout modes, the reader context rail, the [bundle switcher](../features/bundle-switcher.md), the Agent workspace, and keyboard actions. Browser-level review uses the runnable Vite fixture and `agent-browser` during UI work; Playwright is not part of the automated suite. **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+
+In browser development, `?agent-gallery=<state>&width=<360|440|560>` opens a deterministic Agent Panel state gallery instead of the workspace. Its nine states cover first use, saved work, stale and empty history, a capability-limited agent, an active turn with a queued follow-up, an unresolved permission, staged edits, and a disconnected process. Long connection and thread names plus bounded errors are part of the fixture. `hierarchy=stacked|merged` switches between the shipped two-level navigator and the rejected one-row prototype. The fixture performs no agent or network action. Component tests keep every named state and its reproducible URL available.
 
 # Native host gate
 

@@ -20,10 +20,18 @@ import { OverviewView } from "./components/OverviewView.tsx";
 import { ResizeHandles } from "./components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "./components/ShortcutsHelp.tsx";
 import { AgentPanel } from "./components/AgentPanel.tsx";
+import { AgentPanelStateGallery } from "./mock/AgentPanelStateGallery.tsx";
 
 export function App() {
   const { state } = useApp();
   useGlobalKeys();
+
+  if (
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).has("agent-gallery")
+  ) {
+    return <AgentPanelStateGallery />;
+  }
 
   return (
     <div className="app" data-maximized={state.maximized || undefined}>

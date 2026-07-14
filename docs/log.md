@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-14
+* **Creation**: Added a browser-development Agent Panel state gallery with reproducible 360px, 440px, and 560px fixtures for first use, saved and stale work, empty history, limited capabilities, active and queued turns, permission, staging, and process failure. Its long-name hierarchy prototype showed that a merged navigator requires horizontal scrolling at 360px and 440px, so the shipped agent and thread strips remain separate and stable.
 * **Update**: Assigned every staging failure to its recovery surface. Edit-grant errors now stay below the thread action row, proposal preparation errors remain in the proposal card, discard, reject, revalidation, and creation errors remain in staged review, and checkpoint errors remain beside Restore. Each state retains a direct retry while validation results keep their separate validation-owned presentation.
 * **Update**: Verified permission-response failures remain inside the unresolved request card, preserve their allow and reject recovery actions, survive switching to another live thread and back, and disappear only when the agent resolves the request.
 * **Update**: Kept failed Stop requests with the active turn's composer controls. The host reason now sits beside Retry stop, survives thread switching, and clears when cancellation succeeds or the turn ends. Studio no longer presents its own cancellation failure as agent-authored transcript text.

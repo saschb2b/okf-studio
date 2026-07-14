@@ -20,9 +20,10 @@
 
 .agent-catalog__intro h2,
 .agent-catalog__intro p,
-.agent-catalog-card h3,
-.agent-catalog-card p,
-.agent-catalog-card dl,
+.agent-row h3,
+.agent-row p,
+.agent-registry__heading h3,
+.agent-registry__empty,
 .agent-catalog__notice {
   margin: 0;
 }
@@ -34,17 +35,11 @@
 }
 
 .agent-catalog__intro p,
-.agent-catalog-card p,
+.agent-row p,
 .agent-catalog__notice {
   color: var(--text-dim);
   line-height: var(--lh-normal);
   text-wrap: pretty;
-}
-
-.agent-catalog__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-  gap: var(--space-8);
 }
 
 .agent-catalog__state {
@@ -64,117 +59,239 @@
   line-height: var(--lh-normal);
 }
 
-.agent-catalog-card {
-  display: grid;
-  grid-template-rows: auto auto auto auto 1fr;
+/* --- ACP Registry section: search, install filters, compact agent rows --- */
+
+.agent-registry {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-8);
-  min-width: 0;
-  padding: var(--space-12);
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
 }
 
-.agent-catalog-card__icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  color: var(--accent);
-  background: var(--bg-elev);
-  border-radius: var(--radius-sm);
-}
-
-@supports (grid-template-rows: subgrid) {
-  .agent-catalog-card {
-    grid-row: span 5;
-    grid-template-rows: subgrid;
-  }
-}
-
-.agent-catalog-card__title-row {
+.agent-registry__heading {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-8);
 }
 
-.agent-catalog-card h3 {
-  min-width: 0;
+.agent-registry__heading h3 {
   font-size: var(--fs-md);
   line-height: var(--lh-tight);
 }
 
-.agent-catalog-card dl {
-  display: grid;
+.agent-registry__learn-more {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-4);
+  min-height: 28px;
+  padding: var(--space-4) var(--space-8);
   font-size: var(--fs-xs);
 }
 
-.agent-catalog-card dl > div {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: var(--space-8);
-}
-
-.agent-catalog-card dt {
-  color: var(--text-dim);
-}
-
-.agent-catalog-card dd {
-  margin: 0;
-  overflow-wrap: break-word;
-}
-
-.agent-catalog-card__action {
-  display: inline-flex;
+.agent-registry__toolbar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-8);
-  align-self: flex-start;
-  justify-self: start;
-  margin-top: auto;
 }
 
-.agent-catalog-card__install-controls {
+.agent-registry__search {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  padding: 0 var(--space-8);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.agent-registry__search:focus-within {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.agent-registry__search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.agent-registry__filters {
+  display: inline-flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.agent-registry__filter {
+  min-height: 28px;
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--fs-xs);
+}
+
+.agent-registry__filter[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--bg-elev);
+}
+
+.agent-registry__list {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-8);
-  margin-top: auto;
 }
 
-.agent-catalog-card__install-controls p,
-.agent-catalog-card__install-state {
-  margin: 0;
+.agent-registry__empty {
+  padding: var(--space-12);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  background: var(--bg-sunken);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-catalog__studio {
+  margin-top: var(--space-16);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border);
+}
+
+.agent-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  padding: var(--space-8) var(--space-12);
+  column-gap: var(--space-8);
+  row-gap: var(--space-4);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-row__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+  background: var(--bg-elev);
+  border-radius: var(--radius-sm);
+}
+
+.agent-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.agent-row h3 {
+  min-width: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-tight);
+}
+
+.agent-row__version {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.agent-row__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  justify-self: end;
+}
+
+.agent-row__action-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-row__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  white-space: nowrap;
+}
+
+.agent-row__body {
+  display: grid;
+  grid-column: 2 / -1;
+  gap: var(--space-4);
+}
+
+.agent-row__summary,
+.agent-row__zone,
+.agent-row__zone p,
+.agent-row__meta {
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
 }
 
-.agent-catalog-card__install-state {
+.agent-row__zone {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.agent-row__pending {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  margin-top: auto;
   color: var(--text-dim);
 }
 
-.agent-catalog-card__disclosure {
+.agent-row__disclosure {
   color: var(--text-dim);
   overflow-wrap: break-word;
 }
 
-.agent-catalog-card__installed {
+.agent-row__installed {
   color: var(--accent);
 }
 
-.agent-catalog-card__error {
+.agent-row__error {
   color: var(--error);
   overflow-wrap: break-word;
 }
 
-.agent-catalog-card progress {
+.agent-row progress {
   width: 100%;
   accent-color: var(--accent);
+}
+
+.agent-row__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  color: var(--text-dim);
+}
+
+.agent-row__links {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.agent-row__link {
+  min-width: 24px;
+  min-height: 24px;
+  padding: var(--space-4);
 }
 
 .agent-catalog__notice {

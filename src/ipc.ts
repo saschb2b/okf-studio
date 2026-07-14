@@ -339,11 +339,140 @@ function mockNativeSecurityScope(): AgentSecurityScopeInfo {
   };
 }
 
+// --- Last explicit agent connection, remembered so the panel can restore it
+// --- on the next launch. Connecting saves it; explicit disconnect forgets it.
+
+export interface LastAgentConnection {
+  kind: "catalog" | "custom" | "local";
+  id: string;
+  mode?: AgentConnectionMode;
+  model?: string;
+}
+
+const LAST_CONNECTION_KEY = "okf-studio:agent-last-connection";
+
+function lastConnectionProfileId(entry: LastAgentConnection): string {
+  return entry.kind === "catalog" ? `catalog-${entry.id}` : entry.id;
+}
+
+export function lastAgentConnection(): LastAgentConnection | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LAST_CONNECTION_KEY);
+    if (!raw) return null;
+    const stored = JSON.parse(raw) as Partial<LastAgentConnection>;
+    if (
+      (stored.kind !== "catalog" && stored.kind !== "custom" && stored.kind !== "local") ||
+      typeof stored.id !== "string" || stored.id.length === 0 || stored.id.length > 128
+    ) {
+      return null;
+    }
+    return {
+      kind: stored.kind,
+      id: stored.id,
+      mode: stored.mode === "restricted-offline" ? "restricted-offline" : undefined,
+      model:
+        typeof stored.model === "string" && stored.model.length > 0 && stored.model.length <= 256
+          ? stored.model
+          : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveLastAgentConnection(entry: LastAgentConnection): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(LAST_CONNECTION_KEY, JSON.stringify(entry));
+  } catch {
+    // Restore is a convenience; a blocked storage API must not block connecting.
+  }
+}
+
+function forgetLastAgentConnection(profileId: string): void {
+  const last = lastAgentConnection();
+  if (!last || lastConnectionProfileId(last) !== profileId) return;
+  try {
+    localStorage.removeItem(LAST_CONNECTION_KEY);
+  } catch {
+    // Restore is a convenience; a blocked storage API must not block disconnecting.
+  }
+}
+
+/** Reconnect the most recent explicitly connected agent, if one is remembered. */
+async function restoreLastAgentConnection(
+  bundleRoot: string,
+): Promise<AgentConnectionInfo | null> {
+  const last = lastAgentConnection();
+  if (!last) return null;
+  if (last.kind === "catalog") return connectCatalogAgent(last.id, bundleRoot);
+  if (last.kind === "custom") {
+    return connectCustomAgent(last.id, bundleRoot, last.mode ?? "standard");
+  }
+  if (!last.model) return null;
+  return connectLocalModel(last.id, last.model);
+}
+
+export type AgentRestoreStatus = "idle" | "restoring" | "failed";
+
+let agentRestoreState: AgentRestoreStatus = "idle";
+let agentRestoreAttempted = false;
+const agentRestoreSubscribers = new Set<() => void>();
+const restoredConnectionIds = new Set<string>();
+
+/**
+ * Whether this connection was just restored at launch. Consuming it lets the
+ * first conversation surface resume the saved thread automatically, exactly
+ * once — a user-created surface or reconnect keeps its explicit choice.
+ */
+export function consumeRestoredConnection(connectionId: string): boolean {
+  return restoredConnectionIds.delete(connectionId);
+}
+
+function publishAgentRestoreState(next: AgentRestoreStatus): void {
+  agentRestoreState = next;
+  for (const subscriber of agentRestoreSubscribers) subscriber();
+}
+
+export function agentRestoreStatus(): AgentRestoreStatus {
+  return agentRestoreState;
+}
+
+export function subscribeAgentRestore(subscriber: () => void): () => void {
+  agentRestoreSubscribers.add(subscriber);
+  return () => agentRestoreSubscribers.delete(subscriber);
+}
+
+/**
+ * Restore the remembered connection once per app session, the first time the
+ * panel is open beside a bundle. An explicit Disconnect already forgot the
+ * entry, so this only continues a connection the user chose to keep.
+ */
+export function maybeRestoreLastAgentConnection(bundleRoot: string): void {
+  if (agentRestoreAttempted) return;
+  agentRestoreAttempted = true;
+  if (activeAgentConnectionSnapshot.length > 0 || !lastAgentConnection()) return;
+  publishAgentRestoreState("restoring");
+  restoreLastAgentConnection(bundleRoot).then(
+    (info) => {
+      if (info) restoredConnectionIds.add(info.connectionId);
+      publishAgentRestoreState("idle");
+    },
+    () => publishAgentRestoreState("failed"),
+  );
+}
+
 export async function connectCustomAgent(
   profileId: string,
   bundleRoot: string,
   mode: AgentConnectionMode = "standard",
 ): Promise<AgentConnectionInfo> {
+  const remember = () => saveLastAgentConnection({
+    kind: "custom",
+    id: profileId,
+    mode: mode === "restricted-offline" ? mode : undefined,
+  });
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
     const info = await invoke<AgentConnectionInfo>("connect_custom_agent", {
@@ -353,6 +482,7 @@ export async function connectCustomAgent(
     });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
+    remember();
     return info;
   }
   const profile = mockCustomAgents.find((candidate) => candidate.id === profileId);
@@ -386,6 +516,7 @@ export async function connectCustomAgent(
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
+  remember();
   return info;
 }
 
@@ -401,6 +532,7 @@ export async function connectCatalogAgent(
     });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
+    saveLastAgentConnection({ kind: "catalog", id: agentId });
     return info;
   }
   if (!mockInstalledAgents.has(agentId)) throw new Error("Install this agent before connecting it.");
@@ -440,6 +572,7 @@ export async function connectCatalogAgent(
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
+  saveLastAgentConnection({ kind: "catalog", id: agentId });
   return info;
 }
 
@@ -452,6 +585,7 @@ export async function connectLocalModel(
     const info = await invoke<AgentConnectionInfo>("connect_local_model", { profileId, model });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
+    saveLastAgentConnection({ kind: "local", id: profileId, model });
     return info;
   }
   const profile = mockLocalModelProfiles.find((candidate) => candidate.id === profileId);
@@ -488,6 +622,7 @@ export async function connectLocalModel(
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
+  saveLastAgentConnection({ kind: "local", id: profileId, model });
   return info;
 }
 
@@ -1995,14 +2130,17 @@ function emitAgentTurn(event: AgentTurnEvent): void {
 export async function disconnectAgent(connectionId: string): Promise<boolean> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
+    const profileId = activeAgentConnectionsById.get(connectionId)?.profileId;
     const disconnected = await invoke<boolean>("disconnect_agent", { connectionId });
     if (disconnected) activeAgentConnectionsById.delete(connectionId);
     if (disconnected) publishAgentConnections();
+    if (disconnected && profileId) forgetLastAgentConnection(profileId);
     return disconnected;
   }
   const info = activeAgentConnectionsById.get(connectionId);
   if (!info) return false;
   activeAgentConnectionsById.delete(connectionId);
+  forgetLastAgentConnection(info.profileId);
   clearMockThreadPermissionRules(connectionId);
   emitMockAgentConnection({
     connectionId,
@@ -2173,6 +2311,20 @@ export async function cancelAgentInstall(installId: string): Promise<boolean> {
   }
   mockCancelledInstalls.add(installId);
   return true;
+}
+
+export async function uninstallAgent(agentId: string): Promise<void> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("uninstall_agent", { agentId });
+    return;
+  }
+  const profileId = `catalog-${agentId}`;
+  if (activeAgentConnectionSnapshot.some((info) => info.profileId === profileId)) {
+    throw new Error("Disconnect this agent before removing it.");
+  }
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  mockInstalledAgents.delete(agentId);
 }
 
 function emitMockInstallProgress(progress: AgentInstallProgress): void {

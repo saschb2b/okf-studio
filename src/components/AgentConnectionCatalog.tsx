@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Search, SquareArrowOutUpRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { catalogEntries, type AgentCatalogEntry } from "../agent/catalog.ts";
 import type { AgentConnectionInfo, AgentSecurityHostStatus } from "../agent/connection.ts";
@@ -6,18 +6,22 @@ import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
 import type { LocalModelProfile, LocalModelProfileInput } from "../agent/local.ts";
 import {
   agentCatalog,
+  agentInstallPreflight,
   agentSecurityHostStatus,
   customAgents,
   localModelProfiles,
+  openExternal,
   removeCustomAgent,
   removeLocalModelProfile,
   saveCustomAgent,
   saveLocalModelProfile,
 } from "../ipc.ts";
-import { AgentCatalogCard } from "./AgentCatalogCard.tsx";
+import { AgentRegistryRow, isInstallable, type RowPreflight } from "./AgentRegistryRow.tsx";
 import { CustomAgentProfiles } from "./CustomAgentProfiles.tsx";
 import { LocalModelProfiles } from "./LocalModelProfiles.tsx";
 import "./AgentConnectionCatalog.css";
+
+const ACP_REGISTRY_URL = "https://agentclientprotocol.com/get-started/registry";
 
 type CatalogState =
   | { status: "loading" }
@@ -33,6 +37,8 @@ type SecurityHostState =
   | { status: "loading" }
   | { status: "ready"; value: AgentSecurityHostStatus }
   | { status: "error" };
+
+type RegistryFilter = "all" | "installed" | "not-installed";
 
 async function loadCatalog(): Promise<CatalogState> {
   try {
@@ -50,12 +56,44 @@ async function loadCatalog(): Promise<CatalogState> {
   }
 }
 
+async function loadPreflight(agentId: string): Promise<RowPreflight> {
+  try {
+    return { status: "ready", preflight: await agentInstallPreflight(agentId) };
+  } catch (error: unknown) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 async function loadSecurityHost(): Promise<SecurityHostState> {
   try {
     return { status: "ready", value: await agentSecurityHostStatus() };
   } catch {
     return { status: "error" };
   }
+}
+
+function isInstalled(entry: AgentCatalogEntry, preflight: RowPreflight | undefined): boolean {
+  return preflight?.status === "ready" && preflight.preflight.packageInstalled;
+}
+
+function matchesFilter(
+  entry: AgentCatalogEntry,
+  preflight: RowPreflight | undefined,
+  filter: RegistryFilter,
+): boolean {
+  if (filter === "all") return true;
+  const installed = isInstalled(entry, preflight);
+  return filter === "installed" ? installed : !installed;
+}
+
+function matchesQuery(entry: AgentCatalogEntry, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [entry.name, entry.summary, entry.id, entry.distribution?.package ?? ""]
+    .some((value) => value.toLowerCase().includes(needle));
 }
 
 function securityHostCopy(status: AgentSecurityHostStatus): {
@@ -137,32 +175,56 @@ export function AgentConnectionCatalog({
   onConnected: (connection: AgentConnectionInfo) => void;
 }) {
   const [state, setState] = useState<CatalogState>({ status: "loading" });
+  const [preflights, setPreflights] = useState<Record<string, RowPreflight>>({});
   const [securityHost, setSecurityHost] = useState<SecurityHostState>({ status: "loading" });
   const [localFormOpen, setLocalFormOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<RegistryFilter>("all");
+  const [loadToken, setLoadToken] = useState(0);
   const requestVersion = useRef(0);
   const hostRequestVersion = useRef(0);
 
   useEffect(() => {
     const version = ++requestVersion.current;
-    void loadCatalog().then((next) => {
-      if (requestVersion.current === version) setState(next);
+    void loadCatalog().then(async (next) => {
+      if (requestVersion.current !== version) return;
+      setState(next);
+      if (next.status !== "ready") return;
+      const installable = next.entries.filter(isInstallable);
+      setPreflights(Object.fromEntries(
+        installable.map((entry) => [entry.id, { status: "loading" }]),
+      ));
+      const results = await Promise.all(
+        installable.map(async (entry) => [entry.id, await loadPreflight(entry.id)] as const),
+      );
+      if (requestVersion.current !== version) return;
+      setPreflights(Object.fromEntries(results));
     });
+    return () => {
+      requestVersion.current += 1;
+    };
+  }, [loadToken]);
+
+  useEffect(() => {
     const hostVersion = ++hostRequestVersion.current;
     void loadSecurityHost().then((next) => {
       if (hostRequestVersion.current === hostVersion) setSecurityHost(next);
     });
     return () => {
-      requestVersion.current += 1;
       hostRequestVersion.current += 1;
     };
   }, []);
 
   function retry() {
     setState({ status: "loading" });
-    const version = ++requestVersion.current;
-    void loadCatalog().then((next) => {
-      if (requestVersion.current === version) setState(next);
-    });
+    setLoadToken((token) => token + 1);
+  }
+
+  async function refreshPreflight(agentId: string) {
+    const version = requestVersion.current;
+    const next = await loadPreflight(agentId);
+    if (requestVersion.current !== version) return;
+    setPreflights((current) => ({ ...current, [agentId]: next }));
   }
 
   function retrySecurityHost() {
@@ -215,6 +277,16 @@ export function AgentConnectionCatalog({
     );
   }
 
+  const registryEntries = state.status === "ready"
+    ? state.entries.filter((entry) => entry.runtime === "external-acp")
+    : [];
+  const visibleRegistryEntries = registryEntries.filter(
+    (entry) => matchesFilter(entry, preflights[entry.id], filter) && matchesQuery(entry, query),
+  );
+  const studioEntry = state.status === "ready"
+    ? state.entries.find((entry) => entry.runtime === "studio-native")
+    : undefined;
+
   return (
     <section className="agent-catalog" aria-labelledby="agent-catalog-title">
       <div className="agent-catalog__intro">
@@ -251,21 +323,88 @@ export function AgentConnectionCatalog({
       )}
 
       {state.status === "ready" && (
-        <div className="agent-catalog__list">
-          {state.entries.map((entry) => (
-            <AgentCatalogCard
-              bundleRoot={bundleRoot}
-              entry={entry}
-              key={entry.id}
-              onConnected={onConnected}
-              onConfigure={() => setLocalFormOpen(true)}
-            />
-          ))}
-        </div>
-      )}
-
-      {state.status === "ready" && (
         <>
+          <section className="agent-registry" aria-labelledby="agent-registry-title">
+            <div className="agent-registry__heading">
+              <h3 id="agent-registry-title">ACP Registry</h3>
+              <button
+                type="button"
+                className="btn ghost agent-registry__learn-more"
+                onClick={() => void openExternal(ACP_REGISTRY_URL)}
+              >
+                Learn more
+                <SquareArrowOutUpRight size={14} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="agent-registry__toolbar">
+              <div className="agent-registry__search">
+                <Search size={14} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Search agents…"
+                  aria-label="Search agents"
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </div>
+              <div
+                className="agent-registry__filters"
+                role="group"
+                aria-label="Filter agents by install state"
+              >
+                {([
+                  ["all", "All"],
+                  ["installed", "Installed"],
+                  ["not-installed", "Not installed"],
+                ] as const).map(([value, label]) => (
+                  <button
+                    type="button"
+                    className="btn ghost agent-registry__filter"
+                    key={value}
+                    aria-pressed={filter === value}
+                    onClick={() => setFilter(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {visibleRegistryEntries.length > 0 ? (
+              <div className="agent-registry__list">
+                {visibleRegistryEntries.map((entry) => (
+                  <AgentRegistryRow
+                    bundleRoot={bundleRoot}
+                    entry={entry}
+                    key={entry.id}
+                    preflight={preflights[entry.id]}
+                    onRefreshPreflight={refreshPreflight}
+                    onConnected={onConnected}
+                    onConfigure={() => setLocalFormOpen(true)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="agent-registry__empty" role="status">
+                {query.trim()
+                  ? `No agents match "${query.trim()}".`
+                  : filter === "installed"
+                    ? "No agents are installed yet."
+                    : "Every catalog agent is already installed."}
+              </p>
+            )}
+          </section>
+
+          {studioEntry && (
+            <section className="agent-catalog__studio" aria-label="Built into Studio">
+              <AgentRegistryRow
+                bundleRoot={bundleRoot}
+                entry={studioEntry}
+                onConnected={onConnected}
+                onConfigure={() => setLocalFormOpen(true)}
+              />
+            </section>
+          )}
+
           <LocalModelProfiles
             profiles={state.localProfiles}
             formOpen={localFormOpen}

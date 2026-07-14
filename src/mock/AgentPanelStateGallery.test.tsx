@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { AgentPanelStateGallery } from "./AgentPanelStateGallery.tsx";
@@ -19,7 +19,7 @@ describe("AgentPanelStateGallery", () => {
     ["active-queue", "Next message"],
     ["permission", "Allow Read generated report?"],
     ["staged", "Enhancement draft"],
-    ["disconnected", "Connection ended"],
+    ["disconnected", "Your bundle is still open"],
   ])("renders the %s fixture", (scenario, expectedText) => {
     window.history.replaceState(null, "", `/?agent-gallery=${scenario}&width=440`);
     render(<AgentPanelStateGallery />);
@@ -52,5 +52,17 @@ describe("AgentPanelStateGallery", () => {
     expect(screen.getByText("Enhancement draft")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Agent and thread prototype" }))
       .toBeInTheDocument();
+  });
+
+  it("keeps staged recovery above the internally scrolling file list", () => {
+    window.history.replaceState(null, "", "/?agent-gallery=staged&width=360");
+    render(<AgentPanelStateGallery />);
+
+    const stagedReview = screen.getByRole("region", { name: "Staged changes" });
+    const alert = within(stagedReview).getByRole("alert");
+    const fileList = within(stagedReview).getByRole("list");
+    expect(
+      alert.compareDocumentPosition(fileList) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
   });
 });

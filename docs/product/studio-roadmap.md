@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T14:30:00Z
+timestamp: 2026-07-14T14:45:00Z
 ---
 
 # Outcome
@@ -211,6 +211,8 @@ The persistent-band audit assigns one owner to each identity: the global switche
 
 The hierarchy prototype uses the state gallery's deliberately long agent and thread names. At 360px and the 440px default, the merged navigator needs 477px of content and therefore hides part of the other identity level behind horizontal scrolling. The stacked strips fit without horizontal overflow at both widths. The merged row fits at 560px, but changing hierarchy by width would move the same controls between rows. Studio therefore keeps the two stable strips: one agent owner and one thread owner, each with its own add action.
 
+The visual-consistency pass checked every deterministic state against the theme spacing and type scales, common edges, dividers, repeated 28- and 32-pixel controls, overflow, and the shared focus ring. It found two safe defects. A staged-operation failure could begin below the stage's internal scroll, so its recovery now precedes the file list. A last-agent process failure competed with a second connection action, so the connection notice now owns recovery while the empty space only confirms that the bundle remains readable. Re-rendering at 360px and 560px kept panel `clientWidth` equal to `scrollWidth`, kept the composer in view, and retained a 28-pixel minimum control. The 9-pixel staged-graph SVG labels remain a judgment exception to the UI type scale because raising them to the 12-pixel text floor would overlap dense preview nodes; they are supplementary to the textual staged-file list.
+
 - [x] Inventory every persistent band and action across disconnected, authentication, empty, resumed, streaming, permission, staged, validation, and error states. Record duplicate labels, actions without a current use, and controls that move between states.
 - [x] Prototype the workspace hierarchy with real long agent, bundle, and thread names. Compare a merged agent/thread navigator with the current stacked strips at 360px, the default panel width, and 560px before choosing the structure.
 - [x] Reduce the live workspace to one clear identity header. The selected agent and thread remain discoverable, while the product name, bundle name, connection state, and repeated new-thread actions appear only where they add information.
@@ -226,7 +228,7 @@ The hierarchy prototype uses the state gallery's deliberately long agent and thr
   - [x] Move staging operation failures into the staged-review or proposal surface that owns the retry; keep validation failures inside validation.
 - [x] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
 - [x] Verify keyboard order, focus return, popover focus, horizontal switcher scrolling, 24px targets, text reflow, and visible focus at narrow and wide widths. No task-critical action may exist only on hover.
-- [ ] Run a visual-consistency pass over spacing, type scale, common edges, dividers, repeated controls, overflow, and focus rings. Use the existing theme tokens and record any hierarchy choice that still needs judgment.
+- [x] Run a visual-consistency pass over spacing, type scale, common edges, dividers, repeated controls, overflow, and focus rings. Use the existing theme tokens and record any hierarchy choice that still needs judgment.
 - [ ] Dogfood the first-use, resume, deep-research, create, enhance, permission, failure-recovery, parallel-thread, and narrow-panel journeys. Capture before and after screenshots and note where the user must hunt, backtrack, or interpret hidden state.
 
 Gate: each journey has one obvious next action, no duplicated persistent identity, no hidden blocking state, and screenshot plus keyboard evidence at 360px, the default panel width, and 560px.

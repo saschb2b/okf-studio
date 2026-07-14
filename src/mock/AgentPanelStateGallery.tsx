@@ -182,8 +182,8 @@ function GalleryPanel({
           </div>
         </div>
         <div className="agent-panel__empty">
-          <h2>Connection ended</h2>
-          <p>Review the connection or choose another agent.</p>
+          <h2>Your bundle is still open</h2>
+          <p>Agent activity stopped. Browsing and reading are unaffected.</p>
         </div>
       </section>
     );
@@ -387,12 +387,12 @@ function StagedChanges() {
       <>
         <section className="agent-staged" aria-label="Staged changes">
           <header><strong>Enhancement draft</strong><span>3 files · not applied to the bundle</span><div className="agent-staged__actions"><button type="button" className="btn ghost">Validate</button><button type="button" className="btn ghost">Discard all</button></div></header>
+          <div className="agent-staged__operation-error"><p role="alert" title="The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.">Staging action failed. The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.</p><button type="button" className="btn ghost"><RotateCcw size={14} aria-hidden="true" />Retry discard</button></div>
           <ul>
             <StagedFile path="product/customer-evidence-and-source-reconciliation.md" kind="Modified" />
             <StagedFile path="architecture/agent-system.md" kind="Modified" />
             <StagedFile path="index.md" kind="New file" />
           </ul>
-          <div className="agent-staged__operation-error"><p role="alert" title="The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.">Staging action failed. The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.</p><button type="button" className="btn ghost"><RotateCcw size={14} aria-hidden="true" />Retry discard</button></div>
           <p>Review or reject staged files, then validate the selected result.</p>
         </section>
         <Composer />

@@ -249,6 +249,10 @@ describe("OKF Studio app", () => {
       expect(failure).toHaveTextContent(
         "The agent process exited before the session completed.",
       );
+      expect(screen.getByRole("heading", { name: "Your bundle is still open" }))
+        .toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Connect an agent" }))
+        .not.toBeInTheDocument();
       await user.click(within(failure).getByRole("button", { name: "Review connections" }));
       expect(screen.getByRole("heading", { name: "Choose how agents run" }))
         .toBeInTheDocument();
@@ -256,6 +260,7 @@ describe("OKF Studio app", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("Failure Harness stopped");
       await user.click(screen.getByRole("button", { name: "Dismiss" }));
       expect(screen.queryByText("Failure Harness stopped")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Connect an agent" })).toBeInTheDocument();
     } finally {
       cleanup();
       await ipc.disconnectAgent(connection.connectionId);
@@ -1597,9 +1602,14 @@ describe("OKF Studio app", () => {
     );
     await user.click(screen.getByRole("button", { name: "Discard all" }));
     const stagedReview = screen.getByRole("region", { name: "Staged changes" });
-    expect(await within(stagedReview).findByRole("alert")).toHaveTextContent(
+    const stagingAlert = await within(stagedReview).findByRole("alert");
+    expect(stagingAlert).toHaveTextContent(
       "Staging action failed. The staging store is busy.",
     );
+    const stagedFile = within(stagedReview).getByText("proposals/notes.md");
+    expect(
+      stagingAlert.compareDocumentPosition(stagedFile) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
     await user.click(within(stagedReview).getByRole("button", { name: "Retry discard" }));
     await waitFor(() =>
       expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),

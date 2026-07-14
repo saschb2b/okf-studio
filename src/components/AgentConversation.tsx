@@ -2354,6 +2354,22 @@ export function AgentConversation({
                   </button>
                 </div>
               </header>
+              {stageError?.owner === "staging" && stagingRetryLabel && (
+                <div className="agent-staged__operation-error">
+                  <p role="alert" title={stageError.message}>
+                    Staging action failed. {stageError.message}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={stagingRetryDisabled}
+                    onClick={retryStagingFailure}
+                  >
+                    <RotateCcw size={14} aria-hidden="true" />
+                    {stagingRetryLabel}
+                  </button>
+                </div>
+              )}
               <ul>
                 {stagedChanges.files.map((file, index) => {
                   const isExpanded = expandedDiff?.path === file.path;
@@ -2588,22 +2604,6 @@ export function AgentConversation({
                     </div>
                   )}
                 </section>
-              )}
-              {stageError?.owner === "staging" && stagingRetryLabel && (
-                <div className="agent-staged__operation-error">
-                  <p role="alert" title={stageError.message}>
-                    Staging action failed. {stageError.message}
-                  </p>
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    disabled={stagingRetryDisabled}
-                    onClick={retryStagingFailure}
-                  >
-                    <RotateCcw size={14} aria-hidden="true" />
-                    {stagingRetryLabel}
-                  </button>
-                </div>
               )}
               <p>Review or reject staged files, then validate the selected result.</p>
             </section>

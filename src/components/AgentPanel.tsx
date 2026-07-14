@@ -223,19 +223,28 @@ export function AgentPanel() {
               <span className="agent-panel__mark" aria-hidden="true">
                 <Sparkles size={24} />
               </span>
-              <h2>Connect an agent</h2>
-              <p>
-                Use an existing subscription, an API-backed Studio Agent, or a
-                local model. Nothing connects until you choose.
-              </p>
-              <button
-                type="button"
-                className="btn primary"
-                data-agent-initial-focus
-                onClick={openCatalog}
-              >
-                Connect an agent
-              </button>
+              {connectionFailure ? (
+                <>
+                  <h2>Your bundle is still open</h2>
+                  <p>Agent activity stopped. Browsing and reading are unaffected.</p>
+                </>
+              ) : (
+                <>
+                  <h2>Connect an agent</h2>
+                  <p>
+                    Use an existing subscription, an API-backed Studio Agent, or a
+                    local model. Nothing connects until you choose.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    data-agent-initial-focus
+                    onClick={openCatalog}
+                  >
+                    Connect an agent
+                  </button>
+                </>
+              )}
             </div>
           )}
         </ErrorBoundary>

@@ -1371,8 +1371,8 @@
 }
 
 .agent-staged__operation-error {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
+  padding-block: var(--space-4);
+  border-block: 1px solid var(--border);
 }
 
 .agent-staged .agent-staged__operation-error p {

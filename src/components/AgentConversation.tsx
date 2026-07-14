@@ -77,6 +77,7 @@ import {
   AgentSessionControls,
   type AgentSessionConfigFailure,
 } from "./AgentSessionControls.tsx";
+import { AgentLiveWorkShelf } from "./AgentLiveWorkShelf.tsx";
 import "./AgentConversation.css";
 
 export interface AgentConversationProps {
@@ -1809,6 +1810,27 @@ export function AgentConversation({
       : "Archive this thread and start a new one";
   const changeAgentDisabled = isSubmitting || activeTurn !== null ||
     authentication.status === "authenticating" || exportState.status === "exporting";
+  const livePlanId = activeTurn ? `plan-${activeTurn.turnId}` : null;
+  const livePlan = livePlanId
+    ? messages.find(
+        (item): item is ConversationPlan => item.role === "plan" && item.id === livePlanId,
+      ) ?? null
+    : null;
+  const hasLiveWork = pendingPermissions.length > 0 || livePlan !== null ||
+    stagedFileCount > 0 || stagedChanges?.canRestore === true || stageNotice !== null ||
+    queuedPrompt !== null;
+  const hasCollapsibleLiveWork = livePlan !== null || stagedFileCount > 0 ||
+    stagedChanges?.canRestore === true || stageNotice !== null || queuedPrompt !== null;
+  const liveWorkSummary = [
+    pendingPermissions.length > 0
+      ? `${pendingPermissions.length} decision${pendingPermissions.length === 1 ? "" : "s"}`
+      : null,
+    livePlan ? planProgressLabel(livePlan) : null,
+    stagedFileCount > 0
+      ? `${stagedFileCount} staged file${stagedFileCount === 1 ? "" : "s"}`
+      : stagedChanges?.canRestore ? "Restore available" : null,
+    queuedPrompt ? "1 queued message" : null,
+  ].filter((part): part is string => part !== null).join(" · ");
 
   function selectStarter(prompt: string, workflow: AgentThreadWorkflow) {
     if (!promptRef.current) return;
@@ -2459,6 +2481,7 @@ export function AgentConversation({
             ) : (
               <>
                 {messages.map((item) => {
+                  if (item.id === livePlanId) return null;
                   const turnId = item.role === "status" ? item.turnId : undefined;
                   return (
                     <ConversationItemView
@@ -2496,12 +2519,22 @@ export function AgentConversation({
                     />
                   );
                 })}
-                {pendingPermissions.map((permission) => (
-                  <PermissionCard key={permission.requestId} permission={permission} />
-                ))}
               </>
             )}
           </div>
+          {hasLiveWork && (
+            <AgentLiveWorkShelf
+              summary={liveWorkSummary}
+              collapsible={hasCollapsibleLiveWork}
+              blockingContent={pendingPermissions.length > 0 ? (
+                <div className="agent-live-work__permissions">
+                  {pendingPermissions.map((permission) => (
+                    <PermissionCard key={permission.requestId} permission={permission} />
+                  ))}
+                </div>
+              ) : undefined}
+            >
+              {livePlan && <LivePlan plan={livePlan} />}
           {stagedChanges && stagedChanges.files.length > 0 && (
             <section className="agent-staged" aria-labelledby={stagedTitleId}>
               <header>
@@ -2823,7 +2856,6 @@ export function AgentConversation({
           {stageNotice && !stagedChanges?.canRestore && (
             <p className="agent-composer__notice" role="status">{stageNotice}</p>
           )}
-          <form ref={composerRef} className="agent-composer" action={composerAction}>
             {queuedPrompt && (
               <section className="agent-queue" aria-labelledby={`queued-prompt-${queuedPrompt.id}`}>
                 <div>
@@ -2845,6 +2877,9 @@ export function AgentConversation({
                 </div>
               </section>
             )}
+            </AgentLiveWorkShelf>
+          )}
+          <form ref={composerRef} className="agent-composer" action={composerAction}>
             {attachedConcepts.length + attachedSources.length > 0 && (
               <div className="agent-composer__context">
                 {attachedConcepts.map((concept) => (
@@ -3969,6 +4004,32 @@ function ToolLocations({ locations }: { locations: readonly AgentToolLocationInf
   );
 }
 
+function planProgressLabel(plan: ConversationPlan): string {
+  const completed = plan.entries.filter((entry) => entry.status === "completed").length;
+  const remaining = plan.entries.length - completed;
+  return `${completed} complete · ${remaining} remaining`;
+}
+
+function LivePlan({ plan }: { plan: ConversationPlan }) {
+  const current = plan.entries.find((entry) => entry.status === "in-progress") ??
+    plan.entries.find((entry) => entry.status === "pending") ?? plan.entries.at(-1);
+  return (
+    <details className="agent-live-plan" open>
+      <summary>
+        <span className="agent-plan__icon" aria-hidden="true">
+          <ListChecks size={15} />
+        </span>
+        <span>
+          <strong>Plan</strong>
+          <span title={current?.content}>{current?.content ?? "Waiting for the next step"}</span>
+        </span>
+        <small>{planProgressLabel(plan)}</small>
+      </summary>
+      <PlanEntries entries={plan.entries} />
+    </details>
+  );
+}
+
 function PlanCard({ plan }: { plan: ConversationPlan }) {
   const completed = plan.entries.filter((entry) => entry.status === "completed").length;
   return (
@@ -3982,28 +4043,34 @@ function PlanCard({ plan }: { plan: ConversationPlan }) {
           <small>{completed} of {plan.entries.length} complete</small>
         </div>
       </header>
-      <ol>
-        {plan.entries.map((entry, index) => {
-          const status = ({
-            pending: { label: "Pending", icon: Circle },
-            "in-progress": { label: "In progress", icon: CircleDot },
-            completed: { label: "Completed", icon: Check },
-            unknown: { label: "Status unknown", icon: CircleAlert },
-          } as const)[entry.status];
-          const StatusIcon = status.icon;
-          return (
-            <li
-              key={`${entry.content}-${entry.priority}-${index}`}
-              className={`agent-plan__entry agent-plan__entry--${entry.status}`}
-            >
-              <StatusIcon size={14} aria-hidden="true" />
-              <span>{entry.content}</span>
-              <small title={`${entry.priority} priority`}>{status.label}</small>
-            </li>
-          );
-        })}
-      </ol>
+      <PlanEntries entries={plan.entries} />
     </section>
+  );
+}
+
+function PlanEntries({ entries }: { entries: readonly AgentPlanEntryInfo[] }) {
+  return (
+    <ol>
+      {entries.map((entry, index) => {
+        const status = ({
+          pending: { label: "Pending", icon: Circle },
+          "in-progress": { label: "In progress", icon: CircleDot },
+          completed: { label: "Completed", icon: Check },
+          unknown: { label: "Status unknown", icon: CircleAlert },
+        } as const)[entry.status];
+        const StatusIcon = status.icon;
+        return (
+          <li
+            key={`${entry.content}-${entry.priority}-${index}`}
+            className={`agent-plan__entry agent-plan__entry--${entry.status}`}
+          >
+            <StatusIcon size={14} aria-hidden="true" />
+            <span>{entry.content}</span>
+            <small title={`${entry.priority} priority`}>{status.label}</small>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

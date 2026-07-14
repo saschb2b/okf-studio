@@ -80,4 +80,27 @@ describe("AgentPanelStateGallery", () => {
       alert.compareDocumentPosition(fileList) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).not.toBe(0);
   });
+
+  it("collapses non-blocking work and keeps focus on the shelf control", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/?agent-gallery=active-queue&width=360");
+    render(<AgentPanelStateGallery />);
+
+    const collapse = screen.getByRole("button", { name: "Collapse live work" });
+    await user.click(collapse);
+
+    expect(collapse).toHaveFocus();
+    expect(collapse).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("region", { name: "Next message" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Trace source references")).not.toBeInTheDocument();
+  });
+
+  it("keeps a blocking permission visible without an empty disclosure", () => {
+    window.history.replaceState(null, "", "/?agent-gallery=permission&width=360");
+    render(<AgentPanelStateGallery />);
+
+    expect(screen.getByRole("region", { name: "Permission request" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Allow once" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Collapse live work" })).not.toBeInTheDocument();
+  });
 });

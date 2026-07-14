@@ -1,9 +1,13 @@
 import {
   Archive,
   Bot,
+  Check,
+  Circle,
   CircleAlert,
+  CircleDot,
   FileText,
   History,
+  ListChecks,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -17,6 +21,7 @@ import {
 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { AgentSessionConfigOption } from "../agent/connection.ts";
+import { AgentLiveWorkShelf } from "../components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "../components/AgentSessionControls.tsx";
 import "./AgentPanelStateGallery.css";
 
@@ -471,13 +476,20 @@ function SessionControls({
 function ActiveQueue() {
   return (
     <ConversationLayout composer={(
-      <Composer active queued>
-        <section className="agent-queue" aria-label="Queued follow-up">
-          <div><strong>Next message</strong><span>1 attachment</span></div>
-          <p>Compare the remaining source notes after this turn finishes.</p>
-          <div className="agent-queue__actions"><button type="button" className="btn ghost">Edit</button><button type="button" className="btn ghost">Remove</button></div>
-        </section>
-      </Composer>
+      <>
+        <AgentLiveWorkShelf summary="1 of 3 complete · 1 queued message">
+          <details className="agent-live-plan" open>
+            <summary><span className="agent-plan__icon"><ListChecks size={15} aria-hidden="true" /></span><span><strong>Plan</strong><span>Trace source references</span></span><small>1 complete · 2 remaining</small></summary>
+            <ol><li className="agent-plan__entry agent-plan__entry--completed"><Check size={14} aria-hidden="true" /><span>Find conflicting claims</span><small>Completed</small></li><li className="agent-plan__entry agent-plan__entry--in-progress"><CircleDot size={14} aria-hidden="true" /><span>Trace source references</span><small>In progress</small></li><li className="agent-plan__entry agent-plan__entry--pending"><Circle size={14} aria-hidden="true" /><span>Prepare a cited summary</span><small>Pending</small></li></ol>
+          </details>
+          <section className="agent-queue" aria-label="Next message">
+            <div><strong>Next message</strong><span>1 attachment</span></div>
+            <p>Compare the remaining source notes after this turn finishes.</p>
+            <div className="agent-queue__actions"><button type="button" className="btn ghost">Edit</button><button type="button" className="btn ghost">Remove</button></div>
+          </section>
+        </AgentLiveWorkShelf>
+        <Composer active queued />
+      </>
     )}>
       <Message label="You">Trace the conflicting source claims.</Message>
       <article className="agent-tool agent-tool--in-progress" aria-label="Tool: Search bundle sources">
@@ -491,18 +503,28 @@ function ActiveQueue() {
 
 function PermissionRequest() {
   return (
-    <ConversationLayout>
+    <ConversationLayout composer={(
+      <>
+        <AgentLiveWorkShelf
+          summary="1 decision"
+          collapsible={false}
+          blockingContent={(
+            <section className="agent-permission" aria-label="Permission request">
+              <ShieldCheck size={18} aria-hidden="true" />
+              <div className="agent-permission__body">
+                <h3>Allow Read generated report?</h3>
+                <p>The agent is waiting for your decision.</p>
+                <p className="agent-permission__error" role="alert">The response could not be delivered. The request is still active.</p>
+                <div className="agent-permission__actions"><button type="button" className="btn primary">Allow once</button><button type="button" className="btn ghost">Reject</button></div>
+                <label className="agent-permission__remember"><input type="checkbox" />Remember this exact request for this thread</label>
+              </div>
+            </section>
+          )}
+        />
+        <Composer />
+      </>
+    )}>
       <Message label="You">Inspect the generated dataset report.</Message>
-      <section className="agent-permission" aria-label="Permission request">
-        <ShieldCheck size={18} aria-hidden="true" />
-        <div className="agent-permission__body">
-          <h3>Allow Read generated report?</h3>
-          <p>The agent is waiting for your decision.</p>
-          <p className="agent-permission__error" role="alert">The response could not be delivered. The request is still active.</p>
-          <div className="agent-permission__actions"><button type="button" className="btn primary">Allow once</button><button type="button" className="btn ghost">Reject</button></div>
-          <label className="agent-permission__remember"><input type="checkbox" />Remember this exact request for this thread</label>
-        </div>
-      </section>
     </ConversationLayout>
   );
 }
@@ -511,6 +533,7 @@ function StagedChanges() {
   return (
     <ConversationLayout composer={(
       <>
+        <AgentLiveWorkShelf summary="3 staged files">
         <section className="agent-staged" aria-label="Staged changes">
           <header><strong>Enhancement draft</strong><span>3 files · not applied to the bundle</span><div className="agent-staged__actions"><button type="button" className="btn ghost">Validate</button><button type="button" className="btn ghost">Discard all</button></div></header>
           <div className="agent-staged__operation-error"><p role="alert" title="The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.">Staging action failed. The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.</p><button type="button" className="btn ghost"><RotateCcw size={14} aria-hidden="true" />Retry discard</button></div>
@@ -521,6 +544,7 @@ function StagedChanges() {
           </ul>
           <p>Review or reject staged files, then validate the selected result.</p>
         </section>
+        </AgentLiveWorkShelf>
         <Composer />
       </>
     )}>

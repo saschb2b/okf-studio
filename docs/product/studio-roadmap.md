@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T16:30:00Z
+timestamp: 2026-07-14T16:55:00Z
 ---
 
 # Outcome
@@ -254,14 +254,14 @@ Gate: Claude Agent, Codex, a no-option fake agent, a dynamic-option fake agent, 
 
 The transcript should answer what happened. A compact shelf directly above the composer should answer what needs attention now. It replaces the current scattering of plan, queue, staged review, and blocking decisions without turning the footer into a second dashboard.
 
-- [ ] Add one bounded, collapsible live-work shelf between transcript and composer. Render only sections with current content and keep the composer reachable when every section exists.
+- [x] Add one bounded, collapsible live-work shelf between transcript and composer. Render only sections with current content and keep the composer reachable when every section exists.
 - [ ] Order blocking permission or failure first, then live plan, staged OKF changes, and queued follow-ups. Use dividers only between present sections.
-- [ ] Move the current replacement plan into a one-line summary with current task, completed count, and remaining count. Its expanded list has bounded scrolling and preserves agent order and status.
-- [ ] Preserve the terminal plan snapshot in transcript export without rendering a duplicate live plan card. Clearing or collapsing the shelf changes presentation only.
+- [x] Move the current replacement plan into a one-line summary with current task, completed count, and remaining count. Its expanded list has bounded scrolling and preserves agent order and status.
+- [x] Preserve the terminal plan snapshot in transcript export without rendering a duplicate live plan card. Clearing or collapsing the shelf changes presentation only.
 - [ ] Move the active permission decision into the shelf while leaving its chronological request and resolution understandable in the transcript. A delivery failure remains beside the still-active decision.
-- [ ] Keep the staged OKF transaction, validation, Apply, and Restore model intact. The shelf summarizes its state and expands the existing review; it does not adopt Zed's direct editor-write assumptions.
-- [ ] Move the follow-up queue into the same shelf contract. Edit, remove, send-next, and Stop remain reachable without scrolling the transcript.
-- [ ] Persist disclosure state per live thread, but reset it when the owning content disappears. Switching threads must reveal that thread's blocking section immediately even if it was previously collapsed.
+- [x] Keep the staged OKF transaction, validation, Apply, and Restore model intact. The shelf summarizes its state and expands the existing review; it does not adopt Zed's direct editor-write assumptions.
+- [x] Move the follow-up queue into the same shelf contract. Edit, remove, send-next, and Stop remain reachable without scrolling the transcript.
+- [x] Persist disclosure state per live thread, but reset it when the owning content disappears. Switching threads must reveal that thread's blocking section immediately even if it was previously collapsed.
 - [ ] Prove maximum-height, nested-scroll, keyboard order, live-region restraint, and focus return at 360px, the default width, and 560px with every section populated.
 
 Gate: a user can always see why the agent is waiting, what step is running, what writes are staged, and what message is queued without hunting through the transcript.

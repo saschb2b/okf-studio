@@ -1949,9 +1949,20 @@
 
 .agent-composer__error-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-8);
+}
+
+.agent-composer__error-row p {
+  min-width: 0;
+}
+
+.agent-turn-control-error {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .agent-composer__error-row .btn {
@@ -1983,6 +1994,15 @@
   .agent-session-failure .btn {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .agent-composer__error-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .agent-composer__error-row .btn {
+    align-self: start;
   }
 
   .agent-queue {

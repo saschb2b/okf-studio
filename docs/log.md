@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-14
+* **Update**: Kept failed Stop requests with the active turn's composer controls. The host reason now sits beside Retry stop, survives thread switching, and clears when cancellation succeeds or the turn ends. Studio no longer presents its own cancellation failure as agent-authored transcript text.
 * **Update**: Made a lost agent event stream a thread-owned failure instead of agent-authored prose. Studio now tears down partially opened update subscriptions, retains one bounded notice on the affected thread across switching, and retries the turn, permission, staging, and connection subscriptions together.
 * **Update**: Kept unexpected agent-process failures at the Agent Panel level after the failed connection leaves the switcher. The bounded notice names the agent, retains the host reason across catalog navigation, and places Review connections and Dismiss beside it. Reconnecting the same profile clears the stale failure.
 * **Update**: Made the Agent Panel transcript the flexible scroll owner while keeping identity and send controls in reach. Empty workflow starters use two equal columns when space permits and one compact column when narrow. Staged review now scrolls within a bounded height instead of displacing the transcript.

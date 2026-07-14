@@ -302,6 +302,50 @@ describe("OKF Studio app", () => {
     }
   });
 
+  it("keeps a failed Stop action beside its thread controls", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Turn Harness",
+      executable: "C:\\tools\\turn.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
+    const cancelTurn = vi.spyOn(ipc, "cancelAgentTurn")
+      .mockRejectedValueOnce(new Error("The ACP host did not accept cancellation."));
+
+    try {
+      const user = userEvent.setup();
+      renderApp();
+      await openFolder(user);
+      await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+      await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
+      await user.click(screen.getByRole("button", { name: "Send" }));
+      await user.click(await screen.findByRole("button", { name: "Stop" }));
+
+      const failure = await screen.findByRole("alert");
+      expect(failure).toHaveTextContent(
+        "Stop failed. The ACP host did not accept cancellation.",
+      );
+      expect(screen.queryByText(/Studio could not stop the turn/)).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", {
+        name: "Start another thread with Turn Harness",
+      }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Switch to Thread 1:/ }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Stop failed");
+
+      await user.click(screen.getByRole("button", { name: "Retry stop" }));
+      expect(await screen.findByText("Turn cancelled.")).toBeInTheDocument();
+      expect(screen.queryByText("Stop failed.")).not.toBeInTheDocument();
+      expect(cancelTurn).toHaveBeenCalledTimes(2);
+    } finally {
+      cleanup();
+      await ipc.disconnectAgent(connection.connectionId);
+      await ipc.removeCustomAgent(profile.id);
+    }
+  });
+
   it("runs and switches between parallel threads on one agent connection", async () => {
     const profile = await ipc.saveCustomAgent({
       name: "Parallel Harness",

@@ -888,6 +888,7 @@ export function AgentConversation({
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [usage, setUsage] = useState<AgentUsage | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [turnControlError, setTurnControlError] = useState<string | null>(null);
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
   const [history, setHistory] = useState<HistoryState>({ status: "closed" });
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
@@ -1155,6 +1156,7 @@ export function AgentConversation({
     if (activeTurn?.turnId !== event.turnId) return;
     setActiveTurn(null);
     setIsCancelling(false);
+    setTurnControlError(null);
     if (queuedPrompt) startQueuedPrompt(queuedPrompt);
   });
   const updateStagedChangesEffect = useEffectEvent(updateStagedChanges);
@@ -1223,6 +1225,7 @@ export function AgentConversation({
   async function stopTurn() {
     if (!activeTurn) return;
     setIsCancelling(true);
+    setTurnControlError(null);
     try {
       const sent = await cancelAgentTurn(
         activeTurn.connectionId,
@@ -1233,14 +1236,12 @@ export function AgentConversation({
         completedTurnsRef.current.add(activeTurn.turnId);
         setActiveTurn(null);
         setIsCancelling(false);
+        setTurnControlError(null);
         if (queuedPrompt) startQueuedPrompt(queuedPrompt);
       }
     } catch (error: unknown) {
       setIsCancelling(false);
-      setMessages((current) => [
-        ...current,
-        { id: `cancel-${crypto.randomUUID()}`, role: "agent", text: `Studio could not stop the turn. ${errorMessage(error)}` },
-      ]);
+      setTurnControlError(errorMessage(error));
     }
   }
 
@@ -2624,6 +2625,26 @@ export function AgentConversation({
             )}
             {sourcePickerError && (
               <p className="agent-composer__error" role="alert">{sourcePickerError}</p>
+            )}
+            {turnControlError && activeTurn && (
+              <div className="agent-composer__error-row">
+                <p
+                  className="agent-composer__error agent-turn-control-error"
+                  role="alert"
+                  title={`Stop failed. ${turnControlError}`}
+                >
+                  Stop failed. {turnControlError}
+                </p>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={isCancelling}
+                  onClick={() => void stopTurn()}
+                >
+                  <RotateCcw size={14} aria-hidden="true" />
+                  Retry stop
+                </button>
+              </div>
             )}
             <div className="agent-composer__input-shell">
               <label className="sr-only" htmlFor={promptInputId}>Message the agent</label>

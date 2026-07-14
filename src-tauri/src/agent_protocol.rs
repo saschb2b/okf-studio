@@ -7,10 +7,11 @@ use agent_client_protocol::schema::v1::{
     PromptRequest, ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
     SessionConfigKind, SessionConfigOption, SessionConfigOptionCategory, SessionConfigOptionValue,
-    SessionConfigOptionsCapabilities, SessionConfigSelectOptions, SessionNotification,
-    SessionUpdate, SetSessionConfigOptionRequest, StopReason, TextContent, TextResourceContents,
-    ToolCallContent, ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolKind, UsageUpdate,
-    WriteTextFileRequest, WriteTextFileResponse,
+    SessionConfigOptionsCapabilities, SessionConfigSelectOptions, SessionModeState,
+    SessionNotification, SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest,
+    StopReason, TextContent, TextResourceContents, ToolCallContent, ToolCallLocation,
+    ToolCallStatus, ToolCallUpdate, ToolKind, UsageUpdate, WriteTextFileRequest,
+    WriteTextFileResponse,
 };
 use agent_client_protocol::schema::ProtocolVersion;
 use agent_client_protocol::{Agent, ByteStreams, Client, ConnectTo, ConnectionTo};
@@ -94,6 +95,7 @@ const MAX_SESSION_CONFIG_OPTIONS: usize = 64;
 const MAX_SESSION_CONFIG_GROUPS: usize = 64;
 const MAX_SESSION_CONFIG_VALUES: usize = 512;
 const MAX_SESSION_CONFIG_FIELD_CHARS: usize = 512;
+const LEGACY_SESSION_MODE_CONFIG_ID: &str = "__acp_session_mode";
 const OKF_SKILL: &str = include_str!("../../.agents/skills/okf/SKILL.md");
 const OKF_SPEC: &str = include_str!("../../.agents/skills/okf/spec.md");
 const OKF_COMMANDS: &str = include_str!("../../.agents/skills/okf/commands.md");
@@ -324,6 +326,8 @@ pub struct AgentSessionInfo {
     bundle_root: PathBuf,
     staged_changes: Option<AgentStagedChangesInfo>,
     config_options: Vec<AgentSessionConfigOptionInfo>,
+    #[serde(skip)]
+    config_transport: AgentSessionConfigTransport,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -350,6 +354,37 @@ pub struct AgentLoadedSessionInfo {
     messages: Vec<AgentHistoryMessage>,
     staged_changes: Option<AgentStagedChangesInfo>,
     config_options: Vec<AgentSessionConfigOptionInfo>,
+    #[serde(skip)]
+    config_transport: AgentSessionConfigTransport,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum AgentSessionConfigTransport {
+    #[default]
+    ConfigOptions,
+    LegacyMode,
+}
+
+#[derive(Clone, Debug)]
+struct AgentSessionConfiguration {
+    options: Vec<AgentSessionConfigOptionInfo>,
+    transport: AgentSessionConfigTransport,
+}
+
+impl AgentSessionConfiguration {
+    fn from_session(session: &AgentSessionInfo) -> Self {
+        Self {
+            options: session.config_options.clone(),
+            transport: session.config_transport,
+        }
+    }
+
+    fn from_loaded_session(session: &AgentLoadedSessionInfo) -> Self {
+        Self {
+            options: session.config_options.clone(),
+            transport: session.config_transport,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -844,6 +879,7 @@ pub async fn connect_local(
 struct LocalSession {
     messages: Vec<agent_local::LocalChatMessage>,
     bundle_root: PathBuf,
+    config_options: Vec<AgentSessionConfigOptionInfo>,
 }
 
 struct LocalTurn {
@@ -881,6 +917,7 @@ async fn run_local_connection(
                 response,
             } => {
                 let session_id = format!("session-{}", uuid::Uuid::new_v4());
+                let config_options = local_model_config_options(&runtime.model);
                 let result = stages
                     .register_session(&session_id, &bundle_root)
                     .map(|changes| {
@@ -892,6 +929,7 @@ async fn run_local_connection(
                                 LocalSession {
                                     messages: Vec::new(),
                                     bundle_root: bundle_root.clone(),
+                                    config_options: config_options.clone(),
                                 },
                             );
                         AgentSessionInfo {
@@ -899,7 +937,8 @@ async fn run_local_connection(
                             session_id,
                             bundle_root,
                             staged_changes: Some(changes),
-                            config_options: Vec::new(),
+                            config_options,
+                            config_transport: AgentSessionConfigTransport::ConfigOptions,
                         }
                     });
                 let _ = response.send(result);
@@ -914,10 +953,26 @@ async fn run_local_connection(
                     "Local Studio Agent sessions cannot be restored yet.".to_string()
                 ));
             }
-            AgentHostCommand::SetSessionConfigOption { response, .. } => {
-                let _ = response.send(Err(
-                    "This Studio Agent session did not advertise configurable options.".to_string(),
-                ));
+            AgentHostCommand::SetSessionConfigOption {
+                session_id,
+                config_id,
+                value,
+                response,
+            } => {
+                let result = sessions
+                    .lock()
+                    .map_err(|_| "Local Studio Agent session state is unavailable.".to_string())?
+                    .get(&session_id)
+                    .cloned()
+                    .ok_or_else(|| "Agent session was not found on this connection.".to_string())
+                    .and_then(|session| {
+                        protocol_session_config_value(&session.config_options, &config_id, value)?;
+                        Ok(AgentSessionConfigSnapshot {
+                            session_id,
+                            config_options: session.config_options,
+                        })
+                    });
+                let _ = response.send(result);
             }
             AgentHostCommand::Prompt {
                 session_id,
@@ -949,6 +1004,7 @@ async fn run_local_connection(
                 let Some(LocalSession {
                     mut messages,
                     bundle_root,
+                    config_options: _,
                 }) = session
                 else {
                     let _ = response.send(Err(
@@ -2109,10 +2165,9 @@ async fn run_connection(
     } = runtime;
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let sessions = Arc::new(Mutex::new(HashMap::<String, PathBuf>::new()));
-    let session_configs = Arc::new(Mutex::new(HashMap::<
-        String,
-        Vec<AgentSessionConfigOptionInfo>,
-    >::new()));
+    let session_configs = Arc::new(Mutex::new(
+        HashMap::<String, AgentSessionConfiguration>::new(),
+    ));
     let history_replays = Arc::new(Mutex::new(
         HashMap::<String, Vec<AgentHistoryMessage>>::new(),
     ));
@@ -2149,9 +2204,45 @@ async fn run_connection(
                     if is_active_session {
                         let config_options =
                             reduced_session_config_options(update.config_options.clone());
-                        if let Ok(mut configs) = notification_configs.lock() {
-                            configs.insert(session_id.clone(), config_options.clone());
+                        let replacement = notification_configs.lock().ok().and_then(|mut configs| {
+                            let current = configs.get(&session_id);
+                            if config_options.is_empty()
+                                && current.is_some_and(|configuration| {
+                                    configuration.transport == AgentSessionConfigTransport::LegacyMode
+                                })
+                            {
+                                return None;
+                            }
+                            configs.insert(
+                                session_id.clone(),
+                                AgentSessionConfiguration {
+                                    options: config_options.clone(),
+                                    transport: AgentSessionConfigTransport::ConfigOptions,
+                                },
+                            );
+                            Some(config_options)
+                        });
+                        if let Some(config_options) = replacement {
+                            notification_config_events(AgentSessionConfigEvent {
+                                connection_id: notification_connection_id.clone(),
+                                session_id,
+                                config_options,
+                            });
                         }
+                    }
+                    return Ok(());
+                }
+                if let SessionUpdate::CurrentModeUpdate(update) = &notification.update {
+                    let session_id = notification.session_id.to_string();
+                    let replacement = notification_configs.lock().ok().and_then(|mut configs| {
+                        let configuration = configs.get_mut(&session_id)?;
+                        replace_legacy_mode_current_value(
+                            configuration,
+                            &update.current_mode_id.to_string(),
+                        )
+                        .then(|| configuration.options.clone())
+                    });
+                    if let Some(config_options) = replacement {
                         notification_config_events(AgentSessionConfigEvent {
                             connection_id: notification_connection_id.clone(),
                             session_id,
@@ -2436,7 +2527,10 @@ async fn run_connection(
                                             session_configs
                                                 .lock()
                                                 .map_err(|_| agent_client_protocol::util::internal_error("Agent session configuration state is unavailable"))?
-                                                .insert(info.session_id.clone(), info.config_options.clone());
+                                                .insert(
+                                                    info.session_id.clone(),
+                                                    AgentSessionConfiguration::from_session(&info),
+                                                );
                                             clear_session_permission_rules(
                                                 &permission_rules,
                                                 &connection_id,
@@ -2498,7 +2592,10 @@ async fn run_connection(
                                             session_configs
                                                 .lock()
                                                 .map_err(|_| agent_client_protocol::util::internal_error("Agent session configuration state is unavailable"))?
-                                                .insert(info.session_id.clone(), info.config_options.clone());
+                                                .insert(
+                                                    info.session_id.clone(),
+                                                    AgentSessionConfiguration::from_loaded_session(&info),
+                                                );
                                             clear_session_permission_rules(
                                                 &permission_rules,
                                                 &connection_id,
@@ -2519,41 +2616,102 @@ async fn run_connection(
                                 let _ = response.send(result);
                             }
                             AgentHostCommand::SetSessionConfigOption { session_id, config_id, value, response } => {
-                                let known_options = session_configs
+                                let configuration = session_configs
                                     .lock()
                                     .map_err(|_| agent_client_protocol::util::internal_error("Agent session configuration state is unavailable"))?
                                     .get(&session_id)
                                     .cloned();
-                                let result = match known_options {
+                                let result = match configuration {
                                     None => Err("Agent session was not found on this connection.".to_string()),
-                                    Some(options) => match protocol_session_config_value(
-                                        &options,
-                                        &config_id,
-                                        value,
-                                    ) {
-                                        Err(error) => Err(error),
-                                        Ok(value) => connection
-                                            .send_request(SetSessionConfigOptionRequest::new(
-                                                session_id.clone(),
-                                                config_id,
+                                    Some(configuration) => match configuration.transport {
+                                        AgentSessionConfigTransport::ConfigOptions => {
+                                            match protocol_session_config_value(
+                                                &configuration.options,
+                                                &config_id,
                                                 value,
-                                            ))
-                                            .block_task()
-                                            .await
-                                            .map_err(|error| format!("Agent session option change failed: {error}"))
-                                            .and_then(|response| {
-                                                let config_options = reduced_session_config_options(
-                                                    response.config_options,
-                                                );
-                                                session_configs
-                                                    .lock()
-                                                    .map_err(|_| "Agent session configuration state is unavailable.".to_string())?
-                                                    .insert(session_id.clone(), config_options.clone());
-                                                Ok(AgentSessionConfigSnapshot {
-                                                    session_id,
-                                                    config_options,
-                                                })
-                                            }),
+                                            ) {
+                                                Err(error) => Err(error),
+                                                Ok(value) => connection
+                                                    .send_request(SetSessionConfigOptionRequest::new(
+                                                        session_id.clone(),
+                                                        config_id,
+                                                        value,
+                                                    ))
+                                                    .block_task()
+                                                    .await
+                                                    .map_err(|error| format!("Agent session option change failed: {error}"))
+                                                    .and_then(|response| {
+                                                        let config_options = reduced_session_config_options(
+                                                            response.config_options,
+                                                        );
+                                                        session_configs
+                                                            .lock()
+                                                            .map_err(|_| "Agent session configuration state is unavailable.".to_string())?
+                                                            .insert(
+                                                                session_id.clone(),
+                                                                AgentSessionConfiguration {
+                                                                    options: config_options.clone(),
+                                                                    transport: AgentSessionConfigTransport::ConfigOptions,
+                                                                },
+                                                            );
+                                                        Ok(AgentSessionConfigSnapshot {
+                                                            session_id,
+                                                            config_options,
+                                                        })
+                                                    }),
+                                            }
+                                        }
+                                        AgentSessionConfigTransport::LegacyMode => {
+                                            let mode_id = match value {
+                                                AgentSessionConfigValueInput::Select { value } => value,
+                                                _ => {
+                                                    let _ = response.send(Err(
+                                                        "Agent session option has the wrong value type."
+                                                            .to_string(),
+                                                    ));
+                                                    continue;
+                                                }
+                                            };
+                                            if config_id != LEGACY_SESSION_MODE_CONFIG_ID {
+                                                Err("Agent session option was not advertised by this agent."
+                                                    .to_string())
+                                            } else if let Err(error) = protocol_session_config_value(
+                                                &configuration.options,
+                                                &config_id,
+                                                AgentSessionConfigValueInput::Select {
+                                                    value: mode_id.clone(),
+                                                },
+                                            ) {
+                                                Err(error)
+                                            } else {
+                                                connection
+                                                    .send_request(SetSessionModeRequest::new(
+                                                        session_id.clone(),
+                                                        mode_id.clone(),
+                                                    ))
+                                                    .block_task()
+                                                    .await
+                                                    .map_err(|error| format!("Agent session mode change failed: {error}"))
+                                                    .and_then(|_| {
+                                                        let mut configurations = session_configs
+                                                            .lock()
+                                                            .map_err(|_| "Agent session configuration state is unavailable.".to_string())?;
+                                                        let configuration = configurations
+                                                            .get_mut(&session_id)
+                                                            .ok_or_else(|| "Agent session was not found on this connection.".to_string())?;
+                                                        if !replace_legacy_mode_current_value(
+                                                            configuration,
+                                                            &mode_id,
+                                                        ) {
+                                                            return Err("Agent returned an invalid session mode.".to_string());
+                                                        }
+                                                        Ok(AgentSessionConfigSnapshot {
+                                                            session_id,
+                                                            config_options: configuration.options.clone(),
+                                                        })
+                                                    })
+                                            }
+                                        }
                                     },
                                 };
                                 let _ = response.send(result);
@@ -3464,6 +3622,131 @@ fn bounded_session_config_text(value: &str) -> Option<String> {
     (!value.is_empty()).then(|| value.to_string())
 }
 
+fn local_model_config_options(model: &str) -> Vec<AgentSessionConfigOptionInfo> {
+    let Some(model_id) = bounded_session_config_identifier(model) else {
+        return Vec::new();
+    };
+    vec![AgentSessionConfigOptionInfo {
+        id: "model".to_string(),
+        name: "Model".to_string(),
+        description: Some("The model selected when this Studio Agent connected.".to_string()),
+        category: Some("model".to_string()),
+        kind: AgentSessionConfigKindInfo::Select {
+            current_value: model_id.clone(),
+            groups: vec![AgentSessionConfigGroupInfo {
+                id: None,
+                name: None,
+                options: vec![AgentSessionConfigValueInfo {
+                    value: model_id.clone(),
+                    name: model_id,
+                    description: Some(
+                        "Reconnect from the agent catalog to choose another model.".to_string(),
+                    ),
+                }],
+            }],
+        },
+    }]
+}
+
+fn reduced_session_configuration(
+    options: Vec<SessionConfigOption>,
+    modes: Option<SessionModeState>,
+) -> AgentSessionConfiguration {
+    let options = reduced_session_config_options(options);
+    if !options.is_empty() {
+        return AgentSessionConfiguration {
+            options,
+            transport: AgentSessionConfigTransport::ConfigOptions,
+        };
+    }
+    let options = modes
+        .and_then(reduced_legacy_session_mode)
+        .into_iter()
+        .collect::<Vec<_>>();
+    let transport = if options.is_empty() {
+        AgentSessionConfigTransport::ConfigOptions
+    } else {
+        AgentSessionConfigTransport::LegacyMode
+    };
+    AgentSessionConfiguration { options, transport }
+}
+
+fn reduced_legacy_session_mode(modes: SessionModeState) -> Option<AgentSessionConfigOptionInfo> {
+    let current_value = bounded_session_config_identifier(&modes.current_mode_id.to_string())?;
+    let mut seen = HashSet::new();
+    let options = modes
+        .available_modes
+        .into_iter()
+        .filter_map(|mode| {
+            let value = bounded_session_config_identifier(&mode.id.to_string())?;
+            if !seen.insert(value.clone()) {
+                return None;
+            }
+            Some(AgentSessionConfigValueInfo {
+                value,
+                name: bounded_session_config_text(&mode.name)?,
+                description: mode
+                    .description
+                    .as_deref()
+                    .and_then(bounded_session_config_text),
+            })
+        })
+        .take(MAX_SESSION_CONFIG_VALUES)
+        .collect::<Vec<_>>();
+    if !options.iter().any(|option| option.value == current_value) {
+        return None;
+    }
+    Some(AgentSessionConfigOptionInfo {
+        id: LEGACY_SESSION_MODE_CONFIG_ID.to_string(),
+        name: "Mode".to_string(),
+        description: Some("How this agent approaches the next turn.".to_string()),
+        category: Some("mode".to_string()),
+        kind: AgentSessionConfigKindInfo::Select {
+            current_value,
+            groups: vec![AgentSessionConfigGroupInfo {
+                id: None,
+                name: None,
+                options,
+            }],
+        },
+    })
+}
+
+fn replace_legacy_mode_current_value(
+    configuration: &mut AgentSessionConfiguration,
+    current_value: &str,
+) -> bool {
+    if configuration.transport != AgentSessionConfigTransport::LegacyMode {
+        return false;
+    }
+    let Some(current_value) = bounded_session_config_identifier(current_value) else {
+        return false;
+    };
+    let Some(option) = configuration
+        .options
+        .iter_mut()
+        .find(|option| option.id == LEGACY_SESSION_MODE_CONFIG_ID)
+    else {
+        return false;
+    };
+    let AgentSessionConfigKindInfo::Select {
+        current_value: confirmed,
+        groups,
+    } = &mut option.kind
+    else {
+        return false;
+    };
+    if !groups
+        .iter()
+        .flat_map(|group| group.options.iter())
+        .any(|option| option.value == current_value)
+    {
+        return false;
+    }
+    *confirmed = current_value;
+    true
+}
+
 fn reduced_session_config_options(
     options: Vec<SessionConfigOption>,
 ) -> Vec<AgentSessionConfigOptionInfo> {
@@ -3644,14 +3927,15 @@ async fn create_session(
         .block_task()
         .await
         .map_err(|error| format!("Agent session creation failed: {error}"))?;
-    let config_options =
-        reduced_session_config_options(response.config_options.unwrap_or_default());
+    let configuration =
+        reduced_session_configuration(response.config_options.unwrap_or_default(), response.modes);
     Ok(AgentSessionInfo {
         connection_id: connection_id.to_string(),
         session_id: response.session_id.to_string(),
         bundle_root,
         staged_changes: None,
-        config_options,
+        config_options: configuration.options,
+        config_transport: configuration.transport,
     })
 }
 
@@ -3713,15 +3997,16 @@ async fn load_bundle_session(
         .remove(&session_id)
         .unwrap_or_default();
     let response = result?;
-    let config_options =
-        reduced_session_config_options(response.config_options.unwrap_or_default());
+    let configuration =
+        reduced_session_configuration(response.config_options.unwrap_or_default(), response.modes);
     Ok(AgentLoadedSessionInfo {
         connection_id: connection_id.to_string(),
         session_id,
         bundle_root,
         messages,
         staged_changes: None,
-        config_options,
+        config_options: configuration.options,
+        config_transport: configuration.transport,
     })
 }
 
@@ -4207,9 +4492,9 @@ mod tests {
         AgentCapabilities, AuthMethod, AuthMethodAgent, AuthenticateResponse, ConfigOptionUpdate,
         Cost, Diff, ListSessionsResponse, LoadSessionResponse, NewSessionResponse,
         PermissionOption, Plan, PlanEntry, PromptCapabilities, PromptResponse,
-        SessionConfigSelectGroup, SessionConfigSelectOption, SessionInfo,
-        SetSessionConfigOptionResponse, ToolCall, ToolCallStatus, ToolCallUpdate,
-        ToolCallUpdateFields, ToolKind, UsageUpdate,
+        SessionConfigSelectGroup, SessionConfigSelectOption, SessionInfo, SessionMode,
+        SetSessionConfigOptionResponse, SetSessionModeResponse, ToolCall, ToolCallStatus,
+        ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
     };
     use agent_client_protocol::{Dispatch, Responder};
 
@@ -4308,6 +4593,67 @@ mod tests {
             .expect_err("invented value must fail"),
             "The agent did not advertise this value for the session option."
         );
+    }
+
+    #[test]
+    fn maps_legacy_modes_only_when_modern_session_options_are_absent() {
+        let modes = SessionModeState::new(
+            "agent",
+            vec![
+                SessionMode::new("read-only", "Read-only"),
+                SessionMode::new("agent", "Agent").description("May edit the bundle."),
+            ],
+        );
+        let legacy = reduced_session_configuration(Vec::new(), Some(modes.clone()));
+        assert_eq!(legacy.transport, AgentSessionConfigTransport::LegacyMode);
+        assert!(matches!(
+            &legacy.options[0].kind,
+            AgentSessionConfigKindInfo::Select {
+                current_value,
+                groups,
+            } if current_value == "agent"
+                && groups[0].options.len() == 2
+                && groups[0].options[1].description.as_deref() == Some("May edit the bundle.")
+        ));
+
+        let modern =
+            reduced_session_configuration(test_session_config_options("gpt-5"), Some(modes));
+        assert_eq!(modern.transport, AgentSessionConfigTransport::ConfigOptions);
+        assert_eq!(modern.options.len(), 3);
+        assert!(!modern
+            .options
+            .iter()
+            .any(|option| option.id == LEGACY_SESSION_MODE_CONFIG_ID));
+    }
+
+    #[test]
+    fn exposes_only_the_connected_native_model() {
+        let options = local_model_config_options("gpt-5-mini");
+        assert!(matches!(
+            &options[0].kind,
+            AgentSessionConfigKindInfo::Select {
+                current_value,
+                groups,
+            } if current_value == "gpt-5-mini"
+                && groups[0].options.len() == 1
+                && groups[0].options[0].value == "gpt-5-mini"
+        ));
+        assert!(protocol_session_config_value(
+            &options,
+            "model",
+            AgentSessionConfigValueInput::Select {
+                value: "gpt-5-mini".to_string(),
+            },
+        )
+        .is_ok());
+        assert!(protocol_session_config_value(
+            &options,
+            "model",
+            AgentSessionConfigValueInput::Select {
+                value: "invented".to_string(),
+            },
+        )
+        .is_err());
     }
 
     #[test]
@@ -5194,6 +5540,116 @@ mod tests {
             AgentSessionConfigKindInfo::Boolean {
                 current_value: true
             }
+        ));
+
+        worker.abort();
+        assert!(worker
+            .await
+            .expect_err("worker should abort")
+            .is_cancelled());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn sends_legacy_mode_changes_through_the_legacy_acp_method() {
+        let fake_agent = Agent
+            .builder()
+            .on_receive_request(
+                async move |_request: InitializeRequest,
+                            responder: Responder<InitializeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(InitializeResponse::new(ProtocolVersion::V1))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |_request: NewSessionRequest,
+                            responder: Responder<NewSessionResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    responder.respond(NewSessionResponse::new("session-legacy").modes(
+                        SessionModeState::new(
+                            "read-only",
+                            vec![
+                                SessionMode::new("read-only", "Read-only"),
+                                SessionMode::new("agent", "Agent"),
+                            ],
+                        ),
+                    ))
+                },
+                agent_client_protocol::on_receive_request!(),
+            )
+            .on_receive_request(
+                async move |request: SetSessionModeRequest,
+                            responder: Responder<SetSessionModeResponse>,
+                            _connection: ConnectionTo<Client>| {
+                    assert_eq!(request.session_id.to_string(), "session-legacy");
+                    assert_eq!(request.mode_id.to_string(), "agent");
+                    responder.respond(SetSessionModeResponse::new())
+                },
+                agent_client_protocol::on_receive_request!(),
+            );
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let (commands_tx, commands_rx) = tokio::sync::mpsc::channel(4);
+        let worker = tokio::spawn(run_connection(
+            fake_agent,
+            "connection-legacy".to_string(),
+            "profile-legacy".to_string(),
+            std::env::temp_dir(),
+            Arc::new(Mutex::new(Some(handshake_tx))),
+            commands_rx,
+            ConnectionRuntime {
+                turn_events: Arc::new(|_| {}),
+                permissions: Arc::new(Mutex::new(HashMap::new())),
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
+                permission_events: Arc::new(|_| {}),
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
+                session_config_events: Arc::new(|_| {}),
+                security_scope: test_security_scope(),
+            },
+        ));
+        handshake_rx
+            .await
+            .expect("handshake response")
+            .expect("handshake should pass");
+
+        let (session_tx, session_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::NewSession {
+                bundle_root: std::env::temp_dir(),
+                response: session_tx,
+            })
+            .await
+            .expect("send session command");
+        let session = session_rx
+            .await
+            .expect("session response")
+            .expect("session should start");
+        assert!(matches!(
+            &session.config_options[0].kind,
+            AgentSessionConfigKindInfo::Select { current_value, .. }
+                if current_value == "read-only"
+        ));
+
+        let (set_tx, set_rx) = tokio::sync::oneshot::channel();
+        commands_tx
+            .send(AgentHostCommand::SetSessionConfigOption {
+                session_id: "session-legacy".to_string(),
+                config_id: LEGACY_SESSION_MODE_CONFIG_ID.to_string(),
+                value: AgentSessionConfigValueInput::Select {
+                    value: "agent".to_string(),
+                },
+                response: set_tx,
+            })
+            .await
+            .expect("send legacy mode command");
+        let snapshot = set_rx
+            .await
+            .expect("mode response")
+            .expect("mode should change");
+        assert!(matches!(
+            &snapshot.config_options[0].kind,
+            AgentSessionConfigKindInfo::Select { current_value, .. }
+                if current_value == "agent"
         ));
 
         worker.abort();
@@ -6527,6 +6983,7 @@ mod tests {
                 files: Vec::new(),
             }),
             config_options: Vec::new(),
+            config_transport: AgentSessionConfigTransport::ConfigOptions,
         })
         .expect("session should serialize");
 

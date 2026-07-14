@@ -1931,6 +1931,56 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: /toggle agent panel/i })).toHaveFocus();
   });
 
+  it("keeps panel focus visible through switchers and popovers", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Keyboard Harness",
+      executable: "C:\\tools\\keyboard.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
+    const reveal = vi.spyOn(Element.prototype, "scrollIntoView");
+
+    try {
+      const user = userEvent.setup();
+      renderApp();
+      await openFolder(user);
+
+      await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
+      const threadActions = screen.getByRole("button", { name: "More thread actions" });
+      expect(threadActions).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(await screen.findByRole("menuitem", { name: "History" })).toHaveFocus();
+      await user.keyboard("{Escape}");
+      expect(threadActions).toHaveFocus();
+
+      const addContext = screen.getByRole("button", { name: "Add context or sources" });
+      addContext.focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Attach context" })).toHaveFocus();
+      });
+      await user.keyboard("{Escape}");
+      expect(addContext).toHaveFocus();
+
+      reveal.mockClear();
+      await user.click(screen.getByRole("button", {
+        name: "Start another thread with Keyboard Harness",
+      }));
+      expect(screen.getByRole("button", { name: "Switch to Thread 2: New thread" }))
+        .toHaveFocus();
+      expect(reveal).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
+
+      await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
+      expect(screen.getByRole("button", { name: /toggle agent panel/i })).toHaveFocus();
+    } finally {
+      cleanup();
+      await ipc.disconnectAgent(connection.connectionId);
+      await ipc.removeCustomAgent(profile.id);
+    }
+  });
+
   it("persists the agent panel width and visibility", async () => {
     const recentBundles = vi.spyOn(ipc, "recentBundles");
     const user = userEvent.setup();

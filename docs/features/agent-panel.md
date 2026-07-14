@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-14T12:40:00Z
+timestamp: 2026-07-14T13:30:00Z
 ---
 
 # Entry and first open
@@ -57,6 +57,8 @@ Keyboard opening focuses the first useful control. Closing returns focus to the 
 When more than one agent connection is live for the active bundle, a compact strip above the conversation selects which agent is visible and offers a plus action for another connection. Each connection keeps its bundle-scoped conversations mounted, including their sessions, drafts, active turns, pending permissions, attachments, and staged reviews. Switching agents or opening the catalog therefore does not interrupt hidden work. Changing the active bundle still resets the mounted live surfaces. An external connection bound to another root remains process-live but leaves the connection strip; the catalog continues to expose **Disconnect**, and returning to its bundle mounts a fresh conversation surface. Native Studio Agent connections remain visible because Rust mediates their root per session. Connection and session IDs still filter every lifecycle event, so one agent or session cannot update another thread's transcript. A terminated selected connection falls back to another live connection; the disconnected state returns only after the last one for the active bundle ends. The strip scrolls instead of compressing names below the 32-pixel control floor.
 
 A second compact strip owns the live threads for the selected connection. Its plus action starts a separate empty surface and selects it; each surface creates its own ACP session on first send, so one turn can run in each session at the same time while the one-turn-per-session rule remains intact. Studio keeps at most eight live surfaces per connection and scrolls their titles rather than shrinking their controls. Renames and first-prompt titles update the matching selector. Closing a surface requires confirmation, stays disabled during a live operation, revokes its write grant, discards its staged tree, and removes its in-memory transcript, draft, attachments, and permission UI without deleting agent-owned history. A failed cleanup leaves the surface open with a retryable error. At least one surface remains. Changing the active bundle resets these live surfaces, as the current bundle root scopes every session.
+
+Keyboard focus explicitly reveals its agent or thread switcher item with nearest-edge scrolling. Opening the thread-actions menu or attachment picker moves focus to its first useful action; Escape returns focus to the trigger. Adding or closing a live thread focuses the selected thread item, and closing the panel returns focus to the status-bar opener. Visible panel controls retain at least a 28-pixel target in the 360px, 440px, and 560px fixtures, and the shared two-pixel focus ring remains visible against the panel surface.
 
 # Thread anatomy
 

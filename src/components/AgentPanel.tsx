@@ -171,6 +171,7 @@ export function AgentPanel() {
                       aria-label={`Switch to ${label}`}
                       aria-pressed={selected}
                       title={label}
+                      onFocus={revealSwitcherItem}
                       onClick={() => setSelectedConnectionId(connection.connectionId)}
                     >
                       <span className="agent-panel__connection-label">{label}</span>
@@ -182,6 +183,7 @@ export function AgentPanel() {
                   className="btn ghost agent-panel__connection agent-panel__connection--add"
                   aria-label="Connect another agent"
                   title="Connect another agent"
+                  onFocus={revealSwitcherItem}
                   onClick={openCatalog}
                 >
                   <Plus size={16} aria-hidden="true" />
@@ -319,6 +321,7 @@ function ConnectionThreads({
               aria-label={`Switch to ${label}`}
               aria-pressed={selected}
               title={label}
+              onFocus={revealSwitcherItem}
               onClick={() => setSelectedSurfaceId(surface.id)}
             >
               <span className="agent-panel__thread-number" aria-hidden="true">
@@ -336,6 +339,7 @@ function ConnectionThreads({
             ? `Studio keeps at most ${MAX_THREAD_SURFACES} live threads per connection.`
             : `Start another thread with ${connectionName}`}
           disabled={surfaces.length >= MAX_THREAD_SURFACES}
+          onFocus={revealSwitcherItem}
           onClick={addThreadSurface}
         >
           <Plus size={14} aria-hidden="true" />
@@ -370,6 +374,13 @@ function newThreadSurface(ordinal: number): ThreadSurface {
 
 function connectionLabel(connection: AgentConnectionInfo): string {
   return connection.agent?.title ?? connection.agent?.name ?? "Agent";
+}
+
+function revealSwitcherItem(event: React.FocusEvent<HTMLButtonElement>): void {
+  event.currentTarget.scrollIntoView({
+    block: "nearest",
+    inline: "nearest",
+  });
 }
 
 function focusVisiblePanelContent(panel: HTMLElement | null): void {

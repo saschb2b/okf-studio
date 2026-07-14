@@ -3,7 +3,7 @@ type: Design Principle
 title: Design Principles
 description: The non-negotiable principles every OKF Studio feature and decision must respect.
 tags: [product, principles]
-timestamp: 2026-07-13T18:51:16Z
+timestamp: 2026-07-14T22:10:00Z
 ---
 
 # Principles
@@ -16,7 +16,7 @@ These are the constraints behind every [feature](../features/) and [architecture
 
 3. **Tolerant consumer.** Per the OKF spec, the app **must not refuse a bundle** for soft issues: missing optional fields, unknown `type` values, unknown frontmatter keys, broken cross-links, or missing `index.md`. It degrades gracefully and surfaces issues through [Validation](../features/validation.md) instead of failing.
 
-4. **Read-only by default.** Pointing the app at a folder never modifies it or starts an agent. Opening and browsing use scoped read access, so it remains safe to inspect an untrusted bundle. Writing requires an explicit thread grant, a staged revision, validation, human review, and a separate Apply action. See the [Agent System](../architecture/agent-system.md).
+4. **Read-only by default.** Pointing the app at a folder never modifies it or starts an agent. Opening and browsing use scoped read access, so it remains safe to inspect an untrusted bundle. One continuation exists: at launch the [Agent Panel](../features/agent-panel.md) may reconnect the agent the user explicitly connected and never disconnected, visibly and at most once per session — it never starts an agent the user did not choose. Writing requires an explicit thread grant, a staged revision, validation, human review, and a separate Apply action. See the [Agent System](../architecture/agent-system.md).
 
 5. **Visible agency.** Agent work stays in an inspectable thread. Context, plans, tool lifecycles, permission requests, proposed files, validation results, and diffs remain visible. No agent may turn a proposal into a bundle write without the reviewed transaction boundary.
 

@@ -1,5 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
+
+// Persisted layout, saved-thread pointers, and the remembered last agent
+// connection must not leak between tests: restore and auto-resume act on them.
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 // jsdom lacks canvas; the Graph View needs a 2D context stub to render in tests.
 if (typeof HTMLCanvasElement !== "undefined") {

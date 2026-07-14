@@ -39,6 +39,7 @@ import {
 import {
   agentStagedFileDiff,
   applyAgentStagedChanges,
+  consumeRestoredConnection,
   createAgentStagedBundle,
   cancelAgentTurn,
   authenticateAgent,
@@ -921,7 +922,6 @@ export function AgentConversation({
   const [history, setHistory] = useState<HistoryState>({ status: "closed" });
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
   const [savedThread, setSavedThread] = useState<SavedThreadState>({ status: "none" });
-  const [savedThreadResolved, setSavedThreadResolved] = useState(false);
   const [draftSessionState, setDraftSessionState] = useState<DraftSessionState>({
     status: "idle",
   });
@@ -1012,10 +1012,8 @@ export function AgentConversation({
   }, [savedThread.status]);
 
   async function loadSavedThread() {
-    setSavedThreadResolved(false);
     if (!bundleRoot || !supportsHistory) {
       setSavedThread({ status: "none" });
-      setSavedThreadResolved(true);
       return;
     }
     setSavedThread({ status: "loading" });
@@ -1024,8 +1022,6 @@ export function AgentConversation({
       setSavedThread(metadata.length > 0 ? { status: "ready", metadata } : { status: "none" });
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error) });
-    } finally {
-      setSavedThreadResolved(true);
     }
   }
 
@@ -1124,9 +1120,15 @@ export function AgentConversation({
     }
   });
 
+  // Start the draft session as soon as authentication and the bundle allow, so
+  // the agent-advertised model, mode, and reasoning controls are visible
+  // whenever the composer is. Saved work resumes automatically below and
+  // brings its own session; the draft also covers its failure card so the
+  // controls stay available beside the recovery actions.
   useEffect(() => {
     const requiresAuth = !connection.authenticated && connection.authMethods.length > 0;
-    if (!bundleRoot || requiresAuth || !savedThreadResolved || savedThread.status !== "none" ||
+    if (!bundleRoot || requiresAuth ||
+      (savedThread.status !== "none" && savedThread.status !== "error") ||
       sessionRef.current?.bundleRoot === bundleRoot) return;
     void prepareDraftSessionEffect();
   }, [
@@ -1135,8 +1137,25 @@ export function AgentConversation({
     connection.authMethods.length,
     connection.connectionId,
     savedThread.status,
-    savedThreadResolved,
   ]);
+
+  // Zed-style continuation, scoped to launch restore: when this connection was
+  // just restored automatically, its first surface resumes the current saved
+  // thread on its own instead of waiting behind a Resume card. Failures fall
+  // back to the explicit recovery card; archived threads, reconnects, and
+  // user-created surfaces keep their deliberate choice.
+  const autoResumeEffect = useEffectEvent(() => {
+    if (savedThread.status !== "ready") return;
+    const requiresAuth = !connection.authenticated && connection.authMethods.length > 0;
+    if (requiresAuth) return;
+    const current = savedThread.metadata.find((entry) => !entry.archived);
+    if (!current) return;
+    if (!consumeRestoredConnection(connection.connectionId)) return;
+    void resumeSavedThread(current);
+  });
+  useEffect(() => {
+    autoResumeEffect();
+  }, [savedThread.status, connection.authenticated, connection.connectionId]);
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
     async (_previous, { draft, source, retryTurnId }) => {
@@ -3075,21 +3094,33 @@ export function AgentConversation({
                   <div className="agent-composer__turn-actions">
                     <button
                       type="submit"
-                      className="btn primary"
+                      className="btn primary icon"
+                      aria-label={queuedPrompt ? "Queued" : "Queue"}
+                      title={queuedPrompt ? "Queued" : "Queue"}
                       disabled={isSubmitting || queuedPrompt !== null || promptText.trim().length === 0}
                     >
-                      <Send size={14} aria-hidden="true" />
-                      {queuedPrompt ? "Queued" : "Queue"}
+                      <Send size={15} aria-hidden="true" />
                     </button>
-                    <button type="button" className="btn" disabled={isCancelling} onClick={() => void stopTurn()}>
-                      <Square size={14} aria-hidden="true" />
-                      {isCancelling ? "Stopping..." : "Stop"}
+                    <button
+                      type="button"
+                      className="btn icon"
+                      aria-label={isCancelling ? "Stopping..." : "Stop"}
+                      title={isCancelling ? "Stopping..." : "Stop"}
+                      disabled={isCancelling}
+                      onClick={() => void stopTurn()}
+                    >
+                      <Square size={15} aria-hidden="true" />
                     </button>
                   </div>
                 ) : (
-                  <button type="submit" className="btn primary" disabled={isSubmitting}>
+                  <button
+                    type="submit"
+                    className="btn primary icon"
+                    aria-label={isSubmitting ? "Sending..." : "Send"}
+                    title={isSubmitting ? "Sending..." : "Send"}
+                    disabled={isSubmitting}
+                  >
                     <Send size={16} aria-hidden="true" />
-                    {isSubmitting ? "Sending..." : "Send"}
                   </button>
                 )}
               </div>

@@ -242,29 +242,28 @@
   margin: 0;
 }
 
-@media (max-width: 1080px) {
-  .app-main[data-agent-open] > .workspace,
-  .app-main[data-agent-open] > .empty {
-    display: none;
-  }
+/* Take over the content area when the workspace beside the panel would fall
+   below its usable floor. App.tsx sets the attribute from the actual panel
+   width and window size instead of a fixed viewport breakpoint. */
+.app-main[data-agent-takeover] > .workspace,
+.app-main[data-agent-takeover] > .empty {
+  display: none;
+}
 
-  .agent-panel-divider {
-    display: none;
-  }
+/* The divider stays visible in takeover so the panel can always be dragged
+   back down; shrinking it below the floor simply keeps the takeover. */
+.app-main[data-agent-takeover] .agent-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
-  .agent-panel {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+.app-main[data-agent-takeover] .agent-panel__close .agent-panel__close-icon {
+  display: none;
+}
 
-  .agent-panel__close .agent-panel__close-icon {
-    display: none;
-  }
-
-  .agent-panel__close .agent-panel__back-icon,
-  .agent-panel__back-label {
-    display: inline;
-  }
+.app-main[data-agent-takeover] .agent-panel__close .agent-panel__back-icon,
+.app-main[data-agent-takeover] .agent-panel__back-label {
+  display: inline;
 }
 
 .agent-panel__empty h2 {
@@ -276,4 +275,79 @@
   color: var(--text-dim);
   line-height: var(--lh-normal);
   text-wrap: pretty;
+}
+
+/* --- "+" agent popover: new thread, one-step connect, or open the catalog --- */
+
+.agent-launch-menu {
+  display: flex;
+  width: min(232px, calc(100vw - 2 * var(--space-16)));
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.agent-launch-menu__label {
+  padding: var(--space-4) var(--space-8) 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-launch-menu__item {
+  display: grid;
+  min-height: 32px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.agent-launch-menu__item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-launch-menu__item[data-highlighted] {
+  background: var(--bg-sunken);
+  box-shadow: inset 0 0 0 var(--focus-w) var(--accent);
+}
+
+.agent-launch-menu__item[data-disabled] {
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
+.agent-launch-menu__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 32px;
+  padding: var(--space-6) var(--space-8);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-launch-menu__error {
+  margin: 0;
+  padding: var(--space-4) var(--space-8);
+  color: var(--error);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  overflow-wrap: break-word;
+}
+
+.agent-launch-menu__separator {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--border);
 }

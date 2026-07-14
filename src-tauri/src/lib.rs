@@ -589,6 +589,22 @@ fn cancel_agent_install(
     state.cancel(&install_id)
 }
 
+#[tauri::command]
+fn uninstall_agent(
+    app: AppHandle,
+    install_state: State<'_, agent_install::AgentInstallState>,
+    host_state: State<'_, agent_protocol::AgentHostState>,
+    agent_id: String,
+) -> Result<(), String> {
+    if install_state.is_installing(&agent_id)? {
+        return Err("Finish or cancel the running installation first.".to_string());
+    }
+    if host_state.has_profile_connection(&format!("catalog-{agent_id}")) {
+        return Err("Disconnect this agent before removing it.".to_string());
+    }
+    agent_install::uninstall(&app, &agent_id)
+}
+
 /// Fetch a remote bundle (a GitHub repo tarball or a direct archive URL) into a
 /// local cache directory and return that directory's path, which the frontend
 /// then opens like any picked folder. It runs only on an explicit user action;
@@ -737,9 +753,16 @@ pub fn run() {
 
     // Opt-in updater — the user triggers a check from Settings; the app never
     // checks on its own (see docs/ux/settings.md). `process` is needed to
-    // relaunch after an update installs. Desktop only.
+    // relaunch after an update installs. Desktop only. window-state restores
+    // the main window's size, position, and maximized/fullscreen state across
+    // launches; reader pop-outs keep their per-open geometry instead.
     #[cfg(desktop)]
     let builder = builder
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_filter(|label| label == "main")
+                .build(),
+        )
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init());
 
@@ -832,6 +855,7 @@ pub fn run() {
             agent_install_preflight,
             install_agent,
             cancel_agent_install,
+            uninstall_agent,
             fetch_remote_bundle,
             read_asset,
             read_asset_data_url,

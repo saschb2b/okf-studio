@@ -1,15 +1,21 @@
-import { ArrowLeft, CircleAlert, PanelRightClose, Plus, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, CircleAlert, PanelRightClose, Plus, RefreshCw, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import type { AgentConnectionInfo } from "../agent/connection.ts";
-import { AGENT_PANEL_CLAMP, useApp } from "../store.tsx";
+import { agentPanelClamp, useApp } from "../store.tsx";
 import { captureReaderSelection } from "../agent/readerSelection.ts";
 import { useAgentConnections } from "../agent/useAgentConnections.ts";
 import { focusAgentPanelOpener } from "../agentPanelFocus.ts";
+import {
+  agentRestoreStatus,
+  maybeRestoreLastAgentConnection,
+  subscribeAgentRestore,
+} from "../ipc.ts";
 import { AgentConnectionCatalog } from "./AgentConnectionCatalog.tsx";
 import { AgentConversation } from "./AgentConversation.tsx";
 import type { AgentConversationProps } from "./AgentConversation.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
+import { NewAgentThreadMenu } from "./NewAgentThreadMenu.tsx";
 import "./AgentPanel.css";
 
 export function AgentPanel() {
@@ -26,6 +32,21 @@ export function AgentPanel() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [connectionFailure, setConnectionFailure] = useState<ConnectionFailure | null>(null);
   const [resetToken, setResetToken] = useState(0);
+  // Each ConnectionThreads registers how to open one more thread surface so
+  // the agent popover can start a thread on an already-connected agent.
+  const threadOpeners = useRef(new Map<string, () => void>());
+
+  // Restore the most recent explicitly connected agent once, when the panel
+  // first has an open bundle after launch. An explicit Disconnect forgot the
+  // entry, so this only ever continues a connection the user chose to keep.
+  // The attempt and its status live in the connection store; the restored
+  // connection then appears through the ordinary connections subscription.
+  const restoreState = useSyncExternalStore(subscribeAgentRestore, agentRestoreStatus);
+  const panelOpen = state.panels.agent;
+  const activeRoot = state.activeRoot;
+  useEffect(() => {
+    if (panelOpen && activeRoot) maybeRestoreLastAgentConnection(activeRoot);
+  }, [panelOpen, activeRoot]);
   if (!state.panels.agent) return null;
 
   const width =
@@ -55,6 +76,17 @@ export function AgentPanel() {
   const selectedConnection = connections.find(
     (connection) => connection.connectionId === selectedConnectionId,
   ) ?? connections.at(0);
+
+  function requestNewThread(connectionId: string) {
+    setSelectedConnectionId(connectionId);
+    setView("conversation");
+    threadOpeners.current.get(connectionId)?.();
+  }
+
+  function registerThreadOpener(connectionId: string, open: (() => void) | null) {
+    if (open) threadOpeners.current.set(connectionId, open);
+    else threadOpeners.current.delete(connectionId);
+  }
   const visibleView = view === "catalog"
     ? "catalog"
     : selectedConnection
@@ -178,20 +210,24 @@ export function AgentPanel() {
                     </button>
                   );
                 })}
-                <button
-                  type="button"
-                  className="btn ghost agent-panel__connection agent-panel__connection--add"
-                  aria-label="Connect another agent"
-                  title="Connect another agent"
-                  onFocus={revealSwitcherItem}
-                  onClick={openCatalog}
-                >
-                  <Plus size={16} aria-hidden="true" />
-                </button>
+                <NewAgentThreadMenu
+                  bundleRoot={state.activeRoot}
+                  connections={connections}
+                  onNewThread={requestNewThread}
+                  onConnected={(connection) => {
+                    if (connectionFailure?.profileId === connection.profileId) {
+                      setConnectionFailure(null);
+                    }
+                    setSelectedConnectionId(connection.connectionId);
+                    setView("conversation");
+                  }}
+                  onOpenCatalog={openCatalog}
+                />
               </nav>
               {connections.map((connection) => (
                 <ConnectionThreads
                   key={`${connection.connectionId}:${state.activeRoot ?? "no-bundle"}`}
+                  onRegisterThreadOpener={registerThreadOpener}
                   connection={connection}
                   bundleRoot={state.activeRoot}
                   bundleName={state.bundle?.name ?? null}
@@ -218,7 +254,16 @@ export function AgentPanel() {
               ))}
             </div>
           )}
-          {visibleView === "empty" && (
+          {visibleView === "empty" && restoreState === "restoring" && (
+            <div className="agent-panel__empty" role="status">
+              <span className="agent-panel__mark" aria-hidden="true">
+                <RefreshCw size={24} />
+              </span>
+              <h2>Reconnecting your last agent</h2>
+              <p>Restoring the connection this panel had when Studio closed.</p>
+            </div>
+          )}
+          {visibleView === "empty" && restoreState !== "restoring" && (
             <div className="agent-panel__empty">
               <span className="agent-panel__mark" aria-hidden="true">
                 <Sparkles size={24} />
@@ -231,6 +276,12 @@ export function AgentPanel() {
               ) : (
                 <>
                   <h2>Connect an agent</h2>
+                  {restoreState === "failed" && (
+                    <p role="alert">
+                      The last agent could not be reconnected. Its install,
+                      profile, or endpoint may have changed.
+                    </p>
+                  )}
                   <p>
                     Use an existing subscription, an API-backed Studio Agent, or a
                     local model. Nothing connects until you choose.
@@ -272,11 +323,13 @@ type ConnectionThreadsProps = Omit<
   "threadSurfaceCount" | "onThreadTitleChange" | "onCloseThreadSurface"
 > & {
   hidden: boolean;
+  onRegisterThreadOpener: (connectionId: string, open: (() => void) | null) => void;
 };
 
 function ConnectionThreads({
   connection,
   hidden,
+  onRegisterThreadOpener,
   ...conversationProps
 }: ConnectionThreadsProps) {
   const [surfaces, setSurfaces] = useState<ThreadSurface[]>(() => [newThreadSurface(1)]);
@@ -295,6 +348,13 @@ function ConnectionThreads({
       threadNavRef.current?.querySelector<HTMLElement>("[aria-pressed='true']")?.focus();
     });
   }
+
+  // Keep the panel's registry pointing at the latest closure; runs after every
+  // render on purpose so the opener never captures stale surface state.
+  useEffect(() => {
+    onRegisterThreadOpener(connection.connectionId, addThreadSurface);
+    return () => onRegisterThreadOpener(connection.connectionId, null);
+  });
 
   function closeThreadSurface(surfaceId: string) {
     if (surfaces.length <= 1) return;
@@ -409,9 +469,10 @@ function AgentPanelDivider({
 }) {
   const { state, actions } = useApp();
   const cleanupRef = useRef<(() => void) | null>(null);
+  const panelClamp = agentPanelClamp(state);
   const valueNow =
     state.agentPanelWidth ??
-    Math.round((AGENT_PANEL_CLAMP.min + AGENT_PANEL_CLAMP.max) / 2);
+    Math.round((panelClamp.min + panelClamp.max) / 2);
 
   useEffect(() => () => cleanupRef.current?.(), []);
 
@@ -420,14 +481,11 @@ function AgentPanelDivider({
     const rendered = panelRef.current?.getBoundingClientRect().width ?? 0;
     return rendered > 0
       ? rendered
-      : Math.round((AGENT_PANEL_CLAMP.min + AGENT_PANEL_CLAMP.max) / 2);
+      : Math.round((panelClamp.min + panelClamp.max) / 2);
   }
 
   function clamp(width: number): number {
-    return Math.min(
-      AGENT_PANEL_CLAMP.max,
-      Math.max(AGENT_PANEL_CLAMP.min, width),
-    );
+    return Math.min(panelClamp.max, Math.max(panelClamp.min, width));
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -479,8 +537,8 @@ function AgentPanelDivider({
       role="separator"
       aria-label="Resize agent panel"
       aria-orientation="vertical"
-      aria-valuemin={AGENT_PANEL_CLAMP.min}
-      aria-valuemax={AGENT_PANEL_CLAMP.max}
+      aria-valuemin={panelClamp.min}
+      aria-valuemax={panelClamp.max}
       aria-valuenow={valueNow}
       tabIndex={0}
       onPointerDown={onPointerDown}

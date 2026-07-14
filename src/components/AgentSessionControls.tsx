@@ -1,18 +1,15 @@
 import { Popover } from "@base-ui/react/popover";
 import {
-  Bot,
-  Brain,
   Check,
   ChevronDown,
   LoaderCircle,
   RotateCcw,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Star,
 } from "lucide-react";
 import { useId, useState } from "react";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 import type {
   AgentSessionConfigOption,
   AgentSessionConfigValueInfo,
@@ -69,20 +66,6 @@ function isPrimaryOption(
     category === "mode" || category === "model" || category === "thought-level" ||
     category === "reasoning"
   );
-}
-
-function optionIcon(option: AgentSessionConfigOption): ReactNode {
-  switch (normalizedCategory(option)) {
-    case "mode":
-      return <Sparkles size={14} aria-hidden="true" />;
-    case "model":
-      return <Bot size={14} aria-hidden="true" />;
-    case "thought-level":
-    case "reasoning":
-      return <Brain size={14} aria-hidden="true" />;
-    default:
-      return <SlidersHorizontal size={14} aria-hidden="true" />;
-  }
 }
 
 function selectValues(option: Extract<AgentSessionConfigOption, { type: "select" }>) {
@@ -228,11 +211,10 @@ function SessionOptionControl({
           title={option.description ?? `${option.name}: ${currentValueName(option)}`}
           disabled={disabled}
         >
-          {pending
-            ? <LoaderCircle className="agent-session-control__spinner" size={14} aria-hidden="true" />
-            : optionIcon(option)}
           <span>{currentValueName(option)}</span>
-          <ChevronDown size={12} aria-hidden="true" />
+          {pending
+            ? <LoaderCircle className="agent-session-control__spinner" size={12} aria-hidden="true" />
+            : <ChevronDown size={12} aria-hidden="true" />}
         </button>
       )}
     />
@@ -268,8 +250,6 @@ function SessionConfigurationPopover({
             disabled={disabled}
           >
             <SlidersHorizontal size={14} aria-hidden="true" />
-            <span>Configure</span>
-            <ChevronDown size={12} aria-hidden="true" />
           </button>
         )}
       />

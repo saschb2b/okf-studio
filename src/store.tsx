@@ -112,15 +112,54 @@ export interface AgentPanelLayout {
   width: number | null;
 }
 
-/** Min/max clamps (px) for draggable dividers; see reader-first-layout.md. */
-export const PANE_CLAMPS = {
-  sidebar: { min: 200, max: 360 },
-  reader: { min: 320, max: 720 },
-  /** The graph soaks up the remaining 1fr; we only guard a floor for it. */
-  graphMin: 280,
-} as const;
+/**
+ * Clamps (px) for draggable dividers; see reader-first-layout.md. Each minimum
+ * keeps the pane itself usable. Maximums follow the window instead of a fixed
+ * cap — like Zed's docks — leaving only a floor for the remaining surfaces.
+ * The graph soaks up the flexible 1fr track and keeps its own 280px floor in
+ * the grid template.
+ */
+function clampWindowWidth(): number {
+  return typeof window === "undefined" ? 1280 : window.innerWidth;
+}
 
-export const AGENT_PANEL_CLAMP = { min: 320, max: 560 } as const;
+export function paneClamp(pane: "sidebar" | "reader"): { min: number; max: number } {
+  const width = clampWindowWidth();
+  return pane === "sidebar"
+    ? { min: 200, max: Math.max(360, Math.round(width * 0.4)) }
+    : { min: 320, max: Math.max(720, width - 560) };
+}
+
+/** The width the content area beside the agent panel needs so every visible
+ * pane keeps its compressed floor (the activity bar is accounted separately).
+ * Below this the open panel takes the surface over entirely (see App.tsx). */
+export function workspaceFloor(s: {
+  bundle: unknown;
+  overview: boolean;
+  layout: LayoutMode;
+  panels: { sidebar: boolean; reader: boolean };
+}): number {
+  if (!s.bundle) return 384;
+  const sidebar = s.panels.sidebar ? 168 : 0;
+  if (s.overview) return sidebar + 360;
+  const reader = (s.layout === "split" && s.panels.reader) || s.layout === "reader";
+  const graph = s.layout === "split" || s.layout === "graph";
+  return sidebar + (graph ? 288 : 0) + (reader ? (graph ? 228 : 320) : 0);
+}
+
+/** With layout state, the maximum stops exactly where the takeover would
+ * begin, so a drag can widen the panel up to — but never past — the point
+ * where the remaining workspace stays usable. Without state (persisted-width
+ * loading), a conservative window-relative cap applies. */
+export function agentPanelClamp(
+  s?: Parameters<typeof workspaceFloor>[0],
+): { min: number; max: number } {
+  const width = clampWindowWidth();
+  const max = s
+    ? width - 48 - workspaceFloor(s)
+    : Math.max(560, width - 448);
+  return { min: 320, max: Math.max(320, max) };
+}
 
 const LAYOUT_KEY = "okf-viewer:layout";
 const AGENT_PANEL_KEY = "okf-studio:agent-panel";
@@ -132,16 +171,12 @@ function loadAgentPanelLayout(): AgentPanelLayout {
     const raw = localStorage.getItem(AGENT_PANEL_KEY);
     if (!raw) return fallback;
     const stored = JSON.parse(raw) as Partial<AgentPanelLayout>;
+    const clamp = agentPanelClamp();
     return {
       open: stored.open === true,
       width:
         typeof stored.width === "number"
-          ? Math.round(
-              Math.min(
-                AGENT_PANEL_CLAMP.max,
-                Math.max(AGENT_PANEL_CLAMP.min, stored.width),
-              ),
-            )
+          ? Math.round(Math.min(clamp.max, Math.max(clamp.min, stored.width)))
           : null,
     };
   } catch {
@@ -626,29 +661,21 @@ function reducer(s: State, m: Msg): State {
       return { ...s, layout: next };
     }
     case "paneSize": {
+      const clamp = paneClamp(m.pane);
       const v =
         m.v === null
           ? null
-          : Math.round(
-              Math.min(
-                PANE_CLAMPS[m.pane].max,
-                Math.max(PANE_CLAMPS[m.pane].min, m.v),
-              ),
-            );
+          : Math.round(Math.min(clamp.max, Math.max(clamp.min, m.v)));
       const paneSizes = { ...s.paneSizes, [m.pane]: v };
       saveLayout(s.layout, paneSizes, s.vizView);
       return { ...s, paneSizes };
     }
     case "agentPanelWidth": {
+      const clamp = agentPanelClamp(s);
       const width =
         m.v === null
           ? null
-          : Math.round(
-              Math.min(
-                AGENT_PANEL_CLAMP.max,
-                Math.max(AGENT_PANEL_CLAMP.min, m.v),
-              ),
-            );
+          : Math.round(Math.min(clamp.max, Math.max(clamp.min, m.v)));
       saveAgentPanelLayout({ open: s.panels.agent, width });
       return { ...s, agentPanelWidth: width };
     }

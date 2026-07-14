@@ -52,10 +52,12 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # Opt-in update check against the latest GitHub release (see
 # docs/architecture/build-and-release.md). process is needed to relaunch after
-# an update. Desktop only.
+# an update. Desktop only. window-state restores the main window size,
+# position, and maximized/fullscreen state across launches.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-window-state = "2"
 
 # Linux only: disable WebKitGTK's native trackpad pinch-zoom (it bypasses the JS
 # guards that cover WebView2/WKWebView — see src/native.ts). Versions pinned to

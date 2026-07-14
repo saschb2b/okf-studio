@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T13:30:00Z
+timestamp: 2026-07-14T14:30:00Z
 ---
 
 # Outcome
@@ -231,6 +231,62 @@ The hierarchy prototype uses the state gallery's deliberately long agent and thr
 
 Gate: each journey has one obvious next action, no duplicated persistent identity, no hidden blocking state, and screenshot plus keyboard evidence at 360px, the default panel width, and 560px.
 
+## WP10B: Agent-advertised session controls
+
+Model, mode, reasoning effort, and related choices belong to the active agent session. Studio must render what the agent advertises through ACP instead of maintaining Claude, Codex, or local-model menus of its own. The composer footer is the stable home for this control rail because the choices affect the next turn.
+
+- [ ] Advertise ACP client support for bounded select and boolean session config options. Capture the complete ordered option set returned by new, loaded, resumed, and future forked sessions.
+- [ ] Reduce every option, value, group, description, category, and current value through Rust limits before it reaches the webview. Unknown categories remain usable; unknown kinds remain safely absent.
+- [ ] Render current mode, model, thought level, model configuration, and custom options only when advertised. Use the semantic category for icon, accessible name, preferred order, and keyboard action, never to infer provider behavior.
+- [ ] Send `session/set_config_option` through the owning session actor. Serialize overlapping changes, replace the full option snapshot from every response, and accept agent-initiated full replacements from `session/update`.
+- [ ] Use legacy ACP session modes only when the session has no config option set. Never render the same mode through both contracts.
+- [ ] Keep the last confirmed selection visible while a change is pending or fails. Put Retry or the bounded error beside the selector; a failed model switch must not look successful.
+- [ ] Support grouped, searchable pickers with option descriptions. Add local favorites and keyboard cycling without changing the agent's advertised order or sending favorite metadata to the agent.
+- [ ] Define the native Studio Agent's mode, model, and reasoning controls through the same frontend shape so the composer does not fork by provider path.
+- [ ] At 360px, keep mode and the primary model discoverable and move lower-priority or custom options into one labelled configuration popover. No current value may disappear without an accessible summary.
+- [ ] Extend the deterministic gallery with no-options, one-option, long grouped models, dynamic reasoning removal, boolean options, pending change, stale response, and failure recovery states.
+
+Gate: Claude Agent, Codex, a no-option fake agent, a dynamic-option fake agent, and Studio Agent expose only supported choices; switching one option cannot leave another selector stale.
+
+## WP10C: Docked live-work shelf
+
+The transcript should answer what happened. A compact shelf directly above the composer should answer what needs attention now. It replaces the current scattering of plan, queue, staged review, and blocking decisions without turning the footer into a second dashboard.
+
+- [ ] Add one bounded, collapsible live-work shelf between transcript and composer. Render only sections with current content and keep the composer reachable when every section exists.
+- [ ] Order blocking permission or failure first, then live plan, staged OKF changes, and queued follow-ups. Use dividers only between present sections.
+- [ ] Move the current replacement plan into a one-line summary with current task, completed count, and remaining count. Its expanded list has bounded scrolling and preserves agent order and status.
+- [ ] Preserve the terminal plan snapshot in transcript export without rendering a duplicate live plan card. Clearing or collapsing the shelf changes presentation only.
+- [ ] Move the active permission decision into the shelf while leaving its chronological request and resolution understandable in the transcript. A delivery failure remains beside the still-active decision.
+- [ ] Keep the staged OKF transaction, validation, Apply, and Restore model intact. The shelf summarizes its state and expands the existing review; it does not adopt Zed's direct editor-write assumptions.
+- [ ] Move the follow-up queue into the same shelf contract. Edit, remove, send-next, and Stop remain reachable without scrolling the transcript.
+- [ ] Persist disclosure state per live thread, but reset it when the owning content disappears. Switching threads must reveal that thread's blocking section immediately even if it was previously collapsed.
+- [ ] Prove maximum-height, nested-scroll, keyboard order, live-region restraint, and focus return at 360px, the default width, and 560px with every section populated.
+
+Gate: a user can always see why the agent is waiting, what step is running, what writes are staged, and what message is queued without hunting through the transcript.
+
+## WP10D: Thread navigation and context lifecycle
+
+- [ ] Add transcript-level keyboard navigation and visible jump controls for the top, latest user prompt, and bottom. Streaming must not steal scroll position after the user moves away from the tail.
+- [ ] Add response actions for copying a selection, copying one complete agent response, and opening the current thread as inert Markdown inside Studio. Keep native file export as a separate explicit action.
+- [ ] Make bundle-relative ACP tool locations navigable in the reader. Ignore outside-bundle, absolute-only, missing, or non-concept locations without broadening file access.
+- [ ] Turn context usage into a threshold state with an explanation and recovery. Use an advertised compact or summary command when available; otherwise offer a fresh thread with explicit, reviewable carried context.
+- [ ] Preserve context-compaction summaries as inspectable transcript entries when the agent reports them. Do not present client-side truncation as agent-owned compaction.
+- [ ] Add a safe draft recall for the latest unsent or queued prompt. Defer editing and resubmitting accepted messages until Studio can prove a matching checkpoint or rewind boundary for every affected write.
+- [ ] Add focused tests for scroll anchoring, long Markdown, copied plain and formatted content, invalid locations, usage thresholds, and context recovery.
+
+Gate: long research and editing threads remain navigable and recoverable without implying that Studio can rewind an external agent or its direct side effects.
+
+## WP10E: Attention and thread scale
+
+- [ ] Add opt-in desktop notifications when a background thread finishes, fails, or waits for permission. Include the bounded thread title and agent, never prompt, source, concept, path, or response content.
+- [ ] Make sound a separate preference and respect operating-system focus and notification settings. Repeated updates for one waiting state must not spam.
+- [ ] Expand history from one current and one archived pointer into a bounded, searchable bundle-scoped list when the agent advertises session list and load. Keep restore validation agent-owned and bundle-filtered.
+- [ ] Add recent-thread keyboard switching with visible agent and status. A running, waiting, failed, or staged thread must retain its state while inactive.
+- [ ] Offer explicit import of compatible agent sessions only after a fresh bundle-root filter. Unsupported agents keep the action absent rather than disabled without explanation.
+- [ ] Show compact running, waiting, failed, and staged indicators in the connection and thread switchers. Notifications supplement this state; they do not replace it.
+
+Gate: five concurrent threads can be identified, switched, searched, and recovered without exposing transcript content in operating-system notifications or confusing bundle scope.
+
 ## WP11: Isolation and autonomy
 
 - [x] Enforce the active bundle root through a Rust-owned grant registry rather than trusting a path supplied by the webview.
@@ -284,7 +340,7 @@ Gate: Studio creates a conformant bundle from mixed sources, improves it through
 flowchart TD
   WP1 --> WP2 --> WP3 --> WP4
   WP4 --> WP5
-  WP4 --> WP6 --> WP7 --> WP8 --> WP9 --> WP10 --> WP10A --> WP11 --> WP12
+  WP4 --> WP6 --> WP7 --> WP8 --> WP9 --> WP10 --> WP10A --> WP10B --> WP10C --> WP10D --> WP10E --> WP11 --> WP12
 ```
 
 # Deferred decisions
@@ -292,3 +348,5 @@ flowchart TD
 - The native agent-loop library is chosen in WP7 against executable provider and tool tests.
 - The Windows sandbox is chosen in WP11. Native Windows lacks Zed's WSL plus Bubblewrap enforcement, so Studio must not promise confinement before it exists.
 - Repository and application identifiers remain compatibility names until a separate updater/app-data migration exists.
+- Editing and resubmitting an accepted user prompt remains deferred until the active agent path supplies a trustworthy checkpoint or Studio can prove that its own transaction boundary covers every side effect.
+- Terminal threads, Git worktree isolation, Zed-hosted feedback, and Zed-native profile management are not Studio targets. They solve editor or hosted-agent concerns rather than OKF curation.

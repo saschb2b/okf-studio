@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-13T22:31:56Z
+timestamp: 2026-07-14T14:30:00Z
 ---
 
 # Adopted patterns
@@ -23,6 +23,43 @@ timestamp: 2026-07-13T22:31:56Z
 | Native skills plus project trust | Packaged Studio skill; no unreviewed project instructions |
 | Pinned registry distributions | Discoverable catalog with app-owned runtime/cache |
 
+# Agent Panel follow-up audit
+
+The 2026-07-14 follow-up compared Zed's current Agent Panel documentation with source commit `f7cf09b`. It also checked ACP's stabilized session configuration contract against the `agent-client-protocol` 1.2.0 and schema 1.4.0 already pinned by Studio. The result separates protocol-backed gaps from Zed-native behavior that an external agent may not support.
+
+| Zed behavior | Studio status | Decision |
+| --- | --- | --- |
+| Agent-provided model, mode, reasoning, model-configuration, custom select, and boolean controls | Missing | Add an ACP-driven control rail in [WP10B](../product/studio-roadmap.md#wp10b-agent-advertised-session-controls). Do not invent a selector when an agent does not advertise it. |
+| Searchable, grouped option pickers with descriptions, favorites, and keyboard cycling | Missing | Add after the basic selector contract in WP10B. Keep the agent's order and current value authoritative. |
+| A bounded activity shelf above the composer for permission, plan, changed files, and queued messages | Split across the transcript and composer | Adapt in [WP10C](../product/studio-roadmap.md#wp10c-docked-live-work-shelf). The shelf owns live work; the transcript owns durable chronology. |
+| Collapsible plan summary showing the current task, completed count, and remaining count | Plan exists only as a transcript card | Move the live replacement plan into the shelf and retain its terminal snapshot for export. |
+| Context usage, cost, automatic compaction, and **New From Summary** | Usage and cost ship; context recovery does not | Add explicit context-pressure recovery in [WP10D](../product/studio-roadmap.md#wp10d-thread-navigation-and-context-lifecycle). Use an agent command when advertised; do not claim client-side compaction for an external agent. |
+| Thread navigation, copy-response actions, open-as-Markdown, editable prompts, and checkpoints | Export ships; the rest is missing or partial | Add safe navigation and copy surfaces in WP10D. Defer edit-and-resubmit until Studio can pair it with a trustworthy rewind boundary. |
+| Follow agent locations in the editor | Tool locations are display-only | Adapt to bundle-relative concept navigation in WP10D. Never follow an absolute or outside-bundle path. |
+| Background completion or attention notifications with thread identity | Missing | Add opt-in desktop attention in [WP10E](../product/studio-roadmap.md#wp10e-attention-and-thread-scale). |
+| Searchable thread history, imported ACP sessions, quick recent-thread switching, and project grouping | One saved and one archived pointer per bundle; parallel live threads ship | Expand bundle-scoped history and switching in WP10E when the agent advertises session list and load. |
+| Zed-native profiles, Skills manager, provider feedback, terminal threads, and Git worktree isolation | Not applicable to an OKF workspace or not portable over ACP | Do not copy. Studio keeps its packaged OKF skill, reviewed-write boundary, and bundle scope instead of growing editor-specific surfaces. |
+
+## Session configuration contract
+
+ACP stabilized session config options on 2026-02-04. An agent may return an ordered set of select or boolean options when a session is created, loaded, resumed, or forked. Categories such as `mode`, `model`, `model_config`, and `thought_level` are placement hints, not correctness requirements. Custom or future categories remain renderable without name-based vendor logic.
+
+The client sends `session/set_config_option` with the session, option, and value IDs. The response replaces the complete option set because changing a model may add, remove, or alter reasoning choices. The agent may send the same full replacement through `session/update`. Studio must therefore validate and replace one bounded snapshot, serialize overlapping changes, and keep the last confirmed snapshot visible if a request fails. Legacy session modes are a fallback only when no config option set exists; rendering both would duplicate mode controls.
+
+Zed's current source adds three useful presentation choices on top of the protocol: it preserves agent order, rebuilds every picker when the option IDs change, and lets users search and favorite large model lists. The control row wraps, while option descriptions live in tooltips or a documentation aside instead of widening every button.
+
+## Live-work shelf contract
+
+Zed renders the activity surface immediately above the message editor. A permission request comes first, followed by the live plan, changed-file review, and queued messages, with dividers only between present sections. Each section has a one-line disclosure summary and a bounded scroll area. This establishes a useful ownership rule for Studio:
+
+- Live, actionable state stays docked beside its recovery or decision.
+- Transcript entries explain what happened and never compete with the live control.
+- Collapsing a section changes presentation only; it does not cancel, approve, reject, or forget work.
+- Blocking permission and failure state outrank progress summaries.
+- The shelf has a maximum height so the transcript and composer remain reachable at 360px.
+
+Studio will adapt changed files to its stricter staged OKF transaction rather than copy Zed's editor diff model.
+
 # Constraints learned
 
 - Zed keeps its native agent separate from External Agents; external agents own runtime, auth, model, tools, and native configuration.
@@ -40,6 +77,9 @@ timestamp: 2026-07-13T22:31:56Z
 - Zed separates `agent_ui`, `agent_servers`, `acp_thread`, native agent logic, and project registry/process stores. The UI consumes connection traits and stores rather than implementing the protocol.
 - Zed's current Agent Panel preserves multi-line queued messages while a turn is active. Studio adopts the visible follow-up pattern but keeps its first queue slice to one frontend-owned snapshot because ACP itself still permits one live prompt turn per session.
 - The official Rust SDK checked on 2026-07-11 is `agent-client-protocol` 1.2.0 with schema artifact 1.4.0. Its current API composes typed `Client` and `Agent` builders over `ConnectTo` transports. ACP wire compatibility remains protocol v1 and must be negotiated independently of those artifact versions.
+- ACP session config options were stabilized on 2026-02-04 and are present in Studio's pinned schema. They cover agent-provided model, mode, thought level, model configuration, custom select, and boolean options without provider-specific fields.
+- Zed's current config-option view replaces its selector set after every update, supports grouped and searchable choices, and keeps favorites as a client preference. It uses the semantic category only for placement, icons, and keyboard actions.
+- Zed's current activity surface docks permission, live plan, changed files, and queued messages above the composer. Plan and queue lists have bounded internal scrolling; the transcript keeps completed plan snapshots separately.
 
 # Studio host decision
 
@@ -63,6 +103,9 @@ Studio selected system Bubblewrap for the first Linux backend. The initial prefl
 - [Zed agent server trait](https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/agent_servers.rs)
 - [Zed ACP connection](https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/acp.rs)
 - [Zed queued-message panel fixes](https://github.com/zed-industries/zed/pull/53696)
+- [Zed Agent Panel thread view](https://github.com/zed-industries/zed/blob/main/crates/agent_ui/src/conversation_view/thread_view.rs)
+- [Zed ACP config option view](https://github.com/zed-industries/zed/blob/main/crates/agent_ui/src/config_options.rs)
+- [Zed Parallel Agents](https://github.com/zed-industries/zed/blob/main/docs/src/ai/parallel-agents.md)
 - [ACP architecture](https://agentclientprotocol.com/get-started/architecture)
 - [ACP Registry](https://agentclientprotocol.com/get-started/registry)
 - [ACP authentication](https://agentclientprotocol.com/protocol/v1/authentication)
@@ -71,3 +114,5 @@ Studio selected system Bubblewrap for the first Linux backend. The initial prefl
 - [ACP tools and permissions](https://agentclientprotocol.com/protocol/v1/tool-calls)
 - [ACP filesystem](https://agentclientprotocol.com/protocol/v1/file-system)
 - [ACP Rust library](https://agentclientprotocol.com/libraries/rust)
+- [ACP session config options](https://agentclientprotocol.com/rfds/session-config-options)
+- [ACP session config stabilization](https://agentclientprotocol.com/announcements/session-config-options-stabilized)

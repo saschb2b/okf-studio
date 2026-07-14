@@ -326,6 +326,42 @@
   white-space: normal;
 }
 
+.agent-session-failure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  color: var(--error);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-session-failure > svg {
+  margin-top: var(--space-2);
+}
+
+.agent-session-failure strong,
+.agent-session-failure p {
+  margin: 0;
+}
+
+.agent-session-failure p {
+  display: -webkit-box;
+  margin-top: var(--space-2);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.agent-session-failure .btn {
+  min-height: 28px;
+}
+
 .agent-conversation__state p,
 .agent-conversation__welcome p,
 .agent-composer__actions,
@@ -1938,6 +1974,15 @@
   .agent-starters {
     grid-template-columns: minmax(0, 1fr);
     grid-auto-rows: auto;
+  }
+
+  .agent-session-failure {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .agent-session-failure .btn {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .agent-queue {

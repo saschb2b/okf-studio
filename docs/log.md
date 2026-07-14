@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-14
+* **Update**: Made a lost agent event stream a thread-owned failure instead of agent-authored prose. Studio now tears down partially opened update subscriptions, retains one bounded notice on the affected thread across switching, and retries the turn, permission, staging, and connection subscriptions together.
 * **Update**: Kept unexpected agent-process failures at the Agent Panel level after the failed connection leaves the switcher. The bounded notice names the agent, retains the host reason across catalog navigation, and places Review connections and Dismiss beside it. Reconnecting the same profile clears the stale failure.
 * **Update**: Made the Agent Panel transcript the flexible scroll owner while keeping identity and send controls in reach. Empty workflow starters use two equal columns when space permits and one compact column when narrow. Staged review now scrolls within a bounded height instead of displacing the transcript.
 * **Update**: Consolidated History, Export, Archive, and Change agent into one keyboard-navigable thread-actions menu. The action row keeps rename, security, and the task-relevant edit boundary direct; the History surface provides its own Back action. Empty threads omit export and archive, while disabled menu items retain their explanations.

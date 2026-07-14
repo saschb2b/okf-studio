@@ -263,6 +263,45 @@ describe("OKF Studio app", () => {
     }
   });
 
+  it("keeps a lost event stream with its thread and retries every subscription", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Session Harness",
+      executable: "C:\\tools\\session.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
+    const turnUpdates = vi.spyOn(ipc, "onAgentTurnUpdate")
+      .mockRejectedValueOnce(new Error("The turn update listener stopped."));
+
+    try {
+      const user = userEvent.setup();
+      renderApp();
+      await openFolder(user);
+      await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+
+      const failure = await screen.findByRole("alert");
+      expect(failure).toHaveTextContent("Agent updates paused");
+      expect(failure).toHaveTextContent("The turn update listener stopped.");
+      expect(screen.queryByText(/Studio lost the agent event stream/)).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", {
+        name: "Start another thread with Session Harness",
+      }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Switch to Thread 1: New thread" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Agent updates paused");
+
+      await user.click(screen.getByRole("button", { name: "Retry updates" }));
+      await waitFor(() => expect(screen.queryByText("Agent updates paused")).not.toBeInTheDocument());
+      expect(turnUpdates).toHaveBeenCalledTimes(3);
+    } finally {
+      cleanup();
+      await ipc.disconnectAgent(connection.connectionId);
+      await ipc.removeCustomAgent(profile.id);
+    }
+  });
+
   it("runs and switches between parallel threads on one agent connection", async () => {
     const profile = await ipc.saveCustomAgent({
       name: "Parallel Harness",

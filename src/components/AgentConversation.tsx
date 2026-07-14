@@ -169,6 +169,10 @@ type PendingPermission = AgentPermissionEvent & {
   update: Extract<AgentPermissionEvent["update"], { kind: "requested" }>;
 };
 type AgentUsage = Extract<AgentTurnEvent["update"], { kind: "usage" }>;
+type EventStreamState =
+  | { status: "ready" }
+  | { status: "retrying" }
+  | { status: "error"; message: string };
 
 const BUNDLE_PROPOSAL_INSTRUCTIONS =
   "End with exactly one fenced `okf-proposal` JSON block shaped as `{\"concepts\":[{\"path\":\"concept.md\",\"title\":\"Concept\",\"type\":\"Concept type\",\"links\":[\"related.md\"]}],\"indexes\":[{\"path\":\"index.md\",\"concepts\":[\"concept.md\"]}]}`. Use bundle-relative Markdown paths and make every index member name a proposed concept.";
@@ -888,6 +892,10 @@ export function AgentConversation({
   const [history, setHistory] = useState<HistoryState>({ status: "closed" });
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
   const [savedThread, setSavedThread] = useState<SavedThreadState>({ status: "none" });
+  const [eventStreamState, setEventStreamState] = useState<EventStreamState>({
+    status: "ready",
+  });
+  const [eventStreamAttempt, setEventStreamAttempt] = useState(0);
   const [threadMetadataError, setThreadMetadataError] = useState<string | null>(null);
   const [retryableTurnIds, setRetryableTurnIds] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -1152,12 +1160,9 @@ export function AgentConversation({
   const updateStagedChangesEffect = useEffectEvent(updateStagedChanges);
 
   useEffect(() => {
-    let stopTurnUpdates: (() => void) | undefined;
-    let stopPermissionUpdates: (() => void) | undefined;
-    let stopStageUpdates: (() => void) | undefined;
-    let stopConnectionUpdates: (() => void) | undefined;
+    let stopUpdates: (() => void)[] = [];
     let isDisposed = false;
-    void Promise.all([
+    void Promise.allSettled([
       onAgentTurnUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.sessionId) return;
@@ -1180,37 +1185,40 @@ export function AgentConversation({
       onAgentConnectionState((event) => {
         if (event.connectionId === connection.connectionId) onConnectionEnd(event);
       }),
-    ]).then(
-      ([stopTurns, stopPermissions, stopStages, stopConnections]) => {
-        if (isDisposed) {
-          stopTurns();
-          stopPermissions();
-          stopStages();
-          stopConnections();
-        } else {
-          stopTurnUpdates = stopTurns;
-          stopPermissionUpdates = stopPermissions;
-          stopStageUpdates = stopStages;
-          stopConnectionUpdates = stopConnections;
+    ]).then((results) => {
+      const activeStops: (() => void)[] = [];
+      let failure: unknown;
+      let hasFailure = false;
+      for (const result of results) {
+        if (result.status === "fulfilled") activeStops.push(result.value);
+        else {
+          hasFailure = true;
+          failure ??= result.reason;
         }
-      },
-      (error: unknown) => {
-        if (!isDisposed) {
-          setMessages((current) => [
-            ...current,
-            { id: `listener-${crypto.randomUUID()}`, role: "agent", text: `Studio lost the agent event stream. ${errorMessage(error)}` },
-          ]);
-        }
-      },
-    );
+      }
+      if (isDisposed || hasFailure) {
+        for (const stop of activeStops) stop();
+      } else {
+        stopUpdates = activeStops;
+        setEventStreamState((current) =>
+          current.status === "ready" ? current : { status: "ready" },
+        );
+      }
+      if (!isDisposed && hasFailure) {
+        setEventStreamState({ status: "error", message: errorMessage(failure) });
+      }
+    });
     return () => {
       isDisposed = true;
-      stopTurnUpdates?.();
-      stopPermissionUpdates?.();
-      stopStageUpdates?.();
-      stopConnectionUpdates?.();
+      for (const stop of stopUpdates) stop();
     };
-  }, [connection.connectionId, onConnectionEnd]);
+  }, [connection.connectionId, onConnectionEnd, eventStreamAttempt]);
+
+  function retryEventStream() {
+    if (eventStreamState.status === "retrying") return;
+    setEventStreamState({ status: "retrying" });
+    setEventStreamAttempt((attempt) => attempt + 1);
+  }
 
   async function stopTurn() {
     if (!activeTurn) return;
@@ -2014,6 +2022,36 @@ export function AgentConversation({
               Thread metadata was not saved. {threadMetadataError}
             </p>
           )}
+        </div>
+      )}
+
+      {eventStreamState.status !== "ready" && (
+        <div
+          className="agent-session-failure"
+          role={eventStreamState.status === "error" ? "alert" : "status"}
+        >
+          <CircleAlert size={16} aria-hidden="true" />
+          <div>
+            <strong>
+              {eventStreamState.status === "error"
+                ? "Agent updates paused"
+                : "Reconnecting agent updates"}
+            </strong>
+            <p title={eventStreamState.status === "error" ? eventStreamState.message : undefined}>
+              {eventStreamState.status === "error"
+                ? eventStreamState.message
+                : "Opening a fresh event stream for this thread."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn"
+            disabled={eventStreamState.status === "retrying"}
+            onClick={retryEventStream}
+          >
+            <RotateCcw size={14} aria-hidden="true" />
+            {eventStreamState.status === "retrying" ? "Reconnecting..." : "Retry updates"}
+          </button>
         </div>
       )}
 

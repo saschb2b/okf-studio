@@ -982,6 +982,13 @@ describe("OKF Studio app", () => {
     vi.spyOn(ipc, "respondAgentPermission").mockRejectedValueOnce(new Error("Approval failed"));
     await user.click(within(permissionCard).getByRole("button", { name: "Allow once" }));
     expect(await within(permissionCard).findByRole("alert")).toHaveTextContent("Approval failed");
+    await user.click(screen.getByRole("button", {
+      name: "Start another thread with Research Harness",
+    }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close thread surface" }));
+    await user.click(screen.getByRole("button", { name: "Close thread" }));
+    expect(within(permissionCard).getByRole("alert")).toHaveTextContent("Approval failed");
     await user.click(within(permissionCard).getByRole("button", { name: "Allow once" }));
     expect(
       await screen.findByText(/Browser ACP received:.*Edit: refresh the index/),

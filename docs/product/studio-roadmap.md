@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T12:00:00Z
+timestamp: 2026-07-14T12:20:00Z
 ---
 
 # Outcome
@@ -220,7 +220,7 @@ The persistent-band audit assigns one owner to each identity: the global switche
   - [x] Retain an unexpected process failure at panel level after its connection disappears. Keep the reason beside **Review connections** and **Dismiss**, and clear it when the same profile reconnects.
   - [x] Give session event-stream failures their own retryable thread notice instead of presenting them as agent prose.
   - [x] Keep turn-control failures beside Stop or Retry without duplicating terminal turn records.
-  - [ ] Keep permission-response failures inside their request card while that request remains active.
+  - [x] Keep permission-response failures inside their request card while that request remains active.
   - [ ] Move staging operation failures into the staged-review or proposal surface that owns the retry; keep validation failures inside validation.
 - [ ] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
 - [ ] Verify keyboard order, focus return, popover focus, horizontal switcher scrolling, 24px targets, text reflow, and visible focus at narrow and wide widths. No task-critical action may exist only on hover.

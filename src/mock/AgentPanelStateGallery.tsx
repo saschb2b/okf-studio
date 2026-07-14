@@ -16,6 +16,8 @@ import {
   Wrench,
 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
+import type { AgentSessionConfigOption } from "../agent/connection.ts";
+import { AgentSessionControls } from "../components/AgentSessionControls.tsx";
 import "./AgentPanelStateGallery.css";
 
 const SCENARIOS = [
@@ -24,6 +26,11 @@ const SCENARIOS = [
   { id: "stale-history", label: "Stale history" },
   { id: "no-history", label: "No history" },
   { id: "limited-agent", label: "Limited agent" },
+  { id: "session-controls", label: "Session controls" },
+  { id: "session-one-option", label: "One session option" },
+  { id: "session-dynamic", label: "Dynamic option removal" },
+  { id: "session-pending", label: "Session change pending" },
+  { id: "session-failure", label: "Session change failure" },
   { id: "active-queue", label: "Active turn and queue" },
   { id: "permission", label: "Permission request" },
   { id: "staged", label: "Staged changes" },
@@ -265,6 +272,33 @@ function ScenarioBody({ scenario }: { scenario: Exclude<ScenarioId, "first-use" 
   if (scenario === "stale-history") return <StaleHistory />;
   if (scenario === "no-history") return <NoHistory />;
   if (scenario === "limited-agent") return <LimitedAgent />;
+  if (scenario === "session-controls") return <SessionControls />;
+  if (scenario === "session-one-option") {
+    const model = GALLERY_CONFIG_OPTIONS.find((option) => option.id === "model");
+    const oneOption = model?.type === "select" ? [{
+      ...model,
+      groups: [{
+        id: "available",
+        name: "Available model",
+        options: [model.groups[0].options[0]],
+      }],
+    }] : [];
+    return <SessionControls title="One advertised choice" options={oneOption} />;
+  }
+  if (scenario === "session-dynamic") {
+    return (
+      <SessionControls
+        title="Reasoning option removed"
+        options={GALLERY_CONFIG_OPTIONS.filter((option) => option.id !== "reasoning")}
+      />
+    );
+  }
+  if (scenario === "session-pending") {
+    return <SessionControls title="Model change pending" configState="pending" />;
+  }
+  if (scenario === "session-failure") {
+    return <SessionControls title="Model change failed" configState="failure" />;
+  }
   if (scenario === "active-queue") return <ActiveQueue />;
   if (scenario === "permission") return <PermissionRequest />;
   return <StagedChanges />;
@@ -332,11 +366,103 @@ function NoHistory() {
 
 function LimitedAgent() {
   return (
-    <ConversationLayout>
+    <ConversationLayout composer={<Composer configState="none" />}>
       <div className="agent-conversation__welcome">
         <Bot size={24} aria-hidden="true" />
         <h3>Ask about this bundle</h3>
         <p>This agent accepts text only. History, images, and embedded context are not advertised, so those controls stay absent.</p>
+      </div>
+    </ConversationLayout>
+  );
+}
+
+const GALLERY_CONFIG_OPTIONS: readonly AgentSessionConfigOption[] = [
+  {
+    id: "mode",
+    name: "Mode",
+    description: "How the agent approaches the next turn.",
+    category: "mode",
+    type: "select",
+    currentValue: "agent",
+    groups: [{
+      id: null,
+      name: null,
+      options: [
+        { value: "agent", name: "Agent", description: "Use tools and make changes." },
+        { value: "plan", name: "Plan", description: "Prepare a plan before acting." },
+      ],
+    }],
+  },
+  {
+    id: "model",
+    name: "Model",
+    description: "The model selected for this session.",
+    category: "model",
+    type: "select",
+    currentValue: "sol",
+    groups: [
+      {
+        id: "recommended",
+        name: "Recommended",
+        options: [
+          { value: "sol", name: "GPT-5.6-Sol", description: "Balanced agent model." },
+          { value: "terra", name: "GPT-5.6-Terra", description: "Detailed agent model." },
+        ],
+      },
+      {
+        id: "other",
+        name: "Other models",
+        options: [
+          { value: "luna", name: "GPT-5.6-Luna", description: "Fast agent model." },
+          { value: "gpt-5.5", name: "GPT-5.5", description: "Previous generation." },
+          { value: "gpt-5.4", name: "GPT-5.4", description: null },
+          { value: "gpt-5.4-mini", name: "GPT-5.4-Mini", description: null },
+        ],
+      },
+    ],
+  },
+  {
+    id: "reasoning",
+    name: "Reasoning",
+    description: "Reasoning depth for the next turn.",
+    category: "thought-level",
+    type: "select",
+    currentValue: "high",
+    groups: [{
+      id: null,
+      name: null,
+      options: ["low", "medium", "high", "xhigh", "max"].map((value) => ({
+        value,
+        name: value === "xhigh" ? "Extra high" : `${value[0].toUpperCase()}${value.slice(1)}`,
+        description: value === "high" ? "Greater depth for complex work." : null,
+      })),
+    }],
+  },
+  {
+    id: "concise",
+    name: "Concise responses",
+    description: "Prefer shorter responses when supported.",
+    category: "_response_style",
+    type: "boolean",
+    currentValue: false,
+  },
+];
+
+function SessionControls({
+  title = "Configure the next turn",
+  options = GALLERY_CONFIG_OPTIONS,
+  configState = "ready",
+}: {
+  title?: string;
+  options?: readonly AgentSessionConfigOption[];
+  configState?: "ready" | "pending" | "failure";
+}) {
+  return (
+    <ConversationLayout composer={<Composer configState={configState} configOptions={options} />}>
+      <div className="agent-conversation__welcome">
+        <Bot size={24} aria-hidden="true" />
+        <h3>{title}</h3>
+        <p>Every visible choice is advertised by this fixture session.</p>
       </div>
     </ConversationLayout>
   );
@@ -425,10 +551,14 @@ function Composer({
   children,
   active = false,
   queued = false,
+  configState = "none",
+  configOptions = GALLERY_CONFIG_OPTIONS,
 }: {
   children?: ReactNode;
   active?: boolean;
   queued?: boolean;
+  configState?: "none" | "ready" | "pending" | "failure";
+  configOptions?: readonly AgentSessionConfigOption[];
 }) {
   return (
     <div className="agent-composer">
@@ -443,8 +573,25 @@ function Composer({
           disabled={queued}
         />
         <div className="agent-composer__actions">
-          <button type="button" className="btn ghost" aria-label="Add context or sources"><Plus size={16} aria-hidden="true" /></button>
-          <span className="agent-composer__status">Scoped tools</span>
+          <div className="agent-composer__leading-actions">
+            <button type="button" className="btn ghost" aria-label="Add context or sources"><Plus size={16} aria-hidden="true" /></button>
+            <span className="agent-composer__status">Scoped tools</span>
+          </div>
+          {configState !== "none" && (
+            <AgentSessionControls
+              options={configOptions}
+              pendingOptionId={configState === "pending" ? "model" : null}
+              failure={configState === "failure" ? {
+                optionId: "model",
+                requestedValue: { type: "select", value: "terra" },
+                message: "The agent rejected the model switch.",
+              } : null}
+              favoriteScope="gallery"
+              disabled={false}
+              onChange={() => undefined}
+              onRetry={() => undefined}
+            />
+          )}
           {active ? (
             <div className="agent-composer__turn-actions">
               <button type="button" className="btn primary" disabled={queued}>

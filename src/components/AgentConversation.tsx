@@ -14,6 +14,8 @@ import type {
   AgentPermissionEvent,
   AgentPermissionOptionInfo,
   AgentLoadedSessionInfo,
+  AgentSessionConfigOption,
+  AgentSessionConfigValueInput,
   AgentSessionInfo,
   AgentSessionHistoryInfo,
   AgentStagedChangesInfo,
@@ -50,6 +52,7 @@ import {
   newAgentSession,
   onAgentConnectionState,
   onAgentPermissionUpdate,
+  onAgentSessionConfigUpdate,
   onAgentStageUpdate,
   onAgentTurnUpdate,
   setAgentWriteGrant,
@@ -64,11 +67,16 @@ import {
   respondAgentPermission,
   restoreAgentStagedCheckpoint,
   saveAgentThreadMetadata,
+  setAgentSessionConfigOption,
 } from "../ipc.ts";
 import type { AgentSourceInput } from "../ipc.ts";
 import { renderMarkdown } from "../markdown.ts";
 import type { Issue } from "../types.ts";
 import { BundleProposalPreview } from "./BundleProposalPreview.tsx";
+import {
+  AgentSessionControls,
+  type AgentSessionConfigFailure,
+} from "./AgentSessionControls.tsx";
 import "./AgentConversation.css";
 
 export interface AgentConversationProps {
@@ -173,6 +181,15 @@ type EventStreamState =
   | { status: "ready" }
   | { status: "retrying" }
   | { status: "error"; message: string };
+type DraftSessionState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string };
+interface PendingSessionConfig {
+  optionId: string;
+  requestId: number;
+  requestedValue: AgentSessionConfigValueInput;
+}
 type StageFailure =
   | { owner: "grant"; message: string }
   | { owner: "proposal"; message: string }
@@ -903,6 +920,17 @@ export function AgentConversation({
   const [history, setHistory] = useState<HistoryState>({ status: "closed" });
   const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
   const [savedThread, setSavedThread] = useState<SavedThreadState>({ status: "none" });
+  const [savedThreadResolved, setSavedThreadResolved] = useState(false);
+  const [draftSessionState, setDraftSessionState] = useState<DraftSessionState>({
+    status: "idle",
+  });
+  const [sessionConfigOptions, setSessionConfigOptions] = useState<
+    readonly AgentSessionConfigOption[]
+  >([]);
+  const [pendingSessionConfig, setPendingSessionConfig] =
+    useState<PendingSessionConfig | null>(null);
+  const [sessionConfigFailure, setSessionConfigFailure] =
+    useState<AgentSessionConfigFailure | null>(null);
   const [eventStreamState, setEventStreamState] = useState<EventStreamState>({
     status: "ready",
   });
@@ -947,6 +975,14 @@ export function AgentConversation({
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
   const sessionRef = useRef<AgentSessionInfo | null>(null);
+  const draftSessionPromiseRef = useRef<{
+    bundleRoot: string;
+    promise: Promise<AgentSessionInfo>;
+  } | null>(null);
+  const sessionConfigRequestRef = useRef(0);
+  const draftSessionRequestRef = useRef(0);
+  const bundleRootRef = useRef(bundleRoot);
+  const connectionIdRef = useRef(connection.connectionId);
   const completedTurnsRef = useRef(new Set<string>());
   const failedTurnsRef = useRef(new Set<string>());
   const acceptedDraftsRef = useRef(new Map<string, PromptDraft>());
@@ -958,6 +994,9 @@ export function AgentConversation({
   const stagedDiscardRef = useRef<HTMLButtonElement>(null);
   const queuedEditRef = useRef<HTMLButtonElement>(null);
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
+
+  bundleRootRef.current = bundleRoot;
+  connectionIdRef.current = connection.connectionId;
 
   useEffect(() => {
     const messagesElement = messagesRef.current;
@@ -972,8 +1011,10 @@ export function AgentConversation({
   }, [savedThread.status]);
 
   async function loadSavedThread() {
+    setSavedThreadResolved(false);
     if (!bundleRoot || !supportsHistory) {
       setSavedThread({ status: "none" });
+      setSavedThreadResolved(true);
       return;
     }
     setSavedThread({ status: "loading" });
@@ -982,6 +1023,8 @@ export function AgentConversation({
       setSavedThread(metadata.length > 0 ? { status: "ready", metadata } : { status: "none" });
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error) });
+    } finally {
+      setSavedThreadResolved(true);
     }
   }
 
@@ -990,6 +1033,17 @@ export function AgentConversation({
   useEffect(() => {
     void loadSavedThreadEffect();
   }, [bundleRoot, connection.profileId, supportsHistory]);
+
+  useEffect(() => {
+    sessionRef.current = null;
+    draftSessionPromiseRef.current = null;
+    draftSessionRequestRef.current += 1;
+    sessionConfigRequestRef.current += 1;
+    setSessionConfigOptions([]);
+    setPendingSessionConfig(null);
+    setSessionConfigFailure(null);
+    setDraftSessionState({ status: "idle" });
+  }, [bundleRoot, connection.connectionId]);
 
   function persistThreadMetadata(
     session: AgentSessionInfo,
@@ -1015,6 +1069,74 @@ export function AgentConversation({
     return operation;
   }
 
+  function adoptSession(session: AgentSessionInfo) {
+    sessionConfigRequestRef.current += 1;
+    sessionRef.current = session;
+    setSessionConfigOptions(session.configOptions);
+    setPendingSessionConfig(null);
+    setSessionConfigFailure(null);
+    setDraftSessionState({ status: "idle" });
+    setStagedChanges(session.stagedChanges);
+  }
+
+  async function ensureSession(): Promise<AgentSessionInfo> {
+    if (!bundleRoot) throw new Error("Open an OKF bundle first.");
+    const current = sessionRef.current;
+    if (current?.bundleRoot === bundleRoot) return current;
+    const pending = draftSessionPromiseRef.current;
+    if (pending?.bundleRoot === bundleRoot) return pending.promise;
+
+    const requestedRoot = bundleRoot;
+    const requestedConnectionId = connection.connectionId;
+    const requestId = ++draftSessionRequestRef.current;
+    setDraftSessionState({ status: "loading" });
+    const promise = newAgentSession(requestedConnectionId, requestedRoot);
+    draftSessionPromiseRef.current = { bundleRoot: requestedRoot, promise };
+    try {
+      const session = await promise;
+      if (bundleRootRef.current !== requestedRoot ||
+        connectionIdRef.current !== requestedConnectionId) {
+        throw new Error("The active bundle or agent changed while the session was starting.");
+      }
+      const activeSession = sessionRef.current;
+      if (activeSession?.bundleRoot === requestedRoot) return activeSession;
+      adoptSession(session);
+      return session;
+    } catch (error: unknown) {
+      if (bundleRootRef.current === requestedRoot &&
+        connectionIdRef.current === requestedConnectionId) {
+        setDraftSessionState({ status: "error", message: errorMessage(error) });
+      }
+      throw error;
+    } finally {
+      if (draftSessionRequestRef.current === requestId) {
+        draftSessionPromiseRef.current = null;
+      }
+    }
+  }
+
+  const prepareDraftSessionEffect = useEffectEvent(async () => {
+    try {
+      await ensureSession();
+    } catch {
+      // The bounded retry state is rendered beside the composer.
+    }
+  });
+
+  useEffect(() => {
+    const requiresAuth = !connection.authenticated && connection.authMethods.length > 0;
+    if (!bundleRoot || requiresAuth || !savedThreadResolved || savedThread.status !== "none" ||
+      sessionRef.current?.bundleRoot === bundleRoot) return;
+    void prepareDraftSessionEffect();
+  }, [
+    bundleRoot,
+    connection.authenticated,
+    connection.authMethods.length,
+    connection.connectionId,
+    savedThread.status,
+    savedThreadResolved,
+  ]);
+
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
     async (_previous, { draft, source, retryTurnId }) => {
       const { text, concepts, sources: draftSources } = draft;
@@ -1027,9 +1149,8 @@ export function AgentConversation({
       };
       try {
         let session = sessionRef.current;
-        let startsNewSession = false;
+        const startsNewSession = session?.bundleRoot !== bundleRoot || messages.length === 0;
         if (session?.bundleRoot !== bundleRoot) {
-          startsNewSession = true;
           setUsage(null);
           setStagedChanges(null);
           clearStagedValidation();
@@ -1038,9 +1159,7 @@ export function AgentConversation({
           setExpandedDiff(null);
           setRejectingStagedPath(null);
           setSelectingHunk(null);
-          session = await newAgentSession(connection.connectionId, bundleRoot);
-          sessionRef.current = session;
-          setStagedChanges(session.stagedChanges);
+          session = await ensureSession();
         }
         const contextPaths = concepts.map((concept) => `${concept.id}.md`);
         const sources = draftSources.map(
@@ -1193,6 +1312,25 @@ export function AgentConversation({
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.changes.sessionId) return;
         updateStagedChangesEffect(event.changes);
+      }),
+      onAgentSessionConfigUpdate((event) => {
+        if (event.connectionId !== connection.connectionId) return;
+        const session = sessionRef.current;
+        if (session?.sessionId !== event.sessionId) return;
+        sessionRef.current = { ...session, configOptions: event.configOptions };
+        setSessionConfigOptions(event.configOptions);
+        setPendingSessionConfig((current) => {
+          if (!current) return null;
+          return event.configOptions.some((option) => option.id === current.optionId)
+            ? current
+            : null;
+        });
+        setSessionConfigFailure((current) => {
+          if (!current) return null;
+          return event.configOptions.some((option) => option.id === current.optionId)
+            ? current
+            : null;
+        });
       }),
       onAgentConnectionState((event) => {
         if (event.connectionId === connection.connectionId) onConnectionEnd(event);
@@ -1839,7 +1977,7 @@ export function AgentConversation({
     title: string,
     workflow: AgentThreadWorkflow,
   ) {
-    sessionRef.current = loaded;
+    adoptSession(loaded);
     setMessages(loaded.messages.map((message, index) => ({
       id: `history-${sessionId}-${index}`,
       role: message.role,
@@ -1851,7 +1989,6 @@ export function AgentConversation({
     setPendingPermissions([]);
     setUsage(null);
     setQueuedPrompt(null);
-    setStagedChanges(loaded.stagedChanges);
     setStageError(null);
     setStageNotice(null);
     setExpandedDiff(null);
@@ -1956,6 +2093,11 @@ export function AgentConversation({
       );
       if (!metadata) return;
       sessionRef.current = null;
+      sessionConfigRequestRef.current += 1;
+      setSessionConfigOptions([]);
+      setPendingSessionConfig(null);
+      setSessionConfigFailure(null);
+      setDraftSessionState({ status: "idle" });
       completedTurnsRef.current.clear();
       failedTurnsRef.current.clear();
       acceptedDraftsRef.current.clear();
@@ -2014,6 +2156,47 @@ export function AgentConversation({
     });
     setRetryingTurnId(turnId);
     startTransition(() => submitPrompt({ draft, source: "retry", retryTurnId: turnId }));
+  }
+
+  async function changeSessionConfig(
+    option: AgentSessionConfigOption,
+    requestedValue: AgentSessionConfigValueInput,
+  ) {
+    const session = sessionRef.current;
+    if (!session || pendingSessionConfig) return;
+    const requestId = ++sessionConfigRequestRef.current;
+    setPendingSessionConfig({ optionId: option.id, requestId, requestedValue });
+    setSessionConfigFailure(null);
+    try {
+      const snapshot = await setAgentSessionConfigOption(
+        connection.connectionId,
+        session.sessionId,
+        option.id,
+        requestedValue,
+      );
+      if (sessionRef.current?.sessionId !== session.sessionId ||
+        sessionConfigRequestRef.current !== requestId) return;
+      sessionRef.current = { ...session, configOptions: snapshot.configOptions };
+      setSessionConfigOptions(snapshot.configOptions);
+      setPendingSessionConfig(null);
+    } catch (error: unknown) {
+      if (sessionRef.current?.sessionId !== session.sessionId ||
+        sessionConfigRequestRef.current !== requestId) return;
+      setPendingSessionConfig(null);
+      setSessionConfigFailure({
+        optionId: option.id,
+        requestedValue,
+        message: errorMessage(error),
+      });
+    }
+  }
+
+  function retrySessionConfig() {
+    if (!sessionConfigFailure) return;
+    const option = sessionConfigOptions.find(
+      (candidate) => candidate.id === sessionConfigFailure.optionId,
+    );
+    if (option) void changeSessionConfig(option, sessionConfigFailure.requestedValue);
   }
 
   return (
@@ -2760,6 +2943,21 @@ export function AgentConversation({
                 </button>
               </div>
             )}
+            {draftSessionState.status === "error" && (
+              <div className="agent-composer__error-row">
+                <p className="agent-composer__error" role="alert">
+                  Session choices unavailable. {draftSessionState.message}
+                </p>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => void ensureSession().catch(() => undefined)}
+                >
+                  <RotateCcw size={14} aria-hidden="true" />
+                  Retry session
+                </button>
+              </div>
+            )}
             <div className="agent-composer__input-shell">
               <label className="sr-only" htmlFor={promptInputId}>Message the agent</label>
               <textarea
@@ -2829,6 +3027,15 @@ export function AgentConversation({
                     </span>
                   )}
                 </div>
+                <AgentSessionControls
+                  options={sessionConfigOptions}
+                  pendingOptionId={pendingSessionConfig?.optionId ?? null}
+                  failure={sessionConfigFailure}
+                  favoriteScope={connection.profileId}
+                  disabled={isSubmitting || queuedPrompt !== null || draftSessionState.status === "loading"}
+                  onChange={(option, value) => void changeSessionConfig(option, value)}
+                  onRetry={retrySessionConfig}
+                />
                 {activeTurn ? (
                   <div className="agent-composer__turn-actions">
                     <button

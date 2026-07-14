@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-14T15:45:00Z
+timestamp: 2026-07-14T16:00:00Z
 ---
 
 # Decision
@@ -30,6 +30,8 @@ ACP standardizes capability negotiation, agent-owned auth, sessions, streaming, 
 ACP does not replace an external agent's system prompt. The native Studio Agent guarantees the packaged [OKF skill](../../.agents/skills/okf/SKILL.md), system prompt, scoped tools, validation, and staged writes. External agents receive bundle cwd, explicit resources, client permissions, and Studio OKF tools over MCP where supported. Studio labels first-turn skill material as client context and never claims it changed the external agent's system instructions.
 
 Studio advertises ACP v1 session configuration support for select and boolean options. New and loaded session responses cross Rust as a complete ordered snapshot after reduction. Rust accepts at most 64 options, 64 groups per selector, and 512 values per selector; IDs, names, descriptions, categories, group labels, and value labels are non-empty where required, control-safe, and capped at 512 characters. Duplicate option and value IDs keep their first occurrence. A select is omitted when its confirmed current value is absent from the accepted values, and a future unknown option kind is omitted without hiding other usable options. Unknown semantic categories lose only their category when unsafe; they do not change provider behavior.
+
+After saved-work discovery resolves, the frontend prepares one draft session for a fresh thread so the agent's choices can appear before its first prompt. Resume adopts the loaded session and its own snapshot instead. A connection, bundle, or thread change invalidates an in-flight draft or configuration response.
 
 The connection actor retains one confirmed option snapshot per session. `session/set_config_option` accepts only an advertised option, matching value type, and advertised select value. Actor serialization prevents overlapping changes on one connection. Every successful response replaces the full snapshot, including options added or removed as a consequence of another selection. An agent-owned `config_option_update` also replaces the full session snapshot and emits a separate session event even when no turn is active. The webview never invents Claude, Codex, or local-provider model names and cannot send an arbitrary hidden option through forged IPC.
 

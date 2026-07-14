@@ -1587,6 +1587,13 @@
   }
 }
 
+@container (max-width: 600px) {
+  .agent-composer__actions:has(.agent-session-controls) .agent-composer__status,
+  .agent-composer__actions:has(.agent-session-controls) .agent-composer__usage {
+    display: none;
+  }
+}
+
 .agent-conversation__write-grant--on {
   color: var(--accent);
 }

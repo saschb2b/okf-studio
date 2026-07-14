@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T15:45:00Z
+timestamp: 2026-07-14T16:00:00Z
 ---
 
 # Outcome
@@ -239,14 +239,14 @@ Model, mode, reasoning effort, and related choices belong to the active agent se
 
 - [ ] Advertise ACP client support for bounded select and boolean session config options. Capture the complete ordered option set returned by new, loaded, resumed, and future forked sessions.
 - [x] Reduce every option, value, group, description, category, and current value through Rust limits before it reaches the webview. Unknown categories remain usable; unknown kinds remain safely absent.
-- [ ] Render current mode, model, thought level, model configuration, and custom options only when advertised. Use the semantic category for icon, accessible name, preferred order, and keyboard action, never to infer provider behavior.
+- [x] Render current mode, model, thought level, model configuration, and custom options only when advertised. Use the semantic category for icon, accessible name, preferred order, and keyboard action, never to infer provider behavior.
 - [x] Send `session/set_config_option` through the owning session actor. Serialize overlapping changes, replace the full option snapshot from every response, and accept agent-initiated full replacements from `session/update`.
 - [ ] Use legacy ACP session modes only when the session has no config option set. Never render the same mode through both contracts.
-- [ ] Keep the last confirmed selection visible while a change is pending or fails. Put Retry or the bounded error beside the selector; a failed model switch must not look successful.
-- [ ] Support grouped, searchable pickers with option descriptions. Add local favorites and keyboard cycling without changing the agent's advertised order or sending favorite metadata to the agent.
+- [x] Keep the last confirmed selection visible while a change is pending or fails. Put Retry or the bounded error beside the selector; a failed model switch must not look successful.
+- [x] Support grouped, searchable pickers with option descriptions. Add local favorites and keyboard cycling without changing the agent's advertised order or sending favorite metadata to the agent.
 - [ ] Define the native Studio Agent's mode, model, and reasoning controls through the same frontend shape so the composer does not fork by provider path.
-- [ ] At 360px, keep mode and the primary model discoverable and move lower-priority or custom options into one labelled configuration popover. No current value may disappear without an accessible summary.
-- [ ] Extend the deterministic gallery with no-options, one-option, long grouped models, dynamic reasoning removal, boolean options, pending change, stale response, and failure recovery states.
+- [x] At 360px, keep mode and the primary model discoverable and move lower-priority or custom options into one labelled configuration popover. No current value may disappear without an accessible summary.
+- [x] Extend the deterministic gallery with no-options, one-option, long grouped models, dynamic reasoning removal, boolean options, pending change, stale response, and failure recovery states.
 
 Gate: Claude Agent, Codex, a no-option fake agent, a dynamic-option fake agent, and Studio Agent expose only supported choices; switching one option cannot leave another selector stale.
 

@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-14T09:30:00Z
+timestamp: 2026-07-14T15:45:00Z
 ---
 
 # Command & event surface
@@ -24,6 +24,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `disconnect_agent(connection_id)` / `authenticate_agent(connection_id, method_id)` | Stop the owned connection process tree or invoke one exact agent-advertised authentication method. |
 | `new_agent_session(connection_id, bundle_root)` | Create one session at the canonical active bundle root and attach the scoped OKF MCP server where supported. |
 | `list_agent_sessions(connection_id, bundle_root)` / `load_agent_session(connection_id, bundle_root, session_id)` | List only agent-owned sessions whose reported working directory matches the active bundle, then load only an ID from that filtered result. |
+| `set_agent_session_config_option(connection_id, session_id, config_id, value)` | Change only a select or boolean value present in the Rust-retained session snapshot, then return the agent's complete bounded replacement snapshot. |
 | `prompt_agent(connection_id, session_id, text, context_paths, sources)` / `cancel_agent_turn(connection_id, session_id, turn_id)` | Submit one bounded prompt with explicit context and sources, or cancel the exact active turn. |
 | `respond_agent_permission(request_id, option_id, remember_for_thread)` | Resolve one pending permission with an advertised choice or denial. A remembered decision matches only the exact bounded request in that live thread. |
 | `set_agent_write_grant(connection_id, session_id, granted, mode)` / `set_agent_stage_mode(connection_id, session_id, mode)` | Grant or revoke reviewed writes for one thread and select Enhance or fresh-bundle staging. Unattended external grants fail closed without verified enforcement. |
@@ -52,6 +53,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `bundle-changed` | The Concept ID(s) and bundle root affected by a filesystem change. |
 | `agent-connection-state` | One connection's terminal disconnected or failed state with a bounded diagnostic. |
 | `agent-turn-update` | Bounded text, plan, tool lifecycle, usage, and terminal turn updates keyed by connection, session, and turn. |
+| `agent-session-config-update` | A complete bounded replacement of the agent-advertised options for one connection and session. It is independent of turn state. |
 | `agent-permission-update` | A bounded permission request keyed by connection, session, turn, and request ID. Raw tool arguments do not cross this event. |
 | `agent-stage-update` | The current staged revision metadata after a reported or native proposal, discard, grant change, apply, create, or restore. File bodies do not cross this event. |
 | `agent-install-progress` | Downloaded and total bytes for one named managed runtime, package, or dependency installation phase. |

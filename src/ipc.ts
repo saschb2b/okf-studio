@@ -29,6 +29,10 @@ import type {
   AgentLoadedSessionInfo,
   AgentSessionInfo,
   AgentSessionHistoryPage,
+  AgentSessionConfigEvent,
+  AgentSessionConfigOption,
+  AgentSessionConfigSnapshot,
+  AgentSessionConfigValueInput,
   AgentStagedApplyInfo,
   AgentStagedChangesInfo,
   AgentStagedCreateInfo,
@@ -118,6 +122,8 @@ type AgentPermissionHandler = (event: AgentPermissionEvent) => void;
 const agentPermissionHandlers = new Set<AgentPermissionHandler>();
 type AgentStageHandler = (event: AgentStageEvent) => void;
 const agentStageHandlers = new Set<AgentStageHandler>();
+type AgentSessionConfigHandler = (event: AgentSessionConfigEvent) => void;
+const agentSessionConfigHandlers = new Set<AgentSessionConfigHandler>();
 type MockStagedFile = AgentStagedFileInfo & {
   content: string;
   hunkSelected: boolean;
@@ -141,6 +147,7 @@ interface MockAgentSession {
   title: string;
   updatedAt: string;
   messages: AgentLoadedSessionInfo["messages"];
+  configOptions: readonly AgentSessionConfigOption[];
 }
 const mockAgentSessions = new Map<string, MockAgentSession>();
 const mockPermissionResponses = new Map<
@@ -501,6 +508,71 @@ function assertConnectionBundle(connection: AgentConnectionInfo, bundleRoot: str
   }
 }
 
+function mockSessionConfigOptions(
+  connection: AgentConnectionInfo,
+): readonly AgentSessionConfigOption[] {
+  const modelName = connection.agent?.title ?? connection.agent?.name ?? "Browser model";
+  return [
+    {
+      id: "mode",
+      name: "Mode",
+      description: "How the agent approaches the next turn.",
+      category: "mode",
+      type: "select",
+      currentValue: "agent",
+      groups: [{
+        id: null,
+        name: null,
+        options: [
+          { value: "agent", name: "Agent", description: "Use the agent's advertised tools." },
+          { value: "plan", name: "Plan", description: "Prepare a plan before acting." },
+        ],
+      }],
+    },
+    {
+      id: "model",
+      name: "Model",
+      description: "The model selected by the agent for this session.",
+      category: "model",
+      type: "select",
+      currentValue: "browser-primary",
+      groups: [{
+        id: "available",
+        name: "Available models",
+        options: [
+          { value: "browser-primary", name: modelName, description: "Current session model." },
+          { value: "browser-fast", name: "Browser fast", description: "Lower-latency fixture model." },
+        ],
+      }],
+    },
+    {
+      id: "reasoning",
+      name: "Reasoning",
+      description: "Reasoning depth for the next turn.",
+      category: "thought-level",
+      type: "select",
+      currentValue: "high",
+      groups: [{
+        id: null,
+        name: null,
+        options: [
+          { value: "low", name: "Low", description: "Faster responses for direct work." },
+          { value: "medium", name: "Medium", description: "Balanced reasoning depth." },
+          { value: "high", name: "High", description: "More reasoning for complex work." },
+        ],
+      }],
+    },
+    {
+      id: "concise",
+      name: "Concise responses",
+      description: "Prefer shorter agent responses when supported.",
+      category: "_response_style",
+      type: "boolean",
+      currentValue: false,
+    },
+  ];
+}
+
 export async function newAgentSession(
   connectionId: string,
   bundleRoot: string,
@@ -531,6 +603,7 @@ export async function newAgentSession(
       sessionId,
       ...stagedState,
     },
+    configOptions: mockSessionConfigOptions(connection),
   };
   mockStagedChanges.set(session.sessionId, stagedState);
   mockAgentSessions.set(session.sessionId, {
@@ -539,6 +612,7 @@ export async function newAgentSession(
     title: "Untitled session",
     updatedAt: new Date().toISOString(),
     messages: [],
+    configOptions: session.configOptions,
   });
   return session;
 }
@@ -627,6 +701,7 @@ export async function loadAgentSession(
       bundleRoot,
       messages: liveSession.messages,
       stagedChanges,
+      configOptions: liveSession.configOptions,
     };
   }
   return {
@@ -634,11 +709,54 @@ export async function loadAgentSession(
     sessionId,
     bundleRoot,
     stagedChanges,
+    configOptions: mockSessionConfigOptions(connection),
     messages: [
       { role: "user", text: "Trace the evidence behind the bundle's product principles." },
       { role: "agent", text: "I traced the principles through the product overview and architecture concepts." },
     ],
   };
+}
+
+export async function setAgentSessionConfigOption(
+  connectionId: string,
+  sessionId: string,
+  configId: string,
+  value: AgentSessionConfigValueInput,
+): Promise<AgentSessionConfigSnapshot> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<AgentSessionConfigSnapshot>("set_agent_session_config_option", {
+      connectionId,
+      sessionId,
+      configId,
+      value,
+    });
+  }
+  const connection = activeAgentConnectionsById.get(connectionId);
+  if (!connection) throw new Error("Agent connection was not found.");
+  const session = mockAgentSessions.get(sessionId);
+  if (!session) throw new Error("Agent session was not found on this connection.");
+  const selected = session.configOptions.find((option) => option.id === configId);
+  if (!selected) throw new Error("The agent did not advertise this session option.");
+  let replacement: AgentSessionConfigOption;
+  if (selected.type === "select" && value.type === "select") {
+    const advertised = selected.groups
+      .flatMap((group) => group.options)
+      .some((option) => option.value === value.value);
+    if (!advertised) {
+      throw new Error("The agent did not advertise this value for the session option.");
+    }
+    replacement = { ...selected, currentValue: value.value };
+  } else if (selected.type === "boolean" && value.type === "boolean") {
+    replacement = { ...selected, currentValue: value.value };
+  } else {
+    throw new Error("The session option value has the wrong type.");
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  session.configOptions = session.configOptions.map((option) =>
+    option.id === configId ? replacement : option
+  );
+  return { sessionId, configOptions: session.configOptions };
 }
 
 export async function authenticateAgent(
@@ -875,6 +993,20 @@ export async function onAgentStageUpdate(handler: AgentStageHandler): Promise<()
   }
   const { listen } = await import("@tauri-apps/api/event");
   return listen<AgentStageEvent>("agent-stage-update", (event) => handler(event.payload));
+}
+
+export async function onAgentSessionConfigUpdate(
+  handler: AgentSessionConfigHandler,
+): Promise<() => void> {
+  if (!isTauri()) {
+    agentSessionConfigHandlers.add(handler);
+    return () => agentSessionConfigHandlers.delete(handler);
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<AgentSessionConfigEvent>(
+    "agent-session-config-update",
+    (event) => handler(event.payload),
+  );
 }
 
 export async function setAgentWriteGrant(

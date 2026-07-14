@@ -257,6 +257,24 @@ async fn load_agent_session(
 }
 
 #[tauri::command]
+async fn set_agent_session_config_option(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    config_id: String,
+    value: agent_protocol::AgentSessionConfigValueInput,
+) -> Result<agent_protocol::AgentSessionConfigSnapshot, String> {
+    agent_protocol::set_session_config_option(
+        state.inner(),
+        &connection_id,
+        session_id,
+        config_id,
+        value,
+    )
+    .await
+}
+
+#[tauri::command]
 async fn authenticate_agent(
     state: State<'_, agent_protocol::AgentHostState>,
     connection_id: String,
@@ -792,6 +810,7 @@ pub fn run() {
             new_agent_session,
             list_agent_sessions,
             load_agent_session,
+            set_agent_session_config_option,
             prompt_agent,
             pick_agent_text_sources,
             pick_agent_source_folder,

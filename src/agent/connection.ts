@@ -83,6 +83,51 @@ export interface AgentSessionInfo {
   sessionId: string;
   bundleRoot: string;
   stagedChanges: AgentStagedChangesInfo | null;
+  configOptions: readonly AgentSessionConfigOption[];
+}
+
+interface AgentSessionConfigOptionBase {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+}
+
+export interface AgentSessionConfigValueInfo {
+  value: string;
+  name: string;
+  description: string | null;
+}
+
+export interface AgentSessionConfigGroupInfo {
+  id: string | null;
+  name: string | null;
+  options: readonly AgentSessionConfigValueInfo[];
+}
+
+export type AgentSessionConfigOption = AgentSessionConfigOptionBase & (
+  | {
+      type: "select";
+      currentValue: string;
+      groups: readonly AgentSessionConfigGroupInfo[];
+    }
+  | {
+      type: "boolean";
+      currentValue: boolean;
+    }
+);
+
+export type AgentSessionConfigValueInput =
+  | { type: "select"; value: string }
+  | { type: "boolean"; value: boolean };
+
+export interface AgentSessionConfigSnapshot {
+  sessionId: string;
+  configOptions: readonly AgentSessionConfigOption[];
+}
+
+export interface AgentSessionConfigEvent extends AgentSessionConfigSnapshot {
+  connectionId: string;
 }
 
 export interface AgentSessionHistoryInfo {

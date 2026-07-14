@@ -5,6 +5,7 @@ interface BundleProposalPreviewProps {
   result: BundleProposalParseResult;
   onGenerate?: () => void;
   generationBlockedReason?: string | null;
+  generationError?: string | null;
   isGenerating?: boolean;
 }
 
@@ -12,6 +13,7 @@ export function BundleProposalPreview({
   result,
   onGenerate,
   generationBlockedReason = null,
+  generationError = null,
   isGenerating = false,
 }: BundleProposalPreviewProps) {
   if (result.status === "none") return null;
@@ -90,9 +92,22 @@ export function BundleProposalPreview({
               onClick={onGenerate}
             >
               <WandSparkles size={14} aria-hidden="true" />
-              {isGenerating ? "Starting..." : "Generate in staging"}
+              {isGenerating
+                ? "Starting..."
+                : generationError
+                  ? "Retry staging"
+                  : "Generate in staging"}
             </button>
             {generationBlockedReason && <small>{generationBlockedReason}</small>}
+            {generationError && (
+              <small
+                className="bundle-proposal__generation-error"
+                role="alert"
+                title={generationError}
+              >
+                Staging failed. {generationError}
+              </small>
+            )}
           </div>
         )}
       </footer>

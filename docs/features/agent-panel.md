@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-14T12:20:00Z
+timestamp: 2026-07-14T12:40:00Z
 ---
 
 # Entry and first open
@@ -82,6 +82,8 @@ A failed event-stream subscription belongs to its thread and never appears as ag
 A failed Stop request belongs to the composer controls for its active turn. Studio keeps the turn active, renders the bounded host reason beside **Retry stop**, and does not add a false agent message or terminal turn record. Switching away and back retains the failure on that thread. A successful retry or the turn's own terminal event clears it. Agent-reported terminal failures remain transcript status records with **Retry turn** and keep any partial response separate.
 
 A failed permission response stays inside its unresolved request card. The same allow or reject actions become available again, the request remains attached to its thread when another thread is opened, and returning to it restores both the request and its bounded failure. Only the agent's resolved permission event removes the card. Studio does not copy that failure into the composer or transcript.
+
+Staging failures stay with the operation that owns their recovery. A failed edit-grant update appears below the thread action row with **Retry edit access**. Proposal preparation fails inside the newest proposal card with **Retry staging**. Discard, reject, stale-Apply revalidation, and bundle-creation failures remain in the bounded staged-review surface with the matching retry. A failed checkpoint restore remains on the checkpoint row with **Retry restore**. These host-operation failures keep their bounded reason and do not replace validation results: validation transport failures and conformant-bundle findings remain inside the validation section.
 
 The toolbar's **Thread security scope** disclosure stays available before and after a session starts. It names the active bundle and renders the closed Rust-produced profile established by the connection host: effective mounts, writable roots, network policy, credential exposure, process owner, connection lifetime, stop conditions, and unattended eligibility. For Studio Agent, `Studio mediated (v1)` explains that the model receives only bounded Studio tools, the host contacts only the configured model endpoint, proposals stay in reviewed staging, and no external ACP process runs. For an external ACP agent, `External interactive (v1)` names the launcher-attached POSIX process group or Windows Job Object while stating that the process retains normal operating-system file, network, and credential access and can bypass Studio's reviewed-write mediation. Both profiles visibly lock unattended work. The disclosure says that external evidence proves process-tree ownership, not a filesystem or network sandbox.
 

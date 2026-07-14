@@ -326,6 +326,38 @@
   white-space: normal;
 }
 
+.agent-operation-error,
+.agent-staged__operation-error {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.agent-operation-error p,
+.agent-staged__operation-error p {
+  display: -webkit-box;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--error);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.agent-operation-error .btn,
+.agent-staged__operation-error .btn {
+  display: inline-flex;
+  flex: none;
+  min-height: 28px;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .agent-session-failure {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -764,6 +796,15 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
+}
+
+.bundle-proposal__generation .bundle-proposal__generation-error {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--error);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .bundle-proposal--invalid > svg,
@@ -1326,6 +1367,15 @@
 }
 
 .agent-staged .agent-staged__validation-error {
+  color: var(--error);
+}
+
+.agent-staged__operation-error {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.agent-staged .agent-staged__operation-error p {
   color: var(--error);
 }
 
@@ -1942,6 +1992,17 @@
   overflow-wrap: anywhere;
 }
 
+.agent-composer__checkpoint--error {
+  color: var(--error);
+}
+
+.agent-composer__checkpoint--error span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
 .agent-composer__checkpoint .btn {
   flex: none;
   min-height: 28px;
@@ -2002,6 +2063,17 @@
   }
 
   .agent-composer__error-row .btn {
+    align-self: start;
+  }
+
+  .agent-operation-error,
+  .agent-staged__operation-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .agent-operation-error .btn,
+  .agent-staged__operation-error .btn {
     align-self: start;
   }
 

@@ -1124,7 +1124,14 @@ describe("OKF Studio app", () => {
     expect(within(proposal).getByText(/Allow edits for this thread/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Allow edits in this thread" }));
+    vi.spyOn(ipc, "setAgentStageMode").mockRejectedValueOnce(
+      new Error("The staging workspace is temporarily unavailable."),
+    );
     await user.click(generate);
+    expect(await within(proposal).findByRole("alert")).toHaveTextContent(
+      "Staging failed. The staging workspace is temporarily unavailable.",
+    );
+    await user.click(within(proposal).getByRole("button", { name: "Retry staging" }));
     expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
       .toBeInTheDocument();
     expect(await screen.findByText("Fresh bundle draft")).toBeInTheDocument();
@@ -1149,6 +1156,7 @@ describe("OKF Studio app", () => {
     await user.type(folderName, "CON");
     await user.click(screen.getByRole("button", { name: "Choose parent and create" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("portable across Windows");
+    expect(screen.getByRole("button", { name: "Retry create" })).toBeInTheDocument();
     await user.clear(folderName);
     await user.type(folderName, "customer-knowledge");
     await user.click(screen.getByRole("button", { name: "Choose parent and create" }));
@@ -1486,7 +1494,14 @@ describe("OKF Studio app", () => {
 
     const grantToggle = await screen.findByRole("button", { name: "Allow edits in this thread" });
     await waitFor(() => expect(grantToggle).toBeEnabled());
+    vi.spyOn(ipc, "setAgentWriteGrant").mockRejectedValueOnce(
+      new Error("The edit grant could not be saved."),
+    );
     await user.click(grantToggle);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Edit access failed. The edit grant could not be saved.",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry edit access" }));
     await waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "true"));
 
     await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
@@ -1577,7 +1592,15 @@ describe("OKF Studio app", () => {
       expect(screen.getByRole("button", { name: "Discard all" })).toHaveFocus(),
     );
 
+    vi.spyOn(ipc, "discardAgentStagedChanges").mockRejectedValueOnce(
+      new Error("The staging store is busy."),
+    );
     await user.click(screen.getByRole("button", { name: "Discard all" }));
+    const stagedReview = screen.getByRole("region", { name: "Staged changes" });
+    expect(await within(stagedReview).findByRole("alert")).toHaveTextContent(
+      "Staging action failed. The staging store is busy.",
+    );
+    await user.click(within(stagedReview).getByRole("button", { name: "Retry discard" }));
     await waitFor(() =>
       expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
     );
@@ -1605,7 +1628,14 @@ describe("OKF Studio app", () => {
     await user.type(screen.getByLabelText("Message the agent"), "Resume after restart");
     await user.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByText("Browser ACP received: Resume after restart");
+    vi.spyOn(ipc, "restoreAgentStagedCheckpoint").mockRejectedValueOnce(
+      new Error("The checkpoint is temporarily locked."),
+    );
     await user.click(screen.getByRole("button", { name: "Restore" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Restore failed. The checkpoint is temporarily locked.",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry restore" }));
     expect(await screen.findByText("Restored 1 file from the checkpoint."))
       .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();

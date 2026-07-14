@@ -173,6 +173,16 @@ type EventStreamState =
   | { status: "ready" }
   | { status: "retrying" }
   | { status: "error"; message: string };
+type StageFailure =
+  | { owner: "grant"; message: string }
+  | { owner: "proposal"; message: string }
+  | {
+      owner: "staging";
+      operation: "discard" | "reject" | "validate" | "create";
+      message: string;
+      path?: string;
+    }
+  | { owner: "restore"; message: string };
 
 const BUNDLE_PROPOSAL_INSTRUCTIONS =
   "End with exactly one fenced `okf-proposal` JSON block shaped as `{\"concepts\":[{\"path\":\"concept.md\",\"title\":\"Concept\",\"type\":\"Concept type\",\"links\":[\"related.md\"]}],\"indexes\":[{\"path\":\"index.md\",\"concepts\":[\"concept.md\"]}]}`. Use bundle-relative Markdown paths and make every index member name a proposed concept.";
@@ -909,7 +919,7 @@ export function AgentConversation({
   const [stagedValidation, setStagedValidation] = useState<StagedValidationState>({
     status: "idle",
   });
-  const [stageError, setStageError] = useState<string | null>(null);
+  const [stageError, setStageError] = useState<StageFailure | null>(null);
   const [stageNotice, setStageNotice] = useState<string | null>(null);
   const [isApplyingStage, setIsApplyingStage] = useState(false);
   const [isCreatingBundle, setIsCreatingBundle] = useState(false);
@@ -1302,7 +1312,7 @@ export function AgentConversation({
       );
       updateStagedChanges(changes);
     } catch (error: unknown) {
-      setStageError(errorMessage(error));
+      setStageError({ owner: "grant", message: errorMessage(error) });
     } finally {
       setIsSettingGrant(false);
     }
@@ -1320,7 +1330,11 @@ export function AgentConversation({
       updateStagedChanges(changes);
       requestAnimationFrame(() => promptRef.current?.focus());
     } catch (error: unknown) {
-      setStageError(errorMessage(error));
+      setStageError({
+        owner: "staging",
+        operation: "discard",
+        message: errorMessage(error),
+      });
     }
   }
 
@@ -1413,7 +1427,14 @@ export function AgentConversation({
         else promptRef.current?.focus();
       });
     } catch (error: unknown) {
-      if (sessionRef.current?.sessionId === sessionId) setStageError(errorMessage(error));
+      if (sessionRef.current?.sessionId === sessionId) {
+        setStageError({
+          owner: "staging",
+          operation: "reject",
+          path,
+          message: errorMessage(error),
+        });
+      }
     } finally {
       if (sessionRef.current?.sessionId === sessionId) setRejectingStagedPath(null);
     }
@@ -1474,7 +1495,11 @@ export function AgentConversation({
     } catch (error: unknown) {
       if (sessionRef.current?.sessionId !== sessionId) return;
       clearStagedValidation();
-      setStageError(errorMessage(error));
+      setStageError({
+        owner: "staging",
+        operation: "validate",
+        message: errorMessage(error),
+      });
     } finally {
       setIsApplyingStage(false);
     }
@@ -1505,7 +1530,13 @@ export function AgentConversation({
       );
       requestAnimationFrame(() => promptRef.current?.focus());
     } catch (error: unknown) {
-      if (sessionRef.current?.sessionId === sessionId) setStageError(errorMessage(error));
+      if (sessionRef.current?.sessionId === sessionId) {
+        setStageError({
+          owner: "staging",
+          operation: "create",
+          message: errorMessage(error),
+        });
+      }
     } finally {
       setIsCreatingBundle(false);
     }
@@ -1528,7 +1559,9 @@ export function AgentConversation({
         `Restored ${result.restoredFiles} file${result.restoredFiles === 1 ? "" : "s"} from the checkpoint.`,
       );
     } catch (error: unknown) {
-      if (sessionRef.current?.sessionId === sessionId) setStageError(errorMessage(error));
+      if (sessionRef.current?.sessionId === sessionId) {
+        setStageError({ owner: "restore", message: errorMessage(error) });
+      }
     } finally {
       setIsRestoringCheckpoint(false);
     }
@@ -1651,6 +1684,38 @@ export function AgentConversation({
     if (!value.trim() && !hasSession) setThreadWorkflow(null);
   }
 
+  function retryStagingFailure() {
+    if (stageError?.owner !== "staging") return;
+    switch (stageError.operation) {
+      case "discard":
+        void discardStagedChanges();
+        break;
+      case "reject":
+        if (stageError.path) void rejectStagedFile(stageError.path);
+        break;
+      case "validate":
+        void validateStagedChanges();
+        break;
+      case "create":
+        void createStagedBundle();
+        break;
+    }
+  }
+
+  const stagingRetryLabel = stageError?.owner === "staging"
+    ? {
+        discard: "Retry discard",
+        reject: "Retry reject",
+        validate: "Validate again",
+        create: "Retry create",
+      }[stageError.operation]
+    : null;
+  const stagingRetryDisabled = stageError?.owner === "staging" && (
+    isApplyingStage || isCreatingBundle || stagedValidation.status === "loading" ||
+    rejectingStagedPath !== null ||
+    (stageError.operation === "reject" && !stageError.path)
+  );
+
   async function generateBundleProposal() {
     const session = sessionRef.current;
     if (!session || !writeGranted || activeTurn || isSubmitting || isPreparingGeneration) return;
@@ -1672,7 +1737,7 @@ export function AgentConversation({
       }));
     } catch (error: unknown) {
       if (sessionRef.current?.sessionId === session.sessionId) {
-        setStageError(errorMessage(error));
+        setStageError({ owner: "proposal", message: errorMessage(error) });
       }
     } finally {
       if (sessionRef.current?.sessionId === session.sessionId) {
@@ -2006,7 +2071,8 @@ export function AgentConversation({
         </div>
       </header>
 
-      {(exportState.status === "success" || exportState.status === "error" || threadMetadataError) && (
+      {(exportState.status === "success" || exportState.status === "error" ||
+        threadMetadataError !== null || stageError?.owner === "grant") && (
         <div className="agent-conversation__notices">
           {exportState.status === "success" && (
             <p className="agent-conversation__export-status agent-conversation__export-status--success" role="status">
@@ -2022,6 +2088,22 @@ export function AgentConversation({
             <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
               Thread metadata was not saved. {threadMetadataError}
             </p>
+          )}
+          {stageError?.owner === "grant" && (
+            <div className="agent-operation-error">
+              <p role="alert" title={stageError.message}>
+                Edit access failed. {stageError.message}
+              </p>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={isSettingGrant}
+                onClick={() => void toggleWriteGrant()}
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+                {isSettingGrant ? "Retrying..." : "Retry edit access"}
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -2218,6 +2300,12 @@ export function AgentConversation({
                             ? "Resolve the current staged changes before generating this proposal."
                             : null
                         : null}
+                      generationError={
+                        item.id === latestBundleProposalMessageId &&
+                        stageError?.owner === "proposal"
+                          ? stageError.message
+                          : null
+                      }
                       isGeneratingProposal={
                         item.id === latestBundleProposalMessageId &&
                         (isSubmitting || isPreparingGeneration)
@@ -2501,15 +2589,37 @@ export function AgentConversation({
                   )}
                 </section>
               )}
+              {stageError?.owner === "staging" && stagingRetryLabel && (
+                <div className="agent-staged__operation-error">
+                  <p role="alert" title={stageError.message}>
+                    Staging action failed. {stageError.message}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={stagingRetryDisabled}
+                    onClick={retryStagingFailure}
+                  >
+                    <RotateCcw size={14} aria-hidden="true" />
+                    {stagingRetryLabel}
+                  </button>
+                </div>
+              )}
               <p>Review or reject staged files, then validate the selected result.</p>
             </section>
           )}
-          {stageError && (
-            <p className="agent-composer__error" role="alert">{stageError}</p>
-          )}
           {stagedChanges?.canRestore && (
-            <div className="agent-composer__checkpoint" role="status">
-              <span>{stageNotice ?? "The latest apply has a restorable checkpoint."}</span>
+            <div className={`agent-composer__checkpoint${
+              stageError?.owner === "restore" ? " agent-composer__checkpoint--error" : ""
+            }`}>
+              <span
+                role={stageError?.owner === "restore" ? "alert" : "status"}
+                title={stageError?.owner === "restore" ? stageError.message : undefined}
+              >
+                {stageError?.owner === "restore"
+                  ? `Restore failed. ${stageError.message}`
+                  : stageNotice ?? "The latest apply has a restorable checkpoint."}
+              </span>
               <button
                 type="button"
                 className="btn ghost"
@@ -2519,7 +2629,11 @@ export function AgentConversation({
                   : undefined}
                 onClick={() => void restoreCheckpoint()}
               >
-                {isRestoringCheckpoint ? "Restoring..." : "Restore"}
+                {isRestoringCheckpoint
+                  ? "Restoring..."
+                  : stageError?.owner === "restore"
+                    ? "Retry restore"
+                    : "Restore"}
               </button>
             </div>
           )}
@@ -3540,6 +3654,7 @@ interface ConversationItemViewProps {
   retryError: string | null;
   onGenerateProposal?: () => void;
   generationBlockedReason: string | null;
+  generationError: string | null;
   isGeneratingProposal: boolean;
 }
 
@@ -3550,6 +3665,7 @@ function ConversationItemView({
   retryError,
   onGenerateProposal,
   generationBlockedReason,
+  generationError,
   isGeneratingProposal,
 }: ConversationItemViewProps) {
   if (item.role === "plan") return <PlanCard plan={item} />;
@@ -3562,6 +3678,7 @@ function ConversationItemView({
       retryError={retryError}
       onGenerateProposal={onGenerateProposal}
       generationBlockedReason={generationBlockedReason}
+      generationError={generationError}
       isGeneratingProposal={isGeneratingProposal}
     />
   );
@@ -3690,6 +3807,7 @@ interface MessageProps {
   retryError: string | null;
   onGenerateProposal?: () => void;
   generationBlockedReason: string | null;
+  generationError: string | null;
   isGeneratingProposal: boolean;
 }
 
@@ -3700,6 +3818,7 @@ function Message({
   retryError,
   onGenerateProposal,
   generationBlockedReason,
+  generationError,
   isGeneratingProposal,
 }: MessageProps) {
   const agentNarrative = message.role === "agent"
@@ -3741,6 +3860,7 @@ function Message({
           result={bundleProposal}
           onGenerate={onGenerateProposal}
           generationBlockedReason={generationBlockedReason}
+          generationError={generationError}
           isGenerating={isGeneratingProposal}
         />
         {onRetry && (

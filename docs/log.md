@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-14
+* **Update**: Kept unexpected agent-process failures at the Agent Panel level after the failed connection leaves the switcher. The bounded notice names the agent, retains the host reason across catalog navigation, and places Review connections and Dismiss beside it. Reconnecting the same profile clears the stale failure.
 * **Update**: Made the Agent Panel transcript the flexible scroll owner while keeping identity and send controls in reach. Empty workflow starters use two equal columns when space permits and one compact column when narrow. Staged review now scrolls within a bounded height instead of displacing the transcript.
 * **Update**: Consolidated History, Export, Archive, and Change agent into one keyboard-navigable thread-actions menu. The action row keeps rename, security, and the task-relevant edit boundary direct; the History surface provides its own Back action. Empty threads omit export and archive, while disabled menu items retain their explanations.
 * **Update**: Removed repeated agent, bundle, and thread labels from the conversation toolbar. The global bundle switcher, connection strip, and thread strip now own those identities once, while a compact action row holds rename, security, and task-relevant commands. Empty read-only threads hide edit, export, and archive controls; editing workflows, blocking permission requests, denied write attempts, live grants, and staged changes reveal the edit boundary when it matters.

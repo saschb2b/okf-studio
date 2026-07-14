@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App.tsx";
 import { AppProvider } from "./store.tsx";
@@ -208,6 +208,58 @@ describe("OKF Studio app", () => {
       await ipc.disconnectAgent(secondConnection.connectionId);
       await ipc.removeCustomAgent(firstProfile.id);
       await ipc.removeCustomAgent(secondProfile.id);
+    }
+  });
+
+  it("keeps a failed connection visible beside its recovery action", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Failure Harness",
+      executable: "C:\\tools\\failure.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
+    const connectionHandlers: Parameters<typeof ipc.onAgentConnectionState>[0][] = [];
+    vi.spyOn(ipc, "onAgentConnectionState").mockImplementation((handler) => {
+      connectionHandlers.push(handler);
+      return Promise.resolve(() => undefined);
+    });
+
+    try {
+      const user = userEvent.setup();
+      renderApp();
+      await openFolder(user);
+      await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+      await screen.findByRole("button", { name: "Switch to Failure Harness" });
+
+      await act(async () => {
+        for (const handler of connectionHandlers) {
+          handler({
+            connectionId: connection.connectionId,
+            profileId: profile.id,
+            status: "failed",
+            message: "The agent process exited before the session completed.",
+          });
+        }
+        await ipc.disconnectAgent(connection.connectionId);
+      });
+
+      const failure = await screen.findByRole("alert");
+      expect(failure).toHaveTextContent("Failure Harness stopped");
+      expect(failure).toHaveTextContent(
+        "The agent process exited before the session completed.",
+      );
+      await user.click(within(failure).getByRole("button", { name: "Review connections" }));
+      expect(screen.getByRole("heading", { name: "Choose how agents run" }))
+        .toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Failure Harness stopped");
+      await user.click(screen.getByRole("button", { name: "Dismiss" }));
+      expect(screen.queryByText("Failure Harness stopped")).not.toBeInTheDocument();
+    } finally {
+      cleanup();
+      await ipc.disconnectAgent(connection.connectionId);
+      await ipc.removeCustomAgent(profile.id);
     }
   });
 

@@ -24,6 +24,7 @@ export function AgentPanel() {
   const panelRef = useRef<HTMLElement>(null);
   const [view, setView] = useState<"empty" | "catalog" | "conversation">("empty");
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [connectionFailure, setConnectionFailure] = useState<ConnectionFailure | null>(null);
   const [resetToken, setResetToken] = useState(0);
   if (!state.panels.agent) return null;
 
@@ -113,14 +114,41 @@ export function AgentPanel() {
             </div>
           }
         >
+          {connectionFailure && visibleView !== "catalog" && (
+            <div className="agent-panel__connection-failure" role="alert">
+              <CircleAlert size={16} aria-hidden="true" />
+              <div>
+                <strong>{connectionFailure.agentName} stopped</strong>
+                <p title={connectionFailure.message}>{connectionFailure.message}</p>
+              </div>
+              <div className="agent-panel__connection-failure-actions">
+                <button type="button" className="btn" onClick={openCatalog}>
+                  Review connections
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setConnectionFailure(null)}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
           {visibleView === "catalog" && (
             <AgentConnectionCatalog
               bundleRoot={state.activeRoot}
               onBack={closeCatalog}
               onConnectionAvailable={(connection) => {
+                if (connectionFailure?.profileId === connection.profileId) {
+                  setConnectionFailure(null);
+                }
                 setSelectedConnectionId(connection.connectionId);
               }}
               onConnected={(connection) => {
+                if (connectionFailure?.profileId === connection.profileId) {
+                  setConnectionFailure(null);
+                }
                 setSelectedConnectionId(connection.connectionId);
                 setView("conversation");
               }}
@@ -170,7 +198,14 @@ export function AgentPanel() {
                   concepts={state.bundle?.concepts ?? []}
                   issues={state.bundle?.issues ?? []}
                   onChangeAgent={openCatalog}
-                  onConnectionEnd={() => {
+                  onConnectionEnd={(event) => {
+                    if (event.status === "failed") {
+                      setConnectionFailure({
+                        profileId: event.profileId,
+                        agentName: connectionLabel(connection),
+                        message: event.message,
+                      });
+                    }
                     setSelectedConnectionId((current) =>
                       current === connection.connectionId ? null : current,
                     );
@@ -213,6 +248,12 @@ interface ThreadSurface {
   id: string;
   ordinal: number;
   title: string;
+}
+
+interface ConnectionFailure {
+  profileId: string;
+  agentName: string;
+  message: string;
 }
 
 type ConnectionThreadsProps = Omit<

@@ -45,6 +45,56 @@
   border-bottom: 1px solid var(--border);
 }
 
+.agent-panel__connection-failure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  color: var(--error);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-panel__connection-failure > svg {
+  margin-top: var(--space-2);
+}
+
+.agent-panel__connection-failure strong,
+.agent-panel__connection-failure p {
+  margin: 0;
+}
+
+.agent-panel__connection-failure strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.agent-panel__connection-failure p {
+  display: -webkit-box;
+  margin-top: var(--space-2);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.agent-panel__connection-failure-actions {
+  display: flex;
+  grid-column: 2;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.agent-panel__connection-failure-actions .btn {
+  min-height: 28px;
+}
+
 .agent-panel__title {
   display: inline-flex;
   align-items: center;

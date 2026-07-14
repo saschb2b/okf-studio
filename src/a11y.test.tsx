@@ -92,6 +92,10 @@ describe("accessibility (axe-core)", () => {
       await screen.findByRole("dialog", { name: "Thread security scope" });
       await expectNoViolations(container);
       await user.keyboard("{Escape}");
+      await user.click(screen.getByRole("button", { name: "More thread actions" }));
+      await screen.findByRole("menu", { name: "More thread actions" });
+      await expectNoViolations(container);
+      await user.keyboard("{Escape}");
       await user.click(screen.getByRole("button", {
         name: "Start another thread with A11y Harness",
       }));

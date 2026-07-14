@@ -31,6 +31,18 @@ async function openAttachmentMenu(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Add context or sources" }));
 }
 
+async function openThreadActions(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "More thread actions" }));
+}
+
+async function chooseThreadAction(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+) {
+  await openThreadActions(user);
+  await user.click(await screen.findByRole("menuitem", { name }));
+}
+
 describe("OKF Studio app", () => {
   it("shows the first-run empty state", async () => {
     const recentBundles = vi.spyOn(ipc, "recentBundles");
@@ -449,7 +461,7 @@ describe("OKF Studio app", () => {
     ))
       .toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     const reloadedLocalSection = screen
       .getByRole("heading", { name: "Studio model endpoints" })
       .closest("section");
@@ -502,7 +514,7 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: "Add images" })).toBeDisabled();
     expect(screen.getByTitle("This agent does not accept image prompts.")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     const connectedCard = screen.getByRole("heading", { name: "Codex" }).closest("article");
     if (!connectedCard) throw new Error("Connected Codex card was not rendered.");
     await user.click(await within(connectedCard).findByRole("button", { name: "Disconnect" }));
@@ -549,7 +561,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("heading", { name: "New thread" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to Local Harness" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
@@ -793,11 +805,11 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Save title" }));
     expect(screen.getByRole("heading", { name: "Bundle research" })).toBeInTheDocument();
     exportSpy.mockRejectedValueOnce(new Error("The selected folder is read-only."));
-    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    await chooseThreadAction(user, "Export thread");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Export failed. The selected folder is read-only.",
     );
-    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    await chooseThreadAction(user, "Export thread");
     expect(exportSpy).toHaveBeenLastCalledWith(
       "bundle-research-thread.md",
       expect.stringContaining(
@@ -828,7 +840,10 @@ describe("OKF Studio app", () => {
       name: /remember an allow once or reject choice/i,
     });
     await user.click(repeatChoice);
-    expect(screen.getByRole("button", { name: "Change" })).toBeDisabled();
+    await openThreadActions(user);
+    expect(await screen.findByRole("menuitem", { name: "Change agent" }))
+      .toHaveAttribute("data-disabled", "");
+    await user.keyboard("{Escape}");
     vi.spyOn(ipc, "respondAgentPermission").mockRejectedValueOnce(new Error("Approval failed"));
     await user.click(within(permissionCard).getByRole("button", { name: "Allow once" }));
     expect(await within(permissionCard).findByRole("alert")).toHaveTextContent("Approval failed");
@@ -836,7 +851,10 @@ describe("OKF Studio app", () => {
     expect(
       await screen.findByText(/Browser ACP received:.*Edit: refresh the index/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Change" })).toBeEnabled();
+    await openThreadActions(user);
+    expect(await screen.findByRole("menuitem", { name: "Change agent" }))
+      .not.toHaveAttribute("data-disabled");
+    await user.keyboard("{Escape}");
 
     await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the links");
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -933,7 +951,7 @@ describe("OKF Studio app", () => {
       "The selected file is not UTF-8 text.",
     );
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
   }, 25_000);
@@ -997,7 +1015,7 @@ describe("OKF Studio app", () => {
     );
     expect(screen.queryByText("Fresh bundle draft")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Creation Harness" }));
   });
@@ -1049,7 +1067,7 @@ describe("OKF Studio app", () => {
       .toHaveTextContent("Validation passed");
     expect(screen.getByRole("button", { name: "Apply changes" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Enhancement Harness" }));
   });
@@ -1072,7 +1090,7 @@ describe("OKF Studio app", () => {
     await screen.findByText(/Connected to History Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    await user.click(screen.getByRole("button", { name: "Agent session history" }));
+    await chooseThreadAction(user, "History");
     expect(await screen.findByRole("heading", { name: "Agent session history" })).toBeInTheDocument();
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "History unavailable. History service unavailable",
@@ -1109,7 +1127,7 @@ describe("OKF Studio app", () => {
       }),
     ])));
 
-    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await chooseThreadAction(user, "Archive thread");
     expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pick up where you left off" })).toBeInTheDocument();
@@ -1129,7 +1147,7 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
     expect(localStorage.getItem("okf-studio:agent-threads")).not.toBe("[]");
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
     await screen.findByText(/Connected to History Harness over ACP v1/i);
@@ -1140,7 +1158,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
     await screen.findByText(/Connected to History Harness over ACP v1/i);
@@ -1154,7 +1172,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
     await screen.findByText(/Connected to History Harness over ACP v1/i);
@@ -1171,7 +1189,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
     await screen.findByText(/Connected to History Harness over ACP v1/i);
@@ -1183,7 +1201,7 @@ describe("OKF Studio app", () => {
     );
     expect(localStorage.getItem("okf-studio:agent-threads")).toBe("[]");
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove History Harness" }));
   }, 15_000);
@@ -1207,7 +1225,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Browser ACP received: Summarize the bundle"))
       .toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await chooseThreadAction(user, "Archive thread");
     expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Resume" }));
     expect(await screen.findByRole("heading", { name: "Summarize the bundle" }))
@@ -1215,7 +1233,7 @@ describe("OKF Studio app", () => {
     expect(screen.getByText("Browser ACP received: Summarize the bundle"))
       .toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Archive Harness" }));
   });
@@ -1247,7 +1265,7 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await chooseThreadAction(user, "Archive thread");
     expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
 
     await openAttachmentMenu(user);
@@ -1290,7 +1308,7 @@ describe("OKF Studio app", () => {
     );
     await user.keyboard("{Escape}");
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Thread Context Harness" }));
   }, 25_000);
@@ -1437,7 +1455,7 @@ describe("OKF Studio app", () => {
     expect(await screen.findByText("Applied 1 file to the bundle."))
       .toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(await screen.findByRole("button", { name: "Connect Write Harness" }));
     await screen.findByText(/Connected to Write Harness over ACP v1/i);
@@ -1450,7 +1468,7 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Restore" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Write Harness" }));
   }, 25_000);
@@ -1475,19 +1493,19 @@ describe("OKF Studio app", () => {
     await user.type(screen.getByLabelText("Message the agent"), "Omit research sections");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Missing required sections.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    await chooseThreadAction(user, "Export thread");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Research export needs a Sources list with a cited link or bundle path and an Inferences section",
     );
     expect(exportSpy).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await chooseThreadAction(user, "Archive thread");
     await user.click(await screen.findByRole("button", { name: "Start new thread" }));
     await user.click(screen.getByRole("button", { name: /Deep research/ }));
     await user.type(screen.getByLabelText("Message the agent"), "Which decisions are documented?");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("link", { name: "Product overview" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    await chooseThreadAction(user, "Export thread");
     expect(await screen.findByRole("status")).toHaveTextContent("Exported");
     expect(exportSpy).toHaveBeenCalledTimes(1);
     expect(exportSpy).toHaveBeenCalledWith(
@@ -1495,7 +1513,7 @@ describe("OKF Studio app", () => {
       expect.stringContaining("## Inferences\n\nNone."),
     );
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Research Export Harness" }));
   });
@@ -1520,13 +1538,13 @@ describe("OKF Studio app", () => {
     await user.type(screen.getByLabelText("Message the agent"), "Omit change sections");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("The requested change needs review.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    await chooseThreadAction(user, "Export thread");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Dataset change export needs a Change Plan with at least one step and an Affected Concepts list with bundle paths",
     );
     expect(exportSpy).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Archive current thread" }));
+    await chooseThreadAction(user, "Archive thread");
     await user.click(await screen.findByRole("button", { name: "Start new thread" }));
     await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
     await user.type(screen.getByLabelText("Message the agent"), "Clarify the documented scope");
@@ -1535,7 +1553,7 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
     expect(screen.getByText("Change Plan")).toBeInTheDocument();
     expect(screen.getByText("Affected Concepts")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Export thread" }));
+    await chooseThreadAction(user, "Export thread");
     expect(await screen.findByRole("status")).toHaveTextContent("Exported");
     expect(exportSpy).toHaveBeenCalledTimes(1);
     expect(exportSpy).toHaveBeenCalledWith(
@@ -1543,7 +1561,7 @@ describe("OKF Studio app", () => {
       expect.stringContaining("## Affected Concepts\n\n- `product/overview.md`"),
     );
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Dataset Change Harness" }));
   });
@@ -1601,7 +1619,7 @@ describe("OKF Studio app", () => {
       }],
     );
     await screen.findByText(/Browser ACP received:.*Assess this excerpt/);
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Selection Harness" }));
   });
@@ -1632,7 +1650,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Change" }));
+    await chooseThreadAction(user, "Change agent");
     await user.click(await screen.findByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Auth Harness" }));
   });

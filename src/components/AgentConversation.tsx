@@ -1,4 +1,5 @@
-import { Archive as ArchiveIcon, Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, FileDown, FilePlus2, FileText, FolderPlus, History, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
+import { Archive as ArchiveIcon, Bot, Check, ChevronLeft, Circle, CircleAlert, CircleDot, Database, Ellipsis, FileDown, FilePlus2, FileText, FolderPlus, History, ImageIcon, ImagePlus, ListChecks, Paperclip, Pencil, Plus, RotateCcw, Search, Send, ShieldQuestion, Sparkles, Square, TextSelect, TriangleAlert, User, WandSparkles, Wrench, X } from "lucide-react";
+import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import type { Dispatch, RefObject, SetStateAction, SubmitEvent } from "react";
@@ -752,6 +753,101 @@ function ThreadSurfaceClose({
         </Popover.Positioner>
       </Popover.Portal>
     </Popover.Root>
+  );
+}
+
+interface ThreadActionsMenuProps {
+  historyAvailable: boolean;
+  historyDisabled: boolean;
+  exportAvailable: boolean;
+  exportDisabled: boolean;
+  exportPending: boolean;
+  archiveAvailable: boolean;
+  archiveDisabled: boolean;
+  archiveTitle: string;
+  changeDisabled: boolean;
+  onOpenHistory: () => void;
+  onExport: () => void;
+  onArchive: () => void;
+  onChangeAgent: () => void;
+}
+
+function ThreadActionsMenu({
+  historyAvailable,
+  historyDisabled,
+  exportAvailable,
+  exportDisabled,
+  exportPending,
+  archiveAvailable,
+  archiveDisabled,
+  archiveTitle,
+  changeDisabled,
+  onOpenHistory,
+  onExport,
+  onArchive,
+  onChangeAgent,
+}: ThreadActionsMenuProps) {
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className="btn ghost icon"
+        data-agent-initial-focus
+        aria-label="More thread actions"
+        title="More thread actions"
+      >
+        <Ellipsis aria-hidden="true" size={15} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner
+          className="ui-popover-positioner"
+          side="bottom"
+          align="end"
+          sideOffset={6}
+        >
+          <Menu.Popup className="ui-popover agent-thread-actions" aria-label="Thread actions">
+            {historyAvailable && (
+              <Menu.Item
+                className="agent-thread-actions__item"
+                disabled={historyDisabled}
+                onClick={onOpenHistory}
+              >
+                <History aria-hidden="true" size={14} />
+                <span>History</span>
+              </Menu.Item>
+            )}
+            {exportAvailable && (
+              <Menu.Item
+                className="agent-thread-actions__item"
+                disabled={exportDisabled}
+                onClick={onExport}
+              >
+                <FileDown aria-hidden="true" size={14} />
+                <span>{exportPending ? "Exporting..." : "Export thread"}</span>
+              </Menu.Item>
+            )}
+            {archiveAvailable && (
+              <Menu.Item
+                className="agent-thread-actions__item"
+                disabled={archiveDisabled}
+                title={archiveTitle}
+                onClick={onArchive}
+              >
+                <ArchiveIcon aria-hidden="true" size={14} />
+                <span>Archive thread</span>
+              </Menu.Item>
+            )}
+            <Menu.Item
+              className="agent-thread-actions__item"
+              disabled={changeDisabled}
+              onClick={onChangeAgent}
+            >
+              <Bot aria-hidden="true" size={14} />
+              <span>Change agent</span>
+            </Menu.Item>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }
 
@@ -1522,6 +1618,17 @@ export function AgentConversation({
     restoringSessionId !== null || isApplyingStage || isCreatingBundle ||
     isRestoringCheckpoint || isSettingGrant || isPreparingGeneration ||
     rejectingStagedPath !== null || selectingHunk !== null;
+  const hasArchiveBlockingDraft = promptText.trim().length > 0 ||
+    attachedConcepts.length > 0 || attachedSources.length > 0;
+  const archiveDisabled = messages.length === 0 || isSubmitting || activeTurn !== null ||
+    queuedPrompt !== null || hasArchiveBlockingDraft;
+  const archiveTitle = hasArchiveBlockingDraft
+    ? "Send or clear the draft before archiving."
+    : messages.length === 0
+      ? "Send a message before archiving."
+      : "Archive this thread and start a new one";
+  const changeAgentDisabled = isSubmitting || activeTurn !== null ||
+    authentication.status === "authenticating" || exportState.status === "exporting";
 
   function selectStarter(prompt: string, workflow: AgentThreadWorkflow) {
     if (!promptRef.current) return;
@@ -1865,79 +1972,28 @@ export function AgentConversation({
               </span>
             </button>
           )}
-          {supportsHistory && bundleRoot && !requiresAuthentication && (
-            <button
-              type="button"
-              className="btn ghost agent-conversation__history-button"
-              aria-label="Agent session history"
-              title="Agent session history"
-              onClick={() => history.status === "closed" ? void openHistory() : setHistory({ status: "closed" })}
-              disabled={isSubmitting || activeTurn !== null || restoringSessionId !== null}
-            >
-              {history.status === "closed" ? <History aria-hidden="true" size={14} /> : <ChevronLeft aria-hidden="true" size={14} />}
-              <span className="agent-conversation__action-label">
-                {history.status === "closed" ? "History" : "Back"}
-              </span>
-            </button>
-          )}
-          {(messages.length > 0 || exportState.status !== "idle") && (
-            <button
-              type="button"
-              className="btn ghost agent-conversation__export"
-              aria-label="Export thread"
-              title="Export thread as Markdown"
-              onClick={() => void exportTranscript()}
-              disabled={
-                isSubmitting || activeTurn !== null || exportState.status === "exporting"
-              }
-            >
-              <FileDown aria-hidden="true" size={14} />
-              <span className="agent-conversation__action-label">
-                {exportState.status === "exporting" ? "Exporting..." : "Export"}
-              </span>
-            </button>
-          )}
-          {supportsHistory && messages.length > 0 && (
-            <button
-              type="button"
-              className="btn ghost icon"
-              aria-label="Archive current thread"
-              title={promptText.trim() || attachedConcepts.length > 0 || attachedSources.length > 0
-                ? "Send or clear the draft before archiving."
-                : messages.length === 0
-                  ? "Send a message before archiving."
-                  : "Archive this thread and start a new one"}
-              onClick={() => void archiveThread()}
-              disabled={
-                messages.length === 0 || isSubmitting || activeTurn !== null ||
-                queuedPrompt !== null || promptText.trim().length > 0 ||
-                attachedConcepts.length > 0 || attachedSources.length > 0
-              }
-            >
-              <ArchiveIcon aria-hidden="true" size={14} />
-            </button>
-          )}
           {threadSurfaceCount > 1 && (
             <ThreadSurfaceClose
               disabled={threadSurfaceBusy}
               onClose={closeThreadSurface}
             />
           )}
-          <button
-            type="button"
-            className="btn ghost"
-            data-agent-initial-focus
-            aria-label="Change"
-            title="Change agent"
-            onClick={onChangeAgent}
-            disabled={
-              isSubmitting || activeTurn !== null || authentication.status === "authenticating" ||
-              exportState.status === "exporting"
-            }
-          >
-            <Bot aria-hidden="true" size={14} />
-            <span className="agent-conversation__action-label">Change</span>
-          </button>
+          <ThreadActionsMenu
+            historyAvailable={supportsHistory && bundleRoot !== null &&
+              !requiresAuthentication && history.status === "closed"}
+            historyDisabled={isSubmitting || activeTurn !== null || restoringSessionId !== null}
+            exportAvailable={messages.length > 0 || exportState.status !== "idle"}
+            exportDisabled={isSubmitting || activeTurn !== null || exportState.status === "exporting"}
+            exportPending={exportState.status === "exporting"}
+            archiveAvailable={supportsHistory && messages.length > 0}
+            archiveDisabled={archiveDisabled}
+            archiveTitle={archiveTitle}
+            changeDisabled={changeAgentDisabled}
+            onOpenHistory={() => void openHistory()}
+            onExport={() => void exportTranscript()}
+            onArchive={() => void archiveThread()}
+            onChangeAgent={onChangeAgent}
+          />
         </div>
       </header>
 
@@ -2011,16 +2067,26 @@ export function AgentConversation({
               <h3 id={historyTitleId}>Agent session history</h3>
               <p>Sessions reported by this agent for the active bundle.</p>
             </div>
-            <button
-              type="button"
-              className="btn ghost icon"
-              aria-label="Refresh agent session history"
-              title="Refresh"
-              disabled={history.status === "loading" || restoringSessionId !== null}
-              onClick={() => void openHistory()}
-            >
-              <RotateCcw aria-hidden="true" size={14} />
-            </button>
+            <div className="agent-history__actions">
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => setHistory({ status: "closed" })}
+              >
+                <ChevronLeft aria-hidden="true" size={14} />
+                Back
+              </button>
+              <button
+                type="button"
+                className="btn ghost icon"
+                aria-label="Refresh agent session history"
+                title="Refresh"
+                disabled={history.status === "loading" || restoringSessionId !== null}
+                onClick={() => void openHistory()}
+              >
+                <RotateCcw aria-hidden="true" size={14} />
+              </button>
+            </div>
           </header>
           {history.status === "loading" && <p role="status">Loading agent sessions...</p>}
           {history.status === "error" && (

@@ -638,6 +638,17 @@ pub struct AgentHostState {
     permissions: Arc<Mutex<HashMap<String, PendingPermission>>>,
 }
 
+impl AgentHostState {
+    /// Whether any live connection was launched from the given profile.
+    /// Fails closed: a poisoned worker registry counts as connected.
+    pub(crate) fn has_profile_connection(&self, profile_id: &str) -> bool {
+        self.workers
+            .lock()
+            .map(|workers| workers.values().any(|worker| worker.profile_id == profile_id))
+            .unwrap_or(true)
+    }
+}
+
 struct PendingPermission {
     connection_id: String,
     session_id: String,

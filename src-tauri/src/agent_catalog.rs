@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -56,6 +58,10 @@ pub(crate) struct AgentCatalogEntry {
     pub(crate) auth_methods: Vec<String>,
     pub(crate) source: String,
     pub(crate) availability: String,
+    #[serde(default)]
+    pub(crate) repository: Option<String>,
+    #[serde(default)]
+    pub(crate) website: Option<String>,
     pub(crate) distribution: Option<AgentDistribution>,
 }
 
@@ -72,6 +78,11 @@ pub(crate) struct AgentDistribution {
     pub(crate) entrypoint: String,
     pub(crate) arguments: Vec<String>,
     pub(crate) environment: Vec<String>,
+    /// Pinned launch environment values (for example, switches that keep an
+    /// agent from self-updating past its verified version). These override any
+    /// same-named host variable when the agent starts.
+    #[serde(default)]
+    pub(crate) environment_defaults: BTreeMap<String, String>,
 }
 
 pub fn load() -> Result<AgentCatalog, String> {
@@ -87,7 +98,7 @@ mod tests {
     fn bundled_catalog_is_valid_and_has_unique_ids() {
         let catalog = load().expect("catalog should parse");
         assert_eq!(catalog.version, 1);
-        assert_eq!(catalog.entries.len(), 3);
+        assert_eq!(catalog.entries.len(), 13);
         assert_eq!(catalog.node_runtime.version, "v24.11.0");
         assert_eq!(catalog.node_runtime.distributions.len(), 5);
         let mut ids = catalog
@@ -96,17 +107,38 @@ mod tests {
             .map(|entry| entry.id.as_str())
             .collect::<Vec<_>>();
         ids.sort_unstable();
-        assert_eq!(ids, ["claude-agent", "codex", "studio-api"]);
+        assert_eq!(
+            ids,
+            [
+                "auggie",
+                "claude-agent",
+                "cline",
+                "codex",
+                "cursor",
+                "factory-droid",
+                "gemini",
+                "github-copilot-cli",
+                "goose",
+                "kimi",
+                "opencode",
+                "qwen-code",
+                "studio-api",
+            ]
+        );
         ids.dedup();
         assert_eq!(ids.len(), catalog.entries.len());
-        for entry in catalog
-            .entries
-            .iter()
-            .filter(|entry| entry.distribution.is_some())
-        {
-            let distribution = entry.distribution.as_ref().expect("distribution exists");
-            assert_eq!(distribution.entrypoint, "dist/index.js");
-            assert!(distribution.arguments.is_empty());
+        for entry in &catalog.entries {
+            match entry.availability.as_str() {
+                "installable" => {
+                    let distribution = entry
+                        .distribution
+                        .as_ref()
+                        .expect("installable entries carry a pinned distribution");
+                    assert_eq!(distribution.kind, "npm");
+                }
+                "configurable" | "planned" => assert!(entry.distribution.is_none()),
+                other => panic!("unknown availability {other}"),
+            }
         }
     }
 

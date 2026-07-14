@@ -47,6 +47,30 @@
   },
   "entries": [
     {
+      "id": "auggie",
+      "name": "Auggie CLI",
+      "summary": "Augment Code's software agent, backed by its context engine. Use an Augment login.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription"],
+      "source": "ACP Registry",
+      "availability": "installable",
+      "repository": "https://github.com/augmentcode/auggie",
+      "website": "https://www.augmentcode.com",
+      "distribution": {
+        "kind": "npm",
+        "package": "@augmentcode/auggie",
+        "version": "0.32.0",
+        "tarball": "https://registry.npmjs.org/@augmentcode/auggie/-/auggie-0.32.0.tgz",
+        "integrity": "sha512-/E+X4UrQA8NSkYj3SOu7uEDkfM91Yal08hBhItpIXzC9woFiIbMvP/Y5pBsaJdht2h0wiCMPM5Dt/aRRd15OBg==",
+        "downloadSize": 3998212,
+        "unpackedSize": 12900804,
+        "entrypoint": "augment.mjs",
+        "arguments": ["--acp"],
+        "environment": ["AUGMENT_SESSION_AUTH"],
+        "environmentDefaults": { "AUGMENT_DISABLE_AUTO_UPDATE": "1" }
+      }
+    },
+    {
       "id": "claude-agent",
       "name": "Claude Agent",
       "summary": "Use Claude Code through its subscription login or an API key.",
@@ -54,17 +78,42 @@
       "authMethods": ["subscription", "api-key"],
       "source": "ACP Registry",
       "availability": "installable",
+      "repository": "https://github.com/agentclientprotocol/claude-agent-acp",
+      "website": "https://claude.com/product/claude-code",
       "distribution": {
         "kind": "npm",
         "package": "@agentclientprotocol/claude-agent-acp",
-        "version": "0.58.1",
-        "tarball": "https://registry.npmjs.org/@agentclientprotocol/claude-agent-acp/-/claude-agent-acp-0.58.1.tgz",
-        "integrity": "sha512-F1/W6EJdoYbrEUluRUknx0Nn0MAKDOkn2C/9YcP/joVkmdFUGTAxlGDpwdYu239TOkpc8Qm4+ffGsQjPZdryTg==",
-        "downloadSize": 97611,
-        "unpackedSize": 375083,
+        "version": "0.59.0",
+        "tarball": "https://registry.npmjs.org/@agentclientprotocol/claude-agent-acp/-/claude-agent-acp-0.59.0.tgz",
+        "integrity": "sha512-GejLH5qxsI5IoSDfhyOVDEsRNxqi6y0Rcj5FstVeOwMACSht/bUXII0HILbzOQNoA5qlyZle3FRvf+CAjD7Rpg==",
+        "downloadSize": 125251,
+        "unpackedSize": 475829,
         "entrypoint": "dist/index.js",
         "arguments": [],
         "environment": ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"]
+      }
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "summary": "Cline's autonomous coding agent CLI. Use a Cline account or an API key.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription", "api-key"],
+      "source": "ACP Registry",
+      "availability": "installable",
+      "repository": "https://github.com/cline/cline",
+      "website": "https://cline.bot/cli",
+      "distribution": {
+        "kind": "npm",
+        "package": "cline",
+        "version": "3.0.40",
+        "tarball": "https://registry.npmjs.org/cline/-/cline-3.0.40.tgz",
+        "integrity": "sha512-TWkw9ZaChjqB8sptIGJzT6uPb/2po/VISkttds7hSO1z340Kb5UEwySiQbHbWP9uyxeBDe9g2JJbKh8z3EBLjQ==",
+        "downloadSize": 12585,
+        "unpackedSize": 33436,
+        "entrypoint": "bin/cline",
+        "arguments": ["--acp"],
+        "environment": ["CLINE_API_KEY"]
       }
     },
     {
@@ -75,6 +124,8 @@
       "authMethods": ["subscription", "api-key"],
       "source": "ACP Registry",
       "availability": "installable",
+      "repository": "https://github.com/agentclientprotocol/codex-acp",
+      "website": "https://openai.com/codex",
       "distribution": {
         "kind": "npm",
         "package": "@agentclientprotocol/codex-acp",
@@ -89,6 +140,150 @@
       }
     },
     {
+      "id": "cursor",
+      "name": "Cursor",
+      "summary": "Cursor's CLI coding agent. Ships as a platform binary Studio cannot verify and install yet.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription"],
+      "source": "ACP Registry (binary distribution)",
+      "availability": "planned",
+      "repository": null,
+      "website": "https://cursor.com/docs/cli/acp",
+      "distribution": null
+    },
+    {
+      "id": "factory-droid",
+      "name": "Factory Droid",
+      "summary": "Factory's Droid coding agent. Use a Factory login or an API key.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription", "api-key"],
+      "source": "ACP Registry",
+      "availability": "installable",
+      "repository": null,
+      "website": "https://factory.ai/product/cli",
+      "distribution": {
+        "kind": "npm",
+        "package": "droid",
+        "version": "0.171.0",
+        "tarball": "https://registry.npmjs.org/droid/-/droid-0.171.0.tgz",
+        "integrity": "sha512-3rCW1++ezdZ6bEGbCYxmbdQVZ6m/gjFHfXLMYxu/HwqZS1PO7+eM9WPXeGn/+xOymvjGWZMCkoFy//c1pyiR4Q==",
+        "downloadSize": 8350,
+        "unpackedSize": 25798,
+        "entrypoint": "bin/droid",
+        "arguments": ["exec", "--output-format", "acp-daemon"],
+        "environment": ["FACTORY_API_KEY"],
+        "environmentDefaults": {
+          "DROID_DISABLE_AUTO_UPDATE": "true",
+          "FACTORY_DROID_AUTO_UPDATE_ENABLED": "false"
+        }
+      }
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini CLI",
+      "summary": "Google's official CLI for Gemini. Use a Google login or a Gemini API key.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription", "api-key"],
+      "source": "ACP Registry",
+      "availability": "installable",
+      "repository": "https://github.com/google-gemini/gemini-cli",
+      "website": "https://geminicli.com",
+      "distribution": {
+        "kind": "npm",
+        "package": "@google/gemini-cli",
+        "version": "0.50.0",
+        "tarball": "https://registry.npmjs.org/@google/gemini-cli/-/gemini-cli-0.50.0.tgz",
+        "integrity": "sha512-Z2HSR+UWgOP11WYomOymglYk2AcwEdFfQKytzVla9tkqMIYGVgIvXobmdxI4cgfPQ54XKE9V9uQBP2PrDhvljQ==",
+        "downloadSize": 20711326,
+        "unpackedSize": 97925786,
+        "entrypoint": "bundle/gemini.js",
+        "arguments": ["--acp"],
+        "environment": ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_CLOUD_PROJECT"]
+      }
+    },
+    {
+      "id": "github-copilot-cli",
+      "name": "GitHub Copilot",
+      "summary": "GitHub's AI pair programmer. Use a GitHub login with a Copilot subscription.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription"],
+      "source": "ACP Registry",
+      "availability": "installable",
+      "repository": "https://github.com/github/copilot-cli",
+      "website": "https://github.com/features/copilot/cli",
+      "distribution": {
+        "kind": "npm",
+        "package": "@github/copilot",
+        "version": "1.0.70",
+        "tarball": "https://registry.npmjs.org/@github/copilot/-/copilot-1.0.70.tgz",
+        "integrity": "sha512-onEwx5tod9t31Lc2rT5ns6s/fY6jtdwVWS3Fzs8hKUjCv7LFIMGf71MLcikl4GBXn6cq44+HVdNzCMWnLjYl3g==",
+        "downloadSize": 5451,
+        "unpackedSize": 12970,
+        "entrypoint": "npm-loader.js",
+        "arguments": ["--acp"],
+        "environment": ["GH_TOKEN", "GITHUB_TOKEN"]
+      }
+    },
+    {
+      "id": "goose",
+      "name": "Goose",
+      "summary": "Block's local, extensible open-source agent. Ships as a platform binary Studio cannot verify and install yet.",
+      "runtime": "external-acp",
+      "authMethods": ["api-key", "none"],
+      "source": "ACP Registry (binary distribution)",
+      "availability": "planned",
+      "repository": "https://github.com/block/goose",
+      "website": "https://block.github.io/goose",
+      "distribution": null
+    },
+    {
+      "id": "kimi",
+      "name": "Kimi CLI",
+      "summary": "Moonshot AI's coding assistant. Ships as a platform binary Studio cannot verify and install yet.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription", "api-key"],
+      "source": "ACP Registry (binary distribution)",
+      "availability": "planned",
+      "repository": "https://github.com/MoonshotAI/kimi-cli",
+      "website": "https://moonshotai.github.io/kimi-cli",
+      "distribution": null
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "summary": "The open-source coding agent. Ships as a platform binary Studio cannot verify and install yet.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription", "api-key"],
+      "source": "ACP Registry (binary distribution)",
+      "availability": "planned",
+      "repository": "https://github.com/anomalyco/opencode",
+      "website": "https://opencode.ai",
+      "distribution": null
+    },
+    {
+      "id": "qwen-code",
+      "name": "Qwen Code",
+      "summary": "Alibaba's Qwen coding agent. Use a Qwen login or an OpenAI-compatible API key.",
+      "runtime": "external-acp",
+      "authMethods": ["subscription", "api-key"],
+      "source": "ACP Registry",
+      "availability": "installable",
+      "repository": "https://github.com/QwenLM/qwen-code",
+      "website": "https://qwenlm.github.io/qwen-code-docs/en/users/overview",
+      "distribution": {
+        "kind": "npm",
+        "package": "@qwen-code/qwen-code",
+        "version": "0.19.10",
+        "tarball": "https://registry.npmjs.org/@qwen-code/qwen-code/-/qwen-code-0.19.10.tgz",
+        "integrity": "sha512-0DJRJWNluJhkmIs+QhActYVXvq9MmY0Trjbdrcw2XIOWhiGw/VsDPd6PxT8X+FJfO6YKyyUMJEPiJHzjUX5zuw==",
+        "downloadSize": 23291996,
+        "unpackedSize": 85795037,
+        "entrypoint": "cli-entry.js",
+        "arguments": ["--acp", "--experimental-skills"],
+        "environment": ["OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"]
+      }
+    },
+    {
       "id": "studio-api",
       "name": "Studio Agent",
       "summary": "Use a local model or an API-backed OpenAI-compatible service with Studio's scoped OKF tools.",
@@ -96,6 +291,8 @@
       "authMethods": ["api-key", "none"],
       "source": "Built into OKF Studio",
       "availability": "configurable",
+      "repository": null,
+      "website": null,
       "distribution": null
     }
   ]

@@ -58,6 +58,14 @@ impl AgentInstallState {
         Ok(cancelled)
     }
 
+    pub fn is_installing(&self, agent_id: &str) -> Result<bool, String> {
+        let jobs = self
+            .jobs
+            .lock()
+            .map_err(|_| "The installer state is unavailable.".to_string())?;
+        Ok(jobs.values().any(|job| job.agent_id == agent_id))
+    }
+
     pub fn cancel(&self, install_id: &str) -> Result<bool, String> {
         let jobs = self
             .jobs
@@ -312,6 +320,17 @@ pub fn install(
     result
 }
 
+/// Remove every cached version of a catalog agent. Callers must first verify
+/// that no installation job is running and no connection uses the agent.
+pub fn uninstall(app: &AppHandle, agent_id: &str) -> Result<(), String> {
+    safe_id(agent_id, "agent")?;
+    let catalog = agent_catalog::load()?;
+    if !catalog.entries.iter().any(|entry| entry.id == agent_id) {
+        return Err("The selected agent is not in the bundled catalog.".to_string());
+    }
+    remove_path(&agent_cache(app)?.join("packages").join(agent_id))
+}
+
 pub(crate) fn installed_command(
     app: &AppHandle,
     agent_id: &str,
@@ -363,10 +382,18 @@ pub(crate) fn installed_command(
         .to_string_lossy()
         .into_owned()];
     arguments.extend(distribution.arguments.clone());
+    // Pinned defaults come after the host passthrough so they win on conflict.
+    let mut environment = catalog_environment(&distribution.environment);
+    environment.extend(
+        distribution
+            .environment_defaults
+            .iter()
+            .map(|(name, value)| (name.clone(), value.clone())),
+    );
     Ok(InstalledAgentCommand {
         executable: runtime.node_path(),
         arguments,
-        environment: catalog_environment(&distribution.environment),
+        environment,
         #[cfg(any(target_os = "linux", test))]
         read_only_roots: vec![runtime.runtime_root()?, package_root],
     })
@@ -385,7 +412,9 @@ fn install_dependencies(
         .collect::<Vec<_>>();
     let mut command = std::process::Command::new(runtime.node_path());
     command
-        .arg(runtime.npm_cli_path()?)
+        // The canonicalized npm path is verbatim (`\\?\`) on Windows, which
+        // Node 24 cannot resolve as its main module; hand it the Win32 form.
+        .arg(child_process_path(&runtime.npm_cli_path()?))
         .args([
             "install",
             "--ignore-scripts",
@@ -679,19 +708,36 @@ fn validate_distribution(distribution: &AgentDistribution) -> Result<(), String>
         return Err("The catalog package has invalid launch arguments.".to_string());
     }
     if distribution.environment.len() > 32
-        || distribution.environment.iter().any(|name| {
-            name.is_empty()
-                || name.len() > 128
-                || !name.chars().enumerate().all(|(index, character)| {
-                    character == '_'
-                        || character.is_ascii_alphanumeric()
-                            && (index > 0 || character.is_ascii_alphabetic())
-                })
-        })
+        || distribution
+            .environment
+            .iter()
+            .any(|name| !valid_environment_name(name))
     {
         return Err("The catalog package has invalid environment names.".to_string());
     }
+    if distribution.environment_defaults.len() > 32
+        || distribution
+            .environment_defaults
+            .iter()
+            .any(|(name, value)| {
+                !valid_environment_name(name)
+                    || value.is_empty()
+                    || value.len() > 4096
+                    || value.chars().any(char::is_control)
+            })
+    {
+        return Err("The catalog package has invalid environment defaults.".to_string());
+    }
     Ok(())
+}
+
+fn valid_environment_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 128
+        && name.chars().enumerate().all(|(index, character)| {
+            character == '_'
+                || character.is_ascii_alphanumeric() && (index > 0 || character.is_ascii_alphabetic())
+        })
 }
 
 fn validate_package_path(path: &str) -> Result<(), String> {
@@ -743,7 +789,7 @@ fn parse_install_receipt(bytes: &[u8]) -> Option<AgentInstallReceipt> {
     serde_json::from_slice(bytes).ok()
 }
 
-fn child_process_path(path: &Path) -> PathBuf {
+pub(crate) fn child_process_path(path: &Path) -> PathBuf {
     #[cfg(windows)]
     {
         let value = path.to_string_lossy();
@@ -904,6 +950,20 @@ mod tests {
     }
 
     #[test]
+    fn every_bundled_distribution_passes_launch_validation() {
+        let catalog = agent_catalog::load().expect("catalog should load");
+        let distributions = catalog
+            .entries
+            .iter()
+            .filter_map(|entry| entry.distribution.as_ref())
+            .collect::<Vec<_>>();
+        assert!(distributions.len() >= 8, "expected the expanded catalog");
+        for distribution in distributions {
+            validate_distribution(distribution).expect("bundled distribution should validate");
+        }
+    }
+
+    #[test]
     fn catalog_launch_metadata_rejects_traversal_and_invalid_environment_names() {
         let catalog = agent_catalog::load().expect("catalog should load");
         let mut distribution = catalog.entries[0]
@@ -922,6 +982,14 @@ mod tests {
         assert!(validate_distribution(&distribution)
             .unwrap_err()
             .contains("environment"));
+
+        distribution.environment = vec![];
+        distribution
+            .environment_defaults
+            .insert("BAD NAME".to_string(), "1".to_string());
+        assert!(validate_distribution(&distribution)
+            .unwrap_err()
+            .contains("environment defaults"));
     }
 
     #[test]

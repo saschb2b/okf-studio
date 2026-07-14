@@ -22,6 +22,8 @@ export interface AgentDistribution {
   entrypoint: string;
   arguments: readonly string[];
   environment: readonly string[];
+  /** Pinned launch values that override same-named host variables. */
+  environmentDefaults?: Readonly<Record<string, string>>;
 }
 
 export interface AgentCatalogRecord {
@@ -32,6 +34,8 @@ export interface AgentCatalogRecord {
   authMethods: readonly AgentAuthMethod[];
   source: string;
   availability: "installable" | "configurable" | "planned";
+  repository?: string | null;
+  website?: string | null;
   distribution: AgentDistribution | null;
 }
 

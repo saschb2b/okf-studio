@@ -589,4 +589,51 @@ mod tests {
         );
         let _ = std::fs::remove_dir_all(root);
     }
+
+    /// Regression: the canonical npm path is verbatim (`\\?\`) on Windows, and
+    /// Node 24 fails `resolveMainPath` for that form with `EISDIR lstat 'C:'`.
+    /// Dependency installation must convert it before it becomes Node argv.
+    #[cfg(windows)]
+    #[test]
+    fn npm_cli_path_converts_to_a_win32_main_module_argument() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "okf-studio-npm-argv-{}-{unique}",
+            std::process::id()
+        ));
+        let (node, npm) = runtime_paths(&root);
+        std::fs::create_dir_all(node.parent().expect("node parent")).expect("create runtime");
+        std::fs::write(&node, "node").expect("write node");
+        let npm_cli = root
+            .join("node_modules")
+            .join("npm")
+            .join("bin")
+            .join("npm-cli.js");
+        std::fs::create_dir_all(npm_cli.parent().expect("npm parent")).expect("create npm");
+        std::fs::write(&npm_cli, "cli").expect("write npm-cli");
+        let receipt = NodeRuntimeReceipt {
+            version: "test".to_string(),
+            target: "test".to_string(),
+            node_path: node.to_string_lossy().into_owned(),
+            npm_path: npm.to_string_lossy().into_owned(),
+            sha256: "test".to_string(),
+            already_installed: true,
+        };
+
+        let canonical = receipt.npm_cli_path().expect("npm cli path");
+        assert!(
+            canonical.to_string_lossy().starts_with(r"\\?\"),
+            "canonicalized npm path should be verbatim on Windows"
+        );
+        let argv = crate::agent_install::child_process_path(&canonical);
+        assert!(
+            !argv.to_string_lossy().starts_with(r"\\?\"),
+            "Node argv must use the Win32 path form"
+        );
+        assert!(argv.is_file());
+        let _ = std::fs::remove_dir_all(root);
+    }
 }

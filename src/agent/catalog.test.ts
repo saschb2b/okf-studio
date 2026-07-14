@@ -11,9 +11,9 @@ describe("agent connection catalog", () => {
   it("keeps featured providers unique and explicit about their runtime", () => {
     const entries = catalogEntries(catalog as AgentCatalogDocument);
     expect(new Set(entries.map((entry) => entry.id)).size).toBe(entries.length);
-    expect(entries.filter((entry) => entry.runtime === "external-acp")).toHaveLength(2);
+    expect(entries.filter((entry) => entry.runtime === "external-acp")).toHaveLength(12);
     expect(entries.filter((entry) => entry.runtime === "studio-native")).toHaveLength(1);
-    expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(2);
+    expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(8);
     expect(entries.find((entry) => entry.id === "studio-api")?.availability)
       .toBe("configurable");
     expect(catalog.nodeRuntime.version).toBe("v24.11.0");
@@ -22,6 +22,25 @@ describe("agent connection catalog", () => {
       expect(distribution.url).toMatch(/^https:\/\/nodejs\.org\/dist\//);
       expect(distribution.sha256).toMatch(/^[0-9a-f]{64}$/);
       expect(distribution.downloadSize).toBeGreaterThan(30_000_000);
+    }
+  });
+
+  it("pins every installable distribution to a verified npm archive", () => {
+    const entries = catalogEntries(catalog as AgentCatalogDocument);
+    for (const entry of entries) {
+      if (entry.availability !== "installable") {
+        expect(entry.distribution).toBeNull();
+        continue;
+      }
+      const distribution = entry.distribution;
+      if (!distribution) throw new Error(`${entry.id} is installable without a distribution`);
+      expect(distribution.kind).toBe("npm");
+      expect(distribution.tarball).toMatch(/^https:\/\/registry\.npmjs\.org\//);
+      expect(distribution.integrity).toMatch(/^sha512-/);
+      expect(distribution.downloadSize).toBeGreaterThan(0);
+      expect(distribution.downloadSize).toBeLessThanOrEqual(64 * 1024 * 1024);
+      expect(distribution.unpackedSize).toBeGreaterThanOrEqual(distribution.downloadSize);
+      expect(distribution.entrypoint.length).toBeGreaterThan(0);
     }
   });
 

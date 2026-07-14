@@ -295,7 +295,7 @@ function SavedWork() {
           <section className="agent-saved-thread">
             <Archive size={16} aria-hidden="true" />
             <div><h4>Archived thread</h4><span>Earlier evidence review</span><small>Updated Jul 13, 2026, 4:40 PM</small></div>
-            <div className="agent-saved-thread__actions"><button type="button" className="btn primary">Resume</button><button type="button" className="btn ghost">Forget</button></div>
+            <div className="agent-saved-thread__actions"><button type="button" className="btn">Resume</button><button type="button" className="btn ghost">Forget</button></div>
           </section>
         </div>
         <button type="button" className="btn ghost agent-saved-thread__start-new">Start new thread</button>

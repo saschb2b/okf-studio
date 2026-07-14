@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T14:45:00Z
+timestamp: 2026-07-14T15:10:00Z
 ---
 
 # Outcome
@@ -229,7 +229,7 @@ The visual-consistency pass checked every deterministic state against the theme 
 - [x] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
 - [x] Verify keyboard order, focus return, popover focus, horizontal switcher scrolling, 24px targets, text reflow, and visible focus at narrow and wide widths. No task-critical action may exist only on hover.
 - [x] Run a visual-consistency pass over spacing, type scale, common edges, dividers, repeated controls, overflow, and focus rings. Use the existing theme tokens and record any hierarchy choice that still needs judgment.
-- [ ] Dogfood the first-use, resume, deep-research, create, enhance, permission, failure-recovery, parallel-thread, and narrow-panel journeys. Capture before and after screenshots and note where the user must hunt, backtrack, or interpret hidden state.
+- [x] Dogfood the first-use, resume, deep-research, create, enhance, permission, failure-recovery, parallel-thread, and narrow-panel journeys. The [journey record](../ux/agent-workspace-dogfood.md) preserves before and after screenshots, three constrained-width fixtures, navigation evidence, and the one remaining hierarchy fix found during review.
 
 Gate: each journey has one obvious next action, no duplicated persistent identity, no hidden blocking state, and screenshot plus keyboard evidence at 360px, the default panel width, and 560px.
 

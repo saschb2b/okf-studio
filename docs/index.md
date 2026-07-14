@@ -38,6 +38,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 
 * [First Run](ux/first-run.md) - From empty state to a rendered bundle in two clicks.
 * [Empty & Error States](ux/empty-and-error-states.md) - Every no-content, loading, and failure state, and how to recover.
+* [Agent Workspace Dogfood](ux/agent-workspace-dogfood.md) - Journey evidence and open findings from the Agent Panel workspace refinement.
 * [Browsing Layout](ux/browsing-layout.md) - The three-pane workspace: sidebar, graph, reader.
 * [Keyboard Shortcuts](ux/keyboard-shortcuts.md) - Keys for power users.
 * [Theming](ux/theming.md) - Light/dark and the type-color palette.

@@ -374,7 +374,7 @@ function SavedThreadWelcome({
                 <button
                   ref={index === 0 ? actionRef : undefined}
                   type="button"
-                  className="btn primary"
+                  className={index === 0 ? "btn primary" : "btn"}
                   disabled={state.status === "resuming"}
                   onClick={() => onResume(metadata)}
                 >

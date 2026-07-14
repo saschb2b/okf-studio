@@ -395,7 +395,7 @@ function EmptyThreadWelcome({
   onSelectStarter,
 }: {
   isStudioAgent: boolean;
-  onSelectStarter: (prompt: string) => void;
+  onSelectStarter: (prompt: string, workflow: AgentThreadWorkflow) => void;
 }) {
   return (
     <>
@@ -415,7 +415,7 @@ function EmptyThreadWelcome({
               type="button"
               className="agent-starter"
               aria-label={`${starter.title}: ${starter.description}`}
-              onClick={() => onSelectStarter(starter.prompt)}
+              onClick={() => onSelectStarter(starter.prompt, starter.workflow)}
             >
               <Icon size={16} aria-hidden="true" />
               <span>
@@ -1502,6 +1502,11 @@ export function AgentConversation({
   const usageLabel = usage ? usageLabels(usage) : null;
   const supportsBundleGeneration = threadWorkflow === "create-bundle" ||
     threadWorkflow === "enhance-bundle";
+  const hasReportedWriteAttempt = messages.some(
+    (item) => item.role === "tool" && item.changeState === "not-staged",
+  );
+  const showWriteGrant = supportsBundleGeneration || writeGranted || stagedFileCount > 0 ||
+    pendingPermissions.length > 0 || hasReportedWriteAttempt;
   let latestBundleProposalMessageId: string | null = null;
   if (supportsBundleGeneration) {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -1518,10 +1523,16 @@ export function AgentConversation({
     isRestoringCheckpoint || isSettingGrant || isPreparingGeneration ||
     rejectingStagedPath !== null || selectingHunk !== null;
 
-  function selectStarter(prompt: string) {
+  function selectStarter(prompt: string, workflow: AgentThreadWorkflow) {
     if (!promptRef.current) return;
+    setThreadWorkflow(workflow);
     setPromptText(prompt);
     promptRef.current.focus();
+  }
+
+  function changePromptText(value: string) {
+    setPromptText(value);
+    if (!value.trim() && !hasSession) setThreadWorkflow(null);
   }
 
   async function generateBundleProposal() {
@@ -1827,34 +1838,18 @@ export function AgentConversation({
   return (
     <section className="agent-conversation" aria-labelledby={conversationTitleId}>
       <header className="agent-conversation__toolbar">
-        <div>
-          <div className="agent-conversation__title-row">
-            <h2 id={conversationTitleId} title={threadTitle.value}>{threadTitle.value}</h2>
-            <ThreadTitleEditor
-              title={threadTitle.value}
-              onTitleChange={changeThreadTitle}
-            />
-          </div>
-          <p>{agentName} · {bundleName ?? "No bundle selected"}</p>
-          {exportState.status === "success" && (
-            <p className="agent-conversation__export-status agent-conversation__export-status--success" role="status">
-              Exported {exportState.filename}
-            </p>
-          )}
-          {exportState.status === "error" && (
-            <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
-              {exportState.message}
-            </p>
-          )}
-          {threadMetadataError && (
-            <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
-              Thread metadata was not saved. {threadMetadataError}
-            </p>
-          )}
-        </div>
-        <div className="agent-conversation__toolbar-actions">
+        <h2 id={conversationTitleId} className="sr-only">{threadTitle.value}</h2>
+        <div
+          className="agent-conversation__toolbar-actions"
+          role="toolbar"
+          aria-label={`${threadTitle.value} actions`}
+        >
+          <ThreadTitleEditor
+            title={threadTitle.value}
+            onTitleChange={changeThreadTitle}
+          />
           <ThreadSecurityScope bundleName={bundleName} scope={connection.securityScope} />
-          {bundleRoot && !requiresAuthentication && (
+          {bundleRoot && !requiresAuthentication && showWriteGrant && (
             <button
               type="button"
               className={`btn ghost agent-conversation__write-grant${writeGranted ? " agent-conversation__write-grant--on" : ""}`}
@@ -1885,23 +1880,24 @@ export function AgentConversation({
               </span>
             </button>
           )}
-          <button
-            type="button"
-            className="btn ghost agent-conversation__export"
-            aria-label="Export thread"
-            title={messages.length === 0 ? "Send a message before exporting." : "Export thread as Markdown"}
-            onClick={() => void exportTranscript()}
-            disabled={
-              messages.length === 0 || isSubmitting || activeTurn !== null ||
-              exportState.status === "exporting"
-            }
-          >
-            <FileDown aria-hidden="true" size={14} />
-            <span className="agent-conversation__action-label">
-              {exportState.status === "exporting" ? "Exporting..." : "Export"}
-            </span>
-          </button>
-          {supportsHistory && (
+          {(messages.length > 0 || exportState.status !== "idle") && (
+            <button
+              type="button"
+              className="btn ghost agent-conversation__export"
+              aria-label="Export thread"
+              title="Export thread as Markdown"
+              onClick={() => void exportTranscript()}
+              disabled={
+                isSubmitting || activeTurn !== null || exportState.status === "exporting"
+              }
+            >
+              <FileDown aria-hidden="true" size={14} />
+              <span className="agent-conversation__action-label">
+                {exportState.status === "exporting" ? "Exporting..." : "Export"}
+              </span>
+            </button>
+          )}
+          {supportsHistory && messages.length > 0 && (
             <button
               type="button"
               className="btn ghost icon"
@@ -1944,6 +1940,26 @@ export function AgentConversation({
           </button>
         </div>
       </header>
+
+      {(exportState.status === "success" || exportState.status === "error" || threadMetadataError) && (
+        <div className="agent-conversation__notices">
+          {exportState.status === "success" && (
+            <p className="agent-conversation__export-status agent-conversation__export-status--success" role="status">
+              Exported {exportState.filename}
+            </p>
+          )}
+          {exportState.status === "error" && (
+            <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
+              {exportState.message}
+            </p>
+          )}
+          {threadMetadataError && (
+            <p className="agent-conversation__export-status agent-conversation__export-status--error" role="alert">
+              Thread metadata was not saved. {threadMetadataError}
+            </p>
+          )}
+        </div>
+      )}
 
       {!bundleRoot && (
         <div className="agent-conversation__state">
@@ -2516,7 +2532,7 @@ export function AgentConversation({
                 placeholder={isStudioAgent ? "Message Studio Agent..." : "Ask about this bundle..."}
                 disabled={isSubmitting || queuedPrompt !== null}
                 value={promptText}
-                onChange={(event) => setPromptText(event.target.value)}
+                onChange={(event) => changePromptText(event.target.value)}
               />
               <div className="agent-composer__actions">
                 <div className="agent-composer__leading-actions">

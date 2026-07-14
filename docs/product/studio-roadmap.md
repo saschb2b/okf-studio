@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T10:00:00Z
+timestamp: 2026-07-14T10:30:00Z
 ---
 
 # Outcome
@@ -207,11 +207,13 @@ The journey contract defines what earns persistent space and what stays deferred
 | Parallel agents and threads | Selected agent and thread, compact status, switch affordances, and one add action per level | Repeated product, bundle, agent, and thread labels across stacked bars |
 | Narrow panel | The same task state, a scrollable or condensed switcher, transcript, and composer with 24px minimum targets | Text labels that can move into an accessible overflow menu without hiding state |
 
-- [ ] Inventory every persistent band and action across disconnected, authentication, empty, resumed, streaming, permission, staged, validation, and error states. Record duplicate labels, actions without a current use, and controls that move between states.
+The persistent-band audit assigns one owner to each identity: the global switcher owns the bundle, the connection strip owns the agent, and the thread strip owns the thread. The panel header owns entry and exit, the task-aware action row owns thread commands, the transcript owns work and blocking state, staged review owns edits, and the composer owns intake plus turn submission. The removed duplication was the toolbar's second agent, bundle, and thread label. Empty read-only threads no longer show disabled edit, export, or archive commands.
+
+- [x] Inventory every persistent band and action across disconnected, authentication, empty, resumed, streaming, permission, staged, validation, and error states. Record duplicate labels, actions without a current use, and controls that move between states.
 - [ ] Prototype the workspace hierarchy with real long agent, bundle, and thread names. Compare a merged agent/thread navigator with the current stacked strips at 360px, the default panel width, and 560px before choosing the structure.
-- [ ] Reduce the live workspace to one clear identity header. The selected agent and thread remain discoverable, while the product name, bundle name, connection state, and repeated new-thread actions appear only where they add information.
+- [x] Reduce the live workspace to one clear identity header. The selected agent and thread remain discoverable, while the product name, bundle name, connection state, and repeated new-thread actions appear only where they add information.
 - [x] Make saved-thread continuation a distinct returning-user state. Resume, dismiss, or start new work must resolve that state before the ordinary empty-thread guidance takes over.
-- [ ] Separate research and editing emphasis. Keep read-only research calm by default; reveal the edit grant, staged review, validation, Apply, and Restore controls when the selected workflow or live stage makes them relevant.
+- [x] Separate research and editing emphasis. Keep read-only research calm by default; reveal the edit grant, staged review, validation, Apply, and Restore controls when the selected workflow or live stage makes them relevant.
 - [ ] Consolidate secondary thread actions into one predictable menu. Keep Stop, Send or Queue, the active blocking request, and staged-review actions direct because they are time-sensitive.
 - [ ] Give the transcript the dominant vertical budget. Empty guidance must be short enough that the composer remains visually connected to it, and long content must scroll without pushing identity or send controls out of reach.
 - [ ] Treat connection, session, turn, permission, staging, and validation as separate status owners. Each failure appears once beside its recovery action and survives switching away and back to its agent or thread.

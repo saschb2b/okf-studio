@@ -7,27 +7,11 @@
 }
 
 .agent-conversation__toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
-  border-bottom: 1px solid var(--border);
-}
-
-.agent-conversation__toolbar > div:first-child {
-  min-width: 0;
-}
-
-.agent-conversation__title-row {
   display: flex;
-  align-items: center;
   min-width: 0;
-  gap: var(--space-2);
-}
-
-.agent-conversation__title-row h2 {
-  min-width: 0;
+  justify-content: flex-end;
+  padding: var(--space-4) var(--space-8);
+  border-bottom: 1px solid var(--border);
 }
 
 .agent-conversation__rename {
@@ -37,8 +21,11 @@
 
 .agent-conversation__toolbar-actions {
   display: flex;
+  min-width: 0;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-4);
+  overflow-x: auto;
 }
 
 .agent-conversation__toolbar-actions .btn {
@@ -279,32 +266,33 @@
   margin: 0;
 }
 
-.agent-conversation__toolbar .agent-conversation__export-status {
+.agent-conversation__notices {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-conversation__notices .agent-conversation__export-status {
+  margin: 0;
   overflow: hidden;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.agent-conversation__toolbar .agent-conversation__export-status--success {
+.agent-conversation__notices .agent-conversation__export-status--success {
   color: var(--ok);
 }
 
-.agent-conversation__toolbar .agent-conversation__export-status--error {
+.agent-conversation__notices .agent-conversation__export-status--error {
   color: var(--error);
   overflow: visible;
   overflow-wrap: anywhere;
   white-space: normal;
 }
 
-.agent-conversation__toolbar h2 {
-  overflow: hidden;
-  font-size: var(--fs-sm);
-  line-height: var(--lh-tight);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.agent-conversation__toolbar p,
 .agent-conversation__state p,
 .agent-conversation__welcome p,
 .agent-composer__actions,
@@ -1898,16 +1886,8 @@
 }
 
 @container (max-width: 420px) {
-  .agent-conversation__toolbar {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-4);
-    padding-inline: var(--space-8);
-  }
-
   .agent-conversation__toolbar-actions {
     width: 100%;
-    justify-content: flex-end;
   }
 
   .agent-conversation__toolbar-actions .btn {

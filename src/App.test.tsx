@@ -404,9 +404,11 @@ describe("OKF Studio app", () => {
       .toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: "Add context or sources" })).toBeEnabled();
-    const localGrant = screen.getByRole("button", { name: "Allow edits in this thread" });
-    expect(localGrant).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
+      .not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Create bundle/ }));
+    const localGrant = await screen.findByRole("button", { name: "Allow edits in this thread" });
+    expect(localGrant).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText(/I inspected the available evidence/)).toBeInTheDocument();
     const proposal = await screen.findByRole("region", {
@@ -546,7 +548,7 @@ describe("OKF Studio app", () => {
 
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("heading", { name: "New thread" })).toBeInTheDocument();
-    expect(screen.getByText(/Local Harness · OKF Studio \(sample\)/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to Local Harness" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Change" }));
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
@@ -1310,8 +1312,8 @@ describe("OKF Studio app", () => {
     await screen.findByText(/Connected to Write Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    const grantToggle = screen.getByRole("button", { name: "Allow edits in this thread" });
-    expect(grantToggle).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
+      .not.toBeInTheDocument();
 
     // Without the grant, a write attempt explains what is missing.
     await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
@@ -1322,6 +1324,7 @@ describe("OKF Studio app", () => {
     expect(screen.getByText("Change not staged")).toBeInTheDocument();
     expect(screen.queryByText("Staged changes")).not.toBeInTheDocument();
 
+    const grantToggle = await screen.findByRole("button", { name: "Allow edits in this thread" });
     await waitFor(() => expect(grantToggle).toBeEnabled());
     await user.click(grantToggle);
     await waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "true"));

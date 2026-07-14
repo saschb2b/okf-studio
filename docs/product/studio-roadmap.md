@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-14T10:45:00Z
+timestamp: 2026-07-14T11:00:00Z
 ---
 
 # Outcome
@@ -215,7 +215,7 @@ The persistent-band audit assigns one owner to each identity: the global switche
 - [x] Make saved-thread continuation a distinct returning-user state. Resume, dismiss, or start new work must resolve that state before the ordinary empty-thread guidance takes over.
 - [x] Separate research and editing emphasis. Keep read-only research calm by default; reveal the edit grant, staged review, validation, Apply, and Restore controls when the selected workflow or live stage makes them relevant.
 - [x] Consolidate secondary thread actions into one predictable menu. Keep Stop, Send or Queue, the active blocking request, and staged-review actions direct because they are time-sensitive.
-- [ ] Give the transcript the dominant vertical budget. Empty guidance must be short enough that the composer remains visually connected to it, and long content must scroll without pushing identity or send controls out of reach.
+- [x] Give the transcript the dominant vertical budget. Empty guidance must be short enough that the composer remains visually connected to it, and long content must scroll without pushing identity or send controls out of reach.
 - [ ] Treat connection, session, turn, permission, staging, and validation as separate status owners. Each failure appears once beside its recovery action and survives switching away and back to its agent or thread.
 - [ ] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
 - [ ] Verify keyboard order, focus return, popover focus, horizontal switcher scrolling, 24px targets, text reflow, and visible focus at narrow and wide widths. No task-critical action may exist only on hover.

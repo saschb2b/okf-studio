@@ -603,7 +603,7 @@ export async function connectLocalModel(
     agent: {
       name: "okf-studio-local",
       title: `${profile.name} · ${model}`,
-      version: "0.2.7-dev",
+      version: "0.3.0-dev",
     },
     authMethods: [],
     authenticated: true,

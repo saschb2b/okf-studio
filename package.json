@@ -1,7 +1,7 @@
 {
   "name": "okf-viewer",
   "private": true,
-  "version": "0.2.7",
+  "version": "0.3.0",
   "type": "module",
   "description": "Explore connected knowledge with the agents you already use.",
   "scripts": {

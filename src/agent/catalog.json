@@ -142,14 +142,87 @@
     {
       "id": "cursor",
       "name": "Cursor",
-      "summary": "Cursor's CLI coding agent. Ships as a platform binary Studio cannot verify and install yet.",
+      "summary": "Cursor's CLI coding agent. Use a Cursor login or an API key.",
       "runtime": "external-acp",
-      "authMethods": ["subscription"],
-      "source": "ACP Registry (binary distribution)",
-      "availability": "planned",
+      "authMethods": ["subscription", "api-key"],
+      "source": "ACP Registry",
+      "availability": "installable",
       "repository": null,
       "website": "https://cursor.com/docs/cli/acp",
-      "distribution": null
+      "distribution": {
+        "kind": "binary",
+        "version": "2026.07.09",
+        "environment": ["CURSOR_API_KEY"],
+        "environmentDefaults": { "CURSOR_INVOKED_AS": "cursor-agent" },
+        "targets": {
+          "windows-x86_64": {
+            "archive": "zip",
+            "url": "https://downloads.cursor.com/lab/2026.07.09-a3815c0/windows/x64/agent-cli-package.zip",
+            "sha256": "798fbeea54d3a77a3becf6746147a944f917a62e534c85912e9a171f7bc15e1f",
+            "downloadSize": 59319840,
+            "unpackedSize": 156008515,
+            "root": "dist-package",
+            "executable": "dist-package/node.exe",
+            "pathArguments": ["dist-package/index.js"],
+            "arguments": ["acp"]
+          },
+          "windows-aarch64": {
+            "archive": "zip",
+            "url": "https://downloads.cursor.com/lab/2026.07.09-a3815c0/windows/arm64/agent-cli-package.zip",
+            "sha256": "d6feba13c902d6096eb98610519b8fb61193d59d178da52104017d8fb75483f9",
+            "downloadSize": 54838433,
+            "unpackedSize": 141550561,
+            "root": "dist-package",
+            "executable": "dist-package/node.exe",
+            "pathArguments": ["dist-package/index.js"],
+            "arguments": ["acp"]
+          },
+          "linux-x86_64": {
+            "archive": "tar-gz",
+            "url": "https://downloads.cursor.com/lab/2026.07.09-a3815c0/linux/x64/agent-cli-package.tar.gz",
+            "sha256": "c7c1f32249cedb99cc20cd4eed1f9308dc2299a78c283bbc6efd6d658cd4977e",
+            "downloadSize": 71478392,
+            "unpackedSize": 200939090,
+            "root": "dist-package",
+            "executable": "dist-package/node",
+            "pathArguments": ["dist-package/index.js"],
+            "arguments": ["acp"]
+          },
+          "linux-aarch64": {
+            "archive": "tar-gz",
+            "url": "https://downloads.cursor.com/lab/2026.07.09-a3815c0/linux/arm64/agent-cli-package.tar.gz",
+            "sha256": "11b2b6801136a11a3632a4b1080ea3bfc7d97d0a68382be9ede1faf5333207fb",
+            "downloadSize": 70309209,
+            "unpackedSize": 195914496,
+            "root": "dist-package",
+            "executable": "dist-package/node",
+            "pathArguments": ["dist-package/index.js"],
+            "arguments": ["acp"]
+          },
+          "macos-x86_64": {
+            "archive": "tar-gz",
+            "url": "https://downloads.cursor.com/lab/2026.07.09-a3815c0/darwin/x64/agent-cli-package.tar.gz",
+            "sha256": "066c499f6ec43734254337c493aeec5aabb4a6ae6d6df7da214fa86ceda9e45d",
+            "downloadSize": 63961428,
+            "unpackedSize": 187409779,
+            "root": "dist-package",
+            "executable": "dist-package/node",
+            "pathArguments": ["dist-package/index.js"],
+            "arguments": ["acp"]
+          },
+          "macos-aarch64": {
+            "archive": "tar-gz",
+            "url": "https://downloads.cursor.com/lab/2026.07.09-a3815c0/darwin/arm64/agent-cli-package.tar.gz",
+            "sha256": "009ee857d49f17c10e5035e33884eb258d1f3839c1d52bdb35f35a117369dfde",
+            "downloadSize": 61136750,
+            "unpackedSize": 181205699,
+            "root": "dist-package",
+            "executable": "dist-package/node",
+            "pathArguments": ["dist-package/index.js"],
+            "arguments": ["acp"]
+          }
+        }
+      }
     },
     {
       "id": "factory-droid",

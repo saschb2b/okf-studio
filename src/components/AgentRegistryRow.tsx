@@ -72,6 +72,9 @@ function formatBytes(bytes: number): string {
 
 function installDisclosure(preflight: AgentInstallPreflight): string {
   if (preflight.packageInstalled) return `Installed v${preflight.agentVersion}.`;
+  if (preflight.kind === "binary") {
+    return `Downloads one ${formatBytes(preflight.packageDownloadSize)} platform archive pinned by Studio-measured checksum. It bundles its own runtime; nothing else is downloaded.`;
+  }
   if (preflight.runtimeInstalled) {
     return `Downloads a ${formatBytes(preflight.packageDownloadSize)} pinned agent archive, then its production dependencies from npm. Dependency size is determined during installation.`;
   }

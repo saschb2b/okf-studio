@@ -92,7 +92,9 @@ function matchesFilter(
 function matchesQuery(entry: AgentCatalogEntry, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return [entry.name, entry.summary, entry.id, entry.distribution?.package ?? ""]
+  const packageName =
+    entry.distribution?.kind === "npm" ? entry.distribution.package : "";
+  return [entry.name, entry.summary, entry.id, packageName]
     .some((value) => value.toLowerCase().includes(needle));
 }
 

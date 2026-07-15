@@ -66,9 +66,26 @@ pub(crate) struct AgentCatalogEntry {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "kind")]
+pub(crate) enum AgentDistribution {
+    #[serde(rename = "npm")]
+    Npm(NpmAgentDistribution),
+    #[serde(rename = "binary")]
+    Binary(BinaryAgentDistribution),
+}
+
+impl AgentDistribution {
+    pub(crate) fn version(&self) -> &str {
+        match self {
+            AgentDistribution::Npm(distribution) => &distribution.version,
+            AgentDistribution::Binary(distribution) => &distribution.version,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct AgentDistribution {
-    pub(crate) kind: String,
+pub(crate) struct NpmAgentDistribution {
     pub(crate) package: String,
     pub(crate) version: String,
     pub(crate) tarball: String,
@@ -83,6 +100,56 @@ pub(crate) struct AgentDistribution {
     /// same-named host variable when the agent starts.
     #[serde(default)]
     pub(crate) environment_defaults: BTreeMap<String, String>,
+}
+
+/// A registry agent published as per-platform archives. Studio measures and
+/// pins each archive's SHA-256 itself when it takes the catalog snapshot, so
+/// the verified-digest rule holds even when the upstream registry entry
+/// publishes none.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BinaryAgentDistribution {
+    pub(crate) version: String,
+    pub(crate) targets: BTreeMap<String, AgentBinaryTarget>,
+    pub(crate) environment: Vec<String>,
+    #[serde(default)]
+    pub(crate) environment_defaults: BTreeMap<String, String>,
+}
+
+impl BinaryAgentDistribution {
+    pub(crate) fn target_for(&self, os: &str, arch: &str) -> Option<&AgentBinaryTarget> {
+        let os = match os {
+            "windows" => "windows",
+            "linux" => "linux",
+            "macos" => "macos",
+            _ => return None,
+        };
+        let arch = match arch {
+            "x86_64" => "x86_64",
+            "aarch64" => "aarch64",
+            _ => return None,
+        };
+        self.targets.get(&format!("{os}-{arch}"))
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentBinaryTarget {
+    pub(crate) archive: String,
+    pub(crate) url: String,
+    pub(crate) sha256: String,
+    pub(crate) download_size: u64,
+    pub(crate) unpacked_size: u64,
+    /// The single top-level directory every archive entry must live under.
+    pub(crate) root: String,
+    /// Archive-relative executable, spawned directly — never through a shell
+    /// or the publisher's launcher script.
+    pub(crate) executable: String,
+    /// Archive-relative files appended to argv as absolute Win32-form paths.
+    pub(crate) path_arguments: Vec<String>,
+    /// Literal argv tail after the path arguments.
+    pub(crate) arguments: Vec<String>,
 }
 
 pub fn load() -> Result<AgentCatalog, String> {
@@ -134,7 +201,16 @@ mod tests {
                         .distribution
                         .as_ref()
                         .expect("installable entries carry a pinned distribution");
-                    assert_eq!(distribution.kind, "npm");
+                    match distribution {
+                        AgentDistribution::Npm(_) => assert_ne!(entry.id, "cursor"),
+                        AgentDistribution::Binary(binary) => {
+                            assert_eq!(entry.id, "cursor");
+                            assert_eq!(binary.targets.len(), 6);
+                            assert!(binary.target_for("windows", "x86_64").is_some());
+                            assert!(binary.target_for("linux", "aarch64").is_some());
+                            assert!(binary.target_for("macos", "aarch64").is_some());
+                        }
+                    }
                 }
                 "configurable" | "planned" => assert!(entry.distribution.is_none()),
                 other => panic!("unknown availability {other}"),

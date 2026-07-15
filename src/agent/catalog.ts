@@ -11,7 +11,7 @@ export type AgentConnectionState =
 export type AgentAuthMethod = "subscription" | "api-key" | "none";
 export type AgentRuntime = "external-acp" | "studio-native";
 
-export interface AgentDistribution {
+export interface NpmAgentDistribution {
   kind: "npm";
   package: string;
   version: string;
@@ -25,6 +25,29 @@ export interface AgentDistribution {
   /** Pinned launch values that override same-named host variables. */
   environmentDefaults?: Readonly<Record<string, string>>;
 }
+
+export interface AgentBinaryTarget {
+  archive: "zip" | "tar-gz";
+  url: string;
+  /** Measured by Studio at catalog-snapshot time, not taken from upstream. */
+  sha256: string;
+  downloadSize: number;
+  unpackedSize: number;
+  root: string;
+  executable: string;
+  pathArguments: readonly string[];
+  arguments: readonly string[];
+}
+
+export interface BinaryAgentDistribution {
+  kind: "binary";
+  version: string;
+  targets: Readonly<Record<string, AgentBinaryTarget>>;
+  environment: readonly string[];
+  environmentDefaults?: Readonly<Record<string, string>>;
+}
+
+export type AgentDistribution = NpmAgentDistribution | BinaryAgentDistribution;
 
 export interface AgentCatalogRecord {
   id: string;

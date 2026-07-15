@@ -1,6 +1,7 @@
 export interface AgentInstallPreflight {
   agentId: string;
   agentVersion: string;
+  kind: "npm" | "binary";
   target: string;
   runtimeVersion: string;
   packageDownloadSize: number;
@@ -18,6 +19,7 @@ export interface AgentInstallReceipt {
   dependencyLockSha256: string;
   entrypointSha256: string;
   alreadyInstalled: boolean;
+  kind: "npm" | "binary";
 }
 
 export interface AgentInstallProgress {

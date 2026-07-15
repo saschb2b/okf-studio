@@ -1,5 +1,8 @@
 # Update Log
 
+## 2026-07-15
+* **Creation**: Cursor becomes installable as the catalog's first binary distribution. Studio measured the SHA-256 of all six per-platform archives itself at snapshot time — the upstream registry entry publishes none — and installs them through a parallel Rust transaction with a 256 MB compressed cap, a pinned-size expansion bound under one root, no links, and no scripts. Launch bypasses the publisher's shell and PowerShell shims: Studio spawns the archive's bundled Node with the pinned entry file and `acp` argument directly and reproduces the shim's `CURSOR_INVOKED_AS` through environment defaults. The direct launch was verified with a real ACP initialize round-trip before pinning. Goose, Kimi CLI, and OpenCode remain planned until their archives can be pinned the same way.
+
 ## 2026-07-14
 * **Creation**: The Agent Panel now restores itself across launches like Zed. Studio remembers the last explicitly connected agent — catalog entry, custom profile with launch mode, or Studio model with its selection — reconnects it once per session when the open panel first has an active bundle, and lets the restored connection's first surface resume the current saved thread automatically instead of parking on a Resume card. An explicit Disconnect forgets the entry; failures fall back to the ordinary connect state; archived threads, reconnects, and user-created surfaces keep their explicit choice. The read-only principle now names this continuation explicitly.
 * **Creation**: The main window remembers its size, position, and maximized/fullscreen state across launches through the Rust window-state plugin, filtered to the main window with no webview command surface.

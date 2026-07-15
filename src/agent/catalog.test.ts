@@ -13,7 +13,7 @@ describe("agent connection catalog", () => {
     expect(new Set(entries.map((entry) => entry.id)).size).toBe(entries.length);
     expect(entries.filter((entry) => entry.runtime === "external-acp")).toHaveLength(12);
     expect(entries.filter((entry) => entry.runtime === "studio-native")).toHaveLength(1);
-    expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(8);
+    expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(9);
     expect(entries.find((entry) => entry.id === "studio-api")?.availability)
       .toBe("configurable");
     expect(catalog.nodeRuntime.version).toBe("v24.11.0");
@@ -25,7 +25,7 @@ describe("agent connection catalog", () => {
     }
   });
 
-  it("pins every installable distribution to a verified npm archive", () => {
+  it("pins every installable distribution to a verified archive", () => {
     const entries = catalogEntries(catalog as AgentCatalogDocument);
     for (const entry of entries) {
       if (entry.availability !== "installable") {
@@ -34,6 +34,23 @@ describe("agent connection catalog", () => {
       }
       const distribution = entry.distribution;
       if (!distribution) throw new Error(`${entry.id} is installable without a distribution`);
+      if (distribution.kind === "binary") {
+        const targets = Object.entries(distribution.targets);
+        expect(targets.length).toBeGreaterThan(0);
+        for (const [name, target] of targets) {
+          expect(name).toMatch(/^(windows|linux|macos)-(x86_64|aarch64)$/);
+          expect(target.url).toMatch(/^https:\/\//);
+          expect(target.sha256).toMatch(/^[0-9a-f]{64}$/);
+          expect(target.downloadSize).toBeGreaterThan(0);
+          expect(target.downloadSize).toBeLessThanOrEqual(256 * 1024 * 1024);
+          expect(target.unpackedSize).toBeGreaterThanOrEqual(target.downloadSize);
+          expect(target.executable.startsWith(`${target.root}/`)).toBe(true);
+          for (const path of target.pathArguments) {
+            expect(path.startsWith(`${target.root}/`)).toBe(true);
+          }
+        }
+        continue;
+      }
       expect(distribution.kind).toBe("npm");
       expect(distribution.tarball).toMatch(/^https:\/\/registry\.npmjs\.org\//);
       expect(distribution.integrity).toMatch(/^sha512-/);

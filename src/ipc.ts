@@ -11,7 +11,7 @@ import type {
 } from "./types.ts";
 import { DEFAULT_SETTINGS } from "./types.ts";
 import catalog from "./agent/catalog.json";
-import type { AgentCatalogDocument } from "./agent/catalog.ts";
+import type { AgentBinaryTarget, AgentCatalogDocument } from "./agent/catalog.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
 import type {
   LocalModelProbe,
@@ -2210,6 +2210,27 @@ export async function agentInstallPreflight(
   const document = catalog as AgentCatalogDocument;
   const entry = document.entries.find((candidate) => candidate.id === agentId);
   if (!entry?.distribution) throw new Error("This agent is not installable yet.");
+  if (entry.distribution.kind === "binary") {
+    const targets: Readonly<Partial<Record<string, AgentBinaryTarget>>> =
+      entry.distribution.targets;
+    const target = targets[browserTarget()];
+    if (!target) {
+      throw new Error(`${entry.name} does not publish a build for ${browserTarget()}.`);
+    }
+    const packageDownloadSize = mockInstalledAgents.has(agentId) ? 0 : target.downloadSize;
+    return {
+      agentId,
+      agentVersion: entry.distribution.version,
+      kind: "binary",
+      target: browserTarget(),
+      runtimeVersion: "",
+      packageDownloadSize,
+      runtimeDownloadSize: 0,
+      totalDownloadSize: packageDownloadSize,
+      packageInstalled: mockInstalledAgents.has(agentId),
+      runtimeInstalled: true,
+    };
+  }
   const runtime = document.nodeRuntime.distributions.find(
     (distribution) => distribution.target === browserTarget(),
   );
@@ -2217,6 +2238,7 @@ export async function agentInstallPreflight(
   return {
     agentId,
     agentVersion: entry.distribution.version,
+    kind: "npm",
     target: runtime.target,
     runtimeVersion: document.nodeRuntime.version,
     packageDownloadSize: entry.distribution.downloadSize,
@@ -2257,14 +2279,16 @@ export async function installAgent(
   }
 
   const preflight = await agentInstallPreflight(agentId);
-  const phases: AgentInstallProgress["phase"][] = [
-    "runtime-downloading",
-    "runtime-extracting",
-    "package-downloading",
-    "package-extracting",
-    "dependencies-installing",
-    "complete",
-  ];
+  const phases: AgentInstallProgress["phase"][] = preflight.kind === "binary"
+    ? ["package-downloading", "package-extracting", "complete"]
+    : [
+        "runtime-downloading",
+        "runtime-extracting",
+        "package-downloading",
+        "package-extracting",
+        "dependencies-installing",
+        "complete",
+      ];
   mockCancelledInstalls.delete(installId);
 
   for (const phase of phases) {
@@ -2293,14 +2317,21 @@ export async function installAgent(
   );
   if (!entry?.distribution) throw new Error("This agent is not installable yet.");
   mockInstalledAgents.add(agentId);
+  const binaryTarget: AgentBinaryTarget | undefined =
+    entry.distribution.kind === "binary"
+      ? entry.distribution.targets[browserTarget()]
+      : undefined;
   return {
     agentId,
     version: entry.distribution.version,
     packageDir: `mock-agent-cache/${agentId}/${entry.distribution.version}`,
-    integrity: entry.distribution.integrity,
-    dependencyLockSha256: "mock-dependency-lock-sha256",
+    integrity: entry.distribution.kind === "npm"
+      ? entry.distribution.integrity
+      : `sha256-${binaryTarget?.sha256 ?? "mock"}`,
+    dependencyLockSha256: entry.distribution.kind === "npm" ? "mock-dependency-lock-sha256" : "",
     entrypointSha256: "mock-entrypoint-sha256",
     alreadyInstalled: false,
+    kind: entry.distribution.kind,
   };
 }
 

@@ -115,10 +115,12 @@ describe("OKF Studio app", () => {
     expect(screen.getByRole("heading", { name: "Gemini CLI" })).toBeInTheDocument();
     await waitFor(() => {
       const installButtons = screen.getAllByRole("button", { name: "Install" });
-      expect(installButtons).toHaveLength(8);
+      expect(installButtons).toHaveLength(9);
       expect(installButtons[0]).toBeEnabled();
     });
     expect(screen.getAllByText(/managed Node v24\.11\.0/i)).toHaveLength(8);
+    expect(screen.getAllByText(/platform archive pinned by Studio-measured checksum/i))
+      .toHaveLength(1);
     const hostSummary = await screen.findByText(/Restricted agent host:/);
     await user.click(hostSummary);
     expect(screen.getByText(/no verified confinement backend for this platform/i))

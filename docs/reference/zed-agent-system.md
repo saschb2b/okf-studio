@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-14T18:40:00Z
+timestamp: 2026-07-15T10:20:00Z
 ---
 
 # Adopted patterns
@@ -75,7 +75,8 @@ Studio will adapt changed files to its stricter staged OKF transaction rather th
 - Zed stores provider keys in the system keychain.
 - Zed Skills apply to its native agent, not automatically to external agents.
 - The ACP Registry snapshot checked on 2026-07-11 distributed Claude Agent as `@agentclientprotocol/claude-agent-acp@0.58.1` and Codex as `@agentclientprotocol/codex-acp@1.1.2`. Both are pinned `npx` packages, so a self-contained client needs an app-managed runtime or declared prerequisite.
-- The registry recheck on 2026-07-14 counted roughly forty agents in two distribution shapes. `npx` entries (Claude Agent 0.59.0, Codex, Gemini CLI, Qwen Code, GitHub Copilot, Cline, Auggie CLI, Factory Droid) can be pinned by tarball SHA-512 and installed script-free; their loader shims resolve platform packages at run time. Most `binary` entries (Kimi CLI, OpenCode, Cursor, Devin, Junie, Amp, Mistral Vibe) publish no archive checksum — only Goose does — so Studio lists the notable ones as planned instead of installing archives it cannot verify. Registry `env` values that disable self-update are required for pinned installs and became catalog `environmentDefaults`.
+- The registry recheck on 2026-07-14 counted roughly forty agents in two distribution shapes. `npx` entries (Claude Agent 0.59.0, Codex, Gemini CLI, Qwen Code, GitHub Copilot, Cline, Auggie CLI, Factory Droid) can be pinned by tarball SHA-512 and installed script-free; their loader shims resolve platform packages at run time. Most `binary` entries (Kimi CLI, OpenCode, Cursor, Devin, Junie, Amp, Mistral Vibe) publish no archive checksum — only Goose does — so Studio pins binary agents by measuring archive digests itself at snapshot time instead of trusting or skipping upstream. Registry `env` values that disable self-update are required for pinned installs and became catalog `environmentDefaults`.
+- Cursor's versioned archives bottom out in `node(.exe) index.js` behind bash, cmd, and PowerShell shims that also set `CURSOR_INVOKED_AS`. Zed runs the registry `cmd` as published; Studio spawns the bundled Node and pinned `index.js` directly so no shell enters the launch path, and reproduces the shim's environment variable through catalog defaults. The direct launch was proven against the real Windows archive with an ACP v1 initialize round-trip before pinning.
 - Zed's managed `NodeRuntime` currently pins Node `v24.11.0`, downloads the matching nodejs.org archive for the host platform, and keeps its binary and npm paths inside Zed's managed installation directory. Studio adopts the managed-runtime boundary and adds catalog-pinned archive checksums and preflight size disclosure.
 - Zed separates `agent_ui`, `agent_servers`, `acp_thread`, native agent logic, and project registry/process stores. The UI consumes connection traits and stores rather than implementing the protocol.
 - Zed's current Agent Panel preserves multi-line queued messages while a turn is active. Studio adopts the visible follow-up pattern but keeps its first queue slice to one frontend-owned snapshot because ACP itself still permits one live prompt turn per session.

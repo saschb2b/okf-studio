@@ -136,7 +136,7 @@ fn probe_endpoint(
     base_url: Url,
     api_key: Option<&str>,
 ) -> Result<LocalModelProbe, String> {
-    let endpoint = model_endpoint(provider, &base_url)?;
+    let endpoint = model_endpoint(provider, &base_url);
     let agent = ureq::AgentBuilder::new()
         .redirects(0)
         .try_proxy_from_env(false)
@@ -564,7 +564,7 @@ fn authenticated_request(request: ureq::Request, api_key: Option<&str>) -> ureq:
     }
 }
 
-fn model_endpoint(provider: LocalModelProvider, base_url: &Url) -> Result<Url, String> {
+fn model_endpoint(provider: LocalModelProvider, base_url: &Url) -> Url {
     let suffix = match provider {
         LocalModelProvider::Ollama => "api/tags",
         LocalModelProvider::LmStudio
@@ -579,7 +579,7 @@ fn model_endpoint(provider: LocalModelProvider, base_url: &Url) -> Result<Url, S
     path.push('/');
     path.push_str(suffix);
     endpoint.set_path(&path);
-    Ok(endpoint)
+    endpoint
 }
 
 fn chat_endpoint(provider: LocalModelProvider, base_url: &Url) -> Url {
@@ -587,7 +587,9 @@ fn chat_endpoint(provider: LocalModelProvider, base_url: &Url) -> Url {
     let mut path = endpoint.path().trim_end_matches('/').to_string();
     match provider {
         LocalModelProvider::Ollama => path.push_str("/api/chat"),
-        _ => {
+        LocalModelProvider::LmStudio
+        | LocalModelProvider::LlamaCpp
+        | LocalModelProvider::OpenAiCompatible => {
             if !path.ends_with("/v1") {
                 path.push_str("/v1");
             }
@@ -1085,9 +1087,7 @@ mod tests {
             validate_input(&input(LocalModelProvider::Ollama, "http://localhost:11434"))
                 .expect("valid Ollama URL");
         assert_eq!(
-            model_endpoint(LocalModelProvider::Ollama, &ollama)
-                .expect("Ollama endpoint")
-                .as_str(),
+            model_endpoint(LocalModelProvider::Ollama, &ollama).as_str(),
             "http://localhost:11434/api/tags"
         );
         let (_, compatible) = validate_input(&input(
@@ -1096,9 +1096,7 @@ mod tests {
         ))
         .expect("valid compatible URL");
         assert_eq!(
-            model_endpoint(LocalModelProvider::OpenAiCompatible, &compatible)
-                .expect("compatible endpoint")
-                .as_str(),
+            model_endpoint(LocalModelProvider::OpenAiCompatible, &compatible).as_str(),
             "http://localhost:1234/v1/models"
         );
         assert!(validate_input(&input(

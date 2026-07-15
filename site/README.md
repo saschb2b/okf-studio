@@ -26,5 +26,5 @@ Deploys via the repo's Pages workflow on pushes to `main`; it is not part of the
 ## Conventions
 
 - Copy style: plain and concrete, no em dashes (matches the bundle's voice rule).
-- Screenshots in `public/` are hand-captured from the desktop app (1760×1117). When the app's look changes materially, recapture them; the copy should never describe things the images don't show.
+- Screenshots in `public/` are hand-captured from the desktop app and resized to 1760px wide (heights vary with the captured window). When the app's look changes materially, recapture them; the copy should never describe things the images don't show, and each `<img>` carries its file's real width/height.
 - The version label in `index.astro` (and `softwareVersion` in `Base.astro`) tracks the *next* release during development; download buttons always point at `releases/latest`.

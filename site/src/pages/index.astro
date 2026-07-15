@@ -11,7 +11,7 @@ const repo = "https://github.com/saschb2b/okf-viewer";
 const releasesLatest = `${repo}/releases/latest`;
 const releases = `${repo}/releases`;
 const migrationNotes = `${repo}/blob/main/docs/product/migration-notes.md`;
-const version = "v0.2.7";
+const version = "v0.3.0";
 
 const okfSpec = "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf";
 const odsfSpec = "https://saschb2b.github.io/Open-Design-System-Format/";
@@ -20,7 +20,7 @@ const features = [
   {
     glyph: "✦",
     title: "Agent workspace",
-    body: "Connect ACP agents beside the graph and reader, or run Studio Agent through a local endpoint or an API-key-backed OpenAI-compatible service. A searchable ACP Registry section installs pinned, checksum-verified builds of Claude Agent, Codex, Cursor, Gemini CLI, GitHub Copilot, Qwen Code, Cline, Auggie CLI, and Factory Droid, filters them by install state, and removes them just as explicitly. The panel's plus menu starts a new thread on a live agent or connects an installed one in a single step. Reopening Studio restores the window geometry, reconnects the agent you left connected, and resumes your saved thread; disconnecting stays forgotten. Each external process is bound to the active Rust-granted bundle before launch and cannot be reused for another bundle. Run parallel threads on one connection and switch among live agents without interrupting their work. Model, mode, reasoning, and custom session choices appear in the prompt footer only when the active agent supplies them; older ACP mode lists use the same control without duplication, and Studio Agent shows its connected model without inventing unsupported choices. Narrow panels keep model and mode direct and collect the rest behind one summarized control. A bounded Live work shelf keeps the current plan, permission decision, staged review, and queued follow-up directly above the composer; it can collapse without hiding a blocking decision or pushing Send out of reach. Keyboard focus reveals scrolled agent and thread tabs and returns to the control that opened a menu or panel. If a process stops unexpectedly, its reason stays visible beside the one action that returns you to connection setup, while the panel confirms that the open bundle is unaffected. A lost thread update stream stays with that thread and can be retried in place. Failed Stop requests remain beside Retry stop instead of appearing as agent prose. Permission failures stay inside the unresolved request with its allow and reject actions. Grant, proposal, staging, validation, and restore failures each stay beside their own recovery action, with staging recovery above the scrolling file list. When saved work exists, the current session is the primary Resume choice, archived recovery stays secondary, and Studio asks you to resume, remove, or start fresh before showing the ordinary starter grid. Read-only threads stay quiet; the edit boundary appears when the task can use it, while history, export, archive, and agent switching share one compact menu. Workflow starters compact into two columns when space permits, and long transcripts or staged reviews scroll without pushing send controls away. Studio keeps API keys in your operating system's credential store. Every path gets packaged OKF guidance, bounded tools, and reviewed staging. Native turns reject unadvertised tools before dispatch and refuse provider redirects. You keep or reject changes before anything reaches the bundle. Each thread shows a Rust-produced security profile with file, network, credential, process, lifetime, and stop conditions. Saved custom ACP commands can opt into a verified Linux Bubblewrap profile that mounts the bundle and executable read-only, hides protected paths, and disables host networking. Standard remains the default, subscription agents keep their normal access, unsupported hosts are explicit, and unattended work remains locked.",
+    body: "Chat with Claude, Codex, Cursor, or a local model right beside the graph and reader. Context goes in explicitly, and every proposed change is reviewed before it touches your files.",
   },
   {
     glyph: "◱",
@@ -66,6 +66,41 @@ const features = [
     glyph: "❯",
     title: "A real reader",
     body: "The whole extended markdown set: highlighted code, math, Mermaid diagrams, footnotes, task lists, emoji, embedded HTML. Plus zoomable images, live reload, and keyboard-first navigation.",
+  },
+];
+
+// The agent workspace, split into digestible pieces. One idea per card;
+// the feature card above stays a one-glance summary.
+const agentCards = [
+  {
+    glyph: "⇅",
+    title: "Bring the agent you already use",
+    body: "Install Claude Agent, Codex, Cursor, Gemini CLI, GitHub Copilot, Qwen Code, Cline, Auggie CLI, or Factory Droid from a searchable registry. Every build is pinned and checksum-verified, and your login and billing stay with the agent.",
+  },
+  {
+    glyph: "⌂",
+    title: "Or keep it fully local",
+    body: "Run Studio Agent against Ollama, LM Studio, llama.cpp, or any OpenAI-compatible endpoint. API keys live in your operating system's credential store, never in the app.",
+  },
+  {
+    glyph: "↻",
+    title: "Threads that come back",
+    body: "Run parallel threads per agent and switch without interrupting work. Reopen Studio and it restores your window, reconnects your last agent, and resumes the saved thread.",
+  },
+  {
+    glyph: "⊕",
+    title: "Context on your terms",
+    body: "Attach concepts, validation findings, files, folders, web pages, or a previous thread. The agent reads the bundle through scoped tools, not raw disk access.",
+  },
+  {
+    glyph: "✎",
+    title: "Writes you review, always",
+    body: "Proposed changes land in a staged tree first. Review each diff hunk, validate against the OKF spec, then apply in one transaction you can restore.",
+  },
+  {
+    glyph: "⊘",
+    title: "Nothing happens without you",
+    body: "Every thread shows its security scope: files, network, credentials, process. Nothing installs, connects, or writes without an explicit click, and one Remove uninstalls an agent again.",
   },
 ];
 
@@ -118,6 +153,7 @@ const downloads = [
       <div class="site-nav__links">
         <a class="site-nav__link" href="#formats">What is OKF?</a>
         <a class="site-nav__link" href="#features">Features</a>
+        <a class="site-nav__link" href="#agents">Agents</a>
         <a class="site-nav__link" href="#download">Download</a>
         <a class="site-nav__link" href={repo}>GitHub</a>
         <a class="btn btn--primary" href="#download">↓ Download</a>
@@ -132,7 +168,7 @@ const downloads = [
   <div class="canvas">
     <section class="hero">
       <div class="container">
-        <span class="eyebrow hero__eyebrow">Open Knowledge Workspace · {version}</span>
+        <span class="eyebrow hero__eyebrow">OKF Studio · {version}</span>
         <h1 class="hero__title">
           Explore connected knowledge<br /><span class="hero__grad">with your agents.</span>
         </h1>
@@ -152,9 +188,9 @@ const downloads = [
             role="button"
             tabindex="0"
             src={shotGraph}
-            alt="OKF Studio showing a concept graph and reader beside the agent catalog"
+            alt="OKF Studio with an agent thread answering a question about the open bundle, beside the concept graph and reader"
             width="1760"
-            height="1117"
+            height="1051"
             fetchpriority="high"
           />
         </figure>
@@ -217,6 +253,30 @@ const downloads = [
                 <span class="feature-card__glyph" aria-hidden="true">{f.glyph}</span>
                 <h3 class="feature-card__title">{f.title}</h3>
                 <p class="feature-card__body">{f.body}</p>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="agents">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">The agent workspace</span>
+          <h2 class="section__title">Your agent, your bundle, one panel.</h2>
+          <p class="section__sub">
+            Pick an agent, ask about the open bundle, and review every proposed
+            change before it lands. Here is how that breaks down.
+          </p>
+        </div>
+        <div class="features">
+          {
+            agentCards.map((c) => (
+              <article class="feature-card">
+                <span class="feature-card__glyph" aria-hidden="true">{c.glyph}</span>
+                <h3 class="feature-card__title">{c.title}</h3>
+                <p class="feature-card__body">{c.body}</p>
               </article>
             ))
           }

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "@/App.tsx";
-import { AppProvider } from "@/store.tsx";
-import * as ipc from "@/ipc.ts";
+import { AppProvider } from "@/shared/store.tsx";
+import * as ipc from "@/shared/ipc.ts";
 
 // The launch-restore attempt runs once per module, so this lives in its own
 // test file: a fresh module registry stands in for a fresh app launch.

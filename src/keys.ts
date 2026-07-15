@@ -2,8 +2,8 @@
 // See docs/ux/keyboard-shortcuts.md. The palette/shortcuts agent may extend this.
 
 import { useEffect } from "react";
-import { useApp } from "@/store.tsx";
-import { focusAgentPanel, focusAgentPanelOpener } from "@/agent/agentPanelFocus.ts";
+import { useApp } from "@/shared/store.tsx";
+import { focusAgentPanel, focusAgentPanelOpener } from "@/features/agent/agentPanelFocus.ts";
 
 export function useGlobalKeys() {
   const { state, actions } = useApp();

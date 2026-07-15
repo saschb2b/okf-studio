@@ -153,7 +153,7 @@ pub(crate) struct AgentBinaryTarget {
 }
 
 pub fn load() -> Result<AgentCatalog, String> {
-    serde_json::from_str(include_str!("../../../../src/agent/catalog.json"))
+    serde_json::from_str(include_str!("../../../../src/features/agent/catalog.json"))
         .map_err(|error| format!("Bundled agent catalog is invalid: {error}"))
 }
 

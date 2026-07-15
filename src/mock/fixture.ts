@@ -1,7 +1,7 @@
 // A tiny in-memory OKF bundle so the UI renders (and tests run) without the
 // Rust backend. Mirrors the shape the core produces; backlinks/degree derived.
 
-import type { Bundle, BundleRoot, Concept, RecentBundle } from "@/types.ts";
+import type { Bundle, BundleRoot, Concept, RecentBundle } from "@/shared/types.ts";
 
 export const MOCK_FOLDER = "/mock/workspace";
 

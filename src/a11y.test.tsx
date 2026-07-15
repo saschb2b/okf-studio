@@ -3,8 +3,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { App } from "@/App.tsx";
-import { AppProvider } from "@/store.tsx";
-import * as ipc from "@/ipc.ts";
+import { AppProvider } from "@/shared/store.tsx";
+import * as ipc from "@/shared/ipc.ts";
 
 // Automated accessibility gate (Microsoft "run axe checks in CI" best practice).
 // Renders the real app over the mock backend and runs axe on the result. Colour

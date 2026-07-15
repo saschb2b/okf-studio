@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "@/App.tsx";
-import { AppProvider } from "@/store.tsx";
-import { dropIndexFor } from "@/components/shell/TabStrip.tsx";
-import * as ipc from "@/ipc.ts";
+import { AppProvider } from "@/shared/store.tsx";
+import { dropIndexFor } from "@/features/shell/components/TabStrip.tsx";
+import * as ipc from "@/shared/ipc.ts";
 
 // Regression coverage for the major interactive features (bundle switcher,
 // layout modes, reader rail, shortcuts overlay), driven over the mock backend.
@@ -757,7 +757,7 @@ describe("multi-view (tabs & windows)", () => {
     );
     vi.resetModules();
     try {
-      const { AppProvider: FreshProvider } = await import("@/store.tsx");
+      const { AppProvider: FreshProvider } = await import("@/shared/store.tsx");
       const { App: FreshApp } = await import("@/App.tsx");
       const { container } = render(
         <FreshProvider>

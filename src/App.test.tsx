@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "@/App.tsx";
-import { AppProvider } from "@/store.tsx";
-import * as ipc from "@/ipc.ts";
+import { AppProvider } from "@/shared/store.tsx";
+import * as ipc from "@/shared/ipc.ts";
 
 // End-to-end-ish: render the real app, drive the mock backend (the IPC layer
 // falls back to the in-memory fixture outside a Tauri window), and assert the

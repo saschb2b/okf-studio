@@ -28,9 +28,16 @@ These are pure functions of the bundle data, so they recompute only when the bun
 
 Components mirror the three panes: a **sidebar** (indexes, concept list, search results), a **graph** (renderer plus interaction layer), and a **reader** (rendered markdown with backlinks). Each subscribes to the shared active-concept state and to the derived stores; none reaches into another's internals.
 
-`src/components/` is grouped by feature domain rather than kept flat: `agent/` (the ACP panel), `viz/` (graph and chart views), `reader/`, `bundle/` (bundle browsing and open dialogs), `review/` (staged-write previews), `sidebar/`, and `shell/` (the window frame and global overlays). Each component's own stylesheet and test sit beside it; the two stylesheets shared across domains (`baseui.css`, `chrome.css`) stay at the `components/` root.
+The frontend is organized **domain-first**: `src/features/<domain>/` is the top-level unit, and each domain holds its own `components/` folder beside the logic (hooks, model derivations, ACP calls) that belongs to it. This keeps a feature's UI and its supporting code colocated rather than scattering them across a global `components/` tree and a parallel utilities tree. The domains are:
 
-The non-component modules under `src/` are grouped the same way: `render/` (markdown, math, mermaid, syntax highlighting, and the theme/type-color palette), `platform/` (native desktop behaviors, window controls, updater, platform detection), `data/` (pure derivations over the model — query, selectors, lineage, ODSF artifacts — plus remote-source URL parsing), and `agent/` (the ACP client logic). Only the app-core wiring stays at the `src/` root: `App`, `main`, `store`, `ipc`, `types`, `keys`, and the cross-cutting integration tests.
+- **`agent/`** — the ACP client: connection, catalog, install, threads, local models, custom profiles, plus the agent-panel components and the staged-write review previews.
+- **`viz/`** — visualization: the graph engine (`graph/` — backbone, community, force simulation, render model), the chart helpers (hierarchy, labels, Nivo theme), and every graph/chart component.
+- **`reader/`** — the concept reader, reader preferences, lineage panel, and peek card, plus lineage derivation.
+- **`bundle/`** — bundle browsing and the open-from-URL flow (with its network-free `remoteSource` URL parser).
+- **`navigation/`** — the sidebar shell and its index tree, tag browser, and type filters.
+- **`shell/`** — the window frame and global overlays (top bar, status bar, activity bar, tabs, command palette, settings, validation/log panels).
+
+Cross-cutting code lives in **`src/shared/`**: the [IPC surface](ipc-and-security.md) (`ipc`), the client `store`, the shared `types`, the model derivations used by every domain (`query`, `selectors`, `odsf`), the `theme`/type-color palette, the content-`render/` pipeline (markdown, math, mermaid, highlighting), the `platform/` host integration (native behaviors, window controls, updater), and the shared `styles/` (`baseui.css`, `chrome.css`). Each component's own stylesheet and test sit beside it. Only the composition root stays at the `src/` top level: `App`, `main`, `keys`, and the cross-cutting integration tests.
 
 Imports use the **`@/` path alias** (`@/*` → `src/*`, configured in `tsconfig.json` and Vite's `resolve.alias`) rather than relative `../../` chains, so a module's import paths are independent of where its file lives — moving a file between folders does not touch its imports.
 

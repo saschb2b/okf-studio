@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, vi } from "vitest";
-import { resetAgentConnectionsForTests, resetAgentRestoreState } from "@/ipc.ts";
+import { resetAgentConnectionsForTests, resetAgentRestoreState } from "@/shared/ipc.ts";
 
 // Persisted layout, saved-thread pointers, and the remembered last agent
 // connection must not leak between tests: restore and auto-resume act on them.

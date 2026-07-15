@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Bundle, Concept } from "./types.ts";
+import type { Bundle, Concept } from "@/types.ts";
 import {
   buildTokenIndex,
   colorLuminance,
@@ -13,7 +13,7 @@ import {
   prefersDarkInk,
   resolveTokenRefs,
   tokenVizKind,
-} from "./odsf.ts";
+} from "@/odsf.ts";
 
 function concept(extra: Record<string, unknown>, type = "Color"): Concept {
   return {

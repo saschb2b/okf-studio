@@ -1,4 +1,4 @@
-import type { AgentStagedGraphPreview } from "../agent/connection.ts";
+import type { AgentStagedGraphPreview } from "@/agent/connection.ts";
 
 interface StagedGraphPreviewProps {
   preview: AgentStagedGraphPreview;

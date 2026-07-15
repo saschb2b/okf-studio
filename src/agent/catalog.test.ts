@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import catalog from "./catalog.json";
+import catalog from "@/agent/catalog.json";
 import {
   authMethodLabel,
   catalogEntries,
   runtimeLabel,
   type AgentCatalogDocument,
-} from "./catalog.ts";
+} from "@/agent/catalog.ts";
 
 describe("agent connection catalog", () => {
   it("keeps featured providers unique and explicit about their runtime", () => {

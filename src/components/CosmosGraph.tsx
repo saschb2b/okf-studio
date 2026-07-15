@@ -8,12 +8,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Graph } from "@cosmograph/cosmos";
-import { useApp } from "../store.tsx";
-import type { Actions } from "../store.tsx";
-import { buildEdges, egoIds, isVisible } from "../selectors.ts";
-import { louvain } from "../graph/community.ts";
-import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
-import { buildTypePalette, resolveDark } from "../theme.ts";
+import { useApp } from "@/store.tsx";
+import type { Actions } from "@/store.tsx";
+import { buildEdges, egoIds, isVisible } from "@/selectors.ts";
+import { louvain } from "@/graph/community.ts";
+import { graphBackbone, maxPerNodeFor } from "@/graph/backbone.ts";
+import { buildTypePalette, resolveDark } from "@/theme.ts";
 import "./CosmosGraph.css";
 
 /** Read a CSS custom property off the document root. */

@@ -3,8 +3,8 @@
 // the views pure over these props means drill position and selection survive
 // switching between Treemap, Sunburst, and Circle Packing.
 
-import type { VizColors } from "./nivoTheme.ts";
-import type { VizNode } from "./hierarchy.ts";
+import type { VizColors } from "@/viz/nivoTheme.ts";
+import type { VizNode } from "@/viz/hierarchy.ts";
 
 export interface HierarchyVizProps {
   /** The full (filtered) tree — never re-rooted; drill via rootId. */

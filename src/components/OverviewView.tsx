@@ -7,10 +7,10 @@
 // docs/proposals/bundle-overview.md.
 
 import type { ReactNode } from "react";
-import { useApp } from "../store.tsx";
-import { distinctTypes, orphanIds } from "../selectors.ts";
-import { buildTypePalette, resolveDark } from "../theme.ts";
-import type { Concept } from "../types.ts";
+import { useApp } from "@/store.tsx";
+import { distinctTypes, orphanIds } from "@/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/theme.ts";
+import type { Concept } from "@/types.ts";
 import "./OverviewView.css";
 
 const HUB_LIMIT = 6;

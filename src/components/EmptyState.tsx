@@ -3,9 +3,9 @@
 // See docs/ux/empty-and-error-states.md.
 
 import { Globe } from "lucide-react";
-import { useApp } from "../store.tsx";
-import { modKey } from "../platform.ts";
-import { REMOTE_EXAMPLES } from "../remoteSource.ts";
+import { useApp } from "@/store.tsx";
+import { modKey } from "@/platform.ts";
+import { REMOTE_EXAMPLES } from "@/remoteSource.ts";
 import "./chrome.css";
 import "./EmptyState.css";
 

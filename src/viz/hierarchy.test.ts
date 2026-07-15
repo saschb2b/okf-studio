@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildVizTree, conceptWeight, findVizNode, vizPath } from "./hierarchy.ts";
-import type { Bundle, Concept } from "../types.ts";
+import { buildVizTree, conceptWeight, findVizNode, vizPath } from "@/viz/hierarchy.ts";
+import type { Bundle, Concept } from "@/types.ts";
 
 function concept(id: string, over: Partial<Concept> = {}): Concept {
   return {

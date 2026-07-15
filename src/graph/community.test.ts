@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { louvain, type CommunityEdge } from "./community.ts";
+import { louvain, type CommunityEdge } from "@/graph/community.ts";
 
 describe("louvain community detection", () => {
   it("splits two cliques joined by a single bridge", () => {

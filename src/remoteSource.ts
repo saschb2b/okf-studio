@@ -12,7 +12,7 @@
 // Cloning arbitrary git hosts is out of scope (see RemoteKind). Anything else
 // returns null, so the dialog can flag it before any fetch.
 
-import type { RemoteKind, RemoteSource } from "./types.ts";
+import type { RemoteKind, RemoteSource } from "@/types.ts";
 
 const ARCHIVE_RE = /\.(tar\.gz|tgz|tar|zip)$/i;
 

@@ -1,4 +1,4 @@
-import type { AgentSourceInput } from "../ipc.ts";
+import type { AgentSourceInput } from "@/ipc.ts";
 
 export const MAX_READER_SELECTION_CHARS = 64 * 1024;
 

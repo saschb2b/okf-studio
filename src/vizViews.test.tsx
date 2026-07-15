@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
-import { App } from "./App.tsx";
-import { AppProvider } from "./store.tsx";
+import { App } from "@/App.tsx";
+import { AppProvider } from "@/store.tsx";
 
 // The visualization switcher: four views in the graph pane (graph, treemap,
 // sunburst, circle packing), the persisted preference, and the graph-only

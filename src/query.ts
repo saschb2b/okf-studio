@@ -12,7 +12,7 @@
 // Unknown fields fall back to full-text rather than erroring (tolerant consumer).
 // See docs/proposals/faceted-search.md.
 
-import type { Concept } from "./types.ts";
+import type { Concept } from "@/types.ts";
 
 type NumField = "degree" | "links" | "citedBy";
 const OPS = [">", "<", ">=", "<=", "="] as const;

@@ -14,7 +14,7 @@ import type {
   AgentSessionConfigOption,
   AgentSessionConfigValueInfo,
   AgentSessionConfigValueInput,
-} from "../agent/connection.ts";
+} from "@/agent/connection.ts";
 import "./AgentSessionControls.css";
 
 export interface AgentSessionConfigFailure {

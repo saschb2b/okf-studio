@@ -6,7 +6,7 @@ import {
   researchExportRequirements,
   transcriptFilename,
   transcriptMarkdown,
-} from "./thread.ts";
+} from "@/agent/thread.ts";
 
 const STARTERS = [{
   title: "Deep research",

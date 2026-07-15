@@ -19,16 +19,16 @@ import type {
   RecentBundle,
   RemoteSource,
   Settings,
-} from "./types.ts";
-import { DEFAULT_SETTINGS } from "./types.ts";
-import { indexIdForDir, indexNodeForId } from "./selectors.ts";
-import { applyTheme } from "./theme.ts";
-import * as ipc from "./ipc.ts";
+} from "@/types.ts";
+import { DEFAULT_SETTINGS } from "@/types.ts";
+import { indexIdForDir, indexNodeForId } from "@/selectors.ts";
+import { applyTheme } from "@/theme.ts";
+import * as ipc from "@/ipc.ts";
 import {
   isWindowMaximized,
   onWindowResized,
   openConceptWindow,
-} from "./window.ts";
+} from "@/window.ts";
 
 export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage" | "agent";
 

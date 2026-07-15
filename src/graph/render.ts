@@ -3,9 +3,9 @@
 // ever read refs; taking them as a params bag makes it stateless. See
 // docs/features/graph-view.md for the batching / culling / label strategy.
 
-import type { SimNode } from "./forceSim.ts";
-import type { Display, RenderData, View } from "./renderModel.ts";
-import { MAX_RADIUS, MIN_RADIUS } from "./renderModel.ts";
+import type { SimNode } from "@/graph/forceSim.ts";
+import type { Display, RenderData, View } from "@/graph/renderModel.ts";
+import { MAX_RADIUS, MIN_RADIUS } from "@/graph/renderModel.ts";
 
 // Base zoom below which free-floating labels hide (Obsidian-style: dots at
 // overview, labels as you zoom in; selection/hover/neighbors always labelled).

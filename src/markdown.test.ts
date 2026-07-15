@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plainExcerpt, renderMarkdown, resolveAssetHref } from "./markdown.ts";
+import { plainExcerpt, renderMarkdown, resolveAssetHref } from "@/markdown.ts";
 
 describe("plainExcerpt", () => {
   it("strips markdown syntax down to readable prose", () => {

@@ -8,16 +8,16 @@ import type {
   RecentBundle,
   RemoteSource,
   Settings,
-} from "./types.ts";
-import { DEFAULT_SETTINGS } from "./types.ts";
-import catalog from "./agent/catalog.json";
-import type { AgentBinaryTarget, AgentCatalogDocument } from "./agent/catalog.ts";
-import type { CustomAgentInput, CustomAgentProfile } from "./agent/custom.ts";
+} from "@/types.ts";
+import { DEFAULT_SETTINGS } from "@/types.ts";
+import catalog from "@/agent/catalog.json";
+import type { AgentBinaryTarget, AgentCatalogDocument } from "@/agent/catalog.ts";
+import type { CustomAgentInput, CustomAgentProfile } from "@/agent/custom.ts";
 import type {
   LocalModelProbe,
   LocalModelProfile,
   LocalModelProfileInput,
-} from "./agent/local.ts";
+} from "@/agent/local.ts";
 import type {
   AgentConnectionEvent,
   AgentCheckpointRestoreInfo,
@@ -42,26 +42,26 @@ import type {
   AgentStageEvent,
   AgentTurnEvent,
   AgentTurnInfo,
-} from "./agent/connection.ts";
+} from "@/agent/connection.ts";
 import type {
   AgentInstallPreflight,
   AgentInstallProgress,
   AgentInstallReceipt,
-} from "./agent/install.ts";
+} from "@/agent/install.ts";
 import {
   createAgentThreadMetadata,
   parseAgentThreadMetadata,
   removeAgentThreadMetadata as removeThreadMetadata,
   upsertAgentThreadMetadata,
-} from "./agent/threadMetadata.ts";
-import type { AgentThreadMetadata, AgentThreadWorkflow } from "./agent/threadMetadata.ts";
+} from "@/agent/threadMetadata.ts";
+import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/agent/threadMetadata.ts";
 import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
   MOCK_FOLDER,
   MOCK_RECENTS,
   MOCK_ROOTS,
-} from "./mock/fixture.ts";
+} from "@/mock/fixture.ts";
 
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

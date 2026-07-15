@@ -2,7 +2,7 @@
 // a no-op outside a Tauri window, so the browser/dev preview and tests run
 // unchanged. See docs/ux/browsing-layout.md and docs/architecture/ipc-and-security.md.
 
-import { isTauri } from "./ipc.ts";
+import { isTauri } from "@/ipc.ts";
 
 export type ResizeDir =
   | "North"

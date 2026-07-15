@@ -1,21 +1,21 @@
 import { ArrowLeft, CircleAlert, PanelRightClose, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
-import type { AgentConnectionInfo } from "../agent/connection.ts";
-import { agentPanelClamp, useApp } from "../store.tsx";
-import { captureReaderSelection } from "../agent/readerSelection.ts";
-import { useAgentConnections } from "../agent/useAgentConnections.ts";
-import { focusAgentPanelOpener } from "../agentPanelFocus.ts";
+import type { AgentConnectionInfo } from "@/agent/connection.ts";
+import { agentPanelClamp, useApp } from "@/store.tsx";
+import { captureReaderSelection } from "@/agent/readerSelection.ts";
+import { useAgentConnections } from "@/agent/useAgentConnections.ts";
+import { focusAgentPanelOpener } from "@/agentPanelFocus.ts";
 import {
   agentRestoreStatus,
   maybeRestoreLastAgentConnection,
   subscribeAgentRestore,
-} from "../ipc.ts";
-import { AgentConnectionCatalog } from "./AgentConnectionCatalog.tsx";
-import { AgentConversation } from "./AgentConversation.tsx";
-import type { AgentConversationProps } from "./AgentConversation.tsx";
-import { ErrorBoundary } from "./ErrorBoundary.tsx";
-import { NewAgentThreadMenu } from "./NewAgentThreadMenu.tsx";
+} from "@/ipc.ts";
+import { AgentConnectionCatalog } from "@/components/AgentConnectionCatalog.tsx";
+import { AgentConversation } from "@/components/AgentConversation.tsx";
+import type { AgentConversationProps } from "@/components/AgentConversation.tsx";
+import { ErrorBoundary } from "@/components/ErrorBoundary.tsx";
+import { NewAgentThreadMenu } from "@/components/NewAgentThreadMenu.tsx";
 import "./AgentPanel.css";
 
 export function AgentPanel() {

@@ -3,7 +3,7 @@
 // Colors are assigned from the type string by the golden-angle sequence so the
 // same type gets a stable, learnable color within a bundle — see docs/ux/theming.md.
 
-import type { ThemeMode } from "./types.ts";
+import type { ThemeMode } from "@/types.ts";
 
 const GOLDEN_ANGLE = 137.5;
 

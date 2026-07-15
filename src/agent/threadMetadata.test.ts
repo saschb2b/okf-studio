@@ -5,7 +5,7 @@ import {
   parseAgentThreadMetadata,
   removeAgentThreadMetadata,
   upsertAgentThreadMetadata,
-} from "./threadMetadata.ts";
+} from "@/agent/threadMetadata.ts";
 
 const BASE = {
   bundleRoot: "C:\\knowledge\\docs",

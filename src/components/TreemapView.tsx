@@ -14,12 +14,12 @@ import {
   type ComputedNodeWithoutStyles,
   type CustomLayerProps,
 } from "@nivo/treemap";
-import { findVizNode, type VizNode } from "../viz/hierarchy.ts";
-import { fitLabel, inkOn, labelFits } from "../viz/labels.ts";
-import { nivoTheme } from "../viz/nivoTheme.ts";
-import type { HierarchyVizProps } from "../viz/props.ts";
-import { VizSvgLabel } from "./VizSvgLabel.tsx";
-import { VizTooltip } from "./VizTooltip.tsx";
+import { findVizNode, type VizNode } from "@/viz/hierarchy.ts";
+import { fitLabel, inkOn, labelFits } from "@/viz/labels.ts";
+import { nivoTheme } from "@/viz/nivoTheme.ts";
+import type { HierarchyVizProps } from "@/viz/props.ts";
+import { VizSvgLabel } from "@/components/VizSvgLabel.tsx";
+import { VizTooltip } from "@/components/VizTooltip.tsx";
 
 export function TreemapView(props: HierarchyVizProps) {
   // Re-root on drill; a filter change can remove the drilled node, so fall

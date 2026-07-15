@@ -6,9 +6,9 @@
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Popover } from "@base-ui/react/popover";
 import { Slider as BaseSlider } from "@base-ui/react/slider";
-import type { LinkDensity } from "../store.tsx";
-import type { Display, Forces } from "../graph/renderModel.ts";
-import { DEFAULT_DISPLAY, GRAPH_FORCES } from "../graph/renderModel.ts";
+import type { LinkDensity } from "@/store.tsx";
+import type { Display, Forces } from "@/graph/renderModel.ts";
+import { DEFAULT_DISPLAY, GRAPH_FORCES } from "@/graph/renderModel.ts";
 
 // Plain-language explanations of the *currently selected* option, shown under
 // each segmented control so the panel teaches instead of just labelling.

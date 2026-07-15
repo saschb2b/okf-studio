@@ -6,7 +6,7 @@
 // and tolerates absence — a plain OKF bundle simply has no tokens/examples and
 // renders unchanged. See docs/features/design-system-rendering.md.
 
-import type { Bundle, Concept } from "./types.ts";
+import type { Bundle, Concept } from "@/types.ts";
 
 /** A token value is a leaf string, or a map of sub-properties (composite). */
 export type TokenValue = string | { [key: string]: TokenValue };

@@ -20,9 +20,9 @@ import {
   Wrench,
 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import type { AgentSessionConfigOption } from "../agent/connection.ts";
-import { AgentLiveWorkShelf } from "../components/AgentLiveWorkShelf.tsx";
-import { AgentSessionControls } from "../components/AgentSessionControls.tsx";
+import type { AgentSessionConfigOption } from "@/agent/connection.ts";
+import { AgentLiveWorkShelf } from "@/components/AgentLiveWorkShelf.tsx";
+import { AgentSessionControls } from "@/components/AgentSessionControls.tsx";
 import "./AgentPanelStateGallery.css";
 
 const SCENARIOS = [

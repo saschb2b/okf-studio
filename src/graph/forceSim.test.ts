@@ -6,7 +6,7 @@ import {
   ALPHA_MIN,
   type SimNode,
   type SimEdge,
-} from "./forceSim.ts";
+} from "@/graph/forceSim.ts";
 
 // All fixtures are deterministic: positions are derived from the node index
 // (no Math.random), so a run is fully reproducible.

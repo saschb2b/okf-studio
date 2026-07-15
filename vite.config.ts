@@ -1,8 +1,10 @@
 /// <reference types="vitest/config" />
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 const host = process.env.TAURI_DEV_HOST;
+const srcRoot = fileURLToPath(new URL("./src", import.meta.url));
 
 // https://vite.dev/config/ — tuned for Tauri (fixed port, ignore src-tauri).
 export default defineConfig({
@@ -13,6 +15,9 @@ export default defineConfig({
     }),
   ],
   clearScreen: false,
+  resolve: {
+    alias: { "@": srcRoot },
+  },
   server: {
     port: 1420,
     strictPort: true,

@@ -8,9 +8,9 @@
 import { SquareArrowOutUpRight, X } from "lucide-react";
 import { useRef } from "react";
 import type { MouseEvent, PointerEvent } from "react";
-import { useApp } from "../store.tsx";
-import { conceptById, titleOf } from "../selectors.ts";
-import { buildTypePalette, resolveDark } from "../theme.ts";
+import { useApp } from "@/store.tsx";
+import { conceptById, titleOf } from "@/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/theme.ts";
 import "./TabStrip.css";
 
 /** Pointer x needed before a press becomes a drag (vs a sloppy click). */

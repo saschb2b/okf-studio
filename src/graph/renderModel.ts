@@ -3,8 +3,8 @@
 // and the GraphView engine all build on. Kept at the bottom of the dependency
 // graph — it imports only the sim/data types — so those three never form a cycle.
 
-import type { Bundle } from "../types.ts";
-import type { SimEdge, SimNode, SimParams } from "./forceSim.ts";
+import type { Bundle } from "@/types.ts";
+import type { SimEdge, SimNode, SimParams } from "@/graph/forceSim.ts";
 
 export const MIN_RADIUS = 4;
 export const MAX_RADIUS = 20;

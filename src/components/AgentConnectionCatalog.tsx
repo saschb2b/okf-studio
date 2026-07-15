@@ -1,9 +1,9 @@
 import { ArrowLeft, RefreshCw, Search, SquareArrowOutUpRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { catalogEntries, type AgentCatalogEntry } from "../agent/catalog.ts";
-import type { AgentConnectionInfo, AgentSecurityHostStatus } from "../agent/connection.ts";
-import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
-import type { LocalModelProfile, LocalModelProfileInput } from "../agent/local.ts";
+import { catalogEntries, type AgentCatalogEntry } from "@/agent/catalog.ts";
+import type { AgentConnectionInfo, AgentSecurityHostStatus } from "@/agent/connection.ts";
+import type { CustomAgentInput, CustomAgentProfile } from "@/agent/custom.ts";
+import type { LocalModelProfile, LocalModelProfileInput } from "@/agent/local.ts";
 import {
   agentCatalog,
   agentInstallPreflight,
@@ -15,10 +15,10 @@ import {
   removeLocalModelProfile,
   saveCustomAgent,
   saveLocalModelProfile,
-} from "../ipc.ts";
-import { AgentRegistryRow, isInstallable, type RowPreflight } from "./AgentRegistryRow.tsx";
-import { CustomAgentProfiles } from "./CustomAgentProfiles.tsx";
-import { LocalModelProfiles } from "./LocalModelProfiles.tsx";
+} from "@/ipc.ts";
+import { AgentRegistryRow, isInstallable, type RowPreflight } from "@/components/AgentRegistryRow.tsx";
+import { CustomAgentProfiles } from "@/components/CustomAgentProfiles.tsx";
+import { LocalModelProfiles } from "@/components/LocalModelProfiles.tsx";
 import "./AgentConnectionCatalog.css";
 
 const ACP_REGISTRY_URL = "https://agentclientprotocol.com/get-started/registry";

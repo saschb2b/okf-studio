@@ -6,13 +6,13 @@ import {
   catalogProfileId,
   type AgentCatalogEntry,
   type AgentDistribution,
-} from "../agent/catalog.ts";
-import { useAgentConnections } from "../agent/useAgentConnections.ts";
+} from "@/agent/catalog.ts";
+import { useAgentConnections } from "@/agent/useAgentConnections.ts";
 import type {
   AgentInstallPreflight,
   AgentInstallProgress,
-} from "../agent/install.ts";
-import type { AgentConnectionInfo } from "../agent/connection.ts";
+} from "@/agent/install.ts";
+import type { AgentConnectionInfo } from "@/agent/connection.ts";
 import {
   cancelAgentInstall,
   connectCatalogAgent,
@@ -22,7 +22,7 @@ import {
   onAgentInstallProgress,
   openExternal,
   uninstallAgent,
-} from "../ipc.ts";
+} from "@/ipc.ts";
 
 export type InstallableEntry = AgentCatalogEntry & {
   availability: "installable";

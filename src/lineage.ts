@@ -2,7 +2,7 @@
 // data model, bounded and cycle-safe so a dense bundle stays fast. See
 // docs/proposals/lineage-and-traversal.md.
 
-import type { Bundle, Concept } from "./types.ts";
+import type { Bundle, Concept } from "@/types.ts";
 
 /** How deep a lineage tree descends before it stops (a hop cap). */
 export const MAX_LINEAGE_DEPTH = 6;

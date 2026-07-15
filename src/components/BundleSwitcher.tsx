@@ -9,11 +9,11 @@ import { useRef, useState } from "react";
 import type * as React from "react";
 import { Popover } from "@base-ui/react/popover";
 import { Toolbar } from "@base-ui/react/toolbar";
-import { useApp } from "../store.tsx";
-import type { Actions } from "../store.tsx";
-import { modKey } from "../platform.ts";
-import type { BundleRoot, RecentBundle } from "../types.ts";
-import appIcon from "../assets/icon.svg";
+import { useApp } from "@/store.tsx";
+import type { Actions } from "@/store.tsx";
+import { modKey } from "@/platform.ts";
+import type { BundleRoot, RecentBundle } from "@/types.ts";
+import appIcon from "@/assets/icon.svg";
 import "./baseui.css";
 import "./BundleSwitcher.css";
 

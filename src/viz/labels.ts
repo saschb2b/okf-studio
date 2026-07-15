@@ -6,7 +6,7 @@
 // the space-filling twin of the graph's level-of-detail labels: zoom/drill in
 // and more names appear.
 
-import type { VizColors } from "./nivoTheme.ts";
+import type { VizColors } from "@/viz/nivoTheme.ts";
 
 /** Chart label font size (matches nivoTheme's labels.text). */
 export const LABEL_FONT_PX = 11;

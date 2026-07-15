@@ -4,9 +4,9 @@
 // top bar's padding at the top edge, so they never overlap the window controls.
 // See docs/ux/browsing-layout.md.
 
-import { isTauri } from "../ipc.ts";
-import { startWindowResize } from "../window.ts";
-import type { ResizeDir } from "../window.ts";
+import { isTauri } from "@/ipc.ts";
+import { startWindowResize } from "@/window.ts";
+import type { ResizeDir } from "@/window.ts";
 import "./ResizeHandles.css";
 
 const HANDLES: { cls: string; dir: ResizeDir }[] = [

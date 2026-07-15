@@ -6,17 +6,17 @@ import {
   catalogEntries,
   catalogProfileId,
   type AgentCatalogEntry,
-} from "../agent/catalog.ts";
-import type { AgentConnectionInfo } from "../agent/connection.ts";
-import type { CustomAgentProfile } from "../agent/custom.ts";
+} from "@/agent/catalog.ts";
+import type { AgentConnectionInfo } from "@/agent/connection.ts";
+import type { CustomAgentProfile } from "@/agent/custom.ts";
 import {
   agentCatalog,
   agentInstallPreflight,
   connectCatalogAgent,
   connectCustomAgent,
   customAgents,
-} from "../ipc.ts";
-import { isInstallable } from "./AgentRegistryRow.tsx";
+} from "@/ipc.ts";
+import { isInstallable } from "@/components/AgentRegistryRow.tsx";
 
 type MenuAgents =
   | { status: "loading" }

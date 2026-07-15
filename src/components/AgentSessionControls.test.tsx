@@ -2,8 +2,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AgentSessionConfigOption } from "../agent/connection.ts";
-import { AgentSessionControls, orderedSessionOptions } from "./AgentSessionControls.tsx";
+import type { AgentSessionConfigOption } from "@/agent/connection.ts";
+import { AgentSessionControls, orderedSessionOptions } from "@/components/AgentSessionControls.tsx";
 
 const OPTIONS: readonly AgentSessionConfigOption[] = [
   {

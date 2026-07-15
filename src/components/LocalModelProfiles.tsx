@@ -1,7 +1,7 @@
 import { Cpu, Plug, Plus, RefreshCw, Trash2, Unplug } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { AgentConnectionInfo } from "../agent/connection.ts";
-import { useAgentConnections } from "../agent/useAgentConnections.ts";
+import type { AgentConnectionInfo } from "@/agent/connection.ts";
+import { useAgentConnections } from "@/agent/useAgentConnections.ts";
 import {
   LOCAL_MODEL_PRESETS,
   localModelProviderLabel,
@@ -9,13 +9,13 @@ import {
   type LocalModelProfile,
   type LocalModelProfileInput,
   type LocalModelProvider,
-} from "../agent/local.ts";
+} from "@/agent/local.ts";
 import {
   connectLocalModel,
   disconnectAgent,
   testLocalModelEndpoint,
   testSavedLocalModelEndpoint,
-} from "../ipc.ts";
+} from "@/ipc.ts";
 
 type ProbeState =
   | { status: "idle" }

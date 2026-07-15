@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { highlightCodeBlocks } from "./highlight.ts";
+import { highlightCodeBlocks } from "@/highlight.ts";
 
 function frag(html: string): DocumentFragment {
   const tpl = document.createElement("template");

@@ -2,12 +2,12 @@
 // maximize icon swaps to a restore glyph when the window is maximized. Off-Tauri
 // the buttons render but do nothing (window.ts guards). See docs/ux/browsing-layout.md.
 
-import { useAppState } from "../store.tsx";
+import { useAppState } from "@/store.tsx";
 import {
   closeWindow,
   minimizeWindow,
   toggleMaximizeWindow,
-} from "../window.ts";
+} from "@/window.ts";
 import "./WindowControls.css";
 
 export function WindowControls() {

@@ -8,22 +8,22 @@
 import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
-import { useActiveConcept, useApp } from "../store.tsx";
-import { titleOf, conceptById, indexIdForDir, indexNodeForId } from "../selectors.ts";
-import { FolderHome } from "./FolderHome.tsx";
-import { buildTypePalette, resolveDark } from "../theme.ts";
-import { renderMarkdown, resolveAssetHref, resolveHref } from "../markdown.ts";
-import { readAssetDataUrl } from "../ipc.ts";
-import { highlightCodeBlocks } from "../highlight.ts";
-import { renderMathBlocks } from "../math.ts";
-import { renderMermaidBlocks } from "../mermaid.ts";
-import type { Bundle, Concept } from "../types.ts";
-import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "../odsf.ts";
-import { ReaderPrefs } from "./ReaderPrefs.tsx";
-import { TokenViz } from "./TokenViz.tsx";
-import { ExamplePreview } from "./ExamplePreview.tsx";
-import { PeekCard } from "./PeekCard.tsx";
-import type { PeekTarget } from "./PeekCard.tsx";
+import { useActiveConcept, useApp } from "@/store.tsx";
+import { titleOf, conceptById, indexIdForDir, indexNodeForId } from "@/selectors.ts";
+import { FolderHome } from "@/components/FolderHome.tsx";
+import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { renderMarkdown, resolveAssetHref, resolveHref } from "@/markdown.ts";
+import { readAssetDataUrl } from "@/ipc.ts";
+import { highlightCodeBlocks } from "@/highlight.ts";
+import { renderMathBlocks } from "@/math.ts";
+import { renderMermaidBlocks } from "@/mermaid.ts";
+import type { Bundle, Concept } from "@/types.ts";
+import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "@/odsf.ts";
+import { ReaderPrefs } from "@/components/ReaderPrefs.tsx";
+import { TokenViz } from "@/components/TokenViz.tsx";
+import { ExamplePreview } from "@/components/ExamplePreview.tsx";
+import { PeekCard } from "@/components/PeekCard.tsx";
+import type { PeekTarget } from "@/components/PeekCard.tsx";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough

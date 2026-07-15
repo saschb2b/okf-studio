@@ -4,8 +4,8 @@
 // tag again clears the filter (setTag(null)). See docs/features/search-and-filter.md.
 
 import { Toggle } from "@base-ui/react/toggle";
-import { useApp } from "../../store.tsx";
-import { buildTagIndex } from "../../selectors.ts";
+import { useApp } from "@/store.tsx";
+import { buildTagIndex } from "@/selectors.ts";
 
 export function TagBrowser() {
   const { state, actions } = useApp();

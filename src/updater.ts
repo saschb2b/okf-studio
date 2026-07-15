@@ -9,7 +9,7 @@
 //     releases page instead of a failing install.
 // See docs/ux/settings.md and docs/architecture/build-and-release.md.
 
-import { isTauri } from "./ipc.ts";
+import { isTauri } from "@/ipc.ts";
 
 /** The release the user is pointed at for a manual download (.deb path). */
 export const RELEASES_URL = "https://github.com/saschb2b/okf-viewer/releases/latest";

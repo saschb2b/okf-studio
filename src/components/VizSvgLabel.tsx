@@ -2,7 +2,7 @@
 // viz/labels.ts's fitLabel. Shared by the custom label layers of the three
 // hierarchy views so every chart wraps and sizes names the same way.
 
-import type { FittedLabel } from "../viz/labels.ts";
+import type { FittedLabel } from "@/viz/labels.ts";
 
 const LINE_HEIGHT = 1.2;
 

@@ -5,7 +5,7 @@
 // views consume the same tree, so drilling into "design" means the same thing
 // everywhere. See docs/features/viz-views.md.
 
-import type { Bundle, Concept } from "../types.ts";
+import type { Bundle, Concept } from "@/types.ts";
 
 export interface VizNode {
   /** Directory path for groups (""=root), concept id for leaves. Unique. */

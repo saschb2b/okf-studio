@@ -19,7 +19,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { useApp } from "../store.tsx";
+import { useApp } from "@/store.tsx";
 import {
   buildEdges,
   conceptById,
@@ -29,26 +29,26 @@ import {
   isVisible,
   matchesQuery,
   orphanIds,
-} from "../selectors.ts";
-import { louvain } from "../graph/community.ts";
-import { graphBackbone, maxPerNodeFor } from "../graph/backbone.ts";
+} from "@/selectors.ts";
+import { louvain } from "@/graph/community.ts";
+import { graphBackbone, maxPerNodeFor } from "@/graph/backbone.ts";
 // Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
 // switches to the GPU renderer — the default canvas path stays lean.
 const CosmosGraph = lazy(() =>
-  import("./CosmosGraph.tsx").then((m) => ({ default: m.CosmosGraph })),
+  import("@/components/CosmosGraph.tsx").then((m) => ({ default: m.CosmosGraph })),
 );
-import { buildTypePalette, resolveDark } from "../theme.ts";
-import { ErrorBoundary } from "./ErrorBoundary.tsx";
-import { GraphControls } from "./GraphControls.tsx";
-import { VizSwitcher } from "./VizSwitcher.tsx";
-import type { Concept } from "../types.ts";
-import { renderGraph } from "../graph/render.ts";
+import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { ErrorBoundary } from "@/components/ErrorBoundary.tsx";
+import { GraphControls } from "@/components/GraphControls.tsx";
+import { VizSwitcher } from "@/components/VizSwitcher.tsx";
+import type { Concept } from "@/types.ts";
+import { renderGraph } from "@/graph/render.ts";
 import type {
   Display,
   Forces,
   RenderData,
   View,
-} from "../graph/renderModel.ts";
+} from "@/graph/renderModel.ts";
 import {
   DEFAULT_DISPLAY,
   expandWithNeighbors,
@@ -56,7 +56,7 @@ import {
   MAX_SCALE,
   MIN_SCALE,
   radiusForDegree,
-} from "../graph/renderModel.ts";
+} from "@/graph/renderModel.ts";
 import {
   ALPHA_DECAY,
   ALPHA_MIN,
@@ -66,7 +66,7 @@ import {
   type SimEdge,
   type SimNode,
   type SimParams,
-} from "../graph/forceSim.ts";
+} from "@/graph/forceSim.ts";
 import "./GraphView.css";
 
 const STATIC_ITERATIONS = 400; // synchronous steps when reduceMotion is on

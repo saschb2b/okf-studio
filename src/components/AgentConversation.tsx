@@ -23,11 +23,11 @@ import type {
   AgentStagedValidationInfo,
   AgentTurnEvent,
   AgentTurnInfo,
-} from "../agent/connection.ts";
-import type { ReaderSelectionCapture } from "../agent/readerSelection.ts";
-import { bundleProposalNarrative, parseBundleProposal } from "../agent/bundleProposal.ts";
-import { StagedGraphPreview } from "./StagedGraphPreview.tsx";
-import type { AgentThreadMetadata, AgentThreadWorkflow } from "../agent/threadMetadata.ts";
+} from "@/agent/connection.ts";
+import type { ReaderSelectionCapture } from "@/agent/readerSelection.ts";
+import { bundleProposalNarrative, parseBundleProposal } from "@/agent/bundleProposal.ts";
+import { StagedGraphPreview } from "@/components/StagedGraphPreview.tsx";
+import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/agent/threadMetadata.ts";
 import {
   datasetChangeRequirements,
   deriveThreadTitle,
@@ -35,7 +35,7 @@ import {
   researchExportRequirements,
   transcriptFilename,
   transcriptMarkdown,
-} from "../agent/thread.ts";
+} from "@/agent/thread.ts";
 import {
   agentStagedFileDiff,
   applyAgentStagedChanges,
@@ -69,16 +69,16 @@ import {
   restoreAgentStagedCheckpoint,
   saveAgentThreadMetadata,
   setAgentSessionConfigOption,
-} from "../ipc.ts";
-import type { AgentSourceInput } from "../ipc.ts";
-import { renderMarkdown } from "../markdown.ts";
-import type { Issue } from "../types.ts";
-import { BundleProposalPreview } from "./BundleProposalPreview.tsx";
+} from "@/ipc.ts";
+import type { AgentSourceInput } from "@/ipc.ts";
+import { renderMarkdown } from "@/markdown.ts";
+import type { Issue } from "@/types.ts";
+import { BundleProposalPreview } from "@/components/BundleProposalPreview.tsx";
 import {
   AgentSessionControls,
   type AgentSessionConfigFailure,
-} from "./AgentSessionControls.tsx";
-import { AgentLiveWorkShelf } from "./AgentLiveWorkShelf.tsx";
+} from "@/components/AgentSessionControls.tsx";
+import { AgentLiveWorkShelf } from "@/components/AgentLiveWorkShelf.tsx";
 import "./AgentConversation.css";
 
 export interface AgentConversationProps {

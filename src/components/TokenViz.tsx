@@ -8,15 +8,15 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { Concept } from "../types.ts";
-import type { TokenGroup, TokenValue } from "../odsf.ts";
+import type { Concept } from "@/types.ts";
+import type { TokenGroup, TokenValue } from "@/odsf.ts";
 import {
   conceptTokens,
   isColorValue,
   prefersDarkInk,
   resolveTokenRefs,
   tokenVizKind,
-} from "../odsf.ts";
+} from "@/odsf.ts";
 import "./TokenViz.css";
 
 interface Props {

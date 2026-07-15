@@ -9,17 +9,17 @@ import { X } from "lucide-react";
 import { useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
-import { useApp, useActiveConcept } from "../store.tsx";
-import { distinctTypes, conceptById } from "../selectors.ts";
-import { buildTypePalette, resolveDark } from "../theme.ts";
+import { useApp, useActiveConcept } from "@/store.tsx";
+import { distinctTypes, conceptById } from "@/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/theme.ts";
 import {
   lineageTree,
   lineageSize,
   pathBetween,
   unlinkedMentions,
   type LineageNode,
-} from "../lineage.ts";
-import type { Bundle } from "../types.ts";
+} from "@/lineage.ts";
+import type { Bundle } from "@/types.ts";
 import "./chrome.css";
 import "./baseui.css";
 import "./LineagePanel.css";

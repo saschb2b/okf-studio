@@ -10,8 +10,8 @@
 import { X } from "lucide-react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
-import { useApp } from "../store.tsx";
-import type { Issue, IssueLevel } from "../types.ts";
+import { useApp } from "@/store.tsx";
+import type { Issue, IssueLevel } from "@/types.ts";
 import "./chrome.css";
 import "./baseui.css";
 import "./ValidationPanel.css";

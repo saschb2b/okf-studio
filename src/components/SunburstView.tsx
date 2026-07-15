@@ -12,12 +12,12 @@ import {
   type ComputedDatum,
   type SunburstCustomLayerProps,
 } from "@nivo/sunburst";
-import { findVizNode, vizPath, type VizNode } from "../viz/hierarchy.ts";
-import { fitLabel, inkOn } from "../viz/labels.ts";
-import { nivoTheme } from "../viz/nivoTheme.ts";
-import type { HierarchyVizProps } from "../viz/props.ts";
-import { VizSvgLabel } from "./VizSvgLabel.tsx";
-import { VizTooltip } from "./VizTooltip.tsx";
+import { findVizNode, vizPath, type VizNode } from "@/viz/hierarchy.ts";
+import { fitLabel, inkOn } from "@/viz/labels.ts";
+import { nivoTheme } from "@/viz/nivoTheme.ts";
+import type { HierarchyVizProps } from "@/viz/props.ts";
+import { VizSvgLabel } from "@/components/VizSvgLabel.tsx";
+import { VizTooltip } from "@/components/VizTooltip.tsx";
 
 // Clear the floating toolbar (top) and breathe against the pane edges.
 const MARGIN = { top: 56, right: 12, bottom: 12, left: 12 };

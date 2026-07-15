@@ -11,9 +11,9 @@
 import { Tooltip } from "@base-ui/react/tooltip";
 import { Filter, Keyboard, LayoutDashboard, ListTree, Settings } from "lucide-react";
 import type { ReactNode } from "react";
-import { useApp } from "../store.tsx";
-import type { Lens } from "../store.tsx";
-import { modKey } from "../platform.ts";
+import { useApp } from "@/store.tsx";
+import type { Lens } from "@/store.tsx";
+import { modKey } from "@/platform.ts";
 import "./baseui.css";
 import "./ActivityBar.css";
 

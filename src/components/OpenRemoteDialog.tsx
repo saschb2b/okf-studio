@@ -6,9 +6,9 @@
 
 import { useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
-import { useApp } from "../store.tsx";
-import { parseRemoteSource, remoteKindLabel, REMOTE_EXAMPLES } from "../remoteSource.ts";
-import type { BundleRoot, RemoteSource } from "../types.ts";
+import { useApp } from "@/store.tsx";
+import { parseRemoteSource, remoteKindLabel, REMOTE_EXAMPLES } from "@/remoteSource.ts";
+import type { BundleRoot, RemoteSource } from "@/types.ts";
 import "./chrome.css";
 import "./baseui.css";
 import "./OpenRemoteDialog.css";

@@ -7,11 +7,11 @@
 // concept is unaffected. See docs/features/design-system-rendering.md.
 
 import { useEffect, useRef, useState } from "react";
-import type { Bundle, Concept } from "../types.ts";
-import { conceptExamples, exampleKind } from "../odsf.ts";
-import type { ExampleKind } from "../odsf.ts";
-import { resolveAssetHref } from "../markdown.ts";
-import { readAsset } from "../ipc.ts";
+import type { Bundle, Concept } from "@/types.ts";
+import { conceptExamples, exampleKind } from "@/odsf.ts";
+import type { ExampleKind } from "@/odsf.ts";
+import { resolveAssetHref } from "@/markdown.ts";
+import { readAsset } from "@/ipc.ts";
 import "./ExamplePreview.css";
 
 interface PreviewItem {

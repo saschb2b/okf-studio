@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   captureReaderSelection,
   MAX_READER_SELECTION_CHARS,
-} from "./readerSelection.ts";
+} from "@/agent/readerSelection.ts";
 
 function selectContents(element: Node): Selection {
   const selection = window.getSelection();

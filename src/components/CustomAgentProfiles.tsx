@@ -4,14 +4,14 @@ import type {
   AgentConnectionEvent,
   AgentConnectionInfo,
   AgentConnectionMode,
-} from "../agent/connection.ts";
-import type { CustomAgentInput, CustomAgentProfile } from "../agent/custom.ts";
+} from "@/agent/connection.ts";
+import type { CustomAgentInput, CustomAgentProfile } from "@/agent/custom.ts";
 import {
   activeAgentConnections,
   connectCustomAgent,
   disconnectAgent,
   onAgentConnectionState,
-} from "../ipc.ts";
+} from "@/ipc.ts";
 
 interface CustomAgentProfilesProps {
   bundleRoot: string | null;

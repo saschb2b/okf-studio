@@ -6,7 +6,7 @@
 
 import type { ReactElement } from "react";
 import { Tooltip } from "@base-ui/react/tooltip";
-import { useApp, VIZ_VIEWS, type VizView } from "../store.tsx";
+import { useApp, VIZ_VIEWS, type VizView } from "@/store.tsx";
 import "./VizPane.css";
 
 // 16px mini-glyphs in the LayoutIcon style (currentColor, aria-hidden): the

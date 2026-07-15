@@ -1,9 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App.tsx";
-import { AppProvider } from "./store.tsx";
-import { installNativeBehaviors } from "./native.ts";
-import { logToHost } from "./ipc.ts";
+import { App } from "@/App.tsx";
+import { AppProvider } from "@/store.tsx";
+import { installNativeBehaviors } from "@/native.ts";
+import { logToHost } from "@/ipc.ts";
 import "./styles.css";
 
 // Make the webview feel native: block page-zoom + the default browser context

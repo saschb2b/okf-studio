@@ -8,13 +8,13 @@
 
 import { ChevronRight } from "lucide-react";
 import type { MouseEvent } from "react";
-import { useApp } from "../store.tsx";
-import { conceptById, indexIdForDir } from "../selectors.ts";
-import { renderMarkdown } from "../markdown.ts";
-import { buildTokenIndex } from "../odsf.ts";
-import { buildTypePalette, resolveDark } from "../theme.ts";
-import { classifyBodyLinks, classifyLink } from "./Reader.tsx";
-import type { IndexEntry, IndexNode } from "../types.ts";
+import { useApp } from "@/store.tsx";
+import { conceptById, indexIdForDir } from "@/selectors.ts";
+import { renderMarkdown } from "@/markdown.ts";
+import { buildTokenIndex } from "@/odsf.ts";
+import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { classifyBodyLinks, classifyLink } from "@/components/Reader.tsx";
+import type { IndexEntry, IndexNode } from "@/types.ts";
 import "./FolderHome.css";
 
 /** Humanize a path segment for the breadcrumb (e.g. "data-model" → "Data Model"). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { graphBackbone, maxPerNodeFor, type IdxEdge } from "./backbone.ts";
+import { graphBackbone, maxPerNodeFor, type IdxEdge } from "@/graph/backbone.ts";
 
 /** Count connected components over `n` nodes given undirected edges. */
 function components(n: number, edges: IdxEdge[]): number {

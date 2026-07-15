@@ -12,11 +12,11 @@ import { ChevronRight, X } from "lucide-react";
 import type { ReactNode } from "react";
 import "./baseui.css";
 import "./Sidebar.css";
-import { useApp } from "../store.tsx";
-import { filteredConceptIds } from "../selectors.ts";
-import { TypeFilters } from "./sidebar/TypeFilters.tsx";
-import { TagBrowser } from "./sidebar/TagBrowser.tsx";
-import { IndexTree } from "./sidebar/IndexTree.tsx";
+import { useApp } from "@/store.tsx";
+import { filteredConceptIds } from "@/selectors.ts";
+import { TypeFilters } from "@/components/sidebar/TypeFilters.tsx";
+import { TagBrowser } from "@/components/sidebar/TagBrowser.tsx";
+import { IndexTree } from "@/components/sidebar/IndexTree.tsx";
 
 /** A collapsible top-level sidebar section with a chevron + title trigger. */
 function Section({

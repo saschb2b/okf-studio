@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bundleProposalNarrative, parseBundleProposal } from "./bundleProposal.ts";
+import { bundleProposalNarrative, parseBundleProposal } from "@/agent/bundleProposal.ts";
 
 function fence(value: unknown): string {
   return `Here is the proposed structure.\n\n\`\`\`okf-proposal\n${JSON.stringify(value)}\n\`\`\``;

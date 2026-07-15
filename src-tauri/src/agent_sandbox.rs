@@ -824,11 +824,14 @@ mod tests {
             .canonicalize()
             .expect("canonical custom agent executable");
         // Each check names itself on stderr so a runner failure says which
-        // guarantee broke instead of only reporting a nonzero exit.
+        // guarantee broke instead of only reporting a nonzero exit. The
+        // protected file is masked with a /dev/null bind, so it still exists
+        // as an empty node — the guarantee is that its secret is gone, not
+        // that the path is absent.
         let script = concat!(
             r#"fail() { echo "sandbox fixture failed: $1" >&2; exit 1; }; "#,
             r#"test -r "$1" || fail "visible bundle read"; "#,
-            r#"test ! -e "$2" || fail "protected path masking"; "#,
+            r#"test -z "$(cat "$2" 2>/dev/null)" || fail "protected path masking"; "#,
             r#"if (printf blocked > "$3") 2>/dev/null; then fail "bundle write rejection"; fi; "#,
             r#"printf private > /tmp/probe || fail "private tmp write"; "#,
             r#"test "$(cat /tmp/probe)" = private || fail "private tmp read""#,

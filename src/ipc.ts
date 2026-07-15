@@ -422,6 +422,19 @@ const agentRestoreSubscribers = new Set<() => void>();
 const restoredConnectionIds = new Set<string>();
 
 /**
+ * Reset the once-per-session restore state. The status, attempt flag, and
+ * restored-connection set are module-level, so tests that share this module
+ * must clear them between runs or a leftover "restoring" status hides the
+ * empty-state Connect action in a later test.
+ */
+export function resetAgentRestoreState(): void {
+  agentRestoreState = "idle";
+  agentRestoreAttempted = false;
+  restoredConnectionIds.clear();
+  for (const subscriber of agentRestoreSubscribers) subscriber();
+}
+
+/**
  * Whether this connection was just restored at launch. Consuming it lets the
  * first conversation surface resume the saved thread automatically, exactly
  * once — a user-created surface or reconnect keeps its explicit choice.

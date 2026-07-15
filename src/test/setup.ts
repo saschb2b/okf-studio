@@ -1,11 +1,14 @@
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, vi } from "vitest";
+import { resetAgentRestoreState } from "../ipc.ts";
 
 // Persisted layout, saved-thread pointers, and the remembered last agent
 // connection must not leak between tests: restore and auto-resume act on them.
+// The once-per-session restore status is module-level, so reset it too.
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+  resetAgentRestoreState();
 });
 
 // jsdom lacks canvas; the Graph View needs a 2D context stub to render in tests.

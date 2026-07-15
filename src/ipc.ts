@@ -435,6 +435,17 @@ export function resetAgentRestoreState(): void {
 }
 
 /**
+ * Clear the module-level live-connection registry between tests. Tests
+ * disconnect what they open, but a slow CI runner can start the next test
+ * before an async cleanup settles; a leftover connection then makes the panel
+ * show a conversation where the test expects the empty Connect action.
+ */
+export function resetAgentConnectionsForTests(): void {
+  activeAgentConnectionsById.clear();
+  publishAgentConnections();
+}
+
+/**
  * Whether this connection was just restored at launch. Consuming it lets the
  * first conversation surface resume the saved thread automatically, exactly
  * once — a user-created surface or reconnect keeps its explicit choice.

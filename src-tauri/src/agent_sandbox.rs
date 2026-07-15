@@ -83,6 +83,14 @@ fn linux_launch_plan_with_system_roots(
         );
     }
 
+    // The profile mounts private filesystems over these paths after the
+    // read-only binds, which would silently shadow any grant below them.
+    // Refuse the launch instead of exposing an empty directory as the bundle.
+    reject_shadowed_mount(&bundle_root, "bundle root")?;
+    for mount in &runtime_roots {
+        reject_shadowed_mount(&mount.source, "agent runtime path")?;
+    }
+
     let mut arguments = Vec::new();
     for mount in system_roots.iter().chain(runtime_roots.iter()) {
         push_mount(
@@ -140,6 +148,20 @@ fn linux_launch_plan_with_system_roots(
     arguments.extend(command_arguments.iter().map(OsString::from));
 
     Ok(LinuxSandboxLaunchPlan { arguments })
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn reject_shadowed_mount(path: &Path, label: &str) -> Result<(), String> {
+    const PRIVATE_SANDBOX_PATHS: &[&str] = &["/tmp", "/run", "/proc", "/dev"];
+    if PRIVATE_SANDBOX_PATHS
+        .iter()
+        .any(|private| path.starts_with(private))
+    {
+        return Err(format!(
+            "The {label} lies under a private sandbox filesystem and would be hidden by the restricted profile."
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(any(target_os = "linux", test))]
@@ -576,13 +598,23 @@ mod tests {
         executable: PathBuf,
     }
 
+    /// On Linux the fixture must not live under /tmp: the restricted profile
+    /// mounts a private tmpfs there and now refuses shadowed grants outright.
+    fn fixture_parent() -> PathBuf {
+        if cfg!(target_os = "linux") {
+            PathBuf::from("/var/tmp")
+        } else {
+            std::env::temp_dir()
+        }
+    }
+
     impl PolicyFixture {
         fn new() -> Self {
             let unique = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("system clock")
                 .as_nanos();
-            let root = std::env::temp_dir().join(format!(
+            let root = fixture_parent().join(format!(
                 "okf-studio-sandbox-policy-{}-{unique}",
                 std::process::id()
             ));
@@ -732,6 +764,15 @@ mod tests {
     }
 
     #[test]
+    fn rejects_grants_under_private_sandbox_filesystems() {
+        assert!(reject_shadowed_mount(Path::new("/tmp/bundle"), "bundle root").is_err());
+        assert!(reject_shadowed_mount(Path::new("/run/agent"), "agent runtime path").is_err());
+        assert!(reject_shadowed_mount(Path::new("/dev/shm/bundle"), "bundle root").is_err());
+        assert!(reject_shadowed_mount(Path::new("/var/tmp/bundle"), "bundle root").is_ok());
+        assert!(reject_shadowed_mount(Path::new("/home/user/bundle"), "bundle root").is_ok());
+    }
+
+    #[test]
     fn restricted_plan_rejects_a_missing_declared_runtime_root() {
         let fixture = PolicyFixture::new();
         let missing = fixture.root.join("missing-runtime");
@@ -777,7 +818,16 @@ mod tests {
         let custom_agent = custom_agent
             .canonicalize()
             .expect("canonical custom agent executable");
-        let script = r#"test -r "$1" && test ! -e "$2" && ! (printf blocked > "$3") 2>/dev/null && printf private > /tmp/probe && test "$(cat /tmp/probe)" = private"#;
+        // Each check names itself on stderr so a runner failure says which
+        // guarantee broke instead of only reporting a nonzero exit.
+        let script = concat!(
+            r#"fail() { echo "sandbox fixture failed: $1" >&2; exit 1; }; "#,
+            r#"test -r "$1" || fail "visible bundle read"; "#,
+            r#"test ! -e "$2" || fail "protected path masking"; "#,
+            r#"if (printf blocked > "$3") 2>/dev/null; then fail "bundle write rejection"; fi; "#,
+            r#"printf private > /tmp/probe || fail "private tmp write"; "#,
+            r#"test "$(cat /tmp/probe)" = private || fail "private tmp read""#,
+        );
         let arguments = vec![
             "-c".to_string(),
             script.to_string(),
@@ -798,16 +848,20 @@ mod tests {
         command
             .env_clear()
             .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
             .kill_on_drop(true);
 
-        let status = tokio::time::timeout(std::time::Duration::from_secs(5), command.status())
+        let output = tokio::time::timeout(std::time::Duration::from_secs(5), command.output())
             .await
             .expect("restricted command deadline")
             .expect("start restricted command");
         let _ = std::fs::remove_dir_all(&custom_root);
-        assert!(status.success());
+        assert!(
+            output.status.success(),
+            "restricted fixture exited with {:?}\nstdout: {}\nstderr: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
         assert!(!blocked_write.exists());
     }
 

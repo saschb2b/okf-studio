@@ -1,10 +1,10 @@
 use crate::agent_local::{LocalChatMessage, LocalToolCall, LocalToolDefinition};
 use serde::Deserialize;
 
-const OKF_SKILL: &str = include_str!("../../.agents/skills/okf/SKILL.md");
-const OKF_SPEC: &str = include_str!("../../.agents/skills/okf/spec.md");
-const OKF_COMMANDS: &str = include_str!("../../.agents/skills/okf/commands.md");
-const OKF_TEMPLATES: &str = include_str!("../../.agents/skills/okf/templates.md");
+const OKF_SKILL: &str = include_str!("../../../../.agents/skills/okf/SKILL.md");
+const OKF_SPEC: &str = include_str!("../../../../.agents/skills/okf/spec.md");
+const OKF_COMMANDS: &str = include_str!("../../../../.agents/skills/okf/commands.md");
+const OKF_TEMPLATES: &str = include_str!("../../../../.agents/skills/okf/templates.md");
 const MAX_SKILL_DESCRIPTION_CHARS: usize = 2_048;
 pub(crate) const LOAD_SKILL_RESOURCE_TOOL: &str = "load_okf_skill_resource";
 

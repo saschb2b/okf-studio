@@ -1,26 +1,56 @@
 //! Tauri layer: thin command/event wrappers over `okf-core`. The frontend never
 //! touches the filesystem; it calls these commands and listens for events.
 
-mod agent_catalog;
-mod agent_custom;
-mod agent_credentials;
-mod agent_csv;
-mod agent_install;
-mod agent_json;
-mod agent_local;
-mod agent_mcp;
-mod agent_native_stage;
-mod agent_native_sources;
-mod agent_pdf;
-mod agent_process;
+// The agent backend is grouped into domain folders under `src/agent/`. The
+// module names keep their `agent_` prefix (avoiding collisions with std and
+// crate modules like `process`, `url`, `csv`, and `json`); `#[path]` maps each
+// to its file. See docs/architecture/agent-system.md for the domains.
+//
+// host — the running ACP and MCP process host.
+#[path = "agent/host/agent_protocol.rs"]
 mod agent_protocol;
-mod agent_runtime;
+#[path = "agent/host/agent_process.rs"]
+mod agent_process;
+#[path = "agent/host/agent_sandbox.rs"]
 mod agent_sandbox;
-mod agent_sources;
-mod agent_stage;
-mod agent_studio;
+#[path = "agent/host/agent_mcp.rs"]
+mod agent_mcp;
+#[path = "agent/host/agent_transcript.rs"]
 mod agent_transcript;
+// registry — agent discovery, installation, and the managed runtime.
+#[path = "agent/registry/agent_catalog.rs"]
+mod agent_catalog;
+#[path = "agent/registry/agent_install.rs"]
+mod agent_install;
+#[path = "agent/registry/agent_runtime.rs"]
+mod agent_runtime;
+#[path = "agent/registry/agent_custom.rs"]
+mod agent_custom;
+// provider — the native Studio Agent and its tools.
+#[path = "agent/provider/agent_local.rs"]
+mod agent_local;
+#[path = "agent/provider/agent_native_sources.rs"]
+mod agent_native_sources;
+#[path = "agent/provider/agent_native_stage.rs"]
+mod agent_native_stage;
+#[path = "agent/provider/agent_studio.rs"]
+mod agent_studio;
+#[path = "agent/provider/agent_credentials.rs"]
+mod agent_credentials;
+// sources — attached-source intake and extraction.
+#[path = "agent/sources/agent_sources.rs"]
+mod agent_sources;
+#[path = "agent/sources/agent_pdf.rs"]
+mod agent_pdf;
+#[path = "agent/sources/agent_csv.rs"]
+mod agent_csv;
+#[path = "agent/sources/agent_json.rs"]
+mod agent_json;
+#[path = "agent/sources/agent_url.rs"]
 mod agent_url;
+// stage — the reviewed-write engine shared by the host and native provider.
+#[path = "agent/agent_stage.rs"]
+mod agent_stage;
 mod bundle_grant;
 mod remote;
 mod watch;

@@ -41,10 +41,17 @@ use crate::{
     agent_process, agent_sources::AgentSourceInput, agent_studio,
 };
 
+// This module is loaded from lib.rs via #[path], so its children need explicit
+// paths into the sibling agent_protocol/ folder.
+#[path = "agent_protocol/context.rs"]
 mod context;
+#[path = "agent_protocol/process.rs"]
 mod process;
+#[path = "agent_protocol/security_scope.rs"]
 mod security_scope;
+#[path = "agent_protocol/session_config.rs"]
 mod session_config;
+#[path = "agent_protocol/turn.rs"]
 mod turn;
 pub use turn::AgentTurnInfo;
 #[cfg(test)]
@@ -123,10 +130,10 @@ const MAX_SESSION_CONFIG_GROUPS: usize = 64;
 const MAX_SESSION_CONFIG_VALUES: usize = 512;
 const MAX_SESSION_CONFIG_FIELD_CHARS: usize = 512;
 const LEGACY_SESSION_MODE_CONFIG_ID: &str = "__acp_session_mode";
-const OKF_SKILL: &str = include_str!("../../.agents/skills/okf/SKILL.md");
-const OKF_SPEC: &str = include_str!("../../.agents/skills/okf/spec.md");
-const OKF_COMMANDS: &str = include_str!("../../.agents/skills/okf/commands.md");
-const OKF_TEMPLATES: &str = include_str!("../../.agents/skills/okf/templates.md");
+const OKF_SKILL: &str = include_str!("../../../../.agents/skills/okf/SKILL.md");
+const OKF_SPEC: &str = include_str!("../../../../.agents/skills/okf/spec.md");
+const OKF_COMMANDS: &str = include_str!("../../../../.agents/skills/okf/commands.md");
+const OKF_TEMPLATES: &str = include_str!("../../../../.agents/skills/okf/templates.md");
 const CONNECTION_EVENT: &str = "agent-connection-state";
 const TURN_EVENT: &str = "agent-turn-update";
 const PERMISSION_EVENT: &str = "agent-permission-update";

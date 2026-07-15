@@ -8,7 +8,7 @@ The **Rust core** (`crates/okf-core` + `src-tauri/`) owns filesystem, process, a
 
 ```
 okf-viewer/
-  src/             # web frontend (React 19 + TS, Vite)
+  src/             # web frontend (React 19 + TS, Vite) — domain-first: features/ + shared/
   src-tauri/       # Tauri shell: tauri.conf.json, capabilities/, commands
   crates/okf-core/ # Rust parsing/validation core (unit-tested against docs/)
   docs/            # the OKF product spec bundle — source of truth AND built-in sample
@@ -26,6 +26,27 @@ okf-viewer/
 - **External specs:** [`docs/reference/`](docs/reference/) — OKF spec summary, Tauri 2.0 notes, glossary.
 
 If anything in this file conflicts with the bundle, the bundle wins; update this file to match.
+
+## Where code lives (folder structure)
+
+Both the frontend and the agent backend are organized **domain-first**: the domain is the top-level unit, and narrower separation (`components/`, sub-parsers) nests *inside* it. Group by feature first, then by kind — never a global `components/` tree beside a parallel utilities tree. When you add a file, place it in its domain, not at the root.
+
+**Frontend (`src/`).** Domains live under `src/features/<domain>/`, each owning a `components/` folder beside its own logic:
+
+- `agent/` — ACP client (connection, catalog, install, threads, local models, custom profiles) + agent-panel components + staged-write review previews
+- `viz/` — the graph engine (`graph/`), chart helpers, and every graph/chart component
+- `reader/` — concept reader, prefs, lineage panel, peek card + lineage derivation
+- `bundle/` — bundle browsing and open-from-URL (`remoteSource` parser)
+- `navigation/` — sidebar, index tree, tag browser, type filters
+- `shell/` — window frame and global overlays (top/status/activity bar, tabs, command palette, settings, validation/log panels)
+
+Cross-cutting code lives in `src/shared/`: `ipc`, `store`, `types`, `query`, `selectors`, `odsf`, `theme`, `render/` (markdown/math/mermaid/highlight), `platform/` (native/window/updater/platform), and `styles/` (`baseui.css`, `chrome.css`). Only the composition root stays at the `src/` top level — `App`, `main`, `keys`, and the cross-cutting integration tests — plus `mock/` and `test/` infrastructure. A component's own `.css` and `.test` file sit beside it.
+
+**Imports use the `@/` alias** (`@/*` → `src/*`, set in `tsconfig.json` `paths` + Vite `resolve.alias`), never relative `../../` chains. Alias paths are location-independent, so moving a file only repoints references instead of rewriting relative paths — new code should import via `@/…`. Per-component `.css` imports stay relative (`./Name.css`) so they follow the component.
+
+**Backend (`src-tauri/src/`).** Agent code is grouped under `src/agent/` by domain: `host/` (protocol, process, sandbox, mcp, transcript), `registry/` (catalog, install, runtime, custom), `provider/` (local, native sources/stage, studio, credentials), and `sources/` (pdf, csv, json, url). Rust modules are relocated with `#[path]` attributes so a file move doesn't force a module rename. Note the frontend's `src/features/agent/catalog.json` is read by Rust via `include_str!` in `src-tauri/src/agent/registry/agent_catalog.rs` — if you move it, update that path (and re-run `cargo check -p okf-viewer`).
+
+The layout is documented in [`docs/architecture/frontend-architecture.md`](docs/architecture/frontend-architecture.md); keep it in sync when the structure changes.
 
 ## Dev commands
 

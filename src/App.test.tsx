@@ -450,6 +450,34 @@ describe("OKF Studio app", () => {
     expect(within(card).getByText(/No agent has been started/i)).toBeInTheDocument();
   });
 
+  it("sends with Enter and keeps Shift+Enter as a newline", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    await user.click(await screen.findByRole("button", { name: "Add command" }));
+    await user.type(screen.getByLabelText("Name"), "Enter Harness");
+    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\enter.exe");
+    await user.click(screen.getByRole("button", { name: "Save command" }));
+    await user.click(await screen.findByRole("button", { name: "Connect Enter Harness" }));
+    await screen.findByText(/Connected to Enter Harness over ACP v1/i);
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    const prompt = screen.getByLabelText("Message the agent");
+    await user.type(prompt, "First line{Shift>}{Enter}{/Shift}Second line");
+    expect(prompt).toHaveValue("First line\nSecond line");
+
+    await user.keyboard("{Enter}");
+    expect(await screen.findByText(/Browser ACP received: First line/)).toBeInTheDocument();
+    expect(prompt).toHaveValue("");
+
+    await chooseThreadAction(user, "Change agent");
+    await user.click(screen.getByRole("button", { name: "Disconnect" }));
+    await user.click(screen.getByRole("button", { name: "Remove Enter Harness" }));
+  }, 15_000);
+
   it("tests and saves a local model endpoint without starting an agent", async () => {
     const user = userEvent.setup();
     renderApp();

@@ -3024,6 +3024,21 @@ export function AgentConversation({
                 disabled={isSubmitting || queuedPrompt !== null}
                 value={promptText}
                 onChange={(event) => changePromptText(event.target.value)}
+                onKeyDown={(event) => {
+                  // Zed-style submission: Enter sends (or queues during a
+                  // turn), Shift+Enter inserts a newline, and an active IME
+                  // composition keeps Enter for itself.
+                  if (
+                    event.key !== "Enter" ||
+                    event.shiftKey ||
+                    event.nativeEvent.isComposing
+                  ) {
+                    return;
+                  }
+                  event.preventDefault();
+                  if (promptText.trim().length === 0) return;
+                  event.currentTarget.form?.requestSubmit();
+                }}
               />
               <div className="agent-composer__actions">
                 <div className="agent-composer__leading-actions">

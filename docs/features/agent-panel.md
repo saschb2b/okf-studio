@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-15T10:20:00Z
+timestamp: 2026-07-15T11:30:00Z
 ---
 
 # Entry and first open
@@ -174,4 +174,4 @@ Tool calls show pending, running, completed, failed, or cancelled state plus any
 
 # Accessibility
 
-The panel is a labelled complementary region. Streaming uses restrained live regions and never moves focus. Opening the plus menu focuses its first available action; subviews move focus to their search, first result, or first field, and Back restores the menu. Queuing a follow-up moves focus from the disabled Queue control to the queued item's **Edit** action; editing or removing it returns focus to the composer. A saved-thread failure focuses its retry action after the error card is rendered. Tool, diff, attachment, and permission actions are real controls with visible focus. The composer supports multiline input without ambiguous submission.
+The panel is a labelled complementary region. Streaming uses restrained live regions and never moves focus. Opening the plus menu focuses its first available action; subviews move focus to their search, first result, or first field, and Back restores the menu. Queuing a follow-up moves focus from the disabled Queue control to the queued item's **Edit** action; editing or removing it returns focus to the composer. A saved-thread failure focuses its retry action after the error card is rendered. Tool, diff, attachment, and permission actions are real controls with visible focus. The composer sends on Enter and inserts a newline on Shift+Enter, matching Zed's prompt editor. An active IME composition keeps Enter for itself, an empty draft never submits, and during a live turn Enter queues the follow-up exactly as the visible Queue action would.

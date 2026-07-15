@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-15
+* **Update**: The composer now sends on Enter and inserts a newline on Shift+Enter, matching Zed. An active IME composition keeps Enter, an empty draft never submits, and Enter queues the follow-up during a live turn. Previously Enter only added a newline and sending required the button.
 * **Update**: Bumped Studio to 0.3.0 for the agent-workspace release train. The marketing site now brands its hero as OKF Studio with that version, shows a live agent thread answering a bundle question as the hero screenshot, and replaces the single oversized agent feature card with a compact card plus a dedicated six-card agent section covering registry installs, local models, restored threads, explicit context, reviewed writes, and visible security.
 * **Creation**: Cursor becomes installable as the catalog's first binary distribution. Studio measured the SHA-256 of all six per-platform archives itself at snapshot time — the upstream registry entry publishes none — and installs them through a parallel Rust transaction with a 256 MB compressed cap, a pinned-size expansion bound under one root, no links, and no scripts. Launch bypasses the publisher's shell and PowerShell shims: Studio spawns the archive's bundled Node with the pinned entry file and `acp` argument directly and reproduces the shim's `CURSOR_INVOKED_AS` through environment defaults. The direct launch was verified with a real ACP initialize round-trip before pinning. Goose, Kimi CLI, and OpenCode remain planned until their archives can be pinned the same way.
 

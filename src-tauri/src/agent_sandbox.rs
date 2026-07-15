@@ -132,6 +132,10 @@ fn linux_launch_plan_with_system_roots(
         }
     }
 
+    // --unshare-all only *tries* the user namespace; --disable-userns needs
+    // it unshared unconditionally (bwrap 0.9 rejects the pair otherwise), and
+    // a hard failure beats silently launching without the denial.
+    arguments.push("--unshare-user".into());
     arguments.push("--unshare-all".into());
     if network == LinuxSandboxNetworkMode::Host {
         arguments.push("--share-net".into());
@@ -693,6 +697,7 @@ mod tests {
             ]
         ));
         for required in [
+            "--unshare-user",
             "--unshare-all",
             "--disable-userns",
             "--new-session",

@@ -49,6 +49,12 @@
       "skillPath": "skills/engineering/react-stinky/SKILL.md",
       "computedHash": "421938779db2f941c299f76bf6de6d83716a878229bf0fc3ea4c9d8bcfa3dec5"
     },
+    "tauri-stinky": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/tauri-stinky/SKILL.md",
+      "computedHash": "5a8f044ba0134685a1841a94ad853a4a22f0294b35a32d076f279a049a72b579"
+    },
     "theme-colors": {
       "source": "saschb2b/skills",
       "sourceType": "github",

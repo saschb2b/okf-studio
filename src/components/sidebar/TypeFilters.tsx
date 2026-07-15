@@ -6,8 +6,8 @@
 
 import { Toggle } from "@base-ui/react/toggle";
 import { useApp } from "@/store.tsx";
-import { distinctTypes } from "@/selectors.ts";
-import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { distinctTypes } from "@/data/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/render/theme.ts";
 
 export function TypeFilters() {
   const { state, actions } = useApp();

@@ -17,8 +17,8 @@ import {
   indexNodeForId,
   isVisible,
   matchesQuery,
-} from "@/selectors.ts";
-import { buildTypePalette, resolveDark } from "@/theme.ts";
+} from "@/data/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/render/theme.ts";
 import { buildVizTreeAuto, findVizNode, vizPath, type VizNode } from "@/viz/hierarchy.ts";
 import { readVizColors, type VizColors } from "@/viz/nivoTheme.ts";
 import type { HierarchyVizProps } from "@/viz/props.ts";

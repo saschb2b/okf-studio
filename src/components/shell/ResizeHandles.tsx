@@ -5,8 +5,8 @@
 // See docs/ux/browsing-layout.md.
 
 import { isTauri } from "@/ipc.ts";
-import { startWindowResize } from "@/window.ts";
-import type { ResizeDir } from "@/window.ts";
+import { startWindowResize } from "@/platform/window.ts";
+import type { ResizeDir } from "@/platform/window.ts";
 import "./ResizeHandles.css";
 
 const HANDLES: { cls: string; dir: ResizeDir }[] = [

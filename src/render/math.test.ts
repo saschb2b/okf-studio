@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderMathBlocks } from "@/math.ts";
+import { renderMathBlocks } from "@/render/math.ts";
 
 function frag(html: string): DocumentFragment {
   const tpl = document.createElement("template");

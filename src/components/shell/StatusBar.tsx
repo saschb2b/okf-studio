@@ -10,7 +10,7 @@
 import { Check, History, Sparkles, TriangleAlert, Waypoints, X as XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useApp } from "@/store.tsx";
-import { AGENT_PANEL_OPENER_ID } from "@/agentPanelFocus.ts";
+import { AGENT_PANEL_OPENER_ID } from "@/agent/agentPanelFocus.ts";
 import "./StatusBar.css";
 
 export function StatusBar() {

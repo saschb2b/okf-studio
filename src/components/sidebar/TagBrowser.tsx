@@ -5,7 +5,7 @@
 
 import { Toggle } from "@base-ui/react/toggle";
 import { useApp } from "@/store.tsx";
-import { buildTagIndex } from "@/selectors.ts";
+import { buildTagIndex } from "@/data/selectors.ts";
 
 export function TagBrowser() {
   const { state, actions } = useApp();

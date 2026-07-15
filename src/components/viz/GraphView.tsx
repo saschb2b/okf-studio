@@ -29,7 +29,7 @@ import {
   isVisible,
   matchesQuery,
   orphanIds,
-} from "@/selectors.ts";
+} from "@/data/selectors.ts";
 import { louvain } from "@/graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "@/graph/backbone.ts";
 // Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
@@ -37,7 +37,7 @@ import { graphBackbone, maxPerNodeFor } from "@/graph/backbone.ts";
 const CosmosGraph = lazy(() =>
   import("@/components/viz/CosmosGraph.tsx").then((m) => ({ default: m.CosmosGraph })),
 );
-import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { buildTypePalette, resolveDark } from "@/render/theme.ts";
 import { ErrorBoundary } from "@/components/shell/ErrorBoundary.tsx";
 import { GraphControls } from "@/components/viz/GraphControls.tsx";
 import { VizSwitcher } from "@/components/viz/VizSwitcher.tsx";

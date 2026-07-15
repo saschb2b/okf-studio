@@ -10,15 +10,15 @@ import { useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp, useActiveConcept } from "@/store.tsx";
-import { distinctTypes, conceptById } from "@/selectors.ts";
-import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { distinctTypes, conceptById } from "@/data/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/render/theme.ts";
 import {
   lineageTree,
   lineageSize,
   pathBetween,
   unlinkedMentions,
   type LineageNode,
-} from "@/lineage.ts";
+} from "@/data/lineage.ts";
 import type { Bundle } from "@/types.ts";
 import "@/components/chrome.css";
 import "@/components/baseui.css";

@@ -22,8 +22,8 @@ import type {
 } from "react";
 import { ChevronDown, ChevronRight, House } from "lucide-react";
 import { useApp } from "@/store.tsx";
-import { conceptById, distinctTypes, filteredConceptIds, indexIdForDir } from "@/selectors.ts";
-import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { conceptById, distinctTypes, filteredConceptIds, indexIdForDir } from "@/data/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/render/theme.ts";
 import type { Bundle, IndexEntry, IndexNode, IndexSection } from "@/types.ts";
 
 /** Pick the root index: prefer the empty / "." dir, else the first node. */

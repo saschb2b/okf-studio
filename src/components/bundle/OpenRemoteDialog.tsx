@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { useApp } from "@/store.tsx";
-import { parseRemoteSource, remoteKindLabel, REMOTE_EXAMPLES } from "@/remoteSource.ts";
+import { parseRemoteSource, remoteKindLabel, REMOTE_EXAMPLES } from "@/data/remoteSource.ts";
 import type { BundleRoot, RemoteSource } from "@/types.ts";
 import "@/components/chrome.css";
 import "@/components/baseui.css";

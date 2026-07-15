@@ -13,7 +13,7 @@ import { Filter, Keyboard, LayoutDashboard, ListTree, Settings } from "lucide-re
 import type { ReactNode } from "react";
 import { useApp } from "@/store.tsx";
 import type { Lens } from "@/store.tsx";
-import { modKey } from "@/platform.ts";
+import { modKey } from "@/platform/platform.ts";
 import "@/components/baseui.css";
 import "./ActivityBar.css";
 

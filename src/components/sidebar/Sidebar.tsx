@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 import "@/components/baseui.css";
 import "./Sidebar.css";
 import { useApp } from "@/store.tsx";
-import { filteredConceptIds } from "@/selectors.ts";
+import { filteredConceptIds } from "@/data/selectors.ts";
 import { TypeFilters } from "@/components/sidebar/TypeFilters.tsx";
 import { TagBrowser } from "@/components/sidebar/TagBrowser.tsx";
 import { IndexTree } from "@/components/sidebar/IndexTree.tsx";

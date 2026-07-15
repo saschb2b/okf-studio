@@ -5,7 +5,7 @@ import type { AgentConnectionInfo } from "@/agent/connection.ts";
 import { agentPanelClamp, useApp } from "@/store.tsx";
 import { captureReaderSelection } from "@/agent/readerSelection.ts";
 import { useAgentConnections } from "@/agent/useAgentConnections.ts";
-import { focusAgentPanelOpener } from "@/agentPanelFocus.ts";
+import { focusAgentPanelOpener } from "@/agent/agentPanelFocus.ts";
 import {
   agentRestoreStatus,
   maybeRestoreLastAgentConnection,

@@ -3,7 +3,7 @@
 
 import { useEffect } from "react";
 import { useApp } from "@/store.tsx";
-import { focusAgentPanel, focusAgentPanelOpener } from "@/agentPanelFocus.ts";
+import { focusAgentPanel, focusAgentPanelOpener } from "@/agent/agentPanelFocus.ts";
 
 export function useGlobalKeys() {
   const { state, actions } = useApp();

@@ -13,7 +13,7 @@ import {
   prefersDarkInk,
   resolveTokenRefs,
   tokenVizKind,
-} from "@/odsf.ts";
+} from "@/data/odsf.ts";
 
 function concept(extra: Record<string, unknown>, type = "Color"): Concept {
   return {

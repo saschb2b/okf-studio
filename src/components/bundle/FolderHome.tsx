@@ -9,10 +9,10 @@
 import { ChevronRight } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useApp } from "@/store.tsx";
-import { conceptById, indexIdForDir } from "@/selectors.ts";
-import { renderMarkdown } from "@/markdown.ts";
-import { buildTokenIndex } from "@/odsf.ts";
-import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { conceptById, indexIdForDir } from "@/data/selectors.ts";
+import { renderMarkdown } from "@/render/markdown.ts";
+import { buildTokenIndex } from "@/data/odsf.ts";
+import { buildTypePalette, resolveDark } from "@/render/theme.ts";
 import { classifyBodyLinks, classifyLink } from "@/components/reader/Reader.tsx";
 import type { IndexEntry, IndexNode } from "@/types.ts";
 import "./FolderHome.css";

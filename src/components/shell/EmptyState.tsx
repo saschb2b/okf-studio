@@ -4,8 +4,8 @@
 
 import { Globe } from "lucide-react";
 import { useApp } from "@/store.tsx";
-import { modKey } from "@/platform.ts";
-import { REMOTE_EXAMPLES } from "@/remoteSource.ts";
+import { modKey } from "@/platform/platform.ts";
+import { REMOTE_EXAMPLES } from "@/data/remoteSource.ts";
 import "@/components/chrome.css";
 import "./EmptyState.css";
 

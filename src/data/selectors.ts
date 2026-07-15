@@ -2,7 +2,7 @@
 // components call these in render and the results are auto-memoized.
 
 import type { Bundle, Concept, GraphEdge, IndexNode } from "@/types.ts";
-import { parseQuery, matchesCompiled, type CompiledQuery } from "@/query.ts";
+import { parseQuery, matchesCompiled, type CompiledQuery } from "@/data/query.ts";
 
 // ---- Folder homes -------------------------------------------------------
 // A directory's index.md is never a concept (OKF reserves it), so it has no

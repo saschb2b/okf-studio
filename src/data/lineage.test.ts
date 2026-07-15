@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lineageTree, pathBetween, unlinkedMentions, lineageSize } from "@/lineage.ts";
+import { lineageTree, pathBetween, unlinkedMentions, lineageSize } from "@/data/lineage.ts";
 import type { Bundle, Concept } from "@/types.ts";
 
 function concept(partial: Partial<Concept> & { id: string }): Concept {

@@ -71,7 +71,7 @@ import {
   setAgentSessionConfigOption,
 } from "@/ipc.ts";
 import type { AgentSourceInput } from "@/ipc.ts";
-import { renderMarkdown } from "@/markdown.ts";
+import { renderMarkdown } from "@/render/markdown.ts";
 import type { Issue } from "@/types.ts";
 import { BundleProposalPreview } from "@/components/review/BundleProposalPreview.tsx";
 import {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { renderMermaidBlocks } from "@/mermaid.ts";
+import { renderMermaidBlocks } from "@/render/mermaid.ts";
 
 // Real Mermaid cannot lay out text in jsdom (no getBBox), so the library is
 // mocked to exercise the pass's contract: what gets replaced, what survives a

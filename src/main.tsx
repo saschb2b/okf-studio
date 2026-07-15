@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "@/App.tsx";
 import { AppProvider } from "@/store.tsx";
-import { installNativeBehaviors } from "@/native.ts";
+import { installNativeBehaviors } from "@/platform/native.ts";
 import { logToHost } from "@/ipc.ts";
 import "./styles.css";
 

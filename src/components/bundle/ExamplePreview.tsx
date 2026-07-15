@@ -8,9 +8,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Bundle, Concept } from "@/types.ts";
-import { conceptExamples, exampleKind } from "@/odsf.ts";
-import type { ExampleKind } from "@/odsf.ts";
-import { resolveAssetHref } from "@/markdown.ts";
+import { conceptExamples, exampleKind } from "@/data/odsf.ts";
+import type { ExampleKind } from "@/data/odsf.ts";
+import { resolveAssetHref } from "@/render/markdown.ts";
 import { readAsset } from "@/ipc.ts";
 import "./ExamplePreview.css";
 

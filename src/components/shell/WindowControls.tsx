@@ -7,7 +7,7 @@ import {
   closeWindow,
   minimizeWindow,
   toggleMaximizeWindow,
-} from "@/window.ts";
+} from "@/platform/window.ts";
 import "./WindowControls.css";
 
 export function WindowControls() {

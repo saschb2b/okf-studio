@@ -11,7 +11,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { useApp } from "@/store.tsx";
 import type { Actions } from "@/store.tsx";
-import { modKey } from "@/platform.ts";
+import { modKey } from "@/platform/platform.ts";
 import type { BundleRoot, RecentBundle } from "@/types.ts";
 import appIcon from "@/assets/icon.svg";
 import "@/components/baseui.css";

@@ -28,7 +28,11 @@ These are pure functions of the bundle data, so they recompute only when the bun
 
 Components mirror the three panes: a **sidebar** (indexes, concept list, search results), a **graph** (renderer plus interaction layer), and a **reader** (rendered markdown with backlinks). Each subscribes to the shared active-concept state and to the derived stores; none reaches into another's internals.
 
-`src/components/` is grouped by feature domain rather than kept flat: `agent/` (the ACP panel), `viz/` (graph and chart views), `reader/`, `bundle/` (bundle browsing and open dialogs), `review/` (staged-write previews), `sidebar/`, and `shell/` (the window frame and global overlays). Each component's own stylesheet and test sit beside it; the two stylesheets shared across domains (`baseui.css`, `chrome.css`) stay at the `components/` root. Imports use the **`@/` path alias** (`@/*` → `src/*`, configured in `tsconfig.json` and Vite's `resolve.alias`) rather than relative `../../` chains, so a component's import paths are independent of where its file lives — moving a component between folders does not touch its imports.
+`src/components/` is grouped by feature domain rather than kept flat: `agent/` (the ACP panel), `viz/` (graph and chart views), `reader/`, `bundle/` (bundle browsing and open dialogs), `review/` (staged-write previews), `sidebar/`, and `shell/` (the window frame and global overlays). Each component's own stylesheet and test sit beside it; the two stylesheets shared across domains (`baseui.css`, `chrome.css`) stay at the `components/` root.
+
+The non-component modules under `src/` are grouped the same way: `render/` (markdown, math, mermaid, syntax highlighting, and the theme/type-color palette), `platform/` (native desktop behaviors, window controls, updater, platform detection), `data/` (pure derivations over the model — query, selectors, lineage, ODSF artifacts — plus remote-source URL parsing), and `agent/` (the ACP client logic). Only the app-core wiring stays at the `src/` root: `App`, `main`, `store`, `ipc`, `types`, `keys`, and the cross-cutting integration tests.
+
+Imports use the **`@/` path alias** (`@/*` → `src/*`, configured in `tsconfig.json` and Vite's `resolve.alias`) rather than relative `../../` chains, so a module's import paths are independent of where its file lives — moving a file between folders does not touch its imports.
 
 # In-place patching on bundle-changed
 

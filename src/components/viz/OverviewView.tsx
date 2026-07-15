@@ -8,8 +8,8 @@
 
 import type { ReactNode } from "react";
 import { useApp } from "@/store.tsx";
-import { distinctTypes, orphanIds } from "@/selectors.ts";
-import { buildTypePalette, resolveDark } from "@/theme.ts";
+import { distinctTypes, orphanIds } from "@/data/selectors.ts";
+import { buildTypePalette, resolveDark } from "@/render/theme.ts";
 import type { Concept } from "@/types.ts";
 import "./OverviewView.css";
 

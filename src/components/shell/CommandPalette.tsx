@@ -17,7 +17,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useApp } from "@/store.tsx";
-import { focusAgentPanel, focusAgentPanelOpener } from "@/agentPanelFocus.ts";
+import { focusAgentPanel, focusAgentPanelOpener } from "@/agent/agentPanelFocus.ts";
 import type { Concept } from "@/types.ts";
 import "@/components/chrome.css";
 import "@/components/baseui.css";

@@ -5,7 +5,7 @@
 import { X } from "lucide-react";
 import { Dialog } from "@base-ui/react/dialog";
 import { useApp } from "@/store.tsx";
-import { modKey } from "@/platform.ts";
+import { modKey } from "@/platform/platform.ts";
 import "@/components/chrome.css";
 import "@/components/baseui.css";
 import "./ShortcutsHelp.css";

@@ -9,10 +9,10 @@
 
 import { useLayoutEffect, useRef } from "react";
 import type { Bundle } from "@/types.ts";
-import { conceptById } from "@/selectors.ts";
-import { buildTypePalette } from "@/theme.ts";
-import { plainExcerpt } from "@/markdown.ts";
-import { isMac } from "@/platform.ts";
+import { conceptById } from "@/data/selectors.ts";
+import { buildTypePalette } from "@/render/theme.ts";
+import { plainExcerpt } from "@/render/markdown.ts";
+import { isMac } from "@/platform/platform.ts";
 import "./PeekCard.css";
 
 /** What to peek: the concept, and the viewport rect of the hovered trigger. */

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseQuery, matchesCompiled } from "@/query.ts";
+import { parseQuery, matchesCompiled } from "@/data/query.ts";
 import type { Concept } from "@/types.ts";
 
 function concept(partial: Partial<Concept>): Concept {

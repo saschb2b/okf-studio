@@ -13,7 +13,7 @@ import type { MouseEvent } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp } from "@/store.tsx";
-import { renderMarkdown } from "@/markdown.ts";
+import { renderMarkdown } from "@/render/markdown.ts";
 import { classifyBodyLinks, classifyLink } from "@/components/reader/Reader.tsx";
 import type { LogEntry } from "@/types.ts";
 import "@/components/chrome.css";

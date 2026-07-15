@@ -23,12 +23,12 @@ Invoke as `/okf <command> [target]`. Each is detailed in [commands.md](./command
 | --- | --- |
 | `init` | Create a bundle. Make the directory, a root `index.md` declaring `okf_version`, and the first concept folders. |
 | `add` | Write one concept document. Pick a descriptive `type`, fill the recommended frontmatter, body it with `# Schema`, `# Examples`, `# Citations`. |
-| `enrich` | Turn a source (a BigQuery dataset, an OpenAPI spec, a wiki, docstrings) into concepts, then a second pass that crawls authoritative docs to add schemas, join paths, and citations. |
+| `enrich` | Turn a source (a BigQuery dataset, an OpenAPI spec, a wiki, a website, docstrings) into concepts by first enumerating its full surface into an inventory, then a pass that crawls authoritative docs to add schemas, join paths, and citations. |
 | `link` | Connect concepts with bundle-absolute markdown links and name the relationship in the surrounding prose. |
 | `index` | Generate or refresh `index.md` listings so an agent can navigate by progressive disclosure. |
 | `log` | Append a dated `log.md` entry (Creation, Update, Deprecation), newest first. |
 | `validate` | Run the conformance check. `node okf-validate.mjs <bundle>`, or the manual checklist in [commands.md](./commands.md). |
-| `export` | Convert an existing source into a conformant bundle: a catalog, a metadata dump, a schema export, a docs site, or a webpage or external URL (`/okf export <url>`). The producer role. |
+| `export` | Convert an existing source into a conformant bundle: a catalog, a metadata dump, a schema export, a docs site, or a website or external URL (`/okf export <url>`). Map the whole surface, cover every section, then pass the creation gate — not a snapshot of the front page. The producer role. |
 | `consume` | Read a bundle to answer a question. Start at `index.md`, follow links, tolerate anything missing. |
 
 ## Implicit mode
@@ -50,7 +50,7 @@ A concept is frontmatter plus a markdown body. Its identity is its path with the
 - **Body.** Favor structural markdown (headings, lists, tables, fenced code) over freeform prose. Conventional headings, used when they apply, are `# Schema`, `# Examples`, `# Citations`. For each fact, pick the sharpest form the extended set offers (next section).
 - **Reserved filenames**, never a concept. `index.md` is a directory listing and carries no frontmatter, except the bundle-root `index.md`, which may declare `okf_version`. `log.md` is a dated change history.
 - **Links.** Prefer bundle-absolute links like `/tables/customers.md` (stable when files move). Relative links such as `tables/customers.md` are also valid. A link asserts a relationship whose meaning lives in the surrounding prose, not in the link.
-- **External material.** A webpage or doc you pull in becomes an ordinary concept under `references/<slug>.md` with `type: Reference` and its URL in `resource`. That is how a bundle absorbs outside sources (see `/okf export`).
+- **External material.** A webpage or doc you pull in becomes an ordinary concept under `references/<slug>.md` with `type: Reference` and its URL in `resource`. Absorb its *content*, not just its URL: extract the substance into the body so the concept stands alone offline — `resource` is provenance for re-checking, not a replacement for the knowledge. A summary that defers to the live link is a stub (see `/okf export`).
 
 ## Pick the sharpest markdown form
 
@@ -75,7 +75,9 @@ Run the bundled checker against a bundle directory:
 node okf-validate.mjs path/to/bundle
 ```
 
-It errors (exit 1) on the hard requirement (a concept missing frontmatter or a non-empty `type`) and warns on soft guidance (a non-ISO `log.md` date, a broken cross-link) without failing the bundle, because consumers tolerate those. The reviewer's checklist behind the script is in [commands.md](./commands.md).
+It errors (exit 1) on the hard requirement (a concept missing frontmatter or a non-empty `type`) and warns on soft guidance without failing the bundle, because consumers tolerate those. Among the warnings it reports the bundle's **graph connectivity** — **orphans** (a concept with no concept-to-concept link in or out) and **broken concept links** (a link whose target is not a concept, including a link into a reserved `index.md`). Pass `--strict` to turn those into failures: that is the producer gate, because an agent traversing the bundle cannot reach an orphan or cross a broken link, so either is missing context by construction. The reviewer's checklist behind the script is in [commands.md](./commands.md).
+
+**Validation checks conformance, not coverage.** A thin stub of a fifty-page site passes it clean, because the one rule is about each file's `type`, not about whether the bundle captured the source. When you *produce* a bundle from a source (`export`, `enrich`), the default run is necessary but not sufficient — run `okf-validate --strict` and the creation gate in [commands.md](./commands.md): every discovered section covered, concepts with real depth, a connected graph with no orphans or broken links, and any crawl boundary recorded in `log.md`. Passing the default `okf-validate` is not the same as finishing the export.
 
 ## Files in this skill
 

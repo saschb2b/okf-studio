@@ -2,6 +2,22 @@
 
 Copy, fill, validate. Every example uses bundle-absolute links (beginning with `/`) because the spec recommends them for stability. Relative links like `customers.md` are equally valid. Rules behind these shapes are in [spec.md](./spec.md); the form-per-fact table they follow (diagrams for topology, TeX for formulas, definition lists for terms, task lists for stateful checklists, footnotes for caveats) is in [SKILL.md](./SKILL.md).
 
+## Coverage inventory (the export/enrich work-list)
+
+Before writing a single concept when producing from a source (`export`, `enrich`), enumerate the *whole* surface into a checklist and burn it down. This is the artifact that stops a producer at the front door. Enumerate the way the source lets you: a database's table list, an OpenAPI spec's `paths`, a wiki's page tree, a website's `sitemap.xml` plus its section and listing pages. One discovered unit is one row; keep the list (in scratch, or as a `log.md` note) until every row is a concept or a recorded skip.
+
+```markdown
+# Coverage inventory: <source name> (<source root>), <N> units discovered
+Discovery: <how the surface was enumerated — e.g. INFORMATION_SCHEMA, spec paths, sitemap.xml + section indexes>
+
+- [ ] <unit> → <concept/path.md>          # one row per unit the source contains
+- [ ] <unit> → <concept/path.md>
+- [ ] <unit> → <concept/path.md>
+- [~] <unit> → skipped: <reason>          # record skips; do not drop silently
+```
+
+`N` is the count of units the source actually contains, not a target you may round down. If enumeration found fifty, a bundle of a dozen files has not covered the source. The rows are whatever the source's units are — tables and views, API operations, wiki pages, or a site's articles, entries, and catalog items — grouped into concept folders by domain.
+
 ## Concept document
 
 ```markdown

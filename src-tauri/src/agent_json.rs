@@ -71,7 +71,7 @@ pub(crate) fn normalize(
         match value {
             Value::Object(object) => {
                 let mut entries = object.iter().collect::<Vec<_>>();
-                entries.sort_by(|(left, _), (right, _)| left.cmp(right));
+                entries.sort_by_key(|(key, _)| *key);
                 for (key, child) in entries.into_iter().rev() {
                     pending.push((format!("{pointer}/{}", escape_pointer_token(key)), child));
                 }

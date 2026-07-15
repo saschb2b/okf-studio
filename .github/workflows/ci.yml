@@ -77,7 +77,10 @@ jobs:
 
   linux-agent-sandbox:
     name: Linux agent sandbox
-    runs-on: ubuntu-22.04
+    # The compiled policy denies nested user namespaces via --disable-userns,
+    # which needs bubblewrap >= 0.8. Ubuntu 22.04 ships 0.6.1, so this job
+    # requires the 24.04 image (bubblewrap 0.9).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -92,6 +95,15 @@ jobs:
             build-essential \
             libxdo-dev \
             libssl-dev
+
+      - name: Allow unprivileged user namespaces for the probe
+        # Ubuntu 24.04 can gate unprivileged user namespaces behind AppArmor;
+        # the probe needs them like any unprivileged Bubblewrap launch does.
+        # Report the versions the job actually ran against for diagnosis.
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --version
+          uname -r
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable

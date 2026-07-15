@@ -1968,11 +1968,17 @@ describe("OKF Studio app", () => {
     const user = userEvent.setup();
     renderApp();
 
+    // Focus moves inside a requestAnimationFrame after the panel renders, so
+    // every assertion waits for that frame instead of racing it.
     await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
-    expect(screen.getByRole("button", { name: "Connect an agent" })).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Connect an agent" })).toHaveFocus(),
+    );
 
     await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
-    expect(screen.getByRole("button", { name: /toggle agent panel/i })).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /toggle agent panel/i })).toHaveFocus(),
+    );
   });
 
   it("keeps panel focus visible through switchers and popovers", async () => {
@@ -1992,12 +1998,12 @@ describe("OKF Studio app", () => {
 
       await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
       const threadActions = screen.getByRole("button", { name: "More thread actions" });
-      expect(threadActions).toHaveFocus();
+      await waitFor(() => expect(threadActions).toHaveFocus());
 
       await user.keyboard("{Enter}");
       expect(await screen.findByRole("menuitem", { name: "History" })).toHaveFocus();
       await user.keyboard("{Escape}");
-      expect(threadActions).toHaveFocus();
+      await waitFor(() => expect(threadActions).toHaveFocus());
 
       const addContext = screen.getByRole("button", { name: "Add context or sources" });
       addContext.focus();
@@ -2006,18 +2012,22 @@ describe("OKF Studio app", () => {
         expect(screen.getByRole("button", { name: "Attach context" })).toHaveFocus();
       });
       await user.keyboard("{Escape}");
-      expect(addContext).toHaveFocus();
+      await waitFor(() => expect(addContext).toHaveFocus());
 
       reveal.mockClear();
       await user.click(screen.getByRole("button", {
         name: "Start another thread with Keyboard Harness",
       }));
-      expect(screen.getByRole("button", { name: "Switch to Thread 2: New thread" }))
-        .toHaveFocus();
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Switch to Thread 2: New thread" }))
+          .toHaveFocus(),
+      );
       expect(reveal).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
 
       await user.keyboard("{Control>}{Shift>}a{/Shift}{/Control}");
-      expect(screen.getByRole("button", { name: /toggle agent panel/i })).toHaveFocus();
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /toggle agent panel/i })).toHaveFocus(),
+      );
     } finally {
       cleanup();
       await ipc.disconnectAgent(connection.connectionId);

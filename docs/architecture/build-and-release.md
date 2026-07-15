@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is versioned, packaged per OS, released, and updated without automatic network requests.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-07-13T22:46:06Z
+timestamp: 2026-07-15T12:20:00Z
 ---
 
 # Decision
@@ -21,7 +21,7 @@ Each is a [self-contained, portable](../product/principles.md) artifact using th
 
 # CI and release workflows
 
-Pull-request CI includes a dedicated Ubuntu 22.04 agent-sandbox job. It installs the distribution Bubblewrap package and the native Tauri build dependencies, then requires the restricted-host fixture to execute through the trusted backend. The fixture checks the empty-root mount policy against real kernel namespaces rather than treating the cross-platform argument-builder tests as Linux enforcement proof.
+Pull-request CI includes a dedicated Ubuntu 24.04 agent-sandbox job. It installs the distribution Bubblewrap package and the native Tauri build dependencies, allows unprivileged user namespaces where the image's AppArmor gate would deny them, and then requires the restricted-host fixture to execute through the trusted backend. The 24.04 image is a floor, not a preference: the compiled policy passes `--disable-userns`, which Bubblewrap gained in 0.8, while 22.04 ships 0.6.1. The fixture checks the empty-root mount policy against real kernel namespaces rather than treating the cross-platform argument-builder tests as Linux enforcement proof.
 
 Two GitHub Actions workflows (`.github/workflows/`):
 

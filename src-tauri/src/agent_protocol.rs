@@ -2675,7 +2675,7 @@ async fn run_connection(
                                         AgentSessionConfigTransport::LegacyMode => {
                                             let mode_id = match value {
                                                 AgentSessionConfigValueInput::Select { value } => value,
-                                                _ => {
+                                                AgentSessionConfigValueInput::Boolean { .. } => {
                                                     let _ = response.send(Err(
                                                         "Agent session option has the wrong value type."
                                                             .to_string(),

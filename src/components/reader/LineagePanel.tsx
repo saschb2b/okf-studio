@@ -20,8 +20,8 @@ import {
   type LineageNode,
 } from "@/lineage.ts";
 import type { Bundle } from "@/types.ts";
-import "./chrome.css";
-import "./baseui.css";
+import "@/components/chrome.css";
+import "@/components/baseui.css";
 import "./LineagePanel.css";
 
 type Palette = ReturnType<typeof buildTypePalette>;

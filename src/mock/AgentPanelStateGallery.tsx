@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { AgentSessionConfigOption } from "@/agent/connection.ts";
-import { AgentLiveWorkShelf } from "@/components/AgentLiveWorkShelf.tsx";
-import { AgentSessionControls } from "@/components/AgentSessionControls.tsx";
+import { AgentLiveWorkShelf } from "@/components/agent/AgentLiveWorkShelf.tsx";
+import { AgentSessionControls } from "@/components/agent/AgentSessionControls.tsx";
 import "./AgentPanelStateGallery.css";
 
 const SCENARIOS = [

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AgentSessionConfigOption } from "@/agent/connection.ts";
-import { AgentSessionControls, orderedSessionOptions } from "@/components/AgentSessionControls.tsx";
+import { AgentSessionControls, orderedSessionOptions } from "@/components/agent/AgentSessionControls.tsx";
 
 const OPTIONS: readonly AgentSessionConfigOption[] = [
   {

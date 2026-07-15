@@ -35,12 +35,12 @@ import { graphBackbone, maxPerNodeFor } from "@/graph/backbone.ts";
 // Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
 // switches to the GPU renderer — the default canvas path stays lean.
 const CosmosGraph = lazy(() =>
-  import("@/components/CosmosGraph.tsx").then((m) => ({ default: m.CosmosGraph })),
+  import("@/components/viz/CosmosGraph.tsx").then((m) => ({ default: m.CosmosGraph })),
 );
 import { buildTypePalette, resolveDark } from "@/theme.ts";
-import { ErrorBoundary } from "@/components/ErrorBoundary.tsx";
-import { GraphControls } from "@/components/GraphControls.tsx";
-import { VizSwitcher } from "@/components/VizSwitcher.tsx";
+import { ErrorBoundary } from "@/components/shell/ErrorBoundary.tsx";
+import { GraphControls } from "@/components/viz/GraphControls.tsx";
+import { VizSwitcher } from "@/components/viz/VizSwitcher.tsx";
 import type { Concept } from "@/types.ts";
 import { renderGraph } from "@/graph/render.ts";
 import type {

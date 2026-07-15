@@ -16,8 +16,8 @@ import { ZOOM_EVENT } from "@/native.ts";
 import type { ZoomIntent } from "@/native.ts";
 import { checkForUpdate, installUpdate, RELEASES_URL } from "@/updater.ts";
 import type { UpdateStatus } from "@/updater.ts";
-import "./chrome.css";
-import "./baseui.css";
+import "@/components/chrome.css";
+import "@/components/baseui.css";
 import "./Settings.css";
 
 const THEME_LABELS: Record<ThemeMode, string> = {

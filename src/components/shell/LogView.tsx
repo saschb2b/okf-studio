@@ -14,10 +14,10 @@ import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp } from "@/store.tsx";
 import { renderMarkdown } from "@/markdown.ts";
-import { classifyBodyLinks, classifyLink } from "@/components/Reader.tsx";
+import { classifyBodyLinks, classifyLink } from "@/components/reader/Reader.tsx";
 import type { LogEntry } from "@/types.ts";
-import "./chrome.css";
-import "./baseui.css";
+import "@/components/chrome.css";
+import "@/components/baseui.css";
 import "./LogView.css";
 
 /** Newest group first. ISO YYYY-MM-DD sorts lexicographically; non-ISO dates

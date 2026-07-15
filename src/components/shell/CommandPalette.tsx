@@ -19,8 +19,8 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useApp } from "@/store.tsx";
 import { focusAgentPanel, focusAgentPanelOpener } from "@/agentPanelFocus.ts";
 import type { Concept } from "@/types.ts";
-import "./chrome.css";
-import "./baseui.css";
+import "@/components/chrome.css";
+import "@/components/baseui.css";
 import "./CommandPalette.css";
 
 interface ActionItem {

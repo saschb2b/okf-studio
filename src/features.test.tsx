@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { App } from "@/App.tsx";
 import { AppProvider } from "@/store.tsx";
-import { dropIndexFor } from "@/components/TabStrip.tsx";
+import { dropIndexFor } from "@/components/shell/TabStrip.tsx";
 import * as ipc from "@/ipc.ts";
 
 // Regression coverage for the major interactive features (bundle switcher,

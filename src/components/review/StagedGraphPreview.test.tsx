@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { StagedGraphPreview } from "@/components/StagedGraphPreview.tsx";
+import { StagedGraphPreview } from "@/components/review/StagedGraphPreview.tsx";
 
 describe("StagedGraphPreview", () => {
   it("shows the exact validated concepts, links, and staged state", () => {

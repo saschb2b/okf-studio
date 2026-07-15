@@ -11,11 +11,11 @@ import {
   maybeRestoreLastAgentConnection,
   subscribeAgentRestore,
 } from "@/ipc.ts";
-import { AgentConnectionCatalog } from "@/components/AgentConnectionCatalog.tsx";
-import { AgentConversation } from "@/components/AgentConversation.tsx";
-import type { AgentConversationProps } from "@/components/AgentConversation.tsx";
-import { ErrorBoundary } from "@/components/ErrorBoundary.tsx";
-import { NewAgentThreadMenu } from "@/components/NewAgentThreadMenu.tsx";
+import { AgentConnectionCatalog } from "@/components/agent/AgentConnectionCatalog.tsx";
+import { AgentConversation } from "@/components/agent/AgentConversation.tsx";
+import type { AgentConversationProps } from "@/components/agent/AgentConversation.tsx";
+import { ErrorBoundary } from "@/components/shell/ErrorBoundary.tsx";
+import { NewAgentThreadMenu } from "@/components/agent/NewAgentThreadMenu.tsx";
 import "./AgentPanel.css";
 
 export function AgentPanel() {

@@ -26,7 +26,7 @@ import type {
 } from "@/agent/connection.ts";
 import type { ReaderSelectionCapture } from "@/agent/readerSelection.ts";
 import { bundleProposalNarrative, parseBundleProposal } from "@/agent/bundleProposal.ts";
-import { StagedGraphPreview } from "@/components/StagedGraphPreview.tsx";
+import { StagedGraphPreview } from "@/components/review/StagedGraphPreview.tsx";
 import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/agent/threadMetadata.ts";
 import {
   datasetChangeRequirements,
@@ -73,12 +73,12 @@ import {
 import type { AgentSourceInput } from "@/ipc.ts";
 import { renderMarkdown } from "@/markdown.ts";
 import type { Issue } from "@/types.ts";
-import { BundleProposalPreview } from "@/components/BundleProposalPreview.tsx";
+import { BundleProposalPreview } from "@/components/review/BundleProposalPreview.tsx";
 import {
   AgentSessionControls,
   type AgentSessionConfigFailure,
-} from "@/components/AgentSessionControls.tsx";
-import { AgentLiveWorkShelf } from "@/components/AgentLiveWorkShelf.tsx";
+} from "@/components/agent/AgentSessionControls.tsx";
+import { AgentLiveWorkShelf } from "@/components/agent/AgentLiveWorkShelf.tsx";
 import "./AgentConversation.css";
 
 export interface AgentConversationProps {

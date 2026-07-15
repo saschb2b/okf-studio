@@ -14,10 +14,10 @@ import { useApp } from "@/store.tsx";
 import type { LayoutMode } from "@/store.tsx";
 import { isMac, modKey } from "@/platform.ts";
 import { startWindowDrag, toggleMaximizeWindow } from "@/window.ts";
-import { BundleSwitcher } from "@/components/BundleSwitcher.tsx";
-import { WindowControls } from "@/components/WindowControls.tsx";
-import "./chrome.css";
-import "./baseui.css";
+import { BundleSwitcher } from "@/components/bundle/BundleSwitcher.tsx";
+import { WindowControls } from "@/components/shell/WindowControls.tsx";
+import "@/components/chrome.css";
+import "@/components/baseui.css";
 import "./TopBar.css";
 
 // Mac shows ⌘K; everything else shows Ctrl K.

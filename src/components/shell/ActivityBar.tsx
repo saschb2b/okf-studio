@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 import { useApp } from "@/store.tsx";
 import type { Lens } from "@/store.tsx";
 import { modKey } from "@/platform.ts";
-import "./baseui.css";
+import "@/components/baseui.css";
 import "./ActivityBar.css";
 
 /** One icon button in the rail, wrapped in a right-anchored tooltip. */

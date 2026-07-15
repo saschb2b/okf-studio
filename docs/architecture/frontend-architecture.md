@@ -28,6 +28,8 @@ These are pure functions of the bundle data, so they recompute only when the bun
 
 Components mirror the three panes: a **sidebar** (indexes, concept list, search results), a **graph** (renderer plus interaction layer), and a **reader** (rendered markdown with backlinks). Each subscribes to the shared active-concept state and to the derived stores; none reaches into another's internals.
 
+`src/components/` is grouped by feature domain rather than kept flat: `agent/` (the ACP panel), `viz/` (graph and chart views), `reader/`, `bundle/` (bundle browsing and open dialogs), `review/` (staged-write previews), `sidebar/`, and `shell/` (the window frame and global overlays). Each component's own stylesheet and test sit beside it; the two stylesheets shared across domains (`baseui.css`, `chrome.css`) stay at the `components/` root. Imports use the **`@/` path alias** (`@/*` → `src/*`, configured in `tsconfig.json` and Vite's `resolve.alias`) rather than relative `../../` chains, so a component's import paths are independent of where its file lives — moving a component between folders does not touch its imports.
+
 # In-place patching on bundle-changed
 
 When a `bundle-changed` event arrives ([Live Reload](../features/live-reload.md)), the frontend **patches state in place** rather than rebuilding the bundle from scratch. The changed concept's record is replaced, derived stores update for just the affected entries, and the graph keeps existing node positions — only affected nodes resettle, so the layout does not jump. Selection and scroll are retained when the active concept still exists.

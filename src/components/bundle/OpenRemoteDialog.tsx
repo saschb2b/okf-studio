@@ -9,8 +9,8 @@ import { Dialog } from "@base-ui/react/dialog";
 import { useApp } from "@/store.tsx";
 import { parseRemoteSource, remoteKindLabel, REMOTE_EXAMPLES } from "@/remoteSource.ts";
 import type { BundleRoot, RemoteSource } from "@/types.ts";
-import "./chrome.css";
-import "./baseui.css";
+import "@/components/chrome.css";
+import "@/components/baseui.css";
 import "./OpenRemoteDialog.css";
 
 export function OpenRemoteDialog() {

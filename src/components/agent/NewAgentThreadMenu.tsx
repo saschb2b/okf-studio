@@ -16,7 +16,7 @@ import {
   connectCustomAgent,
   customAgents,
 } from "@/ipc.ts";
-import { isInstallable } from "@/components/AgentRegistryRow.tsx";
+import { isInstallable } from "@/components/agent/AgentRegistryRow.tsx";
 
 type MenuAgents =
   | { status: "loading" }

@@ -18,8 +18,8 @@ import { findVizNode, type VizNode } from "@/viz/hierarchy.ts";
 import { fitLabel, inkOn, labelFits } from "@/viz/labels.ts";
 import { nivoTheme } from "@/viz/nivoTheme.ts";
 import type { HierarchyVizProps } from "@/viz/props.ts";
-import { VizSvgLabel } from "@/components/VizSvgLabel.tsx";
-import { VizTooltip } from "@/components/VizTooltip.tsx";
+import { VizSvgLabel } from "@/components/viz/VizSvgLabel.tsx";
+import { VizTooltip } from "@/components/viz/VizTooltip.tsx";
 
 export function TreemapView(props: HierarchyVizProps) {
   // Re-root on drill; a filter change can remove the drilled node, so fall

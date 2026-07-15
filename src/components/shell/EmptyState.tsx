@@ -6,7 +6,7 @@ import { Globe } from "lucide-react";
 import { useApp } from "@/store.tsx";
 import { modKey } from "@/platform.ts";
 import { REMOTE_EXAMPLES } from "@/remoteSource.ts";
-import "./chrome.css";
+import "@/components/chrome.css";
 import "./EmptyState.css";
 
 export function EmptyState() {

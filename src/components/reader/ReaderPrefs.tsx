@@ -9,7 +9,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { useApp } from "@/store.tsx";
 import type { ReaderFont } from "@/types.ts";
-import "./baseui.css";
+import "@/components/baseui.css";
 import "./ReaderPrefs.css";
 
 const SIZE_MIN = 0.8;

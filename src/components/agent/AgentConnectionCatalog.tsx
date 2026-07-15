@@ -16,9 +16,9 @@ import {
   saveCustomAgent,
   saveLocalModelProfile,
 } from "@/ipc.ts";
-import { AgentRegistryRow, isInstallable, type RowPreflight } from "@/components/AgentRegistryRow.tsx";
-import { CustomAgentProfiles } from "@/components/CustomAgentProfiles.tsx";
-import { LocalModelProfiles } from "@/components/LocalModelProfiles.tsx";
+import { AgentRegistryRow, isInstallable, type RowPreflight } from "@/components/agent/AgentRegistryRow.tsx";
+import { CustomAgentProfiles } from "@/components/agent/CustomAgentProfiles.tsx";
+import { LocalModelProfiles } from "@/components/agent/LocalModelProfiles.tsx";
 import "./AgentConnectionCatalog.css";
 
 const ACP_REGISTRY_URL = "https://agentclientprotocol.com/get-started/registry";

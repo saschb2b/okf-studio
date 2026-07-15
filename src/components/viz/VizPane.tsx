@@ -22,22 +22,22 @@ import { buildTypePalette, resolveDark } from "@/theme.ts";
 import { buildVizTreeAuto, findVizNode, vizPath, type VizNode } from "@/viz/hierarchy.ts";
 import { readVizColors, type VizColors } from "@/viz/nivoTheme.ts";
 import type { HierarchyVizProps } from "@/viz/props.ts";
-import { ErrorBoundary } from "@/components/ErrorBoundary.tsx";
-import { GraphView } from "@/components/GraphView.tsx";
-import { VizSwitcher } from "@/components/VizSwitcher.tsx";
+import { ErrorBoundary } from "@/components/shell/ErrorBoundary.tsx";
+import { GraphView } from "@/components/viz/GraphView.tsx";
+import { VizSwitcher } from "@/components/viz/VizSwitcher.tsx";
 import "./VizPane.css";
 
 // Lazy: the nivo/d3 chunk (~50-60 kB gzip, shared by all three views) loads
 // only when a hierarchy view is first selected — the default graph stays lean,
 // the same rationale as the on-demand CosmosGraph.
 const TreemapView = lazy(() =>
-  import("@/components/TreemapView.tsx").then((m) => ({ default: m.TreemapView })),
+  import("@/components/viz/TreemapView.tsx").then((m) => ({ default: m.TreemapView })),
 );
 const SunburstView = lazy(() =>
-  import("@/components/SunburstView.tsx").then((m) => ({ default: m.SunburstView })),
+  import("@/components/viz/SunburstView.tsx").then((m) => ({ default: m.SunburstView })),
 );
 const PackView = lazy(() =>
-  import("@/components/PackView.tsx").then((m) => ({ default: m.PackView })),
+  import("@/components/viz/PackView.tsx").then((m) => ({ default: m.PackView })),
 );
 
 export function VizPane() {

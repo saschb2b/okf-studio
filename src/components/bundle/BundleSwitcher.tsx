@@ -14,7 +14,7 @@ import type { Actions } from "@/store.tsx";
 import { modKey } from "@/platform.ts";
 import type { BundleRoot, RecentBundle } from "@/types.ts";
 import appIcon from "@/assets/icon.svg";
-import "./baseui.css";
+import "@/components/baseui.css";
 import "./BundleSwitcher.css";
 
 const mod = modKey;

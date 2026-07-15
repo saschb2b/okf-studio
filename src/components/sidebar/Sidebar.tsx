@@ -10,7 +10,7 @@ import { Collapsible } from "@base-ui/react/collapsible";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { ChevronRight, X } from "lucide-react";
 import type { ReactNode } from "react";
-import "./baseui.css";
+import "@/components/baseui.css";
 import "./Sidebar.css";
 import { useApp } from "@/store.tsx";
 import { filteredConceptIds } from "@/selectors.ts";

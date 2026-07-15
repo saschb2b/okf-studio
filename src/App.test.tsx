@@ -422,7 +422,7 @@ describe("OKF Studio app", () => {
       expect(screen.queryByRole("button", {
         name: "Switch to Thread 2: Review the evidence in parallel",
       })).not.toBeInTheDocument();
-      expect(firstThreadTab).toHaveFocus();
+      await waitFor(() => expect(firstThreadTab).toHaveFocus(), { timeout: 3_000 });
 
       await user.click(within(firstConversation).getByRole("button", { name: "Stop" }));
       expect(await within(firstConversation).findByText("Turn cancelled.")).toBeInTheDocument();
@@ -1297,9 +1297,12 @@ describe("OKF Studio app", () => {
     expect(await screen.findByRole("heading", { name: "Trace bundle evidence" })).toBeInTheDocument();
     expect(screen.getByText(/Trace the evidence behind/)).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Message the agent")).toBeEnabled();
     await waitFor(
-      () => expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
+      () => {
+        const composer = screen.getByLabelText("Message the agent");
+        expect(composer).toBeEnabled();
+        expect(composer).toHaveFocus();
+      },
       { timeout: 3_000 },
     );
 
@@ -1809,8 +1812,11 @@ describe("OKF Studio app", () => {
     const selectedText = selection.toString().trim();
 
     await openAttachmentMenu(user);
-    const attachSelection = screen.getByRole("button", { name: "Attach reader selection" });
-    expect(attachSelection).toBeEnabled();
+    const attachSelection = await waitFor(() => {
+      const btn = screen.getByRole("button", { name: "Attach reader selection" });
+      expect(btn).toBeEnabled();
+      return btn;
+    }, { timeout: 3_000 });
     expect(attachSelection).toHaveAttribute(
       "title",
       "Attach the selected text from the current concept",

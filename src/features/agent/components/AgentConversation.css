@@ -473,7 +473,7 @@
 }
 
 .agent-saved-thread small {
-  color: var(--text-muted);
+  color: var(--text-dim);
 }
 
 .agent-saved-thread h4 {
@@ -1238,7 +1238,7 @@
   display: flex;
   gap: var(--space-8);
   align-items: flex-start;
-  color: var(--text-muted);
+  color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
 }
@@ -1792,9 +1792,13 @@
   place-items: center;
 }
 
+.agent-context-chip button {
+  cursor: pointer;
+}
+
 .agent-context-chip button:hover {
   color: var(--text);
-  background: var(--bg-hover);
+  background: var(--bg-sunken);
 }
 
 .agent-context-chip button:focus-visible {
@@ -1825,6 +1829,7 @@
   padding: var(--space-8);
   color: var(--text);
   text-align: start;
+  cursor: pointer;
   background: transparent;
   border: 0;
   border-radius: var(--radius-sm);
@@ -1832,7 +1837,12 @@
 
 .agent-attachment-picker__menu > button:hover,
 .agent-attachment-picker__menu > button:focus-visible {
-  background: var(--bg-hover);
+  background: var(--bg-sunken);
+}
+
+/* Pressed flash — text-tinted sunken reads darker in light, lighter in dark. */
+.agent-attachment-picker__menu > button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--bg-sunken) 88%, var(--text));
 }
 
 .agent-attachment-picker__menu > button:focus-visible {
@@ -1909,6 +1919,7 @@
   padding: var(--space-8);
   color: var(--text);
   text-align: start;
+  cursor: pointer;
   background: transparent;
   border: 0;
   border-radius: var(--radius-sm);
@@ -1916,7 +1927,11 @@
 
 .agent-context-picker__results > button:hover,
 .agent-context-picker__results > button:focus-visible {
-  background: var(--bg-hover);
+  background: var(--bg-sunken);
+}
+
+.agent-context-picker__results > button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--bg-sunken) 88%, var(--text));
 }
 
 .agent-context-picker__results > button:focus-visible {
@@ -2007,9 +2022,10 @@
   min-width: 0;
 }
 
+/* Selected mode reads as the raised thumb on the sunken track. */
 .agent-source-picker__modes .btn[aria-pressed="true"] {
   color: var(--text);
-  background: var(--bg-hover);
+  background: var(--bg-elev);
   border-color: var(--accent);
 }
 

@@ -31,6 +31,7 @@
   font-size: var(--fs-xs);
   line-height: var(--lh-tight);
   white-space: nowrap;
+  cursor: pointer;
   background: transparent;
   border: 0;
   border-radius: var(--radius);
@@ -39,7 +40,7 @@
 .agent-session-control:hover:not(:disabled),
 .agent-session-control[data-popup-open] {
   color: var(--text);
-  background: var(--surface-hover);
+  background: var(--bg-sunken);
 }
 
 .agent-session-control:focus-visible,
@@ -186,11 +187,12 @@
   gap: var(--space-8);
   padding: var(--space-8);
   text-align: left;
+  cursor: pointer;
 }
 
 .agent-session-picker__choice:hover,
 .agent-session-picker__choice[aria-current="true"] {
-  background: var(--surface-hover);
+  background: var(--bg-sunken);
 }
 
 .agent-session-picker__choice span {
@@ -216,12 +218,13 @@
   min-height: 32px;
   place-items: center;
   color: var(--text-dim);
+  cursor: pointer;
 }
 
 .agent-session-picker__favorite:hover,
 .agent-session-picker__favorite[aria-pressed="true"] {
   color: var(--accent);
-  background: var(--surface-hover);
+  background: var(--bg-sunken);
 }
 
 .agent-session-configuration {

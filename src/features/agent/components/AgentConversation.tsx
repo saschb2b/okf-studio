@@ -7,16 +7,17 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, ChevronLeft, CircleAlert, FileText, History, ImageIcon, Pencil, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, exportAgentTranscript, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
-import { datasetChangeRequirements, deriveThreadTitle, previousThreadSource, researchExportRequirements, transcriptFilename, transcriptMarkdown } from "@/features/agent/thread.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { deriveThreadTitle, previousThreadSource } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import "./AgentConversation.css";
-import type { StagedValidationState, ConversationMessage, ConversationPlan, ConversationItem, AttachedSource, ComposerState, PromptDraft, PromptSubmission, QueuedPrompt, ThreadTitle, ExportState, AuthenticationState, HistoryState, SavedThreadState, PendingPermission, AgentUsage, EventStreamState, DraftSessionState, PendingSessionConfig, StageFailure } from "@/features/agent/components/conversation/types.ts";
+import type { StagedValidationState, ConversationMessage, ConversationPlan, ConversationItem, AttachedSource, ComposerState, PromptDraft, PromptSubmission, QueuedPrompt, ThreadTitle, AuthenticationState, HistoryState, SavedThreadState, PendingPermission, AgentUsage, EventStreamState, DraftSessionState, PendingSessionConfig, StageFailure } from "@/features/agent/components/conversation/types.ts";
 import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, workflowForPrompt, usageLabels, errorMessage, historyDateLabel, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
 import { SavedThreadWelcome, EmptyThreadWelcome, ThreadSecurityScope, ThreadTitleEditor, ThreadSurfaceClose, ThreadActionsMenu } from "@/features/agent/components/conversation/ThreadChrome.tsx";
 import { AttachmentPicker } from "@/features/agent/components/conversation/AttachmentPicker.tsx";
 import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemView, planProgressLabel, LivePlan } from "@/features/agent/components/conversation/items.tsx";
+import { useTranscriptExport } from "@/features/agent/components/conversation/useTranscriptExport.ts";
 
 
 export interface AgentConversationProps {
@@ -64,7 +65,6 @@ export function AgentConversation({
   });
   const [threadWorkflow, setThreadWorkflow] = useState<AgentThreadWorkflow>(null);
   const [messages, setMessages] = useState<ConversationItem[]>([]);
-  const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [usage, setUsage] = useState<AgentUsage | null>(null);
@@ -390,7 +390,7 @@ export function AgentConversation({
         }
         setThreadWorkflow(nextWorkflow);
         void persistThreadMetadata(session, nextTitle, false, nextWorkflow);
-        setExportState({ status: "idle" });
+        resetExport();
         if (source === "composer") {
           setAttachedConcepts([]);
           setAttachedSources([]);
@@ -924,6 +924,13 @@ export function AgentConversation({
   }
 
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
+  const { exportState, exportTranscript, resetExport } = useTranscriptExport({
+    messages,
+    threadWorkflow,
+    threadTitle,
+    bundleName,
+    agentName,
+  });
   const requiresAuthentication = !connection.authenticated && connection.authMethods.length > 0;
   // A live session exists once a user message was accepted (or a restore
   // replayed one); the grant command needs that session ID.
@@ -1091,51 +1098,6 @@ export function AgentConversation({
     requestAnimationFrame(() => promptRef.current?.focus());
   }
 
-  async function exportTranscript() {
-    if (messages.length === 0 || exportState.status === "exporting") return;
-    if (threadWorkflow === "deep-research") {
-      const requirements = researchExportRequirements(messages);
-      if (requirements.length > 0) {
-        const missing = requirements.length === 2
-          ? "a Sources list with a cited link or bundle path and an Inferences section"
-          : requirements[0] === "sources"
-            ? "a Sources list with a cited link or bundle path"
-            : "an Inferences section";
-        setExportState({
-          status: "error",
-          message: `Research export needs ${missing}. Ask the agent to revise the response. Use None when it made no inference.`,
-        });
-        return;
-      }
-    }
-    if (threadWorkflow === "dataset-change") {
-      const requirements = datasetChangeRequirements(messages);
-      if (requirements.length > 0) {
-        let missing = "a Change Plan with at least one step and an Affected Concepts list with bundle paths";
-        if (requirements.length === 1) {
-          missing = requirements[0] === "change-plan"
-            ? "a Change Plan with at least one step"
-            : "an Affected Concepts list with bundle paths";
-        }
-        setExportState({
-          status: "error",
-          message: `Dataset change export needs ${missing}. Ask the agent to revise the response before review.`,
-        });
-        return;
-      }
-    }
-    setExportState({ status: "exporting" });
-    try {
-      const filename = await exportAgentTranscript(
-        transcriptFilename(threadTitle.value),
-        transcriptMarkdown(threadTitle.value, bundleName, agentName, messages),
-      );
-      setExportState(filename ? { status: "success", filename } : { status: "idle" });
-    } catch (error: unknown) {
-      setExportState({ status: "error", message: `Export failed. ${errorMessage(error)}` });
-    }
-  }
-
   async function openHistory() {
     if (!bundleRoot || activeTurn || isSubmitting) return;
     setHistory({ status: "loading" });
@@ -1190,7 +1152,7 @@ export function AgentConversation({
     setAttachedConcepts([]);
     setAttachedSources([]);
     setPromptText("");
-    setExportState({ status: "idle" });
+    resetExport();
     acceptedDraftsRef.current.clear();
     failedTurnsRef.current.clear();
     setRetryableTurnIds(new Set());
@@ -1298,7 +1260,7 @@ export function AgentConversation({
       onThreadTitleChange("New thread");
       setThreadWorkflow(null);
       setMessages([]);
-      setExportState({ status: "idle" });
+      resetExport();
       setActiveTurn(null);
       setPendingPermissions([]);
       setUsage(null);

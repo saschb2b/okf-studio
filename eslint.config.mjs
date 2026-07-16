@@ -28,6 +28,8 @@ export default tseslint.config(
       ".agents/**",
       "eslint.config.mjs",
       "vite.config.ts",
+      // Storybook tooling config (typechecked via the root tsconfig).
+      ".storybook/**",
     ],
   },
   eslint.configs.recommended,

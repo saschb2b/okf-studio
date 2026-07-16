@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-14T13:10:00Z
+timestamp: 2026-07-16T22:30:00Z
 ---
 
 # Decision
@@ -47,7 +47,13 @@ Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — 
 
 Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout, plus layout modes, the reader context rail, the [bundle switcher](../features/bundle-switcher.md), the Agent workspace, and keyboard actions. Browser-level review uses the runnable Vite fixture and `agent-browser` during UI work; Playwright is not part of the automated suite. **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
 
-In browser development, `?agent-gallery=<state>&width=<360|440|560>` opens a deterministic Agent Panel state gallery instead of the workspace. Its nine states cover first use, saved work, stale and empty history, a capability-limited agent, an active turn with a queued follow-up, an unresolved permission, staged edits, and a disconnected process. Long connection and thread names plus bounded errors are part of the fixture. `hierarchy=stacked|merged` switches between the shipped two-level navigator and the rejected one-row prototype. The fixture performs no agent or network action. Component tests keep every named state and its reproducible URL available.
+In browser development, `?agent-gallery=<state>&width=<360|440|560>` opens a deterministic Agent Panel state gallery instead of the workspace. Its nine states cover first use, saved work, stale and empty history, a capability-limited agent, an active turn with a queued follow-up, an unresolved permission, staged edits, and a disconnected process. Long connection and thread names plus bounded errors are part of the fixture. `hierarchy=stacked|merged` switches between the shipped two-level navigator and the rejected one-row prototype. The fixture performs no agent or network action. Component tests keep every named state and its reproducible URL available. The gallery's scope is **whole-panel compositions**; per-component states live in Storybook (next section), so new component states grow a story, not the gallery mock.
+
+# Component playground (Storybook)
+
+`pnpm storybook` serves **Storybook 10** on port 6006 (`@storybook/react-vite`, so stories build through the same `vite.config.ts` — the `@/` alias and the React Compiler babel plugin apply exactly as in the app). Stories are colocated `src/**/*.stories.tsx`; `.storybook/preview.tsx` imports the app's real `styles.css`, wraps every story in an opaque `--bg` frame (the desktop window's `body` is transparent, so unframed stories would be see-through), and adds a toolbar toggle that drives the same `:root[data-theme]` attribute as `shared/theme.ts` — every story renders in both themes on the app's actual tokens.
+
+The dev server also mounts **`@storybook/addon-mcp`** at `http://localhost:6006/mcp`, registered for coding agents in the repo-root `.mcp.json`: with Storybook running, an agent can enumerate components and stories, fetch story URLs and docs, and author new stories through the addon's tools. A clean per-story screenshot for review comes from the iframe URL, `http://localhost:6006/iframe.html?id=<story-id>`. The initial set covers the agent conversation items — tool rows and cards across every status (including the inline diff and command-output bodies), the three message roles, and the plan card and live disclosure.
 
 # Native host gate
 

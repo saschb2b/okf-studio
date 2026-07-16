@@ -55,9 +55,12 @@ Prerequisites (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): st
 ```bash
 pnpm install
 pnpm dev            # frontend only, in a browser (mock bundle) — fastest for UI work
+pnpm storybook      # component playground on :6006 — per-component states on the app's real tokens
 pnpm tauri dev      # the full app with hot reload
 pnpm tauri build    # installers: .msi/.exe (Windows), .deb/AppImage (Ubuntu)
 ```
+
+**Storybook is also an agent surface.** The dev server mounts `@storybook/addon-mcp` at `http://localhost:6006/mcp` (registered in the repo-root `.mcp.json`): with it running you can enumerate components/stories and author new ones through the addon's tools. Stories are colocated `src/**/*.stories.tsx`; a new or restyled component state gets a story there, not another ad-hoc fixture (`?agent-gallery` stays for whole-panel compositions). Per-story screenshots come from `http://localhost:6006/iframe.html?id=<story-id>`. See [`docs/architecture/testing.md`](docs/architecture/testing.md).
 
 ## A user-facing feature ships on three surfaces
 
@@ -98,7 +101,7 @@ Default stance: **assume the first attempt is mediocre** — code and UI both re
    - **`react-stinky`** — component/hook/TS smells and semantic markup (roles, labels, keyboard).
    - **`no-slop`** — for any human-facing prose (UI copy, docs, commit messages).
    Apply Safe findings; surface Judgment ones. Do not report "done" with an unaddressed Glaring finding.
-3. **Verify with evidence, at two widths.** Screenshot the rendered screen at narrow (~360px) and wide, and check the loading, empty, and error states — not just the happy path. A green build is not visual proof. Prefer the real screen over reasoning about the code. (Fast path: `pnpm dev` + the `agent-browser` skill — see the visual-verification note.)
+3. **Verify with evidence, at two widths.** Screenshot the rendered screen at narrow (~360px) and wide, and check the loading, empty, and error states — not just the happy path. A green build is not visual proof. Prefer the real screen over reasoning about the code. (Fast path: `pnpm dev` + the `agent-browser` skill — see the visual-verification note. For a single component's states, `pnpm storybook` and screenshot the story iframe.)
 4. **Measure against modern UX floors, not the training average.** Spacing from `--space-*` tokens (4/8); a bounded type scale (≤ ~7 sizes) with paired line-heights from tokens; WCAG AA contrast (4.5:1 text, 3:1 UI); one visible, consistent focus-ring token; touch targets ≥ 24px; `prefers-reduced-motion` respected; one radius and one elevation scale; empty/loading/error states actually designed. If you cannot point to the token or the criterion, it is not done.
 5. **Pressure-test design calls — including the user's.** Name the tradeoffs and risks before implementing a direction; do not just agree. Reasoned disagreement is more useful than assent.
 6. **Report the defects, not just the wins.** End a UI review with the findings list — each rated severity (Glaring/Untidy/Nitpick) and autonomy (Safe/Judgment) — what was fixed, and what remains. Honesty about what is still rough beats a clean-sounding summary.

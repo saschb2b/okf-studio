@@ -948,14 +948,18 @@ describe("OKF Studio app", () => {
     expect(within(planCard).getByText("Inspect the bundle and attachments")).toBeInTheDocument();
     expect(within(planCard).getByText("Draft the response")).toBeInTheDocument();
     const toolCard = await screen.findByRole("article", { name: "Tool: Search the bundle" });
-    expect(within(toolCard).getByText("Search")).toBeInTheDocument();
+    // Zed-style quiet row: the title is the whole line; no kind label text.
+    expect(within(toolCard).getByText("Search the bundle")).toBeInTheDocument();
+    expect(toolCard).toHaveClass("agent-tool--row");
     await user.click(within(toolCard).getByText("2 locations"));
     expect(within(toolCard).getByText("product/overview.md:12")).toBeVisible();
     expect(within(toolCard).getByText("features/agent-panel.md:49")).toBeVisible();
     await screen.findByText(/Browser ACP received:/);
     expect(within(planCard).getByText("2 of 2 complete")).toBeInTheDocument();
     expect(within(planCard).getAllByText("Completed")).toHaveLength(2);
-    expect(within(toolCard).getByText("Completed")).toBeInTheDocument();
+    // Completed is the silent resting state (Zed): class only, no status text.
+    expect(toolCard).toHaveClass("agent-tool--completed");
+    expect(within(toolCard).queryByText("Completed")).not.toBeInTheDocument();
     expect(within(toolCard).getByText("2 locations")).toBeInTheDocument();
     expect(screen.getAllByRole("region", { name: "Agent plan" })).toHaveLength(1);
     expect(screen.getAllByRole("article", { name: "Tool: Search the bundle" })).toHaveLength(1);
@@ -1051,7 +1055,8 @@ describe("OKF Studio app", () => {
     });
     const activeToolCard = activeToolCards.at(-1);
     if (!activeToolCard) throw new Error("The active tool card was not rendered.");
-    expect(within(activeToolCard).getByText("Running")).toBeInTheDocument();
+    // Running shows as the pulsing-icon state (class), not a status label.
+    expect(activeToolCard).toHaveClass("agent-tool--in-progress");
     expect(document.querySelector(".agent-composer__usage")).toHaveTextContent("2% context");
     const userMessageCount = document.querySelectorAll(".agent-message--user").length;
     fireEvent.change(screen.getByLabelText("Message the agent"), {

@@ -1,6 +1,6 @@
 import type { AgentPlanEntryInfo, AgentToolLocationInfo, AgentPermissionEvent, AgentPermissionOptionInfo, AgentTurnEvent } from "@/features/agent/connection.ts";
 import type { Dispatch, SetStateAction } from "react";
-import { Bot, Check, Circle, CircleAlert, CircleDot, FileText, ListChecks, RotateCcw, ShieldQuestion, User, Wrench } from "lucide-react";
+import { ArrowRightLeft, Brain, Check, Circle, CircleAlert, CircleDot, FileText, Globe, Hammer, ListChecks, Pencil, RotateCcw, Search, ShieldQuestion, SlidersHorizontal, Terminal, Trash2 } from "lucide-react";
 import { BundleProposalPreview } from "@/features/agent/components/BundleProposalPreview.tsx";
 import { bundleProposalNarrative, parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { renderMarkdown } from "@/shared/render/markdown.ts";
@@ -236,52 +236,109 @@ export function ConversationItemView({
   );
 }
 
+/**
+ * Tool-call rendering follows Zed's agent panel: most calls are one quiet
+ * dim row (icon + title) that lets the agent's prose stay the document, while
+ * mutating calls (edit/delete/move) and commands get a bordered card with a
+ * header strip so changes and executions stand out from lookups.
+ */
+const TOOL_KIND_META = {
+  read: { label: "Read", icon: Search, shape: "row" },
+  edit: { label: "Edit", icon: Pencil, shape: "card" },
+  delete: { label: "Delete", icon: Trash2, shape: "card" },
+  move: { label: "Move", icon: ArrowRightLeft, shape: "card" },
+  search: { label: "Search", icon: Search, shape: "row" },
+  execute: { label: "Command", icon: Terminal, shape: "card" },
+  think: { label: "Reasoning", icon: Brain, shape: "row" },
+  fetch: { label: "Fetch", icon: Globe, shape: "row" },
+  "switch-mode": { label: "Mode", icon: SlidersHorizontal, shape: "row" },
+  other: { label: "Tool", icon: Hammer, shape: "row" },
+  unknown: { label: "Tool", icon: Hammer, shape: "row" },
+} as const;
+
+const TOOL_STATUS_LABEL = {
+  pending: "Pending",
+  "in-progress": "Running",
+  completed: "Completed",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  unknown: "Status unknown",
+} as const;
+
+function ToolChangeState({ tool }: { tool: ConversationTool }) {
+  if (!tool.changeState) return null;
+  return (
+    <small
+      className={`agent-tool__change agent-tool__change--${tool.changeState}`}
+      title={tool.changeState === "staged"
+        ? "Studio accepted this reported change for review. It is not applied."
+        : "Studio did not accept this reported change. Check the thread grant and staging limits."}
+    >
+      {tool.changeState === "staged" ? "Change staged for review" : "Change not staged"}
+    </small>
+  );
+}
+
 export function ToolCard({ tool }: { tool: ConversationTool }) {
-  const kindLabel = ({
-    read: "Read",
-    edit: "Edit",
-    delete: "Delete",
-    move: "Move",
-    search: "Search",
-    execute: "Command",
-    think: "Reasoning",
-    fetch: "Fetch",
-    "switch-mode": "Mode",
-    other: "Tool",
-    unknown: "Tool",
-  } as const)[tool.toolKind];
-  const statusLabel = ({
-    pending: "Pending",
-    "in-progress": "Running",
-    completed: "Completed",
-    failed: "Failed",
-    cancelled: "Cancelled",
-    unknown: "Status unknown",
-  } as const)[tool.status];
+  const meta = TOOL_KIND_META[tool.toolKind];
+  const KindIcon = meta.icon;
+  // Completed is the resting state and stays silent (the row itself is the
+  // record); only the exceptional ends get spelled out.
+  const statusNote = tool.status === "failed" || tool.status === "cancelled"
+    ? TOOL_STATUS_LABEL[tool.status]
+    : null;
+
+  if (meta.shape === "row") {
+    // One location whose path the title already names would be noise; show it
+    // only when it adds information.
+    const soleLocation = tool.locations.length === 1 &&
+        !tool.title.includes(tool.locations[0].path)
+      ? toolLocationLabel(tool.locations[0])
+      : null;
+    return (
+      <article
+        className={`agent-tool agent-tool--row agent-tool--${tool.status}`}
+        aria-label={`Tool: ${tool.title}`}
+      >
+        <span className="agent-tool__icon" aria-hidden="true">
+          <KindIcon size={14} />
+        </span>
+        <span className="agent-tool__title" title={tool.title}>{tool.title}</span>
+        {soleLocation && (
+          <span className="agent-tool__inline-location" title={soleLocation}>
+            {soleLocation}
+          </span>
+        )}
+        {statusNote && <small className="agent-tool__status">{statusNote}</small>}
+        <ToolChangeState tool={tool} />
+        {tool.locations.length > 1 && <ToolLocations locations={tool.locations} />}
+      </article>
+    );
+  }
+
+  const isCommand = tool.toolKind === "execute";
+  const hasBody = isCommand || tool.locations.length > 0 || tool.changeState !== null;
   return (
     <article
-      className={`agent-tool agent-tool--${tool.status}`}
+      className={`agent-tool agent-tool--card agent-tool--${tool.status}`}
       aria-label={`Tool: ${tool.title}`}
     >
-      <span className="agent-tool__icon" aria-hidden="true">
-        <Wrench size={15} />
-      </span>
-      <div>
-        <strong>{tool.title}</strong>
-        <small>{kindLabel}</small>
-        {tool.changeState && (
-          <small
-            className={`agent-tool__change agent-tool__change--${tool.changeState}`}
-            title={tool.changeState === "staged"
-              ? "Studio accepted this reported change for review. It is not applied."
-              : "Studio did not accept this reported change. Check the thread grant and staging limits."}
-          >
-            {tool.changeState === "staged" ? "Change staged for review" : "Change not staged"}
-          </small>
-        )}
-        <ToolLocations locations={tool.locations} />
-      </div>
-      <small className="agent-tool__status">{statusLabel}</small>
+      <header>
+        <span className="agent-tool__icon" aria-hidden="true">
+          <KindIcon size={14} />
+        </span>
+        {isCommand
+          ? <span className="agent-tool__kind">{meta.label}</span>
+          : <span className="agent-tool__title" title={tool.title}>{tool.title}</span>}
+        {statusNote && <small className="agent-tool__status">{statusNote}</small>}
+      </header>
+      {hasBody && (
+        <div className="agent-tool__body">
+          {isCommand && <code>{tool.title}</code>}
+          <ToolChangeState tool={tool} />
+          <ToolLocations locations={tool.locations} />
+        </div>
+      )}
     </article>
   );
 }
@@ -414,23 +471,20 @@ export function Message({
   const bundleProposal = message.role === "agent"
     ? parseBundleProposal(message.text)
     : { status: "none" } as const;
-  const label = message.role === "user" ? "You" : message.role === "agent" ? "Agent" : "Turn";
+  // Zed-style document flow: the agent's markdown IS the document (no avatar,
+  // no "Agent" label), the user's message sits in a bordered editor-like
+  // block, and status notices are quiet icon+text rows.
   return (
     <article
       className={`agent-message agent-message--${message.role}${message.tone ? ` agent-message--${message.tone}` : ""}`}
       {...(message.role === "status" ? { role: "status", "aria-label": message.text } : {})}
     >
-      <span className="agent-message__icon" aria-hidden="true">
-        {message.role === "user" ? (
-          <User size={16} />
-        ) : message.role === "agent" ? (
-          <Bot size={16} />
-        ) : (
-          <CircleAlert size={16} />
-        )}
-      </span>
+      {message.role === "status" && (
+        <span className="agent-message__icon" aria-hidden="true">
+          <CircleAlert size={15} />
+        </span>
+      )}
       <div>
-        <strong>{label}</strong>
         {message.role === "agent" ? (
           agentNarrative ? (
             <div

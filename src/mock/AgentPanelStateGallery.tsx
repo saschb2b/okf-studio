@@ -12,12 +12,11 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Search as SearchIcon,
   Send,
   ShieldCheck,
   Sparkles,
   Square,
-  User,
-  Wrench,
 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { AgentSessionConfigOption } from "@/features/agent/connection.ts";
@@ -492,9 +491,9 @@ function ActiveQueue() {
       </>
     )}>
       <Message label="You">Trace the conflicting source claims.</Message>
-      <article className="agent-tool agent-tool--in-progress" aria-label="Tool: Search bundle sources">
-        <span className="agent-tool__icon"><Wrench size={15} aria-hidden="true" /></span>
-        <div><strong>Search bundle sources</strong><small>Search</small></div><small className="agent-tool__status">Running</small>
+      <article className="agent-tool agent-tool--row agent-tool--in-progress" aria-label="Tool: Search bundle sources">
+        <span className="agent-tool__icon" aria-hidden="true"><SearchIcon size={14} /></span>
+        <span className="agent-tool__title">Search bundle sources</span>
       </article>
       <Message label="Agent">I found two records and am tracing their source references.</Message>
     </ConversationLayout>
@@ -559,14 +558,13 @@ function StagedFile({ path, kind }: { path: string; kind: string }) {
   );
 }
 
+// Mirrors conversation/items.tsx Message: Zed-style document flow — the
+// user's message is a bordered block, agent prose flows as plain text.
 function Message({ label, children }: { label: string; children: ReactNode }) {
   const isUser = label === "You";
   return (
     <article className={`agent-message agent-message--${isUser ? "user" : "agent"}`}>
-      <span className="agent-message__icon">
-        {isUser ? <User size={16} aria-hidden="true" /> : <Bot size={16} aria-hidden="true" />}
-      </span>
-      <div><strong>{label}</strong><p>{children}</p></div>
+      <div><p>{children}</p></div>
     </article>
   );
 }

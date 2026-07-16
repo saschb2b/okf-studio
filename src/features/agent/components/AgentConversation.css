@@ -396,8 +396,7 @@
 
 .agent-conversation__state p,
 .agent-conversation__welcome p,
-.agent-composer__actions,
-.agent-message strong {
+.agent-composer__actions {
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
@@ -615,36 +614,35 @@
   scrollbar-gutter: stable;
 }
 
-.agent-message {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-8);
-}
-
-.agent-message__icon {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  color: var(--accent);
-  background: var(--bg-sunken);
-  border-radius: var(--radius-sm);
-}
-
+/* Zed-style document flow: agent prose is the document (no avatar, no role
+   label), the user's message is an editor-like bordered block, and status
+   notices are quiet icon+text rows. */
 .agent-message > div {
   min-width: 0;
 }
 
 .agent-message p {
-  margin-top: var(--space-4);
   line-height: var(--lh-normal);
   overflow-wrap: break-word;
   white-space: pre-wrap;
 }
 
+.agent-message--user {
+  padding: var(--space-8) var(--space-12);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-message__icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: var(--text-dim);
+}
+
 .agent-message__markdown {
-  margin-top: var(--space-4);
   overflow-x: auto;
   line-height: var(--lh-normal);
   overflow-wrap: break-word;
@@ -816,22 +814,11 @@
   margin: 0;
 }
 
-.agent-message--user .agent-message__icon {
-  color: var(--text-dim);
-}
-
 .agent-message--status {
-  padding: var(--space-8);
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.agent-message--status .agent-message__icon {
-  width: 24px;
-  height: 24px;
-  color: var(--text-dim);
-  background: var(--bg-elev);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
 }
 
 .agent-message--status p {
@@ -864,39 +851,89 @@
   color: var(--error);
 }
 
+/* Tool calls, Zed-style. Lookups (read/search/fetch/think/other) are one
+   quiet dim row so the agent's prose stays the document; mutating calls
+   (edit/delete/move) and commands are bordered cards with a header strip. */
 .agent-tool {
-  display: grid;
   flex: 0 0 auto;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  min-height: 48px;
+}
+
+.agent-tool--row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-8);
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  gap: var(--space-6);
+  min-height: 22px;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
 }
 
 .agent-tool__icon {
   display: grid;
-  align-self: start;
+  flex: none;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  color: var(--accent);
-  background: var(--bg-elev);
-  border-radius: var(--radius-sm);
+  width: 18px;
+  height: 18px;
+  color: var(--text-dim);
 }
 
-.agent-tool > div {
-  display: grid;
+.agent-tool__title {
   min-width: 0;
-  gap: var(--space-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.agent-tool strong {
-  line-height: var(--lh-tight);
-  overflow-wrap: break-word;
+.agent-tool__inline-location {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.agent-tool--card {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-tool--card > header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 30px;
+  padding: var(--space-4) var(--space-8);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+}
+
+.agent-tool--card > header .agent-tool__title {
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.agent-tool__kind {
+  font-size: var(--fs-xs);
+}
+
+.agent-tool--card > header + .agent-tool__body {
+  border-top: 1px solid var(--border);
+}
+
+.agent-tool__body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-8);
+}
+
+.agent-tool__body code {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .agent-tool small {
@@ -906,8 +943,20 @@
 }
 
 .agent-tool__status {
-  align-self: start;
-  text-align: end;
+  flex: none;
+  margin-left: auto;
+}
+
+/* A call still running pulses its icon; the resting (completed) state is
+   silent — the row itself is the record, matching Zed. */
+.agent-tool--pending .agent-tool__icon,
+.agent-tool--in-progress .agent-tool__icon {
+  color: var(--accent);
+  animation: agent-tool-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes agent-tool-pulse {
+  50% { opacity: 0.35; }
 }
 
 .agent-tool .agent-tool__change--staged {
@@ -938,6 +987,13 @@
   line-height: var(--lh-normal);
 }
 
+/* In a quiet row the location list drops below the title line, indented to
+   the text column. */
+.agent-tool--row .agent-tool__locations {
+  flex-basis: 100%;
+  padding-inline-start: calc(18px + var(--space-6));
+}
+
 .agent-tool__locations summary {
   min-height: 24px;
   align-content: center;
@@ -952,20 +1008,10 @@
   padding-inline-start: var(--space-16);
 }
 
-.agent-tool--completed .agent-tool__icon {
-  color: var(--ok);
-}
-
 .agent-tool--failed .agent-tool__icon,
-.agent-tool--failed .agent-tool__status {
+.agent-tool--failed .agent-tool__status,
+.agent-tool--failed .agent-tool__title {
   color: var(--error);
-}
-
-.agent-tool--cancelled .agent-tool__icon,
-.agent-tool--cancelled .agent-tool__status,
-.agent-tool--unknown .agent-tool__icon,
-.agent-tool--unknown .agent-tool__status {
-  color: var(--text-dim);
 }
 
 .agent-live-work {

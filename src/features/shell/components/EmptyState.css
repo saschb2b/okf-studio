@@ -50,22 +50,24 @@
   word-break: break-all;
 }
 
-/* Hero (first run) */
+/* Hero (first run) — the welcome-list pattern: brand mark, one tagline, then
+   a single scannable action list where each row names its audience and
+   carries its own shortcut. See docs/ux/first-run.md. */
+.hero-mark {
+  width: 56px;
+  height: 56px;
+}
 .hero-title {
   font-size: var(--fs-xl);
   letter-spacing: -0.01em;
 }
 .hero-tagline {
-  margin: 0;
+  margin: 0 0 var(--space-12);
   font-size: var(--fs-md);
   max-width: 40ch;
 }
-.btn.lg {
-  padding: var(--space-10) var(--space-20);
-  font-size: var(--fs-sm);
-}
 
-/* The two primary actions — open a local folder, or fetch from a URL. */
+/* Kept for the "no bundles found" state's action pair. */
 .hero-cta {
   display: flex;
   flex-flow: row wrap;
@@ -73,70 +75,74 @@
   justify-content: center;
   gap: var(--space-10);
 }
-.hero-hint {
-  margin: var(--space-8) 0 0;
-  font-size: var(--fs-xs);
-}
-.hero-hint kbd {
-  min-width: 1.4em;
-  display: inline-block;
-  padding: var(--space-2) var(--space-6);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  text-align: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-sunken);
-  color: var(--text-dim);
-}
 
-/* One line of fine print: what a bundle is (see docs/ux/first-run.md). */
-.hero-what {
-  font-size: var(--fs-sm);
-  max-width: 52ch;
-}
-
-/* First-run "try one" example cards — the cold-start payoff: a brand-new user
-   with no local bundle can load a real remote one in a single click. */
-.hero-examples {
-  display: flex;
-  flex-flow: row wrap;
-  align-items: stretch;
-  justify-content: center;
-  gap: var(--space-8);
-  margin-top: var(--space-8);
-  max-width: 52ch;
-}
-.hero-examples-label {
-  align-self: center;
-  font-size: var(--fs-xs);
-}
-.hero-example {
-  font: inherit;
-  text-align: left;
+.hero-actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  width: min(440px, 100%);
+  text-align: left;
+}
+.hero-action {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-12);
   padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-elev);
-  color: var(--text);
+  font: inherit;
+  color: var(--text-dim);
+  text-align: left;
   cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
 }
-.hero-example:hover {
+.hero-action:hover,
+.hero-action:focus-visible {
+  color: var(--text);
   background: var(--bg-sunken);
+  outline: none;
 }
-.hero-example:focus-visible {
+.hero-action:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
-.hero-example-title {
+/* Order carries hierarchy; the primary row gets the one spot of accent. */
+.hero-action--primary > svg,
+.hero-action--primary .hero-action-label {
+  color: var(--accent);
+}
+.hero-action-text {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+.hero-action-label {
+  color: var(--text);
   font-size: var(--fs-sm);
   font-weight: 500;
+  line-height: var(--lh-tight);
 }
-.hero-example-blurb {
+.hero-action-desc {
   font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+.hero-action kbd {
+  padding: var(--space-2) var(--space-6);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+/* One line of fine print — the trust contract. */
+.hero-note {
+  margin: var(--space-8) 0 0;
+  font-size: var(--fs-xs);
+  max-width: 52ch;
 }
 
 /* Spinner */

@@ -2,10 +2,11 @@
 // every state explains what happened and offers a way forward.
 // See docs/ux/empty-and-error-states.md.
 
-import { Globe } from "lucide-react";
+import { BookOpen, FilePlus2, FolderOpen, Globe } from "lucide-react";
 import { useApp } from "@/shared/store.tsx";
 import { modKey } from "@/shared/platform/platform.ts";
 import { REMOTE_EXAMPLES } from "@/features/bundle/remoteSource.ts";
+import appIcon from "@/assets/icon.svg";
 import "@/shared/styles/chrome.css";
 import "./EmptyState.css";
 
@@ -58,52 +59,80 @@ export function EmptyState() {
     );
   }
 
-  // First run — nothing open yet.
+  // First run — nothing open yet. One scannable action list (the welcome-list
+  // pattern) instead of a row of equal buttons: each action names who it's
+  // for, shortcuts sit inline on their action, and the sample bundle is a
+  // first-class row instead of a footnote. See docs/ux/first-run.md.
   return (
     <div className="empty hero">
+      <img className="hero-mark" src={appIcon} alt="" aria-hidden="true" />
       <h1 className="hero-title">OKF Studio</h1>
       <p className="hero-tagline">
         Explore connected knowledge with the agents you already use.
       </p>
-      <div className="hero-cta">
-        <button className="btn primary lg" onClick={() => void actions.openFolder()}>
-          Open Folder…
-        </button>
-        <button className="btn lg" onClick={() => actions.setCreateOpen(true)}>
-          Create New Bundle…
-        </button>
-        <button className="btn lg" onClick={() => actions.setRemoteOpen(true)}>
-          Open from URL…
-        </button>
-      </div>
-      <p className="hero-hint">
-        <kbd>{modKey}</kbd> <kbd>O</kbd> for a folder ·{" "}
-        <kbd>{modKey}</kbd> <kbd>⇧</kbd> <kbd>O</kbd> for a URL
-      </p>
-      <p className="empty-line hero-what">
-        An OKF bundle is a folder of markdown concepts, cross-linked into a
-        graph. Open a local folder or URL without changing its files. Agent
-        connections start only when you choose.
-      </p>
 
-      {REMOTE_EXAMPLES.length > 0 && (
-        <div className="hero-examples">
-          <span className="hero-examples-label muted">New here? Try one:</span>
-          {REMOTE_EXAMPLES.map((ex) => (
-            <button
-              key={ex.url}
-              type="button"
-              className="hero-example"
-              onClick={() => actions.setRemoteOpen(true, ex.url)}
-            >
-              <span className="hero-example-title">
-                <Globe size={14} aria-hidden="true" /> {ex.title}
-              </span>
-              <span className="hero-example-blurb muted">{ex.blurb}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <nav className="hero-actions" aria-label="Get started">
+        <button
+          type="button"
+          className="hero-action hero-action--primary"
+          onClick={() => void actions.openFolder()}
+        >
+          <FolderOpen size={18} aria-hidden="true" />
+          <span className="hero-action-text">
+            <span className="hero-action-label">Open folder…</span>
+            <span className="hero-action-desc">
+              Browse OKF bundles already on disk
+            </span>
+          </span>
+          <kbd>{modKey} O</kbd>
+        </button>
+        <button
+          type="button"
+          className="hero-action"
+          onClick={() => actions.setCreateOpen(true)}
+        >
+          <FilePlus2 size={18} aria-hidden="true" />
+          <span className="hero-action-text">
+            <span className="hero-action-label">Create new bundle…</span>
+            <span className="hero-action-desc">
+              Start fresh from a short form — no agent needed
+            </span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="hero-action"
+          onClick={() => actions.setRemoteOpen(true)}
+        >
+          <Globe size={18} aria-hidden="true" />
+          <span className="hero-action-text">
+            <span className="hero-action-label">Open from URL…</span>
+            <span className="hero-action-desc">
+              Fetch a GitHub repo or archive into a local cache
+            </span>
+          </span>
+          <kbd>{modKey} ⇧ O</kbd>
+        </button>
+        {REMOTE_EXAMPLES.map((ex) => (
+          <button
+            key={ex.url}
+            type="button"
+            className="hero-action"
+            onClick={() => actions.setRemoteOpen(true, ex.url)}
+          >
+            <BookOpen size={18} aria-hidden="true" />
+            <span className="hero-action-text">
+              <span className="hero-action-label">Try {ex.title}</span>
+              <span className="hero-action-desc">{ex.blurb}</span>
+            </span>
+          </button>
+        ))}
+      </nav>
+
+      <p className="hero-note">
+        Opening never changes a bundle's files. Agents connect only when you
+        choose.
+      </p>
     </div>
   );
 }

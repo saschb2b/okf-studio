@@ -3,7 +3,7 @@ type: UX Flow
 title: Empty & Error States
 description: Every no-content, loading, and failure state — what it shows and how to recover.
 tags: [ux, flow, errors, empty-states]
-timestamp: 2026-07-14T14:45:00Z
+timestamp: 2026-07-17T00:10:00Z
 ---
 
 # Stance
@@ -12,9 +12,9 @@ Report, never refuse. Like the [tolerant-consumer principle](../product/principl
 
 # No content yet
 
-- **Nothing open.** On launch with no folder chosen, the connected-knowledge proposition appears above **Open Folder…** and **Open from URL…**. The supporting copy states that opening a bundle does not change its files and agents connect only when chosen. The top-left [Bundle Switcher](../features/bundle-switcher.md) also surfaces recent bundles. This is the [First Run](first-run.md) empty state.
+- **Nothing open.** On launch with no folder chosen, the connected-knowledge proposition appears above the **welcome action list** — open a folder, create a new bundle, open from a URL, or try the example — each row with a one-line description and its shortcut inline, plus one line of trust fine print (opening never changes files; agents connect only when chosen). The top-left [Bundle Switcher](../features/bundle-switcher.md) also surfaces recent bundles. This is the [First Run](first-run.md) empty state.
 - **Scanning.** While the [Rust core](../features/folder-autodetect.md) walks the folder, a progress indicator shows; the scan is **cancelable** and the app stays responsive.
-- **No bundles found.** A helpful empty state explains what an OKF bundle is (a directory of `.md` concepts — see the [spec summary](../reference/okf-spec-summary.md)) and how to point at a real one, with **Open Folder…** to try again.
+- **No bundles found.** A helpful empty state explains what an OKF bundle is (a directory of `.md` concepts — see the [spec summary](../reference/okf-spec-summary.md)) and how to point at a real one, with **Open Folder…** to try again beside **[creating a bundle](../features/create-bundle.md) right there**.
 - **Bundle with zero concepts.** A detected-but-empty bundle opens to an empty graph and reader with a one-line note that the bundle has no concepts yet, not an error.
 - **No `log.md`.** The [Log view](../features/log-view.md) shows an empty state saying the bundle has no `log.md` rather than an error — the file is optional.
 

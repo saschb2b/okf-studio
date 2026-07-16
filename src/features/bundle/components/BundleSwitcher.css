@@ -248,6 +248,12 @@
   padding: var(--space-6);
   border-top: 1px solid var(--border);
 }
+/* Hairline between the open-existing tier and the create tier. */
+.switcher-foot-sep {
+  height: 1px;
+  margin: var(--space-4) var(--space-8);
+  background: var(--border);
+}
 .switcher-foot-btn {
   display: flex;
   align-items: center;

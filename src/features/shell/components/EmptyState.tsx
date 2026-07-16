@@ -46,9 +46,14 @@ export function EmptyState() {
           Studio at a folder that contains one.
         </p>
         <p className="empty-path muted">{state.folder}</p>
-        <button className="btn primary" onClick={() => void actions.openFolder()}>
-          Open another folder
-        </button>
+        <div className="hero-cta">
+          <button className="btn primary" onClick={() => void actions.openFolder()}>
+            Open another folder
+          </button>
+          <button className="btn" onClick={() => actions.setCreateOpen(true)}>
+            Create a new bundle…
+          </button>
+        </div>
       </div>
     );
   }
@@ -63,6 +68,9 @@ export function EmptyState() {
       <div className="hero-cta">
         <button className="btn primary lg" onClick={() => void actions.openFolder()}>
           Open Folder…
+        </button>
+        <button className="btn lg" onClick={() => actions.setCreateOpen(true)}>
+          Create New Bundle…
         </button>
         <button className="btn lg" onClick={() => actions.setRemoteOpen(true)}>
           Open from URL…

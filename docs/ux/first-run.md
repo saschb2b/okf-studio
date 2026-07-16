@@ -3,7 +3,7 @@ type: UX Flow
 title: First Run
 description: The flow from launching the app with nothing open to browsing a detected bundle.
 tags: [ux, flow, onboarding]
-timestamp: 2026-07-13T19:21:18Z
+timestamp: 2026-07-16T23:30:00Z
 ---
 
 # Goal
@@ -12,7 +12,7 @@ A new user gets from "app just opened" to "reading a graph" in two clicks, with 
 
 # Flow
 
-1. **Launch → empty state.** A centered prompt introduces Studio as connected knowledge that can be explored with user-chosen agents. It offers a primary **Open Folder…** button (native OS dialog) beside a secondary **Open from URL…** (`Ctrl/Cmd + Shift + O`) for a [remote bundle](../features/bundle-switcher.md). Below, a one-click **example** card (this docs bundle) lets a new user see the graph and reader immediately. The fine print states that opening a bundle does not change its files and agent connections start only when chosen. See [Empty & Error States](empty-and-error-states.md) for this and the other no-content states.
+1. **Launch → empty state.** A centered prompt introduces Studio as connected knowledge that can be explored with user-chosen agents. It offers a primary **Open Folder…** button (native OS dialog) beside **Create New Bundle…** — the agent-free [form flow](../features/create-bundle.md) for a user who has no bundle yet — and **Open from URL…** (`Ctrl/Cmd + Shift + O`) for a [remote bundle](../features/bundle-switcher.md). Below, a one-click **example** card (this docs bundle) lets a new user see the graph and reader immediately. The fine print states that opening a bundle does not change its files and agent connections start only when chosen. See [Empty & Error States](empty-and-error-states.md) for this and the other no-content states.
 2. **Pick a folder.** The OS folder picker opens (via the Tauri dialog plugin — see [IPC & Security](../architecture/ipc-and-security.md)). The chosen path becomes the active bundle [scope](../architecture/ipc-and-security.md). Opening and browsing do not modify it; later agent changes require a reviewed transaction and an explicit **Apply**.
 3. **Scanning.** A brief progress indicator while the [Rust core](../architecture/bundle-detection.md) walks the folder. Large folders stay responsive; scanning is cancelable.
 4. **Result.**

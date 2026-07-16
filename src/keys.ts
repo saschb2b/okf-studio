@@ -81,6 +81,7 @@ export function useGlobalKeys() {
         actions.setSwitcher(false);
         actions.setHelp(false);
         actions.setRemoteOpen(false);
+        actions.setCreateOpen(false);
       } else if (e.altKey && e.key === "ArrowLeft") {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {

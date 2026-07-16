@@ -44,6 +44,64 @@ async function openBundleAtOverview(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("OKF Studio features", () => {
+  it("creates a new bundle from the first-run empty state", async () => {
+    const user = userEvent.setup();
+    const createSpy = vi.spyOn(ipc, "createBundle");
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /create new bundle/i }));
+    const dialog = await screen.findByRole("dialog", { name: /create new bundle/i });
+    await user.type(within(dialog).getByLabelText("Bundle title"), "Team Knowledge");
+    // The folder name derives live from the title until edited by hand.
+    expect(within(dialog).getByLabelText("Folder name")).toHaveValue("team-knowledge");
+    await user.click(
+      within(dialog).getByRole("button", { name: /choose location & create/i }),
+    );
+
+    // The mock "creates" the sample bundle; the app opens it like any folder.
+    await screen.findByRole("button", { name: /switch bundle/i });
+    expect(createSpy).toHaveBeenCalledWith({
+      folderName: "team-knowledge",
+      title: "Team Knowledge",
+      description: "",
+      firstConceptTitle: "Welcome",
+      firstConceptType: "Note",
+      includeGuide: true,
+    });
+    expect(
+      screen.queryByRole("dialog", { name: /create new bundle/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers New bundle in the switcher, keeps the form on cancel, and surfaces errors", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    await user.click(screen.getByRole("button", { name: /switch bundle/i }));
+    await user.click(await screen.findByRole("button", { name: /new bundle/i }));
+    const dialog = await screen.findByRole("dialog", { name: /create new bundle/i });
+    await user.type(within(dialog).getByLabelText("Bundle title"), "Field Notes");
+
+    // The OS picker was cancelled: no navigation, the filled form remains.
+    const createSpy = vi.spyOn(ipc, "createBundle").mockResolvedValueOnce(null);
+    await user.click(
+      within(dialog).getByRole("button", { name: /choose location & create/i }),
+    );
+    await waitFor(() => expect(createSpy).toHaveBeenCalled());
+    expect(within(dialog).getByLabelText("Bundle title")).toHaveValue("Field Notes");
+
+    // A creation failure surfaces inline and keeps the dialog open.
+    createSpy.mockRejectedValueOnce(
+      new Error("A folder named field-notes already exists there."),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: /choose location & create/i }),
+    );
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/already exists/);
+    expect(within(dialog).getByLabelText("Folder name")).toHaveValue("field-notes");
+  });
+
   it("switches to reader-only layout, hiding the graph", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();

@@ -4,7 +4,7 @@
 // Recents are per-bundle; the folder underneath is the read scope. Opens with
 // Ctrl/Cmd+P. See docs/features/bundle-switcher.md.
 
-import { Check, Globe } from "lucide-react";
+import { Check, ChevronDown, FilePlus2, FolderOpen, Globe } from "lucide-react";
 import { useRef, useState } from "react";
 import type * as React from "react";
 import { Popover } from "@base-ui/react/popover";
@@ -60,7 +60,7 @@ export function BundleSwitcher() {
         <img className="switch-tile" src={appIcon} alt="" aria-hidden="true" />
         <span className="switch-name">Open a folder…</span>
         <span className="switch-chevron" aria-hidden="true">
-          ⌄
+          <ChevronDown size={14} />
         </span>
       </Toolbar.Button>
     );
@@ -150,7 +150,7 @@ export function BundleSwitcher() {
               )}
             </span>
             <span className="switch-chevron" aria-hidden="true">
-              ⌄
+              <ChevronDown size={14} />
             </span>
           </Toolbar.Button>
         }
@@ -226,6 +226,9 @@ export function BundleSwitcher() {
                 </Group>
               </div>
 
+              {/* Two action tiers: open an existing bundle (local, remote),
+                  then start a new one — separated so opening and creating
+                  never read as one list. One icon system (lucide). */}
               <div className="switcher-foot">
                 <button
                   type="button"
@@ -235,7 +238,7 @@ export function BundleSwitcher() {
                     close();
                   }}
                 >
-                  <span aria-hidden="true">📂</span>
+                  <FolderOpen size={15} aria-hidden="true" />
                   <span className="switcher-foot-label">Open folder…</span>
                   <kbd className="switcher-kbd">{mod} O</kbd>
                 </button>
@@ -249,6 +252,19 @@ export function BundleSwitcher() {
                 >
                   <Globe size={15} aria-hidden="true" />
                   <span className="switcher-foot-label">Open from URL…</span>
+                  <kbd className="switcher-kbd">{mod} ⇧ O</kbd>
+                </button>
+                <div className="switcher-foot-sep" role="presentation" />
+                <button
+                  type="button"
+                  className="switcher-foot-btn"
+                  onClick={() => {
+                    actions.setCreateOpen(true);
+                    close();
+                  }}
+                >
+                  <FilePlus2 size={15} aria-hidden="true" />
+                  <span className="switcher-foot-label">New bundle…</span>
                 </button>
               </div>
             </div>

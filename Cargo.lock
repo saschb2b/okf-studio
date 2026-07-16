@@ -2862,6 +2862,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
+ "time",
  "tokio",
  "tokio-util",
  "ureq",

@@ -1,0 +1,91 @@
+/* Create-new-bundle dialog — same shell recipe as the Open-from-URL modal:
+   a floating surface keeps its padding (the edge-to-edge rule is for docked
+   chrome, see design-system/guidelines/function-first.md). */
+.create-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(480px, calc(100vw - 2 * var(--space-16)));
+  padding: var(--space-20);
+  gap: var(--space-16);
+}
+
+.create-form {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.create-field {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+.create-label {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
+.create-input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-8);
+  color: var(--text);
+  font: inherit;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.create-input--mono {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+}
+
+.create-input:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.create-guide {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: var(--lh-normal);
+}
+
+.create-guide input {
+  margin-top: 2px;
+}
+
+.create-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.create-error {
+  margin: 0;
+  color: var(--error);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+
+.create-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.create-actions .create-hint {
+  flex: 1;
+  min-width: 0;
+}

@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-timestamp: 2026-07-13T19:56:13Z
+timestamp: 2026-07-16T23:30:00Z
 ---
 
 # What it does
@@ -29,7 +29,7 @@ Top to bottom, keyboard-first (a Base UI Popover with a filter input):
 - **Bundles in this folder** — the bundles [autodetected](folder-autodetect.md) in the currently open folder, the active one marked ✓. Each row: name, relative path (a bundle at the folder's root shows the folder's own name, never a bare "."), and a right column of two **labeled** lines mirroring the pair on the left — "N concepts" over "M types". Earlier revisions showed per-`type` color dots here instead; they were dropped as decoration — the [palette](../ux/theming.md) assigns hues per bundle, so the same color means different types across rows, and an unlabeled count next to unlabeled dots explained neither. A full name + path tooltip covers what truncation hides. Shown whenever a folder is open; a single-bundle folder shows one row.
 - **Pinned** *(when any exist)* — bundles the user pinned, kept above recents so frequently-used contexts stay one click away. Pinning is a deliberate differentiator: the IDEs surveyed order recents by recency only.
 - **Recent bundles** — recently-opened bundles **not** already listed under the current folder, newest first, each showing the bundle name with its folder/path dimmed beneath and, in the right column, "N concepts" over a **relative last-opened time** ("3d ago") so freshness reads at a glance. Per-row **pin** and **remove** (✕) on hover.
-- **Footer actions** — **Open folder…** (primary; the OS picker, `Ctrl/Cmd + O`) and **Open from URL…** (`Ctrl/Cmd + Shift + O`), which opens the [remote-bundle dialog](#opening-from-a-url): paste a GitHub URL (a repo, or a `tree`/`blob` subpath) or a direct archive link and Studio fetches it into a local cache, then opens it exactly like a picked folder.
+- **Footer actions**, in two tiers separated by a hairline so opening and creating never read as one list. Opening an existing bundle: **Open folder…** (primary; the OS picker, `Ctrl/Cmd + O`) and **Open from URL…** (`Ctrl/Cmd + Shift + O`), which opens the [remote-bundle dialog](#opening-from-a-url): paste a GitHub URL (a repo, or a `tree`/`blob` subpath) or a direct archive link and Studio fetches it into a local cache, then opens it exactly like a picked folder. Starting a new one: **New bundle…**, the agent-free [Create Bundle](create-bundle.md) form, so an existing user starts fresh without leaving the switcher.
 
 # Opening from a URL
 

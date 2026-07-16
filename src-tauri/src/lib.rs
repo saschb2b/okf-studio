@@ -51,6 +51,7 @@ mod agent_url;
 // stage — the reviewed-write engine shared by the host and native provider.
 #[path = "agent/agent_stage.rs"]
 mod agent_stage;
+mod bundle_create;
 mod bundle_grant;
 mod remote;
 mod watch;
@@ -87,6 +88,33 @@ fn pick_bundle_folder(
         .map_err(|_| "The selected bundle folder is not available on this platform.".to_string())?;
     grants
         .grant(&folder, bundle_grant::BundleGrantKind::LocalFolder)
+        .map(Some)
+}
+
+/// Static, agent-free bundle creation: the user picks a parent folder in the
+/// OS dialog, the generator writes a small conformant bundle there (see
+/// bundle_create.rs), and the result is granted like any picked folder so the
+/// frontend can open it. Returns None when the picker is cancelled.
+#[tauri::command]
+fn create_bundle(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    input: bundle_create::CreateBundleInput,
+) -> Result<Option<String>, String> {
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_title("Choose where to create the new bundle")
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+    let parent = selected
+        .into_path()
+        .map_err(|_| "The selected destination folder is not available on this platform.".to_string())?;
+    let created = bundle_create::create_bundle(&parent, &input)?;
+    grants
+        .grant(&created, bundle_grant::BundleGrantKind::LocalFolder)
         .map(Some)
 }
 
@@ -868,6 +896,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             pick_bundle_folder,
+            create_bundle,
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,

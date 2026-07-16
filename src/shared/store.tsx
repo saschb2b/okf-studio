@@ -271,6 +271,8 @@ export interface State {
   /** One-shot URL to prefill (and auto-fetch) the next time the remote dialog
    *  opens — the first-run example cards hand their URL off this way. */
   remoteSeed: string | null;
+  /** The static "create new bundle" dialog (no agent involved). */
+  createOpen: boolean;
   maximized: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
@@ -323,6 +325,7 @@ function makeInitialState(): State {
   overview: false,
   remoteOpen: false,
   remoteSeed: null,
+  createOpen: false,
   maximized: false,
   activeRoot: null,
   bundle: null,
@@ -373,6 +376,7 @@ type Msg =
   | { t: "overview"; v: boolean }
   | { t: "showOnlyType"; v: string }
   | { t: "remoteOpen"; v: boolean; seed?: string }
+  | { t: "createOpen"; v: boolean }
   | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
@@ -465,6 +469,8 @@ function reducer(s: State, m: Msg): State {
     }
     case "remoteOpen":
       return { ...s, remoteOpen: m.v, remoteSeed: m.v ? (m.seed ?? null) : null };
+    case "createOpen":
+      return { ...s, createOpen: m.v };
     case "maximized":
       return { ...s, maximized: m.v };
     case "setBundle": {
@@ -726,6 +732,12 @@ export interface Actions {
   setOverview(open: boolean): void;
   showOnlyType(type: string): void;
   setRemoteOpen(open: boolean, seed?: string): void;
+  setCreateOpen(open: boolean): void;
+  /** Static new-bundle generation (see docs/features/create-bundle.md):
+   *  Rust shows the parent-folder picker, writes the conformant starter, and
+   *  the result opens like any picked folder. Resolves false when the user
+   *  cancelled the picker. */
+  createBundle(input: ipc.CreateBundleInput): Promise<boolean>;
   rescan(): Promise<void>;
   selectConcept(id: string | null): void;
   /** Open a concept in a new tab beside the active one. `background` (the
@@ -934,6 +946,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setRemoteOpen(open, seed) {
       dispatch({ t: "remoteOpen", v: open, seed });
+    },
+    setCreateOpen(open) {
+      dispatch({ t: "createOpen", v: open });
+    },
+    async createBundle(input) {
+      const folder = await ipc.createBundle(input);
+      if (!folder) return false;
+      dispatch({ t: "createOpen", v: false });
+      await a.openFolderPath(folder);
+      return true;
     },
     async rescan() {
       const { folder, activeRoot } = stateRef.current;

@@ -2417,6 +2417,28 @@ export async function pickFolder(): Promise<string | null> {
   return invoke<string | null>("pick_bundle_folder");
 }
 
+/** Inputs for the static new-bundle generator (no agent involved). */
+export interface CreateBundleInput {
+  folderName: string;
+  title: string;
+  description: string;
+  firstConceptTitle: string;
+  firstConceptType: string;
+  includeGuide: boolean;
+}
+
+/**
+ * Create a conformant starter bundle: Rust shows the OS parent-folder picker,
+ * writes the generated tree atomically, self-checks it with okf-core, and
+ * grants the new folder. Resolves the created folder, or null on cancel.
+ * In a browser the mock "creates" the sample bundle so the flow is drivable.
+ */
+export async function createBundle(input: CreateBundleInput): Promise<string | null> {
+  if (!isTauri()) return MOCK_FOLDER;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("create_bundle", { input });
+}
+
 /** Remove one exact Rust-owned folder grant. Frontend state cannot add one. */
 export async function revokeBundleGrant(folder: string): Promise<boolean> {
   if (!isTauri()) return true;

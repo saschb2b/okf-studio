@@ -37,6 +37,9 @@ tokio = { version = "1", features = ["io-util", "macros", "process", "rt", "sync
 tokio-util = { version = "0.7", features = ["compat"] }
 uuid = { version = "1", features = ["v4"] }
 url = "2"
+# ISO dates for generated bundle log entries and concept timestamps
+# (see src/bundle_create.rs).
+time = { version = "0.3", features = ["formatting"] }
 # Bounded unified diffs for staged-write review (see src/agent_stage.rs).
 similar = "2"
 keyring = "4.1"

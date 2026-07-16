@@ -1,6 +1,8 @@
 // The bottom status bar (VS Code pattern): a thin, full-width strip below the
-// workspace. It houses the validation issue indicator at the left and, at the
-// right, low-frequency toggles (the Log panel) plus quiet bundle context.
+// workspace. The left region describes the open bundle (validation verdict,
+// then quiet facts: concept count, format version); the right region holds
+// only panel toggles (Lineage, Log, Agent), so every clickable item lives in
+// one predictable cluster.
 //
 // Urgency is inverted from a badge: conformance is the expected baseline, so it
 // is shown *quietly* (dim, no colour) — "everything is fine" should not shout.
@@ -38,6 +40,10 @@ export function StatusBar() {
 
   return (
     <footer className="status-bar">
+      {/* Left: the state of the open bundle — the conformance verdict, then
+          quiet read-only facts (size, format version) behind a hairline. The
+          right region holds only panel toggles, so clickability follows
+          placement instead of hover-probing five identical-looking items. */}
       <div className="status-region">
         {bundle && (
           <button
@@ -45,6 +51,7 @@ export function StatusBar() {
             className={`status-item status-issues is-${kind}`}
             aria-label={aria}
             aria-pressed={state.panels.validation}
+            title="Validation report"
             onClick={() => actions.togglePanel("validation")}
           >
             <span className="status-icon" aria-hidden="true">
@@ -52,6 +59,23 @@ export function StatusBar() {
             </span>
             <span>{label}</span>
           </button>
+        )}
+        {bundle && <span className="status-sep" aria-hidden="true" />}
+        {bundle && (
+          <span className="status-item status-muted" title="Concepts in this bundle">
+            {plural(bundle.concepts.length, "concept")}
+          </span>
+        )}
+        {/* Format version(s), read-only — a property of the data, not the app. */}
+        {bundle && (bundle.odsfVersion ?? bundle.okfVersion) !== null && (
+          <span className="status-item status-muted" title="Bundle format version">
+            {[
+              bundle.odsfVersion ? `ODSF ${bundle.odsfVersion}` : null,
+              bundle.okfVersion ? `OKF ${bundle.okfVersion}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
         )}
       </div>
       <div className="status-region">
@@ -84,22 +108,6 @@ export function StatusBar() {
             </span>
             <span>Log</span>
           </button>
-        )}
-        {bundle && (
-          <span className="status-item status-muted">
-            {plural(bundle.concepts.length, "concept")}
-          </span>
-        )}
-        {/* Format version(s), read-only — a property of the data, not the app. */}
-        {bundle && (bundle.odsfVersion ?? bundle.okfVersion) !== null && (
-          <span className="status-item status-muted" title="Bundle format version">
-            {[
-              bundle.odsfVersion ? `ODSF ${bundle.odsfVersion}` : null,
-              bundle.okfVersion ? `OKF ${bundle.okfVersion}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
         )}
         <button
           id={AGENT_PANEL_OPENER_ID}

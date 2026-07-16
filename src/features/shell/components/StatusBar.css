@@ -69,3 +69,12 @@ button.status-item:focus-visible {
 .status-muted {
   color: var(--text-dim);
 }
+
+/* Hairline between the conformance verdict and the read-only bundle facts —
+   the quiet boundary that lets the left region scan as two groups. */
+.status-sep {
+  align-self: center;
+  width: 1px;
+  height: 12px;
+  background: var(--border);
+}

@@ -791,6 +791,14 @@ pub fn run() {
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_filter(|label| label == "main")
+                // Windows are created hidden (`visible: false` in
+                // tauri.conf.json) and revealed by the frontend after its
+                // first painted frame; restoring VISIBLE here would flash the
+                // transparent, undecorated shell before the webview paints.
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
                 .build(),
         )
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -804,6 +812,24 @@ pub fn run() {
             app.manage(WatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
+
+            // Show-on-ready watchdog. The main window starts hidden and the
+            // frontend reveals it after its first painted frame (src/App.tsx),
+            // so the transparent, undecorated shell is never shown while the
+            // webview boots. If the frontend dies before that (a script error,
+            // a dev-server hiccup), show the window anyway so a broken launch
+            // is a visible blank window instead of a ghost process.
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(10));
+                    if let Some(window) = handle.get_webview_window("main") {
+                        if !window.is_visible().unwrap_or(true) {
+                            let _ = window.show();
+                        }
+                    }
+                });
+            }
 
             // Linux/WebKitGTK: trackpad pinch is applied as a *native* webview
             // zoom that never reaches JS as a preventable event — unlike WebView2

@@ -21,6 +21,7 @@ import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "@/features/shell/components/ShortcutsHelp.tsx";
 import { AgentPanel } from "@/features/agent/components/AgentPanel.tsx";
 import { AgentPanelStateGallery } from "@/mock/AgentPanelStateGallery.tsx";
+import { showWindowWhenPainted } from "@/shared/platform/window.ts";
 
 function subscribeWindowResize(onChange: () => void): () => void {
   window.addEventListener("resize", onChange);
@@ -35,6 +36,18 @@ export function App() {
     () => window.innerWidth,
     () => 1280,
   );
+
+  // Reveal the hidden OS window on the first painted frame. Created visible,
+  // the transparent borderless shell sits on screen as an empty rectangle for
+  // the whole webview boot; created hidden, the app pops in fully drawn.
+  // Double rAF so the reveal lands after the first frame has actually
+  // painted; harmless if repeated (StrictMode re-mounts, pop-out windows).
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => void showWindowWhenPainted());
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   if (
     import.meta.env.DEV &&

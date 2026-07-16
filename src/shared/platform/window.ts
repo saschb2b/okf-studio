@@ -39,6 +39,21 @@ export async function isWindowMaximized(): Promise<boolean> {
   return (await win()).isMaximized();
 }
 
+/**
+ * Reveal the current OS window. Every app window is created hidden
+ * (`visible: false`) because the frame is transparent and undecorated — shown
+ * at creation it would sit on screen as an empty translucent rectangle for the
+ * whole webview boot. App.tsx calls this once the first committed frame
+ * paints; a Rust watchdog (lib.rs setup) is the fallback if the frontend
+ * crashes before reaching it.
+ */
+export async function showWindowWhenPainted(): Promise<void> {
+  if (!isTauri()) return;
+  const w = await win();
+  await w.show();
+  await w.setFocus();
+}
+
 export async function startWindowDrag(): Promise<void> {
   if (!isTauri()) return;
   await (await win()).startDragging();
@@ -88,6 +103,10 @@ export async function openConceptWindow(
     // own chrome (TopBar/WindowControls/ResizeHandles) runs in every window.
     decorations: false,
     transparent: true,
+    // Boots hidden like the main window; the full app runs in the pop-out,
+    // so the same first-paint reveal (App.tsx → showWindowWhenPainted)
+    // shows it once content is up instead of flashing a transparent shell.
+    visible: false,
   });
   return new Promise((resolve) => {
     void win.once("tauri://created", () => resolve(true));

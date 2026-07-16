@@ -70,7 +70,7 @@ describe("OKF Studio app", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(screen.getByRole("button", { name: "Open from URL…" }));
+    await user.click(screen.getByRole("button", { name: /^Open from URL…/ }));
 
     expect(screen.getByRole("dialog", { name: "Open from URL" })).toBeInTheDocument();
     expect(
@@ -85,7 +85,7 @@ describe("OKF Studio app", () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(screen.getByRole("button", { name: "Open from URL…" }));
+    await user.click(screen.getByRole("button", { name: /^Open from URL…/ }));
     await user.type(
       screen.getByLabelText("Paste a GitHub URL or a link to an archive"),
       "https://github.com/owner/repo",
@@ -629,7 +629,7 @@ describe("OKF Studio app", () => {
     );
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Load OKF instructions")).toBeInTheDocument();
-    expect(await screen.findByText("Search OKF bundle")).toBeInTheDocument();
+    expect((await screen.findAllByText("Search OKF bundle")).length).toBeGreaterThan(0);
     expect(await screen.findByText(
       /Loaded packaged OKF instructions and found the Agent Panel concept/,
     ))

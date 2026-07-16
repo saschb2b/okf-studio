@@ -1802,21 +1802,39 @@ describe("OKF Studio app", () => {
     await screen.findByText(/Connected to Selection Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
 
-    const paragraph = document.querySelector<HTMLElement>(".reader-main .body p");
-    const selection = window.getSelection();
-    if (!paragraph || !selection) throw new Error("The reader paragraph could not be selected.");
-    const range = document.createRange();
-    range.selectNodeContents(paragraph);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    const selectedText = selection.toString().trim();
+    // Let the agent panel's draft session settle first: the reader body is
+    // rendered via dangerouslySetInnerHTML, so a pending re-render recreates the
+    // paragraph node and detaches an in-flight selection mid-capture.
+    await waitFor(() => expect(screen.getByLabelText("Message the agent")).toBeEnabled());
 
-    await openAttachmentMenu(user);
-    const attachSelection = await waitFor(() => {
+    // The reader-selection capture is a one-shot on the trigger's pointerdown: it
+    // reads window.getSelection() at open time, so retrying the assertion cannot
+    // help once a stale/collapsed read disabled the button. Instead re-establish
+    // the selection fresh and reopen the menu until the capture takes.
+    let selectedText = "";
+    let attachSelection!: HTMLElement;
+    for (let attempt = 1; ; attempt += 1) {
+      const paragraph = document.querySelector<HTMLElement>(".reader-main .body p");
+      const selection = window.getSelection();
+      if (!paragraph || !selection) throw new Error("The reader paragraph could not be selected.");
+      const range = document.createRange();
+      range.selectNodeContents(paragraph);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      selectedText = selection.toString().trim();
+
+      await openAttachmentMenu(user);
       const btn = screen.getByRole("button", { name: "Attach reader selection" });
-      expect(btn).toBeEnabled();
-      return btn;
-    }, { timeout: 3_000 });
+      if (!(btn as HTMLButtonElement).disabled) {
+        attachSelection = btn;
+        break;
+      }
+      if (attempt >= 5) {
+        expect(btn).toBeEnabled(); // never captured — surface a clear failure
+        break;
+      }
+      await user.keyboard("{Escape}");
+    }
     expect(attachSelection).toHaveAttribute(
       "title",
       "Attach the selected text from the current concept",

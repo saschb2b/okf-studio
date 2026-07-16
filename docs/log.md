@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-16
+* **Update**: Stories became tests. The Vitest config split into `unit` (the jsdom CI gate) and `storybook` projects; `pnpm test:stories` renders all 55 stories headless in Playwright Chromium via `@storybook/addon-vitest`, executing each `play` function's interactions and assertions. Coverage grew to the whole component surface: the conversation items and a full Thread composition (440px and the 360px floor), the attachment picker, session-configuration rail, live-work shelf, permission card, both staging previews (the okf-proposal preview drives the real parser), the three hierarchy visualizations on the live type palette, and — via a `WithStore` harness booting the real `AppProvider` over the browser mock — the store-bound shell surfaces (status bar, top bar, empty state, sidebar).
 * **Update**: Added a Storybook 10 component playground ([Testing & Dogfooding](architecture/testing.md)). `pnpm storybook` (port 6006) builds stories through the app's own `vite.config.ts` and renders them on the real tokens with a dark/light toolbar toggle; `@storybook/addon-mcp` exposes an MCP endpoint (registered in the repo-root `.mcp.json`) so coding agents can enumerate components and author stories. Initial stories cover the agent conversation items (tool rows/cards with inline diff and command output, the three message roles, the plan card). The `?agent-gallery` fixture narrows to whole-panel compositions; per-component states now grow a story instead of the gallery mock.
 
 ## 2026-07-15

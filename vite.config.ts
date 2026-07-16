@@ -2,6 +2,7 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 
 const host = process.env.TAURI_DEV_HOST;
 const srcRoot = fileURLToPath(new URL("./src", import.meta.url));
@@ -38,9 +39,36 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    css: false,
+    // Two projects: the jsdom unit/interaction suite (the CI gate, `pnpm
+    // test`) and the Storybook story tests, which render every story with
+    // its play function in headless Chromium (`pnpm test:stories`; also what
+    // the Storybook UI/MCP test runner executes).
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          environment: "jsdom",
+          globals: true,
+          setupFiles: ["./src/test/setup.ts"],
+          css: false,
+        },
+      },
+      {
+        extends: true,
+        plugins: [
+          storybookTest({ configDir: fileURLToPath(new URL("./.storybook", import.meta.url)) }),
+        ],
+        test: {
+          name: "storybook",
+          browser: {
+            enabled: true,
+            provider: "playwright",
+            headless: true,
+            instances: [{ browser: "chromium" }],
+          },
+        },
+      },
+    ],
   },
 });

@@ -11,8 +11,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsgo --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:stories": "vitest run --project storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "tauri": "tauri"
@@ -55,6 +56,7 @@
     "@types/react-dom": "^19",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@vitejs/plugin-react": "^5",
+    "@vitest/browser": "^3.2.7",
     "axe-core": "^4.12.1",
     "babel-plugin-react-compiler": "^1",
     "eslint": "^9.39.4",
@@ -63,11 +65,12 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
     "jsdom": "^25",
+    "playwright": "^1.61.1",
     "storybook": "^10.5.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.62.1",
     "vite": "^6",
-    "vitest": "^3"
+    "vitest": "^3.2.7"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

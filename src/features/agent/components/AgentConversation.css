@@ -1354,11 +1354,27 @@
   font-size: var(--fs-xs);
 }
 
+/* Zed-style composer: an edge-to-edge editor docked to the panel bottom.
+   The top hairline is the only separator — no floating input box, no outer
+   padding around the editor. Ancillary rows (context chips, error rows)
+   stay inset; keyboard focus tints the hairline, since an edge-to-edge
+   editor has no box for an outline ring to wrap. */
 .agent-composer {
   display: grid;
   gap: var(--space-8);
-  padding: var(--space-12);
   border-top: 1px solid var(--border);
+}
+
+.agent-composer:has(textarea:focus-visible) {
+  border-top-color: var(--accent);
+}
+
+.agent-composer > :not(.agent-composer__input-shell) {
+  margin-inline: var(--space-12);
+}
+
+.agent-composer > :first-child:not(.agent-composer__input-shell) {
+  margin-top: var(--space-8);
 }
 
 .agent-queue {
@@ -2163,23 +2179,17 @@
   gap: var(--space-8);
 }
 
+/* The editor surface itself: flush with the panel, no box of its own.
+   The panel background is the editor background (Zed). */
 .agent-composer__input-shell {
   display: grid;
   min-width: 0;
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.agent-composer__input-shell:has(> textarea:focus-visible) {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .agent-composer__input-shell > textarea {
   width: 100%;
   min-width: 0;
-  padding: var(--space-8);
+  padding: var(--space-8) var(--space-12);
   color: var(--text);
   font: inherit;
   line-height: var(--lh-normal);
@@ -2198,7 +2208,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  padding: 0 var(--space-8) var(--space-8);
+  padding: 0 var(--space-12) var(--space-8);
 }
 
 .agent-composer__leading-actions {

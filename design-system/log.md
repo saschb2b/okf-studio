@@ -1,3 +1,6 @@
+## 2026-07-16
+* **Creation**: A [function-first](guidelines/function-first.md) guideline capturing the Zed power-tool stance: docked surfaces (composer, shelves, status strips) run edge-to-edge behind a single hairline; radius and enclosing borders are reserved for floating surfaces (popovers, dialogs) and blocks inside a scrolling document; keyboard focus on an edge-to-edge editor tints the hairline instead of drawing a ring. The desktop app's agent composer is the worked case and was reworked to match. Overview gains the matching principle; indexed.
+
 ## 2026-07-12
 * **Update**: Updated the hero and feature-card examples to the shipped Studio proposition: connected knowledge, an explicit ACP agent connection, and no implied bundle write. Component structure, tokens, and behavior remain unchanged.
 

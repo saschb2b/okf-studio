@@ -32,6 +32,7 @@ Dark-first, zed.dev-inspired visual language for the OKF Studio marketing and do
 
 # Guidelines
 * [Dark-first, never flat black](guidelines/dark-first.md) - Near-black surfaces with defined edges.
+* [Function first, edge to edge](guidelines/function-first.md) - Docked tool surfaces run edge-to-edge behind a hairline; radius is for what floats.
 
 # Subdirectories
 * [foundations/](foundations/) - The design language as tokens.

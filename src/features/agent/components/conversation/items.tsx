@@ -142,6 +142,7 @@ export function applyTurnEvent(
         status: toolUpdate.status ?? existing?.status ?? "pending",
         locations: toolUpdate.locations ?? existing?.locations ?? [],
         changeState: toolUpdate.changeState ?? existing?.changeState ?? null,
+        content: toolUpdate.content ?? existing?.content ?? [],
       };
       if (index < 0) return [...current, tool];
       return current.map((item, itemIndex) => itemIndex === index ? tool : item);
@@ -265,6 +266,52 @@ const TOOL_STATUS_LABEL = {
   unknown: "Status unknown",
 } as const;
 
+/** One unified-diff line's display class: added, removed, hunk header, context. */
+function diffLineClass(line: string): string {
+  if (line.startsWith("+")) return "agent-tool__diff-line--added";
+  if (line.startsWith("-")) return "agent-tool__diff-line--removed";
+  if (line.startsWith("@@")) return "agent-tool__diff-line--hunk";
+  return "agent-tool__diff-line--context";
+}
+
+/**
+ * Zed-style inline tool content: a reported file diff rendered line-by-line
+ * with added/removed tinting, or a mono block of output text. The host bounds
+ * both and marks truncation.
+ */
+function ToolContent({ content }: { content: ConversationTool["content"] }) {
+  if (content.length === 0) return null;
+  return (
+    <>
+      {content.map((item, index) =>
+        item.kind === "diff" ? (
+          <div key={`diff-${item.path}-${index}`} className="agent-tool__diff">
+            <small className="agent-tool__diff-path" title={item.path}>{item.path}</small>
+            <pre>
+              {item.diff.replace(/\n$/, "").split("\n").map((line, lineIndex) => (
+                <span
+                  // Line identity is positional within one immutable snapshot.
+                  key={lineIndex}
+                  className={`agent-tool__diff-line ${diffLineClass(line)}`}
+                >
+                  {line}
+                  {"\n"}
+                </span>
+              ))}
+            </pre>
+            {item.truncated && <small>Diff truncated for display.</small>}
+          </div>
+        ) : (
+          <div key={`text-${index}`} className="agent-tool__output">
+            <pre>{item.text}</pre>
+            {item.truncated && <small>Output truncated for display.</small>}
+          </div>
+        ),
+      )}
+    </>
+  );
+}
+
 function ToolChangeState({ tool }: { tool: ConversationTool }) {
   if (!tool.changeState) return null;
   return (
@@ -288,7 +335,9 @@ export function ToolCard({ tool }: { tool: ConversationTool }) {
     ? TOOL_STATUS_LABEL[tool.status]
     : null;
 
-  if (meta.shape === "row") {
+  // A call that reported content (a diff, output text) always renders as a
+  // card so the content has a body to live in — Zed's expandable-entry rule.
+  if (meta.shape === "row" && tool.content.length === 0) {
     // One location whose path the title already names would be noise; show it
     // only when it adds information.
     const soleLocation = tool.locations.length === 1 &&
@@ -317,7 +366,8 @@ export function ToolCard({ tool }: { tool: ConversationTool }) {
   }
 
   const isCommand = tool.toolKind === "execute";
-  const hasBody = isCommand || tool.locations.length > 0 || tool.changeState !== null;
+  const hasBody = isCommand || tool.content.length > 0 ||
+    tool.locations.length > 0 || tool.changeState !== null;
   return (
     <article
       className={`agent-tool agent-tool--card agent-tool--${tool.status}`}
@@ -335,6 +385,7 @@ export function ToolCard({ tool }: { tool: ConversationTool }) {
       {hasBody && (
         <div className="agent-tool__body">
           {isCommand && <code>{tool.title}</code>}
+          <ToolContent content={tool.content} />
           <ToolChangeState tool={tool} />
           <ToolLocations locations={tool.locations} />
         </div>

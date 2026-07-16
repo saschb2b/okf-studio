@@ -43,6 +43,7 @@ pub(crate) enum AgentTurnUpdate {
         status: Option<&'static str>,
         locations: Option<Vec<AgentToolLocationInfo>>,
         change_state: Option<&'static str>,
+        content: Option<Vec<AgentToolContentInfo>>,
     },
     Usage {
         used_tokens: u64,
@@ -77,6 +78,29 @@ pub(crate) struct AgentUsageCostInfo {
 pub(crate) struct AgentToolLocationInfo {
     pub(crate) path: String,
     pub(crate) line: Option<u32>,
+}
+
+/// Inline tool-call content for the conversation (Zed-style expandable
+/// bodies): a reported file diff rendered as bounded unified-diff text, or a
+/// bounded block of output text. Terminal references and non-text blocks are
+/// dropped — the host runs no ACP terminals and the webview renders no
+/// untrusted embeds.
+#[derive(Clone, Debug, Serialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "kebab-case",
+    rename_all_fields = "camelCase"
+)]
+pub(crate) enum AgentToolContentInfo {
+    Diff {
+        path: String,
+        diff: String,
+        truncated: bool,
+    },
+    Text {
+        text: String,
+        truncated: bool,
+    },
 }
 
 pub(crate) type TurnEventSink = Arc<dyn Fn(AgentTurnEvent) + Send + Sync>;
@@ -146,6 +170,7 @@ pub(crate) fn turn_event_with_change_state(
                 tool.locations,
             )),
             change_state,
+            content: Some(reduced_tool_content(sessions, &session_id, &tool.content)),
         },
         SessionUpdate::ToolCallUpdate(update) => AgentTurnUpdate::ToolCall {
             tool_call_id: bounded_tool_field(&update.tool_call_id.to_string()),
@@ -157,6 +182,11 @@ pub(crate) fn turn_event_with_change_state(
                 .locations
                 .map(|locations| reduced_tool_locations(sessions, &session_id, locations)),
             change_state,
+            content: update
+                .fields
+                .content
+                .as_ref()
+                .map(|content| reduced_tool_content(sessions, &session_id, content)),
         },
         SessionUpdate::UsageUpdate(usage) => reduced_usage_update(usage),
         _ => return None,
@@ -188,6 +218,84 @@ pub(crate) fn reported_diffs(notification: &SessionNotification) -> Option<Vec<A
         .take(MAX_STAGED_FILES + 1)
         .collect::<Vec<_>>();
     (!diffs.is_empty()).then_some(diffs)
+}
+
+/// Reduce ACP tool-call content blocks to the bounded display items the
+/// conversation renders. Diffs become unified-diff text (the same `similar`
+/// rendering the staging review uses); text blocks are control-filtered and
+/// capped. Anything else (terminal refs, images, resources) is dropped.
+pub(crate) fn reduced_tool_content(
+    sessions: &Mutex<HashMap<String, PathBuf>>,
+    session_id: &str,
+    content: &[ToolCallContent],
+) -> Vec<AgentToolContentInfo> {
+    let bundle_root = sessions
+        .lock()
+        .ok()
+        .and_then(|sessions| sessions.get(session_id).cloned());
+    content
+        .iter()
+        .filter_map(|item| match item {
+            ToolCallContent::Diff(diff) => {
+                let path = displayed_content_path(bundle_root.as_deref(), &diff.path)?;
+                let (diff, truncated) =
+                    bounded_unified_diff(diff.old_text.as_deref().unwrap_or(""), &diff.new_text);
+                Some(AgentToolContentInfo::Diff {
+                    path,
+                    diff,
+                    truncated,
+                })
+            }
+            ToolCallContent::Content(chunk) => {
+                let ContentBlock::Text(text) = &chunk.content else {
+                    return None;
+                };
+                let (text, truncated) = bounded_content_text(&text.text);
+                (!text.trim().is_empty())
+                    .then_some(AgentToolContentInfo::Text { text, truncated })
+            }
+            _ => None,
+        })
+        .take(MAX_TOOL_CONTENT_ITEMS)
+        .collect()
+}
+
+/// The path shown above an inline diff — bundle-relative, and only when the
+/// file is inside the session's bundle root. An out-of-bundle diff is dropped
+/// entirely, matching the tool-location policy: neither its path nor its
+/// text crosses the IPC boundary.
+fn displayed_content_path(bundle_root: Option<&Path>, path: &Path) -> Option<String> {
+    let root = bundle_root?;
+    reduced_tool_location(root, ToolCallLocation::new(path.to_path_buf()))
+        .map(|location| location.path)
+}
+
+fn bounded_unified_diff(old_text: &str, new_text: &str) -> (String, bool) {
+    let text_diff = similar::TextDiff::from_lines(old_text, new_text);
+    let mut rendered = String::new();
+    let mut used_chars = 0usize;
+    let mut truncated = false;
+    for hunk in text_diff.unified_diff().context_radius(3).iter_hunks() {
+        let hunk = hunk.to_string();
+        let hunk_chars = hunk.chars().count();
+        if used_chars + hunk_chars > MAX_TOOL_CONTENT_CHARS {
+            truncated = true;
+            break;
+        }
+        used_chars += hunk_chars;
+        rendered.push_str(&hunk);
+    }
+    (rendered, truncated)
+}
+
+fn bounded_content_text(text: &str) -> (String, bool) {
+    let bounded: String = text
+        .chars()
+        .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
+        .take(MAX_TOOL_CONTENT_CHARS)
+        .collect();
+    let truncated = text.chars().count() > MAX_TOOL_CONTENT_CHARS;
+    (bounded, truncated)
 }
 
 pub(crate) fn reduced_tool_locations(

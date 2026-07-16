@@ -1,4 +1,4 @@
-import type { AgentPlanEntryInfo, AgentToolKind, AgentToolLocationInfo, AgentToolStatus, AgentPermissionEvent, AgentSessionConfigValueInput, AgentSessionHistoryInfo, AgentStagedValidationInfo, AgentTurnEvent } from "@/features/agent/connection.ts";
+import type { AgentPlanEntryInfo, AgentToolContentInfo, AgentToolKind, AgentToolLocationInfo, AgentToolStatus, AgentPermissionEvent, AgentSessionConfigValueInput, AgentSessionHistoryInfo, AgentStagedValidationInfo, AgentTurnEvent } from "@/features/agent/connection.ts";
 import type { AgentSourceInput } from "@/shared/ipc.ts";
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
 import type { Issue } from "@/shared/types.ts";
@@ -33,6 +33,7 @@ export interface ConversationTool {
   status: AgentToolStatus | "cancelled";
   locations: readonly AgentToolLocationInfo[];
   changeState: "staged" | "not-staged" | null;
+  content: readonly AgentToolContentInfo[];
 }
 
 export type ConversationItem = ConversationMessage | ConversationPlan | ConversationTool;

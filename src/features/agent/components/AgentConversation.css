@@ -936,6 +936,61 @@
   overflow-wrap: anywhere;
 }
 
+/* Inline tool content: reported diffs and output text (Zed-style bodies).
+   The diff recipe matches the staged-review hunks so both diff surfaces in
+   the app read as one system. */
+.agent-tool__diff,
+.agent-tool__output {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.agent-tool__diff-path {
+  overflow: hidden;
+  font-family: var(--mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.agent-tool__diff pre,
+.agent-tool__output pre {
+  display: grid;
+  margin: 0;
+  padding: var(--space-6);
+  overflow: auto;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.agent-tool__output pre {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.agent-tool__diff-line {
+  min-width: max-content;
+  white-space: pre;
+}
+
+.agent-tool__diff-line--added {
+  color: var(--ok);
+}
+
+.agent-tool__diff-line--removed {
+  color: var(--error);
+}
+
+.agent-tool__diff-line--hunk {
+  color: var(--accent);
+}
+
 .agent-tool small {
   color: var(--text-dim);
   font-size: var(--fs-xs);

@@ -1822,6 +1822,16 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
             { path: "product/overview.md", line: 12 },
             { path: "features/agent-panel.md", line: 49 },
           ],
+      // Reported-change turns carry an inline diff so the Zed-style diff
+      // body renders in browser dev mode and in tests.
+      content: reportsChange
+        ? [{
+            kind: "diff",
+            path: "product/overview.md",
+            diff: "@@ -1,2 +1,2 @@\n The product overview.\n-The old scope line.\n+The revised scope line.\n",
+            truncated: false,
+          }]
+        : null,
     },
   });
   emitAgentTurn({
@@ -1929,6 +1939,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
       status: "completed",
       locations: null,
       changeState,
+      content: null,
     },
   });
   emitAgentTurn({
@@ -1991,6 +2002,7 @@ async function emitMockLocalTool(
       status: "in-progress",
       locations: null,
       changeState: null,
+      content: null,
     },
   });
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -2006,6 +2018,7 @@ async function emitMockLocalTool(
       status: succeeds ? "completed" : "failed",
       locations: null,
       changeState,
+      content: null,
     },
   });
   return true;

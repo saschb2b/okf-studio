@@ -55,7 +55,7 @@ mod session_config;
 mod turn;
 pub use turn::AgentTurnInfo;
 #[cfg(test)]
-use turn::{reduced_usage_update, AgentUsageCostInfo};
+use turn::{reduced_usage_update, AgentToolContentInfo, AgentUsageCostInfo};
 use turn::{
     bounded_tool_field, remove_active_turn, reported_diffs, stop_reason_name, tool_kind_name,
     turn_event, turn_event_with_change_state, AgentTurnEvent, AgentTurnUpdate, TurnEventSink,
@@ -91,6 +91,11 @@ const MAX_PLAN_ENTRY_CHARS: usize = 1024;
 const MAX_TOOL_FIELD_CHARS: usize = 512;
 const MAX_TOOL_LOCATIONS: usize = 8;
 const MAX_TOOL_PATH_CHARS: usize = 1024;
+// Inline tool-call content (reported diffs, output text) rendered in the
+// conversation, per item and per call. Display context only — distinct from
+// the staging pipeline's MAX_DIFF_CHARS, which bounds the reviewed write.
+const MAX_TOOL_CONTENT_ITEMS: usize = 4;
+const MAX_TOOL_CONTENT_CHARS: usize = 16 * 1024;
 const MAX_SAFE_USAGE_TOKENS: u64 = 9_007_199_254_740_991;
 const MAX_USAGE_COST: f64 = 1_000_000_000_000.0;
 const MAX_AGENT_READ_BYTES: usize = 1024 * 1024;
@@ -827,6 +832,7 @@ async fn run_local_connection(
                                         tool_kind: Some(tool_kind),
                                         status: Some("in-progress"),
                                         locations: None,
+                                        content: None,
                                         change_state: None,
                                     },
                                 });
@@ -881,6 +887,7 @@ async fn run_local_connection(
                                             "failed"
                                         }),
                                         locations: None,
+                                        content: None,
                                         change_state: if result.is_ok() {
                                             change_state
                                         } else {
@@ -3488,6 +3495,7 @@ mod tests {
             tool_kind: Some("read"),
             status: Some("pending"),
             locations: None,
+            content: None,
             change_state: None,
         })
         .expect("serialize tool call");
@@ -3618,11 +3626,13 @@ mod tests {
             status,
             locations,
             change_state,
+            content,
         } = event.update
         else {
             panic!("expected a tool update");
         };
         assert_eq!(tool_call_id, "tool-secret");
+        assert!(content.expect("content reduction ran").is_empty());
         assert_eq!(title.expect("title").chars().count(), MAX_TOOL_FIELD_CHARS);
         assert_eq!(tool_kind, Some("search"));
         assert_eq!(status, Some("in-progress"));
@@ -3694,9 +3704,82 @@ mod tests {
                 ..
             }
         ));
+        // The session has no bundle root here, so the diff is out-of-bundle
+        // by definition and neither its path nor its text may cross the IPC
+        // boundary. Plain text content is display output and does cross,
+        // bounded (see reduces_tool_content_to_bounded_display_items).
         assert!(!debug.contains("old text"));
         assert!(!debug.contains("new text"));
-        assert!(!debug.contains("must not enter staging"));
+        assert!(debug.contains("must not enter staging"));
+    }
+
+    #[test]
+    fn reduces_tool_content_to_bounded_display_items() {
+        let bundle_root = std::env::temp_dir().join(format!(
+            "okf-studio-tool-content-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let active_turns = Mutex::new(HashMap::from([(
+            "session-tool".to_string(),
+            "turn-tool".to_string(),
+        )]));
+        let sessions = Mutex::new(HashMap::from([(
+            "session-tool".to_string(),
+            bundle_root.clone(),
+        )]));
+        let event = turn_event(
+            "connection-tool",
+            &active_turns,
+            &sessions,
+            SessionNotification::new(
+                "session-tool",
+                SessionUpdate::ToolCall(ToolCall::new("tool-content", "Edit the bundle").content(
+                    vec![
+                        Diff::new(bundle_root.join("concepts").join("orders.md"), "new line\n")
+                            .old_text("old line\n")
+                            .into(),
+                        Diff::new(bundle_root.with_file_name("outside-secret.md"), "leak\n")
+                            .old_text("hidden\n")
+                            .into(),
+                        ContentBlock::Text(TextContent::new(format!(
+                            "terminal output\u{0000} {}",
+                            "y".repeat(MAX_TOOL_CONTENT_CHARS)
+                        )))
+                        .into(),
+                    ],
+                )),
+            ),
+        )
+        .expect("tool content event");
+        let debug = format!("{event:?}");
+        let AgentTurnUpdate::ToolCall { content, .. } = event.update else {
+            panic!("expected a tool update");
+        };
+        let content = content.expect("content present");
+        assert_eq!(content.len(), 2);
+        let AgentToolContentInfo::Diff {
+            path,
+            diff,
+            truncated,
+        } = &content[0]
+        else {
+            panic!("expected a diff item");
+        };
+        assert_eq!(path, "concepts/orders.md");
+        assert!(diff.contains("-old line"));
+        assert!(diff.contains("+new line"));
+        assert!(!truncated);
+        let AgentToolContentInfo::Text { text, truncated } = &content[1] else {
+            panic!("expected a text item");
+        };
+        assert!(text.starts_with("terminal output"));
+        assert!(!text.contains('\u{0000}'));
+        assert!(text.chars().count() <= MAX_TOOL_CONTENT_CHARS);
+        assert!(truncated);
+        // The out-of-bundle diff is dropped whole: no path, no text.
+        assert!(!debug.contains("outside-secret"));
+        assert!(!debug.contains("hidden"));
+        assert!(!debug.contains("leak"));
     }
 
     #[test]
@@ -4883,6 +4966,7 @@ mod tests {
                 status: Some("in-progress"),
                 locations: Some(locations),
                 change_state: None,
+                ..
             } if tool_call_id == "tool-search"
                 && title == "Search the bundle"
                 && locations.len() == 1
@@ -4898,6 +4982,7 @@ mod tests {
                 tool_kind: None,
                 status: Some("completed"),
                 locations: None,
+                content: None,
                 change_state: None,
             } if tool_call_id == "tool-search"
         ));

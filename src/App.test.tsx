@@ -1556,6 +1556,14 @@ describe("OKF Studio app", () => {
     expect(await screen.findByText("Browser ACP staged: proposals/draft.md"))
       .toBeInTheDocument();
     expect(screen.getByText("Change staged for review")).toBeInTheDocument();
+    // The reported change renders its Zed-style inline diff in the tool
+    // card: bundle-relative path plus tinted added/removed lines.
+    const editCard = screen.getAllByRole("article", { name: "Tool: Edit the bundle" }).at(-1);
+    if (!editCard) throw new Error("The edit tool card was not rendered.");
+    expect(editCard).toHaveClass("agent-tool--card");
+    expect(within(editCard).getByText("product/overview.md")).toBeInTheDocument();
+    expect(within(editCard).getByText("-The old scope line.")).toBeInTheDocument();
+    expect(within(editCard).getByText("+The revised scope line.")).toBeInTheDocument();
     expect(await screen.findByText("Staged changes")).toBeInTheDocument();
     expect(screen.getByText("proposals/draft.md")).toBeInTheDocument();
     expect(screen.getByText(/not applied to the bundle/)).toBeInTheDocument();

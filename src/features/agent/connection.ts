@@ -173,6 +173,15 @@ export interface AgentToolLocationInfo {
   line: number | null;
 }
 
+/**
+ * Inline tool-call content the host reduces from ACP content blocks: a
+ * reported file diff as bounded unified-diff text (bundle-relative path,
+ * in-bundle files only), or a bounded block of output text.
+ */
+export type AgentToolContentInfo =
+  | { kind: "diff"; path: string; diff: string; truncated: boolean }
+  | { kind: "text"; text: string; truncated: boolean };
+
 export type AgentPermissionOptionKind =
   | "allow-once"
   | "allow-always"
@@ -213,6 +222,7 @@ export interface AgentTurnEvent extends AgentTurnInfo {
         status: AgentToolStatus | null;
         locations: readonly AgentToolLocationInfo[] | null;
         changeState: "staged" | "not-staged" | null;
+        content: readonly AgentToolContentInfo[] | null;
       }
     | {
         kind: "usage";

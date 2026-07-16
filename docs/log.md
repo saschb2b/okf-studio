@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-17
+* **Update**: Closed the final WP10C live-work shelf gate with one deterministic pressure fixture containing a blocking permission, live plan, staged review, and queued follow-up at once. Rendered 360px, 440px, and 560px panels keep the composer fully visible, have no horizontal overflow, use independent nested scroll regions, retain collapse focus, put the permission decision first in keyboard order, and add no live region beyond the single delivery-failure alert. The audit fixed a non-shrinking shelf that clipped the narrow composer and raised the permission checkbox label from an 18px to a 24px hit area.
 * **Update**: Reworked the [first-run](ux/first-run.md) empty state from a row of three equal buttons (plus a detached shortcut line, a dense explainer, and the example buried as a footnote) into a single **welcome action list**: brand mark, one tagline, then four rows — open folder (primary, accented), create new bundle, open from URL, try the example — each with a one-line description naming who it serves and its shortcut inline, closed by one line of trust fine print. [Empty & Error States](ux/empty-and-error-states.md) updated to match, and the "no bundles found" state now offers creating a bundle beside re-picking.
 
 ## 2026-07-16

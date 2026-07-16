@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-15T12:00:00Z
+timestamp: 2026-07-16T23:26:05Z
 ---
 
 # Outcome
@@ -262,7 +262,7 @@ The transcript should answer what happened. A compact shelf directly above the c
 - [x] Keep the staged OKF transaction, validation, Apply, and Restore model intact. The shelf summarizes its state and expands the existing review; it does not adopt Zed's direct editor-write assumptions.
 - [x] Move the follow-up queue into the same shelf contract. Edit, remove, send-next, and Stop remain reachable without scrolling the transcript.
 - [x] Persist disclosure state per live thread, but reset it when the owning content disappears. Switching threads must reveal that thread's blocking section immediately even if it was previously collapsed.
-- [ ] Prove maximum-height, nested-scroll, keyboard order, live-region restraint, and focus return at 360px, the default width, and 560px with every section populated.
+- [x] Prove maximum-height, nested-scroll, keyboard order, live-region restraint, and focus return at 360px, the default width, and 560px with every section populated.
 
 Gate: a user can always see why the agent is waiting, what step is running, what writes are staged, and what message is queued without hunting through the transcript.
 

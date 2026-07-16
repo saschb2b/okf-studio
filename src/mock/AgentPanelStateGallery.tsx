@@ -35,6 +35,7 @@ const SCENARIOS = [
   { id: "session-dynamic", label: "Dynamic option removal" },
   { id: "session-pending", label: "Session change pending" },
   { id: "session-failure", label: "Session change failure" },
+  { id: "live-work-max", label: "All live work" },
   { id: "active-queue", label: "Active turn and queue" },
   { id: "permission", label: "Permission request" },
   { id: "staged", label: "Staged changes" },
@@ -303,6 +304,7 @@ function ScenarioBody({ scenario }: { scenario: Exclude<ScenarioId, "first-use" 
   if (scenario === "session-failure") {
     return <SessionControls title="Model change failed" configState="failure" />;
   }
+  if (scenario === "live-work-max") return <AllLiveWork />;
   if (scenario === "active-queue") return <ActiveQueue />;
   if (scenario === "permission") return <PermissionRequest />;
   return <StagedChanges />;
@@ -477,15 +479,8 @@ function ActiveQueue() {
     <ConversationLayout composer={(
       <>
         <AgentLiveWorkShelf summary="1 of 3 complete · 1 queued message">
-          <details className="agent-live-plan" open>
-            <summary><span className="agent-plan__icon"><ListChecks size={15} aria-hidden="true" /></span><span><strong>Plan</strong><span>Trace source references</span></span><small>1 complete · 2 remaining</small></summary>
-            <ol><li className="agent-plan__entry agent-plan__entry--completed"><Check size={14} aria-hidden="true" /><span>Find conflicting claims</span><small>Completed</small></li><li className="agent-plan__entry agent-plan__entry--in-progress"><CircleDot size={14} aria-hidden="true" /><span>Trace source references</span><small>In progress</small></li><li className="agent-plan__entry agent-plan__entry--pending"><Circle size={14} aria-hidden="true" /><span>Prepare a cited summary</span><small>Pending</small></li></ol>
-          </details>
-          <section className="agent-queue" aria-label="Next message">
-            <div><strong>Next message</strong><span>1 attachment</span></div>
-            <p>Compare the remaining source notes after this turn finishes.</p>
-            <div className="agent-queue__actions"><button type="button" className="btn ghost">Edit</button><button type="button" className="btn ghost">Remove</button></div>
-          </section>
+          <LivePlanFixture />
+          <QueuedPromptFixture />
         </AgentLiveWorkShelf>
         <Composer active queued />
       </>
@@ -507,18 +502,7 @@ function PermissionRequest() {
         <AgentLiveWorkShelf
           summary="1 decision"
           collapsible={false}
-          blockingContent={(
-            <section className="agent-permission" aria-label="Permission request">
-              <ShieldCheck size={18} aria-hidden="true" />
-              <div className="agent-permission__body">
-                <h3>Allow Read generated report?</h3>
-                <p>The agent is waiting for your decision.</p>
-                <p className="agent-permission__error" role="alert">The response could not be delivered. The request is still active.</p>
-                <div className="agent-permission__actions"><button type="button" className="btn primary">Allow once</button><button type="button" className="btn ghost">Reject</button></div>
-                <label className="agent-permission__remember"><input type="checkbox" />Remember this exact request for this thread</label>
-              </div>
-            </section>
-          )}
+          blockingContent={<PermissionFixture />}
         />
         <Composer />
       </>
@@ -533,22 +517,104 @@ function StagedChanges() {
     <ConversationLayout composer={(
       <>
         <AgentLiveWorkShelf summary="3 staged files">
-        <section className="agent-staged" aria-label="Staged changes">
-          <header><strong>Enhancement draft</strong><span>3 files · not applied to the bundle</span><div className="agent-staged__actions"><button type="button" className="btn ghost">Validate</button><button type="button" className="btn ghost">Discard all</button></div></header>
-          <div className="agent-staged__operation-error"><p role="alert" title="The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.">Staging action failed. The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.</p><button type="button" className="btn ghost"><RotateCcw size={14} aria-hidden="true" />Retry discard</button></div>
-          <ul>
-            <StagedFile path="product/customer-evidence-and-source-reconciliation.md" kind="Modified" />
-            <StagedFile path="architecture/agent-system.md" kind="Modified" />
-            <StagedFile path="index.md" kind="New file" />
-          </ul>
-          <p>Review or reject staged files, then validate the selected result.</p>
-        </section>
+          <StagedChangesFixture showFailure />
         </AgentLiveWorkShelf>
         <Composer />
       </>
     )}>
       <Message label="Agent">The proposed additions are staged for your review.</Message>
     </ConversationLayout>
+  );
+}
+
+function AllLiveWork() {
+  return (
+    <ConversationLayout composer={(
+      <>
+        <AgentLiveWorkShelf
+          summary="1 decision · 1 of 3 complete · 3 staged files · 1 queued message"
+          blockingContent={<PermissionFixture />}
+        >
+          <LivePlanFixture />
+          <StagedChangesFixture />
+          <QueuedPromptFixture />
+        </AgentLiveWorkShelf>
+        <Composer active queued />
+      </>
+    )}>
+      <Message label="You">Reconcile the source claims and prepare reviewed updates.</Message>
+      <article className="agent-tool agent-tool--row agent-tool--in-progress" aria-label="Tool: Search bundle sources">
+        <span className="agent-tool__icon" aria-hidden="true"><SearchIcon size={14} /></span>
+        <span className="agent-tool__title">Search bundle sources</span>
+      </article>
+      <Message label="Agent">I need one decision before I can finish the staged update.</Message>
+    </ConversationLayout>
+  );
+}
+
+function PermissionFixture() {
+  return (
+    <section className="agent-permission" aria-label="Permission request">
+      <ShieldCheck size={18} aria-hidden="true" />
+      <div className="agent-permission__body">
+        <h3>Allow Read generated report?</h3>
+        <p>The agent is waiting for your decision.</p>
+        <p className="agent-permission__error" role="alert">
+          The response could not be delivered. The request is still active.
+        </p>
+        <div className="agent-permission__actions">
+          <button type="button" className="btn primary">Allow once</button>
+          <button type="button" className="btn ghost">Reject</button>
+        </div>
+        <label className="agent-permission__remember">
+          <input type="checkbox" />Remember this exact request for this thread
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function LivePlanFixture() {
+  return (
+    <details className="agent-live-plan" open>
+      <summary>
+        <span className="agent-plan__icon"><ListChecks size={15} aria-hidden="true" /></span>
+        <span><strong>Plan</strong><span>Trace source references</span></span>
+        <small>1 complete · 2 remaining</small>
+      </summary>
+      <ol>
+        <li className="agent-plan__entry agent-plan__entry--completed"><Check size={14} aria-hidden="true" /><span>Find conflicting claims</span><small>Completed</small></li>
+        <li className="agent-plan__entry agent-plan__entry--in-progress"><CircleDot size={14} aria-hidden="true" /><span>Trace source references</span><small>In progress</small></li>
+        <li className="agent-plan__entry agent-plan__entry--pending"><Circle size={14} aria-hidden="true" /><span>Prepare a cited summary</span><small>Pending</small></li>
+      </ol>
+    </details>
+  );
+}
+
+function StagedChangesFixture({ showFailure = false }: { showFailure?: boolean }) {
+  return (
+    <section className="agent-staged" aria-label="Staged changes">
+      <header><strong>Enhancement draft</strong><span>3 files · not applied to the bundle</span><div className="agent-staged__actions"><button type="button" className="btn ghost">Validate</button><button type="button" className="btn ghost">Discard all</button></div></header>
+      {showFailure && (
+        <div className="agent-staged__operation-error"><p role="alert" title="The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.">Staging action failed. The staging service returned a deliberately long diagnostic. The draft remains unchanged and safe to retry.</p><button type="button" className="btn ghost"><RotateCcw size={14} aria-hidden="true" />Retry discard</button></div>
+      )}
+      <ul>
+        <StagedFile path="product/customer-evidence-and-source-reconciliation.md" kind="Modified" />
+        <StagedFile path="architecture/agent-system.md" kind="Modified" />
+        <StagedFile path="index.md" kind="New file" />
+      </ul>
+      <p>Review or reject staged files, then validate the selected result.</p>
+    </section>
+  );
+}
+
+function QueuedPromptFixture() {
+  return (
+    <section className="agent-queue" aria-label="Next message">
+      <div><strong>Next message</strong><span>1 attachment</span></div>
+      <p>Compare the remaining source notes after this turn finishes.</p>
+      <div className="agent-queue__actions"><button type="button" className="btn ghost">Edit</button><button type="button" className="btn ghost">Remove</button></div>
+    </section>
   );
 }
 

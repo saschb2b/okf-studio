@@ -3,7 +3,7 @@ type: UX Review
 title: Agent Workspace Dogfood
 description: Journey evidence and open findings from the WP10A Agent Panel refinement.
 tags: [ux, agent-panel, dogfood, accessibility]
-timestamp: 2026-07-14T15:10:00Z
+timestamp: 2026-07-16T23:26:05Z
 ---
 
 # Scope
@@ -44,10 +44,24 @@ The three fixtures deliberately use different high-pressure states instead of re
 
 ![Staged edits and recovery at a 560px panel width](agent-workspace-after-560.png)
 
+# Live-work pressure evidence
+
+The WP10C pressure fixture mounts a failed permission response, an expanded three-step plan, three staged files, and one queued follow-up at once. The screenshots below use the same 1280x720 browser viewport and vary only the nominal panel width.
+
+![Every live-work section at a 360px panel width](agent-live-work-360.png)
+
+![Every live-work section at the 440px default panel width](agent-live-work-440.png)
+
+![Every live-work section at a 560px panel width](agent-live-work-560.png)
+
+At 360px, 440px, and 560px, the panel has no horizontal overflow and the composer remains fully visible. The blocking and non-blocking bands both become internal scroll owners under pressure. Visible buttons stay at least 28px high; the permission checkbox label supplies a 24px hit area. Tabbing from the collapse control reaches **Allow once** first. Collapsing retains focus on that control, keeps the blocking permission mounted, and removes the plan, staged review, and queue from the tab order. The shelf contains one deliberate delivery-failure alert and no additional `aria-live` regions.
+
 # Findings
 
 - **Untidy, Safe, fixed:** current and archived sessions both used primary Resume styling. Only the newest current candidate now receives primary emphasis.
 - **Untidy, Safe, fixed before capture:** staged-operation recovery could start below the staged file scroll, and a final-process failure could present two competing connection actions.
+- **Glaring, Safe, fixed:** the shelf used a non-shrinking flex basis, which clipped the composer when all four work sections were present in a short 360px panel. It now yields height to the composer and keeps both shelf bands scrollable.
+- **Glaring, Safe, fixed:** the permission checkbox label provided an 18px-high target. Its labelled hit area now meets the 24px floor.
 - **Nitpick, Judgment, retained:** staged graph labels use 9px text. They supplement the textual staged-file list; increasing them to the 12px text floor makes dense preview nodes overlap.
 
-No Glaring finding remains in these journeys. The next unresolved workspace gaps are capability-driven session controls and the compact live-work shelf defined by [WP10B and WP10C](../product/studio-roadmap.md).
+No Glaring finding remains in these journeys. The next dependency-ordered workspace work is thread navigation and context recovery in [WP10D](../product/studio-roadmap.md#wp10d-thread-navigation-and-context-lifecycle).

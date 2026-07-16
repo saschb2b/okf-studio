@@ -21,6 +21,7 @@ describe("AgentPanelStateGallery", () => {
     ["session-dynamic", "Reasoning option removed"],
     ["session-pending", "Model change pending"],
     ["session-failure", "Model change failed"],
+    ["live-work-max", "Allow Read generated report?"],
     ["active-queue", "Next message"],
     ["permission", "Allow Read generated report?"],
     ["staged", "Enhancement draft"],
@@ -102,5 +103,40 @@ describe("AgentPanelStateGallery", () => {
     expect(screen.getByRole("region", { name: "Permission request" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Allow once" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Collapse live work" })).not.toBeInTheDocument();
+  });
+
+  it.each([360, 440, 560])(
+    "keeps every live-work section mounted at %ipx",
+    (width) => {
+      window.history.replaceState(
+        null,
+        "",
+        `/?agent-gallery=live-work-max&width=${width}`,
+      );
+      render(<AgentPanelStateGallery />);
+
+      const shelf = screen.getByRole("region", { name: "Live work" });
+      expect(within(shelf).getByRole("region", { name: "Permission request" }))
+        .toBeVisible();
+      expect(within(shelf).getAllByText("Trace source references")).toHaveLength(2);
+      expect(within(shelf).getByRole("region", { name: "Staged changes" })).toBeVisible();
+      expect(within(shelf).getByRole("region", { name: "Next message" })).toBeVisible();
+      expect(within(shelf).getAllByRole("alert")).toHaveLength(1);
+      expect(shelf.querySelector("[aria-live]")).toBeNull();
+    },
+  );
+
+  it("keeps blocking work visible and focus stable when maximum live work collapses", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/?agent-gallery=live-work-max&width=360");
+    render(<AgentPanelStateGallery />);
+
+    const collapse = screen.getByRole("button", { name: "Collapse live work" });
+    await user.click(collapse);
+
+    expect(collapse).toHaveFocus();
+    expect(screen.getByRole("region", { name: "Permission request" })).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Staged changes" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Next message" })).not.toBeInTheDocument();
   });
 });

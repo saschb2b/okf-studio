@@ -1071,7 +1071,7 @@
 
 .agent-live-work {
   display: grid;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   max-height: min(360px, 44vh);
   min-height: 0;
   overflow: hidden;
@@ -1337,8 +1337,9 @@
 
 .agent-permission__remember {
   display: flex;
+  min-height: 24px;
   gap: var(--space-8);
-  align-items: flex-start;
+  align-items: center;
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
@@ -1346,7 +1347,6 @@
 
 .agent-permission__remember input {
   flex: none;
-  margin-top: var(--space-2);
 }
 
 .agent-permission__error {

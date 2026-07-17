@@ -1,7 +1,7 @@
 // A tiny in-memory OKF bundle so the UI renders (and tests run) without the
 // Rust backend. Mirrors the shape the core produces; backlinks/degree derived.
 
-import type { Bundle, BundleRoot, Concept, RecentBundle } from "../types.ts";
+import type { Bundle, BundleRoot, Concept, RecentBundle } from "@/shared/types.ts";
 
 export const MOCK_FOLDER = "/mock/workspace";
 
@@ -13,23 +13,23 @@ const raw: RawConcept[] = [
     id: "product/overview",
     type: "Product",
     title: "Overview",
-    description: "What OKF Viewer is and who it's for.",
+    description: "What OKF Studio is and who it's for.",
     tags: ["product", "vision"],
     timestamp: "2026-06-28T00:00:00Z",
     resource: null,
     extra: {},
     body:
       "## What it is\n\n" +
-      "A desktop app that renders [OKF](../reference/glossary.md) bundles as a [graph](../features/graph-view.md). It is built for the analyst who keeps a folder of markdown notes and wants to traverse the cross-links offline, without a server.\n\n" +
-      "> [!NOTE]\n> Everything ships in one binary — no signup, no telemetry, nothing leaves your machine.\n\n" +
+      "A local-first desktop workspace that renders [OKF](../reference/glossary.md) bundles as a [graph](../features/graph-view.md) and reader, with optional agent assistance for researching the active bundle.\n\n" +
+      "> [!NOTE]\n> Studio requires no account. Opening a folder stays read-only; agent processes and network actions start only when you choose them.\n\n" +
       "## How it works\n\n" +
-      "Point it at a folder; it finds every bundle inside and renders each as an interactive graph alongside this reader.\n\n" +
+      "Open a folder to find every bundle inside and render each as an interactive graph alongside this reader. Connect an agent only when you want to research the active bundle with explicit context.\n\n" +
       "### Pipeline\n\n" +
       "1. Scan the folder for bundles\n2. Parse each concept and its links\n3. Render the graph and the reader\n\n" +
       "```ts\nconst bundle = await readBundle(root);\nrenderGraph(bundle);\n```\n\n" +
       "### At a glance\n\n" +
       "| Stage | Runs in |\n| --- | --- |\n| Scan | Rust core |\n| Parse | Rust core |\n| Render | Frontend |\n\n" +
-      "> [!WARNING]\n> Broken cross-links are surfaced, never hidden — the viewer is a tolerant consumer.\n\n" +
+      "> [!WARNING]\n> Broken cross-links are surfaced, never hidden — Studio is a tolerant consumer.\n\n" +
       "## Who it's for\n\n" +
       "Engineers and agent builders who keep knowledge in their repos and want to *read* it, not just grep it.",
     links: ["features/graph-view", "reference/glossary"],
@@ -382,16 +382,16 @@ const designSystem: RawConcept[] = [
 
 export const MOCK_BUNDLE: Bundle = {
   root: `${MOCK_FOLDER}/docs`,
-  name: "OKF Viewer (sample)",
+  name: "OKF Studio (sample)",
   okfVersion: "0.1",
   odsfVersion: "0.1",
   concepts: finalize([...raw, ...designSystem, ...generated()]),
   indexes: [
     {
       dir: "",
-      title: "OKF Viewer (sample)",
+      title: "OKF Studio (sample)",
       intro:
-        "This is the built-in **sample bundle** — the viewer dogfooding itself. " +
+        "This is the built-in **sample bundle** — Studio dogfooding itself. " +
         "It renders the [OKF](reference/glossary.md) concepts in this folder as a graph you can browse, " +
         "search, and read. Start anywhere: the sidebar mirrors this index, and every folder is a door.",
       synthesized: false,
@@ -402,7 +402,7 @@ export const MOCK_BUNDLE: Bundle = {
             {
               title: "Overview",
               target: "product/overview",
-              description: "What OKF Viewer is and who it's for.",
+              description: "What OKF Studio is and who it's for.",
               kind: "concept",
             },
           ],
@@ -443,7 +443,7 @@ export const MOCK_BUNDLE: Bundle = {
         },
         {
           // A hand-written "Subdirectories" listing whose only entry (product/)
-          // is already a clickable section heading — the viewer drops this whole
+          // is already a clickable section heading — the renderer drops this whole
           // section as redundant, without touching the source bundle.
           heading: "Subdirectories",
           entries: [
@@ -462,7 +462,7 @@ export const MOCK_BUNDLE: Bundle = {
       // the root "Product" section heading becomes a door to this folder home.
       dir: "product",
       title: "Product",
-      intro: "Vision, audience, principles, and scope for OKF Viewer.",
+      intro: "Vision, audience, principles, and scope for OKF Studio.",
       synthesized: false,
       sections: [
         {
@@ -471,7 +471,7 @@ export const MOCK_BUNDLE: Bundle = {
             {
               title: "Overview",
               target: "product/overview",
-              description: "What OKF Viewer is and who it's for.",
+              description: "What OKF Studio is and who it's for.",
               kind: "concept",
             },
           ],
@@ -534,7 +534,7 @@ export const MOCK_BUNDLE: Bundle = {
     {
       date: "2026-06-27",
       entries: [
-        "**Creation**: Sample bundle for the viewer's empty-handed dev mode. Starts with the [Concept Reader](features/concept-reader.md) and the [OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog).",
+        "**Creation**: Sample bundle for Studio's empty-handed dev mode. Starts with the [Concept Reader](features/concept-reader.md) and the [OKF spec](https://github.com/GoogleCloudPlatform/knowledge-catalog).",
       ],
     },
   ],

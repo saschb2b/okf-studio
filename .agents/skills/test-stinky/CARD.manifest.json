@@ -1,0 +1,62 @@
+[
+  {
+    "path": "SKILL.md",
+    "sha256": "4d1a93cba8b0c429ba071467f8748193ad77f5b16621e338b6956bf4e06d7698"
+  },
+  {
+    "path": "permissions.yaml",
+    "sha256": "a59c33d37ea2d14fbd0b443829a952a6a6ff099c8ffcdc1f12ff6a8e9c8112aa"
+  },
+  {
+    "path": "references/catalog.md",
+    "sha256": "21b8c69325a52a94631cf9016650d42075e9f060772d224e5214b46ab5ba151d"
+  },
+  {
+    "path": "references/concepts/damp-vs-dry.md",
+    "sha256": "0b0cd891dd65eca5229f84fb6d9679792df19e8e033e4ba094f90babfe159290"
+  },
+  {
+    "path": "references/concepts/flakiness.md",
+    "sha256": "827948352d94359cd47efbf34a755b7b815958c8fa1f2e0a54b03e5dffdf4d5a"
+  },
+  {
+    "path": "references/concepts/hermeticity.md",
+    "sha256": "76f9d520aea0251f164fb2975505604ae9e3f42230a1fcdddaa36bce51eec3e6"
+  },
+  {
+    "path": "references/concepts/index.md",
+    "sha256": "d1a8cdba660b922e0a7604d46e1721e5b64501231d5765fc87abafd35c12a594"
+  },
+  {
+    "path": "references/concepts/mutation-testing.md",
+    "sha256": "dfdeeffb1aca823669e166872e90ffc8f2197da00aeab22db959857734faa151"
+  },
+  {
+    "path": "references/concepts/property-based-testing.md",
+    "sha256": "671b501525e06fc0cb753043ba41d2eba6a94e5bb2af55828e7c97ac1f0e1406"
+  },
+  {
+    "path": "references/concepts/test-doubles.md",
+    "sha256": "c829f992a0346fca4d4d1fabe875bbb14911aa95a8af854883d06625501c27b2"
+  },
+  {
+    "path": "references/concepts/test-pyramid.md",
+    "sha256": "66c2db71fccc0425e040c3ea323f0b4a41db66ac613f65859b572e305cec3fbf"
+  },
+  {
+    "path": "references/gates.md",
+    "sha256": "805207d1fd43a2dce9f5589b09e74d6504dc623d7d89751aeb9c16929a04250b"
+  },
+  {
+    "path": "references/index.md",
+    "sha256": "024c8fb6480dd951044bc3eeb29ba7593b93ade152974b60d733e10fbb7a65ab"
+  },
+  {
+    "path": "references/log.md",
+    "sha256": "0ec67008dcdc743393a8fdf1aab8038afd5c4c9febdbddb93807599ff9ba430b"
+  },
+  {
+    "path": "references/suite-pass.md",
+    "sha256": "6eae3000a0a12c87cd5ee59a9d3490c2e1b9c4068ff66499de49bcbc5612a1c9"
+  }
+]

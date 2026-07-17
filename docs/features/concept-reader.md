@@ -3,12 +3,14 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-07T00:00:00Z
+timestamp: 2026-07-12T00:00:00Z
 ---
 
 # What it does
 
 Selecting a node (in the [graph](graph-view.md) or [sidebar](navigation.md)) opens its concept in the reading pane. Reading is one of the app's core values, so the pane is designed as a *reading surface*, not a data inspector: a centered, typographically comfortable prose column, flanked by a quiet right rail that carries the document's outline, its relationships, and its metadata — so navigation context is visible without crowding the text.
+
+Selected reader text can be added explicitly to the [Agent Panel](agent-panel.md) from its compact context menu. Studio snapshots plain text only when that menu opens and only when the complete selection belongs to the currently displayed concept. The resulting source is bounded, removable, and labelled with a bundle-relative concept origin. Studio does not watch later selection changes or grant the agent file access.
 
 # Composition
 

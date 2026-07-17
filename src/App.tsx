@@ -1,35 +1,82 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import type * as React from "react";
-import { useApp, PANE_CLAMPS } from "./store.tsx";
-import { useGlobalKeys } from "./keys.ts";
-import { TopBar } from "./components/TopBar.tsx";
-import { ActivityBar } from "./components/ActivityBar.tsx";
-import { StatusBar } from "./components/StatusBar.tsx";
-import { Sidebar } from "./components/Sidebar.tsx";
-import { VizPane } from "./components/VizPane.tsx";
-import { Reader } from "./components/Reader.tsx";
-import { TabStrip } from "./components/TabStrip.tsx";
-import { CommandPalette } from "./components/CommandPalette.tsx";
-import { ValidationPanel } from "./components/ValidationPanel.tsx";
-import { LineagePanel } from "./components/LineagePanel.tsx";
-import { LogView } from "./components/LogView.tsx";
-import { Settings } from "./components/Settings.tsx";
-import { EmptyState } from "./components/EmptyState.tsx";
-import { OpenRemoteDialog } from "./components/OpenRemoteDialog.tsx";
-import { OverviewView } from "./components/OverviewView.tsx";
-import { ResizeHandles } from "./components/ResizeHandles.tsx";
-import { ShortcutsHelp } from "./components/ShortcutsHelp.tsx";
+import { useApp, paneClamp, workspaceFloor } from "@/shared/store.tsx";
+import { useGlobalKeys } from "@/keys.ts";
+import { TopBar } from "@/features/shell/components/TopBar.tsx";
+import { ActivityBar } from "@/features/shell/components/ActivityBar.tsx";
+import { StatusBar } from "@/features/shell/components/StatusBar.tsx";
+import { Sidebar } from "@/features/navigation/components/Sidebar.tsx";
+import { VizPane } from "@/features/viz/components/VizPane.tsx";
+import { Reader } from "@/features/reader/components/Reader.tsx";
+import { TabStrip } from "@/features/shell/components/TabStrip.tsx";
+import { CommandPalette } from "@/features/shell/components/CommandPalette.tsx";
+import { ValidationPanel } from "@/features/shell/components/ValidationPanel.tsx";
+import { LineagePanel } from "@/features/reader/components/LineagePanel.tsx";
+import { LogView } from "@/features/shell/components/LogView.tsx";
+import { Settings } from "@/features/shell/components/Settings.tsx";
+import { EmptyState } from "@/features/shell/components/EmptyState.tsx";
+import { OpenRemoteDialog } from "@/features/bundle/components/OpenRemoteDialog.tsx";
+import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDialog.tsx";
+import { OverviewView } from "@/features/viz/components/OverviewView.tsx";
+import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
+import { ShortcutsHelp } from "@/features/shell/components/ShortcutsHelp.tsx";
+import { AgentPanel } from "@/features/agent/components/AgentPanel.tsx";
+import { AgentPanelStateGallery } from "@/mock/AgentPanelStateGallery.tsx";
+import { showWindowWhenPainted } from "@/shared/platform/window.ts";
+
+function subscribeWindowResize(onChange: () => void): () => void {
+  window.addEventListener("resize", onChange);
+  return () => window.removeEventListener("resize", onChange);
+}
 
 export function App() {
   const { state } = useApp();
   useGlobalKeys();
+  const windowWidth = useSyncExternalStore(
+    subscribeWindowResize,
+    () => window.innerWidth,
+    () => 1280,
+  );
+
+  // Reveal the hidden OS window on the first painted frame. Created visible,
+  // the transparent borderless shell sits on screen as an empty rectangle for
+  // the whole webview boot; created hidden, the app pops in fully drawn.
+  // Double rAF so the reveal lands after the first frame has actually
+  // painted; harmless if repeated (StrictMode re-mounts, pop-out windows).
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => void showWindowWhenPainted());
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  if (
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).has("agent-gallery")
+  ) {
+    return <AgentPanelStateGallery />;
+  }
+
+  // The open agent panel takes over the whole content area when what remains
+  // beside it cannot hold the visible panes at their compressed floors. This
+  // follows the actual panel width instead of a fixed viewport breakpoint, so
+  // a shrinking window hands over instead of clipping panes. Divider drags
+  // cannot cause this: the panel width clamp stops at the same floor.
+  const agentPanelWidth = state.agentPanelWidth ??
+    Math.min(440, Math.max(320, Math.round(windowWidth * 0.3)));
+  const agentTakeover = state.panels.agent &&
+    windowWidth - 48 - agentPanelWidth < workspaceFloor(state);
 
   return (
     <div className="app" data-maximized={state.maximized || undefined}>
       <TopBar />
-      <div className="app-main">
+      <div
+        className="app-main"
+        data-agent-takeover={agentTakeover || undefined}
+      >
         <ActivityBar />
         {state.bundle ? <Workspace /> : <EmptyState />}
+        <AgentPanel />
       </div>
       <StatusBar />
 
@@ -49,6 +96,7 @@ export function App() {
       <Settings />
       <ShortcutsHelp />
       <OpenRemoteDialog />
+      <CreateBundleDialog />
 
       {/* Borderless-window resize handles (Tauri only). */}
       <ResizeHandles />
@@ -73,9 +121,9 @@ function Workspace() {
   if (state.overview) {
     const sidebarTrack =
       showSidebar && state.paneSizes.sidebar !== null
-        ? `${state.paneSizes.sidebar}px`
+        ? `minmax(160px, ${state.paneSizes.sidebar}px)`
         : showSidebar
-          ? "var(--sidebar-default)"
+          ? "minmax(160px, var(--sidebar-default))"
           : null;
     return (
       <div
@@ -130,14 +178,17 @@ function Workspace() {
 
   // Interleave pane tracks and divider tracks so the grid template lists every
   // child's column (sidebar | div | graph | div | reader).
+  // Sidebar and reader tracks can compress below their preferred width down to
+  // a usable floor before anything clips, so a wide agent panel squeezes the
+  // workspace gracefully until the panel takes over entirely.
   const columns = [
-    showSidebar ? "var(--pane-sidebar)" : null,
+    showSidebar ? "minmax(160px, var(--pane-sidebar))" : null,
     sidebarDivider ? "var(--divider-w)" : null,
     showGraph ? "minmax(var(--graph-min), 1fr)" : null,
     readerDivider ? "var(--divider-w)" : null,
     // In reader-only mode the reader takes the elastic space; otherwise its
     // track sizes the pane and the graph flexes.
-    showReader ? (showGraph ? "var(--pane-reader)" : "minmax(0, 1fr)") : null,
+    showReader ? (showGraph ? "minmax(220px, var(--pane-reader))" : "minmax(0, 1fr)") : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -198,7 +249,7 @@ function Divider({
   gridRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { state, actions } = useApp();
-  const clamp = PANE_CLAMPS[pane];
+  const clamp = paneClamp(pane);
   // A focusable role="separator" requires aria-valuenow; when the pane is at its
   // CSS default (no dragged px), report the clamp midpoint as a best effort.
   const valueNow =

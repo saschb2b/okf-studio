@@ -31,7 +31,7 @@ fn scan_detects_docs_as_confident_root() {
 
     assert_eq!(docs_root.confidence, Confidence::Confident);
     assert_eq!(docs_root.okf_version.as_deref(), Some("0.1"));
-    assert_eq!(docs_root.concept_count, 43, "docs/ has 43 concepts");
+    assert_eq!(docs_root.concept_count, 50, "docs/ has 50 concepts");
     assert!(
         !docs_root.types.is_empty(),
         "distinct concept types should be collected"
@@ -50,8 +50,7 @@ fn scan_on_docs_itself_detects_root() {
     assert!(
         roots
             .iter()
-            .any(|r| Path::new(&r.root) == docs.as_path()
-                && r.confidence == Confidence::Confident),
+            .any(|r| Path::new(&r.root) == docs.as_path() && r.confidence == Confidence::Confident),
         "scanning docs/ directly should detect it as a confident root"
     );
 }
@@ -61,7 +60,7 @@ fn read_bundle_docs_full_shape() {
     let docs = docs_dir();
     let bundle = read_bundle(&docs);
 
-    assert_eq!(bundle.concepts.len(), 43, "43 concepts parsed");
+    assert_eq!(bundle.concepts.len(), 50, "50 concepts parsed");
     assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
     assert_eq!(bundle.confidence, Confidence::Confident);
 
@@ -208,7 +207,11 @@ fn root_index_versions_are_read() {
 
     // A plain OKF bundle (no odsf_version) reads as None, never an error.
     let plain = temp_bundle("no-odsf");
-    write(&plain, "index.md", "---\nokf_version: \"0.1\"\n---\n# Plain\n");
+    write(
+        &plain,
+        "index.md",
+        "---\nokf_version: \"0.1\"\n---\n# Plain\n",
+    );
     write(&plain, "x.md", "---\ntype: Note\n---\nBody.\n");
     assert_eq!(read_bundle(&plain).odsf_version, None);
 }
@@ -298,12 +301,20 @@ fn absolute_relative_and_dotdot_links_all_resolve() {
     write(&dir, "top.md", "---\ntype: Note\n---\n# Top\n");
 
     let bundle = read_bundle(&dir);
-    let start = bundle.concepts.iter().find(|c| c.id == "sub/start").unwrap();
+    let start = bundle
+        .concepts
+        .iter()
+        .find(|c| c.id == "sub/start")
+        .unwrap();
     let mut links = start.links.clone();
     links.sort();
     assert_eq!(
         links,
-        vec!["sub/sibling".to_string(), "target".to_string(), "top".to_string()],
+        vec![
+            "sub/sibling".to_string(),
+            "target".to_string(),
+            "top".to_string()
+        ],
         "absolute, relative, and .. links all resolve; got {:?}",
         start.links
     );
@@ -317,8 +328,16 @@ fn missing_index_is_synthesized() {
     let dir = temp_bundle("synth-index");
     write(&dir, "index.md", "---\nokf_version: \"0.1\"\n---\n# Root\n");
     // A subdirectory with concepts but no index.md.
-    write(&dir, "sub/one.md", "---\ntype: Note\ntitle: One\n---\n# One\n");
-    write(&dir, "sub/two.md", "---\ntype: Note\ntitle: Two\n---\n# Two\n");
+    write(
+        &dir,
+        "sub/one.md",
+        "---\ntype: Note\ntitle: One\n---\n# One\n",
+    );
+    write(
+        &dir,
+        "sub/two.md",
+        "---\ntype: Note\ntitle: Two\n---\n# Two\n",
+    );
 
     let bundle = read_bundle(&dir);
     let sub = bundle
@@ -326,7 +345,10 @@ fn missing_index_is_synthesized() {
         .iter()
         .find(|n| n.dir == "sub")
         .expect("sub/ should get an IndexNode");
-    assert!(sub.synthesized, "sub/ lacked index.md, so it is synthesized");
+    assert!(
+        sub.synthesized,
+        "sub/ lacked index.md, so it is synthesized"
+    );
     let titles: Vec<_> = sub
         .sections
         .iter()
@@ -341,8 +363,16 @@ fn missing_index_is_synthesized() {
 #[test]
 fn empty_or_garbage_dir_never_panics() {
     let dir = temp_bundle("garbage");
-    write(&dir, "weird.md", "\u{feff}---\nnot: closed\ntype 没有 colon line\n");
-    write(&dir, "binary.md", "\x00\x01\x02 not utf clean? still text\n");
+    write(
+        &dir,
+        "weird.md",
+        "\u{feff}---\nnot: closed\ntype 没有 colon line\n",
+    );
+    write(
+        &dir,
+        "binary.md",
+        "\x00\x01\x02 not utf clean? still text\n",
+    );
     // Should not panic and should produce a Bundle.
     let bundle = read_bundle(&dir);
     assert!(!bundle.concepts.is_empty());
@@ -361,9 +391,7 @@ fn candidate_root_without_okf_version() {
     write(&dir, "thing.md", "---\ntype: Note\n---\n# Thing\n");
     let roots = scan_bundles(&dir);
     assert!(
-        roots
-            .iter()
-            .any(|r| r.confidence == Confidence::Candidate),
+        roots.iter().any(|r| r.confidence == Confidence::Candidate),
         "a typed concept with no okf_version is a candidate root"
     );
 
@@ -382,7 +410,11 @@ fn container_of_index_bundles_splits_into_one_root_each() {
         write(&dir, &format!("{b}/x.md"), "---\ntype: Note\n---\n# X\n");
     }
     let roots = scan_bundles(&dir);
-    assert_eq!(roots.len(), 3, "each index.md-bearing subdir is its own bundle");
+    assert_eq!(
+        roots.len(),
+        3,
+        "each index.md-bearing subdir is its own bundle"
+    );
     assert!(roots.iter().all(|r| r.confidence == Confidence::Candidate));
     let paths: std::collections::BTreeSet<&str> =
         roots.iter().map(|r| r.rel_path.as_str()).collect();
@@ -399,11 +431,23 @@ fn nested_index_sections_do_not_split_a_single_bundle() {
     // index.md below it.
     let dir = temp_bundle("sections");
     write(&dir, "mybundle/index.md", "# My bundle\n");
-    write(&dir, "mybundle/note.md", "---\ntype: Note\n---\n# Root note\n");
+    write(
+        &dir,
+        "mybundle/note.md",
+        "---\ntype: Note\n---\n# Root note\n",
+    );
     write(&dir, "mybundle/section/index.md", "# Section\n");
-    write(&dir, "mybundle/section/deep.md", "---\ntype: Note\n---\n# Deep\n");
+    write(
+        &dir,
+        "mybundle/section/deep.md",
+        "---\ntype: Note\n---\n# Deep\n",
+    );
     let roots = scan_bundles(&dir);
-    assert_eq!(roots.len(), 1, "nested index.md sections don't split the bundle");
+    assert_eq!(
+        roots.len(),
+        1,
+        "nested index.md sections don't split the bundle"
+    );
     assert_eq!(roots[0].rel_path, "mybundle");
 
     fs::remove_dir_all(&dir).ok();
@@ -429,4 +473,3 @@ fn scan_respects_max_depth() {
 
     fs::remove_dir_all(&dir).ok();
 }
-

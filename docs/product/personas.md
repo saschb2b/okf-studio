@@ -1,14 +1,14 @@
 ---
 type: Product
 title: Personas & Use Cases
-description: The handful of concrete people OKF Viewer is built for, framed by the job each hires it to do.
+description: The handful of concrete people OKF Studio is built for, framed by the job each hires it to do.
 tags: [product, personas, use-cases]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-07-13T18:51:16Z
 ---
 
 # Who this is for
 
-The [Overview](overview.md) sketches the audience in three lines. This concept makes it concrete: four people, the job each hires OKF Viewer to do, and the [features](../features/) that matter most to them. These personas are the reason the product is [scoped](scope-and-non-goals.md) the way it is.
+The [Overview](overview.md) sketches the audience in three lines. This concept makes it concrete: four people, the job each hires OKF Studio to do, and the [features](../features/) that matter most to them. These personas are the reason the product is [scoped](scope-and-non-goals.md) the way it is.
 
 # The data / platform engineer
 
@@ -21,6 +21,7 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 - [Folder Autodetect](../features/folder-autodetect.md) — point at the repo, get every bundle.
 - [Live Reload](../features/live-reload.md) — the view tracks the files as `git pull` or edits change them.
 - [Search & Filter](../features/search-and-filter.md) — jump straight to a metric or runbook by name or type.
+- [Agent Panel](../features/agent-panel.md) — investigate a dataset or request a reviewed documentation change without granting direct writes.
 
 # The AI / agent builder
 
@@ -33,6 +34,7 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 - [Graph View](../features/graph-view.md) — the traversal graph made visible, type-colored.
 - [Navigation](../features/navigation.md) — follow links and "cited by" backlinks the way an agent would.
 - [Validation](../features/validation.md) — catch broken links and missing `type` fields non-blockingly.
+- [Agent Panel](../features/agent-panel.md) — create or enhance a conformant bundle from explicit sources through the packaged OKF guidance and staged review.
 
 # The newcomer to an unfamiliar bundle
 
@@ -45,6 +47,7 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 - [Graph View](../features/graph-view.md) — the shape of the whole bundle at a glance.
 - [Search & Filter](../features/search-and-filter.md) — find a foothold by keyword or type.
 - [Navigation](../features/navigation.md) — start at the root and descend by progressive disclosure.
+- [Agent Panel](../features/agent-panel.md) — ask a cited question against the active bundle without moving it to another workspace.
 
 # The OKF producer / maintainer
 
@@ -57,7 +60,8 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 - [Live Reload](../features/live-reload.md) — save in the editor, see the result instantly.
 - [Validation](../features/validation.md) — soft issues surfaced, never blocking the read.
 - [Graph View](../features/graph-view.md) — confirm the structure matches the intent.
+- [Agent Panel](../features/agent-panel.md) — enrich the bundle from new evidence, inspect the diff, and apply only a validated revision.
 
 # Why these four
 
-Together these personas define the v1 read loop: autodetect a folder, render the graph, read concepts, search, validate, and reload — and nothing more. Anyone outside this set (for example, someone who wants to *edit* bundles) is deliberately out of scope for now; see [Scope & Non-Goals](scope-and-non-goals.md).
+Together these personas define the complete Studio loop: open and understand existing knowledge, query it with evidence, create or enhance it from sources, and review every proposed write. The [Scope & Non-Goals](scope-and-non-goals.md) keeps that loop bundle-focused rather than turning Studio into a general editor, sync service, git client, or autonomous computer operator.

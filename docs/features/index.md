@@ -1,8 +1,11 @@
 # Features
 
-One concept per user-facing capability. Together these define the v1 read loop (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
+* [Agent Panel](agent-panel.md) - Run parallel agent threads, attach OKF context, approve tools, and review proposed knowledge changes.
+
+One concept per user-facing capability. Together these define Studio's explore, create, curate, and query loop (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
 
 * [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
+* [Create Bundle](create-bundle.md) - Start a new conformant bundle from a form, no agent involved.
 * [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.
 * [Graph View](graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](viz-views.md) - Treemap, sunburst, and circle packing of the bundle hierarchy, with a persisted switcher.

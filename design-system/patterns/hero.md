@@ -4,7 +4,7 @@ title: Hero
 description: "The above-the-fold composition: a rounded, tinted canvas bundling the nav, eyebrow, display headline, sub, download CTAs, and the product shot grounded at its foot."
 tags: [patterns, hero, landing, canvas]
 status: stable
-timestamp: 2026-07-06T16:00:00Z
+timestamp: 2026-07-12T00:00:00Z
 examples:
   - /patterns/hero.example.html
 ---
@@ -17,7 +17,7 @@ The top of the marketing/download page. One per page.
 |------|-----------|-------|
 | Canvas | rounded container, `radius.xl`, `colors.surface` | Bundles everything below into one object (see The canvas). |
 | Nav | [Nav](/components/nav.md) pill, sticky | Floats just above the canvas at rest and stays while scrolling, keeping the Download action reachable. |
-| Eyebrow | `.eyebrow` (mono, uppercase) | One short line, e.g. "OKF Viewer · v0.2". |
+| Eyebrow | `.eyebrow` (mono, uppercase) | One short line, e.g. "OKF Studio · v0.2". |
 | Headline | [Typography](/foundations/typography.md) `text.display` | Tight tracking/leading; the one bold claim. An authored break owns the line split; no width cap on top of it. |
 | Sub | body `text.lg`, `colors.text-muted`, capped at `size.measure` | One sentence of value. |
 | Actions | [Button](/components/button.md) primary + secondary | Download + GitHub. |

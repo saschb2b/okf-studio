@@ -5,7 +5,7 @@ description: Action control. Primary uses the brand gradient; secondary and ghos
 tags: [components, button]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-01T16:30:46Z
+timestamp: 2026-07-11T04:45:00Z
 examples:
   - /components/button.example.html
 tokens:

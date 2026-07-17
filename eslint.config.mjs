@@ -2,8 +2,10 @@ import eslint from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier/flat";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import reactHooks from "eslint-plugin-react-hooks";
+import testingLibrary from "eslint-plugin-testing-library";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import vitest from "@vitest/eslint-plugin";
 
 // Strict, type-aware lint stack mirroring the homepage project, adapted from
 // Next.js to this Vite + React 19 (React Compiler) + Tauri app:
@@ -28,6 +30,8 @@ export default tseslint.config(
       ".agents/**",
       "eslint.config.mjs",
       "vite.config.ts",
+      // Storybook tooling config (typechecked via the root tsconfig).
+      ".storybook/**",
     ],
   },
   eslint.configs.recommended,
@@ -84,10 +88,29 @@ export default tseslint.config(
     // Test files: vitest globals, and relax type-aware rules that fight common
     // testing patterns (non-null assertions, mocks typed as any).
     files: ["**/*.test.{ts,tsx}", "src/test/**/*.{ts,tsx}"],
+    plugins: {
+      vitest,
+      "testing-library": testingLibrary,
+    },
     languageOptions: {
       globals: { ...globals.vitest },
     },
     rules: {
+      ...vitest.configs.recommended.rules,
+      ...testingLibrary.configs["flat/react"].rules,
+      "vitest/expect-expect": [
+        "error",
+        { assertFunctionNames: ["expect", "expectNoViolations"] },
+      ],
+      "vitest/no-disabled-tests": "error",
+      "vitest/no-focused-tests": "error",
+      "vitest/no-conditional-expect": "error",
+      // These rules reject deliberate DOM geometry checks and mid-test
+      // remounts used by the app-shell integration lane.
+      "testing-library/no-container": "off",
+      "testing-library/no-manual-cleanup": "off",
+      "testing-library/no-node-access": "off",
+      "testing-library/render-result-naming-convention": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",

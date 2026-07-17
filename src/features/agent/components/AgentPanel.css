@@ -1,0 +1,308 @@
+.agent-panel {
+  --agent-panel-default: clamp(320px, 30vw, 440px);
+  flex: 0 0 var(--agent-panel-width);
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-elev);
+  container-type: inline-size;
+}
+
+.agent-panel-divider {
+  position: relative;
+  flex: 0 0 6px;
+  align-self: stretch;
+  background: var(--border);
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 5;
+}
+
+.agent-panel-divider::before {
+  content: "";
+  position: absolute;
+  inset: 0 -4px;
+}
+
+.agent-panel-divider:hover,
+.agent-panel-divider:focus-visible {
+  background: var(--accent);
+}
+
+.agent-panel-divider:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.agent-panel__head {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-panel__connection-failure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  color: var(--error);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-panel__connection-failure > svg {
+  margin-top: var(--space-2);
+}
+
+.agent-panel__connection-failure strong,
+.agent-panel__connection-failure p {
+  margin: 0;
+}
+
+.agent-panel__connection-failure strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.agent-panel__connection-failure p {
+  display: -webkit-box;
+  margin-top: var(--space-2);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.agent-panel__connection-failure-actions {
+  display: flex;
+  grid-column: 2;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.agent-panel__connection-failure-actions .btn {
+  min-height: 28px;
+}
+
+.agent-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.agent-panel__close {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 32px;
+  min-height: 32px;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.agent-panel__close .agent-panel__back-icon,
+.agent-panel__back-label {
+  display: none;
+}
+
+.agent-panel__conversation-stack,
+.agent-panel__conversation,
+.agent-panel__thread-surface {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.agent-panel__conversation-stack[hidden],
+.agent-panel__conversation[hidden],
+.agent-panel__thread-surface[hidden] {
+  display: none;
+}
+
+.agent-panel__connections {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4) var(--space-8);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-panel__connection {
+  flex: 0 1 auto;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 176px;
+  padding: var(--space-4) var(--space-8);
+  gap: var(--space-4);
+}
+
+.agent-panel__connection[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.agent-panel__connection-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-panel__connection--add {
+  flex: 0 0 32px;
+  padding: var(--space-4);
+}
+
+.agent-panel__empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  max-width: 34ch;
+  margin: auto;
+  padding: var(--space-16);
+  text-align: center;
+}
+
+.agent-panel__mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--accent);
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+}
+
+.agent-panel__empty h2,
+.agent-panel__empty p {
+  margin: 0;
+}
+
+/* Take over the content area when the workspace beside the panel would fall
+   below its usable floor. App.tsx sets the attribute from the actual panel
+   width and window size instead of a fixed viewport breakpoint. */
+.app-main[data-agent-takeover] > .workspace,
+.app-main[data-agent-takeover] > .empty {
+  display: none;
+}
+
+/* The divider stays visible in takeover so the panel can always be dragged
+   back down; shrinking it below the floor simply keeps the takeover. */
+.app-main[data-agent-takeover] .agent-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.app-main[data-agent-takeover] .agent-panel__close .agent-panel__close-icon {
+  display: none;
+}
+
+.app-main[data-agent-takeover] .agent-panel__close .agent-panel__back-icon,
+.app-main[data-agent-takeover] .agent-panel__back-label {
+  display: inline;
+}
+
+.agent-panel__empty h2 {
+  font-size: var(--fs-lg);
+  line-height: var(--lh-tight);
+}
+
+.agent-panel__empty p {
+  color: var(--text-dim);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+/* --- "+" agent popover: new thread, one-step connect, or open the catalog --- */
+
+.agent-launch-menu {
+  display: flex;
+  width: min(232px, calc(100vw - 2 * var(--space-16)));
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.agent-launch-menu__label {
+  padding: var(--space-4) var(--space-8) 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-launch-menu__item {
+  display: grid;
+  min-height: 32px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.agent-launch-menu__item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-launch-menu__item[data-highlighted] {
+  background: var(--bg-sunken);
+  box-shadow: inset 0 0 0 var(--focus-w) var(--accent);
+}
+
+.agent-launch-menu__item[data-disabled] {
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
+.agent-launch-menu__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 32px;
+  padding: var(--space-6) var(--space-8);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-launch-menu__error {
+  margin: 0;
+  padding: var(--space-4) var(--space-8);
+  color: var(--error);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  overflow-wrap: break-word;
+}
+
+.agent-launch-menu__separator {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--border);
+}

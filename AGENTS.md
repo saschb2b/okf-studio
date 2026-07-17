@@ -1,14 +1,14 @@
-# OKF Viewer
+# OKF Studio
 
-A cross-platform **desktop app** (Windows + Ubuntu, macOS for free) that you point at a folder; it **autodetects the OKF bundles inside** and renders each as an interactive graph of interconnected concept documents. Built with **Tauri 2.0** — a Rust core plus the system webview.
+A cross-platform **desktop workspace** (Windows + Ubuntu, macOS for free) that autodetects OKF bundles, renders their connected concepts as a graph and reader, and lets the user connect an external ACP agent or Studio Agent to create, curate, and query knowledge through explicit context and reviewed writes. Built with **Tauri 2.0** — a Rust core plus the system webview.
 
 ## How it's put together
 
-The **Rust core** (`crates/okf-core` + `src-tauri/`) does all filesystem work — [scan a folder for bundles](docs/architecture/bundle-detection.md), [parse each into concepts/links/backlinks](docs/architecture/okf-parsing.md), [validate](docs/features/validation.md), and [watch for changes](docs/features/live-reload.md) — exposing a small [command/event surface](docs/architecture/ipc-and-security.md) that hands the **React 19 + TypeScript frontend** (`src/`, Vite, React Compiler enabled — no manual memoization) ready-to-render JSON ([data model](docs/architecture/data-model.md)). The frontend renders a [force-directed graph](docs/features/graph-view.md) + [concept reader](docs/features/concept-reader.md) with [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [theming](docs/ux/theming.md). Read-only, offline, scoped to the chosen folder.
+The **Rust core** (`crates/okf-core` + `src-tauri/`) owns filesystem, process, and network mediation: it [scans a folder for bundles](docs/architecture/bundle-detection.md), [parses concepts/links/backlinks](docs/architecture/okf-parsing.md), [validates](docs/features/validation.md), [watches for changes](docs/features/live-reload.md), and hosts explicit [agent connections](docs/architecture/agent-system.md). Its typed [command/event surface](docs/architecture/ipc-and-security.md) hands the **React 19 + TypeScript frontend** (`src/`, Vite, React Compiler enabled — no manual memoization) ready-to-render state. The frontend combines the [graph](docs/features/graph-view.md), [concept reader](docs/features/concept-reader.md), [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [Agent Panel](docs/features/agent-panel.md). Folder opening remains read-only; agent processes and network actions start only after explicit user actions.
 
 ```
 okf-viewer/
-  src/             # web frontend (React 19 + TS, Vite)
+  src/             # web frontend (React 19 + TS, Vite) — domain-first: features/ + shared/
   src-tauri/       # Tauri shell: tauri.conf.json, capabilities/, commands
   crates/okf-core/ # Rust parsing/validation core (unit-tested against docs/)
   docs/            # the OKF product spec bundle — source of truth AND built-in sample
@@ -27,6 +27,27 @@ okf-viewer/
 
 If anything in this file conflicts with the bundle, the bundle wins; update this file to match.
 
+## Where code lives (folder structure)
+
+Both the frontend and the agent backend are organized **domain-first**: the domain is the top-level unit, and narrower separation (`components/`, sub-parsers) nests *inside* it. Group by feature first, then by kind — never a global `components/` tree beside a parallel utilities tree. When you add a file, place it in its domain, not at the root.
+
+**Frontend (`src/`).** Domains live under `src/features/<domain>/`, each owning a `components/` folder beside its own logic:
+
+- `agent/` — ACP client (connection, catalog, install, threads, local models, custom profiles) + agent-panel components + staged-write review previews
+- `viz/` — the graph engine (`graph/`), chart helpers, and every graph/chart component
+- `reader/` — concept reader, prefs, lineage panel, peek card + lineage derivation
+- `bundle/` — bundle browsing and open-from-URL (`remoteSource` parser)
+- `navigation/` — sidebar, index tree, tag browser, type filters
+- `shell/` — window frame and global overlays (top/status/activity bar, tabs, command palette, settings, validation/log panels)
+
+Cross-cutting code lives in `src/shared/`: `ipc`, `store`, `types`, `query`, `selectors`, `odsf`, `theme`, `render/` (markdown/math/mermaid/highlight), `platform/` (native/window/updater/platform), and `styles/` (`baseui.css`, `chrome.css`). Only the composition root stays at the `src/` top level — `App`, `main`, `keys`, and the cross-cutting integration tests — plus `mock/` and `test/` infrastructure. A component's own `.css` and `.test` file sit beside it.
+
+**Imports use the `@/` alias** (`@/*` → `src/*`, set in `tsconfig.json` `paths` + Vite `resolve.alias`), never relative `../../` chains. Alias paths are location-independent, so moving a file only repoints references instead of rewriting relative paths — new code should import via `@/…`. Per-component `.css` imports stay relative (`./Name.css`) so they follow the component.
+
+**Backend (`src-tauri/src/`).** Agent code is grouped under `src/agent/` by domain: `host/` (protocol, process, sandbox, mcp, transcript), `registry/` (catalog, install, runtime, custom), `provider/` (local, native sources/stage, studio, credentials), and `sources/` (pdf, csv, json, url). Rust modules are relocated with `#[path]` attributes so a file move doesn't force a module rename. Note the frontend's `src/features/agent/catalog.json` is read by Rust via `include_str!` in `src-tauri/src/agent/registry/agent_catalog.rs` — if you move it, update that path (and re-run `cargo check -p okf-viewer`).
+
+The layout is documented in [`docs/architecture/frontend-architecture.md`](docs/architecture/frontend-architecture.md); keep it in sync when the structure changes.
+
 ## Dev commands
 
 Prerequisites (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): stable Rust + Node.js with pnpm. On Ubuntu also `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`; on Windows the WebView2 runtime + MSVC build tools.
@@ -34,9 +55,12 @@ Prerequisites (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): st
 ```bash
 pnpm install
 pnpm dev            # frontend only, in a browser (mock bundle) — fastest for UI work
+pnpm storybook      # component playground on :6006 — per-component states on the app's real tokens
 pnpm tauri dev      # the full app with hot reload
 pnpm tauri build    # installers: .msi/.exe (Windows), .deb/AppImage (Ubuntu)
 ```
+
+**Storybook is also an agent surface.** The dev server mounts `@storybook/addon-mcp` at `http://localhost:6006/mcp` (registered in the repo-root `.mcp.json`): with it running you can enumerate components/stories and author new ones through the addon's tools. Stories are colocated `src/**/*.stories.tsx`; a new or restyled component state gets a story there, not another ad-hoc fixture (`?agent-gallery` stays for whole-panel compositions). **Stories are tests**: interactive ones carry `play` functions, and `pnpm test:stories` runs every story headless in Chromium — run it when components or stories change. Store-bound components wrap in the `WithStore` harness (`src/mock/withStore.tsx`), which boots the real `AppProvider` over the browser mock. Per-story screenshots come from `http://localhost:6006/iframe.html?id=<story-id>`. Keep ad hoc captures outside the repository; add an image to `docs/ux/` only when a named Markdown concept links it as curated evidence. See [`docs/architecture/testing.md`](docs/architecture/testing.md).
 
 ## A user-facing feature ships on three surfaces
 
@@ -77,7 +101,7 @@ Default stance: **assume the first attempt is mediocre** — code and UI both re
    - **`react-stinky`** — component/hook/TS smells and semantic markup (roles, labels, keyboard).
    - **`no-slop`** — for any human-facing prose (UI copy, docs, commit messages).
    Apply Safe findings; surface Judgment ones. Do not report "done" with an unaddressed Glaring finding.
-3. **Verify with evidence, at two widths.** Screenshot the rendered screen at narrow (~360px) and wide, and check the loading, empty, and error states — not just the happy path. A green build is not visual proof. Prefer the real screen over reasoning about the code. (Fast path: `pnpm dev` + the `agent-browser` skill — see the visual-verification note.)
+3. **Verify with evidence, at two widths.** Screenshot the rendered screen at narrow (~360px) and wide, and check the loading, empty, and error states — not just the happy path. A green build is not visual proof. Prefer the real screen over reasoning about the code. (Fast path: `pnpm dev` + the `agent-browser` skill — see the visual-verification note. For a single component's states, `pnpm storybook` and screenshot the story iframe.)
 4. **Measure against modern UX floors, not the training average.** Spacing from `--space-*` tokens (4/8); a bounded type scale (≤ ~7 sizes) with paired line-heights from tokens; WCAG AA contrast (4.5:1 text, 3:1 UI); one visible, consistent focus-ring token; touch targets ≥ 24px; `prefers-reduced-motion` respected; one radius and one elevation scale; empty/loading/error states actually designed. If you cannot point to the token or the criterion, it is not done.
 5. **Pressure-test design calls — including the user's.** Name the tradeoffs and risks before implementing a direction; do not just agree. Reasoned disagreement is more useful than assent.
 6. **Report the defects, not just the wins.** End a UI review with the findings list — each rated severity (Glaring/Untidy/Nitpick) and autonomy (Safe/Judgment) — what was fixed, and what remains. Honesty about what is still rough beats a clean-sounding summary.
@@ -89,10 +113,14 @@ Do not push and let CI find failures you could have caught. Before committing or
 ```bash
 pnpm lint        # eslint . (type-aware: parse, type, and a11y issues)
 pnpm typecheck   # tsc --noEmit
-pnpm test        # vitest run
+pnpm test        # fast Node unit + jsdom component lanes
+pnpm test:integration # full-app and axe journeys (bounded two-worker lane)
+pnpm test:stories # story tests headless in Chromium — run when components or stories changed
 pnpm build       # tsc --noEmit && vite build
 cargo clippy -p okf-core --all-targets -- -D warnings
 cargo test -p okf-core
+cargo clippy -p okf-viewer --all-targets -- -D warnings
+cargo test -p okf-viewer --no-fail-fast
 ```
 
 `pnpm lint` is the one that most often breaks on *new* files: a directory the root `tsconfig` does not cover, or an unignored config the type-aware parser cannot place. Run it after adding or moving files, not only after editing existing ones; if a new sub-project does not belong to the app's `tsconfig`, add it to `ignores` in `eslint.config.mjs`.
@@ -117,6 +145,6 @@ When you add or change a feature, decision, or flow, update the bundle **in the 
 ## Conventions
 
 - **Rust owns the filesystem; the frontend owns rendering.** The webview gets no direct fs/network access — only [commands/events](docs/architecture/ipc-and-security.md).
-- **Read-only, offline, scoped** always (see [principles](docs/product/principles.md)). Opening an untrusted bundle must be safe.
+- **Read-only folder opening and explicit external activity** (see [principles](docs/product/principles.md)). Opening an untrusted bundle must be safe. Agent processes and network requests start only from a named user action. Bundle writes require an explicit thread grant, staged revision, validation, review, and Apply.
 - **Tolerant consumer:** never refuse a bundle for soft issues (missing fields, unknown `type`, broken links, missing `index.md`); surface them via [Validation](docs/features/validation.md) instead.
-- **Capabilities stay least-privilege** (`src-tauri/capabilities/`): read-only `fs` scoped to the chosen folder, dialog open, store. Network only where a principle-level exception is recorded (updater, explicit open-from-URL fetch).
+- **Capabilities stay least-privilege** (`src-tauri/capabilities/`): the webview receives typed commands rather than direct filesystem or provider access. Rust owns explicit updater, remote-bundle, source-fetch, installer, ACP, and configured-model network paths; adding another path requires a principle-level decision and a bounded user action.

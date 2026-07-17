@@ -163,7 +163,9 @@ fn dir_index_has_okf_version(dir: &Path) -> bool {
 
 /// True if `path` is a non-reserved `.md` concept with a non-empty `type`.
 fn is_typed_concept(_folder: &Path, path: &Path) -> bool {
-    let name = path.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase());
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_ascii_lowercase());
     let is_md = path
         .extension()
         .map(|x| x.eq_ignore_ascii_case("md"))
@@ -250,21 +252,18 @@ mod tests {
 
     #[test]
     fn ancestor_check() {
-        assert!(is_ancestor_or_self(
-            Path::new("/a/b"),
-            Path::new("/a/b/c")
-        ));
+        assert!(is_ancestor_or_self(Path::new("/a/b"), Path::new("/a/b/c")));
         assert!(is_ancestor_or_self(Path::new("/a/b"), Path::new("/a/b")));
-        assert!(!is_ancestor_or_self(
-            Path::new("/a/b"),
-            Path::new("/a/x")
-        ));
+        assert!(!is_ancestor_or_self(Path::new("/a/b"), Path::new("/a/x")));
     }
 
     #[test]
     fn ignores_build_and_hidden_dirs() {
         let folder = Path::new("/root");
-        assert!(parse::is_ignored_dir(Path::new("/root/node_modules"), folder));
+        assert!(parse::is_ignored_dir(
+            Path::new("/root/node_modules"),
+            folder
+        ));
         assert!(parse::is_ignored_dir(Path::new("/root/.git"), folder));
         assert!(!parse::is_ignored_dir(Path::new("/root/features"), folder));
         assert!(!parse::is_ignored_dir(folder, folder)); // never ignore the root itself

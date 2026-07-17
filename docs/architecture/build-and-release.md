@@ -1,9 +1,9 @@
 ---
 type: Architecture Decision
 title: Build & Release
-description: How the app is built, packaged per OS, versioned, and shipped — offline, with no runtime phone-home.
+description: How the app is versioned, packaged per OS, released, and updated without automatic network requests.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-06-30T23:00:00Z
+timestamp: 2026-07-15T12:20:00Z
 ---
 
 # Decision
@@ -20,6 +20,8 @@ The app ships as native installers per platform, built by `tauri build` on a per
 Each is a [self-contained, portable](../product/principles.md) artifact using the system webview — no bundled runtime the user must manage.
 
 # CI and release workflows
+
+Pull-request CI includes a dedicated Ubuntu 24.04 agent-sandbox job. It installs the distribution Bubblewrap package and the native Tauri build dependencies, allows unprivileged user namespaces where the image's AppArmor gate would deny them, and then requires the restricted-host fixture to execute through the trusted backend. The 24.04 image is a floor, not a preference: the compiled policy passes `--disable-userns`, which Bubblewrap gained in 0.8, while 22.04 ships 0.6.1. The fixture checks the empty-root mount policy against real kernel namespaces rather than treating the cross-platform argument-builder tests as Linux enforcement proof.
 
 Two GitHub Actions workflows (`.github/workflows/`):
 
@@ -39,7 +41,7 @@ Two GitHub Actions workflows (`.github/workflows/`):
 
 Two version numbers stay deliberately distinct:
 
-- **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Viewer app itself, set in the Tauri config and shown in the about/settings surface.
+- **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Studio app itself, set in the Tauri config and shown in the about/settings surface.
 - **`okf_version`** — the version of the OKF **format** a bundle declares in its root `index.md` (see [OKF Spec Summary](../reference/okf-spec-summary.md)). The app reads and displays this (quietly, in the [status bar](../ux/browsing-layout.md)); it is a property of the data, never of the app. A new app release does not change a bundle's `okf_version`, and vice versa. A bundle that is also an [ODSF](../features/design-system-rendering.md) design system declares an **`odsf_version`** in the same root frontmatter; the core reads it alongside `okf_version` and the app shows both — equally a property of the data.
 
 # Updates
@@ -53,7 +55,9 @@ Silent/automatic updates remain out of scope — the network call only ever happ
 
 # Install & uninstall
 
-Following platform install best practices: installers target a **per-user install where the platform allows**, avoiding admin elevation and reboots. **Uninstalling removes the app binaries**; the only user data is in the app's own config directory (recent bundles and [settings](../ux/settings.md) via the store plugin — see [IPC & Security](ipc-and-security.md)), which the user can keep or clear. Nothing is written system-wide and nothing phones home, so there is no residue to chase.
+Following platform install best practices, installers target a **per-user install where the platform allows**, avoiding admin elevation and reboots. An existing OKF Viewer installation upgrades in place because Studio retains the application identifier, app-data location, updater repository, and store name. The [migration notes](../product/migration-notes.md) list every compatibility name and retained data surface.
+
+**Uninstalling removes the app binaries.** App data and cache data can remain for a later reinstall, including preferences, recent bundles, agent profiles, managed runtimes, thread pointers, and restore checkpoints. API-key-backed Studio Agent profiles keep their keys in the operating-system credential store until the profile removes them or the user removes them through the operating system. Studio writes no telemetry or license state.
 
 # Offline build, no phone-home
 

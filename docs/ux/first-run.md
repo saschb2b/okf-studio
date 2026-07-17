@@ -3,7 +3,7 @@ type: UX Flow
 title: First Run
 description: The flow from launching the app with nothing open to browsing a detected bundle.
 tags: [ux, flow, onboarding]
-timestamp: 2026-07-04T18:00:00Z
+timestamp: 2026-07-17T00:10:00Z
 ---
 
 # Goal
@@ -12,8 +12,8 @@ A new user gets from "app just opened" to "reading a graph" in two clicks, with 
 
 # Flow
 
-1. **Launch → empty state.** A centered prompt explains the app in one line and offers a primary **Open Folder…** button (native OS dialog) beside a secondary **Open from URL…** (`Ctrl/Cmd + Shift + O`) for a [remote bundle](../features/bundle-switcher.md). Below, a one-click **example** card (this docs bundle) lets a brand-new user with no local bundle see the viewer work immediately — the remote-open path doubles as onboarding. The empty state also briefly says what an OKF bundle is, linking the [spec summary](../reference/okf-spec-summary.md). See [Empty & Error States](empty-and-error-states.md) for this and the other no-content states.
-2. **Pick a folder.** The OS folder picker opens (via the Tauri dialog plugin — see [IPC & Security](../architecture/ipc-and-security.md)). The chosen path becomes the read-only [scope](../architecture/ipc-and-security.md).
+1. **Launch → empty state.** The brand mark, the one-line proposition, and a single **welcome action list** (the Zed/VS Code welcome pattern — one scannable column, not a row of equal buttons). Each row carries an icon, a label, a one-line description naming who it serves, and its shortcut inline: **Open folder…** (`Ctrl/Cmd + O`, the primary row and the one spot of accent), **Create new bundle…** — the agent-free [form flow](../features/create-bundle.md) for a user with no bundle yet — **Open from URL…** (`Ctrl/Cmd + Shift + O`) for a [remote bundle](../features/bundle-switcher.md), and **Try the example** (this docs bundle) as a first-class row so a brand-new user reaches a real graph in one click. One line of fine print carries the trust contract: opening never changes files, agents connect only when chosen. See [Empty & Error States](empty-and-error-states.md) for the other no-content states.
+2. **Pick a folder.** The OS folder picker opens (via the Tauri dialog plugin — see [IPC & Security](../architecture/ipc-and-security.md)). The chosen path becomes the active bundle [scope](../architecture/ipc-and-security.md). Opening and browsing do not modify it; later agent changes require a reviewed transaction and an explicit **Apply**.
 3. **Scanning.** A brief progress indicator while the [Rust core](../architecture/bundle-detection.md) walks the folder. Large folders stay responsive; scanning is cancelable.
 4. **Result.**
    - **One bundle found →** it opens directly into the [Browsing Layout](browsing-layout.md).

@@ -1,0 +1,297 @@
+/* Bundle Switcher — the top-left trigger and its popover. Visuals come from the
+   design tokens; the popover shell reuses .ui-popover (baseui.css). */
+
+/* --- Trigger (top-left of the top bar) --- */
+.topbar-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  /* Fixed width: the chrome stays put across bundle switches — long names
+     ellipsize, the chevron stays pinned to the right edge. */
+  width: 16rem;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.topbar-switch:hover,
+.topbar-switch[data-popup-open] {
+  background: var(--bg-sunken);
+}
+.topbar-switch[data-popup-open] {
+  border-color: var(--accent);
+}
+
+/* Brand tile — the app icon (its own rounded dark tile with the blue→violet
+   folder mark), scaled down; no extra chrome needed around it. */
+.switch-tile {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.switch-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+  line-height: var(--lh-tight);
+}
+.switch-name {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switch-folder {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switch-chevron {
+  flex: 0 0 auto;
+  /* Pinned to the trigger's right edge in both states (the empty trigger has
+     no growing middle section). */
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+.topbar-switch.is-empty .switch-name {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+/* --- Popover --- */
+.switcher-popup {
+  padding: 0;
+  /* Wide enough that typical bundle names survive beside the meta column. */
+  width: 25rem;
+  max-width: 92vw;
+}
+.switcher-body {
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 32rem);
+}
+
+.switcher-search {
+  font: inherit;
+  font-size: var(--fs-sm);
+  margin: var(--space-10) var(--space-10) var(--space-8);
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+.switcher-search:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.switcher-scroll {
+  overflow-y: auto;
+  padding: 0 var(--space-6) var(--space-4);
+}
+
+.switcher-group + .switcher-group {
+  margin-top: var(--space-4);
+}
+.switcher-group-label {
+  margin: 0;
+  padding: var(--space-6) var(--space-8) var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.switcher-row {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr auto;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.switcher-row:hover,
+.switcher-row:focus-visible {
+  background: var(--bg-sunken);
+  outline: none;
+}
+.switcher-row.is-active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.switcher-check {
+  text-align: center;
+  color: var(--accent);
+  font-size: var(--fs-sm);
+}
+.switcher-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: var(--lh-tight);
+}
+.switcher-row-name {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switcher-row-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The row's right column: two labeled lines ("45 concepts" / "20 types" or
+   "2w ago"), right-aligned so they mirror the name/sub pair on the left. */
+.switcher-row-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: var(--lh-tight);
+}
+.switcher-count {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.switcher-meta-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+/* Recent rows carry pin/remove actions revealed on hover/focus. They overlay
+   the row's meta on an opaque chip (instead of reserving right padding, which
+   knocked recents' meta column out of line with the folder rows above), and
+   are click-through while hidden. */
+.switcher-recent {
+  position: relative;
+}
+.switcher-recent-actions {
+  position: absolute;
+  top: 50%;
+  right: var(--space-6);
+  transform: translateY(-50%);
+  display: inline-flex;
+  gap: 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+}
+.switcher-recent:hover .switcher-recent-actions,
+.switcher-recent:focus-within .switcher-recent-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.switcher-mini {
+  padding: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: 1;
+  cursor: pointer;
+}
+.switcher-mini:hover,
+.switcher-mini:focus-visible {
+  background: var(--bg-elev);
+  color: var(--text);
+  outline: none;
+}
+.switcher-mini[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.switcher-empty {
+  padding: var(--space-4) var(--space-8) var(--space-8);
+  font-size: var(--fs-sm);
+}
+
+/* --- Footer actions --- */
+.switcher-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+/* Hairline between the open-existing tier and the create tier. */
+.switcher-foot-sep {
+  height: 1px;
+  margin: var(--space-4) var(--space-8);
+  background: var(--border);
+}
+.switcher-foot-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  padding: var(--space-6) var(--space-8);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.switcher-foot-btn:hover:not(:disabled),
+.switcher-foot-btn:focus-visible {
+  background: var(--bg-sunken);
+  outline: none;
+}
+.switcher-foot-btn:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}
+.switcher-foot-label {
+  flex: 1;
+}
+.switcher-kbd {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+/* Marks a recent that was fetched from a URL (its sub-line shows the origin). */
+.switcher-remote-badge {
+  margin-right: var(--space-4);
+  font-size: 0.85em;
+}

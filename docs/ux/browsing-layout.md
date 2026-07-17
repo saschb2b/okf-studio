@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-07-06T12:00:00Z
+timestamp: 2026-07-13T19:21:18Z
 ---
 
 # The three panes
@@ -30,7 +30,7 @@ There is one shared "active concept" **per window.** Selecting it anywhere — a
 
 # Pop-out windows
 
-A tab can undock into its **own OS window** — the browser tear-off, for a second monitor or a reference kept beside the main workspace. The new window runs the full app on the same bundle: it boots reader-only with the sidebar tucked away (a "document window"), but has all the chrome and can grow back into a full workspace. Windows are independent — no cross-window selection sync — and the bundle stays read-only, so they cannot conflict; [live reload](../features/live-reload.md) broadcasts to every window. See the [multi-view proposal](../proposals/multi-view.md).
+A tab can undock into its **own OS window** — the browser tear-off, for a second monitor or a reference kept beside the main workspace. The new window runs the full app on the same bundle: it boots reader-only with the sidebar tucked away (a "document window"), but has all the chrome and can grow back into a full workspace. Windows are independent — no cross-window selection sync — while [live reload](../features/live-reload.md) broadcasts to every window. If two windows stage changes against the same bundle, transaction base and revision checks let the first valid apply proceed and reject the stale transaction instead of silently overwriting it. See the [multi-view proposal](../proposals/multi-view.md).
 
 # Layout modes
 
@@ -45,5 +45,7 @@ The window runs **borderless** (native title-bar decorations are off — see [Th
 - Honors [theming](theming.md) and a [native desktop feel](settings.md) (content-scoped zoom, our own frame), and is fully driveable by [keyboard](keyboard-shortcuts.md).
 
 # Chrome — the status bar
+
+The final control at the bottom-right is the [Agent Panel](../features/agent-panel.md) opener. It remains present without an open bundle and toggles the right-docked agent workspace.
 
 A thin **status bar** spans the bottom of the window (the VS Code pattern). It carries ambient status and low-frequency toggles: the [validation](../features/validation.md) **issue indicator** at the left, and at the right a **Log** toggle (opens the change-log panel — see [Log View](../features/log-view.md)) plus quiet bundle context (concept count, and the bundle's **format version** — `OKF x.y`, prefixed with `ODSF x.y` for a [design-system bundle](../features/design-system-rendering.md) — a read-only property of the data). Its urgency is deliberately **inverted from a badge** — conformance is the expected baseline, so it reads *quietly* (dim, no colour); colour and weight are reserved for the exception (amber for warnings, red for errors), so the eye is only drawn when there is something to act on. The indicator opens the [Validation](../features/validation.md) panel.

@@ -3,12 +3,12 @@ type: Feature
 title: Log View
 description: Render a bundle's reserved log.md as a readable, date-grouped timeline of changes, newest first.
 tags: [feature, log, timeline, history]
-timestamp: 2026-07-02T08:00:00Z
+timestamp: 2026-07-13T19:42:50Z
 ---
 
 # What it does
 
-Renders a bundle's `log.md` — a [reserved OKF file](../reference/okf-spec-summary.md): a dated change history kept newest-first — as a readable timeline instead of raw markdown. It answers "what changed, and when" without leaving the viewer. Directory-level `log.md` files are surfaced too, where a sub-bundle keeps its own history.
+Renders a bundle's `log.md` — a [reserved OKF file](../reference/okf-spec-summary.md): a dated change history kept newest-first — as a readable timeline instead of raw markdown. It answers "what changed, and when" without leaving Studio. Directory-level `log.md` files are surfaced too, where a sub-bundle keeps its own history.
 
 # Opening it
 

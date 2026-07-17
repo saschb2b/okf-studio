@@ -54,7 +54,8 @@ mod tests {
 
     #[test]
     fn splits_on_date_headings_in_file_order() {
-        let text = "# Update Log\n\n## 2026-06-28\n* newest\n* also new\n\n## 2026-06-01\n* older\n";
+        let text =
+            "# Update Log\n\n## 2026-06-28\n* newest\n* also new\n\n## 2026-06-01\n* older\n";
         let log = parse_log_text(text);
         assert_eq!(log.len(), 2);
         assert_eq!(log[0].date, "2026-06-28");

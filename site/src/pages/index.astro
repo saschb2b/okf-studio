@@ -10,12 +10,18 @@ const shotDs = `${base}screenshot-ds.webp`;
 const repo = "https://github.com/saschb2b/okf-viewer";
 const releasesLatest = `${repo}/releases/latest`;
 const releases = `${repo}/releases`;
-const version = "v0.2.7";
+const migrationNotes = `${repo}/blob/main/docs/product/migration-notes.md`;
+const version = "v0.3.0";
 
 const okfSpec = "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf";
 const odsfSpec = "https://saschb2b.github.io/Open-Design-System-Format/";
 
 const features = [
+  {
+    glyph: "✦",
+    title: "Agent workspace",
+    body: "Chat with Claude, Codex, Cursor, or a local model right beside the graph and reader. Context goes in explicitly, and every proposed change is reviewed before it touches your files.",
+  },
   {
     glyph: "◱",
     title: "Knowledge as a graph",
@@ -24,7 +30,12 @@ const features = [
   {
     glyph: "⬡",
     title: "Any conformant bundle",
-    body: "Reads Open Knowledge Format & ODSF bundles from any producer: a local folder, or straight from a GitHub URL.",
+    body: "Reads Open Knowledge Format & ODSF bundles from any producer. Open a local folder, or explicitly download and cache a GitHub URL on your machine. Rust records that choice and limits readers, assets, watchers, and agents to bundle roots found by its scan.",
+  },
+  {
+    glyph: "✚",
+    title: "Start from zero",
+    body: "No bundle yet? A short form creates one: name it, name its first concept, pick a folder. Studio writes a conformant OKF starter, checks it against the spec, and opens it. No agent involved.",
   },
   {
     glyph: "⧉",
@@ -63,31 +74,66 @@ const features = [
   },
 ];
 
-// The four visualizations of one bundle (the viewer's own docs, as shipped).
+// The agent workspace, split into digestible pieces. One idea per card;
+// the feature card above stays a one-glance summary.
+const agentCards = [
+  {
+    glyph: "⇅",
+    title: "Bring the agent you already use",
+    body: "Install Claude Agent, Codex, Cursor, Gemini CLI, GitHub Copilot, Qwen Code, Cline, Auggie CLI, or Factory Droid from a searchable registry. Every build is pinned and checksum-verified, and your login and billing stay with the agent.",
+  },
+  {
+    glyph: "⌂",
+    title: "Or keep it fully local",
+    body: "Run Studio Agent against Ollama, LM Studio, llama.cpp, or any OpenAI-compatible endpoint. API keys live in your operating system's credential store, never in the app.",
+  },
+  {
+    glyph: "↻",
+    title: "Threads that come back",
+    body: "Run parallel threads per agent and switch by keyboard without interrupting work. Reopen Studio to reconnect the last agent and resume its bundle-scoped transcript and session choices after agent-owned sign-in. Studio keeps that connection attached to the reopened bundle, so you can continue without reconnecting it by hand.",
+  },
+  {
+    glyph: "⊕",
+    title: "Context on your terms",
+    body: "Attach concepts, validation findings, files, folders, web pages, or a previous thread. Text and tool calls stay in the order they happened, and a reported location opens only when it matches a concept in this bundle.",
+  },
+  {
+    glyph: "✎",
+    title: "Writes you review, always",
+    body: "Proposed changes land in a staged tree first. Review each diff hunk, validate against the OKF spec, then apply in one transaction you can restore. A verified Linux or Windows Restricted offline agent can stage for 30 minutes unattended, but it still cannot apply changes.",
+  },
+  {
+    glyph: "⊘",
+    title: "Nothing happens without you",
+    body: "Permissions, the current plan, staged files, and the queued follow-up stay in a stable reading shelf above the composer while the transcript scrolls on its own. Every thread keeps its visible status and file, network, credential, and process scope.",
+  },
+];
+
+// The four visualizations of one bundle (Studio's own docs, as shipped).
 const vizzes = [
   {
     src: `${base}screenshot-viz-graph.webp`,
     title: "Graph",
     body: "The force-directed network: what cites what, hubs and clusters at a glance. Double-click a node to expand its neighborhood.",
-    alt: "OKF Viewer's force-directed graph of a documentation bundle, nodes colored by concept type",
+    alt: "OKF Studio's force-directed graph of a documentation bundle, nodes colored by concept type",
   },
   {
     src: `${base}screenshot-viz-treemap.webp`,
     title: "Treemap",
     body: "Nested rectangles sized by how much is written: what's big, what's inside what. Click a group to drill in.",
-    alt: "OKF Viewer's treemap view: nested rectangles grouped by section, sized by content",
+    alt: "OKF Studio's treemap view: nested rectangles grouped by section, sized by content",
   },
   {
     src: `${base}screenshot-viz-sunburst.webp`,
     title: "Sunburst",
     body: "The whole hierarchy as concentric rings. Click a sector to re-root on it; the center takes you back up.",
-    alt: "OKF Viewer's sunburst view: the bundle hierarchy as labeled concentric rings",
+    alt: "OKF Studio's sunburst view: the bundle hierarchy as labeled concentric rings",
   },
   {
     src: `${base}screenshot-viz-pack.webp`,
     title: "Circle packing",
     body: "Groups within groups as nested circles, with a smooth zoom as you drill down and out.",
-    alt: "OKF Viewer's circle-packing view: concepts as nested circles grouped by section",
+    alt: "OKF Studio's circle-packing view: concepts as nested circles grouped by section",
   },
 ];
 
@@ -107,11 +153,12 @@ const downloads = [
     <nav class="site-nav topbar__inner" aria-label="Primary">
       <a class="site-nav__brand" href={base}>
         <img class="site-nav__logo" src={icon} alt="" width="28" height="28" />
-        OKF Viewer
+        OKF Studio
       </a>
       <div class="site-nav__links">
         <a class="site-nav__link" href="#formats">What is OKF?</a>
         <a class="site-nav__link" href="#features">Features</a>
+        <a class="site-nav__link" href="#agents">Agents</a>
         <a class="site-nav__link" href="#download">Download</a>
         <a class="site-nav__link" href={repo}>GitHub</a>
         <a class="btn btn--primary" href="#download">↓ Download</a>
@@ -126,14 +173,13 @@ const downloads = [
   <div class="canvas">
     <section class="hero">
       <div class="container">
-        <span class="eyebrow hero__eyebrow">Open Knowledge Format Viewer · {version}</span>
+        <span class="eyebrow hero__eyebrow">OKF Studio · {version}</span>
         <h1 class="hero__title">
-          Read your knowledge<br /><span class="hero__grad">as a graph.</span>
+          Explore connected knowledge<br /><span class="hero__grad">with your agents.</span>
         </h1>
         <p class="hero__sub">
-          A fast, native desktop reader for Open Knowledge Format bundles. Point it
-          at a folder to explore concepts, follow links, and see the structure of
-          what you know.
+          Open an OKF bundle as a graph and reader, then choose the agent you want
+          to work with in the same workspace.
         </p>
         <div class="hero__cta">
           <a class="btn btn--primary" href="#download">↓ Download for free</a>
@@ -147,9 +193,9 @@ const downloads = [
             role="button"
             tabindex="0"
             src={shotGraph}
-            alt="OKF Viewer showing a knowledge bundle as a concept graph beside the reader"
+            alt="OKF Studio with an agent thread answering a question about the open bundle, beside the concept graph and reader"
             width="1760"
-            height="1117"
+            height="1051"
             fetchpriority="high"
           />
         </figure>
@@ -164,7 +210,7 @@ const downloads = [
           <span class="eyebrow">New here?</span>
           <h2 class="section__title">What's OKF? What's ODSF?</h2>
           <p class="section__sub">
-            OKF Viewer reads two open, vendor-neutral formats. Here's the short
+            OKF Studio reads two open, vendor-neutral formats. Here's the short
             version.
           </p>
         </div>
@@ -187,7 +233,7 @@ const downloads = [
               A profile of OKF for design systems: it adds machine-readable design
               tokens and runnable HTML/CSS examples, so an agent produces UI that
               matches your system. This very site was built from an ODSF bundle,
-              which OKF Viewer can open and preview.
+              which OKF Studio can open and preview.
             </p>
             <a class="spec-card__link" href={odsfSpec}>Read the ODSF spec →</a>
           </article>
@@ -198,11 +244,11 @@ const downloads = [
     <section class="section" id="features">
       <div class="container">
         <div class="section__head">
-          <span class="eyebrow">Why OKF Viewer</span>
-          <h2 class="section__title">Built to read knowledge, not just files.</h2>
+          <span class="eyebrow">Why OKF Studio</span>
+          <h2 class="section__title">Built to explore knowledge with agents.</h2>
           <p class="section__sub">
-            A focused reader for the Open Knowledge Format, the vendor-neutral way
-            to package agent-readable knowledge.
+            Read the Open Knowledge Format directly, then bring the active bundle
+            into an agent thread without moving it to another workspace.
           </p>
         </div>
         <div class="features">
@@ -212,6 +258,30 @@ const downloads = [
                 <span class="feature-card__glyph" aria-hidden="true">{f.glyph}</span>
                 <h3 class="feature-card__title">{f.title}</h3>
                 <p class="feature-card__body">{f.body}</p>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="agents">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">The agent workspace</span>
+          <h2 class="section__title">Your agent, your bundle, one panel.</h2>
+          <p class="section__sub">
+            Pick an agent, ask about the open bundle, and review every proposed
+            change before it lands. Here is how that breaks down.
+          </p>
+        </div>
+        <div class="features">
+          {
+            agentCards.map((c) => (
+              <article class="feature-card">
+                <span class="feature-card__glyph" aria-hidden="true">{c.glyph}</span>
+                <h3 class="feature-card__title">{c.title}</h3>
+                <p class="feature-card__body">{c.body}</p>
               </article>
             ))
           }
@@ -272,7 +342,7 @@ const downloads = [
             </p>
           </div>
           <figure class="showcase__media">
-            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotReader} alt="OKF Viewer's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" decoding="async" />
+            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotReader} alt="OKF Studio's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" decoding="async" />
           </figure>
         </div>
 
@@ -281,13 +351,13 @@ const downloads = [
             <span class="eyebrow showcase__eyebrow">Design-system aware</span>
             <h2 class="showcase__title">It reads design systems, too.</h2>
             <p class="showcase__body">
-              Open an ODSF bundle and OKF Viewer renders its design tokens and
-              live HTML/CSS examples inline. Here it's reading this very site's
-              design system, previewing the hero it was built from.
+              Open an ODSF bundle and OKF Studio renders its design tokens and
+              live HTML/CSS examples inline. Inspect resolved values, switch
+              between preview and source, and stay inside the reader.
             </p>
           </div>
           <figure class="showcase__media">
-            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotDs} alt="OKF Viewer rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" decoding="async" />
+            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotDs} alt="OKF Studio rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" decoding="async" />
           </figure>
         </div>
       </div>
@@ -300,7 +370,7 @@ const downloads = [
         <div class="band">
           <div class="section__head">
             <span class="eyebrow">Download</span>
-            <h2 class="section__title">Get OKF Viewer</h2>
+            <h2 class="section__title">Get OKF Studio</h2>
             <p class="section__sub">Free and open source. Pick your platform.</p>
           </div>
           <div class="download__row">
@@ -322,6 +392,9 @@ const downloads = [
           <p class="download__note">
             {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases</a> · macOS: <a href={repo}>build from source</a>
           </p>
+          <p class="download__note">
+            Upgrading from OKF Viewer? Settings and agent profiles stay in place; open retained local folders once to grant them to Rust. <a href={migrationNotes}>Migration notes</a>
+          </p>
         </div>
       </div>
     </section>
@@ -329,7 +402,7 @@ const downloads = [
 
   <footer class="footer">
     <div class="container footer__inner">
-      <span>OKF Viewer, open source. Point it at a folder.</span>
+      <span>OKF Studio, open source. Explore connected knowledge with your agents.</span>
       <div class="footer__links">
         <a href={repo}>GitHub</a>
         <a href={releases}>Releases</a>

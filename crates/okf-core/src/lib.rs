@@ -1,4 +1,4 @@
-//! okf-core — the pure-Rust core for OKF Viewer.
+//! okf-core — the pure-Rust core for OKF Studio.
 //!
 //! No Tauri or GUI dependencies, so it is unit-testable in isolation. It owns
 //! bundle detection, OKF parsing, graph/backlink computation, and validation,
@@ -13,6 +13,7 @@ pub mod links;
 pub mod logfile;
 pub mod model;
 pub mod parse;
+pub mod query;
 pub mod validate;
 
 pub use model::*;

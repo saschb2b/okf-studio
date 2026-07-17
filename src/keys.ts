@@ -2,7 +2,8 @@
 // See docs/ux/keyboard-shortcuts.md. The palette/shortcuts agent may extend this.
 
 import { useEffect } from "react";
-import { useApp } from "./store.tsx";
+import { useApp } from "@/shared/store.tsx";
+import { focusAgentPanel, focusAgentPanelOpener } from "@/features/agent/agentPanelFocus.ts";
 
 export function useGlobalKeys() {
   const { state, actions } = useApp();
@@ -38,6 +39,11 @@ export function useGlobalKeys() {
         // close button owns closing the window).
         e.preventDefault();
         actions.closeTab();
+      } else if (mod && e.shiftKey && k === "a") {
+        e.preventDefault();
+        actions.togglePanel("agent");
+        if (state.panels.agent) focusAgentPanelOpener();
+        else focusAgentPanel();
       } else if (mod && e.shiftKey && k === "o") {
         // Open from URL (remote bundle). Shift distinguishes it from the local
         // folder picker on Ctrl/Cmd+O.
@@ -75,6 +81,7 @@ export function useGlobalKeys() {
         actions.setSwitcher(false);
         actions.setHelp(false);
         actions.setRemoteOpen(false);
+        actions.setCreateOpen(false);
       } else if (e.altKey && e.key === "ArrowLeft") {
         actions.back();
       } else if (e.altKey && e.key === "ArrowRight") {

@@ -2,6 +2,32 @@
 
 Copy, fill, validate. Every example uses bundle-absolute links (beginning with `/`) because the spec recommends them for stability. Relative links like `customers.md` are equally valid. Rules behind these shapes are in [spec.md](./spec.md); the form-per-fact table they follow (diagrams for topology, TeX for formulas, definition lists for terms, task lists for stateful checklists, footnotes for caveats) is in [SKILL.md](./SKILL.md).
 
+## Coverage inventory (the export/enrich work-list)
+
+Before writing a single concept when producing from a source (`export`, `enrich`), enumerate the *whole* surface into a checklist and burn it down. This is the artifact that stops a producer at the front door. Enumerate the way the source lets you: a database's table list, an OpenAPI spec's `paths`, a wiki's page tree, a website's `sitemap.xml` plus its section and listing pages. One discovered unit is one row; keep the list (in scratch, or as a `log.md` note) until every row is a concept or a recorded skip.
+
+```markdown
+# Coverage inventory: <source name> (<source root>), <N> units discovered
+Discovery: <how the surface was enumerated — e.g. INFORMATION_SCHEMA, spec paths, sitemap.xml + section indexes>
+
+- [ ] <unit> → <concept/path.md>          # one row per unit the source contains
+- [ ] <unit> → <concept/path.md>
+- [ ] <unit> → <concept/path.md>
+- [~] <unit> → skipped: <reason>          # record skips; do not drop silently
+```
+
+`N` is the count of units the source actually contains, not a target you may round down. If enumeration found fifty, a bundle of a dozen files has not covered the source. The rows are whatever the source's units are — tables and views, API operations, wiki pages, or a site's articles, entries, and catalog items — grouped into concept folders by domain.
+
+The inventory grows while you write: the entity pass (`enrich` step 4) appends a second section for the load-bearing names concepts use but never explain — technologies, organizations, products, people, standards, domain terms. Same discipline: every row ends as a concept or a recorded skip, and the mention itself is rewritten as a link.
+
+```markdown
+# Entities: <M> names mentioned but unexplained
+- [ ] React → /technologies/react.md              (mentioned in: /expertise.md, /articles/…)
+- [ ] Wertarbyte GmbH → /companies/wertarbyte.md  (mentioned in: /career.md, /projects/…)
+- [ ] MCP → /glossary/mcp.md                      (mentioned in: /mcp-servers/index.md, /articles/…)
+- [~] GmbH → skipped: legal form, one glossary sentence at most, not load-bearing
+```
+
 ## Concept document
 
 ```markdown
@@ -191,7 +217,7 @@ Page the data-platform on-call if the partition is still missing after one re-ru
 
 ## Worked example: a glossary
 
-`glossary.md`. Term meanings are definition lists, not bullet prose; a caveat too small for `# Citations` is a footnote.
+`glossary.md`. Term meanings are definition lists, not bullet prose; a caveat too small for `# Citations` is a footnote. The glossary is the home for a term whose whole story is one or two sentences; an entity with its own facts, history, or relationships graduates to its own concept (next example).
 
 ```markdown
 ---
@@ -216,6 +242,37 @@ Active user
   per report.
 
 [^carts]: Carts live in the app database and never reach the warehouse export.
+```
+
+## Worked example: an entity concept (the entity pass)
+
+`technologies/react.md`. The shape the entity pass (`enrich` step 4) mints for a name the source uses but never explains — here, one of thirty technologies a CV listed as bare text. What the source lacks, the concept supplies: a self-contained explanation from the entity's authoritative home and producer knowledge, then the entity's role *in this bundle*, linked both ways so the skills table's "React" cell now points here and this concept points back. `# Citations` says what each source contributed, so verified and recalled facts stay distinguishable.
+
+```markdown
+---
+type: Technology
+title: React
+description: The declarative UI library most of the portfolio's frontend work builds on.
+resource: https://react.dev
+tags: [frontend, library, javascript]
+timestamp: 2026-07-16T09:00:00Z
+---
+
+React is a declarative JavaScript library for building component-based user
+interfaces, maintained by Meta and a large open-source community. Components
+describe their UI as a function of state; React reconciles changes against the
+DOM. Since React 19, the React Compiler handles memoization automatically.
+
+# Role in this bundle
+The primary frontend library in [technical expertise](/expertise.md), used
+across most [projects](/projects/synthwave-drive.md) and examined in articles
+such as [React state management in 2026](/articles/react-state-management-2026.md)
+and [React structure, then and now](/articles/react-structure-then-and-now.md).
+
+# Citations
+[1] [react.dev](https://react.dev) — official documentation; the definition above.
+[2] [Work — saschb2b.com](https://www.saschb2b.com/work) — where the source names it.
+[3] Producer knowledge (2026-07-16) — the React 19 compiler note; verify against [1].
 ```
 
 ## Worked example: an external page mirrored as a reference

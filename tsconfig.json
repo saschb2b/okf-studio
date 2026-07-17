@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "paths": { "@/*": ["./src/*"] },
     "target": "ES2022",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
@@ -18,5 +19,5 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src"]
+  "include": ["src", ".storybook"]
 }

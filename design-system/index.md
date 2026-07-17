@@ -3,12 +3,12 @@ odsf_version: "0.1"
 okf_version: "0.1"
 ---
 
-# OKF Viewer Design System
+# OKF Studio Design System
 
-Dark-first, zed.dev-inspired visual language for the OKF Viewer marketing and download site. Built from the desktop app's theme and its app icon (the blue→violet folder on a near-black tile). Start at the [overview](overview.md); pull tokens from [styles/tokens.css](styles/tokens.css).
+Dark-first, zed.dev-inspired visual language for the OKF Studio marketing and download site. Built from the desktop app's theme and its app icon (the blue→violet folder on a near-black tile). Start at the [overview](overview.md); pull tokens from [styles/tokens.css](styles/tokens.css).
 
 # Overview
-* [OKF Viewer Design System](overview.md) - Principles, voice, and how to consume this bundle.
+* [OKF Studio Design System](overview.md) - Principles, voice, and how to consume this bundle.
 
 # Foundations
 * [Color](foundations/color.md) - Near-black palette and the blue→violet brand gradient.
@@ -32,6 +32,7 @@ Dark-first, zed.dev-inspired visual language for the OKF Viewer marketing and do
 
 # Guidelines
 * [Dark-first, never flat black](guidelines/dark-first.md) - Near-black surfaces with defined edges.
+* [Function first, edge to edge](guidelines/function-first.md) - Docked tool surfaces run edge-to-edge behind a hairline; radius is for what floats.
 
 # Subdirectories
 * [foundations/](foundations/) - The design language as tokens.

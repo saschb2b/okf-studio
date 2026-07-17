@@ -40,7 +40,7 @@ jobs:
             updaterJson: true
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Tauri 2 on Linux links against WebKitGTK 4.1 and friends; AppImage needs
       # patchelf. (The official Tauri prerequisites list for Debian/Ubuntu.)
@@ -61,12 +61,12 @@ jobs:
             libssl-dev
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm

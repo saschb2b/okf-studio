@@ -1,0 +1,30 @@
+.agent-thread-status {
+  display: inline-flex;
+  flex: none;
+  min-width: 14px;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-thread-status[data-status="running"] {
+  color: var(--accent);
+}
+
+.agent-thread-status[data-status="waiting"] {
+  color: var(--warn);
+}
+
+.agent-thread-status[data-status="failed"] {
+  color: var(--error);
+}
+
+.agent-thread-status[data-status="staged"] {
+  color: var(--ok);
+}
+
+.agent-thread-status > svg {
+  flex: none;
+}

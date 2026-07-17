@@ -1,5 +1,16 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
+import { resetBrowserMockForTests } from "@/shared/ipc.ts";
+
+// Persisted layout, saved-thread pointers, and the remembered last agent
+// connection must not leak between tests: restore and auto-resume act on them.
+// The once-per-session restore status and the live-connection registry are
+// module-level, so reset them too.
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  resetBrowserMockForTests();
+});
 
 // jsdom lacks canvas; the Graph View needs a 2D context stub to render in tests.
 if (typeof HTMLCanvasElement !== "undefined") {

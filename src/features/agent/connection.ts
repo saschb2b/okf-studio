@@ -1,0 +1,360 @@
+export interface AgentImplementationInfo {
+  name: string;
+  title: string | null;
+  version: string;
+}
+
+export interface AgentAuthMethodInfo {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+export interface AgentCapabilityInfo {
+  loadSession: boolean;
+  promptImage: boolean;
+  promptAudio: boolean;
+  promptEmbeddedContext: boolean;
+  mcpHttp: boolean;
+  mcpSse: boolean;
+  sessionList: boolean;
+  sessionResume: boolean;
+  sessionClose: boolean;
+}
+
+export interface AgentSecurityScopeInfo {
+  evidenceSource: "native-provider-host" | "external-process-launcher";
+  processContainment: "in-process" | "posix-process-group" | "windows-job-object";
+  profile: AgentSecurityProfileInfo;
+}
+
+export type AgentConnectionMode = "standard" | "restricted-offline";
+
+export interface AgentSecurityProfileInfo {
+  id:
+    | "studio-native-mediated-v1"
+    | "external-interactive-unrestricted-v1"
+    | "external-linux-restricted-offline-v1"
+    | "external-windows-restricted-app-container-v1";
+  effectiveMounts:
+    | "studio-tool-mediated-bundle"
+    | "host-operating-system"
+    | "system-runtime-agent-and-read-only-bundle"
+    | "app-container-runtime-and-mediated-bundle";
+  writableRoots:
+    | "reviewed-staging-only"
+    | "host-operating-system-permissions"
+    | "private-temporary-only";
+  networkPolicy: "configured-endpoint-only" | "host-operating-system" | "isolated";
+  credentialExposure:
+    | "configured-endpoint-only"
+    | "host-operating-system-and-launch-environment"
+    | "launch-environment-only";
+  lifetime: "connection";
+  stopConditions: readonly ("disconnect" | "application-exit" | "host-failure")[];
+  unattendedEligible: boolean;
+}
+
+export interface AgentSecurityHostStatus {
+  platform: "linux" | "macos" | "windows" | "other";
+  backend: "bubblewrap" | "app-container" | null;
+  state:
+    | "ready"
+    | "unsupported-platform"
+    | "not-found"
+    | "setuid-rejected"
+    | "untrusted-binary"
+    | "probe-failed";
+  launchProfileAvailable: boolean;
+}
+
+export interface AgentConnectionInfo {
+  connectionId: string;
+  profileId: string;
+  bundleRoot: string | null;
+  protocolVersion: string;
+  agent: AgentImplementationInfo | null;
+  authMethods: readonly AgentAuthMethodInfo[];
+  authenticated: boolean;
+  capabilities: AgentCapabilityInfo;
+  securityScope: AgentSecurityScopeInfo;
+}
+
+export interface AgentSessionInfo {
+  connectionId: string;
+  sessionId: string;
+  bundleRoot: string;
+  stagedChanges: AgentStagedChangesInfo | null;
+  configOptions: readonly AgentSessionConfigOption[];
+}
+
+export interface AgentAvailableCommandInfo {
+  name: string;
+  description: string;
+}
+
+export interface AgentAvailableCommandsEvent {
+  connectionId: string;
+  sessionId: string;
+  commands: readonly AgentAvailableCommandInfo[];
+}
+
+interface AgentSessionConfigOptionBase {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+}
+
+export interface AgentSessionConfigValueInfo {
+  value: string;
+  name: string;
+  description: string | null;
+}
+
+export interface AgentSessionConfigGroupInfo {
+  id: string | null;
+  name: string | null;
+  options: readonly AgentSessionConfigValueInfo[];
+}
+
+export type AgentSessionConfigOption = AgentSessionConfigOptionBase & (
+  | {
+      type: "select";
+      currentValue: string;
+      groups: readonly AgentSessionConfigGroupInfo[];
+    }
+  | {
+      type: "boolean";
+      currentValue: boolean;
+    }
+);
+
+export type AgentSessionConfigValueInput =
+  | { type: "select"; value: string }
+  | { type: "boolean"; value: boolean };
+
+export interface AgentSessionConfigSnapshot {
+  sessionId: string;
+  configOptions: readonly AgentSessionConfigOption[];
+}
+
+export interface AgentSessionConfigEvent extends AgentSessionConfigSnapshot {
+  connectionId: string;
+}
+
+export interface AgentSessionHistoryInfo {
+  sessionId: string;
+  title: string | null;
+  updatedAt: string | null;
+}
+
+export interface AgentSessionHistoryPage {
+  sessions: readonly AgentSessionHistoryInfo[];
+  hasMore: boolean;
+}
+
+export interface AgentHistoryMessage {
+  role: "user" | "agent";
+  text: string;
+}
+
+export interface AgentLoadedSessionInfo extends AgentSessionInfo {
+  messages: readonly AgentHistoryMessage[];
+}
+
+export interface AgentTurnInfo {
+  connectionId: string;
+  sessionId: string;
+  turnId: string;
+}
+
+export interface AgentPlanEntryInfo {
+  content: string;
+  priority: "high" | "medium" | "low" | "unknown";
+  status: "pending" | "in-progress" | "completed" | "unknown";
+}
+
+export type AgentToolKind =
+  | "read" | "edit" | "delete" | "move" | "search" | "execute"
+  | "think" | "fetch" | "switch-mode" | "other" | "unknown";
+export type AgentToolStatus =
+  | "pending" | "in-progress" | "completed" | "failed" | "unknown";
+
+export interface AgentToolLocationInfo {
+  path: string;
+  line: number | null;
+}
+
+/**
+ * Inline tool-call content the host reduces from ACP content blocks: a
+ * reported file diff as bounded unified-diff text (bundle-relative path,
+ * in-bundle files only), or a bounded block of output text.
+ */
+export type AgentToolContentInfo =
+  | { kind: "diff"; path: string; diff: string; truncated: boolean }
+  | { kind: "text"; text: string; truncated: boolean };
+
+export type AgentPermissionOptionKind =
+  | "allow-once"
+  | "allow-always"
+  | "reject-once"
+  | "reject-always"
+  | "unknown";
+
+export interface AgentPermissionOptionInfo {
+  optionId: string;
+  name: string;
+  kind: AgentPermissionOptionKind;
+}
+
+export interface AgentPermissionEvent {
+  requestId: string;
+  connectionId: string;
+  sessionId: string;
+  update:
+    | {
+        kind: "requested";
+        toolCallId: string;
+        title: string | null;
+        options: readonly AgentPermissionOptionInfo[];
+        canRemember: boolean;
+      }
+    | { kind: "resolved"; optionId: string | null };
+}
+
+export interface AgentTurnEvent extends AgentTurnInfo {
+  update:
+    | { kind: "text"; text: string; messageId: string | null }
+    | { kind: "plan"; entries: readonly AgentPlanEntryInfo[] }
+    | {
+        kind: "tool-call";
+        toolCallId: string;
+        title: string | null;
+        toolKind: AgentToolKind | null;
+        status: AgentToolStatus | null;
+        locations: readonly AgentToolLocationInfo[] | null;
+        changeState: "staged" | "not-staged" | null;
+        content: readonly AgentToolContentInfo[] | null;
+      }
+    | {
+        kind: "usage";
+        usedTokens: number;
+        contextWindowTokens: number;
+        cost: { amount: number; currency: string } | null;
+      }
+    | {
+        kind: "completed";
+        stopReason: "end-turn" | "max-tokens" | "max-turn-requests" | "refusal" | "cancelled" | "unknown";
+      }
+    | { kind: "failed"; message: string };
+}
+
+export interface AgentStagedFileInfo {
+  path: string;
+  bytes: number;
+  kind: "create" | "modify";
+}
+
+export type AgentWriteGrantMode = "interactive" | "unattended";
+
+export interface AgentStagedChangesInfo {
+  sessionId: string;
+  granted: boolean;
+  grantMode: AgentWriteGrantMode | null;
+  mode: "edit" | "enhance" | "create";
+  canRestore: boolean;
+  files: readonly AgentStagedFileInfo[];
+}
+
+export interface AgentStageEvent {
+  connectionId: string;
+  changes: AgentStagedChangesInfo;
+}
+
+export interface AgentStagedFileDiff {
+  path: string;
+  kind: "create" | "modify";
+  revision: string;
+  hunks: readonly AgentStagedDiffHunk[];
+  truncated: boolean;
+}
+
+export interface AgentStagedDiffHunk {
+  index: number;
+  header: string;
+  unified: string;
+  selected: boolean;
+  reviewed: boolean;
+}
+
+export interface AgentStagedValidationIssue {
+  path: string | null;
+  level: "error" | "warning";
+  message: string;
+}
+
+export interface AgentStagedValidationInfo {
+  sessionId: string;
+  revision: string;
+  errors: number;
+  warnings: number;
+  issues: readonly AgentStagedValidationIssue[];
+  truncated: boolean;
+  preview: AgentStagedGraphPreview;
+}
+
+export interface AgentStagedGraphPreview {
+  nodes: readonly AgentStagedGraphNode[];
+  edges: readonly AgentStagedGraphEdge[];
+  totalNodes: number;
+  totalEdges: number;
+  truncated: boolean;
+}
+
+export interface AgentStagedGraphNode {
+  id: string;
+  title: string;
+  conceptType: string;
+  staged: boolean;
+}
+
+export interface AgentStagedGraphEdge {
+  source: string;
+  target: string;
+}
+
+export interface AgentStagedApplyInfo {
+  sessionId: string;
+  revision: string;
+  appliedFiles: number;
+  changes: AgentStagedChangesInfo;
+}
+
+export interface AgentStagedCreateInfo {
+  sessionId: string;
+  revision: string;
+  folderName: string;
+  createdFiles: number;
+  changes: AgentStagedChangesInfo;
+}
+
+export interface AgentCheckpointRestoreInfo {
+  sessionId: string;
+  restoredFiles: number;
+  changes: AgentStagedChangesInfo;
+}
+
+export type AgentConnectionEvent =
+  | {
+      connectionId: string;
+      profileId: string;
+      status: "disconnected";
+      message: null;
+    }
+  | {
+      connectionId: string;
+      profileId: string;
+      status: "failed";
+      message: string;
+    };

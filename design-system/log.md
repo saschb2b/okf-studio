@@ -1,3 +1,12 @@
+## 2026-07-16
+* **Creation**: A [function-first](guidelines/function-first.md) guideline capturing the Zed power-tool stance: docked surfaces (composer, shelves, status strips) run edge-to-edge behind a single hairline; radius and enclosing borders are reserved for floating surfaces (popovers, dialogs) and blocks inside a scrolling document; keyboard focus on an edge-to-edge editor tints the hairline instead of drawing a ring. The desktop app's agent composer is the worked case and was reworked to match. Overview gains the matching principle; indexed.
+
+## 2026-07-12
+* **Update**: Updated the hero and feature-card examples to the shipped Studio proposition: connected knowledge, an explicit ACP agent connection, and no implied bundle write. Component structure, tokens, and behavior remain unchanged.
+
+## 2026-07-11
+* **Update**: Renamed the product labels in the design-system overview and runnable component/pattern examples from **OKF Viewer** to **OKF Studio**. Tokens, component behavior, and layout remain unchanged.
+
 ## 2026-07-08
 * **Creation**: A [viz card](components/viz-card.md) component: a screenshot with its title and one caption line on a single bordered surface, the media bleeding flush to the card edge behind a hairline seam (the [hero](patterns/hero.md)'s grounded-media motif at card scale). Built for the landing page's new visualization section, a two-column grid of the app's four views of one bundle (graph, treemap, sunburst, circle packing). Reserved `aspect-ratio` keeps the lazy-loaded grid from shifting. Runnable example added; indexed; `styles/components.css` updated.
 

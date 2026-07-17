@@ -14,18 +14,19 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend — lint · typecheck · test · build
+    name: Frontend fast lane — lint · typecheck · unit · build
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -36,11 +37,76 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  frontend-integration:
+    name: Frontend integration — full app · axe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:integration
+
+  frontend-stories:
+    name: Frontend stories — Chromium interactions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:stories
+
   core:
     name: Rust core — clippy · test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      # okf-core is pure Rust (no Tauri/webkit), so it needs no system libraries
+      # and no built frontend — keeping this job fast.
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy -p okf-core --all-targets -- -D warnings
+      - run: cargo test -p okf-core
+
+  native-host:
+    name: Native host — clippy · test
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -50,7 +116,51 @@ jobs:
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
 
-      # okf-core is pure Rust (no Tauri/webkit), so it needs no system libraries
-      # and no built frontend — keeping this job fast.
-      - run: cargo clippy -p okf-core --all-targets -- -D warnings
-      - run: cargo test -p okf-core
+      # Windows exercises the native Tauri host without the Linux WebKitGTK
+      # setup used by packaging. This covers ACP process ownership, model
+      # endpoints, source intake, staged transactions, and credential mocks.
+      - run: cargo clippy -p okf-viewer --all-targets -- -D warnings
+      - run: cargo test -p okf-viewer --no-fail-fast
+
+  linux-agent-sandbox:
+    name: Linux agent sandbox
+    # The compiled policy denies nested user namespaces via --disable-userns,
+    # which needs bubblewrap >= 0.8. Ubuntu 22.04 ships 0.6.1, so this job
+    # requires the 24.04 image (bubblewrap 0.9).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install native host and sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bubblewrap \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            build-essential \
+            libxdo-dev \
+            libssl-dev
+
+      - name: Allow unprivileged user namespaces for the probe
+        # Ubuntu 24.04 can gate unprivileged user namespaces behind AppArmor;
+        # the probe needs them like any unprivileged Bubblewrap launch does.
+        # Report the versions the job actually ran against for diagnosis.
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --version
+          uname -r
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Prove the restricted Bubblewrap mount policy
+        run: >-
+          cargo test -p okf-viewer
+          agent_sandbox::tests::restricted_linux_host_enforces_the_compiled_mount_policy
+          -- --exact --ignored

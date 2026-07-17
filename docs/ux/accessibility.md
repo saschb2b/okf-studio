@@ -3,7 +3,7 @@ type: Reference
 title: Accessibility
 description: The app's accessibility commitments — keyboard operability, focus, screen-reader semantics, contrast, and motion.
 tags: [ux, accessibility, a11y]
-timestamp: 2026-06-28T12:00:00Z
+timestamp: 2026-07-14T13:30:00Z
 ---
 
 # Keyboard operability
@@ -14,6 +14,8 @@ Every primary action is reachable without a mouse, with documented [shortcuts](k
 
 - Focus is always **visible** — an unmistakable focus ring, not just a color shift.
 - Focus order follows the reading order of the [three panes](browsing-layout.md): sidebar, then graph, then reader. Tabbing moves between panes predictably; within a pane it follows the visible layout.
+
+The [Agent Panel](../features/agent-panel.md) reveals horizontally scrolled agent and thread items when they receive focus. Menus and attachment popovers focus their first useful action and return focus to their trigger on Escape. Closing the panel returns focus to its status-bar opener.
 
 # Screen-reader semantics
 
@@ -37,6 +39,8 @@ Both themes meet **WCAG AA** contrast for text, graph nodes, and edges. See [The
 
 - Interactive targets are large enough to hit comfortably.
 - The UI respects OS **text scaling**; chrome and rendered bodies reflow rather than clip.
+
+Agent Panel fixtures at 360px, 440px, and 560px keep visible button and input targets at least 28 pixels high, preserve the composer, and avoid panel-level horizontal overflow. Long switcher labels truncate with their full accessible names intact.
 
 # Overrides
 

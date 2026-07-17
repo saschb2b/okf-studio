@@ -1,9 +1,9 @@
 ---
 type: Reference
 title: Settings & Preferences
-description: The preferences surface — theme, reader text size, scan tuning, motion, and reset.
+description: The local preferences surface for theme, reading, scan tuning, agent notifications, motion, updates, and reset.
 tags: [ux, settings, preferences]
-timestamp: 2026-07-05T16:00:00Z
+timestamp: 2026-07-17T10:39:43Z
 ---
 
 # Opening Settings
@@ -16,9 +16,11 @@ Settings open from the **⚙ at the foot of the [Activity Bar](browsing-layout.m
 - **Reading layer.** Scales the [reader](../features/concept-reader.md) pane only (the graph keeps its own zoom) — the **content-scoped** replacement for browser page-zoom; `Ctrl/Cmd` `+` / `−` / `0` adjust the size from anywhere off the graph, per the [native-feel principle](../product/principles.md). Browser **page-zoom is suppressed** so the whole app never scales like a website: the zoom hotkeys and ctrl+wheel / `gesture` pinch are remapped or blocked in JS (WebView2, WKWebView), and on the Linux WebKitGTK webview — where trackpad pinch is a native zoom that bypasses JS — the webview's built-in pinch **`GtkGestureZoom` is disabled at the GTK layer** (its signal handlers destroyed), with the zoom level pinned to 1.0 as a fallback. The reader's **"Aa"** control offers the fuller set — text size, measure width, line spacing, font (sans / serif), and dyslexia-friendly reading aids — all persisted here; see [Concept Reader](../features/concept-reader.md).
 - **Recent bundles** are no longer managed here — they moved to the top-left [Bundle Switcher](../features/bundle-switcher.md) (pin and remove there), closer to where you actually switch context. The [First Run](first-run.md) re-entry flow surfaces them on launch.
 - **Scan tuning.** The **max depth** the [autodetect](../features/folder-autodetect.md) scan descends is user-configurable and drives [detection](../architecture/bundle-detection.md). The **ignore-list** of skipped directories (`.git`, `node_modules`, `target`, `dist`, `build`, `.venv`, and hidden dirs) is a fixed sensible default for now; making it editable is a [later](../product/scope-and-non-goals.md) refinement.
+- **Agent notifications.** Disabled by default. Enabling them explicitly requests operating-system notification permission. Studio then alerts only when an unfocused background thread completes, fails, or waits for permission, using a generic state plus a bounded thread title and agent name. Prompt, response, source, concept, path, permission, and staged content are excluded. The operating system's focus and per-app settings remain authoritative.
+- **Agent notification sound.** A separate preference, available only after notifications are enabled. Studio asks for sound when allowed; the operating system decides whether and how it plays.
 - **Reduce motion.** Override the OS reduce-motion setting honored in [Accessibility](accessibility.md).
 - **Check for updates.** An **opt-in** button (the app's sole network path) that checks the latest GitHub release via the [updater](../architecture/build-and-release.md) only when clicked. If a newer version exists it offers, in one more click, to **install & restart** (AppImage / Windows) — or, for a **`.deb`** install (which the OS package manager owns and the updater can't self-replace), the same in-app "version X available" hint plus a **Download** button to the releases page. Desktop only; the dev/web build reports it as unavailable.
-- **Reset to defaults.** Restore every preference above to its shipped default.
+- **Reset to defaults.** Restore every preference above to its shipped default, including turning agent notifications and their sound off.
 
 # Persistence
 

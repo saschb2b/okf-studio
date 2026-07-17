@@ -1,0 +1,30 @@
+[
+  {
+    "path": "SKILL.md",
+    "sha256": "b7210b20d62faa2278f295fc73c6626dfcbf12ffd92e3355f33080294772c8ae"
+  },
+  {
+    "path": "permissions.yaml",
+    "sha256": "a59c33d37ea2d14fbd0b443829a952a6a6ff099c8ffcdc1f12ff6a8e9c8112aa"
+  },
+  {
+    "path": "references/boundary-pass.md",
+    "sha256": "23373741657ea693fcc14e8dc568055375d272b114c6ba9c053f5a295c22278f"
+  },
+  {
+    "path": "references/gates.md",
+    "sha256": "21aef17466f602ac6dec41d1cfbafa9697173f917d856ef880a2abddc9bf4cc9"
+  },
+  {
+    "path": "references/index.md",
+    "sha256": "c2ff3e313a2a3526f8fe39052d25e2057c3e6bc4ddc7129d264bd3de6abe0640"
+  },
+  {
+    "path": "references/rust-catalog.md",
+    "sha256": "0c2741deef44f22cc8675195d9a8b78a3fdcafe103da1eb43c7581da30a571d9"
+  },
+  {
+    "path": "references/tauri-catalog.md",
+    "sha256": "b00d6a1f5d8de761c64b80b969de55a3fecdb0d2e8aacb9ede45d0bfed7c8d95"
+  }
+]

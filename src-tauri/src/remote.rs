@@ -1,13 +1,14 @@
 //! Fetch a remote OKF bundle into a local cache directory, which the frontend
 //! then opens exactly like a picked folder (scan → read → watch → recents).
 //!
-//! Deliberately narrow, to stay a *reader*: a GitHub repo (downloaded as a
+//! Deliberately narrow: a GitHub repo (downloaded as a
 //! tarball via GitHub's own archive endpoint — no git binary, no clone/pull/sync
 //! surface) or a direct archive URL (`.tar.gz`/`.tgz`/`.tar`/`.zip`). Cloning
 //! arbitrary git hosts is out of scope; that's a local `git clone` away.
 //!
-//! This is the app's only non-updater network path, and it runs *only* when the
-//! user asks (the Open-from-URL dialog / an example card / Refresh-from-source).
+//! This Rust-owned path runs only when the user asks through Open from URL, an
+//! example card, or Refresh from source. Other network paths have their own
+//! explicit provider, installation, update, or source actions.
 //! Guards: https-only, a size cap, request timeouts, and archive extraction that
 //! refuses any entry escaping the destination (no zip-slip / `../` traversal).
 
@@ -150,7 +151,13 @@ fn cache_key(source: &RemoteSource) -> String {
     };
     let safe: String = base
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     // Disambiguate with a short non-cryptographic digest of the full input so
     // distinct subpaths/URLs don't collide on the same folder.
@@ -274,7 +281,14 @@ mod tests {
     use std::io::Write;
     use std::sync::atomic::{AtomicU32, Ordering};
 
-    fn src(kind: &str, owner: Option<&str>, repo: Option<&str>, git_ref: Option<&str>, subpath: Option<&str>, input: &str) -> RemoteSource {
+    fn src(
+        kind: &str,
+        owner: Option<&str>,
+        repo: Option<&str>,
+        git_ref: Option<&str>,
+        subpath: Option<&str>,
+        input: &str,
+    ) -> RemoteSource {
         RemoteSource {
             input: input.to_string(),
             kind: kind.to_string(),
@@ -306,15 +320,59 @@ mod tests {
         assert_eq!(url, "https://api.github.com/repos/o/r/tarball");
         assert!(matches!(arch, Archive::TarGz));
 
-        let (url, _) = resolve(&src("github", Some("o"), Some("r"), Some("main"), Some("docs"), "")).unwrap();
+        let (url, _) = resolve(&src(
+            "github",
+            Some("o"),
+            Some("r"),
+            Some("main"),
+            Some("docs"),
+            "",
+        ))
+        .unwrap();
         assert_eq!(url, "https://api.github.com/repos/o/r/tarball/main");
     }
 
     #[test]
     fn archive_kind_detects_format_and_requires_https() {
-        assert!(matches!(resolve(&src("archive", None, None, None, None, "https://x.io/b.zip")).unwrap().1, Archive::Zip));
-        assert!(matches!(resolve(&src("archive", None, None, None, None, "https://x.io/b.tar")).unwrap().1, Archive::Tar));
-        assert!(matches!(resolve(&src("archive", None, None, None, None, "https://x.io/b.tar.gz")).unwrap().1, Archive::TarGz));
+        assert!(matches!(
+            resolve(&src(
+                "archive",
+                None,
+                None,
+                None,
+                None,
+                "https://x.io/b.zip"
+            ))
+            .unwrap()
+            .1,
+            Archive::Zip
+        ));
+        assert!(matches!(
+            resolve(&src(
+                "archive",
+                None,
+                None,
+                None,
+                None,
+                "https://x.io/b.tar"
+            ))
+            .unwrap()
+            .1,
+            Archive::Tar
+        ));
+        assert!(matches!(
+            resolve(&src(
+                "archive",
+                None,
+                None,
+                None,
+                None,
+                "https://x.io/b.tar.gz"
+            ))
+            .unwrap()
+            .1,
+            Archive::TarGz
+        ));
         assert!(resolve(&src("archive", None, None, None, None, "http://x.io/b.zip")).is_err());
         assert!(resolve(&src("git", None, None, None, None, "")).is_err());
     }
@@ -322,17 +380,40 @@ mod tests {
     #[test]
     fn safe_join_refuses_traversal_and_absolute_paths() {
         let base = Path::new("/cache/bundle");
-        assert_eq!(safe_join(base, "docs"), Some(PathBuf::from("/cache/bundle/docs")));
-        assert_eq!(safe_join(base, "a/b"), Some(PathBuf::from("/cache/bundle/a/b")));
-        assert_eq!(safe_join(base, "./docs"), Some(PathBuf::from("/cache/bundle/docs")));
+        assert_eq!(
+            safe_join(base, "docs"),
+            Some(PathBuf::from("/cache/bundle/docs"))
+        );
+        assert_eq!(
+            safe_join(base, "a/b"),
+            Some(PathBuf::from("/cache/bundle/a/b"))
+        );
+        assert_eq!(
+            safe_join(base, "./docs"),
+            Some(PathBuf::from("/cache/bundle/docs"))
+        );
         assert_eq!(safe_join(base, "../../etc/passwd"), None);
         assert_eq!(safe_join(base, "/etc/passwd"), None);
     }
 
     #[test]
     fn cache_key_is_filesystem_safe_and_input_sensitive() {
-        let a = cache_key(&src("github", Some("o"), Some("r"), Some("main"), Some("docs"), "url-a"));
-        let b = cache_key(&src("github", Some("o"), Some("r"), Some("main"), Some("other"), "url-b"));
+        let a = cache_key(&src(
+            "github",
+            Some("o"),
+            Some("r"),
+            Some("main"),
+            Some("docs"),
+            "url-a",
+        ));
+        let b = cache_key(&src(
+            "github",
+            Some("o"),
+            Some("r"),
+            Some("main"),
+            Some("other"),
+            "url-b",
+        ));
         assert!(a.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
         assert_ne!(a, b, "distinct inputs must not collide on one cache dir");
     }
@@ -360,7 +441,9 @@ mod tests {
         let mut h = tar::Header::new_gnu();
         h.set_size(good.len() as u64);
         h.set_cksum();
-        builder.append_data(&mut h, "root/index.md", &good[..]).unwrap();
+        builder
+            .append_data(&mut h, "root/index.md", &good[..])
+            .unwrap();
         let bytes = builder.into_inner().unwrap();
 
         let dir = tmp();
@@ -389,7 +472,10 @@ mod tests {
         extract_tar(&mut flate2::read::GzDecoder::new(&bytes[..]), &dir).unwrap();
         let root = single_child_dir(&dir).expect("one top-level dir in the tarball");
         let docs = safe_join(&root, "docs").unwrap();
-        assert!(docs.join("index.md").is_file(), "docs/index.md should exist in the fetched subpath");
+        assert!(
+            docs.join("index.md").is_file(),
+            "docs/index.md should exist in the fetched subpath"
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 

@@ -1,18 +1,26 @@
 ---
 type: Architecture Decision
 title: Testing & Dogfooding
-description: The test strategy — Rust unit and integration tests, golden link tests, validator parity, tolerance proofs, and dogfooding this bundle.
+description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-06-29T23:59:00Z
+timestamp: 2026-07-17T19:10:00Z
 ---
 
 # Decision
 
-Confidence comes from testing the contracts, not the implementation details. The core's two load-bearing commands — `scan_bundles` and `read_bundle` ([IPC & Security](ipc-and-security.md)) — are tested directly, the link/backlink logic is pinned with golden tests, and conformance is checked for parity against the canonical validator.
+Platform confinement fixtures run the enforcement path they claim. Linux CI invokes the ignored Bubblewrap fixture on a prepared Ubuntu host. The Windows host test launches the test binary through the production AppContainer launcher, checks the child token, proves an ungranted host file is unreadable, and proves the container's private scratch remains writable. A separate process-tree fixture proves the Windows Job Object stops descendants. No platform test returns green merely because its backend is absent.
+
+Confidence comes from testing the contracts, not the implementation details. The core's two load-bearing commands — `scan_bundles` and `read_bundle` ([IPC & Security](ipc-and-security.md)) — are tested directly, the link/backlink logic is pinned with golden tests, and conformance is checked for parity against the canonical validator. The native host has its own merge gate for agent processes, provider requests, source intake, permissions, and reviewed transactions.
 
 # Dogfooding this bundle
 
 The primary integration fixture is **this `docs/` bundle itself**. The app's own spec doubles as its built-in sample, so the tests assert that `scan_bundles` **detects `docs/` as a bundle root** and that `read_bundle` produces the **expected concepts and edges** — the cross-links written here are the assertion set. If a section is reorganized, the test surfaces it. This is dogfooding: the product is exercised on the [product's own knowledge](../product/overview.md).
+
+# Studio creation and reviewed-edit dogfood
+
+The Studio staging test copies `docs/` to a temporary directory and exercises both authoring modes against real bundle structure. The Create path derives a separate two-concept bundle from a plain-text interview note and a CSV ownership table, validates the isolated draft, materializes it in a new destination, and reads the result through `okf-core`. The Enhance path stages changes to two existing `docs/` concepts plus one linked concept, explicitly keeps every modification hunk, validates and applies the selected revision, reads the resulting 49-concept bundle, and restores the checkpoint. The test compares the original files before and after the exercise, so a passing run also proves that dogfooding did not modify the checked-in bundle.
+
+Frontend interaction tests cover the corresponding guided Create and Enhance starters, proposal generation, grant requirement, staged review, explicit hunk choices, validation, portable destination checks, and Apply controls. Together these tests provide deterministic coverage of Studio's reviewed-authoring boundary. They do not substitute for live-provider quality checks.
 
 # Golden tests for link and backlink resolution
 
@@ -39,11 +47,44 @@ Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — 
 
 # Frontend and performance checks
 
-Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks, and **Playwright** for end-to-end flows. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout — plus the major interactive features (layout modes, the reader's context rail, the [bundle switcher](../features/bundle-switcher.md), and the keyboard-shortcuts overlay). **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout, plus layout modes, the reader context rail, the [bundle switcher](../features/bundle-switcher.md), the Agent workspace, and keyboard actions. Browser-level review uses the runnable Vite fixture and `agent-browser` during UI work. Storybook stories run in Playwright Chromium as a separate automated lane. **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+
+## Frontend test lanes
+
+The frontend suite is split by cost and environment instead of calling every check a unit test:
+
+- `pnpm test` runs pure `.test.ts` logic in Node and React or DOM-focused `.test.tsx` and `.dom.test.ts` files in jsdom. It is the fast feedback lane.
+- `pnpm test:integration` runs `.integration.test.tsx` files that boot `AppProvider` and the complete application. The lane has two workers, shuffled order, explicit slow-test reporting, and a bounded timeout for full user journeys. The former 2,174-line app test and 844-line feature test are split by product behavior so failures identify one surface and files can be scheduled independently. Turn lifecycle, source retry, permission memory, queued recovery, and failed-turn retry are separate tests instead of one sequential scenario. Studio Agent security disclosure, reviewed creation, and native tool calls also use separate saved-endpoint fixtures whose cleanup runs on setup and assertion failures.
+- `pnpm test:stories` renders every story and executes every `play` function in Playwright Chromium. Four workers share the browser startup cost without overloading the host. The browser handshake has a 90-second bound. Story execution takes only a few seconds; browser initialization dominates the lane on Windows. Storybook MCP remains the required discovery and preview surface during component work, while the package command is the automated isolation gate.
+- `pnpm test:frontend` runs those three lanes in sequence. It does not mix jsdom integration work with browser startup in one worker pool.
+
+Vitest restores mocks between tests. The shared setup clears both browser storage areas and all mutable browser-agent state: profiles, connections, event subscribers, sessions, staged changes, checkpoints, permissions, installation state, and recent bundles. Pending permission requests resolve before their registries are cleared, so a failed test cannot leave an orphaned promise or poison the next test. Full-app tests use one shared render and bundle-opening harness, with an explicit Strict Mode option for lifecycle regressions. Setup text is pasted in one event unless individual keystrokes are the behavior under test. Every lane shuffles test order. ESLint rejects focused tests, disabled tests, missing or conditional assertions, unawaited Testing Library queries, and side effects hidden in polling callbacks. CI runs the fast, integration, and story lanes as separate jobs with hard job timeouts, so one expensive surface does not delay unrelated feedback.
+
+Interaction tests wait for observable state. They do not retry user actions until an assertion passes. The reader-selection test establishes a DOM range once and captures it through the component's pointer-down contract before opening the attachment menu. This keeps the test aligned with the interaction sequence and removes its former five-attempt action loop.
+
+In browser development, `?agent-gallery=<state>&width=<360|440|560>` opens a deterministic Agent Panel state gallery instead of the workspace. Its nine states cover first use, saved work, stale and empty history, a capability-limited agent, an active turn with a queued follow-up, an unresolved permission, staged edits, and a disconnected process. Long connection and thread names plus bounded errors are part of the fixture. `hierarchy=stacked|merged` switches between the shipped two-level navigator and the rejected one-row prototype. The fixture performs no agent or network action. Component tests keep every named state and its reproducible URL available. The gallery's scope is **whole-panel compositions**; per-component states live in Storybook (next section), so new component states grow a story, not the gallery mock.
+
+# Component playground (Storybook)
+
+`pnpm storybook` serves **Storybook 10** on port 6006 (`@storybook/react-vite`, so stories build through the same `vite.config.ts` — the `@/` alias and the React Compiler babel plugin apply exactly as in the app). Stories are colocated `src/**/*.stories.tsx`; `.storybook/preview.tsx` imports the app's real `styles.css`, wraps every story in an opaque `--bg` frame (the desktop window's `body` is transparent, so unframed stories would be see-through), and adds a toolbar toggle that drives the same `:root[data-theme]` attribute as `shared/theme.ts` — every story renders in both themes on the app's actual tokens.
+
+The dev server also mounts **`@storybook/addon-mcp`** at `http://localhost:6006/mcp`, registered for coding agents in the repo-root `.mcp.json`: with Storybook running, an agent can enumerate components and stories, fetch story URLs and docs, and author new stories through the addon's tools. The repository connection requests only the `dev` and `docs` toolsets. Storybook 10.5.2's preview-stage `run-story-tests` action either waits without a manager listener or crashes the dev server when the documented manager addon cannot attach its test child to the provider store. MCP discovery and preview remain the component-review surface; `pnpm test:stories` is the bounded Playwright gate until the upstream test transport is reliable. A clean per-story screenshot for review comes from the iframe URL, `http://localhost:6006/iframe.html?id=<story-id>`. Ad hoc screenshots are temporary test output and stay outside the repository. A screenshot belongs in `docs/ux/` only when a named Markdown concept links it as curated evidence; otherwise the Storybook preview URL is the durable review surface.
+
+**Stories are tests.** The `storybook` Vitest project runs headless in Playwright Chromium via `@storybook/addon-vitest`: every story renders, and every `play` function executes its interactions and assertions (typed searches, spied callbacks, disabled-state checks). Interactive stories carry `play` functions per the MCP addon's authoring instructions, so a story is simultaneously the visual state and its regression test.
+
+Coverage spans the agent conversation items (tool rows and cards across every status, including the inline diff and command-output bodies; messages; plans; a full Thread composition at 440px and the 360px floor), the attachment picker and session-configuration rail, the live-work shelf and permission card, the staging previews (okf-proposal through the real parser, the staged-graph thumbnail), the three hierarchy visualizations on the real type palette, and — through a `WithStore` harness that boots the real `AppProvider` over the browser mock — the store-bound shell surfaces (status bar, top bar, empty state, sidebar).
+
+# Native host gate
+
+Pull requests run `cargo clippy -p okf-viewer --all-targets -- -D warnings` and `cargo test -p okf-viewer --no-fail-fast` on Windows. The job covers the official ACP client boundary, process-tree teardown, managed installation, local-model adapters, credential-store mocks, bounded source extraction, MCP tools, staging, validation, transactional Apply, interrupted-operation recovery, and checkpoint Restore. It also runs the PDF helper integration test. The one test that fetches a live GitHub archive remains ignored because ordinary CI must be deterministic and network-independent.
+
+Platform fixtures never report a silent pass. The process-tree helper is an explicitly ignored subprocess fixture invoked with `--ignored` by its owning test, and a file handshake releases its descendant only after process ownership is attached. The Bubblewrap mount-policy probe is explicitly ignored on ordinary hosts and the dedicated Ubuntu job invokes that exact test with `--ignored`. A missing platform capability therefore appears as ignored or failed, never green without executing the assertion body.
+
+The pure `okf-core` job remains separate on Linux. It needs no Tauri or WebKit dependencies and gives fast feedback for parsing, query, validation, and bundle fixtures. `pnpm test:network` runs the one ignored live-GitHub archive smoke test explicitly; it stays outside ordinary CI because a remote outage must not fail a deterministic merge gate. Release packaging still builds the complete application per target platform.
 
 # Automated accessibility gate
 
-An **axe-core** check runs over the rendered app (the empty state and an open bundle) and **fails the suite on any violation**, so the [accessibility](../ux/accessibility.md) commitments are verified, not merely asserted (Microsoft's "run automated accessibility checks in CI" practice). Colour contrast needs real layout that jsdom lacks, so that rule is verified via the [design tokens](../ux/theming.md) instead; the gate covers the structural rules — accessible names, roles, ARIA state, landmarks, and labels. It has already caught real regressions (an inappropriate role on the title bar, a splitter missing `aria-valuenow`).
+An **axe-core** check runs over the first-run state, an open bundle, the agent catalog, thread security disclosure, close confirmation, settings, shortcuts, and the bundle switcher. Any violation fails the suite. Colour contrast needs real layout that jsdom lacks, so that rule is verified through rendered review and the [design tokens](../ux/theming.md). The automated gate covers accessible names, roles, ARIA state, landmarks, and labels.
 
 # Static analysis and linting
 
@@ -52,6 +93,7 @@ A strict, **type-aware** ESLint stack (`pnpm lint`) backs the tests as a second 
 - **typescript-eslint** `strictTypeChecked` + `stylisticTypeChecked` — type-aware rules (no floating promises, no needless conditions, exhaustive nullish handling), which require the TypeScript project service.
 - The **React Compiler** ruleset (`eslint-plugin-react-hooks` v7) at error — the correctness rules (refs not read during render, no setState-in-render, purity, immutability) and the dependency rules. Because the [React Compiler](frontend-architecture.md) is on, `react-hooks/rule-suppression` forbids silencing the correctness rules; only the long-standing `exhaustive-deps` may be suppressed, and only for the imperative ref-driven [graph](../features/graph-view.md) effects with a stated reason.
 - **jsx-a11y** (recommended) — the static accessibility rules, complementing the runtime axe gate above.
+- **Vitest and Testing Library plugins** — focused or disabled tests, assertion-free tests, unawaited async queries, side effects in polling callbacks, and other reliability defects fail lint before the runner starts.
 - **eslint-config-prettier** last, so formatting is left to a formatter rather than fought by lint rules.
 
 The intent is that the same strictness applies as in sibling projects: catch the class of defect that compiles and passes tests but is still wrong. A handful of rules are tuned, not disabled — numbers are allowed in template literals, and test files relax the no-empty-function and (for polyfilled DOM globals) no-unnecessary-condition rules — each with a comment in `eslint.config.mjs` saying why.

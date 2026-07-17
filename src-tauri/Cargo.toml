@@ -3,7 +3,7 @@ name = "okf-viewer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "OKF Viewer — point it at a folder, read your knowledge as a graph."
+description = "OKF Studio — explore connected knowledge with the agents you already use."
 default-run = "okf-viewer"
 
 [lib]
@@ -20,12 +20,32 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
 tauri-plugin-store = "2"
 tauri-plugin-opener = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = "0.10"
+pdf-extract = "0.12"
+csv = "1.4"
+base64 = "0.22"
 okf-core = { path = "../crates/okf-core" }
 notify = "6"
+agent-client-protocol = "=1.2.0"
+rmcp = { version = "=2.1.0", features = ["client", "transport-io"] }
+schemars = "=1.2.1"
+tokio = { version = "1", features = ["io-util", "macros", "process", "rt", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+uuid = { version = "1", features = ["v4"] }
+url = "2"
+# ISO dates for generated bundle log entries and concept timestamps
+# (see src/bundle_create.rs).
+time = { version = "0.3", features = ["formatting"] }
+# Bounded unified diffs for staged-write review (see src/agent_stage.rs).
+similar = "2"
+keyring = "4.1"
+zeroize = "1.8"
+dunce = "1"
 
 # Remote-bundle fetch (Open from URL). Lightweight and blocking — ureq brings
 # rustls TLS with no async runtime; flate2 + tar handle GitHub tarballs, zip
@@ -37,10 +57,12 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # Opt-in update check against the latest GitHub release (see
 # docs/architecture/build-and-release.md). process is needed to relaunch after
-# an update. Desktop only.
+# an update. Desktop only. window-state restores the main window size,
+# position, and maximized/fullscreen state across launches.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-window-state = "2"
 
 # Linux only: disable WebKitGTK's native trackpad pinch-zoom (it bypasses the JS
 # guards that cover WebView2/WKWebView — see src/native.ts). Versions pinned to
@@ -49,3 +71,20 @@ tauri-plugin-process = "2"
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = "=2.0.2"
 gtk = "=0.18.2"
+
+# External ACP processes are owned as a tree. Unix uses a dedicated process
+# group; Windows uses a kill-on-close Job Object.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Security_Isolation",
+  "Win32_System_Com",
+  "Win32_System_Console",
+  "Win32_System_JobObjects",
+  "Win32_System_Threading",
+] }

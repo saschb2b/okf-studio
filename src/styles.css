@@ -1,4 +1,4 @@
-/* OKF Viewer base styles. Color comes from role variables so light/dark and the
+/* OKF Studio base styles. Color comes from role variables so light/dark and the
    type palette stay consistent. Component agents add their own scoped styles. */
 
 :root {
@@ -10,6 +10,8 @@
   --border: #d8dce2;
   --accent: #2f6df6;
   --accent-contrast: #ffffff;
+  /* Dim accent tint for selected/pressed items; tracks --accent per theme. */
+  --accent-dim: color-mix(in srgb, var(--accent) 14%, transparent);
   --error: #c0392b;
   --warn: #b8860b;
   --ok: #2e7d52;

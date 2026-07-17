@@ -27,30 +27,40 @@ describe("agent connection catalog", () => {
 
   it("pins every installable distribution to a verified archive", () => {
     const entries = catalogEntries(catalog as AgentCatalogDocument);
-    for (const entry of entries) {
-      if (entry.availability !== "installable") {
-        expect(entry.distribution).toBeNull();
-        continue;
-      }
-      const distribution = entry.distribution;
-      if (!distribution) throw new Error(`${entry.id} is installable without a distribution`);
-      if (distribution.kind === "binary") {
-        const targets = Object.entries(distribution.targets);
-        expect(targets.length).toBeGreaterThan(0);
-        for (const [name, target] of targets) {
-          expect(name).toMatch(/^(windows|linux|macos)-(x86_64|aarch64)$/);
-          expect(target.url).toMatch(/^https:\/\//);
-          expect(target.sha256).toMatch(/^[0-9a-f]{64}$/);
-          expect(target.downloadSize).toBeGreaterThan(0);
-          expect(target.downloadSize).toBeLessThanOrEqual(256 * 1024 * 1024);
-          expect(target.unpackedSize).toBeGreaterThanOrEqual(target.downloadSize);
-          expect(target.executable.startsWith(`${target.root}/`)).toBe(true);
-          for (const path of target.pathArguments) {
-            expect(path.startsWith(`${target.root}/`)).toBe(true);
-          }
+    const nonInstallable = entries.filter((entry) => entry.availability !== "installable");
+    expect(nonInstallable.map((entry) => entry.distribution))
+      .toEqual(nonInstallable.map(() => null));
+
+    const distributions = entries
+      .filter((entry) => entry.availability === "installable")
+      .map((entry) => {
+        const { distribution } = entry;
+        if (!distribution) throw new Error(`${entry.id} is installable without a distribution`);
+        return distribution;
+      });
+
+    const binaries = distributions.filter((distribution) => distribution.kind === "binary");
+    expect(binaries).toHaveLength(1);
+    for (const distribution of binaries) {
+      const targets = Object.entries(distribution.targets);
+      expect(targets.length).toBeGreaterThan(0);
+      for (const [name, target] of targets) {
+        expect(name).toMatch(/^(windows|linux|macos)-(x86_64|aarch64)$/);
+        expect(target.url).toMatch(/^https:\/\//);
+        expect(target.sha256).toMatch(/^[0-9a-f]{64}$/);
+        expect(target.downloadSize).toBeGreaterThan(0);
+        expect(target.downloadSize).toBeLessThanOrEqual(256 * 1024 * 1024);
+        expect(target.unpackedSize).toBeGreaterThanOrEqual(target.downloadSize);
+        expect(target.executable.startsWith(`${target.root}/`)).toBe(true);
+        for (const path of target.pathArguments) {
+          expect(path.startsWith(`${target.root}/`)).toBe(true);
         }
-        continue;
       }
+    }
+
+    const npmPackages = distributions.filter((distribution) => distribution.kind === "npm");
+    expect(npmPackages).toHaveLength(8);
+    for (const distribution of npmPackages) {
       expect(distribution.kind).toBe("npm");
       expect(distribution.tarball).toMatch(/^https:\/\/registry\.npmjs\.org\//);
       expect(distribution.integrity).toMatch(/^sha512-/);

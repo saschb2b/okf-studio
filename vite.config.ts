@@ -117,7 +117,7 @@ export default defineConfig({
             instances: [{ browser: "chromium" }],
           },
           slowTestThreshold: 1_000,
-          maxWorkers: 2,
+          maxWorkers: 1,
           testTimeout: 30_000,
           sequence: { shuffle: true },
         },

@@ -1,24 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { App } from "@/App.tsx";
-import { AppProvider } from "@/shared/store.tsx";
 import * as ipc from "@/shared/ipc.ts";
+import { openBundle, renderApp } from "@/test/appHarness.tsx";
 
 // Automated accessibility gate (Microsoft "run axe checks in CI" best practice).
 // Renders the real app over the mock backend and runs axe on the result. Colour
 // contrast needs real layout (unavailable in jsdom), so it is verified via the
 // design tokens (see docs/ux/theming.md) and disabled here; this test covers the
 // structural rules — names, roles, ARIA, landmarks, labels.
-
-function renderApp() {
-  return render(
-    <AppProvider>
-      <App />
-    </AppProvider>,
-  );
-}
 
 async function expectNoViolations(node: Element) {
   const results = await axe.run(node, {
@@ -31,11 +22,6 @@ async function expectNoViolations(node: Element) {
         .join(" | ")}`,
   );
   expect(summary).toEqual([]);
-}
-
-async function openBundle(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
-  await screen.findByRole("button", { name: /switch bundle/i });
 }
 
 describe("accessibility (axe-core)", () => {

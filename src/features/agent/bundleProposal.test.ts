@@ -45,8 +45,10 @@ describe("bundle proposal preview", () => {
     });
 
     const result = parseBundleProposal(`${first}\n\nRevision:\n\n${second}`);
-    expect(result.status).toBe("ready");
-    if (result.status === "ready") expect(result.proposal.concepts[0].path).toBe("second.md");
+    expect(result).toMatchObject({
+      status: "ready",
+      proposal: { concepts: [{ path: "second.md" }] },
+    });
   });
 
   it("rejects traversal, duplicate paths, and index references outside the proposal", () => {

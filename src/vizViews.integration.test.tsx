@@ -1,35 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { StrictMode } from "react";
-import { App } from "@/App.tsx";
-import { AppProvider } from "@/shared/store.tsx";
+import { openBundle, renderApp } from "@/test/appHarness.tsx";
 
 // The visualization switcher: four views in the graph pane (graph, treemap,
 // sunburst, circle packing), the persisted preference, and the graph-only
 // chrome unmounting when a hierarchy view is active. Driven over the mock
 // backend like features.test.tsx.
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
-function renderApp() {
-  return render(
-    <AppProvider>
-      <App />
-    </AppProvider>,
-  );
-}
-
-async function openBundle(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
-  await screen.findByRole("button", { name: /switch bundle/i });
-}
 
 function switcher() {
   return screen.getByRole("group", { name: "Visualization" });
@@ -100,13 +77,7 @@ describe("visualization switcher", () => {
     // StrictMode on purpose: the mount-drill vs. reset-on-root effects race, and
     // only StrictMode's double-invoke exposed the reset winning (the app runs in
     // StrictMode). A plain render would pass even with the bug present.
-    render(
-      <StrictMode>
-        <AppProvider>
-          <App />
-        </AppProvider>
-      </StrictMode>,
-    );
+    renderApp({ strictMode: true });
     await openBundle(user);
 
     // Select a folder while on the default graph view (the graph zooms to it).

@@ -2,7 +2,51 @@ import { describe, it, expect, vi } from "vitest";
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
+import type { AgentConnectionInfo } from "@/features/agent/connection.ts";
+import type { LocalModelProfile } from "@/features/agent/local.ts";
 import { chooseThreadAction, openAttachmentMenu, openFolder, renderApp } from "@/test/appHarness.tsx";
+
+async function openSavedStudioAgent(name: string) {
+  const profile = await ipc.saveLocalModelProfile({
+    name,
+    provider: "ollama",
+    baseUrl: "http://127.0.0.1:11434",
+  });
+  try {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
+    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
+    const localCard = screen.getByRole("heading", { name: "Studio Agent" }).closest("article");
+    if (!localCard) throw new Error("Studio Agent card was not rendered.");
+    await user.click(within(localCard).getByRole("button", { name: "Configure" }));
+    const localSection = screen
+      .getByRole("heading", { name: "Studio model endpoints" })
+      .closest("section");
+    if (!localSection) throw new Error("Local endpoint setup was not rendered.");
+    await user.click(await within(localSection).findByRole("button", { name: "Test" }));
+    expect(await within(localSection).findByLabelText("Model")).toHaveValue("qwen3:8b");
+    await user.click(within(localSection).getByRole("button", { name: "Connect" }));
+    await screen.findByRole("heading", { name: "Chat with Studio Agent" });
+    const connection = ipc.activeAgentConnections().find((item) => item.profileId === profile.id);
+    if (!connection) throw new Error("The saved Studio Agent endpoint did not connect.");
+    return { connection, profile, user };
+  } catch (error: unknown) {
+    cleanup();
+    await ipc.removeLocalModelProfile(profile.id);
+    throw error;
+  }
+}
+
+async function removeSavedStudioAgent(
+  connection: AgentConnectionInfo,
+  profile: LocalModelProfile,
+) {
+  cleanup();
+  await ipc.disconnectAgent(connection.connectionId);
+  await ipc.removeLocalModelProfile(profile.id);
+}
 
 describe("OKF Studio agent connections", () => {
   it("keeps an external connection on its launch bundle", async () => {
@@ -426,105 +470,95 @@ describe("OKF Studio agent connections", () => {
     await user.click(within(section).getByRole("button", { name: "Remove OpenAI-compatible" }));
   });
 
-  it("connects a saved local model for a bounded Studio Agent turn", async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await openFolder(user);
+  it("discloses the saved Studio Agent endpoint boundary", async () => {
+    const { connection, profile, user } = await openSavedStudioAgent("Security model");
+    try {
+      expect(screen.getByText(/bounded bundle and source tools, and reviewed staging/i))
+        .toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Thread security scope" }));
+      const nativeScope = screen.getByRole("dialog", { name: "Thread security scope" });
+      expect(within(nativeScope).getByText("Studio mediated (v1). Unattended work is locked."))
+        .toBeInTheDocument();
+      expect(within(nativeScope).getByText("Only bounded Studio tools can read the active bundle."))
+        .toBeInTheDocument();
+      expect(within(nativeScope).getByText("Only the configured endpoint can receive its saved API key."))
+        .toBeInTheDocument();
+      expect(within(nativeScope).getByText("No external ACP process runs."))
+        .toBeInTheDocument();
+      expect(within(nativeScope).getByText("Connection only. Stops on disconnect, app exit, or host failure."))
+        .toBeInTheDocument();
+      expect(within(nativeScope).getByText("Produced by Studio's native provider host."))
+        .toBeInTheDocument();
+    } finally {
+      await removeSavedStudioAgent(connection, profile);
+    }
+  });
 
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    const localCard = screen.getByRole("heading", { name: "Studio Agent" }).closest("article");
-    if (!localCard) throw new Error("Studio Agent card was not rendered.");
-    await user.click(within(localCard).getByRole("button", { name: "Configure" }));
-    const localSection = screen
-      .getByRole("heading", { name: "Studio model endpoints" })
-      .closest("section");
-    if (!localSection) throw new Error("Local endpoint setup was not rendered.");
-    await user.click(within(localSection).getByRole("button", { name: "Test connection" }));
-    await within(localSection).findByText("Endpoint reached");
-    await user.click(within(localSection).getByRole("button", { name: "Save endpoint" }));
-    await user.click(await within(localSection).findByRole("button", { name: "Test" }));
-    const model = await within(localSection).findByLabelText("Model");
-    expect(model).toHaveValue("qwen3:8b");
-    await user.click(within(localSection).getByRole("button", { name: "Connect" }));
+  it("creates a reviewed staged proposal through a saved Studio Agent endpoint", async () => {
+    const { connection, profile, user } = await openSavedStudioAgent("Creation model");
+    try {
+      expect(screen.getByRole("button", { name: "Add context or sources" })).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
+        .not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Create bundle/ }));
+      expect(await screen.findByRole("button", { name: "Allow edits in this thread" }))
+        .toBeDisabled();
+      await user.click(screen.getByRole("button", { name: "Send" }));
+      const proposal = await screen.findByRole(
+        "region",
+        { name: "Proposed OKF bundle structure" },
+        { timeout: 10_000 },
+      );
+      expect(screen.getByText(/I inspected the available evidence/)).toBeInTheDocument();
+      const localGrant = screen.getByRole("button", { name: "Allow edits in this thread" });
+      await waitFor(() => expect(localGrant).toBeEnabled());
+      await user.click(localGrant);
+      await user.click(within(proposal).getByRole("button", { name: "Generate in staging" }));
+      expect(await screen.findByText("Propose staged bundle files")).toBeInTheDocument();
+      expect(await screen.findByText("Validate staged proposal")).toBeInTheDocument();
+      expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
+        .toBeInTheDocument();
+      expect(await screen.findByText("Fresh bundle draft")).toBeInTheDocument();
+      expect(screen.getByText("Change staged for review")).toBeInTheDocument();
+    } finally {
+      await removeSavedStudioAgent(connection, profile);
+    }
+  });
 
-    expect(await screen.findByRole("heading", { name: "Chat with Studio Agent" }))
-      .toBeInTheDocument();
-    expect(screen.getByText(/bounded bundle and source tools, and reviewed staging/i))
-      .toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Thread security scope" }));
-    const nativeScope = screen.getByRole("dialog", { name: "Thread security scope" });
-    expect(within(nativeScope).getByText("Studio mediated (v1). Unattended work is locked."))
-      .toBeInTheDocument();
-    expect(within(nativeScope).getByText("Only bounded Studio tools can read the active bundle."))
-      .toBeInTheDocument();
-    expect(within(nativeScope).getByText("Only the configured endpoint can receive its saved API key."))
-      .toBeInTheDocument();
-    expect(within(nativeScope).getByText("No external ACP process runs."))
-      .toBeInTheDocument();
-    expect(within(nativeScope).getByText("Connection only. Stops on disconnect, app exit, or host failure."))
-      .toBeInTheDocument();
-    expect(within(nativeScope).getByText("Produced by Studio's native provider host."))
-      .toBeInTheDocument();
-    await user.keyboard("{Escape}");
-    expect(screen.getByRole("button", { name: "Add context or sources" })).toBeEnabled();
-    expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
-      .not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Create bundle/ }));
-    const localGrant = await screen.findByRole("button", { name: "Allow edits in this thread" });
-    expect(localGrant).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText(
-      /I inspected the available evidence/,
-      {},
-      { timeout: 5_000 },
-    )).toBeInTheDocument();
-    const proposal = await screen.findByRole("region", {
-      name: "Proposed OKF bundle structure",
-    });
-    await waitFor(() => expect(localGrant).toBeEnabled());
-    await user.click(localGrant);
-    const generate = within(proposal).getByRole("button", { name: "Generate in staging" });
-    await user.click(generate);
-    expect(await screen.findByText("Propose staged bundle files")).toBeInTheDocument();
-    expect(await screen.findByText("Validate staged proposal")).toBeInTheDocument();
-    expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
-      .toBeInTheDocument();
-    expect(await screen.findByText("Fresh bundle draft")).toBeInTheDocument();
-    expect(screen.getByText("Change staged for review")).toBeInTheDocument();
+  it("shows source and packaged-OKF tool calls from a saved Studio Agent endpoint", async () => {
+    const { connection, profile, user } = await openSavedStudioAgent("Tool model");
+    try {
+      await openAttachmentMenu(user);
+      expect(screen.getByRole("button", { name: "Attach context" })).toBeDisabled();
+      await user.click(screen.getByRole("button", { name: "Add source" }));
+      await user.type(screen.getByLabelText("Title"), "research-notes.txt");
+      await user.type(
+        screen.getByLabelText("Content"),
+        "The source documents an evidence trail.",
+      );
+      await user.click(screen.getByRole("button", { name: "Attach source" }));
+      const composer = screen.getByLabelText("Message the agent");
+      await user.type(composer, "Summarize the attached evidence");
+      await user.click(screen.getByRole("button", { name: "Send" }));
+      expect(await screen.findByText("Inspect attached sources")).toBeInTheDocument();
+      expect(await screen.findByText("Read attached source")).toBeInTheDocument();
+      expect(await screen.findByText(/including research-notes\.txt/)).toBeInTheDocument();
 
-    await openAttachmentMenu(user);
-    expect(screen.getByRole("button", { name: "Attach context" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Add source" }));
-    await user.type(screen.getByLabelText("Title"), "research-notes.txt");
-    await user.type(screen.getByLabelText("Content"), "The source documents an evidence trail.");
-    await user.click(screen.getByRole("button", { name: "Attach source" }));
-    await user.type(screen.getByLabelText("Message the agent"), "Summarize the attached evidence");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Inspect attached sources")).toBeInTheDocument();
-    expect(await screen.findByText("Read attached source")).toBeInTheDocument();
-    expect(await screen.findByText(/including research-notes\.txt/)).toBeInTheDocument();
-
-    await user.type(
-      screen.getByLabelText("Message the agent"),
-      "Load the OKF instructions, then search the active bundle for agent panel guidance",
-    );
-    await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Load OKF instructions")).toBeInTheDocument();
-    expect((await screen.findAllByText("Search OKF bundle")).length).toBeGreaterThan(0);
-    expect(await screen.findByText(
-      /Loaded packaged OKF instructions and found the Agent Panel concept/,
-    ))
-      .toBeInTheDocument();
-
-    await chooseThreadAction(user, "Change agent");
-    const reloadedLocalSection = screen
-      .getByRole("heading", { name: "Studio model endpoints" })
-      .closest("section");
-    if (!reloadedLocalSection) throw new Error("Local endpoint setup was not restored.");
-    await user.click(within(reloadedLocalSection).getByRole("button", { name: "Disconnect" }));
-    await user.click(within(reloadedLocalSection).getByRole("button", { name: "Remove Ollama" }));
-  }, 20_000);
+      await waitFor(() => expect(composer).toBeEnabled());
+      await user.type(
+        composer,
+        "Load the OKF instructions, then search the active bundle for agent panel guidance",
+      );
+      await user.click(screen.getByRole("button", { name: "Send" }));
+      expect(await screen.findByText("Load OKF instructions")).toBeInTheDocument();
+      expect(await screen.findAllByText("Search OKF bundle")).not.toHaveLength(0);
+      expect(await screen.findByText(
+        /Loaded packaged OKF instructions and found the Agent Panel concept/,
+      )).toBeInTheDocument();
+    } finally {
+      await removeSavedStudioAgent(connection, profile);
+    }
+  });
 
   it("cancels an in-progress agent installation and returns to installable", async () => {
     const user = userEvent.setup();

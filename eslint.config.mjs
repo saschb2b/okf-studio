@@ -104,7 +104,7 @@ export default tseslint.config(
       ],
       "vitest/no-disabled-tests": "error",
       "vitest/no-focused-tests": "error",
-      "vitest/no-conditional-expect": "off",
+      "vitest/no-conditional-expect": "error",
       // These rules reject deliberate DOM geometry checks and mid-test
       // remounts used by the app-shell integration lane.
       "testing-library/no-container": "off",

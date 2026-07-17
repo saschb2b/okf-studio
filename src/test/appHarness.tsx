@@ -1,13 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { App } from "@/App.tsx";
 import { AppProvider } from "@/shared/store.tsx";
 
-export function renderApp() {
-  return render(
+export function renderApp({ strictMode = false }: { strictMode?: boolean } = {}) {
+  const app = (
     <AppProvider>
       <App />
-    </AppProvider>,
+    </AppProvider>
+  );
+  return render(
+    strictMode ? <StrictMode>{app}</StrictMode> : app,
   );
 }
 

@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-17T13:40:00Z
+timestamp: 2026-07-17T15:31:51Z
 ---
 
 # Decision
@@ -52,10 +52,12 @@ Frontend tests use **Vitest** with **React Testing Library** for component and i
 The frontend suite is split by cost and environment instead of calling every check a unit test:
 
 - `pnpm test` runs pure `.test.ts` logic in Node and React or DOM-focused `.test.tsx` and `.dom.test.ts` files in jsdom. It is the fast feedback lane.
-- `pnpm test:integration` runs `.integration.test.tsx` files that boot `AppProvider` and the complete application. The lane has two workers, shuffled order, explicit slow-test reporting, and a bounded timeout for full user journeys. The former 2,174-line app test and 844-line feature test are split by product behavior so failures identify one surface and files can be scheduled independently.
-- `pnpm test:stories` renders every story and executes every `play` function in Playwright Chromium. The Storybook MCP `run-story-tests` tool remains the required isolation check during component work; the package command is the CI transport for the same browser project.
+- `pnpm test:integration` runs `.integration.test.tsx` files that boot `AppProvider` and the complete application. The lane has two workers, shuffled order, explicit slow-test reporting, and a bounded timeout for full user journeys. The former 2,174-line app test and 844-line feature test are split by product behavior so failures identify one surface and files can be scheduled independently. Turn lifecycle, source retry, permission memory, queued recovery, and failed-turn retry are separate tests instead of one sequential scenario. Studio Agent security disclosure, reviewed creation, and native tool calls also use separate saved-endpoint fixtures whose cleanup runs on setup and assertion failures.
+- `pnpm test:stories` renders every story and executes every `play` function in Playwright Chromium. The lane uses one orchestrator page to keep startup concurrency bounded. Story execution takes only a few seconds; browser initialization and the orchestrator handshake dominate the lane on Windows. The Storybook MCP `run-story-tests` tool remains the required isolation check during component work; the package command is the CI transport for the same browser project.
 
-Vitest restores mocks between tests and the shared setup clears both browser storage areas plus module-owned agent connection state. Every lane shuffles test order. ESLint rejects focused tests, disabled tests, missing assertions, unawaited Testing Library queries, and side effects hidden in polling callbacks. CI runs the fast, integration, and story lanes as separate jobs with hard job timeouts, so one expensive surface does not delay unrelated feedback.
+Vitest restores mocks between tests and the shared setup clears both browser storage areas plus module-owned agent connection state. Full-app tests use one shared render and bundle-opening harness, with an explicit Strict Mode option for lifecycle regressions. Every lane shuffles test order. ESLint rejects focused tests, disabled tests, missing or conditional assertions, unawaited Testing Library queries, and side effects hidden in polling callbacks. CI runs the fast, integration, and story lanes as separate jobs with hard job timeouts, so one expensive surface does not delay unrelated feedback.
+
+Interaction tests wait for observable state. They do not retry user actions until an assertion passes. The reader-selection test establishes a DOM range once and captures it through the component's pointer-down contract before opening the attachment menu. This keeps the test aligned with the interaction sequence and removes its former five-attempt action loop.
 
 In browser development, `?agent-gallery=<state>&width=<360|440|560>` opens a deterministic Agent Panel state gallery instead of the workspace. Its nine states cover first use, saved work, stale and empty history, a capability-limited agent, an active turn with a queued follow-up, an unresolved permission, staged edits, and a disconnected process. Long connection and thread names plus bounded errors are part of the fixture. `hierarchy=stacked|merged` switches between the shipped two-level navigator and the rejected one-row prototype. The fixture performs no agent or network action. Component tests keep every named state and its reproducible URL available. The gallery's scope is **whole-panel compositions**; per-component states live in Storybook (next section), so new component states grow a story, not the gallery mock.
 

@@ -1,0 +1,128 @@
+.agent-history {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  overflow: auto;
+}
+
+.agent-history > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.agent-history__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-history__actions .btn:not(.icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-history h3,
+.agent-history p {
+  margin: 0;
+}
+
+.agent-history h3 {
+  font-size: var(--fs-md);
+  line-height: var(--lh-tight);
+}
+
+.agent-history header p,
+.agent-history__limit,
+.agent-history__list span {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-history__search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 32px;
+  padding-inline: var(--space-8);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-history__search:focus-within {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
+}
+
+.agent-history__search input {
+  min-width: 0;
+  padding-block: var(--space-4);
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.agent-history__list {
+  display: grid;
+  gap: var(--space-8);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.agent-history__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 56px;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-history__list li > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.agent-history__list strong,
+.agent-history__list span {
+  overflow-wrap: anywhere;
+}
+
+.agent-history__state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.agent-history__state [role="alert"] {
+  color: var(--error);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 400px) {
+  .agent-history > header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-history__actions {
+    grid-row: 1;
+    justify-content: space-between;
+  }
+}

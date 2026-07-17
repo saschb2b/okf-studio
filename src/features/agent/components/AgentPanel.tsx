@@ -1,7 +1,7 @@
 import { ArrowLeft, CircleAlert, PanelRightClose, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
-import type { AgentConnectionInfo } from "@/features/agent/connection.ts";
+import type { AgentConnectionInfo, AgentSessionHistoryInfo } from "@/features/agent/connection.ts";
 import { agentPanelClamp, useApp } from "@/shared/store.tsx";
 import { captureReaderSelection } from "@/features/agent/readerSelection.ts";
 import { useAgentConnections } from "@/features/agent/useAgentConnections.ts";
@@ -331,6 +331,7 @@ interface ThreadSurface {
   ordinal: number;
   title: string;
   initialPrompt: string;
+  initialSession?: AgentSessionHistoryInfo;
   status: AgentThreadStatus;
 }
 
@@ -346,7 +347,9 @@ type ConnectionThreadsProps = Omit<
   | "onThreadTitleChange"
   | "onCloseThreadSurface"
   | "initialPrompt"
+  | "initialSession"
   | "onStartFreshThread"
+  | "onImportSession"
   | "onThreadStatusChange"
 > & {
   hidden: boolean;
@@ -372,10 +375,13 @@ function ConnectionThreads({
     reportConnectionStatus(connectionStatus);
   }, [connectionStatus]);
 
-  function addThreadSurface(initialPrompt = "") {
+  function addThreadSurface(
+    initialPrompt = "",
+    initialSession?: AgentSessionHistoryInfo,
+  ) {
     if (surfaces.length >= MAX_THREAD_SURFACES) return;
     const ordinal = Math.max(...surfaces.map((surface) => surface.ordinal)) + 1;
-    const surface = newThreadSurface(ordinal, initialPrompt);
+    const surface = newThreadSurface(ordinal, initialPrompt, initialSession);
     setSurfaces((current) => [...current, surface]);
     setSelectedSurfaceId(surface.id);
     requestAnimationFrame(() => {
@@ -434,7 +440,9 @@ function ConnectionThreads({
             connection={connection}
             threadSurfaceCount={surfaces.length}
             initialPrompt={surface.initialPrompt}
+            initialSession={surface.initialSession}
             onStartFreshThread={(initialPrompt) => addThreadSurface(initialPrompt)}
+            onImportSession={(session) => addThreadSurface("", session)}
             onThreadTitleChange={(title) => renameThreadSurface(surface.id, title)}
             onThreadStatusChange={(status) => updateThreadStatus(surface.id, status)}
             onCloseThreadSurface={() => closeThreadSurface(surface.id)}
@@ -445,12 +453,17 @@ function ConnectionThreads({
   );
 }
 
-function newThreadSurface(ordinal: number, initialPrompt = ""): ThreadSurface {
+function newThreadSurface(
+  ordinal: number,
+  initialPrompt = "",
+  initialSession?: AgentSessionHistoryInfo,
+): ThreadSurface {
   return {
     id: crypto.randomUUID(),
     ordinal,
     title: "New thread",
     initialPrompt,
+    ...(initialSession ? { initialSession } : {}),
     status: "idle",
   };
 }

@@ -27,14 +27,24 @@ describe("agent thread metadata", () => {
       .toThrow("invalid or exceeds");
     expect(parseAgentThreadMetadata([
       { ...BASE, updatedAt: 2 },
-      { ...BASE, sessionId: "older-duplicate", updatedAt: 1 },
+      { ...BASE, sessionId: "another-session", updatedAt: 1 },
+      { ...BASE, title: "older duplicate", updatedAt: 0 },
       { ...BASE, sessionId: "", updatedAt: 3 },
       { ...BASE, title: "tampered", updatedAt: Number.POSITIVE_INFINITY },
       { ...BASE, bundleRoot: "C:\\knowledge\\research", workflow: "unknown", updatedAt: 4 },
-    ])).toEqual([{ ...BASE, archived: false, workflow: null, updatedAt: 2 }]);
+    ])).toEqual([
+      { ...BASE, archived: false, workflow: null, updatedAt: 2 },
+      {
+        ...BASE,
+        sessionId: "another-session",
+        archived: false,
+        workflow: null,
+        updatedAt: 1,
+      },
+    ]);
   });
 
-  it("keeps one current and one archived pointer per bundle and profile within the cap", () => {
+  it("keeps a bounded recent list and replaces only the matching session", () => {
     let metadata = Array.from({ length: AGENT_THREAD_METADATA_CAP }, (_, index) =>
       createAgentThreadMetadata({
         ...BASE,

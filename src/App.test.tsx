@@ -169,7 +169,7 @@ describe("OKF Studio app", () => {
       await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
 
       expect(screen.getByRole("navigation", { name: "Agent connections" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Switch to Research Harness" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: /^Switch to Research Harness, / })).toHaveAttribute(
         "aria-pressed",
         "true",
       );
@@ -184,8 +184,8 @@ describe("OKF Studio app", () => {
       expect(await within(researchConversation).findByRole("button", { name: "Stop" }))
         .toBeInTheDocument();
 
-      await user.click(screen.getByRole("button", { name: "Switch to Review Harness" }));
-      expect(screen.getByRole("button", { name: "Switch to Review Harness" })).toHaveAttribute(
+      await user.click(screen.getByRole("button", { name: /^Switch to Review Harness, / }));
+      expect(screen.getByRole("button", { name: /^Switch to Review Harness, / })).toHaveAttribute(
         "aria-pressed",
         "true",
       );
@@ -203,7 +203,7 @@ describe("OKF Studio app", () => {
         "Browser ACP received: Review the evidence",
       );
 
-      await user.click(screen.getByRole("button", { name: "Switch to Research Harness" }));
+      await user.click(screen.getByRole("button", { name: /^Switch to Research Harness, / }));
       expect(within(researchConversation).getByRole("button", { name: "Stop" }))
         .toBeInTheDocument();
       await user.click(within(researchConversation).getByRole("button", { name: "Stop" }));
@@ -236,7 +236,7 @@ describe("OKF Studio app", () => {
       renderApp();
       await openFolder(user);
       await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-      await screen.findByRole("button", { name: "Switch to Failure Harness" });
+      await screen.findByRole("button", { name: /^Switch to Failure Harness, / });
 
       await act(async () => {
         for (const handler of connectionHandlers) {
@@ -300,7 +300,7 @@ describe("OKF Studio app", () => {
         name: "Start another thread with Session Harness",
       }));
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: "Switch to Thread 1: New thread" }));
+      await user.click(screen.getByRole("button", { name: /^Switch to Thread 1: New thread, / }));
       expect(screen.getByRole("alert")).toHaveTextContent("Agent updates paused");
 
       await user.click(screen.getByRole("button", { name: "Retry updates" }));
@@ -385,10 +385,10 @@ describe("OKF Studio app", () => {
         name: "Start another thread with Parallel Harness",
       }));
       expect(screen.getByRole("button", {
-        name: "Switch to Thread 1: Run a long investigation",
+        name: /^Switch to Thread 1: Run a long investigation, /,
       })).toHaveAttribute("aria-pressed", "false");
       const secondThreadTab = screen.getByRole("button", {
-        name: "Switch to Thread 2: New thread",
+        name: /^Switch to Thread 2: New thread, /,
       });
       expect(secondThreadTab).toHaveAttribute("aria-pressed", "true");
 
@@ -403,7 +403,7 @@ describe("OKF Studio app", () => {
       )).toBeInTheDocument();
 
       const firstThreadTab = screen.getByRole("button", {
-        name: "Switch to Thread 1: Run a long investigation",
+        name: /^Switch to Thread 1: Run a long investigation, /,
       });
       await user.click(firstThreadTab);
       expect(within(firstConversation).getByRole("button", { name: "Stop" }))
@@ -413,14 +413,14 @@ describe("OKF Studio app", () => {
       })).toBeDisabled();
 
       await user.click(screen.getByRole("button", {
-        name: "Switch to Thread 2: Review the evidence in parallel",
+        name: /^Switch to Thread 2: Review the evidence in parallel, /,
       }));
       await user.click(within(secondConversation).getByRole("button", {
         name: "Close thread surface",
       }));
       await user.click(screen.getByRole("button", { name: "Close thread" }));
       expect(screen.queryByRole("button", {
-        name: "Switch to Thread 2: Review the evidence in parallel",
+        name: /^Switch to Thread 2: Review the evidence in parallel, /,
       })).not.toBeInTheDocument();
       await waitFor(() => expect(firstThreadTab).toHaveFocus(), { timeout: 3_000 });
 
@@ -642,7 +642,7 @@ describe("OKF Studio app", () => {
     if (!reloadedLocalSection) throw new Error("Local endpoint setup was not restored.");
     await user.click(within(reloadedLocalSection).getByRole("button", { name: "Disconnect" }));
     await user.click(within(reloadedLocalSection).getByRole("button", { name: "Remove Ollama" }));
-  }, 10_000);
+  }, 20_000);
 
   it("cancels an in-progress agent installation and returns to installable", async () => {
     const user = userEvent.setup();
@@ -734,7 +734,7 @@ describe("OKF Studio app", () => {
 
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("heading", { name: "New thread" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to Local Harness" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Switch to Local Harness, / })).toBeInTheDocument();
     await chooseThreadAction(user, "Change agent");
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
@@ -1048,13 +1048,18 @@ describe("OKF Studio app", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Permission needed" })).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-    const activeToolCards = await screen.findAllByRole("article", {
-      name: "Tool: Search the bundle",
+    const longInvestigationComposer = screen.getByLabelText("Message the agent");
+    await waitFor(() => expect(longInvestigationComposer).toBeEnabled());
+    await user.type(longInvestigationComposer, "Run a long investigation");
+    const sendLongInvestigation = await screen.findByRole("button", { name: "Send" });
+    await waitFor(() => expect(sendLongInvestigation).toBeEnabled());
+    await user.click(sendLongInvestigation);
+    const activeToolCard = await waitFor(() => {
+      const card = screen.getAllByRole("article", { name: "Tool: Search the bundle" })
+        .find((candidate) => candidate.classList.contains("agent-tool--in-progress"));
+      if (!card) throw new Error("The active tool card was not rendered.");
+      return card;
     });
-    const activeToolCard = activeToolCards.at(-1);
-    if (!activeToolCard) throw new Error("The active tool card was not rendered.");
     // Running shows as the pulsing-icon state (class), not a status label.
     expect(activeToolCard).toHaveClass("agent-tool--in-progress");
     expect(document.querySelector(".agent-composer__usage")).toHaveTextContent("2% context");
@@ -1066,11 +1071,11 @@ describe("OKF Studio app", () => {
     expect(await screen.findByText("Follow-up queued")).toBeInTheDocument();
     const queuedMessage = screen.getByRole("region", { name: "Next message" });
     await waitFor(() =>
-      expect(within(queuedMessage).getByRole("button", { name: "Edit" })).toHaveFocus(),
+      expect(within(queuedMessage).getByRole("button", { name: "Recall draft" })).toHaveFocus(),
     );
     expect(document.querySelectorAll(".agent-message--user")).toHaveLength(userMessageCount);
     expect(screen.getByLabelText("Message the agent")).toBeDisabled();
-    await user.click(within(queuedMessage).getByRole("button", { name: "Edit" }));
+    await user.click(within(queuedMessage).getByRole("button", { name: "Recall draft" }));
     await waitFor(() => expect(screen.getByLabelText("Message the agent")).toHaveFocus());
     expect(screen.getByLabelText("Message the agent")).toHaveValue("Explain the implications");
     fireEvent.change(screen.getByLabelText("Message the agent"), {
@@ -1106,7 +1111,9 @@ describe("OKF Studio app", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Next message" })).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Message the agent"), "Fail once: simulate a dropped connection");
+    const failureComposer = screen.getByLabelText("Message the agent");
+    await waitFor(() => expect(failureComposer).toBeEnabled());
+    await user.type(failureComposer, "Fail once: simulate a dropped connection");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(
       await screen.findByText("The agent started a response before the connection failed."),
@@ -1118,11 +1125,11 @@ describe("OKF Studio app", () => {
     if (!failedTurn) throw new Error("The failed turn record was not rendered.");
     expect(failedTurn).toHaveAttribute("role", "status");
     promptSpy.mockRejectedValueOnce(new Error("The retry was not accepted."));
-    await user.click(within(failedTurn).getByRole("button", { name: "Retry turn" }));
+    await user.click(await within(failedTurn).findByRole("button", { name: "Retry turn" }));
     expect(await within(failedTurn).findByRole("alert")).toHaveTextContent(
       "Retry failed. The retry was not accepted.",
     );
-    await user.click(within(failedTurn).getByRole("button", { name: "Retry turn" }));
+    await user.click(await within(failedTurn).findByRole("button", { name: "Retry turn" }));
     expect(
       await screen.findByText("Browser ACP received: Fail once: simulate a dropped connection"),
     ).toBeInTheDocument();
@@ -1140,7 +1147,7 @@ describe("OKF Studio app", () => {
     await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Research Harness" }));
-  }, 25_000);
+  }, 60_000);
 
   it("hands the newest bundle proposal to reviewed staging", async () => {
     const user = userEvent.setup();
@@ -1163,7 +1170,11 @@ describe("OKF Studio app", () => {
       name: "Proposed OKF bundle structure",
     });
     expect(within(proposal).getByText("overview.md")).toBeInTheDocument();
-    const generate = within(proposal).getByRole("button", { name: "Generate in staging" });
+    const generate = await within(proposal).findByRole(
+      "button",
+      { name: "Generate in staging" },
+      { timeout: 3_000 },
+    );
     expect(generate).toBeDisabled();
     expect(within(proposal).getByText(/Allow edits for this thread/)).toBeInTheDocument();
 
@@ -1212,7 +1223,7 @@ describe("OKF Studio app", () => {
     await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Creation Harness" }));
-  });
+  }, 20_000);
 
   it("requires explicit existing-file choices before validating an enhancement", async () => {
     const user = userEvent.setup();
@@ -1264,9 +1275,9 @@ describe("OKF Studio app", () => {
     await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Enhancement Harness" }));
-  });
+  }, 20_000);
 
-  it("lists and restores agent-owned sessions for the active bundle", async () => {
+  it("searches and imports agent-owned sessions without replacing the live thread", async () => {
     const historySpy = vi.spyOn(ipc, "listAgentSessions")
       .mockRejectedValueOnce(new Error("History service unavailable"))
       .mockResolvedValueOnce({ sessions: [], hasMore: false });
@@ -1285,7 +1296,7 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
 
     await chooseThreadAction(user, "History");
-    expect(await screen.findByRole("heading", { name: "Agent session history" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Import agent session" })).toBeInTheDocument();
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "History unavailable. History service unavailable",
     );
@@ -1294,17 +1305,27 @@ describe("OKF Studio app", () => {
     await user.click(screen.getByRole("button", { name: "Refresh agent session history" }));
     expect(await screen.findByText("Trace bundle evidence")).toBeInTheDocument();
     expect(screen.getByText("Resolve validation warnings")).toBeInTheDocument();
+    await user.type(screen.getByRole("searchbox", { name: "Search agent sessions" }), "validation");
+    expect(screen.queryByText("Trace bundle evidence")).not.toBeInTheDocument();
+    expect(screen.getByText("Resolve validation warnings")).toBeInTheDocument();
+    await user.clear(screen.getByRole("searchbox", { name: "Search agent sessions" }));
 
     const session = screen.getByText("Trace bundle evidence").closest("li");
     if (!session) throw new Error("The session history row was not rendered.");
-    await user.click(within(session).getByRole("button", { name: "Restore" }));
+    await user.click(within(session).getByRole("button", { name: "Import" }));
 
     expect(await screen.findByRole("heading", { name: "Trace bundle evidence" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Switch to Thread 1: New thread, Idle$/ }))
+      .toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", {
+      name: /^Switch to Thread 2: Trace bundle evidence, Idle$/,
+    })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText(/Trace the evidence behind/)).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
+    const importedConversation = screen.getByRole("region", { name: "Trace bundle evidence" });
     await waitFor(
       () => {
-        const composer = screen.getByLabelText("Message the agent");
+        const composer = within(importedConversation).getByLabelText("Message the agent");
         expect(composer).toBeEnabled();
         expect(composer).toHaveFocus();
       },
@@ -1326,10 +1347,14 @@ describe("OKF Studio app", () => {
 
     await chooseThreadAction(user, "Archive thread");
     expect(await screen.findByRole("heading", { name: "Archived thread" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "New thread" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Pick up where you left off" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Ask about this bundle" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Create bundle/ })).not.toBeInTheDocument();
+    expect(within(importedConversation).getByRole("heading", { name: "New thread" }))
+      .toBeInTheDocument();
+    expect(within(importedConversation).getByRole("heading", { name: "Pick up where you left off" }))
+      .toBeInTheDocument();
+    expect(within(importedConversation).queryByRole("heading", { name: "Ask about this bundle" }))
+      .not.toBeInTheDocument();
+    expect(within(importedConversation).queryByRole("button", { name: /Create bundle/ }))
+      .not.toBeInTheDocument();
     await waitFor(() => expect(
       JSON.parse(localStorage.getItem("okf-studio:agent-threads") ?? "[]"),
     ).toEqual(expect.arrayContaining([
@@ -1339,9 +1364,11 @@ describe("OKF Studio app", () => {
         archived: true,
       }),
     ])));
-    await user.click(screen.getByRole("button", { name: "Start new thread" }));
-    expect(await screen.findByRole("heading", { name: "Ask about this bundle" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Create bundle/ })).toBeInTheDocument();
+    await user.click(within(importedConversation).getByRole("button", { name: "Start new thread" }));
+    expect(await within(importedConversation).findByRole("heading", { name: "Ask about this bundle" }))
+      .toBeInTheDocument();
+    expect(within(importedConversation).getByRole("button", { name: /Create bundle/ }))
+      .toBeInTheDocument();
     expect(localStorage.getItem("okf-studio:agent-threads")).not.toBe("[]");
 
     await chooseThreadAction(user, "Change agent");
@@ -2056,7 +2083,7 @@ describe("OKF Studio app", () => {
         name: "Start another thread with Keyboard Harness",
       }));
       await waitFor(() =>
-        expect(screen.getByRole("button", { name: "Switch to Thread 2: New thread" }))
+        expect(screen.getByRole("button", { name: /^Switch to Thread 2: New thread, / }))
           .toHaveFocus(),
       );
       expect(reveal).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });

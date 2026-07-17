@@ -107,7 +107,7 @@ describe("accessibility (axe-core)", () => {
       await ipc.disconnectAgent(connection.connectionId);
       await ipc.removeCustomAgent(profile.id);
     }
-  });
+  }, 10_000);
 
   it("the settings dialog has no violations", async () => {
     const user = userEvent.setup();

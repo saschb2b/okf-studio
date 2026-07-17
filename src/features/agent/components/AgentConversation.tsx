@@ -5,7 +5,7 @@ import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
-import { Check, ChevronLeft, CircleAlert, FileText, History, ImageIcon, Pencil, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
+import { Check, CircleAlert, FileText, History, ImageIcon, Pencil, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
 import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
@@ -13,7 +13,7 @@ import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import "./AgentConversation.css";
 import type { StagedValidationState, ConversationMessage, ConversationPlan, ConversationItem, AttachedSource, ComposerState, PromptDraft, PromptSubmission, QueuedPrompt, ThreadTitle, AuthenticationState, HistoryState, SavedThreadState, PendingPermission, AgentUsage, EventStreamState, DraftSessionState, PendingSessionConfig, StageFailure } from "@/features/agent/components/conversation/types.ts";
-import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, workflowForPrompt, usageLabels, errorMessage, historyDateLabel, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
+import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, workflowForPrompt, usageLabels, errorMessage, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
 import { SavedThreadWelcome, EmptyThreadWelcome, ThreadSecurityScope, ThreadTitleEditor, ThreadSurfaceClose, ThreadActionsMenu } from "@/features/agent/components/conversation/ThreadChrome.tsx";
 import { AttachmentPicker } from "@/features/agent/components/conversation/AttachmentPicker.tsx";
 import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemView, planProgressLabel, LivePlan } from "@/features/agent/components/conversation/items.tsx";
@@ -22,6 +22,7 @@ import { TranscriptSurface } from "@/features/agent/components/conversation/Tran
 import { ThreadMarkdownView } from "@/features/agent/components/conversation/ThreadMarkdownView.tsx";
 import { ContextPressureNotice } from "@/features/agent/components/conversation/ContextPressureNotice.tsx";
 import { QueuedPromptCard } from "@/features/agent/components/conversation/QueuedPromptCard.tsx";
+import { AgentSessionHistory } from "@/features/agent/components/conversation/AgentSessionHistory.tsx";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
 import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
@@ -48,7 +49,9 @@ export interface AgentConversationProps {
   onThreadTitleChange: (title: string) => void;
   onCloseThreadSurface: () => void;
   initialPrompt?: string;
+  initialSession?: AgentSessionHistoryInfo;
   onStartFreshThread: (initialPrompt: string) => void;
+  onImportSession: (session: AgentSessionHistoryInfo) => void;
   notificationsEnabled: boolean;
   notificationSound: boolean;
   onThreadStatusChange: (status: AgentThreadStatus) => void;
@@ -71,13 +74,14 @@ export function AgentConversation({
   onThreadTitleChange,
   onCloseThreadSurface,
   initialPrompt = "",
+  initialSession,
   onStartFreshThread,
+  onImportSession,
   notificationsEnabled,
   notificationSound,
   onThreadStatusChange,
 }: AgentConversationProps) {
   const conversationTitleId = useId();
-  const historyTitleId = `${conversationTitleId}-history`;
   const stagedTitleId = `${conversationTitleId}-staged`;
   const bundleFolderInputId = `${conversationTitleId}-bundle-folder`;
   const promptInputId = `${conversationTitleId}-prompt`;
@@ -101,7 +105,8 @@ export function AgentConversation({
   const [turnControlError, setTurnControlError] = useState<string | null>(null);
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
   const [history, setHistory] = useState<HistoryState>({ status: "closed" });
-  const [restoringSessionId, setRestoringSessionId] = useState<string | null>(null);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [importingSessionId, setImportingSessionId] = useState<string | null>(null);
   const [savedThread, setSavedThread] = useState<SavedThreadState>({ status: "none" });
   const [draftSessionState, setDraftSessionState] = useState<DraftSessionState>({
     status: "idle",
@@ -180,6 +185,7 @@ export function AgentConversation({
   const queuedEditRef = useRef<HTMLButtonElement>(null);
   const notificationStatusRef = useRef<AgentThreadStatus>("idle");
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
+  const initialSessionLoadStartedRef = useRef(false);
 
   bundleRootRef.current = bundleRoot;
   connectionIdRef.current = connection.connectionId;
@@ -189,14 +195,21 @@ export function AgentConversation({
   }, [savedThread.status]);
 
   async function loadSavedThread() {
-    if (!bundleRoot || !supportsHistory) {
+    if (!bundleRoot || !supportsHistory || initialSession) {
       setSavedThread({ status: "none" });
       return;
     }
     setSavedThread({ status: "loading" });
     try {
       const metadata = await loadAgentThreadMetadata(bundleRoot, connection.profileId);
-      setSavedThread(metadata.length > 0 ? { status: "ready", metadata } : { status: "none" });
+      const current = metadata.find((entry) => !entry.archived);
+      const archived = metadata.find((entry) => entry.archived);
+      const continuationChoices = [current, archived].filter(
+        (entry): entry is AgentThreadMetadata => entry !== undefined,
+      );
+      setSavedThread(continuationChoices.length > 0
+        ? { status: "ready", metadata: continuationChoices }
+        : { status: "none" });
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error) });
     }
@@ -206,7 +219,7 @@ export function AgentConversation({
 
   useEffect(() => {
     void loadSavedThreadEffect();
-  }, [bundleRoot, connection.profileId, supportsHistory]);
+  }, [bundleRoot, connection.profileId, supportsHistory, initialSession?.sessionId]);
 
   useEffect(() => {
     sessionRef.current = null;
@@ -308,7 +321,7 @@ export function AgentConversation({
   // controls stay available beside the recovery actions.
   useEffect(() => {
     const requiresAuth = !connection.authenticated && connection.authMethods.length > 0;
-    if (!bundleRoot || requiresAuth ||
+    if (!bundleRoot || requiresAuth || initialSession ||
       (savedThread.status !== "none" && savedThread.status !== "error") ||
       sessionRef.current?.bundleRoot === bundleRoot) return;
     void prepareDraftSessionEffect();
@@ -317,6 +330,7 @@ export function AgentConversation({
     connection.authenticated,
     connection.authMethods.length,
     connection.connectionId,
+    initialSession,
     savedThread.status,
   ]);
 
@@ -337,6 +351,54 @@ export function AgentConversation({
   useEffect(() => {
     autoResumeEffect();
   }, [savedThread.status, connection.authenticated, connection.connectionId]);
+
+  async function loadInitialSession() {
+    const requiresAuth = !connection.authenticated && connection.authMethods.length > 0;
+    if (!bundleRoot || !initialSession || requiresAuth || initialSessionLoadStartedRef.current) {
+      return;
+    }
+    initialSessionLoadStartedRef.current = true;
+    setDraftSessionState({ status: "loading" });
+    try {
+      const loaded = await loadAgentSession(
+        connection.connectionId,
+        bundleRoot,
+        initialSession.sessionId,
+      );
+      applyRestoredSession(
+        loaded,
+        initialSession.sessionId,
+        initialSession.title ?? "Imported session",
+        null,
+      );
+    } catch (error: unknown) {
+      setDraftSessionState({
+        status: "error",
+        message: `Import failed. ${errorMessage(error)}`,
+      });
+    }
+  }
+
+  const loadInitialSessionEffect = useEffectEvent(loadInitialSession);
+
+  useEffect(() => {
+    void loadInitialSessionEffect();
+  }, [
+    bundleRoot,
+    connection.authenticated,
+    connection.authMethods.length,
+    connection.connectionId,
+    initialSession?.sessionId,
+  ]);
+
+  function retryDraftSession() {
+    if (initialSession) {
+      initialSessionLoadStartedRef.current = false;
+      void loadInitialSession();
+      return;
+    }
+    void ensureSession().catch(() => undefined);
+  }
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
     async (_previous, { draft, source, retryTurnId, compactCommand }) => {
@@ -403,7 +465,8 @@ export function AgentConversation({
         }
         setMessages((current) => {
           const firstTurnItem = current.findIndex((item) =>
-            item.id === `plan-${turn.turnId}` || item.id === `agent-${turn.turnId}` ||
+            item.id === `plan-${turn.turnId}` ||
+            (item.role === "agent" && item.turnId === turn.turnId) ||
             (item.role === "tool" && item.turnId === turn.turnId));
           if (firstTurnItem < 0) return [...current, userMessage];
           return [
@@ -501,6 +564,7 @@ export function AgentConversation({
     if (queuedPrompt) startQueuedPrompt(queuedPrompt);
   });
   const updateStagedChangesEffect = useEffectEvent(updateStagedChanges);
+  const reportConnectionEnd = useEffectEvent(onConnectionEnd);
 
   useEffect(() => {
     let stopUpdates: (() => void)[] = [];
@@ -552,7 +616,7 @@ export function AgentConversation({
         }
       }),
       onAgentConnectionState((event) => {
-        if (event.connectionId === connection.connectionId) onConnectionEnd(event);
+        if (event.connectionId === connection.connectionId) reportConnectionEnd(event);
       }),
     ]).then((results) => {
       const activeStops: (() => void)[] = [];
@@ -581,7 +645,7 @@ export function AgentConversation({
       isDisposed = true;
       for (const stop of stopUpdates) stop();
     };
-  }, [connection.connectionId, onConnectionEnd, eventStreamAttempt]);
+  }, [connection.connectionId, eventStreamAttempt]);
 
   function retryEventStream() {
     if (eventStreamState.status === "retrying") return;
@@ -1066,7 +1130,7 @@ export function AgentConversation({
   }
   const threadSurfaceBusy = isSubmitting || activeTurn !== null || isCancelling ||
     authentication.status === "authenticating" || exportState.status === "exporting" ||
-    restoringSessionId !== null || isApplyingStage || isCreatingBundle ||
+    importingSessionId !== null || isApplyingStage || isCreatingBundle ||
     isRestoringCheckpoint || isSettingGrant || isPreparingGeneration ||
     rejectingStagedPath !== null || selectingHunk !== null;
   const hasArchiveBlockingDraft = promptText.trim().length > 0 ||
@@ -1201,20 +1265,26 @@ export function AgentConversation({
     }
   }
 
-  async function restoreSession(session: AgentSessionHistoryInfo) {
-    if (!bundleRoot || restoringSessionId) return;
-    setRestoringSessionId(session.sessionId);
+  async function importSession(session: AgentSessionHistoryInfo) {
+    if (!bundleRoot || importingSessionId || threadSurfaceCount >= 8) return;
+    setImportingSessionId(session.sessionId);
     try {
-      const loaded = await loadAgentSession(
-        connection.connectionId,
-        bundleRoot,
-        session.sessionId,
+      const page = await listAgentSessions(connection.connectionId, bundleRoot);
+      const freshSession = page.sessions.find(
+        (candidate) => candidate.sessionId === session.sessionId,
       );
-      applyRestoredSession(loaded, session.sessionId, session.title ?? "Restored thread", null);
+      if (!freshSession) {
+        throw new Error(page.hasMore
+          ? "That session is not in the agent's first 50 matching sessions anymore."
+          : "The agent no longer reports that session for the active bundle.");
+      }
+      onImportSession(freshSession);
+      setHistory({ status: "closed" });
+      setHistoryQuery("");
     } catch (error: unknown) {
       setHistory({ status: "error", message: errorMessage(error) });
     } finally {
-      setRestoringSessionId(null);
+      setImportingSessionId(null);
     }
   }
 
@@ -1366,7 +1436,7 @@ export function AgentConversation({
       setSelectingHunk(null);
       setIsCancelling(false);
       setHistory({ status: "closed" });
-      setRestoringSessionId(null);
+      setImportingSessionId(null);
       setRetryableTurnIds(new Set());
       setRetryingTurnId(null);
       setRetryErrors(new Map());
@@ -1487,7 +1557,7 @@ export function AgentConversation({
           <ThreadActionsMenu
             historyAvailable={supportsHistory && bundleRoot !== null &&
               !requiresAuthentication && history.status === "closed"}
-            historyDisabled={isSubmitting || activeTurn !== null || restoringSessionId !== null}
+            historyDisabled={isSubmitting || activeTurn !== null || importingSessionId !== null}
             exportAvailable={messages.length > 0 || exportState.status !== "idle"}
             exportDisabled={isSubmitting || activeTurn !== null || exportState.status === "exporting"}
             exportPending={exportState.status === "exporting"}
@@ -1630,74 +1700,21 @@ export function AgentConversation({
       )}
 
       {bundleRoot && !requiresAuthentication && history.status !== "closed" && (
-        <section className="agent-history" aria-labelledby={historyTitleId}>
-          <header>
-            <div>
-              <h3 id={historyTitleId}>Agent session history</h3>
-              <p>Sessions reported by this agent for the active bundle.</p>
-            </div>
-            <div className="agent-history__actions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => setHistory({ status: "closed" })}
-              >
-                <ChevronLeft aria-hidden="true" size={14} />
-                Back
-              </button>
-              <button
-                type="button"
-                className="btn ghost icon"
-                aria-label="Refresh agent session history"
-                title="Refresh"
-                disabled={history.status === "loading" || restoringSessionId !== null}
-                onClick={() => void openHistory()}
-              >
-                <RotateCcw aria-hidden="true" size={14} />
-              </button>
-            </div>
-          </header>
-          {history.status === "loading" && <p role="status">Loading agent sessions...</p>}
-          {history.status === "error" && (
-            <div className="agent-history__state">
-              <p role="alert">History unavailable. {history.message}</p>
-              <button type="button" className="btn" onClick={() => void openHistory()}>Retry</button>
-            </div>
-          )}
-          {history.status === "ready" && history.sessions.length === 0 && (
-            <div className="agent-history__state">
-              <p>This agent has no sessions for the active bundle.</p>
-            </div>
-          )}
-          {history.status === "ready" && history.sessions.length > 0 && (
-            <>
-              <ul className="agent-history__list">
-                {history.sessions.map((session) => {
-                  const updatedAt = historyDateLabel(session.updatedAt);
-                  return (
-                    <li key={session.sessionId}>
-                      <div>
-                        <strong>{session.title ?? "Untitled session"}</strong>
-                        {updatedAt && <span>{updatedAt}</span>}
-                      </div>
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={restoringSessionId !== null}
-                        onClick={() => void restoreSession(session)}
-                      >
-                        {restoringSessionId === session.sessionId ? "Restoring..." : "Restore"}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {history.hasMore && (
-                <p className="agent-history__limit">Showing the first 50 matching sessions.</p>
-              )}
-            </>
-          )}
-        </section>
+        <AgentSessionHistory
+          state={history}
+          query={historyQuery}
+          pendingSessionId={importingSessionId}
+          importDisabledReason={threadSurfaceCount >= 8
+            ? "Close a live thread before importing another session."
+            : null}
+          onQueryChange={setHistoryQuery}
+          onBack={() => {
+            setHistory({ status: "closed" });
+            setHistoryQuery("");
+          }}
+          onRefresh={() => void openHistory()}
+          onImport={(session) => void importSession(session)}
+        />
       )}
 
       {bundleRoot && !requiresAuthentication && history.status === "closed" && (
@@ -1742,7 +1759,8 @@ export function AgentConversation({
                         conceptIds={conceptIds}
                         onOpenConcept={onOpenConcept}
                         onRetry={
-                          turnId && retryableTurnIds.has(turnId)
+                          turnId && retryableTurnIds.has(turnId) &&
+                            activeTurn === null && !isSubmitting
                             ? () => retryAcceptedTurn(turnId)
                             : undefined
                         }
@@ -2223,15 +2241,17 @@ export function AgentConversation({
             {draftSessionState.status === "error" && (
               <div className="agent-composer__error-row">
                 <p className="agent-composer__error" role="alert">
-                  Session choices unavailable. {draftSessionState.message}
+                  {initialSession
+                    ? draftSessionState.message
+                    : `Session choices unavailable. ${draftSessionState.message}`}
                 </p>
                 <button
                   type="button"
                   className="btn ghost"
-                  onClick={() => void ensureSession().catch(() => undefined)}
+                  onClick={retryDraftSession}
                 >
                   <RotateCcw size={14} aria-hidden="true" />
-                  Retry session
+                  {initialSession ? "Retry import" : "Retry session"}
                 </button>
               </div>
             )}

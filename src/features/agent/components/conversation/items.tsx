@@ -109,21 +109,25 @@ export function applyTurnEvent(
 ): void {
   if (event.update.kind === "usage") return;
   if (event.update.kind === "text") {
-    const messageId = `agent-${event.turnId}`;
     const chunkText = event.update.text;
     setMessages((current) => {
-      const index = current.findIndex((message) =>
-        message.role !== "plan" && message.role !== "tool" && message.id === messageId);
-      if (index < 0) {
+      const lastTranscriptIndex = current.findLastIndex((item) => item.role !== "plan");
+      const lastTranscriptItem = current[lastTranscriptIndex];
+      if (lastTranscriptIndex < 0 || lastTranscriptItem.role !== "agent" ||
+        lastTranscriptItem.turnId !== event.turnId) {
+        const segmentNumber = current.filter((item) =>
+          item.role === "agent" && item.turnId === event.turnId).length + 1;
         return [...current, {
-          id: messageId,
+          id: segmentNumber === 1
+            ? `agent-${event.turnId}`
+            : `agent-${event.turnId}-${segmentNumber}`,
           role: "agent",
           turnId: event.turnId,
           text: chunkText,
         }];
       }
       return current.map((message, messageIndex) =>
-        messageIndex === index && message.role !== "plan" && message.role !== "tool"
+        messageIndex === lastTranscriptIndex && message.role === "agent"
           ? { ...message, text: message.text + chunkText }
           : message,
       );

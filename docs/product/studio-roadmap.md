@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-17T10:39:43Z
+timestamp: 2026-07-17T11:02:09Z
 ---
 
 # Outcome
@@ -282,9 +282,9 @@ Gate: long research and editing threads remain navigable and recoverable without
 
 - [x] Add opt-in desktop notifications when a background thread finishes, fails, or waits for permission. Include the bounded thread title and agent, never prompt, source, concept, path, or response content.
 - [x] Make sound a separate preference and respect operating-system focus and notification settings. Repeated updates for one waiting state must not spam.
-- [ ] Expand history from one current and one archived pointer into a bounded, searchable bundle-scoped list when the agent advertises session list and load. Keep restore validation agent-owned and bundle-filtered.
+- [x] Expand history from one current and one archived pointer into a bounded, searchable bundle-scoped list when the agent advertises session list and load. Keep restore validation agent-owned and bundle-filtered.
 - [x] Add recent-thread keyboard switching with visible agent and status. A running, waiting, failed, or staged thread must retain its state while inactive.
-- [ ] Offer explicit import of compatible agent sessions only after a fresh bundle-root filter. Unsupported agents keep the action absent rather than disabled without explanation.
+- [x] Offer explicit import of compatible agent sessions only after a fresh bundle-root filter. Unsupported agents keep the action absent rather than disabled without explanation.
 - [x] Show compact running, waiting, failed, and staged indicators in the connection and thread switchers. Notifications supplement this state; they do not replace it.
 
 Gate: five concurrent threads can be identified, switched, searched, and recovered without exposing transcript content in operating-system notifications or confusing bundle scope.

@@ -61,25 +61,18 @@ function parseMetadata(value: unknown): AgentThreadMetadata | null {
 
 export function parseAgentThreadMetadata(value: unknown): AgentThreadMetadata[] {
   if (!Array.isArray(value)) return [];
-  const seenStates = new Set<string>();
   const seenSessions = new Set<string>();
   return value
     .map(parseMetadata)
     .filter((metadata): metadata is AgentThreadMetadata => metadata !== null)
     .sort((left, right) => right.updatedAt - left.updatedAt)
     .filter((metadata) => {
-      const stateKey = JSON.stringify([
-        metadata.bundleRoot,
-        metadata.profileId,
-        metadata.archived,
-      ]);
       const sessionKey = JSON.stringify([
         metadata.bundleRoot,
         metadata.profileId,
         metadata.sessionId,
       ]);
-      if (seenStates.has(stateKey) || seenSessions.has(sessionKey)) return false;
-      seenStates.add(stateKey);
+      if (seenSessions.has(sessionKey)) return false;
       seenSessions.add(sessionKey);
       return true;
     })
@@ -116,7 +109,7 @@ export function upsertAgentThreadMetadata(
     ...current.filter((candidate) =>
       candidate.bundleRoot !== metadata.bundleRoot ||
       candidate.profileId !== metadata.profileId ||
-      (candidate.archived !== metadata.archived && candidate.sessionId !== metadata.sessionId)
+      candidate.sessionId !== metadata.sessionId
     ),
   ].slice(0, AGENT_THREAD_METADATA_CAP);
 }

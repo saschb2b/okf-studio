@@ -17,9 +17,14 @@ export function AgentLiveWorkShelf({
 }: AgentLiveWorkShelfProps) {
   const [expanded, setExpanded] = useState(true);
   const contentId = useId();
+  const contentExpanded = Boolean(children && (!collapsible || expanded));
 
   return (
-    <section className="agent-live-work" aria-label="Live work">
+    <section
+      className="agent-live-work"
+      aria-label="Live work"
+      data-content-expanded={contentExpanded}
+    >
       <header className="agent-live-work__header">
         <ListChecks size={15} aria-hidden="true" />
         <div>
@@ -44,7 +49,7 @@ export function AgentLiveWorkShelf({
           {blockingContent}
         </div>
       )}
-      {collapsible && expanded && children && (
+      {contentExpanded && (
         <div id={contentId} className="agent-live-work__content">
           {children}
         </div>

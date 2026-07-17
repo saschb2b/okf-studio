@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-16T22:30:00Z
+timestamp: 2026-07-17T11:10:00Z
 ---
 
 # Decision
@@ -53,7 +53,7 @@ In browser development, `?agent-gallery=<state>&width=<360|440|560>` opens a det
 
 `pnpm storybook` serves **Storybook 10** on port 6006 (`@storybook/react-vite`, so stories build through the same `vite.config.ts` — the `@/` alias and the React Compiler babel plugin apply exactly as in the app). Stories are colocated `src/**/*.stories.tsx`; `.storybook/preview.tsx` imports the app's real `styles.css`, wraps every story in an opaque `--bg` frame (the desktop window's `body` is transparent, so unframed stories would be see-through), and adds a toolbar toggle that drives the same `:root[data-theme]` attribute as `shared/theme.ts` — every story renders in both themes on the app's actual tokens.
 
-The dev server also mounts **`@storybook/addon-mcp`** at `http://localhost:6006/mcp`, registered for coding agents in the repo-root `.mcp.json`: with Storybook running, an agent can enumerate components and stories, fetch story URLs and docs, and author new stories through the addon's tools. A clean per-story screenshot for review comes from the iframe URL, `http://localhost:6006/iframe.html?id=<story-id>`.
+The dev server also mounts **`@storybook/addon-mcp`** at `http://localhost:6006/mcp`, registered for coding agents in the repo-root `.mcp.json`: with Storybook running, an agent can enumerate components and stories, fetch story URLs and docs, and author new stories through the addon's tools. A clean per-story screenshot for review comes from the iframe URL, `http://localhost:6006/iframe.html?id=<story-id>`. Ad hoc screenshots are temporary test output and stay outside the repository. A screenshot belongs in `docs/ux/` only when a named Markdown concept links it as curated evidence; otherwise the Storybook preview URL is the durable review surface.
 
 **Stories are tests.** The Vitest config splits into two projects: `unit` (the jsdom suite `pnpm test` runs — the CI gate) and `storybook`, which `pnpm test:stories` runs headless in Playwright Chromium via `@storybook/addon-vitest` — every story renders, and every `play` function executes its interactions and assertions (typed searches, spied callbacks, disabled-state checks). Interactive stories carry `play` functions per the MCP addon's authoring instructions, so a story is simultaneously the visual state and its regression test.
 

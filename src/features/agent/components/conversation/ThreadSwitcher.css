@@ -1,0 +1,56 @@
+.agent-panel__threads {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4) var(--space-8);
+  overflow-x: auto;
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-panel__thread-agent {
+  flex: 0 0 auto;
+  max-width: 80px;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-panel__thread {
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 112px;
+  padding: var(--space-4) var(--space-8);
+  gap: var(--space-4);
+}
+
+.agent-panel__thread[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.agent-panel__thread-number {
+  flex: none;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-panel__thread-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-panel__thread--add {
+  flex: 0 0 32px;
+  justify-content: center;
+  padding: var(--space-4);
+}

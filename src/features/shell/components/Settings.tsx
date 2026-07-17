@@ -16,6 +16,7 @@ import { ZOOM_EVENT } from "@/shared/platform/native.ts";
 import type { ZoomIntent } from "@/shared/platform/native.ts";
 import { checkForUpdate, installUpdate, RELEASES_URL } from "@/shared/platform/updater.ts";
 import type { UpdateStatus } from "@/shared/platform/updater.ts";
+import { requestAgentNotificationPermission } from "@/shared/platform/notifications.ts";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
 import "./Settings.css";
@@ -76,6 +77,7 @@ export function Settings() {
   const { state, actions } = useApp();
   const s = state.settings;
   const [update, setUpdate] = useState<UpdateStatus>({ kind: "idle" });
+  const [notificationError, setNotificationError] = useState<string | null>(null);
   const updateBusy = update.kind === "checking" || update.kind === "installing";
 
   // Remap the suppressed browser zoom keys/gestures to reader text-size.
@@ -159,6 +161,61 @@ export function Settings() {
             </Checkbox.Root>
             <span className="field-label">Reduce motion</span>
           </label>
+
+          <label className="field check">
+            <Checkbox.Root
+              className="ui-checkbox"
+              checked={s.agentNotifications}
+              onCheckedChange={(checked) => {
+                void (async () => {
+                  setNotificationError(null);
+                  if (!checked) {
+                    actions.updateSettings({ agentNotifications: false });
+                    return;
+                  }
+                  try {
+                    if (await requestAgentNotificationPermission()) {
+                      actions.updateSettings({ agentNotifications: true });
+                    } else {
+                      setNotificationError(
+                        "Desktop notifications remain off because the operating system denied permission.",
+                      );
+                    }
+                  } catch {
+                    setNotificationError("Studio could not request desktop notification permission.");
+                  }
+                })();
+              }}
+            >
+              <Checkbox.Indicator className="ui-checkbox-indicator" aria-hidden="true">
+                <Check size={13} />
+              </Checkbox.Indicator>
+            </Checkbox.Root>
+            <span className="field-label">Background agent notifications</span>
+          </label>
+          <span className="field-hint muted">
+            Show only the bounded thread title, agent, and finished, failed, or permission state.
+          </span>
+          {notificationError && <p role="alert">{notificationError}</p>}
+
+          <label className="field check">
+            <Checkbox.Root
+              className="ui-checkbox"
+              checked={s.agentNotificationSound}
+              disabled={!s.agentNotifications}
+              onCheckedChange={(checked) =>
+                actions.updateSettings({ agentNotificationSound: checked })
+              }
+            >
+              <Checkbox.Indicator className="ui-checkbox-indicator" aria-hidden="true">
+                <Check size={13} />
+              </Checkbox.Indicator>
+            </Checkbox.Root>
+            <span className="field-label">Notification sound</span>
+          </label>
+          <span className="field-hint muted">
+            Separate from notification permission. Operating-system focus and sound settings still win.
+          </span>
 
           <div className="field">
             <span className="field-label">Reader text size</span>

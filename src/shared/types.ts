@@ -131,6 +131,8 @@ export type ReaderFont = "sans" | "serif";
 export interface Settings {
   theme: ThemeMode;
   reduceMotion: boolean;
+  agentNotifications: boolean;
+  agentNotificationSound: boolean;
   scanMaxDepth: number;
   /**
    * Reader text-size multiplier (1 = default). Applied as a reader-scoped CSS
@@ -150,6 +152,8 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   reduceMotion: false,
+  agentNotifications: false,
+  agentNotificationSound: false,
   scanMaxDepth: 8,
   readerScale: 1,
   readerMeasure: 72,

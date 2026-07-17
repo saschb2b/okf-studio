@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "OKF Studio webview capabilities: store, opener, an opt-in updater with restart, window controls, and pop-out creation. No webview dialog, filesystem, or general network API is granted; Rust owns explicit bundle, provider, source, installer, and agent operations. 'pop-*' covers reader windows with the same surface and no extra plugin grants.",
+  "description": "OKF Studio webview capabilities: store, opener, opt-in desktop notifications, an opt-in updater with restart, window controls, and pop-out creation. No webview dialog, filesystem, or general network API is granted; Rust owns explicit bundle, provider, source, installer, and agent operations. 'pop-*' covers reader windows with the same surface and no extra plugin grants.",
   "windows": ["main", "pop-*"],
   "permissions": [
     "core:default",
@@ -15,6 +15,7 @@
     "core:window:allow-show",
     "core:window:allow-set-focus",
     "store:default",
+    "notification:default",
     "opener:default",
     "updater:default",
     "process:allow-restart"

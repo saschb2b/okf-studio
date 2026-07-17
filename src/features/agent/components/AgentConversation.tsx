@@ -22,6 +22,9 @@ import { TranscriptSurface } from "@/features/agent/components/conversation/Tran
 import { ThreadMarkdownView } from "@/features/agent/components/conversation/ThreadMarkdownView.tsx";
 import { ContextPressureNotice } from "@/features/agent/components/conversation/ContextPressureNotice.tsx";
 import { QueuedPromptCard } from "@/features/agent/components/conversation/QueuedPromptCard.tsx";
+import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
+import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
+import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
 import {
   findContextRecoveryCommand,
   freshThreadContextDraft,
@@ -46,6 +49,9 @@ export interface AgentConversationProps {
   onCloseThreadSurface: () => void;
   initialPrompt?: string;
   onStartFreshThread: (initialPrompt: string) => void;
+  notificationsEnabled: boolean;
+  notificationSound: boolean;
+  onThreadStatusChange: (status: AgentThreadStatus) => void;
 }
 
 
@@ -66,6 +72,9 @@ export function AgentConversation({
   onCloseThreadSurface,
   initialPrompt = "",
   onStartFreshThread,
+  notificationsEnabled,
+  notificationSound,
+  onThreadStatusChange,
 }: AgentConversationProps) {
   const conversationTitleId = useId();
   const historyTitleId = `${conversationTitleId}-history`;
@@ -169,6 +178,7 @@ export function AgentConversation({
   const stagedValidationRequestRef = useRef(0);
   const stagedDiscardRef = useRef<HTMLButtonElement>(null);
   const queuedEditRef = useRef<HTMLButtonElement>(null);
+  const notificationStatusRef = useRef<AgentThreadStatus>("idle");
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
 
   bundleRootRef.current = bundleRoot;
@@ -992,6 +1002,32 @@ export function AgentConversation({
   const hasSession = messages.some((item) => item.role === "user");
   const writeGranted = stagedChanges?.granted ?? false;
   const stagedFileCount = stagedChanges?.files.length ?? 0;
+  const latestStatusMessage = [...messages].reverse().find((item) => item.role === "status");
+  const threadStatus: AgentThreadStatus = pendingPermissions.length > 0
+    ? "waiting"
+    : activeTurn !== null
+      ? "running"
+      : latestStatusMessage?.role === "status" && latestStatusMessage.tone === "error"
+        ? "failed"
+        : stagedFileCount > 0
+          ? "staged"
+          : "idle";
+  const reportThreadStatus = useEffectEvent((status: AgentThreadStatus) => {
+    const previous = notificationStatusRef.current;
+    notificationStatusRef.current = status;
+    onThreadStatusChange(status);
+    const kind = threadAttentionTransition(previous, status);
+    if (!notificationsEnabled || !kind) return;
+    void sendAgentThreadNotification({
+      kind,
+      threadTitle: threadTitle.value,
+      agentName,
+      sound: notificationSound,
+    });
+  });
+  useEffect(() => {
+    reportThreadStatus(threadStatus);
+  }, [threadStatus]);
   const stagedSummary = `${stagedFileCount === 1 ? "1 file" : `${stagedFileCount} files`} · not applied to the bundle`;
   const writeGrantTitle = !hasSession
     ? "Send a message to start the session, then allow edits."

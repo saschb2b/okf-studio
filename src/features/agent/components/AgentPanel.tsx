@@ -1,5 +1,5 @@
-import { ArrowLeft, CircleAlert, PanelRightClose, Plus, RefreshCw, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ArrowLeft, CircleAlert, PanelRightClose, RefreshCw, Sparkles } from "lucide-react";
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import type { AgentConnectionInfo } from "@/features/agent/connection.ts";
 import { agentPanelClamp, useApp } from "@/shared/store.tsx";
@@ -16,6 +16,10 @@ import { AgentConversation } from "@/features/agent/components/AgentConversation
 import type { AgentConversationProps } from "@/features/agent/components/AgentConversation.tsx";
 import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary.tsx";
 import { NewAgentThreadMenu } from "@/features/agent/components/NewAgentThreadMenu.tsx";
+import { ThreadStatusIndicator, threadStatusLabel } from "@/features/agent/components/conversation/ThreadStatusIndicator.tsx";
+import { ThreadSwitcher } from "@/features/agent/components/conversation/ThreadSwitcher.tsx";
+import { aggregateThreadStatus } from "@/features/agent/threadStatus.ts";
+import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import "./AgentPanel.css";
 
 export function AgentPanel() {
@@ -31,6 +35,9 @@ export function AgentPanel() {
   const [view, setView] = useState<"empty" | "catalog" | "conversation">("empty");
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [connectionFailure, setConnectionFailure] = useState<ConnectionFailure | null>(null);
+  const [connectionStatuses, setConnectionStatuses] = useState(
+    () => new Map<string, AgentThreadStatus>(),
+  );
   const [resetToken, setResetToken] = useState(0);
   // Each ConnectionThreads registers how to open one more thread surface so
   // the agent popover can start a thread on an already-connected agent.
@@ -194,18 +201,20 @@ export function AgentPanel() {
               <nav className="agent-panel__connections" aria-label="Agent connections">
                 {connections.map((connection) => {
                   const label = connectionLabel(connection);
+                  const status = connectionStatuses.get(connection.connectionId) ?? "idle";
                   const selected = connection.connectionId === selectedConnection?.connectionId;
                   return (
                     <button
                       type="button"
                       className="btn ghost agent-panel__connection"
                       key={connection.connectionId}
-                      aria-label={`Switch to ${label}`}
+                      aria-label={`Switch to ${label}, ${threadStatusLabel(status)}`}
                       aria-pressed={selected}
                       title={label}
                       onFocus={revealSwitcherItem}
                       onClick={() => setSelectedConnectionId(connection.connectionId)}
                     >
+                      <ThreadStatusIndicator status={status} />
                       <span className="agent-panel__connection-label">{label}</span>
                     </button>
                   );
@@ -250,6 +259,16 @@ export function AgentPanel() {
                     );
                   }}
                   onOpenFolder={() => actions.openFolder()}
+                  notificationsEnabled={state.settings.agentNotifications}
+                  notificationSound={state.settings.agentNotificationSound}
+                  onConnectionStatusChange={(status) => {
+                    setConnectionStatuses((current) => {
+                      if (current.get(connection.connectionId) === status) return current;
+                      const next = new Map(current);
+                      next.set(connection.connectionId, status);
+                      return next;
+                    });
+                  }}
                   hidden={connection.connectionId !== selectedConnection?.connectionId}
                 />
               ))}
@@ -312,6 +331,7 @@ interface ThreadSurface {
   ordinal: number;
   title: string;
   initialPrompt: string;
+  status: AgentThreadStatus;
 }
 
 interface ConnectionFailure {
@@ -327,15 +347,18 @@ type ConnectionThreadsProps = Omit<
   | "onCloseThreadSurface"
   | "initialPrompt"
   | "onStartFreshThread"
+  | "onThreadStatusChange"
 > & {
   hidden: boolean;
   onRegisterThreadOpener: (connectionId: string, open: (() => void) | null) => void;
+  onConnectionStatusChange: (status: AgentThreadStatus) => void;
 };
 
 function ConnectionThreads({
   connection,
   hidden,
   onRegisterThreadOpener,
+  onConnectionStatusChange,
   ...conversationProps
 }: ConnectionThreadsProps) {
   const [surfaces, setSurfaces] = useState<ThreadSurface[]>(() => [newThreadSurface(1)]);
@@ -343,6 +366,11 @@ function ConnectionThreads({
   const threadNavRef = useRef<HTMLElement>(null);
   const selectedSurface = surfaces.find((surface) => surface.id === selectedSurfaceId) ?? surfaces[0];
   const connectionName = connectionLabel(connection);
+  const connectionStatus = aggregateThreadStatus(surfaces.map((surface) => surface.status));
+  const reportConnectionStatus = useEffectEvent(onConnectionStatusChange);
+  useEffect(() => {
+    reportConnectionStatus(connectionStatus);
+  }, [connectionStatus]);
 
   function addThreadSurface(initialPrompt = "") {
     if (surfaces.length >= MAX_THREAD_SURFACES) return;
@@ -378,48 +406,23 @@ function ConnectionThreads({
     ));
   }
 
+  function updateThreadStatus(surfaceId: string, status: AgentThreadStatus) {
+    setSurfaces((current) => current.map((surface) =>
+      surface.id === surfaceId && surface.status !== status ? { ...surface, status } : surface,
+    ));
+  }
+
   return (
     <div className="agent-panel__conversation" hidden={hidden}>
-      <nav
-        ref={threadNavRef}
-        className="agent-panel__threads"
-        aria-label={`${connectionName} threads`}
-      >
-        {surfaces.map((surface) => {
-          const selected = surface.id === selectedSurface.id;
-          const label = `Thread ${surface.ordinal}: ${surface.title}`;
-          return (
-            <button
-              type="button"
-              className="btn ghost agent-panel__thread"
-              key={surface.id}
-              aria-label={`Switch to ${label}`}
-              aria-pressed={selected}
-              title={label}
-              onFocus={revealSwitcherItem}
-              onClick={() => setSelectedSurfaceId(surface.id)}
-            >
-              <span className="agent-panel__thread-number" aria-hidden="true">
-                {surface.ordinal}
-              </span>
-              <span className="agent-panel__thread-label">{surface.title}</span>
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          className="btn ghost agent-panel__thread agent-panel__thread--add"
-          aria-label={`Start another thread with ${connectionName}`}
-          title={surfaces.length >= MAX_THREAD_SURFACES
-            ? `Studio keeps at most ${MAX_THREAD_SURFACES} live threads per connection.`
-            : `Start another thread with ${connectionName}`}
-          disabled={surfaces.length >= MAX_THREAD_SURFACES}
-          onFocus={revealSwitcherItem}
-          onClick={() => addThreadSurface()}
-        >
-          <Plus size={14} aria-hidden="true" />
-        </button>
-      </nav>
+      <ThreadSwitcher
+        navRef={threadNavRef}
+        agentName={connectionName}
+        threads={surfaces}
+        selectedThreadId={selectedSurface.id}
+        maxReached={surfaces.length >= MAX_THREAD_SURFACES}
+        onSelect={setSelectedSurfaceId}
+        onAdd={() => addThreadSurface()}
+      />
       {surfaces.map((surface) => (
         <div
           className="agent-panel__thread-surface"
@@ -433,6 +436,7 @@ function ConnectionThreads({
             initialPrompt={surface.initialPrompt}
             onStartFreshThread={(initialPrompt) => addThreadSurface(initialPrompt)}
             onThreadTitleChange={(title) => renameThreadSurface(surface.id, title)}
+            onThreadStatusChange={(status) => updateThreadStatus(surface.id, status)}
             onCloseThreadSurface={() => closeThreadSurface(surface.id)}
           />
         </div>
@@ -447,6 +451,7 @@ function newThreadSurface(ordinal: number, initialPrompt = ""): ThreadSurface {
     ordinal,
     title: "New thread",
     initialPrompt,
+    status: "idle",
   };
 }
 

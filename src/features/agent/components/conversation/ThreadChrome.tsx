@@ -1,7 +1,7 @@
 import type { AgentSecurityScopeInfo } from "@/features/agent/connection.ts";
 import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
 import type { RefObject, SubmitEvent } from "react";
-import { Archive as ArchiveIcon, Bot, CircleAlert, Ellipsis, FileDown, History, Pencil, ShieldQuestion, X } from "lucide-react";
+import { Archive as ArchiveIcon, Bot, CircleAlert, Ellipsis, FileDown, FileText, History, Pencil, ShieldQuestion, X } from "lucide-react";
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
 import { useId, useRef, useState } from "react";
@@ -440,11 +440,14 @@ export interface ThreadActionsMenuProps {
   exportAvailable: boolean;
   exportDisabled: boolean;
   exportPending: boolean;
+  markdownAvailable: boolean;
+  markdownDisabled: boolean;
   archiveAvailable: boolean;
   archiveDisabled: boolean;
   archiveTitle: string;
   changeDisabled: boolean;
   onOpenHistory: () => void;
+  onOpenMarkdown: () => void;
   onExport: () => void;
   onArchive: () => void;
   onChangeAgent: () => void;
@@ -456,11 +459,14 @@ export function ThreadActionsMenu({
   exportAvailable,
   exportDisabled,
   exportPending,
+  markdownAvailable,
+  markdownDisabled,
   archiveAvailable,
   archiveDisabled,
   archiveTitle,
   changeDisabled,
   onOpenHistory,
+  onOpenMarkdown,
   onExport,
   onArchive,
   onChangeAgent,
@@ -501,6 +507,16 @@ export function ThreadActionsMenu({
               >
                 <FileDown aria-hidden="true" size={14} />
                 <span>{exportPending ? "Exporting..." : "Export thread"}</span>
+              </Menu.Item>
+            )}
+            {markdownAvailable && (
+              <Menu.Item
+                className="agent-thread-actions__item"
+                disabled={markdownDisabled}
+                onClick={onOpenMarkdown}
+              >
+                <FileText aria-hidden="true" size={14} />
+                <span>Open as Markdown</span>
               </Menu.Item>
             )}
             {archiveAvailable && (

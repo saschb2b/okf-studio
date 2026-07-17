@@ -1,0 +1,24 @@
+.agent-response-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.agent-response-actions .btn {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-response-actions__status {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}

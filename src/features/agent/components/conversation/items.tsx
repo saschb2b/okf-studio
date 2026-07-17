@@ -5,9 +5,15 @@ import { BundleProposalPreview } from "@/features/agent/components/BundleProposa
 import { bundleProposalNarrative, parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { renderMarkdown } from "@/shared/render/markdown.ts";
 import { respondAgentPermission } from "@/shared/ipc.ts";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ConversationMessage, ConversationPlan, ConversationTool, ConversationItem, PendingPermission } from "./types.ts";
 import { errorMessage } from "./helpers.ts";
+import { ResponseActions, type ResponseCopyStatus } from "./ResponseActions.tsx";
+import {
+  copyCompleteResponse,
+  copyResponseSelection,
+  responseSelectionPayload,
+} from "./responseClipboard.ts";
 import "@/features/agent/components/AgentConversation.css";
 
 export function applyPermissionEvent(
@@ -513,6 +519,9 @@ export function Message({
   generationError,
   isGeneratingProposal,
 }: MessageProps) {
+  const markdownRef = useRef<HTMLDivElement>(null);
+  const [selectionAvailable, setSelectionAvailable] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<ResponseCopyStatus>("idle");
   const agentNarrative = message.role === "agent"
     ? bundleProposalNarrative(message.text)
     : message.text;
@@ -522,6 +531,36 @@ export function Message({
   const bundleProposal = message.role === "agent"
     ? parseBundleProposal(message.text)
     : { status: "none" } as const;
+
+  useEffect(() => {
+    if (message.role !== "agent") return;
+    function updateSelection() {
+      const container = markdownRef.current;
+      setSelectionAvailable(
+        container !== null && responseSelectionPayload(container, window.getSelection()) !== null,
+      );
+    }
+    document.addEventListener("selectionchange", updateSelection);
+    return () => document.removeEventListener("selectionchange", updateSelection);
+  }, [message.role]);
+
+  async function copySelection() {
+    const container = markdownRef.current;
+    if (!container) return;
+    try {
+      setCopyStatus(await copyResponseSelection(container) ? "selection" : "error");
+    } catch {
+      setCopyStatus("error");
+    }
+  }
+
+  async function copyResponse() {
+    try {
+      setCopyStatus(await copyCompleteResponse(message.text) ? "response" : "error");
+    } catch {
+      setCopyStatus("error");
+    }
+  }
   // Zed-style document flow: the agent's markdown IS the document (no avatar,
   // no "Agent" label), the user's message sits in a bordered editor-like
   // block, and status notices are quiet icon+text rows.
@@ -539,6 +578,7 @@ export function Message({
         {message.role === "agent" ? (
           agentNarrative ? (
             <div
+              ref={markdownRef}
               className="markdown agent-message__markdown"
               // renderMarkdown sanitizes untrusted agent output with DOMPurify.
               dangerouslySetInnerHTML={renderedAgentText ?? undefined}
@@ -552,6 +592,14 @@ export function Message({
           generationError={generationError}
           isGenerating={isGeneratingProposal}
         />
+        {message.role === "agent" && agentNarrative && (
+          <ResponseActions
+            selectionAvailable={selectionAvailable}
+            status={copyStatus}
+            onCopySelection={() => void copySelection()}
+            onCopyResponse={() => void copyResponse()}
+          />
+        )}
         {onRetry && (
           <div className="agent-message__actions">
             <button

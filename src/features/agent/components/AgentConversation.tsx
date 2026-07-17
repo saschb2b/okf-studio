@@ -8,7 +8,7 @@ import { AgentSessionControls } from "@/features/agent/components/AgentSessionCo
 import { Check, ChevronLeft, CircleAlert, FileText, History, ImageIcon, Pencil, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
 import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
-import { deriveThreadTitle, previousThreadSource } from "@/features/agent/thread.ts";
+import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import "./AgentConversation.css";
@@ -19,6 +19,7 @@ import { AttachmentPicker } from "@/features/agent/components/conversation/Attac
 import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemView, planProgressLabel, LivePlan } from "@/features/agent/components/conversation/items.tsx";
 import { useTranscriptExport } from "@/features/agent/components/conversation/useTranscriptExport.ts";
 import { TranscriptSurface } from "@/features/agent/components/conversation/TranscriptSurface.tsx";
+import { ThreadMarkdownView } from "@/features/agent/components/conversation/ThreadMarkdownView.tsx";
 
 
 export interface AgentConversationProps {
@@ -66,6 +67,7 @@ export function AgentConversation({
   });
   const [threadWorkflow, setThreadWorkflow] = useState<AgentThreadWorkflow>(null);
   const [messages, setMessages] = useState<ConversationItem[]>([]);
+  const [markdownViewOpen, setMarkdownViewOpen] = useState(false);
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [usage, setUsage] = useState<AgentUsage | null>(null);
@@ -1389,17 +1391,33 @@ export function AgentConversation({
             exportAvailable={messages.length > 0 || exportState.status !== "idle"}
             exportDisabled={isSubmitting || activeTurn !== null || exportState.status === "exporting"}
             exportPending={exportState.status === "exporting"}
+            markdownAvailable={messages.length > 0}
+            markdownDisabled={isSubmitting || activeTurn !== null}
             archiveAvailable={supportsHistory && messages.length > 0}
             archiveDisabled={archiveDisabled}
             archiveTitle={archiveTitle}
             changeDisabled={changeAgentDisabled}
             onOpenHistory={() => void openHistory()}
+            onOpenMarkdown={() => setMarkdownViewOpen(true)}
             onExport={() => void exportTranscript()}
             onArchive={() => void archiveThread()}
             onChangeAgent={onChangeAgent}
           />
         </div>
       </header>
+
+      {markdownViewOpen && (
+        <ThreadMarkdownView
+          title={threadTitle.value}
+          markdown={transcriptMarkdown(
+            threadTitle.value,
+            bundleName,
+            agentName,
+            messages,
+          )}
+          onClose={() => setMarkdownViewOpen(false)}
+        />
+      )}
 
       {(exportState.status === "success" || exportState.status === "error" ||
         threadMetadataError !== null || stageError?.owner === "grant") && (

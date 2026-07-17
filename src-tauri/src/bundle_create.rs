@@ -226,7 +226,7 @@ fn slugify(title: &str) -> String {
 }
 
 fn iso_timestamp() -> Result<String, String> {
-    let format = time::format_description::parse(
+    let format = time::format_description::parse_borrowed::<3>(
         "[year]-[month]-[day]T[hour]:[minute]:[second]Z",
     )
     .map_err(|_| "Studio could not prepare the creation timestamp.".to_string())?;

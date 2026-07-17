@@ -4015,7 +4015,7 @@ mod tests {
             .expect("apply reviewed enhancement");
         assert_eq!(applied.applied_files, 3);
         let enhanced_bundle = okf_core::read_bundle(&docs_copy);
-        assert_eq!(enhanced_bundle.concepts.len(), 50);
+        assert_eq!(enhanced_bundle.concepts.len(), 51);
         assert!(enhanced_bundle
             .issues
             .iter()

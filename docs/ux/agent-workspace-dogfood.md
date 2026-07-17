@@ -3,22 +3,18 @@ type: UX Review
 title: Agent Workspace Dogfood
 description: Journey evidence and open findings from the WP10A Agent Panel refinement.
 tags: [ux, agent-panel, dogfood, accessibility]
-timestamp: 2026-07-17T00:06:58Z
+timestamp: 2026-07-17T20:47:04Z
 ---
 
 # Scope
 
 This review exercises the Agent Panel as a workspace, not as a collection of isolated controls. It covers first connection, saved work, research, creation, enhancement, permission, failure recovery, parallel threads, and a narrow panel. The deterministic [state gallery](../architecture/testing.md) supplies repeatable blocking and width states. The browser mock supplies real starter, thread-switching, and staged-review navigation.
 
-# Before and after
+# Review baseline and result
 
-The baseline was captured after streamed plans landed at commit `de9977a`, before the workspace hierarchy pass. It repeats the thread, agent, and bundle identity in one toolbar, leaves secondary actions persistent, and lets a full plan card compete with the transcript.
-
-![Agent Panel before the workspace hierarchy pass](agent-workspace-before.png)
+The baseline at commit `de9977a`, before the workspace hierarchy pass, repeated thread, agent, and bundle identity in one toolbar. Secondary actions stayed visible, and a full plan card competed with the transcript.
 
 The current workspace assigns bundle, agent, and thread identity to separate stable owners. The transcript receives the flexible height, secondary actions share one menu, and the staged surface owns its recovery action above its internal file scroll.
-
-![Agent workspace after the hierarchy pass](agent-workspace-after-full.png)
 
 # Journey results
 
@@ -34,35 +30,15 @@ The current workspace assigns bundle, agent, and thread identity to separate sta
 | Parallel thread | Start a second thread, return to the staged first thread, then return to the prepared research prompt | Agent and thread strips remain stable. Each level has one add action. The staged state and unsent prompt survive switching. | None. Long labels truncate visually but retain their complete accessible names. |
 | Narrow panel | Render permission at 360px, active queue at 440px, and staged review at 560px | All three widths keep `clientWidth` equal to `scrollWidth`; the composer stays visible; the smallest visible control is 28px; focus uses the shared two-pixel ring. | None. The strips scroll their focused item into view instead of moving controls to a different row. |
 
-# Width evidence
+# Live-work pressure result
 
-The three fixtures deliberately use different high-pressure states instead of repeating an empty panel.
-
-![Permission request at a 360px panel width](agent-workspace-after-360.png)
-
-![Active turn and queued follow-up at the 440px default panel width](agent-workspace-after-440.png)
-
-![Staged edits and recovery at a 560px panel width](agent-workspace-after-560.png)
-
-# Live-work pressure evidence
-
-The WP10C pressure fixture mounts a failed permission response, an expanded three-step plan, three staged files, and one queued follow-up at once. The screenshots below use the same 1280x720 browser viewport and vary only the nominal panel width.
-
-![Every live-work section at a 360px panel width](agent-live-work-360.png)
-
-![Every live-work section at the 440px default panel width](agent-live-work-440.png)
-
-![Every live-work section at a 560px panel width](agent-live-work-560.png)
+The WP10C pressure fixture mounts a failed permission response, an expanded three-step plan, three staged files, and one queued follow-up at once.
 
 At 360px, 440px, and 560px, the panel has no horizontal overflow and the composer remains fully visible. The blocking and non-blocking bands both become internal scroll owners under pressure. Visible buttons stay at least 28px high; the permission checkbox label supplies a 24px hit area. Tabbing from the collapse control reaches **Allow once** first. Collapsing retains focus on that control, keeps the blocking permission mounted, and removes the plan, staged review, and queue from the tab order. The shelf contains one deliberate delivery-failure alert and no additional `aria-live` regions.
 
-# Transcript navigation evidence
+# Transcript navigation result
 
 The WP10D transcript surface keeps its three jump controls docked outside the scroll viewport, so the controls do not cover Markdown at an intermediate landing point.
-
-![Transcript navigation at a 360px panel width](agent-transcript-navigation-360.png)
-
-![Transcript navigation at the 440px default panel width](agent-transcript-navigation-440.png)
 
 At both widths, the transcript and page have no horizontal overflow and every navigation control is 28px high. In the 440px fixture, Home lands at scroll position 0, Shift+Home lands on the latest user prompt at 172, and End lands at the 253px tail. Focus remains on the transcript for keyboard jumps and on the activated button for pointer use. A focused unit fixture proves that a streamed content update preserves a manually chosen scroll position, then resumes tail following only after an explicit bottom jump.
 

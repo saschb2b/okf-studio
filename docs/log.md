@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-17
+* **Update**: Removed ten stale Agent Panel review screenshots from `docs/ux`. The linked dogfood record keeps the tested journeys, measurements, and findings as text, while the reproducible state gallery remains the source for current visual checks.
 * **Update**: Fixed the remaining Windows bundle-path mismatch in agent connections. Folder grants, detected roots, live agent bindings, and ACP session commands now share one non-verbatim canonical path, while equivalent legacy `\\?\` bindings remain valid. Studio no longer rejects its own active connection as belonging to another bundle or shows duplicate retry errors for that condition.
 * **Update**: Fixed agent-thread restoration on Windows. Studio now sends canonical bundle roots to ACP agents without the Windows verbatim prefix that caused Codex session discovery to reject its own saved threads. Reopening an authenticated agent can resume the agent-owned transcript and session choices after sign-in instead of replacing them with a blank thread and an unavailable-session error.
 * **Update**: Removed the agent name from the thread strip because the connection strip already owns that identity. The thread strip now shows only thread number, status, and title while retaining the agent in its accessible navigation and add-thread labels.

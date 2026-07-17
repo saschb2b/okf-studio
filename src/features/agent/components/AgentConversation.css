@@ -928,6 +928,35 @@
   text-overflow: ellipsis;
 }
 
+.agent-tool__inline-location > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.agent-tool__location-link {
+  min-width: 0;
+  min-height: 24px;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  text-align: start;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.agent-tool__location-link:hover {
+  text-decoration: underline;
+}
+
+.agent-tool__location-link:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .agent-tool--card {
   display: grid;
   overflow: hidden;
@@ -1066,8 +1095,22 @@
   gap: var(--space-4);
 }
 
+.agent-tool__location > :where(span, button),
+.agent-tool__locations li > :where(span, button) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .agent-tool__location > span,
 .agent-tool__locations li {
+  overflow-wrap: anywhere;
+}
+
+.agent-tool__location > :where(span, button) > span,
+.agent-tool__locations li > :where(span, button) > span {
   overflow-wrap: anywhere;
 }
 

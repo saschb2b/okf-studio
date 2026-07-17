@@ -29,6 +29,7 @@ export interface AgentConversationProps {
   activeConcept: { id: string; title: string } | null;
   onCaptureReaderSelection: () => ReaderSelectionCapture;
   concepts: readonly { id: string; title: string; type: string }[];
+  onOpenConcept: (conceptId: string) => void;
   issues: readonly Issue[];
   onChangeAgent: () => void;
   onConnectionEnd: (event: AgentConnectionEvent) => void;
@@ -46,6 +47,7 @@ export function AgentConversation({
   activeConcept,
   onCaptureReaderSelection,
   concepts,
+  onOpenConcept,
   issues,
   onChangeAgent,
   onConnectionEnd,
@@ -61,6 +63,7 @@ export function AgentConversation({
   const promptInputId = `${conversationTitleId}-prompt`;
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
   const isStudioAgent = connection.protocolVersion === "studio-native/1";
+  const conceptIds = concepts.map((concept) => concept.id);
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
     source: "default",
     value: "New thread",
@@ -1639,6 +1642,8 @@ export function AgentConversation({
                     >
                       <ConversationItemView
                         item={item}
+                        conceptIds={conceptIds}
+                        onOpenConcept={onOpenConcept}
                         onRetry={
                           turnId && retryableTurnIds.has(turnId)
                             ? () => retryAcceptedTurn(turnId)

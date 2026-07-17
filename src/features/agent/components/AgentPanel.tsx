@@ -234,6 +234,7 @@ export function AgentPanel() {
                   activeConcept={activeConcept}
                   onCaptureReaderSelection={() => captureReaderSelection(activeConcept)}
                   concepts={state.bundle?.concepts ?? []}
+                  onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
                   issues={state.bundle?.issues ?? []}
                   onChangeAgent={openCatalog}
                   onConnectionEnd={(event) => {

@@ -14,6 +14,7 @@ import {
   copyResponseSelection,
   responseSelectionPayload,
 } from "./responseClipboard.ts";
+import { conceptIdForToolLocation } from "./toolLocation.ts";
 import "@/features/agent/components/AgentConversation.css";
 
 export function applyPermissionEvent(
@@ -208,6 +209,8 @@ export function finalizeToolItems(
 
 export interface ConversationItemViewProps {
   item: ConversationItem;
+  conceptIds: readonly string[];
+  onOpenConcept: (conceptId: string) => void;
   onRetry?: () => void;
   isRetrying: boolean;
   retryError: string | null;
@@ -219,6 +222,8 @@ export interface ConversationItemViewProps {
 
 export function ConversationItemView({
   item,
+  conceptIds,
+  onOpenConcept,
   onRetry,
   isRetrying,
   retryError,
@@ -228,7 +233,15 @@ export function ConversationItemView({
   isGeneratingProposal,
 }: ConversationItemViewProps) {
   if (item.role === "plan") return <PlanCard plan={item} />;
-  if (item.role === "tool") return <ToolCard tool={item} />;
+  if (item.role === "tool") {
+    return (
+      <ToolCard
+        tool={item}
+        conceptIds={conceptIds}
+        onOpenConcept={onOpenConcept}
+      />
+    );
+  }
   return (
     <Message
       message={item}
@@ -332,7 +345,17 @@ function ToolChangeState({ tool }: { tool: ConversationTool }) {
   );
 }
 
-export function ToolCard({ tool }: { tool: ConversationTool }) {
+export interface ToolCardProps {
+  tool: ConversationTool;
+  conceptIds?: readonly string[];
+  onOpenConcept?: (conceptId: string) => void;
+}
+
+export function ToolCard({
+  tool,
+  conceptIds = [],
+  onOpenConcept,
+}: ToolCardProps) {
   const meta = TOOL_KIND_META[tool.toolKind];
   const KindIcon = meta.icon;
   // Completed is the resting state and stays silent (the row itself is the
@@ -344,12 +367,15 @@ export function ToolCard({ tool }: { tool: ConversationTool }) {
   // A call that reported content (a diff, output text) always renders as a
   // card so the content has a body to live in — Zed's expandable-entry rule.
   if (meta.shape === "row" && tool.content.length === 0) {
-    // One location whose path the title already names would be noise; show it
-    // only when it adds information.
-    const soleLocation = tool.locations.length === 1 &&
-        !tool.title.includes(tool.locations[0].path)
-      ? toolLocationLabel(tool.locations[0])
+    // Keep title-duplicating locations quiet unless they are the safe reader
+    // navigation target. A navigable target must remain discoverable.
+    const soleLocation = tool.locations.length === 1 ? tool.locations[0] : null;
+    const soleConceptId = soleLocation
+      ? conceptIdForToolLocation(soleLocation, conceptIds)
       : null;
+    const showSoleLocation = soleLocation !== null && (
+      !tool.title.includes(soleLocation.path) || soleConceptId !== null
+    );
     return (
       <article
         className={`agent-tool agent-tool--row agent-tool--${tool.status}`}
@@ -359,14 +385,23 @@ export function ToolCard({ tool }: { tool: ConversationTool }) {
           <KindIcon size={14} />
         </span>
         <span className="agent-tool__title" title={tool.title}>{tool.title}</span>
-        {soleLocation && (
-          <span className="agent-tool__inline-location" title={soleLocation}>
-            {soleLocation}
-          </span>
+        {showSoleLocation && (
+          <ToolLocation
+            location={soleLocation}
+            conceptId={soleConceptId}
+            className="agent-tool__inline-location"
+            onOpenConcept={onOpenConcept}
+          />
         )}
         {statusNote && <small className="agent-tool__status">{statusNote}</small>}
         <ToolChangeState tool={tool} />
-        {tool.locations.length > 1 && <ToolLocations locations={tool.locations} />}
+        {tool.locations.length > 1 && (
+          <ToolLocations
+            locations={tool.locations}
+            conceptIds={conceptIds}
+            onOpenConcept={onOpenConcept}
+          />
+        )}
       </article>
     );
   }
@@ -393,7 +428,11 @@ export function ToolCard({ tool }: { tool: ConversationTool }) {
           {isCommand && <code>{tool.title}</code>}
           <ToolContent content={tool.content} />
           <ToolChangeState tool={tool} />
-          <ToolLocations locations={tool.locations} />
+          <ToolLocations
+            locations={tool.locations}
+            conceptIds={conceptIds}
+            onOpenConcept={onOpenConcept}
+          />
         </div>
       )}
     </article>
@@ -404,14 +443,65 @@ export function toolLocationLabel(location: AgentToolLocationInfo): string {
   return location.line === null ? location.path : `${location.path}:${location.line}`;
 }
 
-export function ToolLocations({ locations }: { locations: readonly AgentToolLocationInfo[] }) {
+interface ToolLocationProps {
+  location: AgentToolLocationInfo;
+  conceptId: string | null;
+  className?: string;
+  onOpenConcept?: (conceptId: string) => void;
+}
+
+function ToolLocation({
+  location,
+  conceptId,
+  className = "",
+  onOpenConcept,
+}: ToolLocationProps) {
+  const label = toolLocationLabel(location);
+  if (conceptId && onOpenConcept) {
+    return (
+      <button
+        type="button"
+        className={`agent-tool__location-link ${className}`}
+        title={`Open ${label} in reader`}
+        onClick={() => onOpenConcept(conceptId)}
+      >
+        {className !== "agent-tool__inline-location" && (
+          <FileText size={12} aria-hidden="true" />
+        )}
+        <span>{label}</span>
+      </button>
+    );
+  }
+  return (
+    <span className={className} title={label}>
+      {className !== "agent-tool__inline-location" && (
+        <FileText size={12} aria-hidden="true" />
+      )}
+      <span>{label}</span>
+    </span>
+  );
+}
+
+export interface ToolLocationsProps {
+  locations: readonly AgentToolLocationInfo[];
+  conceptIds?: readonly string[];
+  onOpenConcept?: (conceptId: string) => void;
+}
+
+export function ToolLocations({
+  locations,
+  conceptIds = [],
+  onOpenConcept,
+}: ToolLocationsProps) {
   if (locations.length === 0) return null;
   if (locations.length === 1) {
-    const label = toolLocationLabel(locations[0]);
     return (
-      <small className="agent-tool__location" title={label}>
-        <FileText size={12} aria-hidden="true" />
-        <span>{label}</span>
+      <small className="agent-tool__location">
+        <ToolLocation
+          location={locations[0]}
+          conceptId={conceptIdForToolLocation(locations[0], conceptIds)}
+          onOpenConcept={onOpenConcept}
+        />
       </small>
     );
   }
@@ -421,7 +511,15 @@ export function ToolLocations({ locations }: { locations: readonly AgentToolLoca
       <ul>
         {locations.map((location) => {
           const label = toolLocationLabel(location);
-          return <li key={label} title={label}>{label}</li>;
+          return (
+            <li key={label}>
+              <ToolLocation
+                location={location}
+                conceptId={conceptIdForToolLocation(location, conceptIds)}
+                onOpenConcept={onOpenConcept}
+              />
+            </li>
+          );
         })}
       </ul>
     </details>

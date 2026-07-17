@@ -2,6 +2,7 @@
 // for lookups, and the bordered cards mutations/commands get — including the
 // streamed inline diff and command-output bodies.
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, fn, userEvent } from "storybook/test";
 import { ToolCard } from "./items.tsx";
 import type { ConversationTool } from "./types.ts";
 
@@ -46,6 +47,14 @@ export const RowWithInlineLocation: Story = {
       toolKind: "read",
       locations: [{ path: "concepts/orders.md", line: 12 }],
     },
+    conceptIds: ["concepts/orders"],
+    onOpenConcept: fn(),
+  },
+  play: async ({ canvas, args }) => {
+    await userEvent.click(canvas.getByRole("button", {
+      name: "concepts/orders.md:12",
+    }));
+    await expect(args.onOpenConcept).toHaveBeenCalledWith("concepts/orders");
   },
 };
 
@@ -59,6 +68,15 @@ export const RowWithManyLocations: Story = {
         { path: "metrics/weekly-active.md", line: null },
       ],
     },
+    conceptIds: ["concepts/orders", "metrics/weekly-active"],
+    onOpenConcept: fn(),
+  },
+  play: async ({ canvas, args }) => {
+    await userEvent.click(canvas.getByText("3 locations"));
+    const validLocation = canvas.getByRole("button", { name: "concepts/orders.md:12" });
+    await userEvent.click(validLocation);
+    await expect(args.onOpenConcept).toHaveBeenCalledWith("concepts/orders");
+    await expect(canvas.queryByRole("button", { name: "concepts/customers.md:3" })).toBeNull();
   },
 };
 

@@ -26,7 +26,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs deps (auto-detects pnpm from site/pnpm-lock.yaml), runs the
       # `build` script (which syncs the design-system CSS first), and uploads
       # site/dist as the Pages artifact.

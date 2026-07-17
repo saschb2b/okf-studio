@@ -1,11 +1,11 @@
-import type { AgentAvailableCommandInfo, AgentConnectionEvent, AgentConnectionInfo, AgentLoadedSessionInfo, AgentSessionConfigOption, AgentSessionConfigValueInput, AgentSessionInfo, AgentSessionHistoryInfo, AgentStagedChangesInfo, AgentStagedFileDiff, AgentTurnEvent, AgentTurnInfo } from "@/features/agent/connection.ts";
+import type { AgentAvailableCommandInfo, AgentConnectionEvent, AgentConnectionInfo, AgentLoadedSessionInfo, AgentSessionConfigOption, AgentSessionConfigValueInput, AgentSessionInfo, AgentSessionHistoryInfo, AgentStagedChangesInfo, AgentStagedFileDiff, AgentTurnEvent, AgentTurnInfo, AgentWriteGrantMode } from "@/features/agent/connection.ts";
 import type { AgentSessionConfigFailure } from "@/features/agent/components/AgentSessionControls.tsx";
 import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
 import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
-import { Check, CircleAlert, FileText, History, ImageIcon, Pencil, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
+import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
 import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
@@ -23,6 +23,7 @@ import { ThreadMarkdownView } from "@/features/agent/components/conversation/Thr
 import { ContextPressureNotice } from "@/features/agent/components/conversation/ContextPressureNotice.tsx";
 import { QueuedPromptCard } from "@/features/agent/components/conversation/QueuedPromptCard.tsx";
 import { AgentSessionHistory } from "@/features/agent/components/conversation/AgentSessionHistory.tsx";
+import { WriteGrantControl } from "@/features/agent/components/conversation/WriteGrantControl.tsx";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
 import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
@@ -141,6 +142,8 @@ export function AgentConversation({
   const [freshBundleFolderName, setFreshBundleFolderName] = useState("new-okf-bundle");
   const [isRestoringCheckpoint, setIsRestoringCheckpoint] = useState(false);
   const [isSettingGrant, setIsSettingGrant] = useState(false);
+  const [writeGrantPreference, setWriteGrantPreference] =
+    useState<AgentWriteGrantMode>("interactive");
   const [isPreparingGeneration, setIsPreparingGeneration] = useState(false);
   const [expandedDiff, setExpandedDiff] = useState<
     | { path: string; state: "loading" }
@@ -232,6 +235,7 @@ export function AgentConversation({
     contextRecoveryTurnsRef.current.clear();
     setPendingSessionConfig(null);
     setSessionConfigFailure(null);
+    setWriteGrantPreference("interactive");
     setDraftSessionState({ status: "idle" });
   }, [bundleRoot, connection.connectionId]);
 
@@ -747,7 +751,7 @@ export function AgentConversation({
         connection.connectionId,
         session.sessionId,
         granted,
-        "interactive",
+        stagedChanges?.grantMode ?? writeGrantPreference,
       );
       updateStagedChanges(changes);
     } catch (error: unknown) {
@@ -1065,6 +1069,7 @@ export function AgentConversation({
   // replayed one); the grant command needs that session ID.
   const hasSession = messages.some((item) => item.role === "user");
   const writeGranted = stagedChanges?.granted ?? false;
+  const activeWriteGrantMode = stagedChanges?.grantMode ?? null;
   const stagedFileCount = stagedChanges?.files.length ?? 0;
   const latestStatusMessage = [...messages].reverse().find((item) => item.role === "status");
   const threadStatus: AgentThreadStatus = pendingPermissions.length > 0
@@ -1093,11 +1098,6 @@ export function AgentConversation({
     reportThreadStatus(threadStatus);
   }, [threadStatus]);
   const stagedSummary = `${stagedFileCount === 1 ? "1 file" : `${stagedFileCount} files`} · not applied to the bundle`;
-  const writeGrantTitle = !hasSession
-    ? "Send a message to start the session, then allow edits."
-    : writeGranted
-      ? "Agent edits stage for review; nothing is applied to the bundle."
-      : "Writes stay denied until granted for this thread.";
   const attachedIssueKeys = new Set(
     attachedSources.flatMap((source) => source.issueKey ? [source.issueKey] : []),
   );
@@ -1456,7 +1456,7 @@ export function AgentConversation({
         connection.connectionId,
         session.sessionId,
         false,
-        "interactive",
+        activeWriteGrantMode ?? writeGrantPreference,
       );
     }
     if (session && stagedFileCount > 0) {
@@ -1533,20 +1533,16 @@ export function AgentConversation({
           />
           <ThreadSecurityScope bundleName={bundleName} scope={connection.securityScope} />
           {bundleRoot && !requiresAuthentication && showWriteGrant && (
-            <button
-              type="button"
-              className={`btn ghost agent-conversation__write-grant${writeGranted ? " agent-conversation__write-grant--on" : ""}`}
-              aria-pressed={writeGranted}
-              aria-label="Allow edits in this thread"
-              title={writeGrantTitle}
-              disabled={!hasSession || isSettingGrant}
-              onClick={() => void toggleWriteGrant()}
-            >
-              <Pencil aria-hidden="true" size={14} />
-              <span className="agent-conversation__action-label">
-                {writeGranted ? "Edits allowed" : "Allow edits"}
-              </span>
-            </button>
+            <WriteGrantControl
+              granted={writeGranted}
+              activeMode={activeWriteGrantMode}
+              preferredMode={writeGrantPreference}
+              unattendedEligible={connection.securityScope.profile.unattendedEligible}
+              disabled={!hasSession}
+              pending={isSettingGrant}
+              onPreferredModeChange={setWriteGrantPreference}
+              onToggle={() => void toggleWriteGrant()}
+            />
           )}
           {threadSurfaceCount > 1 && (
             <ThreadSurfaceClose

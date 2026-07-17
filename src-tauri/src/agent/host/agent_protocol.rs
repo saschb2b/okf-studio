@@ -34,7 +34,8 @@ use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 use crate::agent_stage::{
     protected_bundle_path_reason, validate_bundle_directory_name, AgentCheckpointRestoreInfo,
     AgentReportedDiff, AgentStagedApplyInfo, AgentStagedChangesInfo, AgentStagedCreateInfo,
-    AgentStagedValidationInfo, AgentWriteGrantMode, SessionStages, MAX_STAGED_FILES,
+    AgentStagedValidationInfo, AgentWriteGrantAuthority, AgentWriteGrantMode, SessionStages,
+    MAX_STAGED_FILES, UNATTENDED_WRITE_GRANT_DURATION,
 };
 use crate::{
     agent_custom, agent_install, agent_local, agent_mcp, agent_native_sources, agent_native_stage,
@@ -442,6 +443,7 @@ struct AgentWorker {
     abort: tokio::task::AbortHandle,
     commands: tokio::sync::mpsc::Sender<AgentHostCommand>,
     stages: Arc<SessionStages>,
+    security_scope: Arc<OnceLock<AgentSecurityScopeInfo>>,
 }
 
 enum AgentHostCommand {
@@ -558,6 +560,11 @@ pub async fn connect_local(
         .join("agents")
         .join("apply-checkpoints");
     let stages = Arc::new(SessionStages::persistent(checkpoint_directory));
+    let native_security_scope = AgentSecurityScopeInfo::native_provider();
+    let security_scope = Arc::new(OnceLock::new());
+    security_scope
+        .set(native_security_scope.clone())
+        .map_err(|_| "Studio produced duplicate native security scope evidence.".to_string())?;
     let worker_stages = Arc::clone(&stages);
     let turn_app = app.clone();
     let turn_events: TurnEventSink = Arc::new(move |event| {
@@ -618,6 +625,7 @@ pub async fn connect_local(
                 abort: worker.abort_handle(),
                 commands: command_tx,
                 stages,
+                security_scope,
             },
         );
     }
@@ -644,7 +652,7 @@ pub async fn connect_local(
             session_resume: false,
             session_close: false,
         },
-        security_scope: AgentSecurityScopeInfo::native_provider(),
+        security_scope: native_security_scope,
     })
 }
 
@@ -1179,6 +1187,7 @@ async fn connect_process(
     let permission_rules = Arc::new(Mutex::new(HashMap::new()));
     let security_scope = Arc::new(OnceLock::new());
     let process_security_scope = Arc::clone(&security_scope);
+    let worker_security_scope = Arc::clone(&security_scope);
     let (start_tx, start_rx) = tokio::sync::oneshot::channel();
 
     let worker = tokio::spawn(async move {
@@ -1250,6 +1259,7 @@ async fn connect_process(
                 abort: worker.abort_handle(),
                 commands: command_tx,
                 stages,
+                security_scope: worker_security_scope,
             },
         );
     }
@@ -1306,8 +1316,8 @@ pub fn set_write_grant(
     granted: bool,
     mode: AgentWriteGrantMode,
 ) -> Result<AgentStagedChangesInfo, String> {
-    let stages = connection_stages(state, connection_id)?;
-    let changes = stages.set_grant_for_mode(session_id, granted, mode)?;
+    let (stages, authority) = connection_write_grant_context(state, connection_id)?;
+    let changes = stages.set_grant_for_mode(session_id, granted, mode, authority)?;
     let _ = app.emit(
         STAGE_EVENT,
         AgentStageEvent {
@@ -1315,6 +1325,27 @@ pub fn set_write_grant(
             changes: changes.clone(),
         },
     );
+    if granted && mode == AgentWriteGrantMode::Unattended {
+        let weak_stages = Arc::downgrade(&stages);
+        let expiry_app = app.clone();
+        let expiry_connection_id = connection_id.to_string();
+        let expiry_session_id = session_id.to_string();
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(UNATTENDED_WRITE_GRANT_DURATION).await;
+            let Some(stages) = weak_stages.upgrade() else {
+                return;
+            };
+            if let Ok(Some(changes)) = stages.expire_elapsed_unattended_grant(&expiry_session_id) {
+                let _ = expiry_app.emit(
+                    STAGE_EVENT,
+                    AgentStageEvent {
+                        connection_id: expiry_connection_id,
+                        changes,
+                    },
+                );
+            }
+        });
+    }
     Ok(changes)
 }
 
@@ -1527,6 +1558,29 @@ fn connection_stages(
         .get(connection_id)
         .map(|worker| Arc::clone(&worker.stages))
         .ok_or_else(|| "Agent connection was not found.".to_string())
+}
+
+fn connection_write_grant_context(
+    state: &AgentHostState,
+    connection_id: &str,
+) -> Result<(Arc<SessionStages>, AgentWriteGrantAuthority), String> {
+    let workers = state
+        .workers
+        .lock()
+        .map_err(|_| "Agent host state is unavailable.".to_string())?;
+    let worker = workers
+        .get(connection_id)
+        .ok_or_else(|| "Agent connection was not found.".to_string())?;
+    let authority = if worker
+        .security_scope
+        .get()
+        .is_some_and(AgentSecurityScopeInfo::unattended_eligible)
+    {
+        AgentWriteGrantAuthority::VerifiedRestrictedHost
+    } else {
+        AgentWriteGrantAuthority::InteractiveOnly
+    };
+    Ok((Arc::clone(&worker.stages), authority))
 }
 
 pub async fn list_sessions(
@@ -3397,7 +3451,7 @@ mod tests {
             containment,
             ExternalProcessLaunchProfile::Standard,
         );
-        let value = serde_json::to_value(scope).expect("serialize security scope");
+        let value = serde_json::to_value(&scope).expect("serialize security scope");
         assert_eq!(value["evidenceSource"], "external-process-launcher");
         assert_eq!(value["processContainment"], expected_process);
         assert_eq!(
@@ -3423,6 +3477,7 @@ mod tests {
             value["profile"]["unattendedEligible"].as_bool(),
             Some(false)
         );
+        assert!(!scope.unattended_eligible());
     }
 
     #[test]
@@ -3435,7 +3490,7 @@ mod tests {
             containment,
             ExternalProcessLaunchProfile::LinuxRestrictedOffline,
         );
-        let value = serde_json::to_value(scope).expect("serialize restricted security scope");
+        let value = serde_json::to_value(&scope).expect("serialize restricted security scope");
 
         assert_eq!(value["evidenceSource"], "external-process-launcher");
         assert_eq!(
@@ -3452,10 +3507,8 @@ mod tests {
             value["profile"]["credentialExposure"],
             "launch-environment-only"
         );
-        assert_eq!(
-            value["profile"]["unattendedEligible"].as_bool(),
-            Some(false)
-        );
+        assert_eq!(value["profile"]["unattendedEligible"].as_bool(), Some(true));
+        assert!(scope.unattended_eligible());
     }
 
     #[test]
@@ -5789,6 +5842,7 @@ mod tests {
             staged_changes: Some(AgentStagedChangesInfo {
                 session_id: "session-1".to_string(),
                 granted: false,
+                grant_mode: None,
                 mode: crate::agent_stage::AgentStageMode::Edit,
                 can_restore: true,
                 files: Vec::new(),
@@ -5872,6 +5926,7 @@ mod tests {
                 abort: first.abort_handle(),
                 commands: first_commands,
                 stages: Arc::new(SessionStages::default()),
+                security_scope: test_security_scope(),
             },
         );
         state.workers.lock().expect("workers").insert(
@@ -5882,6 +5937,7 @@ mod tests {
                 abort: second.abort_handle(),
                 commands: second_commands,
                 stages: Arc::new(SessionStages::default()),
+                security_scope: test_security_scope(),
             },
         );
 

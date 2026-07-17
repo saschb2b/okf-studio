@@ -254,9 +254,12 @@ export interface AgentStagedFileInfo {
   kind: "create" | "modify";
 }
 
+export type AgentWriteGrantMode = "interactive" | "unattended";
+
 export interface AgentStagedChangesInfo {
   sessionId: string;
   granted: boolean;
+  grantMode: AgentWriteGrantMode | null;
   mode: "edit" | "enhance" | "create";
   canRestore: boolean;
   files: readonly AgentStagedFileInfo[];

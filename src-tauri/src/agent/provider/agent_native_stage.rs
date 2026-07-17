@@ -465,7 +465,12 @@ mod tests {
             .expect_err("grant required");
         assert!(denied.contains("Allow edits in this thread"));
         stages
-            .set_grant_for_mode("session-1", true, AgentWriteGrantMode::Interactive)
+            .set_grant_for_mode(
+                "session-1",
+                true,
+                AgentWriteGrantMode::Interactive,
+                crate::agent_stage::AgentWriteGrantAuthority::InteractiveOnly,
+            )
             .expect("grant");
         let result =
             execute_native_tool(&stages, "session-1", &root, &proposal).expect("stage proposal");
@@ -500,7 +505,12 @@ mod tests {
             .register_session("session-1", &root)
             .expect("session");
         stages
-            .set_grant_for_mode("session-1", true, AgentWriteGrantMode::Interactive)
+            .set_grant_for_mode(
+                "session-1",
+                true,
+                AgentWriteGrantMode::Interactive,
+                crate::agent_stage::AgentWriteGrantAuthority::InteractiveOnly,
+            )
             .expect("grant");
         execute_native_tool(
             &stages,

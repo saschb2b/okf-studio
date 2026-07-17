@@ -136,6 +136,7 @@ const mockStagedChanges = new Map<
   string,
   {
     granted: boolean;
+    grantMode: "interactive" | "unattended" | null;
     mode: "edit" | "enhance" | "create";
     canRestore: boolean;
     files: MockStagedFile[];
@@ -753,6 +754,7 @@ export async function newAgentSession(
   clearMockThreadPermissionRules(connectionId, sessionId);
   const stagedState = {
     granted: false,
+    grantMode: null,
     mode: "edit" as const,
     canRestore: mockBundleCheckpoints.has(bundleRoot),
     files: [],
@@ -855,6 +857,7 @@ export async function loadAgentSession(
   // Mirrors Rust: a restored session never inherits a write grant or files.
   const stagedState = {
     granted: false,
+    grantMode: null,
     mode: "edit" as const,
     canRestore: mockBundleCheckpoints.has(bundleRoot),
     files: [],
@@ -1210,16 +1213,18 @@ export async function setAgentWriteGrant(
       mode,
     });
   }
-  if (!activeAgentConnectionsById.has(connectionId)) {
+  const connection = activeAgentConnectionsById.get(connectionId);
+  if (!connection) {
     throw new Error("Agent connection was not found.");
   }
-  if (granted && mode === "unattended") {
+  if (granted && mode === "unattended" && !connection.securityScope.profile.unattendedEligible) {
     throw new Error(
-      "Unattended writes denied: external ACP agents are not running in an enforcement-capable sandbox. Use the interactive thread grant.",
+      "Unattended writes denied: this live connection has no eligible restricted-host evidence. Use the interactive thread grant.",
     );
   }
   const state = mockStageState(sessionId);
   state.granted = granted;
+  state.grantMode = granted ? mode : null;
   return emitMockStage(connectionId, sessionId);
 }
 
@@ -1268,13 +1273,14 @@ export async function setAgentStageMode(
 
 function mockStageState(sessionId: string): {
   granted: boolean;
+  grantMode: "interactive" | "unattended" | null;
   mode: "edit" | "enhance" | "create";
   canRestore: boolean;
   files: MockStagedFile[];
 } {
   let state = mockStagedChanges.get(sessionId);
   if (!state) {
-    state = { granted: false, mode: "edit", canRestore: false, files: [] };
+    state = { granted: false, grantMode: null, mode: "edit", canRestore: false, files: [] };
     mockStagedChanges.set(sessionId, state);
   }
   return state;
@@ -1285,6 +1291,7 @@ function emitMockStage(connectionId: string, sessionId: string): AgentStagedChan
   const changes: AgentStagedChangesInfo = {
     sessionId,
     granted: state.granted,
+    grantMode: state.grantMode,
     mode: state.mode,
     canRestore: state.mode !== "create" && state.canRestore,
     files: state.files.map(({ path, bytes, kind }) => ({ path, bytes, kind })),

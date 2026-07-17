@@ -268,8 +268,11 @@ export function ThreadSecurityScope({
                 <dd>{evidenceScope}</dd>
               </div>
             </dl>
-            {scope.evidenceSource === "external-process-launcher" && (
+            {scope.profile.id === "external-interactive-unrestricted-v1" && (
               <p>This proves process-tree ownership, not a filesystem or network sandbox.</p>
+            )}
+            {profile.unattendedEligible && (
+              <p>Unattended edit access expires after 30 minutes. Staged changes still require review and Apply.</p>
             )}
           </Popover.Popup>
         </Popover.Positioner>

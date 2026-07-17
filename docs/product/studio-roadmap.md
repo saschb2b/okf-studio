@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-17T11:02:09Z
+timestamp: 2026-07-17T16:30:00Z
 ---
 
 # Outcome
@@ -307,7 +307,7 @@ Gate: five concurrent threads can be identified, switched, searched, and recover
 - [x] Add parallel threads only after single-thread cancellation, permissions, and transactions are reliable.
   - [x] Keep one live bundle-scoped conversation per active connection mounted and switch without interrupting its turn.
   - [x] Isolate each live conversation surface so one connection can own multiple concurrent sessions without weakening its one-turn-per-session rule.
-- [ ] Make unattended mode an explicit profile with visible scope and stop conditions.
+- [x] Make unattended mode an explicit profile with visible scope and stop conditions.
 
 Gate: platform docs and tests state exactly what is contained on Windows, Linux, and macOS.
 
@@ -315,7 +315,7 @@ Gate: platform docs and tests state exactly what is contained on Windows, Linux,
 
 The remaining WP11 boxes stay open until their enforcement dependency exists. A command wrapper, provider self-report, or process-tree owner cannot unlock unattended mode.
 
-- [ ] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths, denies Git and credential paths below those mounts, and reports a closed network mode.
+- [x] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths, denies Git and credential paths below those mounts, and reports a closed network mode.
   - [x] Select system Bubblewrap for the first Linux backend and preflight its ownership, mode, file capabilities, namespace creation, network isolation, parent-death handling, and deadline without enabling a launch profile.
   - [x] Compile and test the fail-closed Linux launch branch: empty mount root, read-only system and app runtime paths, one read-only Rust-granted bundle, protected-path masks, private temporary filesystems, bounded policy traversal, nested-user-namespace denial, and an explicit network mode. Derive managed app mounts from the verified Node receipt and canonical package root instead of a broad cache parent.
   - [x] Exercise that branch with the distribution Bubblewrap package on Ubuntu 22.04 CI and prove protected-path masking, read-only bundle access, private temporary storage, and successful lifecycle completion.
@@ -324,7 +324,7 @@ The remaining WP11 boxes stay open until their enforcement dependency exists. A 
 - [x] Bind every isolation claim to launcher-produced evidence. Saved profile text and agent-advertised capabilities are descriptive input, never proof that containment is active.
 - [x] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. The initial native-mediated and external-interactive profiles both lock unattended work; the external baseline explicitly reports host network access instead of hiding it. A future restricted profile must model authentication bootstrap as a separate network exception.
 - [ ] Add cross-session permission rules only when ACP supplies a stable tool identity that Studio can display and match independently of agent-controlled titles or raw arguments.
-- [ ] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny.
+- [x] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny. The first slice is the verified Linux Restricted offline profile; Standard, native, Windows, and unsupported hosts remain interactive-only.
 - [x] Treat the active bundle as granted only when the Rust registry produced and still owns the canonical root. Frontend store entries and path strings cannot satisfy this condition.
 
 ## WP12: Completion

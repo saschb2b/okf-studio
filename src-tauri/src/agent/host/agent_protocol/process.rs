@@ -76,7 +76,10 @@ pub(crate) struct ProcessAgent {
 }
 
 impl ProcessAgent {
-    pub(crate) fn new(spec: ProcessSpec, security_scope: Arc<OnceLock<AgentSecurityScopeInfo>>) -> Self {
+    pub(crate) fn new(
+        spec: ProcessSpec,
+        security_scope: Arc<OnceLock<AgentSecurityScopeInfo>>,
+    ) -> Self {
         Self {
             spec,
             security_scope,

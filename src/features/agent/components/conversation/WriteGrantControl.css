@@ -1,0 +1,33 @@
+.agent-write-grant {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-write-grant__mode {
+  min-height: 28px;
+  max-width: 144px;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+
+.agent-write-grant__mode:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--space-2);
+}
+
+.agent-write-grant__mode:disabled {
+  color: var(--text-dim);
+}
+
+@container (max-width: 420px) {
+  .agent-write-grant__mode {
+    max-width: 112px;
+  }
+}

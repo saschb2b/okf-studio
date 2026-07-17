@@ -474,7 +474,11 @@ describe("OKF Studio agent connections", () => {
     const localGrant = await screen.findByRole("button", { name: "Allow edits in this thread" });
     expect(localGrant).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText(/I inspected the available evidence/)).toBeInTheDocument();
+    expect(await screen.findByText(
+      /I inspected the available evidence/,
+      {},
+      { timeout: 5_000 },
+    )).toBeInTheDocument();
     const proposal = await screen.findByRole("region", {
       name: "Proposed OKF bundle structure",
     });

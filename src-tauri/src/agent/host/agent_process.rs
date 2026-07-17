@@ -170,7 +170,7 @@ impl PlatformProcessTree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::time::{Duration, SystemTime};
 
     const FIXTURE_ROLE: &str = "OKF_STUDIO_PROCESS_TREE_FIXTURE";
@@ -195,7 +195,9 @@ mod tests {
             std::thread::sleep(Duration::from_millis(20));
         }
         assert!(Path::new(&ready_file).exists(), "fixture was not released");
-        let pid_file = std::env::var_os(FIXTURE_PID_FILE).expect("fixture PID file");
+        let pid_file = PathBuf::from(
+            std::env::var_os(FIXTURE_PID_FILE).expect("fixture PID file"),
+        );
         let mut child =
             std::process::Command::new(std::env::current_exe().expect("test executable"))
                 .args([
@@ -206,7 +208,10 @@ mod tests {
                 .env(FIXTURE_ROLE, "leaf")
                 .spawn()
                 .expect("spawn leaf fixture");
-        std::fs::write(pid_file, child.id().to_string()).expect("write descendant PID");
+        let pending_pid_file = pid_file.with_extension("pid.tmp");
+        std::fs::write(&pending_pid_file, child.id().to_string())
+            .expect("write descendant PID");
+        std::fs::rename(pending_pid_file, pid_file).expect("publish descendant PID");
         let _ = child.wait();
     }
 
@@ -257,7 +262,11 @@ mod tests {
     async fn wait_for_descendant(path: &Path) -> u32 {
         for _ in 0..100 {
             if let Ok(value) = std::fs::read_to_string(path) {
-                return value.trim().parse().expect("descendant PID");
+                if let Ok(process_id) = value.trim().parse::<u32>() {
+                    if process_id > 0 {
+                        return process_id;
+                    }
+                }
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }

@@ -171,7 +171,7 @@ impl AgentSecurityScopeInfo {
                 credential_exposure: AgentCredentialExposure::LaunchEnvironmentOnly,
                 lifetime: AgentSecurityLifetime::Connection,
                 stop_conditions: external_stop_conditions(),
-                unattended_eligible: false,
+                unattended_eligible: true,
             },
         };
         Self {
@@ -179,6 +179,10 @@ impl AgentSecurityScopeInfo {
             process_containment,
             profile,
         }
+    }
+
+    pub(crate) fn unattended_eligible(&self) -> bool {
+        self.profile.unattended_eligible
     }
 }
 

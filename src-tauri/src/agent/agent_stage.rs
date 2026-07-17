@@ -12,6 +12,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -21,6 +22,7 @@ pub(crate) const MAX_STAGED_FILE_BYTES: usize = 1024 * 1024;
 pub(crate) const MAX_STAGED_TOTAL_BYTES: usize = 8 * 1024 * 1024;
 pub(crate) const MAX_STAGED_FILES: usize = 64;
 pub(crate) const MAX_STAGED_PATH_CHARS: usize = 1024;
+pub(crate) const UNATTENDED_WRITE_GRANT_DURATION: Duration = Duration::from_secs(30 * 60);
 
 pub(crate) const MAX_DIFF_CHARS: usize = 256 * 1024;
 const MAX_VALIDATION_FILES: usize = 4096;
@@ -61,6 +63,7 @@ pub struct AgentStagedFileInfo {
 pub struct AgentStagedChangesInfo {
     pub session_id: String,
     pub granted: bool,
+    pub grant_mode: Option<AgentWriteGrantMode>,
     pub mode: AgentStageMode,
     pub can_restore: bool,
     pub files: Vec<AgentStagedFileInfo>,
@@ -164,7 +167,7 @@ pub struct AgentCheckpointRestoreInfo {
 #[derive(Clone, PartialEq, Eq)]
 struct SessionStage {
     bundle_root: PathBuf,
-    granted: bool,
+    grant: SessionWriteGrant,
     mode: AgentStageMode,
     files: BTreeMap<String, StagedFile>,
     checkpoint: Option<AppliedCheckpoint>,
@@ -191,11 +194,37 @@ struct AppliedCheckpoint {
     created_directories: Vec<PathBuf>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum AgentWriteGrantMode {
     Interactive,
     Unattended,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum AgentWriteGrantAuthority {
+    InteractiveOnly,
+    VerifiedRestrictedHost,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SessionWriteGrant {
+    Denied,
+    Interactive,
+    Unattended { deadline: Instant },
+}
+
+impl SessionWriteGrant {
+    fn active_mode(self) -> Option<AgentWriteGrantMode> {
+        match self {
+            Self::Denied => None,
+            Self::Interactive => Some(AgentWriteGrantMode::Interactive),
+            Self::Unattended { deadline } if deadline > Instant::now() => {
+                Some(AgentWriteGrantMode::Unattended)
+            }
+            Self::Unattended { .. } => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -335,7 +364,7 @@ impl SessionStages {
         }
         let stage = SessionStage {
             bundle_root: bundle_root.to_path_buf(),
-            granted: false,
+            grant: SessionWriteGrant::Denied,
             mode: AgentStageMode::Edit,
             files: BTreeMap::new(),
             checkpoint,
@@ -346,30 +375,24 @@ impl SessionStages {
     }
 
     /// Grant or revoke writes for one registered session through a declared
-    /// interaction mode. External ACP processes are not sandboxed, so an
-    /// unattended grant fails closed until the process host can enforce it.
+    /// interaction mode. Unattended access requires launcher-produced proof
+    /// of an eligible restricted host and expires after a fixed deadline.
     pub fn set_grant_for_mode(
         &self,
         session_id: &str,
         granted: bool,
         mode: AgentWriteGrantMode,
+        authority: AgentWriteGrantAuthority,
     ) -> Result<AgentStagedChangesInfo, String> {
-        if granted && mode == AgentWriteGrantMode::Unattended {
+        if granted
+            && mode == AgentWriteGrantMode::Unattended
+            && authority != AgentWriteGrantAuthority::VerifiedRestrictedHost
+        {
             return Err(
-                "Unattended writes denied: external ACP agents are not running in an enforcement-capable sandbox. Use the interactive thread grant."
+                "Unattended writes denied: this live connection has no eligible restricted-host evidence. Use the interactive thread grant."
                     .to_string(),
             );
         }
-        self.set_grant(session_id, granted)
-    }
-
-    /// Apply the interactive thread toggle. Revoking keeps staged files
-    /// visible so the user can still review or discard them.
-    fn set_grant(
-        &self,
-        session_id: &str,
-        granted: bool,
-    ) -> Result<AgentStagedChangesInfo, String> {
         let mut sessions = self
             .sessions
             .lock()
@@ -377,8 +400,57 @@ impl SessionStages {
         let stage = sessions
             .get_mut(session_id)
             .ok_or_else(|| "The ACP session is not active.".to_string())?;
-        stage.granted = granted;
+        stage.grant = if !granted {
+            SessionWriteGrant::Denied
+        } else {
+            match mode {
+                AgentWriteGrantMode::Interactive => SessionWriteGrant::Interactive,
+                AgentWriteGrantMode::Unattended => SessionWriteGrant::Unattended {
+                    deadline: Instant::now() + UNATTENDED_WRITE_GRANT_DURATION,
+                },
+            }
+        };
         Ok(snapshot(session_id, stage))
+    }
+
+    #[cfg(test)]
+    fn set_grant(&self, session_id: &str, granted: bool) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        stage.grant = if granted {
+            SessionWriteGrant::Interactive
+        } else {
+            SessionWriteGrant::Denied
+        };
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// Revoke an unattended grant once its Rust-owned deadline has elapsed.
+    /// A renewed grant has a later deadline, so an older timer becomes a no-op.
+    pub fn expire_elapsed_unattended_grant(
+        &self,
+        session_id: &str,
+    ) -> Result<Option<AgentStagedChangesInfo>, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let Some(stage) = sessions.get_mut(session_id) else {
+            return Ok(None);
+        };
+        if matches!(
+            stage.grant,
+            SessionWriteGrant::Unattended { deadline } if deadline <= Instant::now()
+        ) {
+            stage.grant = SessionWriteGrant::Denied;
+            return Ok(Some(snapshot(session_id, stage)));
+        }
+        Ok(None)
     }
 
     /// Select whether staged writes overlay the open bundle or describe a
@@ -433,7 +505,7 @@ impl SessionStages {
         let stage = sessions
             .get_mut(session_id)
             .ok_or_else(|| "Bundle write denied: the ACP session is not active.".to_string())?;
-        if !stage.granted {
+        if stage.grant.active_mode().is_none() {
             return Err(WRITE_GRANT_MESSAGE.to_string());
         }
         stage_write_into(stage, path, content)?;
@@ -455,7 +527,7 @@ impl SessionStages {
         let stage = sessions
             .get_mut(session_id)
             .ok_or_else(|| "Bundle write denied: the ACP session is not active.".to_string())?;
-        if !stage.granted {
+        if stage.grant.active_mode().is_none() {
             return Err(WRITE_GRANT_MESSAGE.to_string());
         }
         let mut candidate = stage.clone();
@@ -482,7 +554,7 @@ impl SessionStages {
         let stage = sessions
             .get_mut(session_id)
             .ok_or_else(|| "Bundle write denied: the ACP session is not active.".to_string())?;
-        if !stage.granted {
+        if stage.grant.active_mode().is_none() {
             return Err(WRITE_GRANT_MESSAGE.to_string());
         }
         if diffs.len() > MAX_STAGED_FILES {
@@ -568,16 +640,13 @@ impl SessionStages {
                 .files
                 .get(path)
                 .ok_or_else(|| "This file is not staged.".to_string())?;
-            let selection = file
-                .selection
-                .as_ref()
-                .map(|selection| {
-                    (
-                        selection.revision.clone(),
-                        selection.rejected.clone(),
-                        selection.reviewed.clone(),
-                    )
-                });
+            let selection = file.selection.as_ref().map(|selection| {
+                (
+                    selection.revision.clone(),
+                    selection.rejected.clone(),
+                    selection.reviewed.clone(),
+                )
+            });
             (
                 stage.bundle_root.clone(),
                 file.content.clone(),
@@ -618,16 +687,13 @@ impl SessionStages {
                 .files
                 .get(path)
                 .ok_or_else(|| "This file is not staged.".to_string())?;
-            let selection = file
-                .selection
-                .as_ref()
-                .map(|selection| {
-                    (
-                        selection.revision.clone(),
-                        selection.rejected.clone(),
-                        selection.reviewed.clone(),
-                    )
-                });
+            let selection = file.selection.as_ref().map(|selection| {
+                (
+                    selection.revision.clone(),
+                    selection.rejected.clone(),
+                    selection.reviewed.clone(),
+                )
+            });
             (
                 stage.bundle_root.clone(),
                 file.content.clone(),
@@ -749,8 +815,10 @@ impl SessionStages {
         let prepared = prepare_selected_stage(&stage.bundle_root, &stage.files, stage.mode)?;
         let revision = selected_stage_revision(&prepared);
         if revision != expected_revision {
-            return Err("The staged draft changed. Validate it again before creating the bundle."
-                .to_string());
+            return Err(
+                "The staged draft changed. Validate it again before creating the bundle."
+                    .to_string(),
+            );
         }
         let validation = validate_prepared(session_id, &stage.bundle_root, &prepared, stage.mode)?;
         if validation.errors > 0 {
@@ -806,7 +874,9 @@ impl SessionStages {
         let prepared = prepare_selected_stage(&stage.bundle_root, &stage.files, stage.mode)?;
         let revision = selected_stage_revision(&prepared);
         if revision != expected_revision {
-            return Err("The staged changes or bundle files changed. Validate them again.".to_string());
+            return Err(
+                "The staged changes or bundle files changed. Validate them again.".to_string(),
+            );
         }
         let validation = validate_prepared(session_id, &stage.bundle_root, &prepared, stage.mode)?;
         if validation.errors > 0 {
@@ -885,7 +955,9 @@ impl SessionStages {
             stage.checkpoint = self.load_persisted_checkpoint(&stage.bundle_root)?;
         }
         if !stage.files.is_empty() {
-            return Err("Discard or apply the current staged changes before restoring.".to_string());
+            return Err(
+                "Discard or apply the current staged changes before restoring.".to_string(),
+            );
         }
         let checkpoint = stage
             .checkpoint
@@ -914,26 +986,20 @@ impl SessionStages {
     }
 
     fn checkpoint_file(&self, bundle_root: &Path) -> Option<PathBuf> {
-        self.checkpoint_directory.as_ref().map(|directory| {
-            directory.join(format!("{}.json", bundle_fingerprint(bundle_root)))
-        })
+        self.checkpoint_directory
+            .as_ref()
+            .map(|directory| directory.join(format!("{}.json", bundle_fingerprint(bundle_root))))
     }
 
     fn apply_transaction_file(&self, bundle_root: &Path) -> Option<PathBuf> {
         self.checkpoint_directory.as_ref().map(|directory| {
-            directory.join(format!(
-                "{}.apply.json",
-                bundle_fingerprint(bundle_root)
-            ))
+            directory.join(format!("{}.apply.json", bundle_fingerprint(bundle_root)))
         })
     }
 
     fn restore_transaction_file(&self, bundle_root: &Path) -> Option<PathBuf> {
         self.checkpoint_directory.as_ref().map(|directory| {
-            directory.join(format!(
-                "{}.restore.json",
-                bundle_fingerprint(bundle_root)
-            ))
+            directory.join(format!("{}.restore.json", bundle_fingerprint(bundle_root)))
         })
     }
 
@@ -1038,8 +1104,7 @@ impl SessionStages {
         if !file.exists() {
             return Ok(None);
         }
-        let persisted: PersistedCheckpoint =
-            read_private_json_file(&file, "apply checkpoint")?;
+        let persisted: PersistedCheckpoint = read_private_json_file(&file, "apply checkpoint")?;
         persisted_checkpoint(bundle_root, persisted).map(Some)
     }
 
@@ -1123,9 +1188,9 @@ impl SessionStages {
         if !file.exists() {
             return Ok(());
         }
-        let parent = file
-            .parent()
-            .ok_or_else(|| "Studio could not quarantine its invalid apply checkpoint.".to_string())?;
+        let parent = file.parent().ok_or_else(|| {
+            "Studio could not quarantine its invalid apply checkpoint.".to_string()
+        })?;
         let quarantined = parent.join(format!(
             ".okf-studio-invalid-checkpoint-{}.json",
             uuid::Uuid::new_v4()
@@ -1346,8 +1411,7 @@ fn prepare_selected_stage(
                 ));
             }
             let original = read_original(bundle_root, path, file.kind)?;
-            let (effective, diff_revision) =
-                selected_staged_content(path, file, &original)?;
+            let (effective, diff_revision) = selected_staged_content(path, file, &original)?;
             Ok(PreparedStagedFile {
                 path: path.clone(),
                 kind: file.kind,
@@ -1421,9 +1485,9 @@ fn staged_graph_preview(
     let staged_ids = prepared
         .iter()
         .filter(|file| {
-            file.effective.as_ref().is_some_and(|effective| {
-                file.kind == "create" || effective != &file.original
-            })
+            file.effective
+                .as_ref()
+                .is_some_and(|effective| file.kind == "create" || effective != &file.original)
         })
         .filter_map(|file| {
             let path = file.path.replace('\\', "/");
@@ -1499,7 +1563,10 @@ pub(crate) fn validate_bundle_directory_name(requested: &str) -> Result<String, 
         || requested.ends_with('.')
         || requested.chars().any(|character| {
             character.is_control()
-                || matches!(character, '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*')
+                || matches!(
+                    character,
+                    '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+                )
         })
     {
         return Err(
@@ -1517,8 +1584,9 @@ pub(crate) fn validate_bundle_directory_name(requested: &str) -> Result<String, 
         .or_else(|| device_stem.strip_prefix("LPT"))
         .is_some_and(|suffix| matches!(suffix.as_bytes(), [b'1'..=b'9']));
     if matches!(device_stem.as_str(), "CON" | "PRN" | "AUX" | "NUL") || numbered_device {
-        return Err("Choose a folder name that is portable across Windows, macOS, and Linux."
-            .to_string());
+        return Err(
+            "Choose a folder name that is portable across Windows, macOS, and Linux.".to_string(),
+        );
     }
     Ok(requested.to_string())
 }
@@ -2007,9 +2075,9 @@ fn recover_uncommitted_apply(transaction: &ApplyTransaction) -> Result<(), Strin
     for file in &transaction.pending {
         let target = recovery_text(&file.target, "bundle file")?;
         let target_is_expected = if file.kind == "modify" {
-            target.as_deref().is_none_or(|content| {
-                content == file.original || content == file.applied_content
-            })
+            target
+                .as_deref()
+                .is_none_or(|content| content == file.original || content == file.applied_content)
         } else {
             target
                 .as_deref()
@@ -2052,9 +2120,10 @@ fn recover_uncommitted_apply(transaction: &ApplyTransaction) -> Result<(), Strin
                 write_recovery_text(
                     &file.temporary,
                     &file.original,
-                    target.as_ref().map(|_| file.target.as_path()).or_else(|| {
-                        file.backup.as_deref().filter(|backup| backup.exists())
-                    }),
+                    target
+                        .as_ref()
+                        .map(|_| file.target.as_path())
+                        .or_else(|| file.backup.as_deref().filter(|backup| backup.exists())),
                 )?;
                 remove_recovery_file(&file.target, "applied bundle file")?;
                 std::fs::rename(&file.temporary, &file.target).map_err(|_| {
@@ -2100,12 +2169,11 @@ fn recover_interrupted_restore(transaction: &RestoreTransaction) -> Result<(), S
             );
         }
         let expected_target = target.as_deref().is_some_and(|content| {
-            content == file.applied_content
-                || file.original_content.as_deref() == Some(content)
+            content == file.applied_content || file.original_content.as_deref() == Some(content)
         });
         let completed_creation = file.original_content.is_none() && target.is_none();
-        let interrupted_gap = target.is_none()
-            && (applied_temporary.is_some() || original_temporary.is_some());
+        let interrupted_gap =
+            target.is_none() && (applied_temporary.is_some() || original_temporary.is_some());
         if !expected_target && !completed_creation && !interrupted_gap {
             return Err(
                 "Interrupted restore recovery stopped because a bundle file changed. Restore its applied or original text, then retry."
@@ -2152,7 +2220,8 @@ fn verify_recovered_originals(transaction: &ApplyTransaction) -> Result<(), Stri
         } else {
             current.is_none()
         };
-        if !restored || file.temporary.exists() || file.backup.as_ref().is_some_and(|p| p.exists()) {
+        if !restored || file.temporary.exists() || file.backup.as_ref().is_some_and(|p| p.exists())
+        {
             return Err("Studio could not finish interrupted apply recovery.".to_string());
         }
     }
@@ -2268,23 +2337,28 @@ fn plan_restore_transaction(
             .symlink_metadata()
             .is_ok_and(|metadata| metadata.file_type().is_symlink())
         {
-            return Err("Checkpoint restore blocked: an applied path is now a symbolic link.".to_string());
+            return Err(
+                "Checkpoint restore blocked: an applied path is now a symbolic link.".to_string(),
+            );
         }
-        let current = std::fs::read_to_string(&file.target)
-            .map_err(|_| "Checkpoint restore blocked: an applied file could not be read.".to_string())?;
+        let current = std::fs::read_to_string(&file.target).map_err(|_| {
+            "Checkpoint restore blocked: an applied file could not be read.".to_string()
+        })?;
         if current != file.applied_content {
-            return Err("Checkpoint restore blocked: an applied file changed after apply.".to_string());
+            return Err(
+                "Checkpoint restore blocked: an applied file changed after apply.".to_string(),
+            );
         }
         let parent = file
             .target
             .parent()
             .ok_or_else(|| "Checkpoint restore could not resolve a file parent.".to_string())?;
         let transaction_id = uuid::Uuid::new_v4();
-        let original_temporary = file.original_content.as_ref().map(|_| {
-            parent.join(format!(".okf-studio-{transaction_id}-restore.tmp"))
-        });
-        let applied_temporary =
-            parent.join(format!(".okf-studio-{transaction_id}-undo.tmp"));
+        let original_temporary = file
+            .original_content
+            .as_ref()
+            .map(|_| parent.join(format!(".okf-studio-{transaction_id}-restore.tmp")));
+        let applied_temporary = parent.join(format!(".okf-studio-{transaction_id}-undo.tmp"));
         pending.push(PendingCheckpointRestore {
             target: file.target.clone(),
             original_temporary,
@@ -2359,7 +2433,9 @@ fn execute_restore_transaction(
         if current != file.applied_content {
             rollback_checkpoint_restore(&restored);
             cleanup_checkpoint_restore(&transaction.pending);
-            return Err("Checkpoint restore blocked: an applied file changed during restore.".to_string());
+            return Err(
+                "Checkpoint restore blocked: an applied file changed during restore.".to_string(),
+            );
         }
         if std::fs::rename(&file.target, &file.applied_temporary).is_err() {
             rollback_checkpoint_restore(&restored);
@@ -2507,22 +2583,14 @@ fn persisted_apply_transaction(
         if artifact.path != path {
             return Err("Studio's saved apply transaction contains mismatched paths.".to_string());
         }
-        let (temporary, transaction_id) = checked_transaction_artifact(
-            bundle_root,
-            &file.target,
-            &artifact.temporary,
-            ".tmp",
-        )?;
+        let (temporary, transaction_id) =
+            checked_transaction_artifact(bundle_root, &file.target, &artifact.temporary, ".tmp")?;
         let backup = artifact
             .backup
             .as_deref()
             .map(|relative| {
-                let (backup, backup_id) = checked_transaction_artifact(
-                    bundle_root,
-                    &file.target,
-                    relative,
-                    ".bak",
-                )?;
+                let (backup, backup_id) =
+                    checked_transaction_artifact(bundle_root, &file.target, relative, ".bak")?;
                 if backup_id != transaction_id {
                     return Err(
                         "Studio's saved apply transaction contains mismatched artifacts."
@@ -2599,7 +2667,9 @@ fn persisted_restore_transaction(
     for (artifact, file) in persisted.artifacts.into_iter().zip(&checkpoint.files) {
         let path = bundle_relative_write_path(bundle_root, &file.target)?;
         if artifact.path != path {
-            return Err("Studio's saved restore transaction contains mismatched paths.".to_string());
+            return Err(
+                "Studio's saved restore transaction contains mismatched paths.".to_string(),
+            );
         }
         let (applied_temporary, transaction_id) = checked_transaction_artifact(
             bundle_root,
@@ -2627,7 +2697,9 @@ fn persisted_restore_transaction(
             })
             .transpose()?;
         if original_temporary.is_some() != file.original_content.is_some() {
-            return Err("Studio's saved restore transaction contains invalid artifacts.".to_string());
+            return Err(
+                "Studio's saved restore transaction contains invalid artifacts.".to_string(),
+            );
         }
         pending.push(PendingCheckpointRestore {
             target: file.target.clone(),
@@ -2658,11 +2730,15 @@ fn checked_transaction_artifact(
     let name = artifact
         .file_name()
         .and_then(|name| name.to_str())
-        .ok_or_else(|| "Studio's saved transaction contains an invalid artifact name.".to_string())?;
+        .ok_or_else(|| {
+            "Studio's saved transaction contains an invalid artifact name.".to_string()
+        })?;
     let id = name
         .strip_prefix(".okf-studio-")
         .and_then(|name| name.strip_suffix(suffix))
-        .ok_or_else(|| "Studio's saved transaction contains an invalid artifact name.".to_string())?;
+        .ok_or_else(|| {
+            "Studio's saved transaction contains an invalid artifact name.".to_string()
+        })?;
     let id = uuid::Uuid::parse_str(id)
         .map_err(|_| "Studio's saved transaction contains an invalid artifact name.".to_string())?;
     Ok((artifact, id.to_string()))
@@ -2759,9 +2835,9 @@ fn path_to_forward_slashes(path: &Path) -> Result<String, String> {
         let std::path::Component::Normal(part) = component else {
             return Err("Studio's saved apply checkpoint contains an invalid path.".to_string());
         };
-        let part = part
-            .to_str()
-            .ok_or_else(|| "Studio's saved apply checkpoint contains a non-Unicode path.".to_string())?;
+        let part = part.to_str().ok_or_else(|| {
+            "Studio's saved apply checkpoint contains a non-Unicode path.".to_string()
+        })?;
         parts.push(part);
     }
     Ok(parts.join("/"))
@@ -2799,8 +2875,8 @@ fn read_private_json_file<T: DeserializeOwned>(file: &Path, label: &str) -> Resu
     if metadata.len() > MAX_CHECKPOINT_BYTES {
         return Err(format!("Studio's saved {label} exceeds its size limit."));
     }
-    let bytes = std::fs::read(file)
-        .map_err(|_| format!("Studio could not read its saved {label}."))?;
+    let bytes =
+        std::fs::read(file).map_err(|_| format!("Studio could not read its saved {label}."))?;
     serde_json::from_slice(&bytes).map_err(|_| format!("Studio's saved {label} is invalid."))
 }
 
@@ -2825,9 +2901,8 @@ fn quarantine_transaction_file(file: &Path, operation: &str) -> Result<(), Strin
         ".okf-studio-invalid-{operation}-transaction-{}.json",
         uuid::Uuid::new_v4()
     ));
-    std::fs::rename(file, quarantined).map_err(|_| {
-        format!("Studio could not quarantine its invalid {operation} transaction.")
-    })
+    std::fs::rename(file, quarantined)
+        .map_err(|_| format!("Studio could not quarantine its invalid {operation} transaction."))
 }
 
 fn write_private_json_file<T: Serialize>(
@@ -2850,15 +2925,14 @@ fn write_private_json_file<T: Serialize>(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700)).map_err(|_| {
-            format!("Studio could not protect its {label} directory.")
-        })?;
+        std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700))
+            .map_err(|_| format!("Studio could not protect its {label} directory."))?;
     }
     if file.exists() {
         return Err(format!("A saved {label} already exists for this bundle."));
     }
-    let bytes = serde_json::to_vec(value)
-        .map_err(|_| format!("Studio could not encode its {label}."))?;
+    let bytes =
+        serde_json::to_vec(value).map_err(|_| format!("Studio could not encode its {label}."))?;
     if bytes.len() as u64 > MAX_CHECKPOINT_BYTES {
         return Err(format!("Studio's {label} exceeds its size limit."));
     }
@@ -3060,9 +3134,11 @@ fn build_staged_diff(
 }
 
 fn snapshot(session_id: &str, stage: &SessionStage) -> AgentStagedChangesInfo {
+    let grant_mode = stage.grant.active_mode();
     AgentStagedChangesInfo {
         session_id: session_id.to_string(),
-        granted: stage.granted,
+        granted: grant_mode.is_some(),
+        grant_mode,
         mode: stage.mode,
         can_restore: stage.mode != AgentStageMode::Create && stage.checkpoint.is_some(),
         files: stage
@@ -3163,14 +3239,7 @@ pub(crate) fn protected_bundle_path_reason(relative: &Path) -> Option<&'static s
     if parts.iter().any(|part| {
         matches!(
             part.as_str(),
-            ".ssh"
-                | ".gnupg"
-                | ".aws"
-                | ".azure"
-                | ".kube"
-                | ".docker"
-                | ".secrets"
-                | "secrets"
+            ".ssh" | ".gnupg" | ".aws" | ".azure" | ".kube" | ".docker" | ".secrets" | "secrets"
         )
     }) || filename == ".env"
         || filename.starts_with(".env.")
@@ -3213,8 +3282,7 @@ pub(crate) fn protected_bundle_path_reason(relative: &Path) -> Option<&'static s
             filename.as_str(),
             "agents.md" | "claude.md" | "codex.md" | ".cursorrules"
         )
-        || (filename == "copilot-instructions.md"
-            && parts.iter().any(|part| part == ".github"))
+        || (filename == "copilot-instructions.md" && parts.iter().any(|part| part == ".github"))
     {
         return Some("agent instructions and packaged skills are protected.");
     }
@@ -3343,20 +3411,67 @@ mod tests {
         let stages = registered(&root);
 
         let error = stages
-            .set_grant_for_mode("session-1", true, AgentWriteGrantMode::Unattended)
+            .set_grant_for_mode(
+                "session-1",
+                true,
+                AgentWriteGrantMode::Unattended,
+                AgentWriteGrantAuthority::InteractiveOnly,
+            )
             .expect_err("unattended external writes should fail closed");
-        assert!(error.contains("enforcement-capable sandbox"));
+        assert!(error.contains("no eligible restricted-host evidence"));
         assert!(!stages.summary("session-1").expect("summary").granted);
 
         let changes = stages
-            .set_grant_for_mode("session-1", true, AgentWriteGrantMode::Interactive)
+            .set_grant_for_mode(
+                "session-1",
+                true,
+                AgentWriteGrantMode::Interactive,
+                AgentWriteGrantAuthority::InteractiveOnly,
+            )
             .expect("interactive grant should remain available");
         assert!(changes.granted);
+        assert_eq!(changes.grant_mode, Some(AgentWriteGrantMode::Interactive));
         assert_eq!(
             serde_json::from_str::<AgentWriteGrantMode>("\"unattended\"")
                 .expect("deserialize wire mode"),
             AgentWriteGrantMode::Unattended
         );
+    }
+
+    #[test]
+    fn grants_and_expires_unattended_writes_with_restricted_host_authority() {
+        let root = canonical_temp_dir("unattended-restricted");
+        let stages = registered(&root);
+        let changes = stages
+            .set_grant_for_mode(
+                "session-1",
+                true,
+                AgentWriteGrantMode::Unattended,
+                AgentWriteGrantAuthority::VerifiedRestrictedHost,
+            )
+            .expect("verified restricted host should allow unattended staging");
+
+        assert!(changes.granted);
+        assert_eq!(changes.grant_mode, Some(AgentWriteGrantMode::Unattended));
+        assert!(stages
+            .expire_elapsed_unattended_grant("session-1")
+            .expect("inspect unattended deadline")
+            .is_none());
+        stages
+            .sessions
+            .lock()
+            .expect("stage registry")
+            .get_mut("session-1")
+            .expect("registered session")
+            .grant = SessionWriteGrant::Unattended {
+            deadline: Instant::now() - Duration::from_millis(1),
+        };
+        let expired = stages
+            .expire_elapsed_unattended_grant("session-1")
+            .expect("expire unattended grant")
+            .expect("expired grant should emit a snapshot");
+        assert!(!expired.granted);
+        assert_eq!(expired.grant_mode, None);
     }
 
     #[test]
@@ -3606,7 +3721,11 @@ mod tests {
             assert!(error.contains(expected), "{path:?}: {error}");
         }
 
-        for path in ["credentials.md", "security/secrets.md", "agents/overview.md"] {
+        for path in [
+            "credentials.md",
+            "security/secrets.md",
+            "agents/overview.md",
+        ] {
             stages
                 .stage_write("session-1", &root.join(path), "text".to_string())
                 .unwrap_or_else(|error| panic!("{path} should remain writable: {error}"));
@@ -3776,8 +3895,11 @@ mod tests {
     fn fresh_bundle_mode_validates_in_isolation_and_cannot_apply_to_the_source() {
         let root = canonical_temp_dir("create-mode");
         seed_valid_bundle(&root);
-        std::fs::write(root.join("existing.md"), "---\n---\n# Invalid source concept\n")
-            .expect("make source bundle invalid");
+        std::fs::write(
+            root.join("existing.md"),
+            "---\n---\n# Invalid source concept\n",
+        )
+        .expect("make source bundle invalid");
         let stages = registered(&root);
         stages.set_grant("session-1", true).expect("grant");
         let mode = stages
@@ -3806,7 +3928,10 @@ mod tests {
         );
 
         let validation = stages.validate_staged("session-1").expect("validate draft");
-        assert_eq!(validation.errors, 0, "source bundle issues stay outside the draft");
+        assert_eq!(
+            validation.errors, 0,
+            "source bundle issues stay outside the draft"
+        );
         assert_eq!(validation.preview.total_nodes, 1);
         assert_eq!(validation.preview.total_edges, 0);
         assert_eq!(validation.preview.nodes[0].id, "fresh");
@@ -3837,8 +3962,7 @@ mod tests {
             .stage_write(
                 "session-1",
                 &root.join("index.md"),
-                "---\nokf_version: 0.1\n---\n# New bundle\n\n- [Concept](concept.md)\n"
-                    .to_string(),
+                "---\nokf_version: 0.1\n---\n# New bundle\n\n- [Concept](concept.md)\n".to_string(),
             )
             .expect("stage index");
         stages
@@ -4051,8 +4175,19 @@ mod tests {
 
     #[test]
     fn fresh_bundle_destination_names_are_portable_and_never_merged() {
-        for invalid in ["", " nested", "nested ", "../nested", "CON", "LPT9.txt", "a:b"] {
-            assert!(validate_bundle_directory_name(invalid).is_err(), "{invalid:?}");
+        for invalid in [
+            "",
+            " nested",
+            "nested ",
+            "../nested",
+            "CON",
+            "LPT9.txt",
+            "a:b",
+        ] {
+            assert!(
+                validate_bundle_directory_name(invalid).is_err(),
+                "{invalid:?}"
+            );
         }
         assert_eq!(
             validate_bundle_directory_name("knowledge-bundle").expect("portable name"),
@@ -4139,7 +4274,9 @@ mod tests {
         assert!(reviewed.hunks[0].selected);
         assert!(reviewed.hunks[0].reviewed);
 
-        let validation = stages.validate_staged("session-1").expect("validate enhancement");
+        let validation = stages
+            .validate_staged("session-1")
+            .expect("validate enhancement");
         assert_eq!(validation.errors, 0);
         let applied = stages
             .apply_staged("session-1", &validation.revision)
@@ -4187,8 +4324,7 @@ mod tests {
             "---\ntype: note\n---\n# Updated\n"
         );
         assert_eq!(
-            std::fs::read_to_string(root.join("nested").join("new.md"))
-                .expect("read creation"),
+            std::fs::read_to_string(root.join("nested").join("new.md")).expect("read creation"),
             "---\ntype: note\n---\n# New\n"
         );
     }
@@ -4270,7 +4406,10 @@ mod tests {
             assert!(std::fs::read_dir(&root)
                 .expect("read bundle root")
                 .filter_map(Result::ok)
-                .all(|entry| !entry.file_name().to_string_lossy().starts_with(".okf-studio-")));
+                .all(|entry| !entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".okf-studio-")));
         }
 
         let resumed = SessionStages::persistent(checkpoint_directory.clone());
@@ -4347,8 +4486,7 @@ mod tests {
         stages
             .persist_apply_transaction(&root, &transaction)
             .expect("persist apply intent");
-        let checkpoint =
-            execute_apply_transaction(&transaction, None).expect("execute full apply");
+        let checkpoint = execute_apply_transaction(&transaction, None).expect("execute full apply");
         stages
             .persist_checkpoint(&root, &checkpoint)
             .expect("cross apply commit point");
@@ -4487,8 +4625,7 @@ mod tests {
             modified.original_content.as_ref().expect("original text"),
         )
         .expect("write original transaction file");
-        std::fs::rename(&modified.target, &modified.applied_temporary)
-            .expect("move applied file");
+        std::fs::rename(&modified.target, &modified.applied_temporary).expect("move applied file");
         std::fs::rename(
             modified
                 .original_temporary
@@ -4647,7 +4784,11 @@ mod tests {
             .expect_err("escaping checkpoint path must fail");
         assert!(error.contains("invalid path"));
         assert!(error.contains("retry the session"));
-        assert!(!root.parent().expect("root parent").join("outside.md").exists());
+        assert!(!root
+            .parent()
+            .expect("root parent")
+            .join("outside.md")
+            .exists());
         let changes = stages
             .register_session("session-2", &root)
             .expect("retry after quarantine");
@@ -4763,8 +4904,14 @@ mod tests {
         let error = apply_prepared_transaction(&root, &prepared, Some(1))
             .expect_err("injected transaction failure");
         assert!(error.contains("interrupted"));
-        assert_eq!(std::fs::read_to_string(root.join("one.md")).expect("first"), "one\n");
-        assert_eq!(std::fs::read_to_string(root.join("two.md")).expect("second"), "two\n");
+        assert_eq!(
+            std::fs::read_to_string(root.join("one.md")).expect("first"),
+            "one\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("two.md")).expect("second"),
+            "two\n"
+        );
         assert!(
             std::fs::read_dir(&root)
                 .expect("read root")

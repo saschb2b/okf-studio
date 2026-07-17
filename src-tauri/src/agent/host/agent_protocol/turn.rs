@@ -251,8 +251,7 @@ pub(crate) fn reduced_tool_content(
                     return None;
                 };
                 let (text, truncated) = bounded_content_text(&text.text);
-                (!text.trim().is_empty())
-                    .then_some(AgentToolContentInfo::Text { text, truncated })
+                (!text.trim().is_empty()).then_some(AgentToolContentInfo::Text { text, truncated })
             }
             _ => None,
         })

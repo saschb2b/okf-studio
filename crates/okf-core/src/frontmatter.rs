@@ -14,7 +14,14 @@ use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
 /// Keys the data model promotes to typed fields; everything else goes to `extra`.
-pub const KNOWN_KEYS: [&str; 6] = ["type", "title", "description", "resource", "tags", "timestamp"];
+pub const KNOWN_KEYS: [&str; 6] = [
+    "type",
+    "title",
+    "description",
+    "resource",
+    "tags",
+    "timestamp",
+];
 
 /// The parsed result: known keys are kept as raw value strings/lists keyed by
 /// name, and unknown keys land in `extra` as JSON values.
@@ -228,7 +235,12 @@ fn parse_list(lines: &[&str], i: &mut usize, indent: usize) -> Vec<Value> {
 /// An inline `[a, b]` list, or a scalar string (quotes stripped).
 fn scalar_or_inline_list(rest: &str) -> Value {
     if rest.starts_with('[') {
-        Value::Array(parse_inline_list(rest).into_iter().map(Value::String).collect())
+        Value::Array(
+            parse_inline_list(rest)
+                .into_iter()
+                .map(Value::String)
+                .collect(),
+        )
     } else {
         Value::String(unquote(rest))
     }
@@ -317,10 +329,18 @@ mod tests {
         assert_eq!(fm.scalar("type"), Some("Color"));
         let tokens = fm.extra.get("tokens").expect("tokens preserved");
         let colors = tokens.get("colors").expect("colors group");
-        assert_eq!(colors.get("primary"), Some(&Value::String("#1f2328".into())));
+        assert_eq!(
+            colors.get("primary"),
+            Some(&Value::String("#1f2328".into()))
+        );
         assert_eq!(colors.get("accent"), Some(&Value::String("#0969da".into())));
         // Author order preserved (preserve_order): primary before accent.
-        let order: Vec<&str> = colors.as_object().unwrap().keys().map(String::as_str).collect();
+        let order: Vec<&str> = colors
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
         assert_eq!(order, vec!["primary", "accent"]);
     }
 
@@ -345,7 +365,9 @@ mod tests {
         // The example list lands in extra as a string array.
         assert_eq!(
             fm.extra["examples"],
-            Value::Array(vec![Value::String("/components/button.example.html".into())]),
+            Value::Array(vec![Value::String(
+                "/components/button.example.html".into()
+            )]),
         );
         // Token reference syntax is preserved verbatim for the consumer to resolve.
         assert_eq!(
@@ -363,7 +385,10 @@ mod tests {
         );
         assert_eq!(
             fm.extra["applies_to"],
-            Value::Array(vec![Value::String("web".into()), Value::String("ios".into())]),
+            Value::Array(vec![
+                Value::String("web".into()),
+                Value::String("ios".into())
+            ]),
         );
     }
 }

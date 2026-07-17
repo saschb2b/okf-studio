@@ -132,7 +132,6 @@ export function SavedThreadWelcome({
     </>
   );
 }
-
 export function EmptyThreadWelcome({
   isStudioAgent,
   onSelectStarter,

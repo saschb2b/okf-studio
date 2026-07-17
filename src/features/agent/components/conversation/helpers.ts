@@ -171,7 +171,6 @@ export function securityEvidenceCopy(scope: AgentSecurityScopeInfo): string {
     : "Produced by the ACP launcher after process-group attachment.";
 }
 
-
 export function validationIssueKey(issue: Issue): string {
   return JSON.stringify([issue.level, issue.conceptId, issue.message]);
 }

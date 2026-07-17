@@ -264,12 +264,26 @@ pub fn install(
         .ok_or_else(|| "This agent is not installable yet.".to_string())?;
     validate_distribution(distribution)?;
     match distribution {
-        AgentDistribution::Npm(package) => {
-            install_npm(app, agent_id, install_id, cancelled, &catalog, distribution, package)
-        }
+        AgentDistribution::Npm(package) => install_npm(
+            app,
+            agent_id,
+            install_id,
+            cancelled,
+            &catalog,
+            distribution,
+            package,
+        ),
         AgentDistribution::Binary(binary) => {
             let target = binary_target(entry.name.as_str(), binary)?;
-            install_binary(app, agent_id, install_id, cancelled, distribution, binary, target)
+            install_binary(
+                app,
+                agent_id,
+                install_id,
+                cancelled,
+                distribution,
+                binary,
+                target,
+            )
         }
     }
 }
@@ -420,7 +434,11 @@ fn install_binary(
         return Ok(receipt);
     }
 
-    let extension = if target.archive == "zip" { "zip" } else { "tar.gz" };
+    let extension = if target.archive == "zip" {
+        "zip"
+    } else {
+        "tar.gz"
+    };
     let staging = root.join(format!(".install-{install_id}"));
     let archive = root.join(format!(".install-{install_id}.{extension}"));
     remove_path(&staging)?;
@@ -588,7 +606,10 @@ pub(crate) fn installed_command(
             Ok(InstalledAgentCommand {
                 executable: runtime.node_path(),
                 arguments,
-                environment: launch_environment(&package.environment, &package.environment_defaults),
+                environment: launch_environment(
+                    &package.environment,
+                    &package.environment_defaults,
+                ),
                 #[cfg(any(target_os = "linux", test))]
                 read_only_roots: vec![runtime.runtime_root()?, package_root],
             })
@@ -637,7 +658,11 @@ fn launch_environment(
     defaults: &std::collections::BTreeMap<String, String>,
 ) -> Vec<(String, String)> {
     let mut environment = catalog_environment(names);
-    environment.extend(defaults.iter().map(|(name, value)| (name.clone(), value.clone())));
+    environment.extend(
+        defaults
+            .iter()
+            .map(|(name, value)| (name.clone(), value.clone())),
+    );
     environment
 }
 
@@ -920,8 +945,7 @@ fn extract_binary_tar(
         .map_err(|error| format!("The agent archive is invalid: {error}"))?
     {
         check_cancelled(cancelled)?;
-        let mut entry =
-            item.map_err(|error| format!("The agent archive is invalid: {error}"))?;
+        let mut entry = item.map_err(|error| format!("The agent archive is invalid: {error}"))?;
         let path = entry
             .path()
             .map_err(|error| format!("The agent archive contains an invalid path: {error}"))?;
@@ -1130,7 +1154,10 @@ fn validate_npm_distribution(distribution: &NpmAgentDistribution) -> Result<(), 
     }
     validate_package_path(&distribution.entrypoint)?;
     validate_launch_arguments(&distribution.arguments)?;
-    validate_launch_environment(&distribution.environment, &distribution.environment_defaults)
+    validate_launch_environment(
+        &distribution.environment,
+        &distribution.environment_defaults,
+    )
 }
 
 fn validate_binary_distribution(distribution: &BinaryAgentDistribution) -> Result<(), String> {
@@ -1194,7 +1221,10 @@ fn validate_binary_distribution(distribution: &BinaryAgentDistribution) -> Resul
         }
         validate_launch_arguments(&target.arguments)?;
     }
-    validate_launch_environment(&distribution.environment, &distribution.environment_defaults)
+    validate_launch_environment(
+        &distribution.environment,
+        &distribution.environment_defaults,
+    )
 }
 
 fn validate_launch_arguments(arguments: &[String]) -> Result<(), String> {
@@ -1229,7 +1259,8 @@ fn valid_environment_name(name: &str) -> bool {
         && name.len() <= 128
         && name.chars().enumerate().all(|(index, character)| {
             character == '_'
-                || character.is_ascii_alphanumeric() && (index > 0 || character.is_ascii_alphabetic())
+                || character.is_ascii_alphanumeric()
+                    && (index > 0 || character.is_ascii_alphabetic())
         })
 }
 
@@ -1526,22 +1557,14 @@ mod tests {
         assert!(validate_binary_distribution(&binary).is_ok());
 
         let mut escaping = binary.clone();
-        let target = escaping
-            .targets
-            .values_mut()
-            .next()
-            .expect("targets exist");
+        let target = escaping.targets.values_mut().next().expect("targets exist");
         target.executable = "outside/node".to_string();
         assert!(validate_binary_distribution(&escaping)
             .unwrap_err()
             .contains("executable"));
 
         let mut unhashed = binary.clone();
-        let target = unhashed
-            .targets
-            .values_mut()
-            .next()
-            .expect("targets exist");
+        let target = unhashed.targets.values_mut().next().expect("targets exist");
         target.sha256 = "short".to_string();
         assert!(validate_binary_distribution(&unhashed)
             .unwrap_err()
@@ -1561,11 +1584,10 @@ mod tests {
 
     #[test]
     fn binary_archive_paths_stay_under_their_root() {
-        assert!(validate_binary_archive_path(
-            Path::new("dist-package/index.js"),
-            "dist-package"
-        )
-        .is_ok());
+        assert!(
+            validate_binary_archive_path(Path::new("dist-package/index.js"), "dist-package")
+                .is_ok()
+        );
         assert!(validate_binary_archive_path(Path::new("other/index.js"), "dist-package").is_err());
         assert!(
             validate_binary_archive_path(Path::new("dist-package/../up"), "dist-package").is_err()

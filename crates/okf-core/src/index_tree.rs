@@ -161,7 +161,12 @@ fn extract_intro(body: &str, dir: &str, ids: &HashSet<String>) -> String {
     let mut result: Vec<&str> = Vec::new();
     for line in out {
         let blank = line.trim().is_empty();
-        if blank && result.last().map(|l: &&str| l.trim().is_empty()).unwrap_or(true) {
+        if blank
+            && result
+                .last()
+                .map(|l: &&str| l.trim().is_empty())
+                .unwrap_or(true)
+        {
             continue; // no leading blanks, no double blanks
         }
         result.push(line);
@@ -190,7 +195,10 @@ fn bullet_re() -> &'static Regex {
 /// link bullet. `dir` anchors relative hrefs for concept resolution.
 fn parse_bullet(line: &str, dir: &str, ids: &HashSet<String>) -> Option<IndexEntry> {
     let caps = bullet_re().captures(line)?;
-    let title = caps.get(1).map(|m| m.as_str().trim().to_string()).unwrap_or_default();
+    let title = caps
+        .get(1)
+        .map(|m| m.as_str().trim().to_string())
+        .unwrap_or_default();
     let href = caps.get(2)?.as_str();
     let description = caps
         .get(3)
@@ -359,7 +367,7 @@ mod tests {
         assert_eq!(all[0].target, "architecture/tech-stack");
         assert_eq!(all[0].description, "Tauri and why.");
         assert_eq!(all[1].description, ""); // missing description tolerated
-        // The lead prose is retained; the title H1 and the link-bullets are not.
+                                            // The lead prose is retained; the title H1 and the link-bullets are not.
         assert_eq!(node.intro, "Intro prose.");
     }
 

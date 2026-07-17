@@ -707,8 +707,7 @@ pub(crate) fn execute_native_tool(
         .map_err(|_| "Studio could not encode the OKF tool result.".to_string())?;
     if output.len() > MAX_NATIVE_OUTPUT_BYTES {
         return Err(
-            "The OKF tool result is too large. Narrow the filter, page, or line range."
-                .to_string(),
+            "The OKF tool result is too large. Narrow the filter, page, or line range.".to_string(),
         );
     }
     Ok(output)
@@ -942,17 +941,16 @@ mod tests {
         };
         let output = execute_native_tool(&root, &call).expect("native search");
         let output: serde_json::Value = serde_json::from_str(&output).expect("JSON output");
-        assert!(output["matches"]
-            .as_array()
-            .is_some_and(|matches| matches.iter().any(|item| item["id"] == "features/agent-panel")));
+        assert!(output["matches"].as_array().is_some_and(|matches| matches
+            .iter()
+            .any(|item| item["id"] == "features/agent-panel")));
         assert_eq!(native_tool_display(&call), ("Search OKF bundle", "search"));
 
         let mut invalid = call;
         invalid.arguments = serde_json::json!({"query": "agent", "path": "../secret"});
         assert!(execute_native_tool(&root, &invalid).is_err());
 
-        let noncanonical_root =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs");
+        let noncanonical_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs");
         assert_eq!(
             execute_native_tool(&noncanonical_root, &invalid)
                 .expect_err("session root must stay canonical"),

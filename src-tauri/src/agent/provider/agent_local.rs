@@ -503,9 +503,7 @@ fn validate_input(input: &LocalModelProfileInput) -> Result<(String, Url), Strin
     Ok((name.to_string(), url))
 }
 
-fn take_api_key(
-    input: &mut LocalModelProfileInput,
-) -> Result<Option<Zeroizing<String>>, String> {
+fn take_api_key(input: &mut LocalModelProfileInput) -> Result<Option<Zeroizing<String>>, String> {
     let Some(api_key) = input.api_key.take() else {
         return Ok(None);
     };
@@ -783,7 +781,10 @@ fn bounded_tool_failure(error: &str) -> String {
         return "Studio tool failed.".to_string();
     }
     let available = MAX_TOOL_RESULT_CHARS.saturating_sub(PREFIX.chars().count());
-    format!("{PREFIX}{}", detail.chars().take(available).collect::<String>())
+    format!(
+        "{PREFIX}{}",
+        detail.chars().take(available).collect::<String>()
+    )
 }
 
 fn bounded_tool_name(value: &str) -> Option<String> {
@@ -1069,7 +1070,10 @@ mod tests {
         let profile = save_in(&file, draft, &credentials).expect("save credentialed profile");
         assert!(profile.has_credential);
         assert_eq!(
-            credentials.get(&profile.id).expect("stored secret").as_str(),
+            credentials
+                .get(&profile.id)
+                .expect("stored secret")
+                .as_str(),
             "secret-test-key"
         );
         let settings = fs::read_to_string(&file).expect("settings JSON");

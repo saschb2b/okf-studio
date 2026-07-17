@@ -62,7 +62,11 @@ mod tests {
 
     #[test]
     fn inverts_edges_and_counts_degree() {
-        let mut concepts = vec![concept("a", &["b"]), concept("b", &[]), concept("c", &["b"])];
+        let mut concepts = vec![
+            concept("a", &["b"]),
+            concept("b", &[]),
+            concept("c", &["b"]),
+        ];
         link_graph(&mut concepts);
 
         let b = concepts.iter().find(|c| c.id == "b").unwrap();

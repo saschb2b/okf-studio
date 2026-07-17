@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-17T20:47:04Z
+timestamp: 2026-07-17T21:13:38Z
 ---
 
 # Outcome
@@ -98,7 +98,6 @@ Gate: a fake agent covers initialize, auth, session/new, streaming, permission, 
 ## WP5: Authentication and providers
 
 - [x] Render stable agent-owned ACP auth methods; let external agents own browser, subscription, and token login.
-- [ ] Add client-owned terminal and environment-variable authentication if ACP stabilizes those variants. The 2026-07-17 protocol recheck still classifies Authentication Methods as Draft; see the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
 - [x] Never copy external-agent credentials into Studio settings or logs.
 - [x] Store Studio Agent keys only in the OS credential store.
 - [x] Configure and probe Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible endpoints without sending prompts or credentials.
@@ -312,7 +311,7 @@ Gate: platform docs and tests state exactly what is contained on Windows, Linux,
 
 ### WP11 exit contract
 
-The remaining WP11 boxes stay open until their enforcement dependency exists. A command wrapper, provider self-report, or process-tree owner cannot unlock unattended mode.
+Future isolation work remains dependency-gated. A command wrapper, provider self-report, or process-tree owner cannot unlock unattended mode.
 
 The 2026-07-17 dependency recheck found no safe local substitute. ACP v1 identifies a tool call only within its session and supplies no stable tool-definition identity for a cross-session rule. Agent-controlled titles, kinds, arguments, locations, and `allow_always` labels cannot become that identity. The exact evidence and closure criteria are recorded in the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
 
@@ -324,7 +323,6 @@ The 2026-07-17 dependency recheck found no safe local substitute. ACP v1 identif
 - [x] Provide a Windows enforcement path. Restricted offline runs one self-contained `.exe` inside a fresh AppContainer with no network capabilities and no direct bundle mount; bounded Studio tools mediate bundle reads and staged writes. A kill-on-close Job Object separately owns the helper and child process lifetime. The production fixture proves the AppContainer token, denied host-file reads, and private scratch writes.
 - [x] Bind every isolation claim to launcher-produced evidence. Saved profile text and agent-advertised capabilities are descriptive input, never proof that containment is active.
 - [x] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. The initial native-mediated and external-interactive profiles both lock unattended work; the external baseline explicitly reports host network access instead of hiding it. A future restricted profile must model authentication bootstrap as a separate network exception.
-- [ ] Add cross-session permission rules only when ACP supplies a stable tool identity that Studio can display and match independently of agent-controlled titles or raw arguments.
 - [x] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny. Verified Linux Bubblewrap and Windows AppContainer Restricted offline profiles qualify; Standard, native, macOS, and unsupported hosts remain interactive-only.
 - [x] Treat the active bundle as granted only when the Rust registry produced and still owns the canonical root. Frontend store entries and path strings cannot satisfy this condition.
 
@@ -348,6 +346,8 @@ flowchart TD
 
 # Deferred decisions
 
+- Client-owned terminal and environment-variable authentication waits for stable ACP variants. The 2026-07-17 protocol recheck still classifies Authentication Methods as Draft; see the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
+- Cross-session permission rules wait for an ACP tool identity that Studio can display and match independently of agent-controlled titles or raw arguments.
 - The native agent-loop library is chosen in WP7 against executable provider and tool tests.
 - Windows uses a native AppContainer for filesystem and network enforcement and a separate Job Object for process lifetime. WSL is not required.
 - Repository and application identifiers remain compatibility names until a separate updater/app-data migration exists.

@@ -150,10 +150,14 @@ mod tests {
             .content
             .contains("detailed instructions are not preloaded"));
         assert!(message.content.contains(LOAD_SKILL_RESOURCE_TOOL));
-        assert!(message.content.contains("only through the advertised `okf_*` tools"));
+        assert!(message
+            .content
+            .contains("only through the advertised `okf_*` tools"));
         assert!(message.content.contains("never writes to the bundle"));
         assert!(message.content.contains("hunk decisions, or Apply"));
-        assert!(message.content.contains("only text sources the user explicitly attached"));
+        assert!(message
+            .content
+            .contains("only text sources the user explicitly attached"));
         assert!(!message.content.contains("## Commands"));
         assert!(!message.content.contains("The one rule"));
     }

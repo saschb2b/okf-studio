@@ -588,7 +588,6 @@ export function AttachmentPicker({
     </Popover.Root>
   );
 }
-
 export function AttachmentPickerHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="agent-attachment-picker__header">
@@ -604,4 +603,3 @@ export function AttachmentPickerHeader({ title, onBack }: { title: string; onBac
     </div>
   );
 }
-

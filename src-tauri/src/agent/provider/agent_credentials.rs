@@ -37,8 +37,7 @@ impl CredentialStore for OsCredentialStore {
 }
 
 fn entry(profile_id: &str) -> Result<Entry, String> {
-    Entry::new(SERVICE, &format!("studio-agent:{profile_id}"))
-        .map_err(|_| credential_error("open"))
+    Entry::new(SERVICE, &format!("studio-agent:{profile_id}")).map_err(|_| credential_error("open"))
 }
 
 fn credential_error(action: &str) -> String {

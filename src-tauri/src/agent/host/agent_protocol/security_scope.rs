@@ -183,8 +183,7 @@ impl AgentSecurityScopeInfo {
             ExternalProcessLaunchProfile::WindowsRestrictedAppContainer => {
                 AgentSecurityProfileInfo {
                     id: AgentSecurityProfileId::ExternalWindowsRestrictedAppContainerV1,
-                    effective_mounts:
-                        AgentEffectiveMounts::AppContainerRuntimeAndMediatedBundle,
+                    effective_mounts: AgentEffectiveMounts::AppContainerRuntimeAndMediatedBundle,
                     writable_roots: AgentWritableRoots::PrivateTemporaryOnly,
                     network_policy: AgentNetworkPolicy::Isolated,
                     credential_exposure: AgentCredentialExposure::LaunchEnvironmentOnly,

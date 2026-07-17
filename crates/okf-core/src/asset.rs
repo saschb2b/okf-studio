@@ -71,7 +71,10 @@ pub fn read_asset(root: &Path, rel: &str) -> Option<String> {
 pub fn read_asset_data_url(root: &Path, rel: &str) -> Option<String> {
     let target = resolve_in_root(root, rel)?;
     let ext = target.extension()?.to_string_lossy().to_ascii_lowercase();
-    let mime = IMAGE_MIME.iter().find(|(e, _)| *e == ext).map(|(_, m)| *m)?;
+    let mime = IMAGE_MIME
+        .iter()
+        .find(|(e, _)| *e == ext)
+        .map(|(_, m)| *m)?;
     let bytes = std::fs::read(&target).ok()?;
     Some(format!("data:{};base64,{}", mime, base64_encode(&bytes)))
 }
@@ -87,8 +90,16 @@ fn base64_encode(data: &[u8]) -> String {
         let n = (b0 << 16) | (b1 << 8) | b2;
         out.push(T[((n >> 18) & 63) as usize] as char);
         out.push(T[((n >> 12) & 63) as usize] as char);
-        out.push(if chunk.len() > 1 { T[((n >> 6) & 63) as usize] as char } else { '=' });
-        out.push(if chunk.len() > 2 { T[(n & 63) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            T[((n >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            T[(n & 63) as usize] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -103,7 +114,10 @@ mod tests {
         // A per-test subdir; std has no random in core, so derive from a counter.
         use std::sync::atomic::{AtomicU32, Ordering};
         static N: AtomicU32 = AtomicU32::new(0);
-        dir.push(format!("okf-asset-test-{}", N.fetch_add(1, Ordering::Relaxed)));
+        dir.push(format!(
+            "okf-asset-test-{}",
+            N.fetch_add(1, Ordering::Relaxed)
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("styles")).unwrap();
         dir
@@ -155,7 +169,10 @@ mod tests {
         assert_eq!(base64_encode(b"M"), "TQ==");
         assert_eq!(base64_encode(b"Ma"), "TWE=");
         assert_eq!(base64_encode(b"Man"), "TWFu");
-        assert_eq!(base64_encode(b"any carnal pleasure."), "YW55IGNhcm5hbCBwbGVhc3VyZS4=");
+        assert_eq!(
+            base64_encode(b"any carnal pleasure."),
+            "YW55IGNhcm5hbCBwbGVhc3VyZS4="
+        );
     }
 
     #[test]
@@ -170,7 +187,10 @@ mod tests {
         fs::write(root.join("pic.gif"), gif).unwrap();
         let url = read_asset_data_url(&root, "pic.gif").expect("image reads as data url");
         assert!(url.starts_with("data:image/gif;base64,"));
-        assert_eq!(url, format!("data:image/gif;base64,{}", base64_encode(&gif)));
+        assert_eq!(
+            url,
+            format!("data:image/gif;base64,{}", base64_encode(&gif))
+        );
     }
 
     #[test]

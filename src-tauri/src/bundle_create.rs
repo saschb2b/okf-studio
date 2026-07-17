@@ -98,7 +98,9 @@ pub fn create_bundle(parent: &Path, input: &CreateBundleInput) -> Result<PathBuf
 
     if let Err(error) = std::fs::rename(&temporary, &destination) {
         let _ = std::fs::remove_dir_all(&temporary);
-        return Err(format!("Studio could not move the new bundle into place: {error}"));
+        return Err(format!(
+            "Studio could not move the new bundle into place: {error}"
+        ));
     }
     Ok(destination)
 }
@@ -111,11 +113,19 @@ fn generate_files(input: &CreateBundleInput) -> Result<Vec<GeneratedFile>, Strin
     let description = bounded_line(&input.description, MAX_DESCRIPTION_CHARS);
     let concept_title = {
         let bounded = bounded_line(&input.first_concept_title, MAX_TITLE_CHARS);
-        if bounded.is_empty() { "Welcome".to_string() } else { bounded }
+        if bounded.is_empty() {
+            "Welcome".to_string()
+        } else {
+            bounded
+        }
     };
     let concept_type = {
         let bounded = bounded_line(&input.first_concept_type, MAX_TYPE_CHARS);
-        if bounded.is_empty() { "Note".to_string() } else { bounded }
+        if bounded.is_empty() {
+            "Note".to_string()
+        } else {
+            bounded
+        }
     };
     let slug = slugify(&concept_title);
     let concept_rel = format!("concepts/{slug}.md");
@@ -170,7 +180,10 @@ fn generate_files(input: &CreateBundleInput) -> Result<Vec<GeneratedFile>, Strin
         });
     }
 
-    files.push(GeneratedFile { path: concept_rel, content: concept });
+    files.push(GeneratedFile {
+        path: concept_rel,
+        content: concept,
+    });
     Ok(files)
 }
 
@@ -190,7 +203,11 @@ fn bounded_line(value: &str, max_chars: usize) -> String {
         line.push(character);
         separated = false;
     }
-    line.chars().take(max_chars).collect::<String>().trim_end().to_string()
+    line.chars()
+        .take(max_chars)
+        .collect::<String>()
+        .trim_end()
+        .to_string()
 }
 
 /// Quote a scalar so it round-trips identically under real YAML parsers AND
@@ -222,7 +239,11 @@ fn slugify(title: &str) -> String {
         }
     }
     let slug = slug.trim_matches('-').to_string();
-    if slug.is_empty() { "concept".to_string() } else { slug }
+    if slug.is_empty() {
+        "concept".to_string()
+    } else {
+        slug
+    }
 }
 
 fn iso_timestamp() -> Result<String, String> {
@@ -280,7 +301,10 @@ mod tests {
             .iter()
             .find(|concept| concept.id == "concepts/welcome")
             .expect("welcome concept");
-        assert!(welcome.links.iter().any(|link| link == "guide/working-in-this-bundle"));
+        assert!(welcome
+            .links
+            .iter()
+            .any(|link| link == "guide/working-in-this-bundle"));
         assert_eq!(welcome.concept_type, "Note");
 
         let log = std::fs::read_to_string(created.join("log.md")).expect("log");
@@ -293,7 +317,10 @@ mod tests {
         let parent = temp_parent();
         let created = create_bundle(
             &parent,
-            &CreateBundleInput { include_guide: false, ..input() },
+            &CreateBundleInput {
+                include_guide: false,
+                ..input()
+            },
         )
         .expect("bundle created");
         let bundle = okf_core::read_bundle(&created);

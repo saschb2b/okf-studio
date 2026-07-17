@@ -7,29 +7,31 @@
 // to its file. See docs/architecture/agent-system.md for the domains.
 //
 // host — the running ACP and MCP process host.
-#[path = "agent/host/agent_protocol.rs"]
-mod agent_protocol;
+#[path = "agent/host/agent_mcp.rs"]
+mod agent_mcp;
 #[path = "agent/host/agent_process.rs"]
 mod agent_process;
+#[path = "agent/host/agent_protocol.rs"]
+mod agent_protocol;
 #[path = "agent/host/agent_sandbox.rs"]
 mod agent_sandbox;
+#[path = "agent/host/agent_transcript.rs"]
+mod agent_transcript;
 #[cfg(target_os = "windows")]
 #[path = "agent/host/agent_windows_sandbox.rs"]
 mod agent_windows_sandbox;
-#[path = "agent/host/agent_mcp.rs"]
-mod agent_mcp;
-#[path = "agent/host/agent_transcript.rs"]
-mod agent_transcript;
 // registry — agent discovery, installation, and the managed runtime.
 #[path = "agent/registry/agent_catalog.rs"]
 mod agent_catalog;
+#[path = "agent/registry/agent_custom.rs"]
+mod agent_custom;
 #[path = "agent/registry/agent_install.rs"]
 mod agent_install;
 #[path = "agent/registry/agent_runtime.rs"]
 mod agent_runtime;
-#[path = "agent/registry/agent_custom.rs"]
-mod agent_custom;
 // provider — the native Studio Agent and its tools.
+#[path = "agent/provider/agent_credentials.rs"]
+mod agent_credentials;
 #[path = "agent/provider/agent_local.rs"]
 mod agent_local;
 #[path = "agent/provider/agent_native_sources.rs"]
@@ -38,17 +40,15 @@ mod agent_native_sources;
 mod agent_native_stage;
 #[path = "agent/provider/agent_studio.rs"]
 mod agent_studio;
-#[path = "agent/provider/agent_credentials.rs"]
-mod agent_credentials;
 // sources — attached-source intake and extraction.
-#[path = "agent/sources/agent_sources.rs"]
-mod agent_sources;
-#[path = "agent/sources/agent_pdf.rs"]
-mod agent_pdf;
 #[path = "agent/sources/agent_csv.rs"]
 mod agent_csv;
 #[path = "agent/sources/agent_json.rs"]
 mod agent_json;
+#[path = "agent/sources/agent_pdf.rs"]
+mod agent_pdf;
+#[path = "agent/sources/agent_sources.rs"]
+mod agent_sources;
 #[path = "agent/sources/agent_url.rs"]
 mod agent_url;
 // stage — the reviewed-write engine shared by the host and native provider.
@@ -120,9 +120,9 @@ fn create_bundle(
     else {
         return Ok(None);
     };
-    let parent = selected
-        .into_path()
-        .map_err(|_| "The selected destination folder is not available on this platform.".to_string())?;
+    let parent = selected.into_path().map_err(|_| {
+        "The selected destination folder is not available on this platform.".to_string()
+    })?;
     let created = bundle_create::create_bundle(&parent, &input)?;
     grants
         .grant(&created, bundle_grant::BundleGrantKind::LocalFolder)
@@ -195,9 +195,7 @@ fn remove_custom_agent(
 }
 
 #[tauri::command]
-fn local_model_profiles(
-    app: AppHandle,
-) -> Result<Vec<agent_local::LocalModelProfile>, String> {
+fn local_model_profiles(app: AppHandle) -> Result<Vec<agent_local::LocalModelProfile>, String> {
     agent_local::list(&app)
 }
 
@@ -316,13 +314,7 @@ async fn load_agent_session(
         .authorize_bundle(Path::new(&bundle_root))?
         .to_string_lossy()
         .into_owned();
-    agent_protocol::load_session(
-        state.inner(),
-        &connection_id,
-        bundle_root,
-        session_id,
-    )
-    .await
+    agent_protocol::load_session(state.inner(), &connection_id, bundle_root, session_id).await
 }
 
 #[tauri::command]
@@ -397,9 +389,7 @@ async fn pick_agent_image_sources(
 }
 
 #[tauri::command]
-async fn fetch_agent_source_url(
-    url: String,
-) -> Result<agent_sources::AgentSourceInput, String> {
+async fn fetch_agent_source_url(url: String) -> Result<agent_sources::AgentSourceInput, String> {
     tauri::async_runtime::spawn_blocking(move || agent_url::fetch(url))
         .await
         .map_err(|error| format!("The URL source task failed: {error}"))?
@@ -421,13 +411,7 @@ async fn cancel_agent_turn(
     session_id: String,
     turn_id: String,
 ) -> Result<bool, String> {
-    agent_protocol::cancel_turn(
-        state.inner(),
-        &connection_id,
-        session_id,
-        turn_id,
-    )
-    .await
+    agent_protocol::cancel_turn(state.inner(), &connection_id, session_id, turn_id).await
 }
 
 #[tauri::command]
@@ -437,12 +421,7 @@ fn respond_agent_permission(
     option_id: Option<String>,
     remember_for_thread: bool,
 ) -> Result<bool, String> {
-    agent_protocol::respond_permission(
-        state.inner(),
-        &request_id,
-        option_id,
-        remember_for_thread,
-    )
+    agent_protocol::respond_permission(state.inner(), &request_id, option_id, remember_for_thread)
 }
 
 #[tauri::command]
@@ -487,13 +466,7 @@ fn set_agent_stage_mode(
     session_id: String,
     mode: agent_stage::AgentStageMode,
 ) -> Result<agent_stage::AgentStagedChangesInfo, String> {
-    agent_protocol::set_stage_mode(
-        &app,
-        state.inner(),
-        &connection_id,
-        &session_id,
-        mode,
-    )
+    agent_protocol::set_stage_mode(&app, state.inner(), &connection_id, &session_id, mode)
 }
 
 /// Discard every staged file for one live ACP session; the grant is untouched.
@@ -610,13 +583,8 @@ async fn restore_agent_staged_checkpoint(
     connection_id: String,
     session_id: String,
 ) -> Result<agent_stage::AgentCheckpointRestoreInfo, String> {
-    agent_protocol::restore_staged_checkpoint(
-        &app,
-        state.inner(),
-        &connection_id,
-        &session_id,
-    )
-    .await
+    agent_protocol::restore_staged_checkpoint(&app, state.inner(), &connection_id, &session_id)
+        .await
 }
 
 #[tauri::command]
@@ -770,8 +738,8 @@ fn bounded_frontend_diagnostic(message: &str) -> String {
         separated = false;
     }
     if characters.next().is_some() {
-        let available = MAX_FRONTEND_LOG_CHARS
-            .saturating_sub(FRONTEND_LOG_TRUNCATION_MARKER.chars().count());
+        let available =
+            MAX_FRONTEND_LOG_CHARS.saturating_sub(FRONTEND_LOG_TRUNCATION_MARKER.chars().count());
         diagnostic = diagnostic.chars().take(available).collect();
         diagnostic.push_str(FRONTEND_LOG_TRUNCATION_MARKER);
     }
@@ -846,9 +814,11 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            app.manage(bundle_grant::BundleGrantState::load(app.handle()).map_err(
-                |error| std::io::Error::other(format!("could not load bundle grants: {error}")),
-            )?);
+            app.manage(
+                bundle_grant::BundleGrantState::load(app.handle()).map_err(|error| {
+                    std::io::Error::other(format!("could not load bundle grants: {error}"))
+                })?,
+            );
             app.manage(WatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());

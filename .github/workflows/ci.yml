@@ -90,13 +90,14 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
 
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
 
       # okf-core is pure Rust (no Tauri/webkit), so it needs no system libraries
       # and no built frontend — keeping this job fast.
+      - run: cargo fmt --all -- --check
       - run: cargo clippy -p okf-core --all-targets -- -D warnings
       - run: cargo test -p okf-core
 

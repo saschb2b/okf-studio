@@ -254,7 +254,9 @@ mod tests {
 
     #[test]
     fn withholds_source_tools_without_text_attachments() {
-        assert!(native_tool_definitions(&[]).expect("no source tools").is_empty());
+        assert!(native_tool_definitions(&[])
+            .expect("no source tools")
+            .is_empty());
         let mut image = source();
         image.content.clear();
         image.image_data = Some("encoded".to_string());

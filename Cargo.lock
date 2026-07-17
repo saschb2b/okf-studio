@@ -2868,6 +2868,7 @@ dependencies = [
  "agent-client-protocol",
  "base64 0.22.1",
  "csv",
+ "dunce",
  "flate2",
  "gtk",
  "keyring",

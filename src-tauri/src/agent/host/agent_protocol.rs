@@ -1860,8 +1860,7 @@ fn canonical_bundle_root(bundle_root: &str) -> Result<PathBuf, String> {
     if !requested.is_absolute() {
         return Err("Bundle root must be an absolute path.".to_string());
     }
-    let canonical = requested
-        .canonicalize()
+    let canonical = dunce::canonicalize(&requested)
         .map_err(|error| format!("Bundle root is unavailable: {error}"))?;
     if !canonical.is_dir() {
         return Err("Bundle root must be a directory.".to_string());
@@ -4097,7 +4096,8 @@ mod tests {
         let outside_root = bundle_root.with_file_name("okf-studio-history-outside");
         std::fs::create_dir_all(&bundle_root).expect("create bundle root");
         std::fs::create_dir_all(&outside_root).expect("create outside root");
-        let canonical_root = bundle_root.canonicalize().expect("canonical bundle root");
+        let canonical_root = canonical_bundle_root(&bundle_root.to_string_lossy())
+            .expect("canonical bundle root");
         let expected_root = canonical_root.clone();
         let expected_outside_root = outside_root.clone();
         let fake_agent = Agent.builder().on_receive_request(
@@ -5856,6 +5856,21 @@ mod tests {
             canonical_bundle_root("relative/bundle").expect_err("relative root should fail"),
             "Bundle root must be an absolute path."
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn keeps_canonical_bundle_roots_compatible_with_acp_windows_paths() {
+        let bundle_root =
+            std::env::temp_dir().join(format!("okf-studio-path-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&bundle_root).expect("create bundle root");
+
+        let canonical = canonical_bundle_root(&bundle_root.to_string_lossy())
+            .expect("canonical bundle root");
+
+        assert!(canonical.is_absolute());
+        assert!(!canonical.to_string_lossy().starts_with(r"\\?\"));
+        std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
     }
 
     #[test]

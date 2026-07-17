@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-17T18:30:00Z
+timestamp: 2026-07-17T19:15:51Z
 ---
 
 # Decision
@@ -25,7 +25,7 @@ Rust owns processes, network, credentials, filesystem mediation, persistence, an
 
 # Boundaries
 
-ACP standardizes capability negotiation, agent-owned auth, sessions, streaming, tools, permission requests, diffs, filesystem requests, cancellation, and optional restore. It avoids separate Claude and Codex clients.
+ACP standardizes capability negotiation, agent-owned auth, sessions, streaming, tools, permission requests, diffs, filesystem requests, cancellation, and optional restore. It avoids separate Claude and Codex clients. Rust keeps a canonical bundle root for containment and uses a stable non-verbatim Windows spelling at the ACP boundary. This prevents an agent's ordinary `C:\...` session path from being hidden by Rust's equivalent `\\?\C:\...` canonical form without weakening bundle scoping.
 
 ACP does not replace an external agent's system prompt. The native Studio Agent guarantees the packaged [OKF skill](../../.agents/skills/okf/SKILL.md), system prompt, scoped tools, validation, and staged writes. External agents receive bundle cwd, explicit resources, client permissions, and Studio OKF tools over MCP where supported. Studio labels first-turn skill material as client context and never claims it changed the external agent's system instructions.
 

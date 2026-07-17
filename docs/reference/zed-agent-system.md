@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-17T09:57:51Z
+timestamp: 2026-07-17T18:46:40Z
 ---
 
 # Adopted patterns
@@ -49,6 +49,14 @@ ACP stabilized session config options on 2026-02-04. An agent may return an orde
 The client sends `session/set_config_option` with the session, option, and value IDs. The response replaces the complete option set because changing a model may add, remove, or alter reasoning choices. The agent may send the same full replacement through `session/update`. Studio must therefore validate and replace one bounded snapshot, serialize overlapping changes, and keep the last confirmed snapshot visible if a request fails. Legacy session modes are a fallback only when no config option set exists; rendering both would duplicate mode controls.
 
 Zed's current source adds three useful presentation choices on top of the protocol: it preserves agent order, rebuilds every picker when the option IDs change, and lets users search and favorite large model lists. The control row wraps, while option descriptions live in tooltips or a documentation aside instead of widening every button.
+
+## Protocol dependency audit
+
+The 2026-07-17 recheck used ACP's current v1 documentation and Studio's pinned `agent-client-protocol` 1.2.0 with schema 1.4.0.
+
+ACP Authentication Methods remains a Draft RFD. The Rust SDK exposes `env_var` and `terminal` only through its default-disabled `unstable_auth_methods` feature and labels both variants as outside the specification. Studio must not advertise terminal capability, collect environment credentials, or restart an agent around those fields until the RFD is completed and the stable SDK exposes them without the unstable feature.
+
+ACP v1 permission requests carry a `toolCallId` that is unique only within one session. Their remaining scope is agent-controlled presentation or per-call data: title, kind, raw input, locations, and choice labels. The protocol has no stable tool-definition identity that survives a new session. Studio can therefore remember only the exact bounded request inside one live thread. A cross-session rule may ship when stable ACP supplies an identity and scope that Studio can display and compare without trusting those agent-controlled fields.
 
 ## Live-work shelf contract
 
@@ -114,6 +122,7 @@ Studio selected system Bubblewrap for the first Linux backend. The initial prefl
 - [ACP architecture](https://agentclientprotocol.com/get-started/architecture)
 - [ACP Registry](https://agentclientprotocol.com/get-started/registry)
 - [ACP authentication](https://agentclientprotocol.com/protocol/v1/authentication)
+- [ACP Authentication Methods draft](https://agentclientprotocol.com/rfds/auth-methods)
 - [ACP sessions](https://agentclientprotocol.com/protocol/v1/session-setup)
 - [ACP prompt turn](https://agentclientprotocol.com/protocol/v1/prompt-turn)
 - [ACP tools and permissions](https://agentclientprotocol.com/protocol/v1/tool-calls)

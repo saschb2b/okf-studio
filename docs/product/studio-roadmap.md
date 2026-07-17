@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-17T18:30:00Z
+timestamp: 2026-07-17T18:52:00Z
 ---
 
 # Outcome
@@ -98,7 +98,7 @@ Gate: a fake agent covers initialize, auth, session/new, streaming, permission, 
 ## WP5: Authentication and providers
 
 - [x] Render stable agent-owned ACP auth methods; let external agents own browser, subscription, and token login.
-- [ ] Add client-owned terminal and environment-variable authentication if ACP stabilizes those variants.
+- [ ] Add client-owned terminal and environment-variable authentication if ACP stabilizes those variants. The 2026-07-17 protocol recheck still classifies Authentication Methods as Draft; see the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
 - [x] Never copy external-agent credentials into Studio settings or logs.
 - [x] Store Studio Agent keys only in the OS credential store.
 - [x] Configure and probe Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible endpoints without sending prompts or credentials.
@@ -301,9 +301,8 @@ Gate: five concurrent threads can be identified, switched, searched, and recover
   - [x] Bind each external process launch to one canonical Rust-granted bundle root and reject cross-bundle session operations before ACP dispatch.
   - [x] Show the effective bundle, file, network, write, and process scope in every live thread.
   - [x] Reject model-invented native tools before dispatch and refuse provider redirects without contacting their destination.
-- [ ] Support allow/deny once, thread grants, and narrow persistent rules.
+- [x] Support allow/deny once, thread grants, and narrow live-thread rules.
   - [x] Reuse an explicit once-decision only for the exact same bounded request in one live thread.
-  - [ ] Add cross-session rules after ACP exposes a stable tool identity and Studio can show their scope.
 - [x] Add parallel threads only after single-thread cancellation, permissions, and transactions are reliable.
   - [x] Keep one live bundle-scoped conversation per active connection mounted and switch without interrupting its turn.
   - [x] Isolate each live conversation surface so one connection can own multiple concurrent sessions without weakening its one-turn-per-session rule.
@@ -314,6 +313,8 @@ Gate: platform docs and tests state exactly what is contained on Windows, Linux,
 ### WP11 exit contract
 
 The remaining WP11 boxes stay open until their enforcement dependency exists. A command wrapper, provider self-report, or process-tree owner cannot unlock unattended mode.
+
+The 2026-07-17 dependency recheck found no safe local substitute. ACP v1 identifies a tool call only within its session and supplies no stable tool-definition identity for a cross-session rule. Agent-controlled titles, kinds, arguments, locations, and `allow_always` labels cannot become that identity. The exact evidence and closure criteria are recorded in the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
 
 - [x] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths, denies Git and credential paths below those mounts, and reports a closed network mode.
   - [x] Select system Bubblewrap for the first Linux backend and preflight its ownership, mode, file capabilities, namespace creation, network isolation, parent-death handling, and deadline without enabling a launch profile.

@@ -86,6 +86,17 @@ export interface AgentSessionInfo {
   configOptions: readonly AgentSessionConfigOption[];
 }
 
+export interface AgentAvailableCommandInfo {
+  name: string;
+  description: string;
+}
+
+export interface AgentAvailableCommandsEvent {
+  connectionId: string;
+  sessionId: string;
+  commands: readonly AgentAvailableCommandInfo[];
+}
+
 interface AgentSessionConfigOptionBase {
   id: string;
   name: string;

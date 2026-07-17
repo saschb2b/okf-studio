@@ -684,6 +684,17 @@
   overflow-wrap: break-word;
 }
 
+.agent-message__context-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: var(--lh-normal);
+}
+
 .agent-message__markdown > :first-child {
   margin-top: 0;
 }

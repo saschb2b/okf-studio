@@ -1,0 +1,74 @@
+.agent-context-pressure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  color: var(--text);
+  background: var(--bg-sunken);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-sm);
+}
+
+.agent-context-pressure--critical {
+  border-color: var(--error);
+}
+
+.agent-context-pressure > svg {
+  margin-top: var(--space-2);
+  color: var(--warn);
+}
+
+.agent-context-pressure--critical > svg {
+  color: var(--error);
+}
+
+.agent-context-pressure__body {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.agent-context-pressure__body strong,
+.agent-context-pressure__body p {
+  margin: 0;
+}
+
+.agent-context-pressure__body strong {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.agent-context-pressure__body p {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-context-pressure__actions {
+  display: flex;
+  grid-column: 2;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.agent-context-pressure__actions .btn {
+  min-height: 28px;
+  gap: var(--space-4);
+}
+
+@container (max-width: 420px) {
+  .agent-context-pressure {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-context-pressure > svg {
+    display: none;
+  }
+
+  .agent-context-pressure__actions {
+    grid-column: 1;
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

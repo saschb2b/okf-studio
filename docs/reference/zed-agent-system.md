@@ -4,7 +4,7 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-15T10:20:00Z
+timestamp: 2026-07-17T09:57:51Z
 ---
 
 # Adopted patterns
@@ -82,6 +82,7 @@ Studio will adapt changed files to its stricter staged OKF transaction rather th
 - Zed's current Agent Panel preserves multi-line queued messages while a turn is active. Studio adopts the visible follow-up pattern but keeps its first queue slice to one frontend-owned snapshot because ACP itself still permits one live prompt turn per session.
 - The official Rust SDK checked on 2026-07-11 is `agent-client-protocol` 1.2.0 with schema artifact 1.4.0. Its current API composes typed `Client` and `Agent` builders over `ConnectTo` transports. ACP wire compatibility remains protocol v1 and must be negotiated independently of those artifact versions.
 - ACP session config options were stabilized on 2026-02-04 and are present in Studio's pinned schema. They cover agent-provided model, mode, thought level, model configuration, custom select, and boolean options without provider-specific fields.
+- ACP available-command updates are complete session snapshots, not a method the client polls. GitHub Copilot CLI's official ACP server advertises `/compact` and states that clients invoke an advertised command by sending its slash name as the ordinary single text prompt. Studio uses that portable boundary and does not infer a compaction command from a description.
 - Zed's current config-option view replaces its selector set after every update, supports grouped and searchable choices, and keeps favorites as a client preference. It uses the semantic category only for placement, icons, and keyboard actions.
 - Zed's current activity surface docks permission, live plan, changed files, and queued messages above the composer. Plan and queue lists have bounded internal scrolling; the transcript keeps completed plan snapshots separately.
 
@@ -120,3 +121,4 @@ Studio selected system Bubblewrap for the first Linux backend. The initial prefl
 - [ACP Rust library](https://agentclientprotocol.com/libraries/rust)
 - [ACP session config options](https://agentclientprotocol.com/rfds/session-config-options)
 - [ACP session config stabilization](https://agentclientprotocol.com/announcements/session-config-options-stabilized)
+- [GitHub Copilot CLI ACP server](https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server)

@@ -1,16 +1,16 @@
 use agent_client_protocol::schema::v1::{
-    AgentCapabilities, AuthenticateRequest, BooleanConfigOptionCapabilities, CancelNotification,
-    ClientCapabilities, ClientSessionCapabilities, ContentBlock, ContentChunk, EmbeddedResource,
-    EmbeddedResourceResource, FileSystemCapabilities, ImageContent, Implementation,
-    InitializeRequest, InitializeResponse, ListSessionsRequest, LoadSessionRequest, McpServer,
-    McpServerStdio, NewSessionRequest, PermissionOptionKind, PlanEntryPriority, PlanEntryStatus,
-    PromptRequest, ReadTextFileRequest, ReadTextFileResponse, RequestPermissionOutcome,
-    RequestPermissionRequest, RequestPermissionResponse, ResourceLink, SelectedPermissionOutcome,
-    SessionConfigKind, SessionConfigOption, SessionConfigOptionCategory, SessionConfigOptionValue,
-    SessionConfigOptionsCapabilities, SessionConfigSelectOptions, SessionModeState,
-    SessionNotification, SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest,
-    StopReason, TextContent, TextResourceContents, ToolCallContent, ToolCallLocation,
-    ToolCallStatus, ToolCallUpdate, ToolKind, UsageUpdate, WriteTextFileRequest,
+    AgentCapabilities, AuthenticateRequest, AvailableCommand, BooleanConfigOptionCapabilities,
+    CancelNotification, ClientCapabilities, ClientSessionCapabilities, ContentBlock, ContentChunk,
+    EmbeddedResource, EmbeddedResourceResource, FileSystemCapabilities, ImageContent,
+    Implementation, InitializeRequest, InitializeResponse, ListSessionsRequest, LoadSessionRequest,
+    McpServer, McpServerStdio, NewSessionRequest, PermissionOptionKind, PlanEntryPriority,
+    PlanEntryStatus, PromptRequest, ReadTextFileRequest, ReadTextFileResponse,
+    RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse, ResourceLink,
+    SelectedPermissionOutcome, SessionConfigKind, SessionConfigOption, SessionConfigOptionCategory,
+    SessionConfigOptionValue, SessionConfigOptionsCapabilities, SessionConfigSelectOptions,
+    SessionModeState, SessionNotification, SessionUpdate, SetSessionConfigOptionRequest,
+    SetSessionModeRequest, StopReason, TextContent, TextResourceContents, ToolCallContent,
+    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolKind, UsageUpdate, WriteTextFileRequest,
     WriteTextFileResponse,
 };
 use agent_client_protocol::schema::ProtocolVersion;
@@ -53,13 +53,6 @@ mod security_scope;
 mod session_config;
 #[path = "agent_protocol/turn.rs"]
 mod turn;
-pub use turn::AgentTurnInfo;
-#[cfg(test)]
-use turn::{reduced_usage_update, AgentToolContentInfo, AgentUsageCostInfo};
-use turn::{
-    bounded_tool_field, remove_active_turn, reported_diffs, stop_reason_name, tool_kind_name,
-    turn_event, turn_event_with_change_state, AgentTurnEvent, AgentTurnUpdate, TurnEventSink,
-};
 use context::{context_resource_links, read_bundle_text, source_content_blocks, validate_sources};
 #[cfg(test)]
 use process::{diagnostic_summary, sanitize_diagnostics};
@@ -74,6 +67,13 @@ use session_config::{
     AgentSessionConfigTransport, AgentSessionConfiguration,
 };
 pub use session_config::{AgentSessionConfigSnapshot, AgentSessionConfigValueInput};
+pub use turn::AgentTurnInfo;
+use turn::{
+    bounded_tool_field, remove_active_turn, reported_diffs, stop_reason_name, tool_kind_name,
+    turn_event, turn_event_with_change_state, AgentTurnEvent, AgentTurnUpdate, TurnEventSink,
+};
+#[cfg(test)]
+use turn::{reduced_usage_update, AgentToolContentInfo, AgentUsageCostInfo};
 
 const INITIALIZE_TIMEOUT: Duration = Duration::from_secs(15);
 const SESSION_CREATE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -134,6 +134,9 @@ const MAX_SESSION_CONFIG_OPTIONS: usize = 64;
 const MAX_SESSION_CONFIG_GROUPS: usize = 64;
 const MAX_SESSION_CONFIG_VALUES: usize = 512;
 const MAX_SESSION_CONFIG_FIELD_CHARS: usize = 512;
+const MAX_AVAILABLE_COMMANDS: usize = 64;
+const MAX_AVAILABLE_COMMAND_NAME_CHARS: usize = 64;
+const MAX_AVAILABLE_COMMAND_DESCRIPTION_CHARS: usize = 512;
 const LEGACY_SESSION_MODE_CONFIG_ID: &str = "__acp_session_mode";
 const OKF_SKILL: &str = include_str!("../../../../.agents/skills/okf/SKILL.md");
 const OKF_SPEC: &str = include_str!("../../../../.agents/skills/okf/spec.md");
@@ -144,6 +147,7 @@ const TURN_EVENT: &str = "agent-turn-update";
 const PERMISSION_EVENT: &str = "agent-permission-update";
 const STAGE_EVENT: &str = "agent-stage-update";
 const SESSION_CONFIG_EVENT: &str = "agent-session-config-update";
+const AVAILABLE_COMMANDS_EVENT: &str = "agent-available-commands-update";
 type HandshakeResult = Result<AgentConnectionInfo, String>;
 type HandshakeSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<HandshakeResult>>>>;
 
@@ -240,7 +244,6 @@ pub struct AgentHistoryMessage {
     text: String,
 }
 
-
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentPermissionEvent {
@@ -289,6 +292,22 @@ struct AgentStageEvent {
 
 type StageEventSink = Arc<dyn Fn(AgentStageEvent) + Send + Sync>;
 type SessionConfigEventSink = Arc<dyn Fn(AgentSessionConfigEvent) + Send + Sync>;
+type AvailableCommandsEventSink = Arc<dyn Fn(AgentAvailableCommandsEvent) + Send + Sync>;
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentAvailableCommandInfo {
+    name: String,
+    description: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentAvailableCommandsEvent {
+    connection_id: String,
+    session_id: String,
+    commands: Vec<AgentAvailableCommandInfo>,
+}
 
 struct ConnectionRuntime {
     turn_events: TurnEventSink,
@@ -298,7 +317,40 @@ struct ConnectionRuntime {
     stages: Arc<SessionStages>,
     stage_events: StageEventSink,
     session_config_events: SessionConfigEventSink,
+    available_commands_events: AvailableCommandsEventSink,
     security_scope: Arc<OnceLock<AgentSecurityScopeInfo>>,
+}
+
+fn reduced_available_commands(commands: &[AvailableCommand]) -> Vec<AgentAvailableCommandInfo> {
+    let mut seen = HashSet::new();
+    commands
+        .iter()
+        .filter_map(|command| {
+            let name = command.name.trim();
+            if name.is_empty()
+                || name.chars().count() > MAX_AVAILABLE_COMMAND_NAME_CHARS
+                || !name.chars().all(|character| {
+                    character.is_ascii_alphanumeric() || matches!(character, '-' | '_')
+                })
+                || !seen.insert(name.to_ascii_lowercase())
+            {
+                return None;
+            }
+            let description: String = command
+                .description
+                .chars()
+                .filter(|character| {
+                    !character.is_control() || matches!(character, '\n' | '\r' | '\t')
+                })
+                .take(MAX_AVAILABLE_COMMAND_DESCRIPTION_CHARS)
+                .collect();
+            Some(AgentAvailableCommandInfo {
+                name: name.to_string(),
+                description,
+            })
+        })
+        .take(MAX_AVAILABLE_COMMANDS)
+        .collect()
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -1118,6 +1170,10 @@ async fn connect_process(
     let session_config_events: SessionConfigEventSink = Arc::new(move |event| {
         let _ = session_config_app.emit(SESSION_CONFIG_EVENT, event);
     });
+    let available_commands_app = app.clone();
+    let available_commands_events: AvailableCommandsEventSink = Arc::new(move |event| {
+        let _ = available_commands_app.emit(AVAILABLE_COMMANDS_EVENT, event);
+    });
     let permissions = Arc::clone(&state.permissions);
     let worker_permissions = Arc::clone(&permissions);
     let permission_rules = Arc::new(Mutex::new(HashMap::new()));
@@ -1144,6 +1200,7 @@ async fn connect_process(
                 stages: worker_stages,
                 stage_events,
                 session_config_events,
+                available_commands_events,
                 security_scope,
             },
         )
@@ -1884,6 +1941,7 @@ async fn run_connection(
         stages,
         stage_events,
         session_config_events,
+        available_commands_events,
         security_scope,
     } = runtime;
     let active_turns = Arc::new(Mutex::new(HashMap::<String, String>::new()));
@@ -1900,6 +1958,7 @@ async fn run_connection(
     let notification_replays = Arc::clone(&history_replays);
     let notification_configs = Arc::clone(&session_configs);
     let notification_config_events = Arc::clone(&session_config_events);
+    let notification_available_commands_events = Arc::clone(&available_commands_events);
     let notification_stages = Arc::clone(&stages);
     let notification_stage_events = Arc::clone(&stage_events);
     let notification_connection_id = connection_id.clone();
@@ -1918,6 +1977,21 @@ async fn run_connection(
         .name("okf-studio")
         .on_receive_notification(
             async move |notification: SessionNotification, _connection| {
+                if let SessionUpdate::AvailableCommandsUpdate(update) = &notification.update {
+                    let session_id = notification.session_id.to_string();
+                    let is_active_session = notification_sessions
+                        .lock()
+                        .ok()
+                        .is_some_and(|sessions| sessions.contains_key(&session_id));
+                    if is_active_session {
+                        notification_available_commands_events(AgentAvailableCommandsEvent {
+                            connection_id: notification_connection_id.clone(),
+                            session_id,
+                            commands: reduced_available_commands(&update.available_commands),
+                        });
+                    }
+                    return Ok(());
+                }
                 if let SessionUpdate::ConfigOptionUpdate(update) = &notification.update {
                     let session_id = notification.session_id.to_string();
                     let is_active_session = notification_sessions
@@ -2792,7 +2866,6 @@ fn okf_prompt_blocks(
     prompt
 }
 
-
 async fn create_session(
     connection: &ConnectionTo<Agent>,
     connection_id: &str,
@@ -3179,6 +3252,27 @@ mod tests {
     }
 
     #[test]
+    fn bounds_and_validates_advertised_commands() {
+        let commands = vec![
+            AvailableCommand::new("compact", "Reduce context"),
+            AvailableCommand::new("COMPACT", "Duplicate"),
+            AvailableCommand::new("bad/name", "Must stay inert"),
+            AvailableCommand::new(
+                "summary",
+                "x".repeat(MAX_AVAILABLE_COMMAND_DESCRIPTION_CHARS + 8),
+            ),
+        ];
+        let reduced = reduced_available_commands(&commands);
+        assert_eq!(reduced.len(), 2);
+        assert_eq!(reduced[0].name, "compact");
+        assert_eq!(reduced[1].name, "summary");
+        assert_eq!(
+            reduced[1].description.chars().count(),
+            MAX_AVAILABLE_COMMAND_DESCRIPTION_CHARS
+        );
+    }
+
+    #[test]
     fn bounds_and_preserves_advertised_session_config_shape() {
         let mut options = test_session_config_options("gpt-5");
         options.push(SessionConfigOption::boolean(
@@ -3466,6 +3560,7 @@ mod tests {
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
                 session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: Arc::new(OnceLock::new()),
             },
         )
@@ -4195,6 +4290,7 @@ mod tests {
                 session_config_events: Arc::new(move |event| {
                     let _ = config_tx.send(event);
                 }),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: test_security_scope(),
             },
         ));
@@ -4311,6 +4407,7 @@ mod tests {
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
                 session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: test_security_scope(),
             },
         ));
@@ -4441,6 +4538,7 @@ mod tests {
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
                 session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: test_security_scope(),
             },
         ));
@@ -4698,6 +4796,7 @@ mod tests {
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
                 session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: test_security_scope(),
             },
         ));
@@ -4900,6 +4999,7 @@ mod tests {
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
                 session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: test_security_scope(),
             },
         ));
@@ -5136,6 +5236,7 @@ mod tests {
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
                 session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: test_security_scope(),
             },
         ));
@@ -5562,6 +5663,7 @@ mod tests {
                 stages: Arc::new(SessionStages::default()),
                 stage_events: Arc::new(|_| {}),
                 session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
                 security_scope: test_security_scope(),
             },
         ));

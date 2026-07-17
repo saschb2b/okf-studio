@@ -311,6 +311,7 @@ interface ThreadSurface {
   id: string;
   ordinal: number;
   title: string;
+  initialPrompt: string;
 }
 
 interface ConnectionFailure {
@@ -321,7 +322,11 @@ interface ConnectionFailure {
 
 type ConnectionThreadsProps = Omit<
   AgentConversationProps,
-  "threadSurfaceCount" | "onThreadTitleChange" | "onCloseThreadSurface"
+  | "threadSurfaceCount"
+  | "onThreadTitleChange"
+  | "onCloseThreadSurface"
+  | "initialPrompt"
+  | "onStartFreshThread"
 > & {
   hidden: boolean;
   onRegisterThreadOpener: (connectionId: string, open: (() => void) | null) => void;
@@ -339,10 +344,10 @@ function ConnectionThreads({
   const selectedSurface = surfaces.find((surface) => surface.id === selectedSurfaceId) ?? surfaces[0];
   const connectionName = connectionLabel(connection);
 
-  function addThreadSurface() {
+  function addThreadSurface(initialPrompt = "") {
     if (surfaces.length >= MAX_THREAD_SURFACES) return;
     const ordinal = Math.max(...surfaces.map((surface) => surface.ordinal)) + 1;
-    const surface = newThreadSurface(ordinal);
+    const surface = newThreadSurface(ordinal, initialPrompt);
     setSurfaces((current) => [...current, surface]);
     setSelectedSurfaceId(surface.id);
     requestAnimationFrame(() => {
@@ -410,7 +415,7 @@ function ConnectionThreads({
             : `Start another thread with ${connectionName}`}
           disabled={surfaces.length >= MAX_THREAD_SURFACES}
           onFocus={revealSwitcherItem}
-          onClick={addThreadSurface}
+          onClick={() => addThreadSurface()}
         >
           <Plus size={14} aria-hidden="true" />
         </button>
@@ -425,6 +430,8 @@ function ConnectionThreads({
             {...conversationProps}
             connection={connection}
             threadSurfaceCount={surfaces.length}
+            initialPrompt={surface.initialPrompt}
+            onStartFreshThread={(initialPrompt) => addThreadSurface(initialPrompt)}
             onThreadTitleChange={(title) => renameThreadSurface(surface.id, title)}
             onCloseThreadSurface={() => closeThreadSurface(surface.id)}
           />
@@ -434,11 +441,12 @@ function ConnectionThreads({
   );
 }
 
-function newThreadSurface(ordinal: number): ThreadSurface {
+function newThreadSurface(ordinal: number, initialPrompt = ""): ThreadSurface {
   return {
     id: crypto.randomUUID(),
     ordinal,
     title: "New thread",
+    initialPrompt,
   };
 }
 

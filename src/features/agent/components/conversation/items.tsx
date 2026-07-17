@@ -1,6 +1,6 @@
 import type { AgentPlanEntryInfo, AgentToolLocationInfo, AgentPermissionEvent, AgentPermissionOptionInfo, AgentTurnEvent } from "@/features/agent/connection.ts";
 import type { Dispatch, SetStateAction } from "react";
-import { ArrowRightLeft, Brain, Check, Circle, CircleAlert, CircleDot, FileText, Globe, Hammer, ListChecks, Pencil, RotateCcw, Search, ShieldQuestion, SlidersHorizontal, Terminal, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Brain, Check, Circle, CircleAlert, CircleDot, FileText, Globe, Hammer, ListChecks, Minimize2, Pencil, RotateCcw, Search, ShieldQuestion, SlidersHorizontal, Terminal, Trash2 } from "lucide-react";
 import { BundleProposalPreview } from "@/features/agent/components/BundleProposalPreview.tsx";
 import { bundleProposalNarrative, parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { renderMarkdown } from "@/shared/render/markdown.ts";
@@ -114,7 +114,14 @@ export function applyTurnEvent(
     setMessages((current) => {
       const index = current.findIndex((message) =>
         message.role !== "plan" && message.role !== "tool" && message.id === messageId);
-      if (index < 0) return [...current, { id: messageId, role: "agent", text: chunkText }];
+      if (index < 0) {
+        return [...current, {
+          id: messageId,
+          role: "agent",
+          turnId: event.turnId,
+          text: chunkText,
+        }];
+      }
       return current.map((message, messageIndex) =>
         messageIndex === index && message.role !== "plan" && message.role !== "tool"
           ? { ...message, text: message.text + chunkText }
@@ -673,6 +680,12 @@ export function Message({
         </span>
       )}
       <div>
+        {message.role === "agent" && message.contextSummary && (
+          <p className="agent-message__context-summary">
+            <Minimize2 size={14} aria-hidden="true" />
+            Context summary from /{message.contextSummary.commandName}
+          </p>
+        )}
         {message.role === "agent" ? (
           agentNarrative ? (
             <div

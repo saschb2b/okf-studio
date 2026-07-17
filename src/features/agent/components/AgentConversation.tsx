@@ -1,4 +1,4 @@
-import type { AgentConnectionEvent, AgentConnectionInfo, AgentLoadedSessionInfo, AgentSessionConfigOption, AgentSessionConfigValueInput, AgentSessionInfo, AgentSessionHistoryInfo, AgentStagedChangesInfo, AgentStagedFileDiff, AgentTurnEvent, AgentTurnInfo } from "@/features/agent/connection.ts";
+import type { AgentAvailableCommandInfo, AgentConnectionEvent, AgentConnectionInfo, AgentLoadedSessionInfo, AgentSessionConfigOption, AgentSessionConfigValueInput, AgentSessionInfo, AgentSessionHistoryInfo, AgentStagedChangesInfo, AgentStagedFileDiff, AgentTurnEvent, AgentTurnInfo } from "@/features/agent/connection.ts";
 import type { AgentSessionConfigFailure } from "@/features/agent/components/AgentSessionControls.tsx";
 import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
 import type { Issue } from "@/shared/types.ts";
@@ -7,7 +7,7 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, ChevronLeft, CircleAlert, FileText, History, ImageIcon, Pencil, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
@@ -20,6 +20,12 @@ import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemV
 import { useTranscriptExport } from "@/features/agent/components/conversation/useTranscriptExport.ts";
 import { TranscriptSurface } from "@/features/agent/components/conversation/TranscriptSurface.tsx";
 import { ThreadMarkdownView } from "@/features/agent/components/conversation/ThreadMarkdownView.tsx";
+import { ContextPressureNotice } from "@/features/agent/components/conversation/ContextPressureNotice.tsx";
+import {
+  findContextRecoveryCommand,
+  freshThreadContextDraft,
+  markContextSummary,
+} from "@/features/agent/components/conversation/contextRecovery.ts";
 
 
 export interface AgentConversationProps {
@@ -37,6 +43,8 @@ export interface AgentConversationProps {
   threadSurfaceCount: number;
   onThreadTitleChange: (title: string) => void;
   onCloseThreadSurface: () => void;
+  initialPrompt?: string;
+  onStartFreshThread: (initialPrompt: string) => void;
 }
 
 
@@ -55,6 +63,8 @@ export function AgentConversation({
   threadSurfaceCount,
   onThreadTitleChange,
   onCloseThreadSurface,
+  initialPrompt = "",
+  onStartFreshThread,
 }: AgentConversationProps) {
   const conversationTitleId = useId();
   const historyTitleId = `${conversationTitleId}-history`;
@@ -74,6 +84,9 @@ export function AgentConversation({
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
   const [usage, setUsage] = useState<AgentUsage | null>(null);
+  const [availableCommands, setAvailableCommands] = useState<
+    readonly AgentAvailableCommandInfo[]
+  >([]);
   const [isCancelling, setIsCancelling] = useState(false);
   const [turnControlError, setTurnControlError] = useState<string | null>(null);
   const [authentication, setAuthentication] = useState<AuthenticationState>({ status: "idle" });
@@ -129,10 +142,14 @@ export function AgentConversation({
     { id: string; title: string; type: string }[]
   >([]);
   const [attachedSources, setAttachedSources] = useState<AttachedSource[]>([]);
-  const [promptText, setPromptText] = useState("");
+  const [promptText, setPromptText] = useState(initialPrompt);
   const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
+  const availableCommandsBySessionRef = useRef(
+    new Map<string, readonly AgentAvailableCommandInfo[]>(),
+  );
+  const contextRecoveryTurnsRef = useRef(new Map<string, string>());
   const sessionRef = useRef<AgentSessionInfo | null>(null);
   const draftSessionPromiseRef = useRef<{
     bundleRoot: string;
@@ -186,6 +203,9 @@ export function AgentConversation({
     draftSessionRequestRef.current += 1;
     sessionConfigRequestRef.current += 1;
     setSessionConfigOptions([]);
+    setAvailableCommands([]);
+    availableCommandsBySessionRef.current.clear();
+    contextRecoveryTurnsRef.current.clear();
     setPendingSessionConfig(null);
     setSessionConfigFailure(null);
     setDraftSessionState({ status: "idle" });
@@ -219,6 +239,7 @@ export function AgentConversation({
     sessionConfigRequestRef.current += 1;
     sessionRef.current = session;
     setSessionConfigOptions(session.configOptions);
+    setAvailableCommands(availableCommandsBySessionRef.current.get(session.sessionId) ?? []);
     setPendingSessionConfig(null);
     setSessionConfigFailure(null);
     setDraftSessionState({ status: "idle" });
@@ -307,7 +328,7 @@ export function AgentConversation({
   }, [savedThread.status, connection.authenticated, connection.connectionId]);
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
-    async (_previous, { draft, source, retryTurnId }) => {
+    async (_previous, { draft, source, retryTurnId, compactCommand }) => {
       const { text, concepts, sources: draftSources } = draft;
       if (!text) return { status: "error", message: "Enter a message." };
       if (!bundleRoot) return { status: "error", message: "Open an OKF bundle first." };
@@ -349,6 +370,9 @@ export function AgentConversation({
           contextPaths,
           sources,
         );
+        if (source === "compact" && compactCommand) {
+          contextRecoveryTurnsRef.current.set(turn.turnId, compactCommand);
+        }
         acceptedDraftsRef.current.set(turn.turnId, draft);
         if (failedTurnsRef.current.delete(turn.turnId)) {
           setRetryableTurnIds((current) => new Set(current).add(turn.turnId));
@@ -451,6 +475,14 @@ export function AgentConversation({
       acceptedDraftsRef.current.delete(event.turnId);
       failedTurnsRef.current.delete(event.turnId);
     }
+    const recoveryCommand = contextRecoveryTurnsRef.current.get(event.turnId);
+    if (recoveryCommand && event.update.kind === "completed" &&
+      event.update.stopReason === "end-turn") {
+      setMessages((current) => markContextSummary(current, event.turnId, recoveryCommand));
+    }
+    if (event.update.kind === "completed" || event.update.kind === "failed") {
+      contextRecoveryTurnsRef.current.delete(event.turnId);
+    }
     if (activeTurn?.turnId !== event.turnId) return;
     setActiveTurn(null);
     setIsCancelling(false);
@@ -500,6 +532,13 @@ export function AgentConversation({
             ? current
             : null;
         });
+      }),
+      onAgentAvailableCommandsUpdate((event) => {
+        if (event.connectionId !== connection.connectionId) return;
+        availableCommandsBySessionRef.current.set(event.sessionId, event.commands);
+        if (sessionRef.current?.sessionId === event.sessionId) {
+          setAvailableCommands(event.commands);
+        }
       }),
       onAgentConnectionState((event) => {
         if (event.connectionId === connection.connectionId) onConnectionEnd(event);
@@ -560,6 +599,24 @@ export function AgentConversation({
       setIsCancelling(false);
       setTurnControlError(errorMessage(error));
     }
+  }
+
+  function runContextRecovery(command: AgentAvailableCommandInfo) {
+    if (isSubmitting || activeTurn || queuedPrompt) return;
+    startTransition(() => submitPrompt({
+      draft: { text: `/${command.name}`, concepts: [], sources: [] },
+      source: "compact",
+      compactCommand: command.name,
+    }));
+  }
+
+  function startFreshFromContext() {
+    if (isSubmitting || activeTurn || queuedPrompt || threadSurfaceCount >= 8) return;
+    onStartFreshThread(freshThreadContextDraft(
+      threadTitle.value,
+      bundleName,
+      messages,
+    ));
   }
 
   async function authenticate(methodId: string) {
@@ -952,6 +1009,7 @@ export function AgentConversation({
   if (queuedPrompt) composerStatus = "Follow-up queued";
   if (isSubmitting) composerStatus = "Starting turn";
   const usageLabel = usage ? usageLabels(usage) : null;
+  const contextRecoveryCommand = findContextRecoveryCommand(availableCommands);
   const supportsBundleGeneration = threadWorkflow === "create-bundle" ||
     threadWorkflow === "enhance-bundle";
   const hasReportedWriteAttempt = messages.some(
@@ -1247,6 +1305,8 @@ export function AgentConversation({
       sessionRef.current = null;
       sessionConfigRequestRef.current += 1;
       setSessionConfigOptions([]);
+      setAvailableCommands([]);
+      availableCommandsBySessionRef.current.delete(session.sessionId);
       setPendingSessionConfig(null);
       setSessionConfigFailure(null);
       setDraftSessionState({ status: "idle" });
@@ -2150,6 +2210,16 @@ export function AgentConversation({
                   Retry session
                 </button>
               </div>
+            )}
+            {usage && (
+              <ContextPressureNotice
+                usage={usage}
+                recoveryCommand={contextRecoveryCommand}
+                busy={isSubmitting || activeTurn !== null || queuedPrompt !== null}
+                canStartFresh={threadSurfaceCount < 8}
+                onRunCommand={runContextRecovery}
+                onStartFresh={startFreshFromContext}
+              />
             )}
             <div className="agent-composer__input-shell">
               <label className="sr-only" htmlFor={promptInputId}>Message the agent</label>

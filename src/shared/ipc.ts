@@ -25,6 +25,7 @@ import type {
   AgentSecurityHostStatus,
   AgentSecurityScopeInfo,
   AgentConnectionMode,
+  AgentAvailableCommandsEvent,
   AgentPermissionEvent,
   AgentLoadedSessionInfo,
   AgentSessionInfo,
@@ -124,6 +125,8 @@ type AgentStageHandler = (event: AgentStageEvent) => void;
 const agentStageHandlers = new Set<AgentStageHandler>();
 type AgentSessionConfigHandler = (event: AgentSessionConfigEvent) => void;
 const agentSessionConfigHandlers = new Set<AgentSessionConfigHandler>();
+type AgentAvailableCommandsHandler = (event: AgentAvailableCommandsEvent) => void;
+const agentAvailableCommandsHandlers = new Set<AgentAvailableCommandsHandler>();
 type MockStagedFile = AgentStagedFileInfo & {
   content: string;
   hunkSelected: boolean;
@@ -773,6 +776,16 @@ export async function newAgentSession(
     messages: [],
     configOptions: session.configOptions,
   });
+  queueMicrotask(() => emitAgentAvailableCommands({
+    connectionId,
+    sessionId,
+    commands: connection.protocolVersion === "1"
+      ? [{
+          name: "compact",
+          description: "Summarize this conversation and reduce its context usage.",
+        }]
+      : [],
+  }));
   return session;
 }
 
@@ -1164,6 +1177,20 @@ export async function onAgentSessionConfigUpdate(
   const { listen } = await import("@tauri-apps/api/event");
   return listen<AgentSessionConfigEvent>(
     "agent-session-config-update",
+    (event) => handler(event.payload),
+  );
+}
+
+export async function onAgentAvailableCommandsUpdate(
+  handler: AgentAvailableCommandsHandler,
+): Promise<() => void> {
+  if (!isTauri()) {
+    agentAvailableCommandsHandlers.add(handler);
+    return () => agentAvailableCommandsHandlers.delete(handler);
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<AgentAvailableCommandsEvent>(
+    "agent-available-commands-update",
     (event) => handler(event.payload),
   );
 }
@@ -1723,6 +1750,11 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
 }
 
 function mockAgentResponse(text: string): string {
+  if (text === "/compact") {
+    return "## Context summary\n\n- The thread is reviewing the active OKF bundle.\n" +
+      "- Tool locations may open only matching bundle concepts.\n" +
+      "- Proposed writes still require staged review and Apply.";
+  }
   if (text.startsWith("Create a new OKF bundle from the sources I attach") ||
     text.startsWith("Review this OKF bundle and the sources I attach")) {
     if (text.includes("Malformed proposal")) {
@@ -1946,7 +1978,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     ...info,
     update: {
       kind: "usage",
-      usedTokens: 4_200,
+      usedTokens: text === "/compact" ? 18_000 : 4_200,
       contextWindowTokens: 128_000,
       cost: { amount: 0.08, currency: "USD" },
     },
@@ -2162,6 +2194,10 @@ function emitAgentPermission(event: AgentPermissionEvent): void {
 
 function emitAgentTurn(event: AgentTurnEvent): void {
   for (const handler of agentTurnHandlers) handler(event);
+}
+
+function emitAgentAvailableCommands(event: AgentAvailableCommandsEvent): void {
+  for (const handler of agentAvailableCommandsHandlers) handler(event);
 }
 
 export async function disconnectAgent(connectionId: string): Promise<boolean> {

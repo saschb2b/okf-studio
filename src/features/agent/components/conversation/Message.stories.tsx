@@ -42,6 +42,19 @@ export const AgentMarkdown: Story = {
   },
 };
 
+export const AgentContextSummary: Story = {
+  args: {
+    message: {
+      id: "agent-summary-story",
+      role: "agent",
+      turnId: "turn-compact",
+      contextSummary: { commandName: "compact" },
+      text: "## Context summary\n\n- The thread is reviewing the active bundle.\n" +
+        "- Proposed writes still require staged review and Apply.",
+    },
+  },
+};
+
 export const StatusNeutral: Story = {
   args: {
     message: {

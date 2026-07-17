@@ -46,6 +46,19 @@ describe("agent thread metadata", () => {
     );
   });
 
+  it("keeps an agent-reported compaction summary inspectable in Markdown", () => {
+    expect(transcriptMarkdown("Long research", "Catalog", "ACP agent", [
+      { role: "user", text: "/compact" },
+      {
+        role: "agent",
+        text: "The bundle review remains pending.",
+        contextSummary: { commandName: "compact" },
+      },
+    ])).toContain(
+      "## Agent context summary (/compact)\n\nThe bundle review remains pending.",
+    );
+  });
+
   it("requires explicit source and inference sections for research exports", () => {
     expect(researchExportRequirements([
       { role: "agent", text: "## Finding\n\nDocumented." },

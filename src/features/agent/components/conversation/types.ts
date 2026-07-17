@@ -15,6 +15,7 @@ export interface ConversationMessage {
   text: string;
   tone?: "neutral" | "warning" | "error";
   turnId?: string;
+  contextSummary?: { commandName: string };
 }
 
 export interface ConversationPlan {
@@ -55,8 +56,9 @@ export interface PromptDraft {
 }
 export interface PromptSubmission {
   draft: PromptDraft;
-  source: "composer" | "queue" | "retry";
+  source: "composer" | "queue" | "retry" | "compact";
   retryTurnId?: string;
+  compactCommand?: string;
 }
 export type QueuedPrompt = PromptDraft & { id: string };
 export type ThreadTitle =

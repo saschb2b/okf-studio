@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-14T22:10:00Z
+timestamp: 2026-07-17T09:57:51Z
 ---
 
 # Command & event surface
@@ -54,6 +54,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `agent-connection-state` | One connection's terminal disconnected or failed state with a bounded diagnostic. |
 | `agent-turn-update` | Bounded text, plan, tool lifecycle, usage, and terminal turn updates keyed by connection, session, and turn. |
 | `agent-session-config-update` | A complete bounded replacement of the agent-advertised options for one connection and session. It is independent of turn state. |
+| `agent-available-commands-update` | A complete bounded replacement of one session's agent-advertised slash commands. Only safe names and descriptions cross; metadata and input schemas stay in Rust. |
 | `agent-permission-update` | A bounded permission request keyed by connection, session, turn, and request ID. Raw tool arguments do not cross this event. |
 | `agent-stage-update` | The current staged revision metadata after a reported or native proposal, discard, grant change, apply, create, or restore. File bodies do not cross this event. |
 | `agent-install-progress` | Downloaded and total bytes for one named managed runtime, package, or dependency installation phase. |

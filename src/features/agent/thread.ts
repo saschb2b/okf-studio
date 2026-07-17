@@ -8,6 +8,7 @@ export interface ThreadStarterTitle {
 export interface ThreadTranscriptMessage {
   role: "user" | "agent" | "status";
   text: string;
+  contextSummary?: { commandName: string };
 }
 
 export interface ThreadTranscriptPlanEntry {
@@ -237,7 +238,11 @@ export function transcriptMarkdown(
       return `> **Tool (${status}):** ${message.title.replace(/[\r\n]+/g, " ")}`;
     }
     if (message.role === "user") return `## You\n\n${quoteMarkdown(message.text)}`;
-    if (message.role === "agent") return `## Agent\n\n${message.text}`;
+    if (message.role === "agent") {
+      return message.contextSummary
+        ? `## Agent context summary (/${message.contextSummary.commandName})\n\n${message.text}`
+        : `## Agent\n\n${message.text}`;
+    }
     return `> **Turn:** ${message.text.replace(/\n/g, "\n> ")}`;
   });
   return [

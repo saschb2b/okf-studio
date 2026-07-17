@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-17T09:40:46Z
+timestamp: 2026-07-17T09:57:51Z
 ---
 
 # Outcome
@@ -271,8 +271,8 @@ Gate: a user can always see why the agent is waiting, what step is running, what
 - [x] Add transcript-level keyboard navigation and visible jump controls for the top, latest user prompt, and bottom. Streaming must not steal scroll position after the user moves away from the tail.
 - [x] Add response actions for copying a selection, copying one complete agent response, and opening the current thread as inert Markdown inside Studio. Keep native file export as a separate explicit action.
 - [x] Make bundle-relative ACP tool locations navigable in the reader. Ignore outside-bundle, absolute-only, missing, or non-concept locations without broadening file access.
-- [ ] Turn context usage into a threshold state with an explanation and recovery. Use an advertised compact or summary command when available; otherwise offer a fresh thread with explicit, reviewable carried context.
-- [ ] Preserve context-compaction summaries as inspectable transcript entries when the agent reports them. Do not present client-side truncation as agent-owned compaction.
+- [x] Turn context usage into a threshold state with an explanation and recovery. Use an advertised compact or summary command when available; otherwise offer a fresh thread with explicit, reviewable carried context.
+- [x] Preserve context-compaction summaries as inspectable transcript entries when the agent reports them. Do not present client-side truncation as agent-owned compaction.
 - [ ] Add a safe draft recall for the latest unsent or queued prompt. Defer editing and resubmitting accepted messages until Studio can prove a matching checkpoint or rewind boundary for every affected write.
 - [ ] Add focused tests for scroll anchoring, long Markdown, copied plain and formatted content, invalid locations, usage thresholds, and context recovery.
 

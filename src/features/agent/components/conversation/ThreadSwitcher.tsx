@@ -59,7 +59,6 @@ export function ThreadSwitcher({
       aria-label={`${agentName} threads`}
       aria-keyshortcuts="Control+PageUp Control+PageDown Meta+PageUp Meta+PageDown"
     >
-      <span className="agent-panel__thread-agent" title={agentName}>{agentName}</span>
       {threads.map((thread) => {
         const selected = thread.id === selectedThreadId;
         const label = `Thread ${thread.ordinal}: ${thread.title}`;

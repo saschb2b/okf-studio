@@ -29,6 +29,9 @@ type Story = StoryObj<typeof meta>;
 
 export const FiveLiveThreads: Story = {
   play: async ({ args, canvas }) => {
+    await expect(canvas.getByRole("navigation", { name: "GitHub Copilot threads" }))
+      .toBeInTheDocument();
+    await expect(canvas.queryByText("GitHub Copilot")).not.toBeInTheDocument();
     const selected = canvas.getByRole("button", { name: /source research, running/i });
     await expect(selected).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(canvas.getByRole("button", { name: /review edits, waiting/i }));

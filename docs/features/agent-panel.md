@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-17T18:30:00Z
+timestamp: 2026-07-17T18:59:18Z
 ---
 
 # Entry and first open
@@ -78,6 +78,8 @@ Desktop thread attention is opt-in in Settings. When Studio is not focused, a ba
 - change summary above the composer when edits are staged;
 - composer: attachments, `@` context, agent/model, capability status, send, queue, stop;
 - connection and thread switchers retain parallel work without repeating their identity in the action row.
+
+The thread strip shows thread number, status, and title without repeating the agent name already owned by the connection strip. The agent remains in the thread navigation's accessible name and add-thread action.
 
 The composer control rail renders only configuration advertised by the active ACP session. Semantic categories order mode, model, reasoning or thought level, model configuration, then custom choices without changing provider behavior. Each selector is a compact text trigger — current value and caret, no icon — matching Zed's composer density, and Send, Queue, and Stop are icon buttons with accessible names. Selectors preserve the agent's groups, descriptions, and order; their picker is searchable, supports local-only favorites, and cycles through the advertised order with Alt plus Left or Right while focused. Boolean and lower-priority choices live in one icon-only **Configure session** popover. At 360px and the default 440px panel, mode and model remain direct while the popover's accessible name summarizes every hidden current value; a wider panel also exposes reasoning directly. A change keeps the last confirmed value visible while the owning selector shows pending. Success replaces the complete option snapshot returned by the agent. Failure keeps the confirmed value and a bounded Retry action. Agent-initiated replacements can add, remove, reorder, or change choices for the matching session. Switching threads invalidates stale responses. Agents that advertise no options get no empty placeholder or invented fallback control.
 

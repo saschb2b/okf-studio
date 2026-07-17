@@ -10,17 +10,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.agent-panel__thread-agent {
-  flex: 0 0 auto;
-  max-width: 80px;
-  overflow: hidden;
-  color: var(--text-dim);
-  font-size: var(--fs-xs);
-  line-height: var(--lh-normal);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .agent-panel__thread {
   flex: 0 0 auto;
   min-width: 32px;

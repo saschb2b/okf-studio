@@ -1,24 +1,30 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
-import { chooseThreadAction, openFolder, renderApp } from "@/test/appHarness.tsx";
+import { chooseThreadAction, fillText, openAgentThread } from "@/test/appHarness.tsx";
+
+type AppUser = Awaited<ReturnType<typeof openAgentThread>>["user"];
+
+async function enableWrites(user: AppUser) {
+  await fillText(user, screen.getByLabelText("Message the agent"), "Stage: setup.md");
+  await user.click(screen.getByRole("button", { name: "Send" }));
+  await screen.findByText(/Bundle write denied:/);
+  const grant = await screen.findByRole("button", { name: "Allow edits in this thread" });
+  await waitFor(() => expect(grant).toBeEnabled());
+  await user.click(grant);
+  await waitFor(() => expect(grant).toHaveAttribute("aria-pressed", "true"));
+}
+
+async function stageFile(user: AppUser, path: string) {
+  await fillText(user, screen.getByLabelText("Message the agent"), `Stage: ${path}`);
+  await user.click(screen.getByRole("button", { name: "Send" }));
+  await screen.findByText(`Browser ACP staged: ${path}`);
+  await screen.findByRole("button", { name: "Send" }, { timeout: 5_000 });
+}
 
 describe("OKF Studio reviewed writes", () => {
   it("hands the newest bundle proposal to reviewed staging", async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await openFolder(user);
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Creation Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\creation.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Creation Harness" }));
-    await screen.findByText(/Connected to Creation Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    const { user } = await openAgentThread("Creation Harness");
 
     await user.click(screen.getByRole("button", { name: /Create bundle/ }));
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -63,38 +69,21 @@ describe("OKF Studio reviewed writes", () => {
       .toBeInTheDocument();
     const folderName = screen.getByLabelText("Bundle folder name");
     expect(folderName).toHaveValue("new-okf-bundle");
-    await user.clear(folderName);
-    await user.type(folderName, "CON");
+    await fillText(user, folderName, "CON");
     await user.click(screen.getByRole("button", { name: "Choose parent and create" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("portable across Windows");
     expect(screen.getByRole("button", { name: "Retry create" })).toBeInTheDocument();
-    await user.clear(folderName);
-    await user.type(folderName, "customer-knowledge");
+    await fillText(user, folderName, "customer-knowledge");
     await user.click(screen.getByRole("button", { name: "Choose parent and create" }));
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Created 3 files in customer-knowledge.",
     );
     expect(screen.queryByText("Fresh bundle draft")).not.toBeInTheDocument();
 
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Creation Harness" }));
-  }, 20_000);
+  });
 
   it("requires explicit existing-file choices before validating an enhancement", async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await openFolder(user);
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Enhancement Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\enhancement.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Enhancement Harness" }));
-    await screen.findByText(/Connected to Enhancement Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    const { user } = await openAgentThread("Enhancement Harness");
 
     await user.click(screen.getByRole("button", { name: /Enhance bundle/ }));
     await user.click(screen.getByRole("button", { name: "Send" }));
@@ -128,33 +117,18 @@ describe("OKF Studio reviewed writes", () => {
       .toHaveTextContent("Validation passed");
     expect(screen.getByRole("button", { name: "Apply changes" })).toBeInTheDocument();
 
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Enhancement Harness" }));
-  }, 20_000);
+  });
 
   it("gates agent writes behind the thread grant and stages them for review", async () => {
-    const user = userEvent.setup();
     vi.spyOn(ipc, "agentStagedFileDiff")
       .mockRejectedValueOnce(new Error("Diff fixture unavailable."));
-    renderApp();
-    await openFolder(user);
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Write Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\write.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Write Harness" }));
-    await screen.findByText(/Connected to Write Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    const { user } = await openAgentThread("Write Harness");
 
     expect(screen.queryByRole("button", { name: "Allow edits in this thread" }))
       .not.toBeInTheDocument();
 
     // Without the grant, a write attempt explains what is missing.
-    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText(
       /Bundle write denied: writes require the Allow edits in this thread grant/,
@@ -174,7 +148,7 @@ describe("OKF Studio reviewed writes", () => {
     await user.click(screen.getByRole("button", { name: "Retry edit access" }));
     await waitFor(() => expect(grantToggle).toHaveAttribute("aria-pressed", "true"));
 
-    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Browser ACP staged: proposals/draft.md"))
       .toBeInTheDocument();
@@ -247,16 +221,14 @@ describe("OKF Studio reviewed writes", () => {
       expect(screen.queryByText("Staged changes")).not.toBeInTheDocument(),
     );
 
-    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/draft.md");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Browser ACP staged: proposals/draft.md"))
-      .toBeInTheDocument();
-    await screen.findByRole("button", { name: "Send" }, { timeout: 5_000 });
+  });
 
-    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/notes.md");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Browser ACP staged: proposals/notes.md"))
-      .toBeInTheDocument();
+  it("rejects one staged file and retries a failed discard", async () => {
+    const { user } = await openAgentThread("Discard Harness");
+    await enableWrites(user);
+
+    await stageFile(user, "proposals/draft.md");
+    await stageFile(user, "proposals/notes.md");
     expect(screen.getByText("proposals/notes.md")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", {
@@ -291,11 +263,13 @@ describe("OKF Studio reviewed writes", () => {
       expect(screen.getByLabelText("Message the agent")).toHaveFocus(),
     );
 
-    await user.type(screen.getByLabelText("Message the agent"), "Stage: proposals/valid.md");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Browser ACP staged: proposals/valid.md"))
-      .toBeInTheDocument();
-    await screen.findByRole("button", { name: "Send" }, { timeout: 5_000 });
+  });
+
+  it("applies a valid stage and restores its checkpoint after reconnecting", async () => {
+    const { user } = await openAgentThread("Restore Harness");
+    await enableWrites(user);
+
+    await stageFile(user, "proposals/valid.md");
     await user.click(await screen.findByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("status", { name: "Staged validation result" }))
       .toHaveTextContent("Validation passed");
@@ -305,10 +279,10 @@ describe("OKF Studio reviewed writes", () => {
 
     await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Write Harness" }));
-    await screen.findByText(/Connected to Write Harness over ACP v1/i);
+    await user.click(await screen.findByRole("button", { name: "Connect Restore Harness" }));
+    await screen.findByText(/Connected to Restore Harness over ACP v1/i);
     await user.click(screen.getByRole("button", { name: "Back" }));
-    await user.type(screen.getByLabelText("Message the agent"), "Resume after restart");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Resume after restart");
     await user.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByText("Browser ACP received: Resume after restart");
     vi.spyOn(ipc, "restoreAgentStagedCheckpoint").mockRejectedValueOnce(
@@ -325,6 +299,6 @@ describe("OKF Studio reviewed writes", () => {
 
     await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Write Harness" }));
-  }, 40_000);
+    await user.click(screen.getByRole("button", { name: "Remove Restore Harness" }));
+  });
 });

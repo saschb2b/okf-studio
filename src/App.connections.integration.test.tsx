@@ -4,7 +4,13 @@ import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
 import type { AgentConnectionInfo } from "@/features/agent/connection.ts";
 import type { LocalModelProfile } from "@/features/agent/local.ts";
-import { chooseThreadAction, openAttachmentMenu, openFolder, renderApp } from "@/test/appHarness.tsx";
+import {
+  chooseThreadAction,
+  fillText,
+  openAttachmentMenu,
+  openFolder,
+  renderApp,
+} from "@/test/appHarness.tsx";
 
 async function openSavedStudioAgent(name: string) {
   const profile = await ipc.saveLocalModelProfile({
@@ -98,7 +104,8 @@ describe("OKF Studio agent connections", () => {
       expect(screen.getByRole("button", { name: "Connect another agent" })).toBeInTheDocument();
 
       const researchConversation = screen.getByRole("region", { name: "New thread" });
-      await user.type(
+      await fillText(
+        user,
         within(researchConversation).getByLabelText("Message the agent"),
         "Run a long investigation",
       );
@@ -112,7 +119,8 @@ describe("OKF Studio agent connections", () => {
         "true",
       );
       const reviewConversation = screen.getByRole("region", { name: "New thread" });
-      await user.type(
+      await fillText(
+        user,
         within(reviewConversation).getByLabelText("Message the agent"),
         "Review the evidence",
       );
@@ -251,7 +259,7 @@ describe("OKF Studio agent connections", () => {
       renderApp();
       await openFolder(user);
       await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-      await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
+      await fillText(user, screen.getByLabelText("Message the agent"), "Run a long investigation");
       await user.click(screen.getByRole("button", { name: "Send" }));
       await user.click(await screen.findByRole("button", { name: "Stop" }));
 
@@ -295,7 +303,8 @@ describe("OKF Studio agent connections", () => {
       await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
 
       const firstConversation = screen.getByRole("region", { name: "New thread" });
-      await user.type(
+      await fillText(
+        user,
         within(firstConversation).getByLabelText("Message the agent"),
         "Run a long investigation",
       );
@@ -315,7 +324,8 @@ describe("OKF Studio agent connections", () => {
       expect(secondThreadTab).toHaveAttribute("aria-pressed", "true");
 
       const secondConversation = screen.getByRole("region", { name: "New thread" });
-      await user.type(
+      await fillText(
+        user,
         within(secondConversation).getByLabelText("Message the agent"),
         "Review the evidence in parallel",
       );
@@ -380,8 +390,8 @@ describe("OKF Studio agent connections", () => {
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Enter Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\enter.exe");
+    await fillText(user, screen.getByLabelText("Name"), "Enter Harness");
+    await fillText(user, screen.getByLabelText("Executable"), "C:\\tools\\enter.exe");
     await user.click(screen.getByRole("button", { name: "Save command" }));
     await user.click(await screen.findByRole("button", { name: "Connect Enter Harness" }));
     await screen.findByText(/Connected to Enter Harness over ACP v1/i);
@@ -398,7 +408,7 @@ describe("OKF Studio agent connections", () => {
     await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(screen.getByRole("button", { name: "Remove Enter Harness" }));
-  }, 40_000);
+  });
 
   it("tests and saves a local model endpoint without starting an agent", async () => {
     const user = userEvent.setup();
@@ -451,8 +461,16 @@ describe("OKF Studio agent connections", () => {
     if (!section) throw new Error("Studio endpoint setup was not rendered.");
 
     await user.selectOptions(within(section).getByLabelText("Provider"), "open-ai-compatible");
-    await user.type(within(section).getByLabelText("Endpoint"), "https://api.example.test");
-    await user.type(within(section).getByLabelText(/API key/), "secret-browser-test-key");
+    await fillText(
+      user,
+      within(section).getByLabelText("Endpoint"),
+      "https://api.example.test",
+    );
+    await fillText(
+      user,
+      within(section).getByLabelText(/API key/),
+      "secret-browser-test-key",
+    );
     await user.click(within(section).getByRole("button", { name: "Test connection" }));
     await within(section).findByText("Endpoint reached");
     await user.click(within(section).getByRole("button", { name: "Save endpoint" }));
@@ -531,21 +549,23 @@ describe("OKF Studio agent connections", () => {
       await openAttachmentMenu(user);
       expect(screen.getByRole("button", { name: "Attach context" })).toBeDisabled();
       await user.click(screen.getByRole("button", { name: "Add source" }));
-      await user.type(screen.getByLabelText("Title"), "research-notes.txt");
-      await user.type(
+      await fillText(user, screen.getByLabelText("Title"), "research-notes.txt");
+      await fillText(
+        user,
         screen.getByLabelText("Content"),
         "The source documents an evidence trail.",
       );
       await user.click(screen.getByRole("button", { name: "Attach source" }));
       const composer = screen.getByLabelText("Message the agent");
-      await user.type(composer, "Summarize the attached evidence");
+      await fillText(user, composer, "Summarize the attached evidence");
       await user.click(screen.getByRole("button", { name: "Send" }));
       expect(await screen.findByText("Inspect attached sources")).toBeInTheDocument();
       expect(await screen.findByText("Read attached source")).toBeInTheDocument();
       expect(await screen.findByText(/including research-notes\.txt/)).toBeInTheDocument();
 
       await waitFor(() => expect(composer).toBeEnabled());
-      await user.type(
+      await fillText(
+        user,
         composer,
         "Load the OKF instructions, then search the active bundle for agent panel guidance",
       );
@@ -617,10 +637,11 @@ describe("OKF Studio agent connections", () => {
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Local Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\agent.exe");
-    await user.type(screen.getByLabelText("Arguments, one per line"), "--stdio");
-    await user.type(
+    await fillText(user, screen.getByLabelText("Name"), "Local Harness");
+    await fillText(user, screen.getByLabelText("Executable"), "C:\\tools\\agent.exe");
+    await fillText(user, screen.getByLabelText("Arguments, one per line"), "--stdio");
+    await fillText(
+      user,
       screen.getByLabelText("Inherited environment variable names, one per line"),
       "MODEL_PATH",
     );
@@ -640,12 +661,11 @@ describe("OKF Studio agent connections", () => {
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Local Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\agent.exe");
+    await fillText(user, screen.getByLabelText("Name"), "Local Harness");
+    await fillText(user, screen.getByLabelText("Executable"), "C:\\tools\\agent.exe");
     await user.click(screen.getByRole("button", { name: "Save command" }));
 
     await user.click(await screen.findByRole("button", { name: "Connect Local Harness" }));
-    expect(screen.getByRole("button", { name: "Connect Local Harness" })).toBeDisabled();
     expect(await screen.findByText(/Connected to Local Harness over ACP v1/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Back" }));

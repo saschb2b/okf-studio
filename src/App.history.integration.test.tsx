@@ -1,27 +1,36 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
-import { chooseThreadAction, openAttachmentMenu, openFolder, renderApp } from "@/test/appHarness.tsx";
+import {
+  chooseThreadAction,
+  fillText,
+  openAgentThread,
+  openAttachmentMenu,
+} from "@/test/appHarness.tsx";
+
+type AppUser = Awaited<ReturnType<typeof openAgentThread>>["user"];
+
+async function importTraceSession(user: AppUser) {
+  await chooseThreadAction(user, "History");
+  await screen.findByRole("heading", { name: "Import agent session" });
+  const session = (await screen.findByText("Trace bundle evidence")).closest("li");
+  if (!session) throw new Error("The session history row was not rendered.");
+  await user.click(within(session).getByRole("button", { name: "Import" }));
+  await screen.findByRole("heading", { name: "Trace bundle evidence" });
+}
+
+async function renameImportedThread(user: AppUser) {
+  await user.click(screen.getByRole("button", { name: "Rename thread: Trace bundle evidence" }));
+  await fillText(user, screen.getByLabelText("Thread title"), "Evidence notebook");
+  await user.click(screen.getByRole("button", { name: "Save title" }));
+}
 
 describe("OKF Studio agent history", () => {
   it("searches and imports agent-owned sessions without replacing the live thread", async () => {
-    const historySpy = vi.spyOn(ipc, "listAgentSessions")
+    vi.spyOn(ipc, "listAgentSessions")
       .mockRejectedValueOnce(new Error("History service unavailable"))
       .mockResolvedValueOnce({ sessions: [], hasMore: false });
-    const user = userEvent.setup();
-    renderApp();
-    await openFolder(user);
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "History Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\history.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
-    await screen.findByText(/Connected to History Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    const { user } = await openAgentThread("History Harness");
 
     await chooseThreadAction(user, "History");
     expect(await screen.findByRole("heading", { name: "Import agent session" })).toBeInTheDocument();
@@ -33,7 +42,11 @@ describe("OKF Studio agent history", () => {
     await user.click(screen.getByRole("button", { name: "Refresh agent session history" }));
     expect(await screen.findByText("Trace bundle evidence")).toBeInTheDocument();
     expect(screen.getByText("Resolve validation warnings")).toBeInTheDocument();
-    await user.type(screen.getByRole("searchbox", { name: "Search agent sessions" }), "validation");
+    await fillText(
+      user,
+      screen.getByRole("searchbox", { name: "Search agent sessions" }),
+      "validation",
+    );
     expect(screen.queryByText("Trace bundle evidence")).not.toBeInTheDocument();
     expect(screen.getByText("Resolve validation warnings")).toBeInTheDocument();
     await user.clear(screen.getByRole("searchbox", { name: "Search agent sessions" }));
@@ -55,10 +68,14 @@ describe("OKF Studio agent history", () => {
     await waitFor(() => expect(composer).toBeEnabled(), { timeout: 3_000 });
     expect(composer).toHaveFocus();
 
-    await user.click(screen.getByRole("button", { name: "Rename thread: Trace bundle evidence" }));
-    await user.clear(screen.getByLabelText("Thread title"));
-    await user.type(screen.getByLabelText("Thread title"), "Evidence notebook");
-    await user.click(screen.getByRole("button", { name: "Save title" }));
+  });
+
+  it("persists a renamed archive through reconnect and resume", async () => {
+    const { user } = await openAgentThread("History Harness");
+    await importTraceSession(user);
+    const importedConversation = screen.getByRole("region", { name: "Trace bundle evidence" });
+
+    await renameImportedThread(user);
     await waitFor(() => expect(
       JSON.parse(localStorage.getItem("okf-studio:agent-threads") ?? "[]"),
     ).toEqual(expect.arrayContaining([
@@ -105,6 +122,14 @@ describe("OKF Studio agent history", () => {
     expect(await screen.findByRole("heading", { name: "Evidence notebook" })).toBeInTheDocument();
     expect(screen.getByText(/traced the principles/)).toBeInTheDocument();
 
+  });
+
+  it("recovers a stale saved pointer and can dismiss it", async () => {
+    const historySpy = vi.spyOn(ipc, "listAgentSessions");
+    const { user } = await openAgentThread("History Harness");
+    await importTraceSession(user);
+    await renameImportedThread(user);
+
     await chooseThreadAction(user, "Change agent");
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
     await user.click(await screen.findByRole("button", { name: "Connect History Harness" }));
@@ -148,27 +173,12 @@ describe("OKF Studio agent history", () => {
     );
     expect(localStorage.getItem("okf-studio:agent-threads")).toBe("[]");
 
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove History Harness" }));
-  }, 40_000);
+  });
 
   it("archives a browser-mock thread and restores it through the advertised history", async () => {
-    const user = userEvent.setup();
-    renderApp();
-    await openFolder(user);
+    const { user } = await openAgentThread("Archive Harness");
 
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Archive Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\archive.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Archive Harness" }));
-    await screen.findByText(/Connected to Archive Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
-
-    await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Summarize the bundle");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Browser ACP received: Summarize the bundle"))
       .toBeInTheDocument();
@@ -180,29 +190,14 @@ describe("OKF Studio agent history", () => {
     expect(screen.getByText("Browser ACP received: Summarize the bundle"))
       .toBeInTheDocument();
 
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Archive Harness" }));
   });
 
   it("attaches a previous thread as bounded source evidence", async () => {
-    const user = userEvent.setup();
     const promptSpy = vi.spyOn(ipc, "promptAgent");
-    renderApp();
-    await openFolder(user);
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Thread Context Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\thread-context.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Thread Context Harness" }));
-    await screen.findByText(/Connected to Thread Context Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    const { user } = await openAgentThread("Thread Context Harness");
 
     // The live thread's own pointer is never offered as attachable context.
-    await user.type(screen.getByLabelText("Message the agent"), "Summarize the bundle");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Summarize the bundle");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Browser ACP received: Summarize the bundle"))
       .toBeInTheDocument();
@@ -222,7 +217,8 @@ describe("OKF Studio agent history", () => {
     }));
     expect(await screen.findByText("Thread: Summarize the bundle")).toBeInTheDocument();
 
-    await user.type(
+    await fillText(
+      user,
       screen.getByLabelText("Message the agent"),
       "Continue from the earlier thread",
     );
@@ -255,8 +251,5 @@ describe("OKF Studio agent history", () => {
     );
     await user.keyboard("{Escape}");
 
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Thread Context Harness" }));
-  }, 40_000);
+  });
 });

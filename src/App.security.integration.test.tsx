@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
-import { chooseThreadAction, openFolder, renderApp } from "@/test/appHarness.tsx";
+import { chooseThreadAction, fillText, openFolder, renderApp } from "@/test/appHarness.tsx";
 
 describe("OKF Studio agent security", () => {
   it("uses an ACP-advertised authentication method before starting a session", async () => {
@@ -13,8 +13,8 @@ describe("OKF Studio agent security", () => {
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Auth Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\auth.exe");
+    await fillText(user, screen.getByLabelText("Name"), "Auth Harness");
+    await fillText(user, screen.getByLabelText("Executable"), "C:\\tools\\auth.exe");
     await user.click(screen.getByRole("button", { name: "Save command" }));
     await user.click(await screen.findByRole("button", { name: "Connect Auth Harness" }));
     expect(await screen.findByText(/Authentication is required before a session/i)).toBeInTheDocument();
@@ -45,8 +45,8 @@ describe("OKF Studio agent security", () => {
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Broken Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\broken.exe");
+    await fillText(user, screen.getByLabelText("Name"), "Broken Harness");
+    await fillText(user, screen.getByLabelText("Executable"), "C:\\tools\\broken.exe");
     await user.click(screen.getByRole("button", { name: "Save command" }));
 
     await user.click(await screen.findByRole("button", { name: "Connect Broken Harness" }));
@@ -109,8 +109,8 @@ describe("OKF Studio agent security", () => {
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Offline Harness");
-    await user.type(screen.getByLabelText("Executable"), "/usr/bin/offline-agent");
+    await fillText(user, screen.getByLabelText("Name"), "Offline Harness");
+    await fillText(user, screen.getByLabelText("Executable"), "/usr/bin/offline-agent");
     await user.click(screen.getByRole("button", { name: "Save command" }));
 
     await user.selectOptions(

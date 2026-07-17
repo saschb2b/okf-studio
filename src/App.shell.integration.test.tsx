@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
-import { openFolder, renderApp } from "@/test/appHarness.tsx";
+import { fillText, openFolder, renderApp } from "@/test/appHarness.tsx";
 
 describe("OKF Studio shell", () => {
   it("shows the first-run empty state", async () => {
@@ -47,7 +47,8 @@ describe("OKF Studio shell", () => {
     renderApp();
 
     await user.click(screen.getByRole("button", { name: /^Open from URL…/ }));
-    await user.type(
+    await fillText(
+      user,
       screen.getByLabelText("Paste a GitHub URL or a link to an archive"),
       "https://github.com/owner/repo",
     );

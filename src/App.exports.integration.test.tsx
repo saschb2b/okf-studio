@@ -1,28 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
-import { chooseThreadAction, openFolder, renderApp } from "@/test/appHarness.tsx";
+import {
+  appendText,
+  chooseThreadAction,
+  fillText,
+  openAgentThread,
+} from "@/test/appHarness.tsx";
 
 describe("OKF Studio knowledge-work exports", () => {
   it("blocks incomplete deep-research exports and saves a compliant revision", async () => {
-    const user = userEvent.setup();
     const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
-    renderApp();
-    await openFolder(user);
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Research Export Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\research-export.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Research Export Harness" }));
-    await screen.findByText(/Connected to Research Export Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    const { user } = await openAgentThread("Research Export Harness");
 
     await user.click(screen.getByRole("button", { name: /Deep research/ }));
-    await user.type(screen.getByLabelText("Message the agent"), "Omit research sections");
+    await appendText(user, screen.getByLabelText("Message the agent"), "Omit research sections");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Missing required sections.")).toBeInTheDocument();
     await chooseThreadAction(user, "Export thread");
@@ -34,7 +26,11 @@ describe("OKF Studio knowledge-work exports", () => {
     await chooseThreadAction(user, "Archive thread");
     await user.click(await screen.findByRole("button", { name: "Start new thread" }));
     await user.click(screen.getByRole("button", { name: /Deep research/ }));
-    await user.type(screen.getByLabelText("Message the agent"), "Which decisions are documented?");
+    await appendText(
+      user,
+      screen.getByLabelText("Message the agent"),
+      "Which decisions are documented?",
+    );
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("link", { name: "Product overview" })).toBeInTheDocument();
     await chooseThreadAction(user, "Export thread");
@@ -45,29 +41,14 @@ describe("OKF Studio knowledge-work exports", () => {
       expect.stringContaining("## Inferences\n\nNone."),
     );
 
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Research Export Harness" }));
-  }, 40_000);
+  });
 
   it("blocks dataset-change exports without a plan and affected concept set", async () => {
-    const user = userEvent.setup();
     const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
-    renderApp();
-    await openFolder(user);
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Dataset Change Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\dataset-change.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Dataset Change Harness" }));
-    await screen.findByText(/Connected to Dataset Change Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    const { user } = await openAgentThread("Dataset Change Harness");
 
     await user.click(await screen.findByRole("button", { name: /Request dataset change/ }));
-    await user.type(screen.getByLabelText("Message the agent"), "Omit change sections");
+    await appendText(user, screen.getByLabelText("Message the agent"), "Omit change sections");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("The requested change needs review.")).toBeInTheDocument();
     await chooseThreadAction(user, "Export thread");
@@ -79,7 +60,11 @@ describe("OKF Studio knowledge-work exports", () => {
     await chooseThreadAction(user, "Archive thread");
     await user.click(await screen.findByRole("button", { name: "Start new thread" }));
     await user.click(screen.getByRole("button", { name: /Request dataset change/ }));
-    await user.type(screen.getByLabelText("Message the agent"), "Clarify the documented scope");
+    await appendText(
+      user,
+      screen.getByLabelText("Message the agent"),
+      "Clarify the documented scope",
+    );
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("The change is bounded to the documented product scope."))
       .toBeInTheDocument();
@@ -93,27 +78,12 @@ describe("OKF Studio knowledge-work exports", () => {
       expect.stringContaining("## Affected Concepts\n\n- `product/overview.md`"),
     );
 
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Dataset Change Harness" }));
-  }, 40_000);
+  });
 
   it("attaches an explicit reader selection as bounded source context", async () => {
-    const user = userEvent.setup();
     const promptSpy = vi.spyOn(ipc, "promptAgent");
-    renderApp();
-    await openFolder(user);
+    const { user } = await openAgentThread("Selection Harness");
     await user.click(screen.getByRole("treeitem", { name: "Overview" }));
-
-    await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-    await user.click(screen.getByRole("button", { name: "Connect an agent" }));
-    await user.click(await screen.findByRole("button", { name: "Add command" }));
-    await user.type(screen.getByLabelText("Name"), "Selection Harness");
-    await user.type(screen.getByLabelText("Executable"), "C:\\tools\\selection.exe");
-    await user.click(screen.getByRole("button", { name: "Save command" }));
-    await user.click(await screen.findByRole("button", { name: "Connect Selection Harness" }));
-    await screen.findByText(/Connected to Selection Harness over ACP v1/i);
-    await user.click(screen.getByRole("button", { name: "Back" }));
 
     // Let the agent panel's draft session settle first: the reader body is
     // rendered via dangerouslySetInnerHTML, so a pending re-render recreates the
@@ -145,7 +115,7 @@ describe("OKF Studio knowledge-work exports", () => {
       screen.getByRole("button", { name: "Remove Selection from Overview source" }),
     ).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Message the agent"), "Assess this excerpt");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Assess this excerpt");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(promptSpy).toHaveBeenCalledWith(
       expect.any(String),
@@ -160,8 +130,5 @@ describe("OKF Studio knowledge-work exports", () => {
       }],
     );
     await screen.findByText(/Browser ACP received:.*Assess this excerpt/);
-    await chooseThreadAction(user, "Change agent");
-    await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    await user.click(screen.getByRole("button", { name: "Remove Selection Harness" }));
   });
 });

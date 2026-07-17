@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
-import { renderApp } from "@/test/appHarness.tsx";
+import { fillText, renderApp } from "@/test/appHarness.tsx";
 
 describe("OKF Studio remote bundle features", () => {
   it("explains a URL that fetches successfully but holds no OKF bundle", async () => {
@@ -15,7 +15,8 @@ describe("OKF Studio remote bundle features", () => {
     // Open the remote dialog from the first-run empty state.
     await user.click(screen.getByRole("button", { name: /open from url/i }));
     const dialog = await screen.findByRole("dialog", { name: /open from url/i });
-    await user.type(
+    await fillText(
+      user,
       within(dialog).getByLabelText(/paste a github url/i),
       "https://github.com/owner/repo/tree/main/samples/x",
     );
@@ -39,7 +40,8 @@ describe("OKF Studio remote bundle features", () => {
 
     await user.click(screen.getByRole("button", { name: /open from url/i }));
     const dialog = await screen.findByRole("dialog", { name: /open from url/i });
-    await user.type(
+    await fillText(
+      user,
       within(dialog).getByLabelText(/paste a github url/i),
       "https://github.com/owner/repo/tree/main/bundles",
     );

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { fireEvent, screen, waitFor, within, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { openBundleAtOverview, renderApp } from "@/test/appHarness.tsx";
+import { fillText, openBundleAtOverview, renderApp } from "@/test/appHarness.tsx";
 import { dropIndexFor } from "@/features/shell/components/TabStrip.tsx";
 
 describe("OKF Studio tabs and windows", () => {
@@ -107,7 +107,7 @@ describe("OKF Studio tabs and windows", () => {
     // Picking a concept (here via the launcher) fills the new tab.
     await user.keyboard("{Control>}k{/Control}");
     const combo = await screen.findByRole("combobox");
-    await user.type(combo, "Glossary");
+    await fillText(user, combo, "Glossary");
     // "Glossary" also full-text-matches other concepts; the top hit is the
     // title match.
     await user.click((await screen.findAllByRole("option"))[0]);

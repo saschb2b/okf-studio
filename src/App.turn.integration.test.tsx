@@ -1,36 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
 import {
   chooseThreadAction,
+  fillText,
+  openAgentThread,
   openAttachmentMenu,
-  openFolder,
-  renderApp,
 } from "@/test/appHarness.tsx";
-
-async function openResearchThread(name: string) {
-  const profile = await ipc.saveCustomAgent({
-    name,
-    executable: `C:\\tools\\${name.toLowerCase().replaceAll(" ", "-")}.exe`,
-    arguments: [],
-    environment: [],
-  });
-  await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
-
-  const user = userEvent.setup();
-  renderApp();
-  await openFolder(user);
-  await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
-  await screen.findByRole("heading", { name: "New thread" });
-  return user;
-}
 
 describe("OKF Studio agent turns", () => {
   it("wires one accepted turn into lifecycle output, title, and export", async () => {
     const promptSpy = vi.spyOn(ipc, "promptAgent");
     const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
-    const user = await openResearchThread("Turn Harness");
+    const { user } = await openAgentThread("Turn Harness");
 
     expect(screen.getByText(/read-only access to this bundle/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Create bundle/ }));
@@ -41,7 +23,7 @@ describe("OKF Studio agent turns", () => {
     await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Attach context" }));
     await user.click(screen.getByRole("button", { name: "Add Overview to context" }));
-    await user.type(screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Summarize the **bundle**");
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     await waitFor(() => expect(promptSpy).toHaveBeenCalledWith(
@@ -66,8 +48,7 @@ describe("OKF Studio agent turns", () => {
       .not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Rename thread: Summarize the bundle" }));
-    await user.clear(screen.getByLabelText("Thread title"));
-    await user.type(screen.getByLabelText("Thread title"), "Bundle research");
+    await fillText(user, screen.getByLabelText("Thread title"), "Bundle research");
     await user.click(screen.getByRole("button", { name: "Save title" }));
     exportSpy.mockRejectedValueOnce(new Error("The selected folder is read-only."));
     await chooseThreadAction(user, "Export thread");
@@ -86,19 +67,23 @@ describe("OKF Studio agent turns", () => {
 
   it("keeps a rejected draft and its explicit sources for retry", async () => {
     const promptSpy = vi.spyOn(ipc, "promptAgent");
-    const user = await openResearchThread("Context Harness");
+    const { user } = await openAgentThread("Context Harness");
 
     await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Attach issue" }));
     await user.click(screen.getByRole("button", { name: /Attach warning: features\/concept-reader/ }));
     await openAttachmentMenu(user);
     await user.click(screen.getByRole("button", { name: "Add source" }));
-    await user.type(screen.getByLabelText("Title"), "Interview notes");
-    await user.type(screen.getByLabelText("Content"), "The owner confirmed the definition.");
+    await fillText(user, screen.getByLabelText("Title"), "Interview notes");
+    await fillText(
+      user,
+      screen.getByLabelText("Content"),
+      "The owner confirmed the definition.",
+    );
     await user.click(screen.getByRole("button", { name: "Attach source" }));
 
     promptSpy.mockRejectedValueOnce(new Error("Agent session was not ready."));
-    await user.type(screen.getByLabelText("Message the agent"), "Summarize the evidence");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Summarize the evidence");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Agent session was not ready.");
     expect(within(screen.getByRole("region", { name: "Conversation transcript" }))
@@ -133,9 +118,9 @@ describe("OKF Studio agent turns", () => {
   });
 
   it("reuses an exact remembered permission only inside its thread", async () => {
-    const user = await openResearchThread("Permission Harness");
+    const { user } = await openAgentThread("Permission Harness");
 
-    await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the index");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Edit: refresh the index");
     await user.click(screen.getByRole("button", { name: "Send" }));
     const permissionHeading = await screen.findByRole("heading", { name: "Permission needed" });
     const permissionCard = permissionHeading.closest("article");
@@ -157,7 +142,7 @@ describe("OKF Studio agent turns", () => {
     expect(await screen.findByText(/Browser ACP received:.*Edit: refresh the index/))
       .toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Message the agent"), "Edit: refresh the links");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Edit: refresh the links");
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText(/Browser ACP received:.*Edit: refresh the links/))
       .toBeInTheDocument();
@@ -166,13 +151,13 @@ describe("OKF Studio agent turns", () => {
 
   it("restores a queued follow-up when automatic start fails", async () => {
     const promptSpy = vi.spyOn(ipc, "promptAgent");
-    const user = await openResearchThread("Queue Harness");
+    const { user } = await openAgentThread("Queue Harness");
 
-    await user.type(screen.getByLabelText("Message the agent"), "Run a long investigation");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Run a long investigation");
     await user.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByRole("button", { name: "Stop" });
     await waitFor(() => expect(screen.getByLabelText("Message the agent")).toBeEnabled());
-    await user.type(screen.getByLabelText("Message the agent"), "Explain the implications");
+    await fillText(user, screen.getByLabelText("Message the agent"), "Explain the implications");
     await user.click(screen.getByRole("button", { name: "Queue" }));
     expect(await screen.findByRole("region", { name: "Next message" })).toBeInTheDocument();
 
@@ -188,9 +173,10 @@ describe("OKF Studio agent turns", () => {
 
   it("keeps partial output while a failed turn is retried", async () => {
     const promptSpy = vi.spyOn(ipc, "promptAgent");
-    const user = await openResearchThread("Retry Harness");
+    const { user } = await openAgentThread("Retry Harness");
 
-    await user.type(
+    await fillText(
+      user,
       screen.getByLabelText("Message the agent"),
       "Fail once: simulate a dropped connection",
     );

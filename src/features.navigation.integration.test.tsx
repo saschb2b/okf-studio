@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { openBundleAtOverview, openBundle, renderApp } from "@/test/appHarness.tsx";
+import { fillText, openBundleAtOverview, openBundle, renderApp } from "@/test/appHarness.tsx";
 
 describe("OKF Studio navigation features", () => {
   it("arrow-key navigation in the command palette steps through every result, not just the first two", async () => {
@@ -42,7 +42,7 @@ describe("OKF Studio navigation features", () => {
     // label — and a query short enough to also fuzzy-match several concepts,
     // so the action must outrank them instead of sinking under a long
     // Concepts/In text list.
-    await user.type(combo, "rescan");
+    await fillText(user, combo, "rescan");
 
     const action = await screen.findByRole("option", { name: /re-scan folder/i });
     const allOptions = screen.getAllByRole("option");
@@ -99,7 +99,7 @@ describe("OKF Studio navigation features", () => {
     // Select it from the launcher (a selection made outside the tree).
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
     const combo = await screen.findByRole("combobox");
-    await user.type(combo, "Button");
+    await fillText(user, combo, "Button");
     await user.keyboard("{Enter}");
 
     // The tree expanded the chain and the row is now present and current.
@@ -134,7 +134,7 @@ describe("OKF Studio navigation features", () => {
 
     // Matches exist (the Revenue cluster) but none are index entries → the
     // tree explains itself and offers the launcher.
-    await user.type(search, "Revenue");
+    await fillText(user, search, "Revenue");
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent(/none are listed in this index/i);
     await user.click(screen.getByRole("button", { name: /open full search/i }));
@@ -148,8 +148,7 @@ describe("OKF Studio navigation features", () => {
 
     // Nothing matches at all → the notice says so, without the launcher CTA
     // (it searches the same fields, so it cannot do better).
-    await user.clear(search);
-    await user.type(search, "zzzz");
+    await fillText(user, search, "zzzz");
     const none = await screen.findByRole("status");
     expect(none).toHaveTextContent(/no concepts match/i);
     expect(

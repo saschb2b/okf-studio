@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
-import { openBundle, renderApp } from "@/test/appHarness.tsx";
+import { fillText, openBundle, renderApp } from "@/test/appHarness.tsx";
 
 describe("OKF Studio workspace features", () => {
   it("creates a new bundle from the first-run empty state", async () => {
@@ -12,7 +12,7 @@ describe("OKF Studio workspace features", () => {
 
     await user.click(screen.getByRole("button", { name: /create new bundle/i }));
     const dialog = await screen.findByRole("dialog", { name: /create new bundle/i });
-    await user.type(within(dialog).getByLabelText("Bundle title"), "Team Knowledge");
+    await fillText(user, within(dialog).getByLabelText("Bundle title"), "Team Knowledge");
     // The folder name derives live from the title until edited by hand.
     expect(within(dialog).getByLabelText("Folder name")).toHaveValue("team-knowledge");
     await user.click(
@@ -42,7 +42,7 @@ describe("OKF Studio workspace features", () => {
     await user.click(screen.getByRole("button", { name: /switch bundle/i }));
     await user.click(await screen.findByRole("button", { name: /new bundle/i }));
     const dialog = await screen.findByRole("dialog", { name: /create new bundle/i });
-    await user.type(within(dialog).getByLabelText("Bundle title"), "Field Notes");
+    await fillText(user, within(dialog).getByLabelText("Bundle title"), "Field Notes");
 
     // The OS picker was cancelled: no navigation, the filled form remains.
     const createSpy = vi.spyOn(ipc, "createBundle").mockResolvedValueOnce(null);
@@ -113,7 +113,7 @@ describe("OKF Studio workspace features", () => {
     // Jump to the Button component (an ODSF concept) via the command palette.
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
     const combo = await screen.findByRole("combobox");
-    await user.type(combo, "Button");
+    await fillText(user, combo, "Button");
     await user.click(await screen.findByRole("option", { name: /button.*component/i }));
 
     const reader = container.querySelector<HTMLElement>(".reader")!;
@@ -141,7 +141,7 @@ describe("OKF Studio workspace features", () => {
     // Jump to the Color concept, whose body embeds a local SVG + a remote image.
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
     const combo = await screen.findByRole("combobox");
-    await user.type(combo, "Color");
+    await fillText(user, combo, "Color");
     // "Color" matches several concepts; the top result is the Color foundation.
     await user.click((await screen.findAllByRole("option"))[0]);
 
@@ -195,7 +195,7 @@ describe("OKF Studio workspace features", () => {
 
     // A query that matches nothing says so in both groups — not the
     // "bundles you open will show up here" onboarding copy.
-    await user.type(search, "zzzz");
+    await fillText(user, search, "zzzz");
     expect(within(popover).getAllByText("No matches.")).toHaveLength(2);
   });
 });

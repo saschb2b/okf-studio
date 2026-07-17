@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { openBundle, renderApp } from "@/test/appHarness.tsx";
+import { fillText, openBundle, renderApp } from "@/test/appHarness.tsx";
 
 // The visualization switcher: four views in the graph pane (graph, treemap,
 // sunburst, circle packing), the persisted preference, and the graph-only
@@ -153,7 +153,7 @@ describe("visualization switcher", () => {
 
     await user.keyboard("{Control>}k{/Control}");
     const input = await screen.findByPlaceholderText(/run a command/i);
-    await user.type(input, "View: Circle");
+    await fillText(user, input, "View: Circle");
     const option = await screen.findByText("View: Circle packing");
     await user.click(option);
     expect(

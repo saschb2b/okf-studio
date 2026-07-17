@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-17T18:30:00Z
+timestamp: 2026-07-17T19:10:00Z
 ---
 
 # Decision
@@ -55,9 +55,10 @@ The frontend suite is split by cost and environment instead of calling every che
 
 - `pnpm test` runs pure `.test.ts` logic in Node and React or DOM-focused `.test.tsx` and `.dom.test.ts` files in jsdom. It is the fast feedback lane.
 - `pnpm test:integration` runs `.integration.test.tsx` files that boot `AppProvider` and the complete application. The lane has two workers, shuffled order, explicit slow-test reporting, and a bounded timeout for full user journeys. The former 2,174-line app test and 844-line feature test are split by product behavior so failures identify one surface and files can be scheduled independently. Turn lifecycle, source retry, permission memory, queued recovery, and failed-turn retry are separate tests instead of one sequential scenario. Studio Agent security disclosure, reviewed creation, and native tool calls also use separate saved-endpoint fixtures whose cleanup runs on setup and assertion failures.
-- `pnpm test:stories` renders every story and executes every `play` function in Playwright Chromium. The lane uses one orchestrator page to keep startup concurrency bounded. Story execution takes only a few seconds; browser initialization and the orchestrator handshake dominate the lane on Windows. The Storybook MCP `run-story-tests` tool remains the required isolation check during component work; the package command is the CI transport for the same browser project.
+- `pnpm test:stories` renders every story and executes every `play` function in Playwright Chromium. Four workers share the browser startup cost without overloading the host. The browser handshake has a 90-second bound. Story execution takes only a few seconds; browser initialization dominates the lane on Windows. The Storybook MCP `run-story-tests` tool remains the required isolation check during component work; the package command is the CI transport for the same browser project.
+- `pnpm test:frontend` runs those three lanes in sequence. It does not mix jsdom integration work with browser startup in one worker pool.
 
-Vitest restores mocks between tests and the shared setup clears both browser storage areas plus module-owned agent connection state. Full-app tests use one shared render and bundle-opening harness, with an explicit Strict Mode option for lifecycle regressions. Every lane shuffles test order. ESLint rejects focused tests, disabled tests, missing or conditional assertions, unawaited Testing Library queries, and side effects hidden in polling callbacks. CI runs the fast, integration, and story lanes as separate jobs with hard job timeouts, so one expensive surface does not delay unrelated feedback.
+Vitest restores mocks between tests. The shared setup clears both browser storage areas and all mutable browser-agent state: profiles, connections, event subscribers, sessions, staged changes, checkpoints, permissions, installation state, and recent bundles. Pending permission requests resolve before their registries are cleared, so a failed test cannot leave an orphaned promise or poison the next test. Full-app tests use one shared render and bundle-opening harness, with an explicit Strict Mode option for lifecycle regressions. Setup text is pasted in one event unless individual keystrokes are the behavior under test. Every lane shuffles test order. ESLint rejects focused tests, disabled tests, missing or conditional assertions, unawaited Testing Library queries, and side effects hidden in polling callbacks. CI runs the fast, integration, and story lanes as separate jobs with hard job timeouts, so one expensive surface does not delay unrelated feedback.
 
 Interaction tests wait for observable state. They do not retry user actions until an assertion passes. The reader-selection test establishes a DOM range once and captures it through the component's pointer-down contract before opening the attachment menu. This keeps the test aligned with the interaction sequence and removes its former five-attempt action loop.
 
@@ -79,7 +80,7 @@ Pull requests run `cargo clippy -p okf-viewer --all-targets -- -D warnings` and 
 
 Platform fixtures never report a silent pass. The process-tree helper is an explicitly ignored subprocess fixture invoked with `--ignored` by its owning test, and a file handshake releases its descendant only after process ownership is attached. The Bubblewrap mount-policy probe is explicitly ignored on ordinary hosts and the dedicated Ubuntu job invokes that exact test with `--ignored`. A missing platform capability therefore appears as ignored or failed, never green without executing the assertion body.
 
-The pure `okf-core` job remains separate on Linux. It needs no Tauri or WebKit dependencies and gives fast feedback for parsing, query, validation, and bundle fixtures. Release packaging still builds the complete application per target platform.
+The pure `okf-core` job remains separate on Linux. It needs no Tauri or WebKit dependencies and gives fast feedback for parsing, query, validation, and bundle fixtures. `pnpm test:network` runs the one ignored live-GitHub archive smoke test explicitly; it stays outside ordinary CI because a remote outage must not fail a deterministic merge gate. Release packaging still builds the complete application per target platform.
 
 # Automated accessibility gate
 

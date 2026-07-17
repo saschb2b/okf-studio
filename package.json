@@ -14,8 +14,9 @@
     "test": "vitest run --project unit --project component",
     "test:watch": "vitest --project unit --project component",
     "test:integration": "vitest run --project integration",
-    "test:frontend": "vitest run --project unit --project component --project integration",
-    "test:stories": "vitest run --project storybook --browser.connectTimeout=180000",
+    "test:frontend": "pnpm test && pnpm test:integration && pnpm test:stories",
+    "test:stories": "vitest run --project storybook",
+    "test:network": "cargo test -p okf-viewer remote::tests::fetches_and_extracts_a_real_github_subpath -- --ignored --exact",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "tauri": "tauri"

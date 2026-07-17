@@ -68,6 +68,12 @@ export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+/** Keep browser demos legible without charging their presentation latency to tests. */
+function browserMockDelay(milliseconds: number): Promise<void> {
+  const delay = import.meta.env.MODE === "test" ? 0 : milliseconds;
+  return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
 /**
  * Diagnostic sink: mirror a message to the host terminal (`pnpm tauri dev`).
  * Best-effort and fire-and-forget — the webview console is invisible there,
@@ -266,7 +272,7 @@ export async function testLocalModelEndpoint(
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<LocalModelProbe>("test_local_model_endpoint", { input });
   }
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   if (input.apiKey !== undefined && input.apiKey.trim() !== "") {
     const apiKey = input.apiKey.trim();
     if (input.provider !== "open-ai-compatible") {
@@ -425,28 +431,36 @@ let agentRestoreAttempted = false;
 const agentRestoreSubscribers = new Set<() => void>();
 const restoredConnectionIds = new Set<string>();
 
-/**
- * Reset the once-per-session restore state. The status, attempt flag, and
- * restored-connection set are module-level, so tests that share this module
- * must clear them between runs or a leftover "restoring" status hides the
- * empty-state Connect action in a later test.
- */
-export function resetAgentRestoreState(): void {
+/** Reset every mutable browser-mock boundary so a failed test cannot poison the next one. */
+export function resetBrowserMockForTests(): void {
+  for (const pending of mockPermissionResponses.values()) pending.resolve(null);
+
+  mockCustomAgents = [];
+  mockLocalModelProfiles = [];
+  activeAgentConnectionsById.clear();
+  activeAgentConnectionSnapshot = [];
+  activeAgentConnectionSubscribers.clear();
+  agentConnectionHandlers.clear();
+  agentTurnHandlers.clear();
+  agentPermissionHandlers.clear();
+  agentStageHandlers.clear();
+  agentSessionConfigHandlers.clear();
+  agentAvailableCommandsHandlers.clear();
+  mockStagedChanges.clear();
+  mockBundleCheckpoints.clear();
+  mockCancelledTurns.clear();
+  mockFailedOncePrompts.clear();
+  mockAgentSessions.clear();
+  mockPermissionResponses.clear();
+  mockThreadPermissionRules.clear();
   agentRestoreState = "idle";
   agentRestoreAttempted = false;
+  agentRestoreSubscribers.clear();
   restoredConnectionIds.clear();
-  for (const subscriber of agentRestoreSubscribers) subscriber();
-}
-
-/**
- * Clear the module-level live-connection registry between tests. Tests
- * disconnect what they open, but a slow CI runner can start the next test
- * before an async cleanup settles; a leftover connection then makes the panel
- * show a conversation where the test expects the empty Connect action.
- */
-export function resetAgentConnectionsForTests(): void {
-  activeAgentConnectionsById.clear();
-  publishAgentConnections();
+  mockInstallProgressHandlers.clear();
+  mockCancelledInstalls.clear();
+  mockInstalledAgents.clear();
+  mockRecents = null;
 }
 
 /**
@@ -518,7 +532,7 @@ export async function connectCustomAgent(
   if (mode === "restricted-offline") {
     throw new Error("Restricted offline connections require the desktop Linux app.");
   }
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   const info: AgentConnectionInfo = {
     connectionId: `connection-${crypto.randomUUID()}`,
     profileId,
@@ -568,7 +582,7 @@ export async function connectCatalogAgent(
     (candidate) => candidate.id === agentId,
   );
   if (!entry?.distribution) throw new Error("This agent is not installable yet.");
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   const profileId = `catalog-${agentId}`;
   if ([...activeAgentConnectionsById.values()].some((info) => info.profileId === profileId)) {
     throw new Error("This catalog agent already has an active connection.");
@@ -622,7 +636,7 @@ export async function connectLocalModel(
   if ([...activeAgentConnectionsById.values()].some((info) => info.profileId === profileId)) {
     throw new Error("This Studio model profile already has an active connection.");
   }
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   const info: AgentConnectionInfo = {
     connectionId: `connection-${crypto.randomUUID()}`,
     profileId,
@@ -805,7 +819,7 @@ export async function listAgentSessions(
   if (!connection.capabilities.sessionList) {
     throw new Error("This agent did not advertise session history support.");
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   const liveSessions = [...mockAgentSessions.entries()]
     .filter(([, session]) =>
       session.profileId === connection.profileId && session.bundleRoot === bundleRoot
@@ -852,7 +866,7 @@ export async function loadAgentSession(
   if (!connection.capabilities.loadSession) {
     throw new Error("This agent did not advertise session restore support.");
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   clearMockThreadPermissionRules(connectionId, sessionId);
   // Mirrors Rust: a restored session never inherits a write grant or files.
   const stagedState = {
@@ -927,7 +941,7 @@ export async function setAgentSessionConfigOption(
   } else {
     throw new Error("The session option value has the wrong type.");
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   session.configOptions = session.configOptions.map((option) =>
     option.id === configId ? replacement : option
   );
@@ -943,11 +957,15 @@ export async function authenticateAgent(
   if (!current.authMethods.some((method) => method.id === methodId)) {
     throw new Error("Authentication method was not advertised by the agent.");
   }
-  const authenticated = isTauri()
-    ? await import("@tauri-apps/api/core").then(({ invoke }) =>
-        invoke<boolean>("authenticate_agent", { connectionId, methodId }),
-      )
-    : await new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 80));
+  let authenticated: boolean;
+  if (isTauri()) {
+    authenticated = await import("@tauri-apps/api/core").then(({ invoke }) =>
+      invoke<boolean>("authenticate_agent", { connectionId, methodId }),
+    );
+  } else {
+    await browserMockDelay(80);
+    authenticated = true;
+  }
   if (authenticated) {
     const latest = activeAgentConnectionsById.get(connectionId);
     if (latest) {
@@ -980,7 +998,7 @@ export async function promptAgent(
     throw new Error("Agent connection was not found.");
   }
   if (text.startsWith("Reject:")) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 80));
+    await browserMockDelay(80);
     throw new Error("The browser mock rejected this prompt before starting a turn.");
   }
   const info = { connectionId, sessionId, turnId: `turn-${crypto.randomUUID()}` };
@@ -1005,7 +1023,7 @@ export async function exportAgentTranscript(
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<string | null>("export_agent_transcript", { suggestedName, markdown });
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   if (markdown.includes("> Export fail:")) {
     throw new Error("The browser mock could not save the transcript.");
   }
@@ -1027,7 +1045,7 @@ export async function pickAgentTextSources(limit: number): Promise<AgentSourceIn
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<AgentSourceInput[]>("pick_agent_text_sources", { limit });
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   return [{
     title: "research-report.pdf",
     content: "## Page 1\n\nQuarterly research findings.",
@@ -1043,7 +1061,7 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<AgentSourceInput[]>("pick_agent_source_folder", { limit });
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   return [
     {
       title: "data/findings.csv",
@@ -1067,7 +1085,7 @@ export async function pickAgentImageSources(limit: number): Promise<AgentSourceI
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<AgentSourceInput[]>("pick_agent_image_sources", { limit });
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   return [{
     title: "architecture.png",
     content: "",
@@ -1083,7 +1101,7 @@ export async function fetchAgentSourceUrl(url: string): Promise<AgentSourceInput
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<AgentSourceInput>("fetch_agent_source_url", { url });
   }
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
+  await browserMockDelay(80);
   return {
     title: "research.html",
     content: "# Remote research\n\nFetched evidence.",
@@ -1833,7 +1851,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
   const changeState = reportsChange
     ? (mockStageState(info.sessionId).granted ? "staged" : "not-staged")
     : null;
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await browserMockDelay(0);
   emitAgentTurn({
     ...info,
     update: {
@@ -1884,7 +1902,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
   });
   const delaySteps = text.includes("Run a long investigation") ? 100 : 1;
   for (let step = 0; step < delaySteps; step += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await browserMockDelay(100);
     if (mockCancelledTurns.has(info.turnId)) break;
   }
   if (mockCancelledTurns.has(info.turnId)) {
@@ -2044,7 +2062,7 @@ async function emitMockLocalTool(
       content: null,
     },
   });
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await browserMockDelay(100);
   if (mockCancelledTurns.has(info.turnId)) return false;
   beforeComplete?.();
   emitAgentTurn({
@@ -2068,7 +2086,7 @@ async function emitMockLocalTurn(
   text: string,
   sources: readonly AgentSourceInput[],
 ): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await browserMockDelay(100);
   if (mockCancelledTurns.has(info.turnId)) {
     emitAgentTurn({ ...info, update: { kind: "completed", stopReason: "cancelled" } });
     mockCancelledTurns.delete(info.turnId);
@@ -2372,7 +2390,7 @@ export async function installAgent(
   mockCancelledInstalls.delete(installId);
 
   for (const phase of phases) {
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    await browserMockDelay(40);
     if (mockCancelledInstalls.has(installId)) {
       emitMockInstallProgress({
         installId,
@@ -2434,7 +2452,7 @@ export async function uninstallAgent(agentId: string): Promise<void> {
   if (activeAgentConnectionSnapshot.some((info) => info.profileId === profileId)) {
     throw new Error("Disconnect this agent before removing it.");
   }
-  await new Promise((resolve) => setTimeout(resolve, 40));
+  await browserMockDelay(40);
   mockInstalledAgents.delete(agentId);
 }
 
@@ -2502,7 +2520,7 @@ export async function fetchRemoteBundle(
   source: RemoteSource,
 ): Promise<{ folder: string }> {
   if (!isTauri()) {
-    await new Promise((r) => setTimeout(r, 600));
+    await browserMockDelay(600);
     return { folder: MOCK_FOLDER };
   }
   const { invoke } = await import("@tauri-apps/api/core");

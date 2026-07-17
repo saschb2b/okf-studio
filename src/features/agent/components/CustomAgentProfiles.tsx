@@ -172,10 +172,11 @@ export function CustomAgentProfiles({
 
       {profiles.length > 0 && (
         <p className="custom-agents__execution-notice">
-          Standard launches with normal OS access. Restricted offline is available through a
-          verified Linux Bubblewrap host for self-contained agents: the bundle and executable are
-          read-only, protected paths are hidden, and host network access is disabled. Both modes
-          limit inherited environment variables and stop the process tree on Disconnect.
+          Standard launches with normal OS access. Restricted offline uses the verified platform
+          host. Linux gives the process a read-only bundle with protected paths hidden. Windows
+          runs one self-contained .exe in AppContainer and keeps bundle access behind Studio's
+          file tools. Both profiles disable host network access, limit inherited environment
+          variables, and stop the process tree on Disconnect.
         </p>
       )}
 

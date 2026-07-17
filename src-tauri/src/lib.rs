@@ -13,6 +13,9 @@ mod agent_protocol;
 mod agent_process;
 #[path = "agent/host/agent_sandbox.rs"]
 mod agent_sandbox;
+#[cfg(target_os = "windows")]
+#[path = "agent/host/agent_windows_sandbox.rs"]
+mod agent_windows_sandbox;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_transcript.rs"]
@@ -68,6 +71,14 @@ pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
 
 pub fn run_pdf_extractor() -> Result<(), String> {
     agent_pdf::run_helper()
+}
+
+#[cfg(target_os = "windows")]
+pub fn run_windows_agent_sandbox(
+    executable: std::path::PathBuf,
+    arguments: Vec<String>,
+) -> Result<u32, String> {
+    agent_windows_sandbox::run(&executable, &arguments)
 }
 
 #[tauri::command]

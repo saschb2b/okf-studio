@@ -534,6 +534,8 @@ pub async fn connect_catalog(
         read_only_roots: command.read_only_roots,
         #[cfg(any(target_os = "linux", test))]
         restricted: None,
+        #[cfg(target_os = "windows")]
+        windows_restricted: false,
     };
     connect_process(app, state, &profile_id, bundle_root, spec, "catalog agent").await
 }
@@ -3511,6 +3513,36 @@ mod tests {
         assert!(scope.unattended_eligible());
     }
 
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn serializes_windows_appcontainer_launcher_scope() {
+        let scope = AgentSecurityScopeInfo::external_process(
+            agent_process::AgentProcessContainment::WindowsJobObject,
+            ExternalProcessLaunchProfile::WindowsRestrictedAppContainer,
+        );
+        let value = serde_json::to_value(&scope).expect("serialize AppContainer security scope");
+
+        assert_eq!(value["evidenceSource"], "external-process-launcher");
+        assert_eq!(value["processContainment"], "windows-job-object");
+        assert_eq!(
+            value["profile"]["id"],
+            "external-windows-restricted-app-container-v1"
+        );
+        assert_eq!(
+            value["profile"]["effectiveMounts"],
+            "app-container-runtime-and-mediated-bundle"
+        );
+        assert_eq!(value["profile"]["writableRoots"], "private-temporary-only");
+        assert_eq!(value["profile"]["networkPolicy"], "isolated");
+        assert_eq!(
+            value["profile"]["credentialExposure"],
+            "launch-environment-only"
+        );
+        assert_eq!(value["profile"]["unattendedEligible"], true);
+        assert!(scope.unattended_eligible());
+    }
+
+    #[cfg(not(target_os = "windows"))]
     #[test]
     fn custom_restricted_mode_selects_the_linux_launcher_branch() {
         let executable = std::env::current_exe()
@@ -3544,6 +3576,47 @@ mod tests {
             restricted.network,
             crate::agent_sandbox::LinuxSandboxNetworkMode::Disabled
         );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn custom_restricted_mode_selects_the_windows_helper_branch() {
+        let executable = std::env::current_exe()
+            .expect("current test executable")
+            .canonicalize()
+            .expect("canonical test executable");
+        let bundle_root = std::env::current_dir()
+            .expect("current directory")
+            .canonicalize()
+            .expect("canonical current directory");
+        let profile = agent_custom::CustomAgentProfile {
+            id: "custom-test".to_string(),
+            name: "Test agent".to_string(),
+            executable: executable.to_string_lossy().into_owned(),
+            arguments: vec!["--stdio".to_string()],
+            environment: Vec::new(),
+        };
+
+        let spec = ProcessSpec::from_profile(
+            &profile,
+            &bundle_root,
+            AgentConnectionMode::RestrictedOffline,
+        )
+        .expect("restricted process specification");
+
+        assert_eq!(
+            spec.executable,
+            std::env::current_exe().expect("Studio helper executable")
+        );
+        assert_eq!(
+            spec.arguments,
+            vec![
+                "--okf-windows-agent-sandbox".to_string(),
+                executable.to_string_lossy().into_owned(),
+                "--stdio".to_string(),
+            ]
+        );
+        assert!(spec.windows_restricted);
     }
 
     #[test]

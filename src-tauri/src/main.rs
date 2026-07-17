@@ -30,5 +30,22 @@ fn main() {
         }
         return;
     }
+    #[cfg(target_os = "windows")]
+    if mode.as_deref() == Some(std::ffi::OsStr::new("--okf-windows-agent-sandbox")) {
+        let Some(executable) = args.next() else {
+            eprintln!("OKF Studio's Windows sandbox requires an executable path.");
+            std::process::exit(2);
+        };
+        let arguments = args
+            .map(|argument| argument.to_string_lossy().into_owned())
+            .collect();
+        match okf_viewer_lib::run_windows_agent_sandbox(executable.into(), arguments) {
+            Ok(exit_code) => std::process::exit(i32::try_from(exit_code).unwrap_or(1)),
+            Err(message) => {
+                eprintln!("{message}");
+                std::process::exit(1);
+            }
+        }
+    }
     okf_viewer_lib::run()
 }

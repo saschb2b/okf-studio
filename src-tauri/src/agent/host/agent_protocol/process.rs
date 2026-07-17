@@ -1,5 +1,5 @@
 //! Spawning the external ACP agent process and negotiating its handshake.
-//! Builds the launch command (standard or the restricted Linux profile),
+//! Builds the launch command (standard or a platform restricted profile),
 //! attaches process-tree ownership, records the launcher-produced security
 //! scope, and bounds and redacts the child's diagnostics. See
 //! docs/architecture/agent-system.md.
@@ -14,6 +14,8 @@ pub(crate) struct ProcessSpec {
     pub(crate) read_only_roots: Vec<PathBuf>,
     #[cfg(any(target_os = "linux", test))]
     pub(crate) restricted: Option<LinuxRestrictedProcessSpec>,
+    #[cfg(target_os = "windows")]
+    pub(crate) windows_restricted: bool,
 }
 
 #[cfg(any(target_os = "linux", test))]
@@ -34,7 +36,7 @@ impl ProcessSpec {
             .filter_map(|name| std::env::var(name).ok().map(|value| (name.clone(), value)))
             .collect();
         let executable = PathBuf::from(&profile.executable);
-        #[cfg(not(any(target_os = "linux", test)))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows", test)))]
         if mode == AgentConnectionMode::RestrictedOffline {
             return Err(
                 "Restricted offline connections require the verified Linux Bubblewrap host."
@@ -58,14 +60,37 @@ impl ProcessSpec {
                 )
             }
         };
+        #[cfg(target_os = "windows")]
+        let (executable, arguments, windows_restricted) = match mode {
+            AgentConnectionMode::Standard => (executable, profile.arguments.clone(), false),
+            AgentConnectionMode::RestrictedOffline => {
+                let source = executable.canonicalize().map_err(|error| {
+                    format!("Studio could not resolve the restricted agent executable: {error}")
+                })?;
+                let helper = std::env::current_exe().map_err(|error| {
+                    format!("Studio could not locate its Windows sandbox helper: {error}")
+                })?;
+                let mut arguments = vec![
+                    "--okf-windows-agent-sandbox".to_string(),
+                    source.to_string_lossy().into_owned(),
+                ];
+                arguments.extend(profile.arguments.iter().cloned());
+                (helper, arguments, true)
+            }
+        };
         Ok(Self {
             executable,
+            #[cfg(not(target_os = "windows"))]
             arguments: profile.arguments.clone(),
+            #[cfg(target_os = "windows")]
+            arguments,
             environment,
             #[cfg(any(target_os = "linux", test))]
             read_only_roots,
             #[cfg(any(target_os = "linux", test))]
             restricted,
+            #[cfg(target_os = "windows")]
+            windows_restricted,
         })
     }
 }
@@ -195,7 +220,14 @@ async fn process_command(spec: &ProcessSpec) -> Result<PreparedProcessCommand, S
     command.args(&spec.arguments);
     Ok(PreparedProcessCommand {
         command,
+        #[cfg(not(target_os = "windows"))]
         launch_profile: ExternalProcessLaunchProfile::Standard,
+        #[cfg(target_os = "windows")]
+        launch_profile: if spec.windows_restricted {
+            ExternalProcessLaunchProfile::WindowsRestrictedAppContainer
+        } else {
+            ExternalProcessLaunchProfile::Standard
+        },
     })
 }
 

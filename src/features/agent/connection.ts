@@ -34,11 +34,13 @@ export interface AgentSecurityProfileInfo {
   id:
     | "studio-native-mediated-v1"
     | "external-interactive-unrestricted-v1"
-    | "external-linux-restricted-offline-v1";
+    | "external-linux-restricted-offline-v1"
+    | "external-windows-restricted-app-container-v1";
   effectiveMounts:
     | "studio-tool-mediated-bundle"
     | "host-operating-system"
-    | "system-runtime-agent-and-read-only-bundle";
+    | "system-runtime-agent-and-read-only-bundle"
+    | "app-container-runtime-and-mediated-bundle";
   writableRoots:
     | "reviewed-staging-only"
     | "host-operating-system-permissions"
@@ -55,7 +57,7 @@ export interface AgentSecurityProfileInfo {
 
 export interface AgentSecurityHostStatus {
   platform: "linux" | "macos" | "windows" | "other";
-  backend: "bubblewrap" | null;
+  backend: "bubblewrap" | "app-container" | null;
   state:
     | "ready"
     | "unsupported-platform"

@@ -352,14 +352,16 @@ enum AgentSecurityPlatform {
 enum AgentSecurityBackend {
     #[cfg(target_os = "linux")]
     Bubblewrap,
+    #[cfg(target_os = "windows")]
+    AppContainer,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum AgentSecurityHostState {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
     Ready,
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(any(test, not(any(target_os = "linux", target_os = "windows"))))]
     UnsupportedPlatform,
     #[cfg(target_os = "linux")]
     NotFound,
@@ -367,7 +369,7 @@ enum AgentSecurityHostState {
     SetuidRejected,
     #[cfg(target_os = "linux")]
     UntrustedBinary,
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
     ProbeFailed,
 }
 
@@ -384,7 +386,7 @@ pub(crate) async fn status() -> AgentSecurityHostStatus {
 
     #[cfg(target_os = "windows")]
     {
-        unsupported(AgentSecurityPlatform::Windows)
+        windows_status().await
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -393,13 +395,27 @@ pub(crate) async fn status() -> AgentSecurityHostStatus {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
 fn unsupported(platform: AgentSecurityPlatform) -> AgentSecurityHostStatus {
     AgentSecurityHostStatus {
         platform,
         backend: None,
         state: AgentSecurityHostState::UnsupportedPlatform,
         launch_profile_available: false,
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn windows_status() -> AgentSecurityHostStatus {
+    let state = match tokio::task::spawn_blocking(crate::agent_windows_sandbox::preflight).await {
+        Ok(Ok(())) => AgentSecurityHostState::Ready,
+        Ok(Err(_)) | Err(_) => AgentSecurityHostState::ProbeFailed,
+    };
+    AgentSecurityHostStatus {
+        platform: AgentSecurityPlatform::Windows,
+        backend: Some(AgentSecurityBackend::AppContainer),
+        state,
+        launch_profile_available: state == AgentSecurityHostState::Ready,
     }
 }
 
@@ -869,12 +885,12 @@ mod tests {
 
     #[cfg(target_os = "windows")]
     #[tokio::test]
-    async fn native_windows_reports_no_enforcement_host() {
+    async fn native_windows_reports_verified_appcontainer_host() {
         let value = serde_json::to_value(status().await).expect("serialize host status");
         assert_eq!(value["platform"], "windows");
-        assert_eq!(value["backend"], serde_json::Value::Null);
-        assert_eq!(value["state"], "unsupported-platform");
-        assert_eq!(value["launchProfileAvailable"].as_bool(), Some(false));
+        assert_eq!(value["backend"], "app-container");
+        assert_eq!(value["state"], "ready");
+        assert_eq!(value["launchProfileAvailable"].as_bool(), Some(true));
     }
 
     #[cfg(target_os = "linux")]

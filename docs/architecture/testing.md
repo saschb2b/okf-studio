@@ -3,10 +3,12 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-17T15:31:51Z
+timestamp: 2026-07-17T18:30:00Z
 ---
 
 # Decision
+
+Platform confinement fixtures run the enforcement path they claim. Linux CI invokes the ignored Bubblewrap fixture on a prepared Ubuntu host. The Windows host test launches the test binary through the production AppContainer launcher, checks the child token, proves an ungranted host file is unreadable, and proves the container's private scratch remains writable. A separate process-tree fixture proves the Windows Job Object stops descendants. No platform test returns green merely because its backend is absent.
 
 Confidence comes from testing the contracts, not the implementation details. The core's two load-bearing commands — `scan_bundles` and `read_bundle` ([IPC & Security](ipc-and-security.md)) — are tested directly, the link/backlink logic is pinned with golden tests, and conformance is checked for parity against the canonical validator. The native host has its own merge gate for agent processes, provider requests, source intake, permissions, and reviewed transactions.
 

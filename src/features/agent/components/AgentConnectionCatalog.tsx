@@ -33,7 +33,7 @@ type CatalogState =
     }
   | { status: "error"; message: string };
 
-type SecurityHostState =
+export type SecurityHostState =
   | { status: "loading" }
   | { status: "ready"; value: AgentSecurityHostStatus }
   | { status: "error" };
@@ -103,6 +103,12 @@ function securityHostCopy(status: AgentSecurityHostStatus): {
   detail: string;
 } {
   if (status.launchProfileAvailable) {
+    if (status.platform === "windows") {
+      return {
+        summary: "Restricted offline profile available",
+        detail: "Saved self-contained ACP executables can run in a fresh offline AppContainer. Bundle access stays behind Studio's bounded file tools.",
+      };
+    }
     return {
       summary: "Restricted offline profile available",
       detail: "Saved custom ACP commands can use the verified Linux host with read-only bundle access and no host network.",
@@ -130,6 +136,12 @@ function securityHostCopy(status: AgentSecurityHostStatus): {
         detail: "The discovered binary is not root-owned, is writable by another account, carries file capabilities, or is not executable by ordinary users.",
       };
     case "probe-failed":
+      if (status.platform === "windows") {
+        return {
+          summary: "AppContainer probe failed",
+          detail: "Windows could not create and inspect the restricted AppContainer profile. Studio will not fall back to an unrestricted launch.",
+        };
+      }
       return {
         summary: "Bubblewrap probe failed",
         detail: "The binary could not create the required mount, network, IPC, PID, and UTS namespaces within three seconds. Studio will not fall back to an unrestricted launch.",
@@ -137,8 +149,8 @@ function securityHostCopy(status: AgentSecurityHostStatus): {
     case "unsupported-platform":
       if (status.platform === "windows") {
         return {
-          summary: "No native Windows restricted host",
-          detail: "A Windows Job Object controls process lifetime only. WSL plus Bubblewrap is not integrated, so restricted external-agent profiles remain unavailable.",
+          summary: "Windows desktop host required",
+          detail: "AppContainer enforcement is available in the Windows desktop app. Browser preview cannot start a restricted external agent.",
         };
       }
       if (status.platform === "macos") {
@@ -152,6 +164,30 @@ function securityHostCopy(status: AgentSecurityHostStatus): {
         detail: "Studio has no verified confinement backend for this platform.",
       };
   }
+}
+
+export function AgentSecurityHostDisclosure({
+  state,
+  onRetry,
+}: {
+  state: SecurityHostState;
+  onRetry: () => void;
+}) {
+  return (
+    <details className="agent-catalog__security-host">
+      <summary>Restricted agent host: {securityHostSummary(state)}</summary>
+      {state.status === "loading" && (
+        <p role="status">Checking the local confinement backend without starting an agent.</p>
+      )}
+      {state.status === "error" && (
+        <div>
+          <p role="alert">Studio could not check the local confinement backend.</p>
+          <button type="button" className="btn" onClick={onRetry}>Retry</button>
+        </div>
+      )}
+      {state.status === "ready" && <p>{securityHostCopy(state.value).detail}</p>}
+    </details>
+  );
 }
 
 function securityHostSummary(state: SecurityHostState): string {
@@ -425,21 +461,7 @@ export function AgentConnectionCatalog({
             onProfileRemove={removeProfile}
             onConnected={onConnectionAvailable}
           />
-          <details className="agent-catalog__security-host">
-            <summary>Restricted agent host: {securityHostSummary(securityHost)}</summary>
-            {securityHost.status === "loading" && (
-              <p role="status">Checking the local confinement backend without starting an agent.</p>
-            )}
-            {securityHost.status === "error" && (
-              <div>
-                <p role="alert">Studio could not check the local confinement backend.</p>
-                <button type="button" className="btn" onClick={retrySecurityHost}>Retry</button>
-              </div>
-            )}
-            {securityHost.status === "ready" && (
-              <p>{securityHostCopy(securityHost.value).detail}</p>
-            )}
-          </details>
+          <AgentSecurityHostDisclosure state={securityHost} onRetry={retrySecurityHost} />
           <p className="agent-catalog__notice">
             Browsing and saving do not start an agent. Installation, connection, and
             authentication each require a separate explicit action.

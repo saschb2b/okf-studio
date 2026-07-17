@@ -116,12 +116,14 @@ export const SECURITY_PROFILE_NAMES = {
   "studio-native-mediated-v1": "Studio mediated (v1)",
   "external-interactive-unrestricted-v1": "External interactive (v1)",
   "external-linux-restricted-offline-v1": "Linux restricted offline (v1)",
+  "external-windows-restricted-app-container-v1": "Windows restricted AppContainer (v1)",
 } satisfies Record<AgentSecurityScopeInfo["profile"]["id"], string>;
 
 export const SECURITY_FILE_SCOPE = {
   "studio-tool-mediated-bundle": "Only bounded Studio tools can read the active bundle.",
   "host-operating-system": "Studio tools are bundle-scoped. The ACP process keeps normal OS file access.",
   "system-runtime-agent-and-read-only-bundle": "The process can read its system runtime, executable, and active bundle. Protected bundle paths are hidden.",
+  "app-container-runtime-and-mediated-bundle": "The process can access its AppContainer runtime and private copy of the executable. Only bounded Studio tools can read the active bundle.",
 } satisfies Record<AgentSecurityScopeInfo["profile"]["effectiveMounts"], string>;
 
 export const SECURITY_NETWORK_SCOPE = {
@@ -160,6 +162,9 @@ export function securityEvidenceCopy(scope: AgentSecurityScopeInfo): string {
   }
   if (scope.profile.id === "external-linux-restricted-offline-v1") {
     return "Produced by the ACP launcher after Bubblewrap started the process and Studio attached its process group.";
+  }
+  if (scope.profile.id === "external-windows-restricted-app-container-v1") {
+    return "Produced by the ACP launcher after AppContainer started the process and Studio attached its Windows Job Object.";
   }
   return scope.processContainment === "windows-job-object"
     ? "Produced by the ACP launcher after Job Object attachment."

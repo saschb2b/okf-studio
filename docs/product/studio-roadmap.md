@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-17T16:30:00Z
+timestamp: 2026-07-17T18:30:00Z
 ---
 
 # Outcome
@@ -296,7 +296,7 @@ Gate: five concurrent threads can be identified, switched, searched, and recover
   - [x] Register remote-cache roots when the Rust fetch completes and persist enough Rust-owned grant metadata to reopen a recent bundle without trusting the frontend store as authority.
   - [x] Require a live grant for scanning, bundle reads, asset reads, watching, and agent session creation; keep source, export, and fresh-destination pickers as separate one-operation grants.
   - [x] Cover forged paths, stale recents, symbolic links, pop-out windows, remote-cache eviction, and grant revocation with native tests.
-- [ ] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
+- [x] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
   - [x] Own each external ACP process tree and terminate descendants on disconnect or host cancellation.
   - [x] Bind each external process launch to one canonical Rust-granted bundle root and reject cross-bundle session operations before ACP dispatch.
   - [x] Show the effective bundle, file, network, write, and process scope in every live thread.
@@ -320,11 +320,11 @@ The remaining WP11 boxes stay open until their enforcement dependency exists. A 
   - [x] Compile and test the fail-closed Linux launch branch: empty mount root, read-only system and app runtime paths, one read-only Rust-granted bundle, protected-path masks, private temporary filesystems, bounded policy traversal, nested-user-namespace denial, and an explicit network mode. Derive managed app mounts from the verified Node receipt and canonical package root instead of a broad cache parent.
   - [x] Exercise that branch with the distribution Bubblewrap package on Ubuntu 22.04 CI and prove protected-path masking, read-only bundle access, private temporary storage, and successful lifecycle completion.
   - [x] Launch an explicit Restricted offline custom ACP command through the proven backend with the complete mount and protected-path policy, then bind its live evidence to the connection profile only after process spawn and POSIX process-group attachment. Standard stays the default, and managed subscription agents remain off this profile.
-- [ ] Provide a Windows enforcement path. WSL plus Bubblewrap may be an opt-in profile, but Studio cannot assume WSL exists or describe a native Job Object as a filesystem or network sandbox. A Linux- or macOS-only first slice must remain visibly unavailable on Windows.
+- [x] Provide a Windows enforcement path. Restricted offline runs one self-contained `.exe` inside a fresh AppContainer with no network capabilities and no direct bundle mount; bounded Studio tools mediate bundle reads and staged writes. A kill-on-close Job Object separately owns the helper and child process lifetime. The production fixture proves the AppContainer token, denied host-file reads, and private scratch writes.
 - [x] Bind every isolation claim to launcher-produced evidence. Saved profile text and agent-advertised capabilities are descriptive input, never proof that containment is active.
 - [x] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. The initial native-mediated and external-interactive profiles both lock unattended work; the external baseline explicitly reports host network access instead of hiding it. A future restricted profile must model authentication bootstrap as a separate network exception.
 - [ ] Add cross-session permission rules only when ACP supplies a stable tool identity that Studio can display and match independently of agent-controlled titles or raw arguments.
-- [x] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny. The first slice is the verified Linux Restricted offline profile; Standard, native, Windows, and unsupported hosts remain interactive-only.
+- [x] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny. Verified Linux Bubblewrap and Windows AppContainer Restricted offline profiles qualify; Standard, native, macOS, and unsupported hosts remain interactive-only.
 - [x] Treat the active bundle as granted only when the Rust registry produced and still owns the canonical root. Frontend store entries and path strings cannot satisfy this condition.
 
 ## WP12: Completion
@@ -348,7 +348,7 @@ flowchart TD
 # Deferred decisions
 
 - The native agent-loop library is chosen in WP7 against executable provider and tool tests.
-- The Windows sandbox is chosen in WP11. Native Windows lacks Zed's WSL plus Bubblewrap enforcement, so Studio must not promise confinement before it exists.
+- Windows uses a native AppContainer for filesystem and network enforcement and a separate Job Object for process lifetime. WSL is not required.
 - Repository and application identifiers remain compatibility names until a separate updater/app-data migration exists.
 - Editing and resubmitting an accepted user prompt remains deferred until the active agent path supplies a trustworthy checkpoint or Studio can prove that its own transaction boundary covers every side effect.
 - Terminal threads, Git worktree isolation, Zed-hosted feedback, and Zed-native profile management are not Studio targets. They solve editor or hosted-agent concerns rather than OKF curation.

@@ -55,3 +55,30 @@ export const RestrictedUnattended: Story = {
     await expect(popup).not.toHaveTextContent("not a filesystem or network sandbox");
   },
 };
+
+export const WindowsAppContainer: Story = {
+  args: {
+    scope: {
+      evidenceSource: "external-process-launcher",
+      processContainment: "windows-job-object",
+      profile: {
+        id: "external-windows-restricted-app-container-v1",
+        effectiveMounts: "app-container-runtime-and-mediated-bundle",
+        writableRoots: "private-temporary-only",
+        networkPolicy: "isolated",
+        credentialExposure: "launch-environment-only",
+        lifetime: "connection",
+        stopConditions: ["disconnect", "application-exit", "host-failure"],
+        unattendedEligible: true,
+      },
+    },
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Thread security scope" }));
+    const page = within(canvasElement.ownerDocument.body);
+    const popup = await page.findByRole("dialog", { name: "Thread security scope" });
+    await expect(popup).toHaveTextContent("Windows restricted AppContainer");
+    await expect(popup).toHaveTextContent("Only bounded Studio tools can read the active bundle");
+    await expect(popup).toHaveTextContent("no host network access");
+  },
+};

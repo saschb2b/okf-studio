@@ -1,10 +1,10 @@
 //! The Rust-produced security scope surfaced to the webview for each
 //! connection. It names effective mounts, writable roots, network and
-//! credential policy, process containment, lifetime, and stop conditions —
+//! credential policy, process containment, lifetime, and stop conditions:
 //! the shipped boundaries, never a promise the host cannot keep. Studio
 //! Agent reports a mediated in-process profile; external ACP agents report
-//! their launcher-attached process group and the interactive or restricted
-//! Linux profile. See docs/architecture/agent-system.md.
+//! their launcher-attached process owner and the interactive or restricted
+//! platform profile. See docs/architecture/agent-system.md.
 
 use serde::Serialize;
 
@@ -38,6 +38,8 @@ enum AgentSecurityProfileId {
     StudioNativeMediatedV1,
     ExternalInteractiveUnrestrictedV1,
     ExternalLinuxRestrictedOfflineV1,
+    #[cfg(target_os = "windows")]
+    ExternalWindowsRestrictedAppContainerV1,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -54,6 +56,8 @@ enum AgentEffectiveMounts {
     StudioToolMediatedBundle,
     HostOperatingSystem,
     SystemRuntimeAgentAndReadOnlyBundle,
+    #[cfg(target_os = "windows")]
+    AppContainerRuntimeAndMediatedBundle,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -112,6 +116,8 @@ pub(crate) enum ExternalProcessLaunchProfile {
     Standard,
     #[cfg(any(target_os = "linux", test))]
     LinuxRestrictedOffline,
+    #[cfg(target_os = "windows")]
+    WindowsRestrictedAppContainer,
 }
 
 impl AgentSecurityScopeInfo {
@@ -173,6 +179,20 @@ impl AgentSecurityScopeInfo {
                 stop_conditions: external_stop_conditions(),
                 unattended_eligible: true,
             },
+            #[cfg(target_os = "windows")]
+            ExternalProcessLaunchProfile::WindowsRestrictedAppContainer => {
+                AgentSecurityProfileInfo {
+                    id: AgentSecurityProfileId::ExternalWindowsRestrictedAppContainerV1,
+                    effective_mounts:
+                        AgentEffectiveMounts::AppContainerRuntimeAndMediatedBundle,
+                    writable_roots: AgentWritableRoots::PrivateTemporaryOnly,
+                    network_policy: AgentNetworkPolicy::Isolated,
+                    credential_exposure: AgentCredentialExposure::LaunchEnvironmentOnly,
+                    lifetime: AgentSecurityLifetime::Connection,
+                    stop_conditions: external_stop_conditions(),
+                    unattended_eligible: true,
+                }
+            }
         };
         Self {
             evidence_source: AgentSecurityEvidenceSource::ExternalProcessLauncher,

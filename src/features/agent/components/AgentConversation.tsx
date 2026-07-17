@@ -21,6 +21,7 @@ import { useTranscriptExport } from "@/features/agent/components/conversation/us
 import { TranscriptSurface } from "@/features/agent/components/conversation/TranscriptSurface.tsx";
 import { ThreadMarkdownView } from "@/features/agent/components/conversation/ThreadMarkdownView.tsx";
 import { ContextPressureNotice } from "@/features/agent/components/conversation/ContextPressureNotice.tsx";
+import { QueuedPromptCard } from "@/features/agent/components/conversation/QueuedPromptCard.tsx";
 import {
   findContextRecoveryCommand,
   freshThreadContextDraft,
@@ -2075,25 +2076,12 @@ export function AgentConversation({
             <p className="agent-composer__notice" role="status">{stageNotice}</p>
           )}
             {queuedPrompt && (
-              <section className="agent-queue" aria-labelledby={`queued-prompt-${queuedPrompt.id}`}>
-                <div>
-                  <strong id={`queued-prompt-${queuedPrompt.id}`}>Next message</strong>
-                  <span>
-                    {queuedPrompt.concepts.length + queuedPrompt.sources.length > 0
-                      ? `${queuedPrompt.concepts.length + queuedPrompt.sources.length} attachment${queuedPrompt.concepts.length + queuedPrompt.sources.length === 1 ? "" : "s"}`
-                      : "No attachments"}
-                  </span>
-                </div>
-                <p title={queuedPrompt.text}>{queuedPrompt.text}</p>
-                <div className="agent-queue__actions">
-                  <button ref={queuedEditRef} type="button" className="btn ghost" onClick={editQueuedPrompt}>
-                    Edit
-                  </button>
-                  <button type="button" className="btn ghost" onClick={removeQueuedPrompt}>
-                    Remove
-                  </button>
-                </div>
-              </section>
+              <QueuedPromptCard
+                prompt={queuedPrompt}
+                recallButtonRef={queuedEditRef}
+                onRecall={editQueuedPrompt}
+                onRemove={removeQueuedPrompt}
+              />
             )}
             </AgentLiveWorkShelf>
           )}

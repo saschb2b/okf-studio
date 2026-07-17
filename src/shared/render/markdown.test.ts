@@ -92,6 +92,21 @@ describe("renderMarkdown headings", () => {
   });
 });
 
+describe("renderMarkdown long responses", () => {
+  it("keeps the beginning and end of a long structured agent response", () => {
+    const rows = Array.from(
+      { length: 2_000 },
+      (_, index) => `${index + 1}. **Finding ${index + 1}:** \`concepts/item-${index + 1}.md\``,
+    );
+    const html = renderMarkdown(`# Research result\n\n${rows.join("\n")}`);
+
+    expect(html).toContain("Research result");
+    expect(html).toContain("Finding 1:");
+    expect(html).toContain("Finding 2000:");
+    expect(html).not.toContain("<script");
+  });
+});
+
 describe("renderMarkdown color decoration", () => {
   it("prefixes a color-valued inline code with a swatch chip", () => {
     const html = renderMarkdown("The accent is `#0969da` today.");

@@ -1836,7 +1836,9 @@ fn verify_connection_bundle(
     bound_root: Option<&Path>,
     requested_root: &Path,
 ) -> Result<(), String> {
-    if bound_root.is_some_and(|bound_root| bound_root != requested_root) {
+    if bound_root.is_some_and(|bound_root| {
+        dunce::simplified(bound_root) != dunce::simplified(requested_root)
+    }) {
         return Err(
             "This external agent connection belongs to another bundle. Disconnect it and connect again from the active bundle."
                 .to_string(),
@@ -4096,8 +4098,8 @@ mod tests {
         let outside_root = bundle_root.with_file_name("okf-studio-history-outside");
         std::fs::create_dir_all(&bundle_root).expect("create bundle root");
         std::fs::create_dir_all(&outside_root).expect("create outside root");
-        let canonical_root = canonical_bundle_root(&bundle_root.to_string_lossy())
-            .expect("canonical bundle root");
+        let canonical_root =
+            canonical_bundle_root(&bundle_root.to_string_lossy()).expect("canonical bundle root");
         let expected_root = canonical_root.clone();
         let expected_outside_root = outside_root.clone();
         let fake_agent = Agent.builder().on_receive_request(
@@ -5865,11 +5867,13 @@ mod tests {
             std::env::temp_dir().join(format!("okf-studio-path-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&bundle_root).expect("create bundle root");
 
-        let canonical = canonical_bundle_root(&bundle_root.to_string_lossy())
-            .expect("canonical bundle root");
+        let canonical =
+            canonical_bundle_root(&bundle_root.to_string_lossy()).expect("canonical bundle root");
+        let windows_canonical = bundle_root.canonicalize().expect("Windows canonical root");
 
         assert!(canonical.is_absolute());
         assert!(!canonical.to_string_lossy().starts_with(r"\\?\"));
+        assert!(verify_connection_bundle(Some(&windows_canonical), &canonical).is_ok());
         std::fs::remove_dir_all(bundle_root).expect("remove bundle root");
     }
 

@@ -98,9 +98,7 @@ impl BundleGrantState {
 
     /// Authorize the exact folder that Rust previously granted for scanning.
     pub fn authorize_folder(&self, requested: &Path) -> Result<PathBuf, String> {
-        let canonical = requested
-            .canonicalize()
-            .map_err(|_| ACCESS_DENIED.to_string())?;
+        let canonical = dunce::canonicalize(requested).map_err(|_| ACCESS_DENIED.to_string())?;
         let registry = self
             .registry
             .lock()
@@ -127,8 +125,7 @@ impl BundleGrantState {
         let folder = self.authorize_folder(folder)?;
         let mut canonical_roots = Vec::new();
         for root in roots {
-            let canonical = root
-                .canonicalize()
+            let canonical = dunce::canonicalize(&root)
                 .map_err(|_| "A detected bundle root is no longer available.".to_string())?;
             if !canonical.is_dir() || !canonical.starts_with(&folder) {
                 return Err("A detected bundle root escaped its granted folder.".to_string());
@@ -149,9 +146,7 @@ impl BundleGrantState {
     }
 
     pub fn authorize_bundle(&self, requested: &Path) -> Result<PathBuf, String> {
-        let canonical = requested
-            .canonicalize()
-            .map_err(|_| ACCESS_DENIED.to_string())?;
+        let canonical = dunce::canonicalize(requested).map_err(|_| ACCESS_DENIED.to_string())?;
         let registry = self
             .registry
             .lock()
@@ -166,12 +161,15 @@ impl BundleGrantState {
     /// Revoke one exact remembered scope. Descendant request paths cannot
     /// revoke their parent grant.
     pub fn revoke(&self, root: &str) -> Result<bool, String> {
+        let requested_root = dunce::simplified(Path::new(root));
         let mut registry = self
             .registry
             .lock()
             .unwrap_or_else(|error| error.into_inner());
         let before = registry.grants.len();
-        registry.grants.retain(|grant| grant.root != root);
+        registry
+            .grants
+            .retain(|grant| Path::new(&grant.root) != requested_root);
         if registry.grants.len() == before {
             return Ok(false);
         }
@@ -191,8 +189,7 @@ impl BundleGrantState {
 }
 
 fn canonical_directory(root: &Path) -> Result<PathBuf, String> {
-    let canonical = root
-        .canonicalize()
+    let canonical = dunce::canonicalize(root)
         .map_err(|_| "The selected bundle folder is no longer available.".to_string())?;
     if !canonical.is_dir() {
         return Err("The selected bundle location is not a folder.".to_string());
@@ -219,16 +216,23 @@ fn read_grants(file: &Path) -> Result<Vec<BundleGrant>, String> {
     }
     let mut accepted = Vec::with_capacity(grants.len());
     for grant in grants {
-        let root = Path::new(&grant.root);
+        let root = dunce::simplified(Path::new(&grant.root));
+        let normalized_root = root
+            .to_str()
+            .ok_or_else(|| "the grant file contains an invalid path".to_string())?
+            .to_string();
         if !root.is_absolute()
             || grant.root.len() > 32 * 1024
             || accepted
                 .iter()
-                .any(|existing: &BundleGrant| existing.root == grant.root)
+                .any(|existing: &BundleGrant| existing.root == normalized_root)
         {
             return Err("the grant file contains an invalid entry".to_string());
         }
-        accepted.push(grant);
+        accepted.push(BundleGrant {
+            root: normalized_root,
+            kind: grant.kind,
+        });
     }
     Ok(accepted)
 }
@@ -280,7 +284,7 @@ mod tests {
             .expect("register detected root");
         assert_eq!(
             state.authorize_bundle(&nested).expect("authorize bundle"),
-            nested.canonicalize().expect("canonical nested")
+            dunce::canonicalize(&nested).expect("canonical nested")
         );
         assert_eq!(
             state
@@ -304,7 +308,7 @@ mod tests {
         let restored = BundleGrantState::load_from(base.join("state").join("grants.json"));
         assert_eq!(
             restored.authorize_folder(&remote).expect("restore grant"),
-            remote.canonicalize().expect("canonical remote")
+            dunce::canonicalize(&remote).expect("canonical remote")
         );
 
         fs::remove_dir_all(base).expect("remove fixture");
@@ -327,6 +331,62 @@ mod tests {
             .expect("register root from pop-out scan");
         assert!(popout_window.authorize_bundle(&root).is_ok());
 
+        fs::remove_dir_all(base).expect("remove fixture");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn keeps_granted_bundle_roots_in_protocol_safe_windows_form() {
+        let (base, state) = fixture("protocol-path");
+        let root = base.join("bundle");
+        fs::create_dir_all(&root).expect("create bundle");
+
+        let granted = state
+            .grant(&root, BundleGrantKind::LocalFolder)
+            .expect("grant folder");
+        state
+            .register_bundle_roots(&root, [root.clone()])
+            .expect("register bundle root");
+        let authorized = state.authorize_bundle(&root).expect("authorize bundle");
+
+        assert!(!granted.starts_with(r"\\?\"));
+        assert!(!authorized.to_string_lossy().starts_with(r"\\?\"));
+        fs::remove_dir_all(base).expect("remove fixture");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn accepts_a_persisted_windows_grant_with_a_legacy_verbatim_prefix() {
+        let (base, _) = fixture("legacy-protocol-path");
+        let root = base.join("bundle");
+        let grant_file = base.join("state").join("grants.json");
+        fs::create_dir_all(&root).expect("create bundle");
+        fs::create_dir_all(grant_file.parent().expect("grant file parent"))
+            .expect("create grant state directory");
+        let legacy_root = root
+            .canonicalize()
+            .expect("legacy canonical root")
+            .to_string_lossy()
+            .into_owned();
+        let grants = vec![super::BundleGrant {
+            root: legacy_root.clone(),
+            kind: BundleGrantKind::LocalFolder,
+        }];
+        fs::write(
+            &grant_file,
+            serde_json::to_vec(&grants).expect("encode legacy grant"),
+        )
+        .expect("write legacy grant");
+
+        let restored = BundleGrantState::load_from(grant_file);
+
+        assert_eq!(
+            restored
+                .authorize_folder(&root)
+                .expect("authorize legacy grant"),
+            dunce::canonicalize(&root).expect("canonical root")
+        );
+        assert!(restored.revoke(&legacy_root).expect("revoke legacy grant"));
         fs::remove_dir_all(base).expect("remove fixture");
     }
 

@@ -19,6 +19,18 @@ export default defineConfig({
   resolve: {
     alias: { "@": srcRoot },
   },
+  optimizeDeps: {
+    include: [
+      "lodash/merge.js",
+      "use-sync-external-store/shim/index.js",
+      "use-sync-external-store/shim/with-selector.js",
+    ],
+    needsInterop: [
+      "lodash/merge.js",
+      "use-sync-external-store/shim/index.js",
+      "use-sync-external-store/shim/with-selector.js",
+    ],
+  },
   server: {
     port: 1420,
     strictPort: true,
@@ -39,23 +51,59 @@ export default defineConfig({
     },
   },
   test: {
-    // Two projects: the jsdom unit/interaction suite (the CI gate, `pnpm
-    // test`) and the Storybook story tests, which render every story with
-    // its play function in headless Chromium (`pnpm test:stories`; also what
-    // the Storybook UI/MCP test runner executes).
+    // Pure logic runs in Node. Components use jsdom, full-app flows use the
+    // bounded integration lane, and stories render in headless Chromium.
     projects: [
       {
         extends: true,
+        cacheDir: "node_modules/.vite-unit-tests",
         test: {
           name: "unit",
-          environment: "jsdom",
+          include: ["src/**/*.test.ts"],
+          exclude: ["src/**/*.dom.test.ts", "src/**/*.integration.test.ts"],
+          environment: "node",
           globals: true,
-          setupFiles: ["./src/test/setup.ts"],
-          css: false,
+          restoreMocks: true,
+          slowTestThreshold: 100,
+          sequence: { shuffle: true },
         },
       },
       {
         extends: true,
+        cacheDir: "node_modules/.vite-component-tests",
+        test: {
+          name: "component",
+          include: ["src/**/*.test.tsx", "src/**/*.dom.test.ts"],
+          exclude: ["src/**/*.integration.test.tsx"],
+          environment: "jsdom",
+          globals: true,
+          setupFiles: ["./src/test/setup.ts"],
+          css: false,
+          restoreMocks: true,
+          slowTestThreshold: 250,
+          sequence: { shuffle: true },
+        },
+      },
+      {
+        extends: true,
+        cacheDir: "node_modules/.vite-integration-tests",
+        test: {
+          name: "integration",
+          include: ["src/**/*.integration.test.{ts,tsx}"],
+          environment: "jsdom",
+          globals: true,
+          setupFiles: ["./src/test/setup.ts"],
+          css: false,
+          restoreMocks: true,
+          slowTestThreshold: 1_000,
+          maxWorkers: 2,
+          testTimeout: 20_000,
+          sequence: { shuffle: true },
+        },
+      },
+      {
+        extends: true,
+        cacheDir: "node_modules/.vite-story-tests",
         plugins: [
           storybookTest({ configDir: fileURLToPath(new URL("./.storybook", import.meta.url)) }),
         ],
@@ -65,8 +113,13 @@ export default defineConfig({
             enabled: true,
             provider: "playwright",
             headless: true,
+            connectTimeout: 180_000,
             instances: [{ browser: "chromium" }],
           },
+          slowTestThreshold: 1_000,
+          maxWorkers: 2,
+          testTimeout: 30_000,
+          sequence: { shuffle: true },
         },
       },
     ],

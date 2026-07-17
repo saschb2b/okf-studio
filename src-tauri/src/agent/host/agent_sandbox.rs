@@ -796,15 +796,9 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[tokio::test]
+    #[ignore = "requires a verified Linux Bubblewrap host"]
     async fn restricted_linux_host_enforces_the_compiled_mount_policy() {
         use std::os::unix::fs::PermissionsExt;
-
-        if !matches!(
-            std::env::var("OKF_STUDIO_REQUIRE_BWRAP_TEST").as_deref(),
-            Ok("1")
-        ) {
-            return;
-        }
 
         let fixture = PolicyFixture::new();
         let visible = fixture.bundle.join("docs").join("overview.md");

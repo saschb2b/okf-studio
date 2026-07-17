@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
@@ -19,8 +19,6 @@ function renderApp() {
     </AppProvider>,
   );
 }
-
-beforeEach(() => localStorage.clear());
 
 async function expectNoViolations(node: Element) {
   const results = await axe.run(node, {

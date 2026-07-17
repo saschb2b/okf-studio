@@ -14,8 +14,9 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend — lint · typecheck · test · build
+    name: Frontend fast lane — lint · typecheck · unit · build
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
 
@@ -36,9 +37,53 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  frontend-integration:
+    name: Frontend integration — full app · axe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:integration
+
+  frontend-stories:
+    name: Frontend stories — Chromium interactions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:stories
+
   core:
     name: Rust core — clippy · test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +103,7 @@ jobs:
   native-host:
     name: Native host — clippy · test
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -81,6 +127,7 @@ jobs:
     # which needs bubblewrap >= 0.8. Ubuntu 22.04 ships 0.6.1, so this job
     # requires the 24.04 image (bubblewrap 0.9).
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -112,9 +159,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Prove the restricted Bubblewrap mount policy
-        env:
-          OKF_STUDIO_REQUIRE_BWRAP_TEST: "1"
         run: >-
           cargo test -p okf-viewer
           agent_sandbox::tests::restricted_linux_host_enforces_the_compiled_mount_policy
-          -- --exact
+          -- --exact --ignored

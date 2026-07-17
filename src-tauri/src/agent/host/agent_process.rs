@@ -175,25 +175,34 @@ mod tests {
 
     const FIXTURE_ROLE: &str = "OKF_STUDIO_PROCESS_TREE_FIXTURE";
     const FIXTURE_PID_FILE: &str = "OKF_STUDIO_PROCESS_TREE_PID_FILE";
+    const FIXTURE_READY_FILE: &str = "OKF_STUDIO_PROCESS_TREE_READY_FILE";
 
     #[test]
+    #[ignore = "subprocess fixture invoked by dropping_ownership_stops_agent_descendants"]
     fn process_tree_fixture() {
-        let Ok(role) = std::env::var(FIXTURE_ROLE) else {
-            return;
-        };
+        let role = std::env::var(FIXTURE_ROLE).expect("fixture role");
         if role == "leaf" {
             std::thread::sleep(Duration::from_secs(60));
             return;
         }
 
         assert_eq!(role, "parent");
-        // Give the test process time to attach this parent to its Windows Job
-        // Object before the parent creates a descendant.
-        std::thread::sleep(Duration::from_millis(250));
+        let ready_file = std::env::var_os(FIXTURE_READY_FILE).expect("fixture ready file");
+        for _ in 0..100 {
+            if Path::new(&ready_file).exists() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(Path::new(&ready_file).exists(), "fixture was not released");
         let pid_file = std::env::var_os(FIXTURE_PID_FILE).expect("fixture PID file");
         let mut child =
             std::process::Command::new(std::env::current_exe().expect("test executable"))
-                .args(["--exact", "agent_process::tests::process_tree_fixture"])
+                .args([
+                    "--exact",
+                    "agent_process::tests::process_tree_fixture",
+                    "--ignored",
+                ])
                 .env(FIXTURE_ROLE, "leaf")
                 .spawn()
                 .expect("spawn leaf fixture");
@@ -211,15 +220,22 @@ mod tests {
             "okf-studio-process-tree-{}-{unique}.pid",
             std::process::id()
         ));
+        let ready_file = pid_file.with_extension("ready");
         let mut command = Command::new(std::env::current_exe().expect("test executable"));
         command
-            .args(["--exact", "agent_process::tests::process_tree_fixture"])
+            .args([
+                "--exact",
+                "agent_process::tests::process_tree_fixture",
+                "--ignored",
+            ])
             .env(FIXTURE_ROLE, "parent")
             .env(FIXTURE_PID_FILE, &pid_file)
+            .env(FIXTURE_READY_FILE, &ready_file)
             .kill_on_drop(true);
         configure(&mut command);
         let mut child = command.spawn().expect("spawn parent fixture");
         let tree = AgentProcessTree::attach(&child).expect("attach process tree");
+        std::fs::write(&ready_file, []).expect("release process-tree fixture");
         let descendant = wait_for_descendant(&pid_file).await;
         assert!(process_is_running(descendant));
 
@@ -228,11 +244,13 @@ mod tests {
         for _ in 0..50 {
             if !process_is_running(descendant) {
                 let _ = std::fs::remove_file(&pid_file);
+                let _ = std::fs::remove_file(&ready_file);
                 return;
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         let _ = std::fs::remove_file(&pid_file);
+        let _ = std::fs::remove_file(&ready_file);
         panic!("agent descendant {descendant} survived tree termination");
     }
 

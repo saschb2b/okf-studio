@@ -113,7 +113,8 @@ Do not push and let CI find failures you could have caught. Before committing or
 ```bash
 pnpm lint        # eslint . (type-aware: parse, type, and a11y issues)
 pnpm typecheck   # tsc --noEmit
-pnpm test        # vitest run --project unit
+pnpm test        # fast Node unit + jsdom component lanes
+pnpm test:integration # full-app and axe journeys (bounded two-worker lane)
 pnpm test:stories # story tests headless in Chromium — run when components or stories changed
 pnpm build       # tsc --noEmit && vite build
 cargo clippy -p okf-core --all-targets -- -D warnings

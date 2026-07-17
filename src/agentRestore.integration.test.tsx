@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "@/App.tsx";
 import { AppProvider } from "@/shared/store.tsx";
@@ -7,8 +7,6 @@ import * as ipc from "@/shared/ipc.ts";
 
 // The launch-restore attempt runs once per module, so this lives in its own
 // test file: a fresh module registry stands in for a fresh app launch.
-
-afterEach(() => vi.restoreAllMocks());
 
 describe("agent panel restore at launch", () => {
   it("reconnects the remembered agent and resumes the saved thread on its own", async () => {
@@ -59,7 +57,7 @@ describe("agent panel restore at launch", () => {
       .activeAgentConnections()
       .find((candidate) => candidate.profileId === profile.id);
     expect(connection).toBeDefined();
-    await ipc.disconnectAgent(connection!.connectionId);
+    await act(() => ipc.disconnectAgent(connection!.connectionId));
     expect(ipc.lastAgentConnection()).toBeNull();
     await ipc.removeCustomAgent(profile.id);
   });

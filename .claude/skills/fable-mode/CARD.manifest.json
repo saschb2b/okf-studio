@@ -1,0 +1,70 @@
+[
+  {
+    "path": "SKILL.md",
+    "sha256": "d923848046ed8b9c49711d5ed6a68294d8dedfacd39dc29a30b4a4b336af4979"
+  },
+  {
+    "path": "permissions.yaml",
+    "sha256": "a59c33d37ea2d14fbd0b443829a952a6a6ff099c8ffcdc1f12ff6a8e9c8112aa"
+  },
+  {
+    "path": "references/context-economy.md",
+    "sha256": "f44d9b809a926faf5a13d3f0281540f3583078c5c94123b65febd30d3cbf8e4a"
+  },
+  {
+    "path": "references/delegation.md",
+    "sha256": "f082f2a4d06930a5629a0d74a6e8e882cbdb734f896ed6e6ec58266fdf3f3596"
+  },
+  {
+    "path": "references/gpt-5-6-deltas.md",
+    "sha256": "a40a8a35e4f0a74e4e448d49c8e5f26223a8259c5c8ff0d37b485ced6e4c77a1"
+  },
+  {
+    "path": "references/harness-mapping.md",
+    "sha256": "09cf8bb03168482a70a1fcb2b6d9b5911a7949f8adae5b503bd1ba4c6223fb30"
+  },
+  {
+    "path": "references/index.md",
+    "sha256": "b7d2229b1eb32a19df41411c03a174a33fd0b23407aaba8ac998514bca2faca9"
+  },
+  {
+    "path": "references/irreversibility.md",
+    "sha256": "cd17ce2e96971d842135748f62a7247200eb4be990d2f25759f06927ed788dcf"
+  },
+  {
+    "path": "references/log.md",
+    "sha256": "a7194d218ebee8df535bbe40e3ff3cbca5325c0e4ec1b2fe4a660584f75b2ac2"
+  },
+  {
+    "path": "references/memory.md",
+    "sha256": "ae3b0e0b57be431c5f6b7959e6f22ef692737d9056385af04f6bb842e3d84351"
+  },
+  {
+    "path": "references/operating-loop.md",
+    "sha256": "53fd94aceff086f1553bd9274d3c19aecd61caf2bfa96dd31baf0d48a4817d69"
+  },
+  {
+    "path": "references/orchestration.md",
+    "sha256": "dc08edaafbcc91ade8ca22631d9b4d0954fb76c0e00b9d5fb7c9a494606549e9"
+  },
+  {
+    "path": "references/parallel-dispatch.md",
+    "sha256": "5a6337fac6e1d72b606ac3f93e2591b2b5854577d3092d2542b4c1aa4443d026"
+  },
+  {
+    "path": "references/reporting.md",
+    "sha256": "48c3bdddf6e79ab16b3789ddd3dd75587d27a53dc4d4ebb00d522448fc2b0db2"
+  },
+  {
+    "path": "references/tool-and-code-conduct.md",
+    "sha256": "5e00c39236e6315a55acbfa5d730870b0593e81a1eb52f419dad80957faf246d"
+  },
+  {
+    "path": "references/trust-boundaries.md",
+    "sha256": "23edca47291ebbbb584d0810db3c32a5c8f7d5ba01461f29e7cc10991660799a"
+  },
+  {
+    "path": "references/verification.md",
+    "sha256": "ba810e015ee4d00baf3aeec486fb262d54db143c99680d0237be3cf6e63e6f18"
+  }
+]

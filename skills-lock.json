@@ -13,6 +13,12 @@
       "skillPath": "skills/productivity/autopilot/SKILL.md",
       "computedHash": "9900d7f6426fe60c3a007eab206e85830be13fad5d3b30de65f256f65f494683"
     },
+    "fable-mode": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/fable-mode/SKILL.md",
+      "computedHash": "f6bb453976a1b906ced22b216ad3f095d9c73468742fe30114132a3cef30a169"
+    },
     "javascript-ecosystem": {
       "source": "saschb2b/skills",
       "sourceType": "github",

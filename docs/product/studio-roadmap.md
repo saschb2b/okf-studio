@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-16T23:26:05Z
+timestamp: 2026-07-17T00:06:58Z
 ---
 
 # Outcome
@@ -268,7 +268,7 @@ Gate: a user can always see why the agent is waiting, what step is running, what
 
 ## WP10D: Thread navigation and context lifecycle
 
-- [ ] Add transcript-level keyboard navigation and visible jump controls for the top, latest user prompt, and bottom. Streaming must not steal scroll position after the user moves away from the tail.
+- [x] Add transcript-level keyboard navigation and visible jump controls for the top, latest user prompt, and bottom. Streaming must not steal scroll position after the user moves away from the tail.
 - [ ] Add response actions for copying a selection, copying one complete agent response, and opening the current thread as inert Markdown inside Studio. Keep native file export as a separate explicit action.
 - [ ] Make bundle-relative ACP tool locations navigable in the reader. Ignore outside-bundle, absolute-only, missing, or non-concept locations without broadening file access.
 - [ ] Turn context usage into a threshold state with an explanation and recovery. Use an advertised compact or summary command when available; otherwise offer a fresh thread with explicit, reviewable carried context.

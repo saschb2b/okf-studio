@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-16T23:26:05Z
+timestamp: 2026-07-17T00:06:58Z
 ---
 
 # Entry and first open
@@ -79,7 +79,7 @@ Only advertised capabilities appear. Unsupported restore, model, retry, or logou
 
 The global bundle switcher owns the active bundle label, the connection strip owns the agent label, and the thread strip owns the thread title. The action row keeps a screen-reader heading for the selected thread but does not render those three labels again. Rename and security remain available before the first prompt. One **More thread actions** menu owns History, Export, Archive, and Change agent. Export and Archive appear in that menu only after the thread contains a message. Opening History gives its surface a direct Back action because returning to the transcript is primary navigation there. **Allow edits** stays absent in ordinary read-only work; selecting Create or Enhance, receiving a blocking permission request, reporting a denied write attempt, holding a live grant, or carrying staged changes reveals it. Export, metadata, and recovery notices sit below the action that owns them instead of squeezing the identity labels.
 
-The transcript is the panel's flexible scroll owner. Its scrollbar gutter remains stable, long turns and permission cards scroll there, and the identity bands plus composer stay in reach. Empty guidance uses a two-column starter grid when the panel is wider than 420 pixels and one compact column below that width. The staged-review surface has its own bounded scroll area instead of growing until it displaces the transcript or send controls.
+The transcript is the panel's flexible scroll owner. Its scrollbar gutter remains stable, long turns scroll there, and the identity bands plus composer stay in reach. A docked three-button strip jumps to the transcript top, latest user prompt, or bottom; the same targets use Home, Shift+Home, and End while the labelled transcript region has focus. Studio follows streamed content only while the transcript remains at its tail. Scrolling away suspends that follow behavior until the user returns to the tail or explicitly jumps to the bottom, so a response cannot pull someone away from earlier evidence they are reading. Empty guidance uses a two-column starter grid when the panel is wider than 420 pixels and one compact column below that width. The staged-review surface has its own bounded scroll area instead of growing until it displaces the transcript or send controls.
 
 A failed agent process belongs to the connection level, not to whichever thread happened to be visible. Studio retains one bounded failure notice below the Agent header after the failed connection leaves the switcher. The notice names the agent, keeps the host-produced reason visible, and offers **Review connections** plus **Dismiss**. When it was the last connection, the remaining space confirms that the bundle is still open without presenting a competing connection action. Opening and leaving the catalog does not erase the failure; successfully reconnecting the same profile does.
 

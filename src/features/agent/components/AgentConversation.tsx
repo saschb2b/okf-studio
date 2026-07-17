@@ -18,6 +18,7 @@ import { SavedThreadWelcome, EmptyThreadWelcome, ThreadSecurityScope, ThreadTitl
 import { AttachmentPicker } from "@/features/agent/components/conversation/AttachmentPicker.tsx";
 import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemView, planProgressLabel, LivePlan } from "@/features/agent/components/conversation/items.tsx";
 import { useTranscriptExport } from "@/features/agent/components/conversation/useTranscriptExport.ts";
+import { TranscriptSurface } from "@/features/agent/components/conversation/TranscriptSurface.tsx";
 
 
 export interface AgentConversationProps {
@@ -140,7 +141,6 @@ export function AgentConversation({
   const failedTurnsRef = useRef(new Set<string>());
   const acceptedDraftsRef = useRef(new Map<string, PromptDraft>());
   const metadataSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const messagesRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   const stagedValidationRequestRef = useRef(0);
@@ -150,14 +150,6 @@ export function AgentConversation({
 
   bundleRootRef.current = bundleRoot;
   connectionIdRef.current = connection.connectionId;
-
-  useEffect(() => {
-    const messagesElement = messagesRef.current;
-    if (!messagesElement) return;
-    messagesElement.scrollTop = messages.length > 0 || pendingPermissions.length > 0
-      ? messagesElement.scrollHeight
-      : 0;
-  }, [messages, pendingPermissions, savedThread.status]);
 
   useEffect(() => {
     if (savedThread.status === "error") savedThreadActionRef.current?.focus();
@@ -1592,7 +1584,12 @@ export function AgentConversation({
 
       {bundleRoot && !requiresAuthentication && history.status === "closed" && (
         <>
-          <div ref={messagesRef} className="agent-conversation__messages" aria-live="polite">
+          <TranscriptSurface
+            key={messages.find((item) => item.role === "user")?.id ?? "new-thread"}
+            hasItems={messages.length > 0}
+            hasUserMessage={hasSession}
+            contentVersion={messages}
+          >
             {messages.length === 0 && pendingPermissions.length === 0 ? (
               <div className="agent-conversation__welcome">
                 {savedThread.status === "none" ? (
@@ -1617,44 +1614,49 @@ export function AgentConversation({
                   if (item.id === livePlanId) return null;
                   const turnId = item.role === "status" ? item.turnId : undefined;
                   return (
-                    <ConversationItemView
+                    <div
                       key={item.id}
-                      item={item}
-                      onRetry={
-                        turnId && retryableTurnIds.has(turnId)
-                          ? () => retryAcceptedTurn(turnId)
-                          : undefined
-                      }
-                      isRetrying={turnId === retryingTurnId}
-                      retryError={turnId ? retryErrors.get(turnId) ?? null : null}
-                      onGenerateProposal={item.id === latestBundleProposalMessageId
-                        ? () => void generateBundleProposal()
-                        : undefined}
-                      generationBlockedReason={item.id === latestBundleProposalMessageId
-                        ? !writeGranted
-                          ? "Allow edits for this thread before generating staged files."
-                          : stagedFileCount > 0 && stagedChanges?.mode !== (
-                              threadWorkflow === "create-bundle" ? "create" : "enhance"
-                            )
-                            ? "Resolve the current staged changes before generating this proposal."
+                      className="agent-conversation__item"
+                      data-transcript-role={item.role}
+                    >
+                      <ConversationItemView
+                        item={item}
+                        onRetry={
+                          turnId && retryableTurnIds.has(turnId)
+                            ? () => retryAcceptedTurn(turnId)
+                            : undefined
+                        }
+                        isRetrying={turnId === retryingTurnId}
+                        retryError={turnId ? retryErrors.get(turnId) ?? null : null}
+                        onGenerateProposal={item.id === latestBundleProposalMessageId
+                          ? () => void generateBundleProposal()
+                          : undefined}
+                        generationBlockedReason={item.id === latestBundleProposalMessageId
+                          ? !writeGranted
+                            ? "Allow edits for this thread before generating staged files."
+                            : stagedFileCount > 0 && stagedChanges?.mode !== (
+                                threadWorkflow === "create-bundle" ? "create" : "enhance"
+                              )
+                              ? "Resolve the current staged changes before generating this proposal."
+                              : null
+                          : null}
+                        generationError={
+                          item.id === latestBundleProposalMessageId &&
+                          stageError?.owner === "proposal"
+                            ? stageError.message
                             : null
-                        : null}
-                      generationError={
-                        item.id === latestBundleProposalMessageId &&
-                        stageError?.owner === "proposal"
-                          ? stageError.message
-                          : null
-                      }
-                      isGeneratingProposal={
-                        item.id === latestBundleProposalMessageId &&
-                        (isSubmitting || isPreparingGeneration)
-                      }
-                    />
+                        }
+                        isGeneratingProposal={
+                          item.id === latestBundleProposalMessageId &&
+                          (isSubmitting || isPreparingGeneration)
+                        }
+                      />
+                    </div>
                   );
                 })}
               </>
             )}
-          </div>
+          </TranscriptSurface>
           {hasLiveWork && (
             <AgentLiveWorkShelf
               summary={liveWorkSummary}
@@ -2260,4 +2262,3 @@ export function AgentConversation({
     </section>
   );
 }
-

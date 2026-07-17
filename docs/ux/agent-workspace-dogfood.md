@@ -3,7 +3,7 @@ type: UX Review
 title: Agent Workspace Dogfood
 description: Journey evidence and open findings from the WP10A Agent Panel refinement.
 tags: [ux, agent-panel, dogfood, accessibility]
-timestamp: 2026-07-16T23:26:05Z
+timestamp: 2026-07-17T00:06:58Z
 ---
 
 # Scope
@@ -56,12 +56,23 @@ The WP10C pressure fixture mounts a failed permission response, an expanded thre
 
 At 360px, 440px, and 560px, the panel has no horizontal overflow and the composer remains fully visible. The blocking and non-blocking bands both become internal scroll owners under pressure. Visible buttons stay at least 28px high; the permission checkbox label supplies a 24px hit area. Tabbing from the collapse control reaches **Allow once** first. Collapsing retains focus on that control, keeps the blocking permission mounted, and removes the plan, staged review, and queue from the tab order. The shelf contains one deliberate delivery-failure alert and no additional `aria-live` regions.
 
+# Transcript navigation evidence
+
+The WP10D transcript surface keeps its three jump controls docked outside the scroll viewport, so the controls do not cover Markdown at an intermediate landing point.
+
+![Transcript navigation at a 360px panel width](agent-transcript-navigation-360.png)
+
+![Transcript navigation at the 440px default panel width](agent-transcript-navigation-440.png)
+
+At both widths, the transcript and page have no horizontal overflow and every navigation control is 28px high. In the 440px fixture, Home lands at scroll position 0, Shift+Home lands on the latest user prompt at 172, and End lands at the 253px tail. Focus remains on the transcript for keyboard jumps and on the activated button for pointer use. A focused unit fixture proves that a streamed content update preserves a manually chosen scroll position, then resumes tail following only after an explicit bottom jump.
+
 # Findings
 
 - **Untidy, Safe, fixed:** current and archived sessions both used primary Resume styling. Only the newest current candidate now receives primary emphasis.
 - **Untidy, Safe, fixed before capture:** staged-operation recovery could start below the staged file scroll, and a final-process failure could present two competing connection actions.
 - **Glaring, Safe, fixed:** the shelf used a non-shrinking flex basis, which clipped the composer when all four work sections were present in a short 360px panel. It now yields height to the composer and keeps both shelf bands scrollable.
 - **Glaring, Safe, fixed:** the permission checkbox label provided an 18px-high target. Its labelled hit area now meets the 24px floor.
+- **Untidy, Safe, fixed:** the first transcript-navigation strip floated over the scroll viewport and covered part of a response at the latest-prompt landing. It now docks below the viewport without reducing the composer's reachability.
 - **Nitpick, Judgment, retained:** staged graph labels use 9px text. They supplement the textual staged-file list; increasing them to the 12px text floor makes dense preview nodes overlap.
 
-No Glaring finding remains in these journeys. The next dependency-ordered workspace work is thread navigation and context recovery in [WP10D](../product/studio-roadmap.md#wp10d-thread-navigation-and-context-lifecycle).
+No Glaring finding remains in these journeys. The next dependency-ordered work is response copying and inert in-Studio Markdown in [WP10D](../product/studio-roadmap.md#wp10d-thread-navigation-and-context-lifecycle).

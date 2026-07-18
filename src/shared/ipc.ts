@@ -385,7 +385,7 @@ const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number]
 };
 
 const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string> = {
-  "okf-core": "0.3.0",
+  "okf-core": "0.4.0",
   "okf-inspect": "0.2.0",
   "okf-create": "0.2.0",
   "okf-enrich": "0.2.0",
@@ -496,7 +496,7 @@ export async function onOkfCapabilityPackChanged(
 function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
   return {
     id: "okf-foundation",
-    version: "1.1.0",
+    version: "1.2.0",
     name: "OKF Foundation",
     description: "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
     publisher: "OKF Studio",
@@ -508,13 +508,15 @@ function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
       artifactSchemaVersion: 1,
     },
     conflicts: [],
-    requiredStudioTools: [...new Set(MOCK_OKF_CAPABILITY_IDS.flatMap(
-      (id) => MOCK_OKF_CAPABILITY_TOOLS[id],
-    ))],
+    requiredStudioTools: [
+      "okf_capability_catalog",
+      "okf_capability_resource",
+      ...new Set(MOCK_OKF_CAPABILITY_IDS.flatMap((id) => MOCK_OKF_CAPABILITY_TOOLS[id])),
+    ],
     templateIds: ["okf-markdown-templates"],
     artifactSchemaIds: ["okf-artifact-v1", "writing-revision-v1"],
     active,
-    rollbackLabel: "Legacy 0.3.0",
+    rollbackLabel: "Legacy 0.4.0",
   };
 }
 

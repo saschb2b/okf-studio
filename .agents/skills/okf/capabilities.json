@@ -4,7 +4,7 @@
   "capabilities": [
     {
       "id": "okf-core",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Inspect, author, validate, and maintain conformant Open Knowledge Format bundles.",
       "riskClass": "stage",
       "requiredTools": [
@@ -35,7 +35,7 @@
           "label": "instructions",
           "path": "SKILL.md",
           "mediaType": "text/markdown",
-          "sha256": "20eda3778b8f39c0beb265b5a0939c3b3ead02d696a0c67f4957980bf180fc17"
+          "sha256": "44a69ba95ee836153ff3960656df63f50dce096962314843ff6a31a7012fd934"
         },
         {
           "id": "specification",
@@ -63,7 +63,7 @@
           "label": "capability changelog",
           "path": "capabilities/CHANGELOG.md",
           "mediaType": "text/markdown",
-          "sha256": "cd7fe93cce5a4574089c908ec4838d6b158c32feab06b978cbd81cbf7e8290df"
+          "sha256": "bc852fc883d8d7f42e2e437b9df2e90f91d5c0a4fcd3d2befa3f1026698bd157"
         },
         {
           "id": "writing",

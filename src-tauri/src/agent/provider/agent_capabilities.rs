@@ -39,7 +39,9 @@ const DEFAULT_CAPABILITY_ID: &str = "okf-core";
 const PACK_STATE_SCHEMA_VERSION: u32 = 1;
 const PACK_STATE_FILE: &str = "capability-pack-state.json";
 const PACK_STATE_BACKUP_FILE: &str = "capability-pack-state.previous.json";
-const ALLOWED_TOOL_IDS: [&str; 16] = [
+const ALLOWED_TOOL_IDS: [&str; 18] = [
+    "okf_capability_catalog",
+    "okf_capability_resource",
     "okf_inventory",
     "okf_read",
     "okf_search",
@@ -807,7 +809,7 @@ mod tests {
 
         let capability = default_capability();
         assert_eq!(capability.id, "okf-core");
-        assert_eq!(capability.version, "0.3.0");
+        assert_eq!(capability.version, "0.4.0");
         assert_eq!(capability.resources.len(), 6);
         assert_eq!(manifest_sha256().len(), 64);
         for (capability_id, expected_version) in [
@@ -840,13 +842,13 @@ mod tests {
     fn materializes_only_declared_resources_with_versioned_identity() {
         let commands = resource("okf-core", "commands").expect("commands should be declared");
         assert_eq!(commands.capability_id, "okf-core");
-        assert_eq!(commands.capability_version, "0.3.0");
+        assert_eq!(commands.capability_version, "0.4.0");
         assert_eq!(commands.resource_id, "commands");
         assert_eq!(commands.media_type, "text/markdown");
         assert_eq!(commands.sha256.len(), 64);
         assert_eq!(
             commands.uri,
-            "okf-studio://capability/okf-core/v0.3.0/commands"
+            "okf-studio://capability/okf-core/v0.4.0/commands"
         );
         assert!(commands.contents.contains("## `init`"));
         assert!(resource("okf-core", "secrets").is_err());

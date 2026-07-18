@@ -3,12 +3,14 @@ type: Feature
 title: OKF Writing
 description: Author and revise OKF concepts from a named reader job while preserving every supported claim, qualifier, citation, link, formula, code sample, and domain term.
 tags: [feature, agents, writing, revision, evidence, review]
-timestamp: 2026-07-18T18:10:00Z
+timestamp: 2026-07-18T20:30:00Z
 ---
 
 # What it does
 
-Studio adds two native OKF tasks. **Write an OKF concept** turns accepted evidence or a reviewed bundle plan into new concept prose. **Improve this writing** revises an existing concept without changing its factual meaning. Both use the shared writing contract shipped in `okf-foundation@1.1.0`.
+Studio adds two native OKF tasks. **Write an OKF concept** turns accepted evidence or a reviewed bundle plan into new concept prose. **Improve this writing** revises an existing concept without changing its factual meaning. Both use the shared writing contract shipped in `okf-foundation@1.2.0`.
+
+The same methods are available from ordinary chat. A generic writing request selects `okf-author` or `okf-revise` from the active capability catalog and loads the shared writing contract before work begins. The named task remains the stronger path when the user wants a visible, deterministic context and tool plan before sending.
 
 The contract starts with a reader job: who needs the concept and which question or decision it must support. The agent inventories claims and references, chooses the information shape, drafts, edits for directness, and reconciles the result against the inventory. New facts belong to enrichment. A style-only revision may reword claims but cannot add or remove them.
 

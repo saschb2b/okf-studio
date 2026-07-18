@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Writing Quality
 description: The sequenced work to make agent-authored OKF concepts precise, evidence-preserving, readable, and visibly revised without turning style into conformance.
 tags: [product, roadmap, agents, writing, quality, skills]
-timestamp: 2026-07-18T18:40:00Z
+timestamp: 2026-07-18T20:30:00Z
 ---
 
 # Outcome
@@ -14,7 +14,7 @@ This transformation is successful when common authoring and revision tasks produ
 
 # Delivery status
 
-The product implementation is complete. The shared resource, author and revise capabilities, diagnostics, protected claim ledger, review surface, critic, benchmark, documentation, site copy, and rollback path ship together in `okf-foundation@1.1.0`.
+The product implementation is complete. The shared resource, author and revise capabilities, generic-chat router, diagnostics, protected claim ledger, review surface, critic, benchmark, documentation, site copy, and rollback path ship together in `okf-foundation@1.2.0`.
 
 Three release-evidence items remain open because this workspace cannot manufacture them: a configured Studio Agent run, shuffled blind human preference, and protected signing plus non-Windows packages. An authenticated external Codex run completed all seven cases twice and passed all 14 deterministic preservation checks. The [dogfood record](okf-writing-quality-dogfood.md) retains the evidence and names the unavailable gates without treating them as passes.
 

@@ -56,6 +56,22 @@ test("accepts the frozen OKF task and fixture contract", () => {
   ].sort());
 });
 
+test("routes generic chat to every curated capability without preloading all methods", () => {
+  const capabilities = loadCapabilityManifest().capabilities;
+  const skill = readFileSync(join(import.meta.dirname, "../.agents/skills/okf/SKILL.md"), "utf8");
+
+  for (const capability of capabilities.filter((item) => item.id !== "okf-core")) {
+    assert.ok(
+      skill.includes(`(./${capability.resources[0].path})`),
+      `missing generic route for ${capability.id}`,
+    );
+  }
+  assert.match(skill, /call `okf_capability_catalog`/);
+  assert.match(skill, /`okf_capability_resource` to load the selected method/);
+  assert.match(skill, /Do not claim to have used a method until its resource was loaded/);
+  assert.match(skill, /Loading every method at once wastes context and combines incompatible boundaries/);
+});
+
 test("writing corpus rejects polish that loses required knowledge", () => {
   const corpus = JSON.parse(readFileSync(defaultWritingCorpusPath, "utf8"));
   assert.equal(validateWritingCorpus(corpus).writingCaseCount, 7);

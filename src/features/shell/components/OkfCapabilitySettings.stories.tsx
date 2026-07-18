@@ -7,33 +7,52 @@ import "@/shared/styles/chrome.css";
 import "./Settings.css";
 
 const catalog: OkfCapabilityCatalogInfo = {
-  manifestSha256: "6aa1c3a57fcd96d0a4199f4f4621dc9840ddf62e8afd3d2d2ff6424fd30dc034",
+  manifestSha256: "918d9b0905d2a29632dcc800cfc285d53b62dd37e15f4013aa81e514e6a4f535",
   schemaVersion: 1,
   resourceSchemaVersion: 1,
   pack: {
     id: "okf-foundation",
-    version: "1.0.0",
+    version: "1.2.0",
     name: "OKF Foundation",
     description: "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
     publisher: "OKF Studio",
     provenance: "built-in",
-    manifestSha256: "8f42bf715678a0219ccb7213a96e81aa6c6911a0a5b95f6eddfe19a5e9c5637d",
+    manifestSha256: "8db79fe5633fa142af8afe5fe0f89850c46ecae0634cc0324e4577db0f023fce",
     compatibility: {
       minimumStudioVersion: "0.3.0",
       capabilitySchemaVersion: 1,
       artifactSchemaVersion: 1,
     },
     conflicts: [],
-    requiredStudioTools: ["okf_inventory", "okf_read", "okf_health_summary"],
+    requiredStudioTools: [
+      "okf_capability_catalog",
+      "okf_capability_resource",
+      "okf_inventory",
+      "okf_read",
+      "okf_search",
+      "okf_sources",
+      "okf_traverse",
+      "okf_validate",
+      "okf_health_summary",
+      "okf_health_finding",
+      "okf_health_affected",
+      "okf_health_repair",
+      "studio_source_inventory",
+      "studio_source_read",
+      "studio_stage_inventory",
+      "studio_stage_read",
+      "studio_stage_propose",
+      "studio_stage_validate",
+    ],
     templateIds: ["okf-markdown-templates"],
-    artifactSchemaIds: ["okf-artifact-v1"],
+    artifactSchemaIds: ["okf-artifact-v1", "writing-revision-v1"],
     active: true,
-    rollbackLabel: "Legacy 0.3.0",
+    rollbackLabel: "Legacy 0.4.0",
   },
   capabilities: [
     {
       id: "okf-core",
-      version: "0.3.0",
+      version: "0.4.0",
       description: "Inspect, author, validate, and maintain conformant OKF bundles.",
       riskClass: "stage",
       requiredTools: ["okf_inventory", "okf_read"],
@@ -43,7 +62,7 @@ const catalog: OkfCapabilityCatalogInfo = {
         label: "instructions",
         path: "SKILL.md",
         mediaType: "text/markdown",
-        sha256: "20eda3778b8f39c0beb265b5a0939c3b3ead02d696a0c67f4957980bf180fc17",
+        sha256: "44a69ba95ee836153ff3960656df63f50dce096962314843ff6a31a7012fd934",
       }],
     },
     {
@@ -91,8 +110,8 @@ export const ActivePack: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Active")).toBeVisible();
-    await expect(canvas.getByText("okf-artifact-v1")).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: "Use Legacy 0.3.0" }));
+    await expect(canvas.getByText(/okf-artifact-v1/)).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Use Legacy 0.4.0" }));
     await expect(args.onTogglePack).toHaveBeenCalledOnce();
   },
 };

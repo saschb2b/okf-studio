@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::agent_capabilities::{self, CapabilityRiskClass};
 use crate::agent_local::{LocalToolCall, LocalToolDefinition};
 
 const DEFAULT_SEARCH_LIMIT: usize = 12;
@@ -372,6 +373,51 @@ struct HealthRepairDetail {
     description: String,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct CapabilityCatalogInput {}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct CapabilityCatalogOutput {
+    manifest_sha256: String,
+    capabilities: Vec<CapabilitySummary>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct CapabilitySummary {
+    id: String,
+    version: String,
+    description: String,
+    risk_class: String,
+    required_tools: Vec<String>,
+    artifact_kinds: Vec<String>,
+    resource_ids: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CapabilityResourceInput {
+    /// Capability ID returned by okf_capability_catalog.
+    capability_id: String,
+    /// Resource ID declared for that capability.
+    resource_id: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct CapabilityResourceOutput {
+    capability_id: String,
+    capability_version: String,
+    resource_id: String,
+    label: String,
+    uri: String,
+    media_type: String,
+    sha256: String,
+    contents: String,
+}
+
 #[derive(Clone, Debug)]
 struct OkfMcpServer {
     bundle: Arc<Bundle>,
@@ -439,6 +485,56 @@ impl OkfMcpServer {
 
 #[tool_router]
 impl OkfMcpServer {
+    #[tool(
+        description = "List the active versioned OKF capability catalog for generic chat. Select the narrowest matching capability, then load only its required resource with okf_capability_resource."
+    )]
+    fn okf_capability_catalog(
+        &self,
+        Parameters(_input): Parameters<CapabilityCatalogInput>,
+    ) -> Result<Json<CapabilityCatalogOutput>, String> {
+        let capabilities = agent_capabilities::catalog()
+            .capabilities
+            .iter()
+            .map(|capability| CapabilitySummary {
+                id: capability.id.clone(),
+                version: capability.version.clone(),
+                description: capability.description.clone(),
+                risk_class: capability_risk_class_name(capability.risk_class).to_string(),
+                required_tools: capability.required_tools.clone(),
+                artifact_kinds: capability.artifact_kinds.clone(),
+                resource_ids: capability
+                    .resources
+                    .iter()
+                    .map(|resource| resource.id.clone())
+                    .collect(),
+            })
+            .collect();
+        Ok(Json(CapabilityCatalogOutput {
+            manifest_sha256: agent_capabilities::manifest_sha256().to_string(),
+            capabilities,
+        }))
+    }
+
+    #[tool(
+        description = "Load one declared, versioned OKF capability resource after selecting it from okf_capability_catalog. The resource is Studio guidance, not evidence about the active bundle, and grants no additional access."
+    )]
+    fn okf_capability_resource(
+        &self,
+        Parameters(input): Parameters<CapabilityResourceInput>,
+    ) -> Result<Json<CapabilityResourceOutput>, String> {
+        let resource = agent_capabilities::resource(&input.capability_id, &input.resource_id)?;
+        Ok(Json(CapabilityResourceOutput {
+            capability_id: resource.capability_id,
+            capability_version: resource.capability_version,
+            resource_id: resource.resource_id,
+            label: resource.label,
+            uri: resource.uri,
+            media_type: resource.media_type,
+            sha256: resource.sha256,
+            contents: resource.contents.to_string(),
+        }))
+    }
+
     #[tool(
         description = "Inspect the active OKF bundle before reading files. Returns bundle metadata, validation counts, type and tag counts, and paged concept summaries."
     )]
@@ -980,6 +1076,15 @@ fn health_repairability_name(value: HealthRepairability) -> &'static str {
     }
 }
 
+fn capability_risk_class_name(value: CapabilityRiskClass) -> &'static str {
+    match value {
+        CapabilityRiskClass::Read => "read",
+        CapabilityRiskClass::Analyze => "analyze",
+        CapabilityRiskClass::Fetch => "fetch",
+        CapabilityRiskClass::Stage => "stage",
+    }
+}
+
 fn health_finding_preview(finding: &HealthFinding) -> HealthFindingPreview {
     HealthFindingPreview {
         id: finding.id.clone(),
@@ -1308,7 +1413,7 @@ impl ServerHandler for OkfMcpServer {
             .with_server_info(Implementation::new("okf-studio", env!("CARGO_PKG_VERSION")))
             .with_protocol_version(ProtocolVersion::V_2024_11_05)
             .with_instructions(
-                "Read-only tools to inspect, read, search, trace sources, traverse, validate, and analyze deterministic knowledge health for the active Open Knowledge Format bundle.",
+                "Read-only tools to select and load versioned OKF methods, then inspect, read, search, trace sources, traverse, validate, and analyze deterministic knowledge health for the active Open Knowledge Format bundle. Generic chat should inspect the capability catalog and load the narrowest relevant method before OKF work.",
             )
     }
 }
@@ -1350,6 +1455,24 @@ mod tests {
             .canonicalize()
             .expect("canonical docs root");
         let server = OkfMcpServer::new(okf_core::read_bundle(&root));
+        let Json(catalog) = server
+            .okf_capability_catalog(Parameters(CapabilityCatalogInput {}))
+            .expect("capability catalog");
+        assert_eq!(catalog.manifest_sha256.len(), 64);
+        assert!(catalog
+            .capabilities
+            .iter()
+            .any(|capability| capability.id == "okf-revise"
+                && capability.resource_ids == ["instructions"]));
+        let Json(resource) = server
+            .okf_capability_resource(Parameters(CapabilityResourceInput {
+                capability_id: "okf-revise".to_string(),
+                resource_id: "instructions".to_string(),
+            }))
+            .expect("revise capability resource");
+        assert_eq!(resource.capability_version, "0.1.0");
+        assert!(resource.contents.contains("writing-revision"));
+
         let Json(inventory) = server
             .okf_inventory(Parameters(InventoryInput {
                 prefix: Some("features/".to_string()),
@@ -1532,6 +1655,12 @@ mod tests {
                 severity: None,
                 offset: None,
                 limit: None,
+            }))
+            .is_err());
+        assert!(server
+            .okf_capability_resource(Parameters(CapabilityResourceInput {
+                capability_id: "okf-missing".to_string(),
+                resource_id: "instructions".to_string(),
             }))
             .is_err());
     }
@@ -1734,6 +1863,8 @@ mod tests {
                 .map(|tool| tool.name.as_ref())
                 .collect::<Vec<_>>(),
             [
+                "okf_capability_catalog",
+                "okf_capability_resource",
                 "okf_health_affected",
                 "okf_health_finding",
                 "okf_health_repair",
@@ -1746,6 +1877,27 @@ mod tests {
                 "okf_validate"
             ]
         );
+        let result = client
+            .call_tool(
+                CallToolRequestParams::new("okf_capability_resource").with_arguments(
+                    serde_json::json!({
+                        "capabilityId": "okf-revise",
+                        "resourceId": "instructions"
+                    })
+                    .as_object()
+                    .expect("object")
+                    .clone(),
+                ),
+            )
+            .await
+            .expect("call capability resource tool");
+        let structured = result
+            .structured_content
+            .expect("structured capability resource output");
+        assert_eq!(structured["capabilityId"], "okf-revise");
+        assert!(structured["contents"]
+            .as_str()
+            .is_some_and(|contents| contents.contains("writing-revision")));
         let result = client
             .call_tool(
                 CallToolRequestParams::new("okf_search").with_arguments(

@@ -3,7 +3,7 @@ type: Evaluation Record
 title: OKF Writing Quality Dogfood
 description: The retained implementation, component, provider, and packaging evidence for the first OKF Writing release.
 tags: [product, agents, writing, evaluation, dogfood]
-timestamp: 2026-07-18T18:40:00Z
+timestamp: 2026-07-18T20:30:00Z
 ---
 
 # Scope
@@ -26,6 +26,12 @@ Codex CLI reported model `gpt-5.6-sol`. Two runs covered all seven writing cases
 The first score exposed an evaluation defect: the source-policy case required the exact phrase `must retain`, while the provider preserved the same normative claim as `requires records to be retained`. The scorer now accepts a closed set of equivalent normative forms. It still fails missing normativity, retention period, policy attribution, citation, or unsupported promotional language.
 
 This result is not the blind preference gate. No Studio Agent endpoint was configured, and no human pairwise review was performed. The local result records both as unavailable instead of assigning a passing score.
+
+# Generic chat routing evidence
+
+A read-only external Codex run received a generic request to review the bundle for clearer writing. It loaded the repository `okf` router, selected `okf-revise`, preserved the method's no-semantic-change boundary, and returned a claim-inventory procedure without editing files. Transport tests separately confirmed that an ACP agent can enumerate the active capability catalog and load the declared revision resource through Studio MCP.
+
+This proves discovery and delivery, not provider compliance. Studio still cannot attest that an external agent followed every instruction after loading it. A named task remains the stronger entry point when the user needs a deterministic task ID, context plan, and artifact contract.
 
 # Product and packaging evidence
 

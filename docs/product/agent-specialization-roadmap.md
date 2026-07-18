@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T16:30:00Z
+timestamp: 2026-07-18T20:30:00Z
 ---
 
 # Outcome
@@ -38,13 +38,14 @@ The completed [Studio transformation](studio-roadmap.md) already provides extern
 
 # Second-pass review
 
-The architecture, UX, security, and dependency review found six gaps in the first pass and changed the package contract:
+The architecture, UX, security, and dependency review found seven gaps in the first pass and later dogfood pass, then changed the package contract:
 
 | Gap | Resolution |
 | --- | --- |
 | Work stopped at one active bundle | Add a read-only, grant-based federation package with stable bundle and concept identity |
 | Structured artifacts lacked a common lifecycle | Require schema version, bundle fingerprint, source references, producing turn, validation state, and stale-state rules |
 | External agents could appear to have loaded a capability without proof | Record delivery separately from agent use; never claim compliance only because context was sent |
+| Generic chat received the shared kernel but could miss the narrow methods | Expose the complete active catalog and a read-only, digest-bound resource loader while keeping detailed methods progressive |
 | Automation did not define sleep, missed schedules, overlap, or offline behavior | Add a Rust-owned run ledger, one-run-at-a-time policy, explicit catch-up choice, and fail-closed scope revalidation |
 | Benchmark goals were qualitative | Add frozen fixtures, machine-scored safety and structure checks, repeated-run stability, and locally retained reports |
 | The UX packages did not share a journey contract | Define one task launcher and artifact lifecycle across first use, object actions, stale work, provider limits, and narrow layouts |
@@ -92,6 +93,7 @@ Gate: the suite can distinguish a fluent answer from correct OKF work, produces 
 - [x] Replace the hard-coded single-skill catalog with a typed manifest containing capability ID, version, description, resources, required Studio tools, artifact kinds, and risk class.
 - [x] Compile built-in resources from one canonical repository location and verify their digest at build time.
 - [x] Expose the bounded capability catalog to Studio Agent through progressive loading and to external ACP agents through compatible resource context.
+- [x] Give generic native and ACP chat the complete active catalog and a closed loader for one narrow method without preloading every workflow.
 - [x] Record which capabilities and resource versions were attached to each accepted turn without copying their full text into the transcript.
 - [x] Reject unknown resources, undeclared tools, duplicate IDs, invalid versions, and packs above the bounded size limit.
 - [x] Model capability support as selected, delivered, tool-observed, degraded, or unavailable instead of treating prompt attachment as proof of use.
@@ -117,6 +119,7 @@ Gate: benchmark tasks select no more than the required skill set, and disabling 
 - [x] Derive a visible context plan from the task, active concept, graph neighborhood, validation state, selected evidence, and user attachments.
 - [x] Show the planned skills, bundle objects, sources, and tool scope before the first prompt; let the user remove optional context.
 - [x] Keep task selection deterministic for explicit actions. Model-suggested task changes require confirmation when they alter tools, network, or write scope.
+- [x] Let ordinary chat select a narrow method from the same catalog while reserving deterministic task identity and accepted context scope for the visible launcher.
 - [x] Persist task identity and the accepted context manifest with the agent-owned session pointer so restore can explain what was used.
 - [x] Budget context by bytes and estimated tokens, prefer metadata before bodies, and explain every truncation or omitted object before send.
 - [x] Bind the accepted plan to one bundle fingerprint and require a refreshed preview when live reload changes any planned object.

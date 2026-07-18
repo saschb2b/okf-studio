@@ -4,6 +4,7 @@ Capability changes are benchmarked and reviewed like tool changes. Versions are 
 
 ## 2026-07-18
 
+- Updated `okf-core` to `0.4.0` and `okf-foundation` to `1.2.0`. Generic chat now sees the complete active capability catalog and can load one narrow versioned method through the read-only OKF Studio MCP boundary. The root skill uses the same router when an external agent reads it from disk.
 - Added `okf-author@0.1.0`, `okf-revise@0.1.0`, and the shared `writing` resource. Authoring now begins from a reader job and accepted evidence; style-only revision must reconcile every claim and route semantic changes to enrichment.
 - Added `writing-revision` to the structured artifact contract and `okf-foundation@1.1.0`.
 - Wrapped the curated suite in the declarative `okf-foundation@1.0.0` pack with built-in provenance, Studio compatibility, conflict declarations, the shared template resource, the `okf-artifact-v1` schema, and the complete closed Studio tool set. The v1 pack schema has no executable script, hook, binary, or MCP-command fields.

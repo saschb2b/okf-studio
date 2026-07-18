@@ -3,6 +3,7 @@ use okf_core::health::{
     HealthSeverity,
 };
 use okf_core::query::{self, TraversalDirection, ValidationLevel};
+use okf_core::retrieval::{self, RetrievalRequest, RetrievalRoute};
 use okf_core::Bundle;
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::{
@@ -44,6 +45,10 @@ const MAX_NATIVE_OUTPUT_BYTES: usize = 96 * 1024;
 const DEFAULT_HEALTH_LIMIT: usize = 50;
 const MAX_HEALTH_LIMIT: usize = 200;
 const MAX_HEALTH_ID_CHARS: usize = 128;
+const DEFAULT_RETRIEVAL_LIMIT: usize = 24;
+const MAX_RETRIEVAL_LIMIT: usize = 50;
+const DEFAULT_RETRIEVAL_BUDGET: usize = 4096;
+const MAX_RETRIEVAL_BUDGET: usize = 16_384;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -149,6 +154,71 @@ struct SearchItem {
     concept_type: String,
     description: String,
     snippet: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RetrievalInput {
+    /// The bundle question. Studio chooses a deterministic route unless route is supplied.
+    query: String,
+    /// Optional route override: exact-lexical, lexical-graph, coverage, temporal-conflict, structured, full-context, or hybrid-fallback.
+    route: Option<String>,
+    /// Maximum ranked candidates. Defaults to 24 and cannot exceed 50.
+    limit: Option<usize>,
+    /// Maximum estimated evidence tokens. Defaults to 4096 and cannot exceed 16384.
+    context_budget_tokens: Option<usize>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct RetrievalOutput {
+    receipt_id: String,
+    bundle_fingerprint: String,
+    query_class: String,
+    route: String,
+    route_reason: String,
+    evidence: Vec<RetrievalEvidenceOutput>,
+    omissions: Vec<RetrievalOmissionOutput>,
+    providers: Vec<RetrievalProviderOutput>,
+    diagnostic_class: String,
+    diagnostic_summary: String,
+    suggested_action: String,
+    context_tokens_used: usize,
+    context_budget_tokens: usize,
+    requires_abstention: bool,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct RetrievalEvidenceOutput {
+    section_id: String,
+    concept_id: String,
+    concept_title: String,
+    heading_path: Vec<String>,
+    start_line: usize,
+    end_line: usize,
+    text: String,
+    citations: Vec<String>,
+    relationship_path: Vec<String>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct RetrievalOmissionOutput {
+    section_id: String,
+    concept_id: String,
+    reason: String,
+    detail: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct RetrievalProviderOutput {
+    capability: String,
+    provider_id: Option<String>,
+    state: String,
+    remote_text_shared: bool,
+    detail: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -683,6 +753,112 @@ impl OkfMcpServer {
     }
 
     #[tool(
+        description = "Plan and run provider-neutral OKF retrieval over the active granted bundle. Returns coherent evidence with stable section identities, the chosen route, omissions, provider disclosure, an abstention signal, and a receipt ID. It never writes the bundle or sends text to a remote provider."
+    )]
+    fn okf_retrieve(
+        &self,
+        Parameters(input): Parameters<RetrievalInput>,
+    ) -> Result<Json<RetrievalOutput>, String> {
+        let query_text = input.query.trim();
+        if query_text.is_empty() {
+            return Err("query must not be empty".to_string());
+        }
+        if query_text.chars().count() > MAX_QUERY_CHARS {
+            return Err(format!("query cannot exceed {MAX_QUERY_CHARS} characters"));
+        }
+        let route = input
+            .route
+            .as_deref()
+            .map(parse_retrieval_route)
+            .transpose()?;
+        let result = retrieval::retrieve(
+            &self.bundle,
+            &RetrievalRequest {
+                query: query_text.to_string(),
+                route,
+                limit: input
+                    .limit
+                    .unwrap_or(DEFAULT_RETRIEVAL_LIMIT)
+                    .clamp(1, MAX_RETRIEVAL_LIMIT),
+                context_budget_tokens: input
+                    .context_budget_tokens
+                    .unwrap_or(DEFAULT_RETRIEVAL_BUDGET)
+                    .clamp(1, MAX_RETRIEVAL_BUDGET),
+                ..RetrievalRequest::default()
+            },
+        );
+        Ok(Json(RetrievalOutput {
+            receipt_id: result.receipt.receipt_id,
+            bundle_fingerprint: result.receipt.bundle_fingerprint,
+            query_class: serialized_label(result.receipt.query_class),
+            route: serialized_label(result.receipt.route),
+            route_reason: bounded_output(&result.receipt.route_reason, MAX_OUTPUT_PROSE_CHARS),
+            evidence: result
+                .evidence
+                .items
+                .into_iter()
+                .map(|item| RetrievalEvidenceOutput {
+                    section_id: bounded_output(&item.section_id, MAX_OUTPUT_ID_CHARS),
+                    concept_id: bounded_output(&item.concept_id, MAX_OUTPUT_ID_CHARS),
+                    concept_title: bounded_output(&item.concept_title, MAX_OUTPUT_FIELD_CHARS),
+                    heading_path: item
+                        .heading_path
+                        .into_iter()
+                        .map(|heading| bounded_output(&heading, MAX_OUTPUT_FIELD_CHARS))
+                        .collect(),
+                    start_line: item.source_range.start_line,
+                    end_line: item.source_range.end_line,
+                    text: bounded_utf8_bytes(&item.text, MAX_READ_CONTENT_CHARS),
+                    citations: item
+                        .citations
+                        .into_iter()
+                        .map(|citation| bounded_output(&citation, MAX_OUTPUT_ID_CHARS))
+                        .collect(),
+                    relationship_path: item
+                        .relationship_path
+                        .into_iter()
+                        .map(|id| bounded_output(&id, MAX_OUTPUT_ID_CHARS))
+                        .collect(),
+                })
+                .collect(),
+            omissions: result
+                .receipt
+                .omissions
+                .into_iter()
+                .map(|item| RetrievalOmissionOutput {
+                    section_id: bounded_output(&item.section_id, MAX_OUTPUT_ID_CHARS),
+                    concept_id: bounded_output(&item.concept_id, MAX_OUTPUT_ID_CHARS),
+                    reason: serialized_label(item.reason),
+                    detail: bounded_output(&item.detail, MAX_OUTPUT_PROSE_CHARS),
+                })
+                .collect(),
+            providers: result
+                .receipt
+                .providers
+                .into_iter()
+                .map(|provider| RetrievalProviderOutput {
+                    capability: bounded_output(&provider.capability, MAX_OUTPUT_FIELD_CHARS),
+                    provider_id: provider
+                        .provider_id
+                        .map(|id| bounded_output(&id, MAX_OUTPUT_FIELD_CHARS)),
+                    state: serialized_label(provider.state),
+                    remote_text_shared: provider.remote_text_shared,
+                    detail: bounded_output(&provider.detail, MAX_OUTPUT_PROSE_CHARS),
+                })
+                .collect(),
+            diagnostic_class: serialized_label(result.diagnostic.class),
+            diagnostic_summary: bounded_output(&result.diagnostic.summary, MAX_OUTPUT_PROSE_CHARS),
+            suggested_action: bounded_output(
+                &result.diagnostic.suggested_action,
+                MAX_OUTPUT_PROSE_CHARS,
+            ),
+            context_tokens_used: result.receipt.context_tokens_used,
+            context_budget_tokens: result.receipt.context_budget_tokens,
+            requires_abstention: result.evidence.requires_abstention,
+        }))
+    }
+
+    #[tool(
         description = "List canonical resource URIs and external citations authored in the active OKF bundle. Deduplicates references and reports their referring concept IDs without fetching them."
     )]
     fn okf_sources(
@@ -1040,6 +1216,26 @@ fn parse_health_severity(value: &str) -> Result<HealthSeverity, String> {
     }
 }
 
+fn parse_retrieval_route(value: &str) -> Result<RetrievalRoute, String> {
+    match value {
+        "exact-lexical" => Ok(RetrievalRoute::ExactLexical),
+        "lexical-graph" => Ok(RetrievalRoute::LexicalGraph),
+        "coverage" => Ok(RetrievalRoute::Coverage),
+        "temporal-conflict" => Ok(RetrievalRoute::TemporalConflict),
+        "structured" => Ok(RetrievalRoute::Structured),
+        "full-context" => Ok(RetrievalRoute::FullContext),
+        "hybrid-fallback" => Ok(RetrievalRoute::HybridFallback),
+        _ => Err("route must be exact-lexical, lexical-graph, coverage, temporal-conflict, structured, full-context, or hybrid-fallback".to_string()),
+    }
+}
+
+fn serialized_label(value: impl Serialize) -> String {
+    serde_json::to_value(value)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_string))
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
 fn health_category_name(value: HealthCategory) -> &'static str {
     match value {
         HealthCategory::Conformance => "conformance",
@@ -1221,6 +1417,21 @@ pub(crate) fn native_tool_definitions() -> Vec<LocalToolDefinition> {
             }),
         },
         LocalToolDefinition {
+            name: "okf_retrieve",
+            description: "Plan and run local provider-neutral OKF retrieval. Returns coherent evidence, route and omission decisions, provider disclosure, an abstention signal, and a stable receipt ID.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "minLength": 1, "maxLength": MAX_QUERY_CHARS},
+                    "route": {"type": "string", "enum": ["exact-lexical", "lexical-graph", "coverage", "temporal-conflict", "structured", "full-context", "hybrid-fallback"]},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_RETRIEVAL_LIMIT},
+                    "contextBudgetTokens": {"type": "integer", "minimum": 1, "maximum": MAX_RETRIEVAL_BUDGET}
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            }),
+        },
+        LocalToolDefinition {
             name: "okf_sources",
             description: "List resource URIs and external citations authored in the active OKF bundle. Reports referring concept IDs without fetching any source.",
             parameters: serde_json::json!({
@@ -1344,6 +1555,10 @@ pub(crate) fn execute_native_tool(
             let Json(output) = server.okf_search(Parameters(native_input(call)?))?;
             serde_json::to_value(output)
         }
+        "okf_retrieve" => {
+            let Json(output) = server.okf_retrieve(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
         "okf_sources" => {
             let Json(output) = server.okf_sources(Parameters(native_input(call)?))?;
             serde_json::to_value(output)
@@ -1390,6 +1605,7 @@ pub(crate) fn native_tool_display(call: &LocalToolCall) -> (&'static str, &'stat
         "okf_inventory" => ("Inspect OKF bundle", "search"),
         "okf_read" => ("Read OKF concept", "read"),
         "okf_search" => ("Search OKF bundle", "search"),
+        "okf_retrieve" => ("Retrieve OKF evidence", "search"),
         "okf_sources" => ("List OKF sources", "search"),
         "okf_traverse" => ("Traverse OKF graph", "search"),
         "okf_validate" => ("Inspect OKF validation", "read"),
@@ -1413,7 +1629,7 @@ impl ServerHandler for OkfMcpServer {
             .with_server_info(Implementation::new("okf-studio", env!("CARGO_PKG_VERSION")))
             .with_protocol_version(ProtocolVersion::V_2024_11_05)
             .with_instructions(
-                "Read-only tools to select and load versioned OKF methods, then inspect, read, search, trace sources, traverse, validate, and analyze deterministic knowledge health for the active Open Knowledge Format bundle. Generic chat should inspect the capability catalog and load the narrowest relevant method before OKF work.",
+                "Read-only tools to select and load versioned OKF methods, retrieve receipt-backed evidence, inspect, read, search, trace sources, traverse, validate, and analyze deterministic knowledge health for the active Open Knowledge Format bundle. Generic chat should inspect the capability catalog and load the narrowest relevant method before OKF work.",
             )
     }
 }
@@ -1474,7 +1690,7 @@ mod tests {
     }
 
     #[test]
-    fn tools_inspect_read_search_sources_traverse_and_validate_the_docs_bundle() {
+    fn tools_inspect_read_search_retrieve_sources_traverse_and_validate_the_docs_bundle() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../docs")
             .canonicalize()
@@ -1516,6 +1732,24 @@ mod tests {
             .matches
             .iter()
             .any(|item| item.id == "features/agent-panel"));
+
+        let Json(retrieval) = server
+            .okf_retrieve(Parameters(RetrievalInput {
+                query: "retrieval experience contract".to_string(),
+                route: Some("exact-lexical".to_string()),
+                limit: Some(8),
+                context_budget_tokens: Some(2048),
+            }))
+            .unwrap();
+        assert_eq!(retrieval.route, "exact-lexical");
+        assert!(!retrieval.receipt_id.is_empty());
+        assert!(retrieval.evidence.iter().any(|item| {
+            item.concept_id == "product/retrieval-intelligence/retrieval-experience-contract"
+        }));
+        assert!(retrieval
+            .providers
+            .iter()
+            .all(|provider| !provider.remote_text_shared));
 
         let Json(sources) = server
             .okf_sources(Parameters(SourcesInput {
@@ -1803,6 +2037,7 @@ mod tests {
                 "okf_inventory",
                 "okf_read",
                 "okf_search",
+                "okf_retrieve",
                 "okf_sources",
                 "okf_traverse",
                 "okf_validate",
@@ -1823,6 +2058,31 @@ mod tests {
             .iter()
             .any(|item| item["id"] == "features/agent-panel")));
         assert_eq!(native_tool_display(&call), ("Search OKF bundle", "search"));
+
+        let retrieval_call = LocalToolCall {
+            id: "local-tool-0-1".to_string(),
+            name: "okf_retrieve".to_string(),
+            arguments: serde_json::json!({
+                "query": "retrieval experience contract",
+                "route": "exact-lexical",
+                "limit": 4,
+                "contextBudgetTokens": 1024
+            }),
+        };
+        let retrieval_output =
+            execute_native_tool(&root, &retrieval_call).expect("native retrieval");
+        let retrieval_output: serde_json::Value =
+            serde_json::from_str(&retrieval_output).expect("retrieval JSON output");
+        assert_eq!(retrieval_output["route"], "exact-lexical");
+        assert!(retrieval_output["receiptId"]
+            .as_str()
+            .is_some_and(|id| !id.is_empty()));
+
+        let invalid_retrieval = LocalToolCall {
+            arguments: serde_json::json!({"query": "agent", "route": "magic"}),
+            ..retrieval_call
+        };
+        assert!(execute_native_tool(&root, &invalid_retrieval).is_err());
 
         let mut invalid = call;
         invalid.arguments = serde_json::json!({"query": "agent", "path": "../secret"});
@@ -1878,6 +2138,7 @@ mod tests {
                 "okf_health_summary",
                 "okf_inventory",
                 "okf_read",
+                "okf_retrieve",
                 "okf_search",
                 "okf_sources",
                 "okf_traverse",

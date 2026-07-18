@@ -24,6 +24,7 @@ const CAPABILITY_CHANGELOG: &str =
     include_str!("../../../../.agents/skills/okf/capabilities/CHANGELOG.md");
 const OKF_WRITING: &str = include_str!("../../../../.agents/skills/okf/writing.md");
 const OKF_INSPECT: &str = include_str!("../../../../.agents/skills/okf/capabilities/inspect.md");
+const OKF_RETRIEVE: &str = include_str!("../../../../.agents/skills/okf/capabilities/retrieve.md");
 const OKF_CREATE: &str = include_str!("../../../../.agents/skills/okf/capabilities/create.md");
 const OKF_ENRICH: &str = include_str!("../../../../.agents/skills/okf/capabilities/enrich.md");
 const OKF_AUDIT: &str = include_str!("../../../../.agents/skills/okf/capabilities/audit.md");
@@ -42,12 +43,13 @@ const DEFAULT_CAPABILITY_ID: &str = "okf-core";
 const PACK_STATE_SCHEMA_VERSION: u32 = 1;
 const PACK_STATE_FILE: &str = "capability-pack-state.json";
 const PACK_STATE_BACKUP_FILE: &str = "capability-pack-state.previous.json";
-const ALLOWED_TOOL_IDS: [&str; 18] = [
+const ALLOWED_TOOL_IDS: [&str; 19] = [
     "okf_capability_catalog",
     "okf_capability_resource",
     "okf_inventory",
     "okf_read",
     "okf_search",
+    "okf_retrieve",
     "okf_sources",
     "okf_traverse",
     "okf_validate",
@@ -793,6 +795,7 @@ fn embedded_contents(path: &str) -> Option<&'static str> {
         "capabilities/CHANGELOG.md" => Some(CAPABILITY_CHANGELOG),
         "writing.md" => Some(OKF_WRITING),
         "capabilities/inspect.md" => Some(OKF_INSPECT),
+        "capabilities/retrieve.md" => Some(OKF_RETRIEVE),
         "capabilities/create.md" => Some(OKF_CREATE),
         "capabilities/enrich.md" => Some(OKF_ENRICH),
         "capabilities/audit.md" => Some(OKF_AUDIT),
@@ -819,21 +822,22 @@ mod tests {
         let catalog = catalog();
         assert_eq!(catalog.schema_version, 1);
         assert_eq!(catalog.resource_schema_version, 1);
-        assert_eq!(catalog.capabilities.len(), 11);
+        assert_eq!(catalog.capabilities.len(), 12);
 
         let capability = default_capability();
         assert_eq!(capability.id, "okf-core");
-        assert_eq!(capability.version, "0.4.0");
+        assert_eq!(capability.version, "0.5.0");
         assert_eq!(capability.resources.len(), 6);
         assert_eq!(manifest_sha256().len(), 64);
         for (capability_id, expected_version) in [
-            ("okf-inspect", "0.2.0"),
-            ("okf-create", "0.2.0"),
+            ("okf-inspect", "0.3.0"),
+            ("okf-retrieve", "0.1.0"),
+            ("okf-create", "0.3.0"),
             ("okf-enrich", "0.2.0"),
             ("okf-audit", "0.3.0"),
             ("okf-repair", "0.3.0"),
-            ("okf-research", "0.2.0"),
-            ("okf-change-impact", "0.2.0"),
+            ("okf-research", "0.3.0"),
+            ("okf-change-impact", "0.3.0"),
             ("okf-migrate", "0.2.0"),
             ("okf-author", "0.1.0"),
             ("okf-revise", "0.1.0"),
@@ -856,13 +860,13 @@ mod tests {
     fn materializes_only_declared_resources_with_versioned_identity() {
         let commands = resource("okf-core", "commands").expect("commands should be declared");
         assert_eq!(commands.capability_id, "okf-core");
-        assert_eq!(commands.capability_version, "0.4.0");
+        assert_eq!(commands.capability_version, "0.5.0");
         assert_eq!(commands.resource_id, "commands");
         assert_eq!(commands.media_type, "text/markdown");
         assert_eq!(commands.sha256.len(), 64);
         assert_eq!(
             commands.uri,
-            "okf-studio://capability/okf-core/v0.4.0/commands"
+            "okf-studio://capability/okf-core/v0.5.0/commands"
         );
         assert!(commands.contents.contains("## `init`"));
         assert!(resource("okf-core", "secrets").is_err());
@@ -872,7 +876,7 @@ mod tests {
     #[test]
     fn exposes_metadata_without_resource_bodies_for_settings() {
         let info = serde_json::to_value(catalog_info()).expect("serialize catalog metadata");
-        assert_eq!(info["capabilities"].as_array().map(Vec::len), Some(11));
+        assert_eq!(info["capabilities"].as_array().map(Vec::len), Some(12));
         assert_eq!(info["manifestSha256"].as_str().map(str::len), Some(64));
         assert_eq!(info["pack"]["id"], "okf-foundation");
         assert_eq!(info["pack"]["provenance"], "built-in");

@@ -1,5 +1,15 @@
 # Update Log
 
+## 2026-07-19
+
+* **Update**: Closed the [Retrieval Intelligence roadmap](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) with an implementation record for every work package. Optional dense, reranking, and provider-cache adapters remain deliberately unavailable because no measured provider result cleared their activation gates. Storybook MCP passed the complete story and accessibility run, including deterministic cancellation; whole-panel dogfood keeps the composer reachable without another persistent shelf. The Windows release binary and MSI/NSIS packages build locally, while protected release signing remains unavailable without the private key.
+
+* **Creation**: Shipped [Retrieval Intelligence](features/retrieval-intelligence.md) and its shared [Retrieval Engine](architecture/retrieval-engine.md). Ordinary Agent Panel questions now receive coherent, revision-bound local evidence before the selected agent runs. Exact, lexical, graph, coverage, temporal-conflict, structured, full-context, and provider-free hybrid routes emit source identities, whole-unit budget decisions, provider disclosure, abstention signals, diagnostics, and diffable receipts. Each turn keeps one compact summary; detailed inspection replaces the transcript viewport; Retrieval Lab compares routes, exports a source-text-redacted diagnostic, and sends advisory repairs into existing reviewed staging.
+
+* **Update**: Upgraded the built-in capability pack to `okf-foundation@1.3.0` and `okf-core@0.5.0`. The new `okf-retrieve@0.1.0` method and bounded `okf_retrieve` tool are shared by Studio Agent and granted MCP clients. Inspect, research, and change-impact methods now request coherent evidence before broad concept reads. Dense, reranking, and provider-cache paths remain explicit unavailable states until a configured provider proves value; the offline local route remains complete.
+
+* **Creation**: Added [Retrieval Operations](product/retrieval-intelligence/retrieval-operations.md) for cache rebuild, stale receipts, degraded sends, provider removal, redacted exports, reviewed repair, migration, and rollback. Retrieval state stays disposable in app cache and never becomes bundle knowledge.
+
 ## 2026-07-18
 * **Update**: Added the [Retrieval Experience Contract](product/retrieval-intelligence/retrieval-experience-contract.md) and made it a prerequisite throughout the retrieval roadmap. User jobs now have one surface owner; ordinary turns keep one compact evidence summary; detailed receipts replace the flexible transcript viewport; and the Retrieval Lab remains a separate diagnostic workspace. RI0A freezes the first exact-query composition, pressure states, focus, scroll, and narrow behavior through Storybook MCP before production retrieval wiring begins.
 

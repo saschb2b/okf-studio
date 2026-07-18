@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Retrieval Intelligence
 description: Sequenced research, experience gates, and work packages for turning connected OKF bundles into inspectable, routed, and provider-neutral model context.
 tags: [product, roadmap, rag, retrieval, context, search, agents, ux, storybook]
-timestamp: 2026-07-18T21:39:16Z
+timestamp: 2026-07-19T18:30:00Z
 ---
 
 # Outcome
@@ -21,6 +21,29 @@ This roadmap follows the [state-of-RAG research](rag-state-and-failures.md), imp
 The completed [agent-specialization roadmap](../agent-specialization-roadmap.md) already gives Studio full-text browser search, faceted filters, concept and graph identity, bounded graph traversal, bundle validation, Knowledge Health, source adapters, source provenance, explicit context plans, multi-bundle federation, structured artifacts, bundle fingerprints, one-shot MCP grants, and reviewed staging.
 
 It does not have a retrieval manifest, lexical ranker, embeddings, reranker, query router, coverage-aware global search, coherent context compiler, temporal or authority model, retrieval receipt, or retrieval-specific benchmark. Existing agents can search and traverse with tools, but each provider must decide how to combine those calls and Studio cannot explain the resulting evidence selection.
+
+# Implementation record
+
+The local-first transformation was implemented on 2026-07-19. The record below distinguishes shipped behavior from optional provider paths that deliberately remain unavailable. An unavailable adapter is a completed boundary, not a claim that an untested provider works.
+
+| Package | Result | Evidence and boundary |
+| --- | --- | --- |
+| RI0 | Complete | A frozen corpus covers exact, lexical, relationship, global, temporal conflict, structured, semantic fallback, abstention, and full-context cases. Tests separate retrieval from answer failure, compare the lexical baseline, repeat in reversed order, and build 10,000 stable concept identities. |
+| RI0A | Complete | The conversation summary, replace-in-place inspector, and separate Retrieval Lab were screened through Storybook MCP. Whole-panel gallery cases cover live-work pressure, narrow widths, long evidence, recovery, and a reachable composer. |
+| RI1 | Complete | Rust builds revision-bound structural manifests with deterministic section IDs, source ranges, content hashes, table context, graph metadata, fingerprints, and provider-neutral JSONL. Cache publication is bounded to app data and invalidates by fingerprint. |
+| RI2 | Complete | Exact field lookup and deterministic BM25 run offline, fuse scores, apply filters before context assembly, and retain score components and exclusion reasons. |
+| RI3 | Complete | Authored links, backlinks, index ancestry, bounded paths, graph expansion, and coverage balancing feed the same receipt without presenting inferred relationships as authored facts. |
+| RI4 | Complete, provider activation withheld | Typed local, configured, unavailable, degraded, and cancelled provider states are wired into routing and receipts. No embedding or reranker is bundled because this branch has no measured provider result that clears the activation gate. The offline hybrid fallback remains complete. |
+| RI5 | Complete | Stable deterministic query classes choose exact, graph, coverage, temporal, structured, full-context, or hybrid routes. The inspector can rerun a retained query on another available route without changing its grant. |
+| RI6 | Complete | The context compiler keeps structural units intact, retains citations and relationship paths, budgets by token estimate and bytes, records omissions, and produces versioned evidence packets and receipts. |
+| RI7 | Complete | Source class, owner, effective time, supersession, conflict, freshness, and authority gaps remain distinct signals. Unresolved conflicts are retained and can require abstention. |
+| RI8 | Complete, provider cache activation withheld | Canonical snapshots, eligibility, cache identity, scope fingerprint, invalidation, provider state, and local fallback are implemented. No provider KV cache is advertised without a measured cost or latency win. |
+| RI9 | Complete | Diagnostics classify retrieval stages separately, receipts have stable diffs, and the Retrieval Lab compares routes, shows omissions and provider state, exports redacted JSON, and hands advisory repairs to review. |
+| RI10 | Complete | Normal Agent Panel prompts use local retrieval. The Studio Agent, one-shot MCP server, and `okf-foundation@1.3.0` pack expose bounded `okf_retrieve` behavior. Published schema adapters cover the local engine and an external Qdrant-style mapping without enabling remote access. |
+| RI11 | Complete | Repair proposals include evidence sections, triggering and held-out queries, and expected improvement. Review prepares the existing author or enrich workflow; claim review, staging, validation, Apply, checkpoint restore, and before-and-after receipt comparison remain mandatory. Retrieval code has no direct write path. |
+| RI12 | Complete for the available environment | The local engine, Studio wiring, MCP contract, docs bundle, site, capability pack, component states, and whole-panel composition use the same contract. The release binary and MSI/NSIS packages build locally; release signing remains unavailable without the protected private key. Optional live providers remain explicitly unavailable rather than receiving fabricated green results. |
+
+This record closes the work packages without weakening their gates. Dense retrieval and provider KV caching can be activated later only by adding a measured implementation that beats the frozen local baseline. Concept-level ACLs, learned routing, hosted indexes, and background services remain deferred product decisions.
 
 # Product stance
 

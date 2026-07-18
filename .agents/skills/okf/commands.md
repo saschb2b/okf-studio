@@ -98,6 +98,18 @@ Use Studio's deterministic health tools when the question goes beyond the OKF v0
 
 Health covers conformance, graph connectivity, navigation, provenance, freshness signals, duplication, and coverage hints. Only the conformance category mirrors the validator. Every other category remains a fact about bundle shape or a named heuristic. A fingerprint mismatch means the bundle changed; start from a new summary instead of using stale findings.
 
+## `retrieve`: select coherent evidence and explain the route
+
+Use Studio's `okf_retrieve` tool when a question needs more than a known concept read.
+
+1. Send the question without a route override first. Studio classifies exact, lexical, relationship, global, temporal, structured, full-context, and mixed requests deterministically.
+2. Check the bundle fingerprint, provider disclosure, context budget, omissions, conflicts, and abstention signal before using the packet.
+3. Cite the returned concept and section identities. Read a full concept only when the selected section lacks defining context.
+4. Override the route only to compare a named alternative. Retain both receipt IDs and explain what evidence changed.
+5. Treat repair suggestions as review inputs. Send an accepted proposal through the existing staged-write flow; a receipt never writes the bundle.
+
+The manifest, ranker scores, summaries, and receipts are disposable app data. They are not OKF facts and do not change conformance.
+
 ## `export`: produce a bundle from a source
 
 The producer role: turn an existing source into a bundle. The source can be structured (a data catalog, a metadata export, a schema registry) or prose (an internal docs site, a wiki, a webpage, or a set of external URLs).

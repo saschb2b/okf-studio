@@ -14,7 +14,7 @@ Use this capability when bundle knowledge must be checked, expanded, or reconcil
 
 ## Method
 
-1. Run `okf_health_summary`, retain its exact bundle fingerprint, then inventory relevant bundle claims before consulting external evidence.
+1. Run `okf_retrieve` over the research question, retain its receipt and exact bundle fingerprint, then inspect relevant bundle claims before consulting external evidence.
 2. Search only the approved source scope and prefer primary sources.
 3. Record source identity, retrieval time, and the claim each source supports.
 4. Compare evidence with bundle claims and expose conflicts or uncertainty.

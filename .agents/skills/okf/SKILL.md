@@ -16,6 +16,7 @@ For every OKF request, select the narrowest method that fits the user's intended
 | User intent | Method to load |
 | --- | --- |
 | Answer a bounded bundle question or trace known links | [`okf-inspect`](./capabilities/inspect.md) |
+| Select evidence, inspect the route, or diagnose a retrieval miss | [`okf-retrieve`](./capabilities/retrieve.md) |
 | Plan a new bundle whose destination or concept map is unresolved | [`okf-create`](./capabilities/create.md) |
 | Add facts, citations, or relationships to existing knowledge | [`okf-enrich`](./capabilities/enrich.md) |
 | Review conformance or knowledge health without changing files | [`okf-audit`](./capabilities/audit.md) |
@@ -45,6 +46,7 @@ Invoke as `/okf <command> [target]`. Each is detailed in [commands.md](./command
 | `index` | Generate or refresh `index.md` listings so an agent can navigate by progressive disclosure. |
 | `log` | Append a dated `log.md` entry (Creation, Update, Deprecation), newest first. |
 | `validate` | Run the conformance check. `node okf-validate.mjs <bundle>`, or the manual checklist in [commands.md](./commands.md). |
+| `retrieve` | Select coherent evidence for a question and retain route, omission, provider, fingerprint, and abstention decisions. |
 | `export` | Convert an existing source into a conformant bundle: a catalog, a metadata dump, a schema export, a docs site, or a website or external URL (`/okf export <url>`). Map the whole surface, cover every section, give every named entity its own concept, then pass the creation gate — not a snapshot of the front page. The producer role. |
 | `consume` | Read a bundle to answer a question. Start at `index.md`, follow links, tolerate anything missing. |
 
@@ -102,7 +104,7 @@ It errors (exit 1) on the hard requirement (a concept missing frontmatter or a n
 - [commands.md](./commands.md). Each command end to end, with the files it touches and the validate checklist.
 - [templates.md](./templates.md). Concept, root `index.md`, sub `index.md`, and `log.md` templates, plus worked BigQuery table, metric, runbook, and external-reference examples.
 - [writing.md](./writing.md). The shared reader-job, prose, structure, revision, and fact-preservation contract for authoring and revision.
-- [capabilities/](./capabilities/). The narrow inspect, create, enrich, audit, repair, research, change-impact, migrate, author, and revise methods selected by the router above.
+- [capabilities/](./capabilities/). The narrow inspect, retrieve, create, enrich, audit, repair, research, change-impact, migrate, author, and revise methods selected by the router above.
 - [okf-validate.mjs](./okf-validate.mjs). The zero-dependency conformance checker.
 
 ## Source

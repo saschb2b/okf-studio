@@ -10,6 +10,12 @@ import type {
   Settings,
 } from "@/shared/types.ts";
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
+import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
+import type {
+  ReceiptDiff,
+  RetrievalRequest,
+  RetrievalResult,
+} from "@/features/agent/retrieval/types.ts";
 import catalog from "@/features/agent/catalog.json";
 import type { AgentBinaryTarget, AgentCatalogDocument } from "@/features/agent/catalog.ts";
 import type { CustomAgentInput, CustomAgentProfile } from "@/features/agent/custom.ts";
@@ -359,6 +365,7 @@ export interface OkfCapabilityPackInfo {
 const MOCK_OKF_CAPABILITY_IDS = [
   "okf-core",
   "okf-inspect",
+  "okf-retrieve",
   "okf-create",
   "okf-enrich",
   "okf-audit",
@@ -373,6 +380,7 @@ const MOCK_OKF_CAPABILITY_IDS = [
 const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], OkfCapabilityRiskClass> = {
   "okf-core": "stage",
   "okf-inspect": "read",
+  "okf-retrieve": "analyze",
   "okf-create": "analyze",
   "okf-enrich": "stage",
   "okf-audit": "analyze",
@@ -385,14 +393,15 @@ const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number]
 };
 
 const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string> = {
-  "okf-core": "0.4.0",
-  "okf-inspect": "0.2.0",
-  "okf-create": "0.2.0",
+  "okf-core": "0.5.0",
+  "okf-inspect": "0.3.0",
+  "okf-retrieve": "0.1.0",
+  "okf-create": "0.3.0",
   "okf-enrich": "0.2.0",
   "okf-audit": "0.3.0",
   "okf-repair": "0.3.0",
-  "okf-research": "0.2.0",
-  "okf-change-impact": "0.2.0",
+  "okf-research": "0.3.0",
+  "okf-change-impact": "0.3.0",
   "okf-migrate": "0.2.0",
   "okf-author": "0.1.0",
   "okf-revise": "0.1.0",
@@ -401,6 +410,7 @@ const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[numb
 const MOCK_OKF_CAPABILITY_ARTIFACTS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
   "okf-core": ["source-inventory", "bundle-plan", "health-report", "research-brief", "change-impact-map", "migration-plan", "writing-revision", "staged-revision"],
   "okf-inspect": ["health-report"],
+  "okf-retrieve": ["health-report", "research-brief"],
   "okf-create": ["source-inventory", "bundle-plan"],
   "okf-enrich": ["source-inventory", "staged-revision"],
   "okf-audit": ["health-report"],
@@ -413,14 +423,15 @@ const MOCK_OKF_CAPABILITY_ARTIFACTS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[num
 };
 
 const MOCK_OKF_CAPABILITY_TOOLS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
-  "okf-core": ["okf_inventory", "okf_read", "okf_search", "okf_sources", "okf_traverse", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair"],
-  "okf-inspect": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+  "okf-core": ["okf_inventory", "okf_read", "okf_search", "okf_retrieve", "okf_sources", "okf_traverse", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair"],
+  "okf-inspect": ["okf_health_summary", "okf_inventory", "okf_search", "okf_retrieve", "okf_read", "okf_traverse"],
+  "okf-retrieve": ["okf_retrieve", "okf_read"],
   "okf-create": ["okf_health_summary", "okf_inventory", "okf_read", "okf_traverse"],
   "okf-enrich": ["okf_health_summary", "okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
   "okf-audit": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair", "okf_read"],
   "okf-repair": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_repair", "okf_read", "studio_stage_propose", "studio_stage_validate"],
-  "okf-research": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_sources"],
-  "okf-change-impact": ["okf_health_summary", "okf_search", "okf_read", "okf_traverse"],
+  "okf-research": ["okf_health_summary", "okf_inventory", "okf_search", "okf_retrieve", "okf_read", "okf_sources"],
+  "okf-change-impact": ["okf_health_summary", "okf_search", "okf_retrieve", "okf_read", "okf_traverse"],
   "okf-migrate": ["okf_health_summary", "okf_inventory", "okf_search", "okf_traverse"],
   "okf-author": ["okf_health_summary", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
   "okf-revise": ["okf_health_summary", "okf_read", "studio_stage_propose", "studio_stage_validate"],
@@ -496,7 +507,7 @@ export async function onOkfCapabilityPackChanged(
 function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
   return {
     id: "okf-foundation",
-    version: "1.2.0",
+    version: "1.3.0",
     name: "OKF Foundation",
     description: "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
     publisher: "OKF Studio",
@@ -3158,6 +3169,36 @@ export async function readBundle(root: string): Promise<Bundle> {
   if (!isTauri()) return MOCK_BUNDLE;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<Bundle>("read_bundle", { root });
+}
+
+export async function exportRetrievalDiagnostics(
+  suggestedName: string,
+  payload: string,
+): Promise<string | null> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<string | null>("export_retrieval_diagnostics", { suggestedName, payload });
+  }
+  await browserMockDelay(80);
+  return suggestedName;
+}
+
+export async function retrieveOkfContext(
+  bundleRoot: string,
+  request: RetrievalRequest,
+): Promise<RetrievalResult> {
+  if (!isTauri()) return mockRetrieval(MOCK_BUNDLE, request);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<RetrievalResult>("retrieve_okf_context", { bundleRoot, request });
+}
+
+export async function diffOkfRetrievalReceipts(
+  left: RetrievalResult["receipt"],
+  right: RetrievalResult["receipt"],
+): Promise<ReceiptDiff> {
+  if (!isTauri()) return mockReceiptDiff(left, right);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ReceiptDiff>("diff_okf_retrieval_receipts", { left, right });
 }
 
 const MOCK_LIBRARY_IDS = {

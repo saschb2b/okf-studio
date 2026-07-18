@@ -15,6 +15,7 @@ pub mod logfile;
 pub mod model;
 pub mod parse;
 pub mod query;
+pub mod retrieval;
 pub mod validate;
 
 pub use model::*;

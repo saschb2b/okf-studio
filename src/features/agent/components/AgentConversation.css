@@ -1,4 +1,5 @@
 .agent-conversation {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
@@ -518,6 +519,13 @@
 }
 
 .agent-transcript {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.agent-conversation__transcript-owner {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;

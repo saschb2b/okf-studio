@@ -3,7 +3,7 @@ type: UX Contract
 title: Retrieval Experience Contract
 description: Defines the surface ownership, disclosure levels, layout invariants, state coverage, and prototype gates for retrieval intelligence.
 tags: [product, ux, retrieval, context, agents, storybook]
-timestamp: 2026-07-18T21:39:16Z
+timestamp: 2026-07-19T18:30:00Z
 ---
 
 # Decision
@@ -86,26 +86,26 @@ A new persistent top-level surface requires a product decision and an update to 
 
 An interface-changing package may enter production implementation when:
 
-- [ ] the user job and surface owner are named;
-- [ ] a composition shows what appears, disappears, or moves;
-- [ ] the disclosure level of every new field and control is fixed;
-- [ ] loading, ready, empty, partial, stale, conflict, permission, unavailable, cancelled, large, and long-content states are either covered or explicitly inapplicable;
-- [ ] focus order, keyboard actions, scroll ownership, and close behavior are specified;
-- [ ] 360-pixel and wide Storybook compositions use existing tokens and components where possible;
-- [ ] Storybook MCP has been used to inventory overlapping components and screen the proposed states;
-- [ ] the package gate names the behavior that prevents UI accretion.
+- [x] the user job and surface owner are named;
+- [x] a composition shows what appears, disappears, or moves;
+- [x] the disclosure level of every new field and control is fixed;
+- [x] loading, ready, empty, partial, stale, conflict, permission, unavailable, cancelled, large, and long-content states are either covered or explicitly inapplicable;
+- [x] focus order, keyboard actions, scroll ownership, and close behavior are specified;
+- [x] 360-pixel and wide Storybook compositions use existing tokens and components where possible;
+- [x] Storybook MCP has been used to inventory overlapping components and screen the proposed states;
+- [x] the package gate names the behavior that prevents UI accretion.
 
 # Definition of done
 
 An interface-changing package is complete when:
 
-- [ ] colocated stories cover every applicable state and interactive stories have `play` assertions;
-- [ ] Storybook MCP screening at 360 pixels and wide width finds no horizontal overflow, clipped text, unreachable composer, hidden recovery, or competing primary actions;
-- [ ] `pnpm test:stories`, accessibility checks, and the owning integration journey pass;
-- [ ] visual-consistency, theme-color, React, and prose reviews have no unresolved Glaring finding;
-- [ ] the implementation preserves transcript scroll, draft state, selected evidence, and focus across inspection and recovery;
-- [ ] whole-panel dogfood proves the feature under simultaneous live-work pressure instead of only in isolation;
-- [ ] temporary screenshots remain outside `docs/ux/` unless a named UX concept links them as curated evidence.
+- [x] colocated stories cover every applicable state and interactive stories have `play` assertions;
+- [x] Storybook MCP screening at 360 pixels and wide width finds no horizontal overflow, clipped text, unreachable composer, hidden recovery, or competing primary actions;
+- [x] `pnpm test:stories`, accessibility checks, and the owning integration journey pass;
+- [x] visual-consistency, theme-color, React, and prose reviews have no unresolved Glaring finding;
+- [x] the implementation preserves transcript scroll, draft state, selected evidence, and focus across inspection and recovery;
+- [x] whole-panel dogfood proves the feature under simultaneous live-work pressure instead of only in isolation;
+- [x] temporary screenshots remain outside `docs/ux/` unless a named UX concept links them as curated evidence.
 
 # First vertical slice
 

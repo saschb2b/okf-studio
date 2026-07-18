@@ -4,13 +4,14 @@
   "capabilities": [
     {
       "id": "okf-core",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "description": "Inspect, author, validate, and maintain conformant Open Knowledge Format bundles.",
       "riskClass": "stage",
       "requiredTools": [
         "okf_inventory",
         "okf_read",
         "okf_search",
+        "okf_retrieve",
         "okf_sources",
         "okf_traverse",
         "okf_validate",
@@ -35,7 +36,7 @@
           "label": "instructions",
           "path": "SKILL.md",
           "mediaType": "text/markdown",
-          "sha256": "27d93a64bcd18ce88e6e25a78eda704f9b6db0400b7bb129a72db8324c00d787"
+          "sha256": "f85b3b0344a2e8f2b2179b4863b5a25c4abc49fa19a2a7f65d95a77233227351"
         },
         {
           "id": "specification",
@@ -49,7 +50,7 @@
           "label": "commands",
           "path": "commands.md",
           "mediaType": "text/markdown",
-          "sha256": "6b45edc7fd64ae149036d110a35bb4e3d32317acbd14e7a8f51eb995ef4b0f43"
+          "sha256": "236869830d18c0110c6c1c226f72aa94c890cc9b88d2be492c49983e719e5951"
         },
         {
           "id": "templates",
@@ -63,7 +64,7 @@
           "label": "capability changelog",
           "path": "capabilities/CHANGELOG.md",
           "mediaType": "text/markdown",
-          "sha256": "bc852fc883d8d7f42e2e437b9df2e90f91d5c0a4fcd3d2befa3f1026698bd157"
+          "sha256": "19e7c2d1c6297cd1908e86b152afa9f28e9e818cd1f6310e4ea5c22ea5f7bddb"
         },
         {
           "id": "writing",
@@ -76,22 +77,37 @@
     },
     {
       "id": "okf-inspect",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Answer bounded questions about an existing bundle and trace explicit relationships.",
       "riskClass": "read",
-      "requiredTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+      "requiredTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_retrieve", "okf_read", "okf_traverse"],
       "artifactKinds": ["health-report"],
       "resources": [{
         "id": "instructions",
         "label": "inspect method",
         "path": "capabilities/inspect.md",
         "mediaType": "text/markdown",
-        "sha256": "b29132498437e36064314185edc828138d680b1e226ba5cf91af843129ea70fe"
+        "sha256": "f88640c4f2f087dab2a72fd49e162af336f2bfa6cc6456ddb27dd3715512b6d8"
+      }]
+    },
+    {
+      "id": "okf-retrieve",
+      "version": "0.1.0",
+      "description": "Select coherent bundle evidence, explain routing and omissions, and diagnose retrieval misses without writing.",
+      "riskClass": "analyze",
+      "requiredTools": ["okf_retrieve", "okf_read"],
+      "artifactKinds": ["health-report", "research-brief"],
+      "resources": [{
+        "id": "instructions",
+        "label": "retrieval method",
+        "path": "capabilities/retrieve.md",
+        "mediaType": "text/markdown",
+        "sha256": "6a86aac67ec2c9843877f11e9b5a1d42334298e5b16e7a5ab8cd3462b6f0741e"
       }]
     },
     {
       "id": "okf-create",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Plan a new bounded, sourced, connected OKF bundle before reviewed creation.",
       "riskClass": "analyze",
       "requiredTools": ["okf_health_summary", "okf_inventory", "okf_read", "okf_traverse"],
@@ -151,32 +167,32 @@
     },
     {
       "id": "okf-research",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Reconcile bundle claims with bounded, cited evidence and explicit uncertainty.",
       "riskClass": "fetch",
-      "requiredTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_sources"],
+      "requiredTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_retrieve", "okf_read", "okf_sources"],
       "artifactKinds": ["source-inventory", "research-brief"],
       "resources": [{
         "id": "instructions",
         "label": "research method",
         "path": "capabilities/research.md",
         "mediaType": "text/markdown",
-        "sha256": "bedc28ec002206a64f3f8f58515de39bec3fb4285e1af4166a102d382647877f"
+        "sha256": "0d2d3fd2ec74394eecc3d258303cea5585cc6c74ac5bc42b3e21f4c73e142772"
       }]
     },
     {
       "id": "okf-change-impact",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Map direct, transitive, textual, and inferred impact before a change.",
       "riskClass": "analyze",
-      "requiredTools": ["okf_health_summary", "okf_search", "okf_read", "okf_traverse"],
+      "requiredTools": ["okf_health_summary", "okf_search", "okf_retrieve", "okf_read", "okf_traverse"],
       "artifactKinds": ["change-impact-map"],
       "resources": [{
         "id": "instructions",
         "label": "change-impact method",
         "path": "capabilities/change-impact.md",
         "mediaType": "text/markdown",
-        "sha256": "11465a0c047b85a7db3973d490c68807ab3e399ec1b25838b91176cb5841e160"
+        "sha256": "f4e1a0097d77b07e249aa8c65d86e513bb56df7ae6f146c33188566577e3dc17"
       }]
     },
     {

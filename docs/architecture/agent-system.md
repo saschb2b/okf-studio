@@ -3,12 +3,22 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-18T05:45:00Z
+timestamp: 2026-07-18T07:30:00Z
 ---
 
 # Decision
 
 One [Agent Panel](../features/agent-panel.md) hosts two boundaries: external agent processes over Agent Client Protocol (ACP), and a native Studio Agent backed by API or local model providers.
+
+# Granted bundle library and federation
+
+Rust owns a separate bounded library of bundles that the user previously granted. Each record has an opaque UUID, internal canonical root and scope root, title, kind, counts, type and tag summaries, last observed revision fingerprint, and last-seen time. The UUID survives rescans and restarts. Paths stay inside Rust and never serve as cross-bundle identity. The active marker is derived only after the current root passes the ordinary bundle authorization boundary.
+
+Federated commands accept at most eight distinct UUID and expected-revision pairs. Before every query, Rust rechecks the remembered grant, canonical folder, detected bundle root, and revision fingerprint. Available results are read fresh. Missing, revoked, and changed selections return a per-bundle partial status without stale concept results. Inventory, search, type, tag, source-reference, and relationship-candidate queries are capped, and inventory interleaves selected bundles so a large first bundle cannot consume the complete bounded page.
+
+Every concept result carries bundle UUID, bundle title, concept ID, revision fingerprint, and grant state. Source rows carry the same identity tuple. Relationship candidates preserve the identity of both concepts and are limited to matching-title or shared-source evidence with `requiresReview` set. Titles and paths never merge namespaces.
+
+The frontend converts an exact user-reviewed selection into bounded Markdown evidence for the curated task. It treats bundle text as untrusted data and exposes the sources in the composer. The active connection and staged tree remain bound to one canonical active root, so other bundles cannot receive writes through federation. Federation adds evidence, not another filesystem or MCP primitive.
 
 ```mermaid
 flowchart LR

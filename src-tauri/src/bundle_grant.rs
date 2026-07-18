@@ -53,7 +53,7 @@ impl BundleGrantState {
         Ok(Self::load_from(file))
     }
 
-    fn load_from(file: PathBuf) -> Self {
+    pub(crate) fn load_from(file: PathBuf) -> Self {
         let grants = read_grants(&file).unwrap_or_else(|error| {
             eprintln!("[bundle-grants] {error}; starting with no grants");
             Vec::new()
@@ -113,6 +113,34 @@ impl BundleGrantState {
         } else {
             Err(ACCESS_DENIED.to_string())
         }
+    }
+
+    /// Report whether one exact persisted scope still exists in the registry
+    /// without touching the filesystem. The bundle library uses this to
+    /// distinguish a revoked grant from a remembered folder that went missing.
+    pub fn remembers_folder(&self, requested: &Path) -> bool {
+        let requested = dunce::simplified(requested);
+        let registry = self
+            .registry
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        registry
+            .grants
+            .iter()
+            .any(|grant| Path::new(&grant.root) == requested)
+    }
+
+    pub fn grant_kind(&self, requested: &Path) -> Option<BundleGrantKind> {
+        let requested = dunce::simplified(requested);
+        let registry = self
+            .registry
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        registry
+            .grants
+            .iter()
+            .find(|grant| Path::new(&grant.root) == requested)
+            .map(|grant| grant.kind)
     }
 
     /// Replace the detected bundle roots below one granted scan folder. Only

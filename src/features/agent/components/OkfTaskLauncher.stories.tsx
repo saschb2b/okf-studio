@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { useState } from "react";
 import { OkfTaskLauncher } from "@/features/agent/components/OkfTaskLauncher.tsx";
+import { FederatedBundleSet } from "@/features/agent/components/FederatedBundleSet.tsx";
 import { OKF_TASKS, type OkfContextPlan, type OkfTaskId } from "@/features/agent/taskContext.ts";
 
 const origin = {
@@ -86,6 +87,43 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Ready: Story = {
+  args: {
+    bundleSet: <FederatedBundleSet
+      state="ready"
+      entries={[
+        {
+          bundleId: "00000000-0000-4000-8000-000000000001",
+          title: "OKF Studio specification",
+          kind: "localFolder",
+          conceptCount: 56,
+          types: ["Feature", "Architecture"],
+          tags: ["studio"],
+          revisionFingerprint: "okf-health-revision-0000000000000001",
+          grantState: "available",
+          lastSeenEpochMs: 1_750_000_000_003,
+          active: true,
+        },
+        {
+          bundleId: "00000000-0000-4000-8000-000000000002",
+          title: "Primer design system",
+          kind: "localFolder",
+          conceptCount: 60,
+          types: ["Component", "Guideline"],
+          tags: ["design-system"],
+          revisionFingerprint: "okf-health-revision-0000000000000002",
+          grantState: "available",
+          lastSeenEpochMs: 1_750_000_000_002,
+          active: false,
+        },
+      ]}
+      selectedIds={[
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002",
+      ]}
+      onToggle={fn()}
+      onRetry={fn()}
+    />,
+  },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement.ownerDocument.body);
     await expect(await canvas.findByRole("dialog", { name: "Start OKF work" })).toBeVisible();
@@ -136,5 +174,6 @@ export const ActiveThreadConflict: Story = {
 };
 
 export const Narrow: Story = {
+  args: Ready.args,
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };

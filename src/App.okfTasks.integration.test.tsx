@@ -23,11 +23,21 @@ describe("native OKF task entry points", () => {
     await user.click(within(launcher).getByRole("radio", {
       name: "Research with cited evidence",
     }));
+    const bundleSet = await within(launcher).findByRole("region", { name: "Bundle set" });
+    await user.click(within(bundleSet).getByRole("checkbox", {
+      name: /Primer design system/i,
+    }));
+    await waitFor(() => expect(within(launcher).getByRole("button", { name: "Start task" }))
+      .toBeEnabled());
     await user.click(within(launcher).getByRole("button", { name: "Start task" }));
 
     const prompts = screen.getAllByLabelText<HTMLTextAreaElement>("Message the agent");
     const visiblePrompt = prompts.find((prompt) => !prompt.closest("[hidden]"));
     expect(visiblePrompt?.value).toContain("cited evidence");
+    expect(screen.getByRole("button", { name: "Remove Federated OKF concepts source" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Federated OKF sources source" }))
+      .toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /New thread, idle/i })).toHaveLength(2);
   });
 

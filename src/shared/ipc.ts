@@ -58,6 +58,14 @@ import {
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
 import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
 import type { AgentArtifactValidation } from "@/features/agent/artifact.ts";
+import type {
+  BundleLibraryEntry,
+  FederatedBundleSelection,
+  FederatedBundleStatus,
+  FederatedConceptPage,
+  FederatedRelationshipPage,
+  FederatedSourcePage,
+} from "@/features/agent/federation.ts";
 import { OKF_TASKS } from "@/features/agent/taskContext.ts";
 import {
   MOCK_ASSETS,
@@ -2715,6 +2723,246 @@ export async function readBundle(root: string): Promise<Bundle> {
   if (!isTauri()) return MOCK_BUNDLE;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<Bundle>("read_bundle", { root });
+}
+
+const MOCK_LIBRARY_IDS = {
+  active: "00000000-0000-4000-8000-000000000001",
+  primer: "00000000-0000-4000-8000-000000000002",
+  handbook: "00000000-0000-4000-8000-000000000003",
+} as const;
+
+const MOCK_LIBRARY_FINGERPRINTS: Record<string, string> = {
+  [MOCK_LIBRARY_IDS.active]: "okf-health-revision-0000000000000001",
+  [MOCK_LIBRARY_IDS.primer]: "okf-health-revision-0000000000000002",
+  [MOCK_LIBRARY_IDS.handbook]: "okf-health-revision-0000000000000003",
+};
+
+function mockBundleLibrary(): BundleLibraryEntry[] {
+  const activeTypes = [...new Set(MOCK_BUNDLE.concepts.map((concept) => concept.type))].sort();
+  const activeTags = [...new Set(MOCK_BUNDLE.concepts.flatMap((concept) => concept.tags))].sort();
+  return [
+    {
+      bundleId: MOCK_LIBRARY_IDS.active,
+      title: MOCK_BUNDLE.name,
+      kind: "localFolder",
+      conceptCount: MOCK_BUNDLE.concepts.length,
+      types: activeTypes,
+      tags: activeTags,
+      revisionFingerprint: MOCK_LIBRARY_FINGERPRINTS[MOCK_LIBRARY_IDS.active],
+      grantState: "available",
+      lastSeenEpochMs: 1_750_000_000_003,
+      active: true,
+    },
+    {
+      bundleId: MOCK_LIBRARY_IDS.primer,
+      title: "Primer design system",
+      kind: "localFolder",
+      conceptCount: 60,
+      types: ["Component", "Guideline", "Pattern", "Token"],
+      tags: ["accessibility", "design-system"],
+      revisionFingerprint: MOCK_LIBRARY_FINGERPRINTS[MOCK_LIBRARY_IDS.primer],
+      grantState: "available",
+      lastSeenEpochMs: 1_750_000_000_002,
+      active: false,
+    },
+    {
+      bundleId: MOCK_LIBRARY_IDS.handbook,
+      title: "Team Handbook",
+      kind: "localFolder",
+      conceptCount: 202,
+      types: ["Guide", "Policy", "Runbook", "Template"],
+      tags: ["operations", "people"],
+      revisionFingerprint: MOCK_LIBRARY_FINGERPRINTS[MOCK_LIBRARY_IDS.handbook],
+      grantState: "available",
+      lastSeenEpochMs: 1_750_000_000_001,
+      active: false,
+    },
+  ];
+}
+
+export async function bundleLibrary(activeRoot?: string): Promise<BundleLibraryEntry[]> {
+  if (!isTauri()) return mockBundleLibrary();
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<BundleLibraryEntry[]>("bundle_library", { activeRoot });
+}
+
+export async function previewFederatedBundles(
+  bundleIds: string[],
+): Promise<FederatedBundleStatus[]> {
+  if (!isTauri()) {
+    const byId = new Map(mockBundleLibrary().map((entry) => [entry.bundleId, entry]));
+    return bundleIds.map((bundleId) => {
+      const entry = byId.get(bundleId);
+      return entry
+        ? {
+            bundleId,
+            title: entry.title,
+            grantState: entry.grantState,
+            revisionFingerprint: entry.revisionFingerprint,
+            expectedFingerprint: null,
+          }
+        : {
+            bundleId,
+            title: "Unknown bundle",
+            grantState: "revoked",
+            revisionFingerprint: null,
+            expectedFingerprint: null,
+          };
+    });
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedBundleStatus[]>("preview_federated_bundles", { bundleIds });
+}
+
+export async function federatedInventory(
+  selections: FederatedBundleSelection[],
+  filters: { prefix?: string; conceptType?: string; tag?: string; limit?: number } = {},
+): Promise<FederatedConceptPage> {
+  if (!isTauri()) return mockFederatedConcepts(selections, "", filters.limit ?? 50);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedConceptPage>("federated_inventory", {
+    selections,
+    prefix: filters.prefix,
+    conceptType: filters.conceptType,
+    tag: filters.tag,
+    limit: filters.limit ?? 50,
+  });
+}
+
+export async function federatedSearch(
+  selections: FederatedBundleSelection[],
+  query: string,
+  limit = 50,
+): Promise<FederatedConceptPage> {
+  if (!isTauri()) return mockFederatedConcepts(selections, query, limit);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedConceptPage>("federated_search", { selections, query, limit });
+}
+
+export async function federatedSources(
+  selections: FederatedBundleSelection[],
+  query?: string,
+  limit = 50,
+): Promise<FederatedSourcePage> {
+  if (!isTauri()) {
+    const concepts = mockFederatedConcepts(selections, "", 100);
+    const results = concepts.results
+      .flatMap((concept) => {
+        const sourceConcept = MOCK_BUNDLE.concepts.find((item) => item.id === concept.conceptId);
+        return [sourceConcept?.resource, ...(sourceConcept?.externalLinks ?? [])]
+          .filter((uri): uri is string => Boolean(uri))
+          .filter((uri) => !query || uri.toLowerCase().includes(query.toLowerCase()))
+          .map((uri) => ({
+            bundleId: concept.bundleId,
+            bundleTitle: concept.bundleTitle,
+            conceptId: concept.conceptId,
+            revisionFingerprint: concept.revisionFingerprint,
+            grantState: concept.grantState,
+            uri,
+            kinds: [sourceConcept?.resource === uri ? "resource" : "citation"],
+          }));
+      })
+      .slice(0, limit);
+    return { bundles: concepts.bundles, results, truncated: results.length === limit };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedSourcePage>("federated_sources", { selections, query, limit });
+}
+
+export async function federatedRelationshipCandidates(
+  selections: FederatedBundleSelection[],
+  limit = 50,
+): Promise<FederatedRelationshipPage> {
+  if (!isTauri()) {
+    const matches = conceptsForId(mockFederatedConcepts(selections, "", 100), "overview");
+    return {
+      bundles: matches.page.bundles,
+      results: matches.results.length >= 2
+        ? [{
+            kind: "possible-duplicate",
+            basis: "matching-title",
+            evidence: matches.results[0].title.toLowerCase(),
+            requiresReview: true,
+            left: matches.results[0],
+            right: matches.results[1],
+          }]
+        : [],
+      truncated: false,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedRelationshipPage>("federated_relationship_candidates", {
+    selections,
+    limit,
+  });
+}
+
+function mockFederatedConcepts(
+  selections: FederatedBundleSelection[],
+  query: string,
+  limit: number,
+): FederatedConceptPage {
+  const library = new Map(mockBundleLibrary().map((entry) => [entry.bundleId, entry]));
+  const bundles: FederatedBundleStatus[] = [];
+  const resultsByBundle: FederatedConceptPage["results"][] = [];
+  const needle = query.trim().toLowerCase();
+  for (const selection of selections) {
+    const entry = library.get(selection.bundleId);
+    const fingerprint = entry?.revisionFingerprint;
+    const changed = entry && fingerprint !== selection.revisionFingerprint;
+    bundles.push({
+      bundleId: selection.bundleId,
+      title: entry?.title ?? "Unknown bundle",
+      grantState: !entry ? "revoked" : changed ? "changed" : entry.grantState,
+      revisionFingerprint: fingerprint ?? null,
+      expectedFingerprint: selection.revisionFingerprint,
+    });
+    if (!entry || changed || entry.grantState !== "available" || !fingerprint) continue;
+    const bundleResults: FederatedConceptPage["results"] = [];
+    for (const concept of MOCK_BUNDLE.concepts) {
+      const haystack = [concept.id, concept.title, concept.type, concept.description, concept.body]
+        .join(" ")
+        .toLowerCase();
+      if (needle && !haystack.includes(needle)) continue;
+      bundleResults.push({
+        bundleId: entry.bundleId,
+        bundleTitle: entry.title,
+        conceptId: concept.id,
+        revisionFingerprint: fingerprint,
+        grantState: "available",
+        title: concept.title,
+        type: concept.type,
+        description: concept.description,
+        tags: concept.tags,
+        snippet: needle ? concept.description : "",
+      });
+    }
+    resultsByBundle.push(bundleResults);
+  }
+  const results: FederatedConceptPage["results"] = [];
+  for (let index = 0; results.length <= limit; index += 1) {
+    let found = false;
+    for (const bundleResults of resultsByBundle) {
+      const result = bundleResults.at(index);
+      if (!result) continue;
+      results.push(result);
+      found = true;
+      if (results.length > limit) break;
+    }
+    if (!found || results.length > limit) break;
+  }
+  return {
+    bundles,
+    results: results.slice(0, limit),
+    truncated: results.length > limit,
+  };
+}
+
+function conceptsForId(page: FederatedConceptPage, conceptId: string) {
+  return {
+    page,
+    results: page.results.filter((result) => result.conceptId === conceptId),
+  };
 }
 
 /**

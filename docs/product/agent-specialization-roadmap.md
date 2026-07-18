@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T06:30:00Z
+timestamp: 2026-07-18T07:30:00Z
 ---
 
 # Outcome
@@ -161,12 +161,12 @@ Gate: a user can start an audit, repair, cited explanation, change-impact check,
 
 ## SP7: Granted bundle library and federation
 
-- [ ] Introduce opaque Rust-owned bundle IDs for current and recent granted bundles without changing OKF concept IDs on disk.
-- [ ] Add read-only federated inventory, search, type, tag, source, and relationship-candidate queries across an explicit selected bundle set.
-- [ ] Return every result with bundle ID, bundle title, concept ID, revision fingerprint, and grant state; never merge namespaces by title or path alone.
-- [ ] Let users inspect and remove the bundle set before a federated task starts. Revoked, missing, or changed bundles become visible partial results.
-- [ ] Keep writes single-destination. A cross-bundle finding must choose one active destination and attach other bundles as read-only evidence.
-- [ ] Detect possible duplicate concepts and unlinked relationships as heuristic candidates that require review before any proposal.
+- [x] Introduce opaque Rust-owned bundle IDs for current and recent granted bundles without changing OKF concept IDs on disk.
+- [x] Add read-only federated inventory, search, type, tag, source, and relationship-candidate queries across an explicit selected bundle set.
+- [x] Return every result with bundle ID, bundle title, concept ID, revision fingerprint, and grant state; never merge namespaces by title or path alone.
+- [x] Let users inspect and remove the bundle set before a federated task starts. Revoked, missing, or changed bundles become visible partial results.
+- [x] Keep writes single-destination. A cross-bundle finding must choose one active destination and attach other bundles as read-only evidence.
+- [x] Detect possible duplicate concepts and unlinked relationships as heuristic candidates that require review before any proposal.
 
 Gate: two bundles may contain the same concept path and title without identity collision, and revoking either grant removes its results and context without affecting the other.
 

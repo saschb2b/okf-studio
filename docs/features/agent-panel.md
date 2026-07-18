@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-18T06:30:00Z
+timestamp: 2026-07-18T07:30:00Z
 ---
 
 # Entry and first open
@@ -43,6 +43,10 @@ Selecting a task shows a context plan above the composer before the first prompt
 The plan has a deterministic revision fingerprint over the bundle root, concept identity and metadata, links, bodies, and validation findings. The accepted manifest crosses the native command boundary with the stable task ID, where Rust rechecks its size, task match, and exact curated capability route. Native providers receive it as bounded routing data and keep using scoped OKF tools. ACP providers receive the same routing block and the selected versioned capability resources, with text fallback when embedded resources are unavailable. The task and accepted manifest are stored beside the agent-owned session pointer. If live reload changes the fingerprint, the composer blocks the next send until the user reviews and accepts the refreshed plan.
 
 The same route is available through [Native OKF Tasks](native-okf-tasks.md) on concepts, graph selections, validation findings, resource citations, search results, and attached sources. One launcher owns task choice and context preview across those surfaces. It retains the requested object while the user connects or authenticates, returns focus on cancel, and opens a separate thread when the current one is busy.
+
+Audit, enrichment, cited-research, and change-impact launches also show a **Bundle set** after an agent is ready. The active bundle is pinned as the only write destination. The user may add up to seven other previously granted bundles as read-only evidence, inspect their opaque identity and current revision, and remove them before starting. Studio rechecks the exact selected revisions before gathering evidence. A missing folder, revoked grant, or changed revision remains visible in the set and blocks that external evidence until the user removes or refreshes it; a failure to load the optional library does not prevent ordinary single-bundle work.
+
+Federated task evidence is bounded and attached to the new thread as ordinary visible sources. Inventory and search results carry bundle ID, bundle title, concept ID, revision fingerprint, and grant state. Source references carry the same identity fields. Possible duplicates and unlinked relationships are labeled as review-required heuristics rather than accepted links. No external bundle becomes a staging root, and no path is exposed as its identity.
 
 # Structured work surface
 

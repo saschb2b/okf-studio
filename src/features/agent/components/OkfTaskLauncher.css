@@ -103,6 +103,10 @@
   overflow: auto;
 }
 
+.okf-task-launcher__body > .federated-bundle-set {
+  margin: 0 var(--space-16) var(--space-16);
+}
+
 .okf-task-launcher__actions {
   display: flex;
   gap: var(--space-8);

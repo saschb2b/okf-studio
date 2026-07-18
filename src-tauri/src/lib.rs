@@ -60,6 +60,7 @@ mod agent_url;
 mod agent_stage;
 mod bundle_create;
 mod bundle_grant;
+mod bundle_library;
 mod remote;
 mod watch;
 
@@ -149,25 +150,99 @@ fn revoke_bundle_grant(
 #[tauri::command]
 fn scan_bundles(
     grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
     folder: String,
     max_depth: usize,
 ) -> Result<Vec<BundleRoot>, String> {
     let folder = grants.authorize_folder(Path::new(&folder))?;
+    let kind = grants
+        .grant_kind(&folder)
+        .ok_or_else(|| "The bundle folder grant is no longer available.".to_string())?;
     let roots = okf_core::scan_bundles_with_depth(&folder, max_depth);
     grants.register_bundle_roots(
         &folder,
         roots.iter().map(|root| Path::new(&root.root).to_path_buf()),
     )?;
+    library.register_detected(&folder, kind, &roots)?;
     Ok(roots)
 }
 
 #[tauri::command]
 fn read_bundle(
     grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
     root: String,
 ) -> Result<Bundle, String> {
     let root = grants.authorize_bundle(Path::new(&root))?;
-    Ok(okf_core::read_bundle(&root))
+    let bundle = okf_core::read_bundle(&root);
+    library.update_snapshot(&root, &bundle)?;
+    Ok(bundle)
+}
+
+#[tauri::command]
+fn bundle_library(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    active_root: Option<String>,
+) -> Result<Vec<bundle_library::BundleLibraryEntry>, String> {
+    let active_root = active_root
+        .map(|root| grants.authorize_bundle(Path::new(&root)))
+        .transpose()?;
+    Ok(library.entries(&grants, active_root.as_deref()))
+}
+
+#[tauri::command]
+fn preview_federated_bundles(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    bundle_ids: Vec<String>,
+) -> Result<Vec<bundle_library::FederatedBundleStatus>, String> {
+    library.preview(&grants, bundle_ids)
+}
+
+#[tauri::command]
+fn federated_inventory(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    prefix: Option<String>,
+    concept_type: Option<String>,
+    tag: Option<String>,
+    limit: usize,
+) -> Result<bundle_library::FederatedConceptPage, String> {
+    library.inventory(&grants, selections, prefix, concept_type, tag, limit)
+}
+
+#[tauri::command]
+fn federated_search(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    query: String,
+    limit: usize,
+) -> Result<bundle_library::FederatedConceptPage, String> {
+    library.search(&grants, selections, query, limit)
+}
+
+#[tauri::command]
+fn federated_sources(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    query: Option<String>,
+    limit: usize,
+) -> Result<bundle_library::FederatedSourcePage, String> {
+    library.sources(&grants, selections, query, limit)
+}
+
+#[tauri::command]
+fn federated_relationship_candidates(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    limit: usize,
+) -> Result<bundle_library::FederatedRelationshipPage, String> {
+    library.relationships(&grants, selections, limit)
 }
 
 #[tauri::command]
@@ -845,6 +920,11 @@ pub fn run() {
                     std::io::Error::other(format!("could not load bundle grants: {error}"))
                 })?,
             );
+            app.manage(
+                bundle_library::BundleLibraryState::load(app.handle()).map_err(|error| {
+                    std::io::Error::other(format!("could not load bundle library: {error}"))
+                })?,
+            );
             app.manage(WatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
@@ -908,6 +988,12 @@ pub fn run() {
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            bundle_library,
+            preview_federated_bundles,
+            federated_inventory,
+            federated_search,
+            federated_sources,
+            federated_relationship_candidates,
             validate_agent_artifact,
             agent_catalog,
             okf_capability_catalog,

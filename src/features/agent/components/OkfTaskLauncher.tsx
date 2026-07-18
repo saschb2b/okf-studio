@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { CircleAlert, Sparkles, X } from "lucide-react";
+import type { ReactNode } from "react";
 import type { OkfContextPlan, OkfTaskId } from "@/features/agent/taskContext.ts";
 import { OKF_TASKS } from "@/features/agent/taskContext.ts";
 import type { OkfTaskOrigin } from "@/features/agent/taskLauncher.ts";
@@ -25,6 +26,8 @@ interface OkfTaskLauncherProps {
   tasks: readonly OkfTaskId[];
   selectedTaskId: OkfTaskId;
   plan?: OkfContextPlan;
+  bundleSet?: ReactNode;
+  startDisabled?: boolean;
   connectionName?: string;
   onTaskChange: (taskId: OkfTaskId) => void;
   onClose: () => void;
@@ -41,6 +44,8 @@ export function OkfTaskLauncher({
   tasks,
   selectedTaskId,
   plan,
+  bundleSet,
+  startDisabled = false,
   connectionName,
   onTaskChange,
   onClose,
@@ -107,6 +112,8 @@ export function OkfTaskLauncher({
               </section>
             )}
 
+            {bundleSet}
+
             {plan && (
               <OkfContextPlanCard
               plan={plan}
@@ -131,7 +138,7 @@ export function OkfTaskLauncher({
               <button type="button" className="btn primary" onClick={onRefresh}>Review refreshed plan</button>
             )}
             {(status === "ready" || status === "overflow" || status === "active-thread-conflict") && (
-              <button type="button" className="btn primary" onClick={onStart}>
+              <button type="button" className="btn primary" disabled={startDisabled} onClick={onStart}>
                 {status === "active-thread-conflict" ? "Start separate thread" : status === "overflow" ? "Start with selected context" : "Start task"}
               </button>
             )}

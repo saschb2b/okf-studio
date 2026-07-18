@@ -18,7 +18,7 @@ import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary.tsx";
 import { NewAgentThreadMenu } from "@/features/agent/components/NewAgentThreadMenu.tsx";
 import { ThreadStatusIndicator, threadStatusLabel } from "@/features/agent/components/conversation/ThreadStatusIndicator.tsx";
 import { ThreadSwitcher } from "@/features/agent/components/conversation/ThreadSwitcher.tsx";
-import { OkfTaskLauncher } from "@/features/agent/components/OkfTaskLauncher.tsx";
+import { FederatedOkfTaskLauncher } from "@/features/agent/components/FederatedOkfTaskLauncher.tsx";
 import type { OkfTaskLauncherStatus } from "@/features/agent/components/OkfTaskLauncher.tsx";
 import {
   bundleContextFingerprint,
@@ -390,8 +390,9 @@ export function AgentPanel() {
         && launcherTaskId
         && !launcherHidden
         && (
-        <OkfTaskLauncher
-          open
+        <FederatedOkfTaskLauncher
+          requestId={launcherRequest.requestId}
+          activeRoot={state.activeRoot}
           origin={launcherRequest.origin}
           status={launcherStatus}
           tasks={launcherTasks}
@@ -427,11 +428,11 @@ export function AgentPanel() {
             preferredTaskId: launcherTaskId,
             returnFocusId: launcherRequest.returnFocusId,
           })}
-          onStart={() => {
+          onStart={(kickoff) => {
             if (!selectedConnection) return;
             requestNewThread(
               selectedConnection.connectionId,
-              kickoffForOkfOrigin(launcherTaskId, launcherRequest.origin),
+              kickoff,
             );
             setLauncherSuspension(null);
             actions.closeOkfTaskLauncher({ restoreFocus: false });

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = fileURLToPath(new URL(".", import.meta.url));
@@ -13,6 +13,17 @@ export const defaultArtifactScoringPath = resolve(benchmarkRoot, "artifact-scori
 export const defaultWritingCorpusPath = resolve(benchmarkRoot, "writing-corpus.json");
 export const capabilityRoot = resolve(scriptDirectory, "../.agents/skills/okf");
 export const defaultCapabilityManifestPath = resolve(capabilityRoot, "capabilities.json");
+
+const TEXT_FIXTURE_EXTENSIONS = new Set([
+  ".csv",
+  ".json",
+  ".md",
+  ".mdx",
+  ".toml",
+  ".txt",
+  ".yaml",
+  ".yml",
+]);
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -76,9 +87,13 @@ export function fingerprintDirectory(directory) {
   const paths = filesBelow(directory).sort((left, right) => relative(directory, left).localeCompare(relative(directory, right), "en"));
   for (const path of paths) {
     const portablePath = relative(directory, path).split(sep).join("/");
+    const contents = readFileSync(path);
+    const fingerprintContents = TEXT_FIXTURE_EXTENSIONS.has(extname(path).toLowerCase())
+      ? Buffer.from(contents.toString("utf8").replaceAll("\r\n", "\n"), "utf8")
+      : contents;
     hash.update(portablePath, "utf8");
     hash.update("\0");
-    hash.update(readFileSync(path));
+    hash.update(fingerprintContents);
     hash.update("\0");
   }
   return hash.digest("hex");

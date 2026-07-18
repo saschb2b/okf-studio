@@ -4,7 +4,7 @@ title: Specialized Agent Systems Research
 description: Primary-source findings that inform the transformation from a general agent panel into an OKF-specialized knowledge workspace.
 resource: https://docs.github.com/en/copilot/concepts/agents/github-copilot-app
 tags: [reference, agents, skills, specialization, copilot, okf]
-timestamp: 2026-07-18T00:02:24Z
+timestamp: 2026-07-18T00:05:58Z
 ---
 
 # Research question
@@ -32,6 +32,8 @@ GitHub's specialization is a stack of mutually reinforcing layers:
 | OS entry | App deep links, voice input, and launch points from external tools | Add a guarded Studio URL scheme and CLI so files, scripts, and other agents can open a bundle or prefill a task without starting an agent silently |
 
 The important part is the native object model. GitHub agents can act on issues, branches, checks, and pull requests because the application owns those objects and their lifecycle. OKF Studio should give agents comparable first-class access to concept identity, graph position, evidence, validation, provenance, and reviewed revisions. A larger system prompt cannot supply those guarantees.
+
+Google's Knowledge Catalog direction adds the knowledge-specific counterpart: aggregate context across systems, enrich it continuously, and retrieve it through high-precision search with existing access controls. Studio should adopt the continuous-health and federated-discovery goals while retaining local bundle grants as its access authority. A cross-bundle result must preserve its source bundle and concept identity. It cannot flatten several bundles into one prompt namespace or imply a write grant to every source.
 
 # Skills and capability delivery
 
@@ -130,4 +132,4 @@ Reject:
 - [GitHub Copilot Memory](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/agents/copilot-memory)
 - [Open Knowledge Format announcement](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/)
 - [Open Knowledge Format specification](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
-
+- [Google Cloud Knowledge Catalog](https://cloud.google.com/blog/products/data-analytics/introducing-the-google-cloud-knowledge-catalog)

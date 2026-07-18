@@ -57,6 +57,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [IPC & Security](architecture/ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit network and process actions, and reviewed writes.
 * [Performance & Scale](architecture/performance.md) - How the app stays fast, from the bounded scan to graph rendering.
 * [Testing & Dogfooding](architecture/testing.md) - Frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
+* [OKF Agent Benchmarking](architecture/agent-benchmarking.md) - Frozen task fixtures, machine-checked OKF facts, and provider evaluation boundaries.
 * [Build & Release](architecture/build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.
 
 # Reference

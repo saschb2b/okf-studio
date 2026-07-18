@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T00:05:58Z
+timestamp: 2026-07-18T00:16:16Z
 ---
 
 # Outcome
@@ -77,12 +77,12 @@ Each package ends in a focused commit or short series of reviewable commits. A p
 
 ## SP0: Benchmark and specialization contract
 
-- [ ] Define representative OKF tasks for inspection, creation, enrichment, audit, repair, research, change impact, and migration.
-- [ ] Record input bundles, allowed tools, expected artifacts, hard safety failures, and scored quality criteria.
+- [x] Define representative OKF tasks for inspection, creation, enrichment, audit, repair, research, change impact, and migration.
+- [x] Record input bundles, allowed tools, expected artifacts, hard safety failures, and scored quality criteria.
 - [ ] Run the current Studio Agent, Codex ACP, Claude ACP, and one local model where available to establish a baseline.
 - [ ] Measure task completion, invalid claims, context volume, tool calls, validation outcome, time, and model cost when reported.
-- [ ] Add a fixture corpus containing conformant, thin, disconnected, stale, contradictory, malformed, and large bundles.
-- [ ] Freeze deterministic fixture fingerprints and machine-score artifact shape, path identity, citations, safety violations, and validator results before using rubric-based model judgment.
+- [x] Add a fixture corpus containing conformant, thin, disconnected, stale, contradictory, malformed, and generated large-bundle cases.
+- [ ] Freeze deterministic fixture fingerprints and machine-score artifact shape, path identity, citations, safety violations, and validator results before using rubric-based model judgment. Fixture fingerprints and parser facts are pinned; artifact scoring remains.
 - [ ] Retain benchmark reports locally with app version, capability versions, provider-reported model, and explicit unavailable cases; send no evaluation data to Studio infrastructure.
 
 Gate: the suite can distinguish a fluent answer from correct OKF work, produces the same deterministic scores in two consecutive shuffled runs, and runs without network access except for explicitly remote research cases.

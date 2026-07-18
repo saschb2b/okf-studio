@@ -16,6 +16,7 @@
     "test:integration": "vitest run --project integration",
     "test:frontend": "pnpm test && pnpm test:integration && pnpm test:stories",
     "test:stories": "vitest run --project storybook",
+    "test:agent-benchmarks": "node --test scripts/okf-agent-benchmark.test.mjs && node scripts/okf-agent-benchmark.mjs check",
     "test:network": "cargo test -p okf-viewer remote::tests::fetches_and_extracts_a_real_github_subpath -- --ignored --exact",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",

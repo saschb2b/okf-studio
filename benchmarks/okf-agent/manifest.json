@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "conformant-linked",
+      "kind": "bundle",
+      "path": "fixtures/conformant-linked",
+      "sha256": "bfb894d138cad58237e1612ab7d484f40e1e26de29a474c042b06b79b36dfbb1",
+      "expected": {
+        "conceptCount": 3,
+        "errorCount": 0,
+        "warningCount": 0,
+        "brokenLinkCount": 0
+      }
+    },
+    {
+      "id": "thin-bundle",
+      "kind": "bundle",
+      "path": "fixtures/thin-bundle",
+      "sha256": "9adc36664436bffacdb06ee85c9324a6da5b6a83e35519952af477cb06c15653",
+      "expected": {
+        "conceptCount": 1,
+        "errorCount": 0,
+        "warningCount": 0,
+        "missingMetadata": ["description", "tags", "timestamp", "resource"]
+      }
+    },
+    {
+      "id": "disconnected-broken",
+      "kind": "bundle",
+      "path": "fixtures/disconnected-broken",
+      "sha256": "53dfa954d7246345e6a23a99038e807163e22cbb1bcc12dc54dbeaecfa5dbb11",
+      "expected": {
+        "conceptCount": 4,
+        "errorCount": 0,
+        "warningCount": 1,
+        "brokenLinkCount": 1,
+        "orphanConceptIds": ["orphan"]
+      }
+    },
+    {
+      "id": "malformed-tolerated",
+      "kind": "bundle",
+      "path": "fixtures/malformed-tolerated",
+      "sha256": "42e8bbabacba86ce926c558f63e2e6549d132085eed4954fb016d4e9e0b7e994",
+      "expected": {
+        "conceptCount": 4,
+        "errorCount": 2,
+        "warningCount": 0,
+        "unknownType": "Domain-Specific Artifact"
+      }
+    },
+    {
+      "id": "conflicting-stale",
+      "kind": "bundle",
+      "path": "fixtures/conflicting-stale",
+      "sha256": "eafe4261ac0f4f5affdbb2dfc5a79626e6a9e41b09a11c26ee3482b4eb4a5682",
+      "expected": {
+        "conceptCount": 3,
+        "errorCount": 0,
+        "warningCount": 0,
+        "conflictConceptIds": ["metrics/finance-revenue", "metrics/sales-revenue"],
+        "staleBefore": "2022-01-01T00:00:00Z"
+      }
+    },
+    {
+      "id": "generated-scale",
+      "kind": "generated",
+      "generator": {
+        "algorithm": "layered-dag-v1",
+        "conceptCount": 10000,
+        "linkCount": 50000,
+        "seed": 170718,
+        "maxBodyBytes": 512
+      },
+      "sha256": "76587f97d9a5bb3b1569525edc9650daf106522024c89b7a0ee7286bb1ababe2",
+      "expected": {
+        "conceptCount": 10000,
+        "linkCount": 50000,
+        "generationIsDeterministic": true
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "inspect-linked",
+      "fixtureId": "conformant-linked",
+      "capabilityId": "okf-inspect",
+      "expectedArtifact": "health-report",
+      "prompt": "Explain how net revenue is calculated and which runbook handles a mismatch.",
+      "allowedTools": ["okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+      "hardFailures": ["claims a source outside the fixture", "omits the refund audit runbook"],
+      "scores": [
+        { "id": "metric", "points": 40, "check": "Names gross_usd minus refunded_usd as the calculation." },
+        { "id": "lineage", "points": 30, "check": "Traces the metric to customer orders." },
+        { "id": "runbook", "points": 30, "check": "Names refund audit as the mismatch procedure." }
+      ]
+    },
+    {
+      "id": "audit-broken",
+      "fixtureId": "disconnected-broken",
+      "capabilityId": "okf-audit",
+      "expectedArtifact": "health-report",
+      "prompt": "Audit this bundle for navigation and graph defects.",
+      "allowedTools": ["okf_inventory", "okf_validate", "okf_traverse", "okf_read"],
+      "hardFailures": ["reports the missing dashboard as present", "misses the unlinked retention note"],
+      "scores": [
+        { "id": "broken-link", "points": 45, "check": "Identifies dashboards/freshness.md as a missing target." },
+        { "id": "orphan", "points": 35, "check": "Identifies orphan as an unlinked concept." },
+        { "id": "repair-order", "points": 20, "check": "Separates evidence from suggested repairs." }
+      ]
+    },
+    {
+      "id": "repair-tolerated",
+      "fixtureId": "malformed-tolerated",
+      "capabilityId": "okf-repair",
+      "expectedArtifact": "staged-revision",
+      "prompt": "Repair conformance errors without deleting producer-defined knowledge.",
+      "allowedTools": ["okf_inventory", "okf_validate", "okf_read", "okf_stage"],
+      "hardFailures": ["deletes the unknown concept type", "applies changes without review"],
+      "scores": [
+        { "id": "missing-types", "points": 50, "check": "Stages types for both malformed concepts." },
+        { "id": "unknown-type", "points": 30, "check": "Preserves Domain-Specific Artifact." },
+        { "id": "review", "points": 20, "check": "Leaves the repair as a reviewed staged revision." }
+      ]
+    },
+    {
+      "id": "research-conflict",
+      "fixtureId": "conflicting-stale",
+      "capabilityId": "okf-research",
+      "expectedArtifact": "research-brief",
+      "prompt": "Resolve the revenue-definition conflict using only available evidence.",
+      "allowedTools": ["okf_inventory", "okf_search", "okf_read", "okf_sources"],
+      "hardFailures": ["chooses an authoritative definition without evidence", "uses the invalid example URLs as fetched evidence"],
+      "scores": [
+        { "id": "conflict", "points": 40, "check": "Quotes the substantive includes-versus-excludes distinction." },
+        { "id": "uncertainty", "points": 35, "check": "States that ownership and precedence are unresolved." },
+        { "id": "staleness", "points": 25, "check": "Flags the 2021 evidence as stale." }
+      ]
+    },
+    {
+      "id": "change-impact-linked",
+      "fixtureId": "conformant-linked",
+      "capabilityId": "okf-change-impact",
+      "expectedArtifact": "change-impact-map",
+      "prompt": "Map the impact of renaming refunded_usd before proposing edits.",
+      "allowedTools": ["okf_search", "okf_read", "okf_traverse"],
+      "hardFailures": ["stages an edit before mapping dependents", "omits net revenue"],
+      "scores": [
+        { "id": "metric", "points": 45, "check": "Includes net revenue as a direct dependent." },
+        { "id": "runbook", "points": 35, "check": "Includes refund audit as an operational dependent." },
+        { "id": "boundary", "points": 20, "check": "Distinguishes observed links from inferred impact." }
+      ]
+    },
+    {
+      "id": "enrich-conflict",
+      "fixtureId": "conflicting-stale",
+      "capabilityId": "okf-enrich",
+      "expectedArtifact": "staged-revision",
+      "prompt": "Propose an enrichment that makes the revenue disagreement actionable.",
+      "allowedTools": ["okf_search", "okf_read", "okf_sources", "okf_stage"],
+      "hardFailures": ["silently rewrites either definition", "presents stale evidence as current"],
+      "scores": [
+        { "id": "ownership", "points": 40, "check": "Adds an explicit owner or decision request." },
+        { "id": "provenance", "points": 35, "check": "Retains both source claims and their provenance." },
+        { "id": "review", "points": 25, "check": "Produces a staged revision rather than a direct write." }
+      ]
+    },
+    {
+      "id": "create-from-brief",
+      "fixtureId": "conformant-linked",
+      "capabilityId": "okf-create",
+      "expectedArtifact": "bundle-plan",
+      "prompt": "Plan a separate support-quality bundle using this bundle as a structural example.",
+      "allowedTools": ["okf_inventory", "okf_read", "okf_traverse"],
+      "hardFailures": ["writes into the example bundle", "copies commerce facts into the new domain"],
+      "scores": [
+        { "id": "boundary", "points": 35, "check": "Keeps the target bundle separate from the fixture." },
+        { "id": "shape", "points": 35, "check": "Plans linked concepts, a root index, and provenance." },
+        { "id": "questions", "points": 30, "check": "Identifies missing support-domain inputs before creation." }
+      ]
+    },
+    {
+      "id": "migrate-scale",
+      "fixtureId": "generated-scale",
+      "capabilityId": "okf-migrate",
+      "expectedArtifact": "migration-plan",
+      "prompt": "Plan an identity-preserving migration of the generated bundle without loading every body into context.",
+      "allowedTools": ["okf_inventory", "okf_search", "okf_traverse"],
+      "hardFailures": ["requires all concept bodies in one prompt", "changes stable concept identities"],
+      "scores": [
+        { "id": "identity", "points": 40, "check": "Preserves stable concept identity across the migration." },
+        { "id": "budget", "points": 35, "check": "Uses bounded batches and explicit context budgets." },
+        { "id": "verification", "points": 25, "check": "Includes preflight, parity checks, and rollback." }
+      ]
+    }
+  ]
+}

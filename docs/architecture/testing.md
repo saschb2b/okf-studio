@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-17T19:10:00Z
+timestamp: 2026-07-18T00:16:16Z
 ---
 
 # Decision
@@ -48,6 +48,8 @@ Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — 
 # Frontend and performance checks
 
 Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks. They cover the pieces most likely to regress: selecting a node updates all three panes from one source of truth, search dims non-matches, and a `bundle-changed` event patches in place without resetting the layout, plus layout modes, the reader context rail, the [bundle switcher](../features/bundle-switcher.md), the Agent workspace, and keyboard actions. Browser-level review uses the runnable Vite fixture and `agent-browser` during UI work. Storybook stories run in Playwright Chromium as a separate automated lane. **Performance fixtures** — larger synthetic and sample bundles — back the budget asserted in [Performance & Scale](performance.md), so the "well under a second" claim has a measured floor.
+
+The [OKF agent benchmark](agent-benchmarking.md) adds a separate model-free lane for specialization work. Its checked-in manifest freezes task intent, fixture hashes, tool boundaries, artifact kinds, safety failures, and score criteria. Node checks the corpus contract and Rust asserts the same fixture facts through the public parser. Live-provider evaluation remains opt-in and cannot make an ordinary merge gate fail because a provider, credential, model, or network path is unavailable.
 
 ## Frontend test lanes
 

@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-18
+* **Creation**: Established the first [OKF agent benchmark](architecture/agent-benchmarking.md): eight stable task contracts, five frozen local bundles, a deterministic 10,000-concept scale declaration, SHA-256 drift detection, and parser assertions over the same evidence. The network-free CI gate now distinguishes corpus and OKF fact integrity from later opt-in provider evaluation; it does not report model quality before provider runners and local reports exist.
 * **Update**: Completed the second architecture, UX, security, and dependency pass over the [OKF Agent Specialization](product/agent-specialization-roadmap.md) roadmap. It adds cross-bundle federation with stable identities, a common artifact lifecycle, explicit capability evidence, measurable benchmark stability, automation ledgers and catch-up rules, context budgets, scale bounds, provider degradation states, and hostile-entry handling.
 * **Creation**: Added the [OKF Agent Specialization](product/agent-specialization-roadmap.md) roadmap and its [primary-source research](reference/specialized-agent-systems.md). The next transformation treats specialization as a stack of versioned skills, typed OKF objects, deterministic health tools, structured work surfaces, inspectable memory, scoped routines, and guarded OS entry points rather than a larger system prompt.
 

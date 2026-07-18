@@ -1449,30 +1449,37 @@ mod tests {
     use std::fs;
 
     #[test]
+    fn catalog_resources_are_all_loadable_by_generic_chat() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs");
+        let server = OkfMcpServer::new(okf_core::read_bundle(&root));
+        let Json(catalog) = server
+            .okf_capability_catalog(Parameters(CapabilityCatalogInput {}))
+            .expect("capability catalog");
+
+        assert_eq!(catalog.manifest_sha256.len(), 64);
+        for capability in &catalog.capabilities {
+            for resource_id in &capability.resource_ids {
+                let Json(resource) = server
+                    .okf_capability_resource(Parameters(CapabilityResourceInput {
+                        capability_id: capability.id.clone(),
+                        resource_id: resource_id.clone(),
+                    }))
+                    .expect("catalog resource should load");
+                assert_eq!(resource.capability_id, capability.id);
+                assert_eq!(resource.capability_version, capability.version);
+                assert_eq!(resource.resource_id, *resource_id);
+                assert!(!resource.contents.trim().is_empty());
+            }
+        }
+    }
+
+    #[test]
     fn tools_inspect_read_search_sources_traverse_and_validate_the_docs_bundle() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../docs")
             .canonicalize()
             .expect("canonical docs root");
         let server = OkfMcpServer::new(okf_core::read_bundle(&root));
-        let Json(catalog) = server
-            .okf_capability_catalog(Parameters(CapabilityCatalogInput {}))
-            .expect("capability catalog");
-        assert_eq!(catalog.manifest_sha256.len(), 64);
-        assert!(catalog
-            .capabilities
-            .iter()
-            .any(|capability| capability.id == "okf-revise"
-                && capability.resource_ids == ["instructions"]));
-        let Json(resource) = server
-            .okf_capability_resource(Parameters(CapabilityResourceInput {
-                capability_id: "okf-revise".to_string(),
-                resource_id: "instructions".to_string(),
-            }))
-            .expect("revise capability resource");
-        assert_eq!(resource.capability_version, "0.1.0");
-        assert!(resource.contents.contains("writing-revision"));
-
         let Json(inventory) = server
             .okf_inventory(Parameters(InventoryInput {
                 prefix: Some("features/".to_string()),

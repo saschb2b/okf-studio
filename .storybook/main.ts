@@ -6,10 +6,18 @@
 // .mcp.json at the repo root points Claude Code at it.
 import type { StorybookConfig } from "@storybook/react-vite";
 
+const addons: NonNullable<StorybookConfig["addons"]> = ["@storybook/addon-vitest"];
+
+// The MCP server is a development surface. Loading it inside Vitest adds its
+// manifest and module-graph work to the browser handshake without testing it.
+if (!process.env.VITEST) {
+  addons.push("@storybook/addon-mcp");
+}
+
 const config: StorybookConfig = {
   framework: "@storybook/react-vite",
   stories: ["../src/**/*.stories.tsx"],
-  addons: ["@storybook/addon-vitest", "@storybook/addon-mcp"],
+  addons,
 };
 
 export default config;

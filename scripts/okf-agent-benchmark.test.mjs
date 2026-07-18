@@ -56,20 +56,21 @@ test("accepts the frozen OKF task and fixture contract", () => {
   ].sort());
 });
 
-test("routes generic chat to every curated capability without preloading all methods", () => {
+test("keeps every curated capability reachable from the generic OKF skill", () => {
   const capabilities = loadCapabilityManifest().capabilities;
   const skill = readFileSync(join(import.meta.dirname, "../.agents/skills/okf/SKILL.md"), "utf8");
+  const linkedResources = new Set(
+    [...skill.matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1]),
+  );
+  const missingRoutes = capabilities
+    .filter((capability) => capability.id !== "okf-core")
+    .flatMap((capability) => capability.resources.map((resource) => ({
+      capabilityId: capability.id,
+      resource: `./${resource.path}`,
+    })))
+    .filter(({ resource }) => !linkedResources.has(resource));
 
-  for (const capability of capabilities.filter((item) => item.id !== "okf-core")) {
-    assert.ok(
-      skill.includes(`(./${capability.resources[0].path})`),
-      `missing generic route for ${capability.id}`,
-    );
-  }
-  assert.match(skill, /call `okf_capability_catalog`/);
-  assert.match(skill, /`okf_capability_resource` to load the selected method/);
-  assert.match(skill, /Do not claim to have used a method until its resource was loaded/);
-  assert.match(skill, /Loading every method at once wastes context and combines incompatible boundaries/);
+  assert.deepEqual(missingRoutes, []);
 });
 
 test("writing corpus rejects polish that loses required knowledge", () => {
@@ -125,7 +126,7 @@ test("artifact scoring is stable across shuffled case order", () => {
   ]);
 });
 
-test("retains an unavailable provider report locally without inventing measurements", () => {
+test("retains an unavailable provider report locally without inventing measurements", (context) => {
   const manifest = loadManifest();
   const capabilities = loadCapabilityManifest();
   const report = {
@@ -170,10 +171,10 @@ test("retains an unavailable provider report locally without inventing measureme
   };
   assert.equal(validateProviderReport(report).provider.status, "unavailable");
   const root = mkdtempSync(join(tmpdir(), "okf-agent-report-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
   const destination = writeProviderReport(report, root);
   assert.deepEqual(JSON.parse(readFileSync(destination, "utf8")), report);
-  assert.throws(() => writeProviderReport(report, root));
-  rmSync(root, { recursive: true, force: true });
+  assert.throws(() => writeProviderReport(report, root), { code: "EEXIST" });
 });
 
 test("rejects a benchmark task whose capability is disabled or absent", () => {

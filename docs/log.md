@@ -1,6 +1,8 @@
 # Update Log
 
 ## 2026-07-18
+* **Update**: Reworked the generic OKF routing checks around observable contracts instead of exact `SKILL.md` sentences. The repository test now reports missing manifest resource links, the MCP test loads every catalog-advertised resource through the production handler, temporary reports register cleanup before assertions, and overwrite refusal checks `EEXIST`. The task-launcher journey explicitly selects Research instead of relying on the current default. The Storybook lane no longer repeats app-development warmup or loads the MCP manifest inside headless Vitest; the live Storybook MCP surface remains enabled and passed the complete story and accessibility run.
+
 * **Update**: Upgraded the built-in pack to `okf-foundation@1.2.0`. Generic Studio Agent and external ACP chat can now inspect every active OKF method and load the narrowest versioned resource through a closed read-only tool. The repository skill uses the same router, while named tasks remain the deterministic path for accepted context and tool scope.
 
 * **Update**: Rewrote the bundle entry points for direct navigation and plainer language. The root index now routes readers by job; the product overview, principles, and scope retain their existing claims while removing promotional phrasing, compressed asides, and ambiguous audience labels.

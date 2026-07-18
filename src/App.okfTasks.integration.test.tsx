@@ -17,12 +17,12 @@ describe("native OKF task entry points", () => {
     await user.click(screen.getByRole("button", { name: "Work with agent" }));
     const launcher = await screen.findByRole("dialog", { name: "Start OKF work" });
     expect(within(launcher).getByText(/Concept:/)).toBeInTheDocument();
-    expect(within(launcher).getByRole("region", { name: "Audit this bundle" }))
-      .toHaveTextContent("active concept");
 
     await user.click(within(launcher).getByRole("radio", {
       name: "Research with cited evidence",
     }));
+    expect(within(launcher).getByRole("region", { name: "Research with cited evidence" }))
+      .toHaveTextContent("active concept");
     const bundleSet = await within(launcher).findByRole("region", { name: "Bundle set" });
     await user.click(within(bundleSet).getByRole("checkbox", {
       name: /Primer design system/i,

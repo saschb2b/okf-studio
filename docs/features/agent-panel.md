@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-18T09:45:00Z
+timestamp: 2026-07-18T10:15:00Z
 ---
 
 # Entry and first open
@@ -43,6 +43,8 @@ The four guided starters now select stable task IDs rather than relying on the w
 Selecting a task shows a context plan above the composer before the first prompt. The plan names the selected capabilities, tool scope, network and staged-write scope, active concept, direct and reverse graph neighbors, validation counts, user-selected concepts, and attached sources. Optional objects and sources have individual remove controls. Context paths are capped at eight for the ACP boundary. Sources keep their existing attachment cap. A byte budget and estimated token count cover the selected concept bodies and source content. Every item omitted by the user, size budget, or object cap is listed with its reason before send.
 
 Removing an optional concept offers a separate [workspace-memory](workspace-memory.md) action. The card shows the exact task-specific omission, owner, bundle scope, fingerprint revalidation, and retention before **Remember**. A current preference appears as a named omission in later plans; a stale preference stays out of context.
+
+Repeatable maintenance remains outside conversation turns. [Local OKF Routines](local-routines.md) run deterministic health and bundle-source checks without an agent, then place non-healthy receipts in a bundle-scoped attention inbox. Agent-backed scheduling is unavailable until Studio can revalidate a live-capable profile and its complete effective scope at execution time.
 
 The plan has a deterministic revision fingerprint over the bundle root, concept identity and metadata, links, bodies, and validation findings. The accepted manifest crosses the native command boundary with the stable task ID, where Rust rechecks its size, task match, and exact curated capability route. Native providers receive it as bounded routing data and keep using scoped OKF tools. ACP providers receive the same routing block and the selected versioned capability resources, with text fallback when embedded resources are unavailable. The task and accepted manifest are stored beside the agent-owned session pointer. If live reload changes the fingerprint, the composer blocks the next send until the user reviews and accepts the refreshed plan.
 

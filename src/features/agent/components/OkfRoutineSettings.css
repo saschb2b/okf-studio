@@ -1,0 +1,153 @@
+.okf-routines {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-8);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border);
+}
+
+.okf-routines > header,
+.okf-routines__attention > header,
+.okf-routines__attention li {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.okf-routines > header > div,
+.okf-routines__list > li > div:first-child,
+.okf-routines__attention li > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.okf-routines > p,
+.okf-routines header span,
+.okf-routines__list span,
+.okf-routines dl,
+.okf-routines__attention p,
+.okf-routines__attention li > span {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-routines__create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-6) var(--space-8);
+  align-items: end;
+}
+
+.okf-routines__create > label:first-child,
+.okf-routines__source {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.okf-routines__create input[type="text"],
+.okf-routines__create input:not([type]) {
+  min-width: 0;
+  padding: var(--space-6) var(--space-8);
+  color: var(--text);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.okf-routines__schedule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.okf-routines__create > .btn {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.okf-routines__source {
+  grid-column: 1 / -1;
+}
+
+.okf-routines__list,
+.okf-routines__attention ul {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.okf-routines__list > li,
+.okf-routines__attention {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.okf-routines dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-8);
+}
+
+.okf-routines dl > div {
+  min-width: 0;
+}
+
+.okf-routines dt {
+  color: var(--text-dim);
+}
+
+.okf-routines dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.okf-routines__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+@container (max-width: 420px) {
+  .okf-routines__create,
+  .okf-routines dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .okf-routines__create > .btn {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+
+  .okf-routines__attention li {
+    display: grid;
+  }
+}
+
+@media (max-width: 420px) {
+  .okf-routines__create,
+  .okf-routines dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .okf-routines__create > .btn {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+
+  .okf-routines__attention li {
+    display: grid;
+  }
+}

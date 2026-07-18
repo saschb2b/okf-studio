@@ -133,6 +133,11 @@ const agentCards = [
     body: "Remember a task-specific context choice only after seeing its exact effect. Studio keeps bounded metadata outside the bundle, revalidates it when the bundle changes, and shows its owner, origin, retention, use, stale state, and delete action in Settings. Prompt and response bodies, facts, citations, staged files, and credentials stay out.",
   },
   {
+    glyph: "⟳",
+    title: "Routine checks that fail closed",
+    body: "Run or schedule offline bundle-health and source-fingerprint checks without an agent. Studio rechecks the bundle grant and saved scope every time, records interrupted work instead of assuming success, and keeps non-healthy results in a local attention inbox. Routines cannot fetch, prompt, stage, or apply changes.",
+  },
+  {
     glyph: "✎",
     title: "Writes you review, always",
     body: "Proposed changes land in a staged tree first. Review each diff hunk, validate against the OKF spec, then apply in one transaction you can restore. A verified Linux or Windows Restricted offline agent can stage for 30 minutes unattended, but it still cannot apply changes.",

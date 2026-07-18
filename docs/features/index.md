@@ -19,6 +19,7 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Structured Agent Work](structured-agent-work.md) - Keep validated OKF plans, reports, research, migrations, and staged revisions active beside the conversation.
 * [Artifact Verification and Critic Passes](artifact-verification.md) - Compare deterministic artifact checks with an optional isolated semantic critic without granting write authority.
 * [Inspectable Workspace Memory](workspace-memory.md) - Keep bounded bundle-scoped preferences and task records visible, stale-aware, and deletable outside the bundle.
+* [Local OKF Routines and Attention Inbox](local-routines.md) - Run deterministic offline health and source checks with explicit schedules, recovery receipts, and content-free attention notices.
 * [Native OKF Tasks](native-okf-tasks.md) - Start bounded curated work from the OKF object already in view.
 * [Source Adapters and Provenance](source-adapters.md) - Normalize selected sources into bounded untrusted evidence with versioned receipts.
 * [Live Reload](live-reload.md) - Watch the folder and refresh the graph as files change.

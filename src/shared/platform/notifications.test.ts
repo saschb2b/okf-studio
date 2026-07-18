@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentThreadNotificationCopy } from "./notifications.ts";
+import { agentThreadNotificationCopy, routineAttentionNotificationCopy } from "./notifications.ts";
 
 describe("agent thread notifications", () => {
   it("contains only bounded thread and agent labels", () => {
@@ -25,5 +25,13 @@ describe("agent thread notifications", () => {
       title: "Agent thread finished",
       body: "Bundle research · Local model",
     });
+  });
+
+  it("keeps routine notifications content-free", () => {
+    expect(routineAttentionNotificationCopy(3)).toEqual({
+      title: "OKF routines need attention",
+      body: "Open OKF Studio to review 3 routine results.",
+    });
+    expect(routineAttentionNotificationCopy(10_000).body).toContain("32 routine results");
   });
 });

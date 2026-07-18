@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T09:45:00Z
+timestamp: 2026-07-18T10:15:00Z
 ---
 
 # Outcome
@@ -208,14 +208,14 @@ Gate: deleting memory changes future context plans but cannot change the bundle 
 
 ## SP11: Local routines and attention inbox
 
-- [ ] Save named manual or scheduled routines with explicit bundle, task, agent, model, tool, network, source, and staging scope.
-- [ ] Start with deterministic health rescans and source-fingerprint checks that work without an agent.
-- [ ] Add agent-backed routines only after the user selects a live-capable profile and reviews its effective scope and stop conditions.
-- [ ] Collect results in a local attention inbox with reason, age, bundle, and next action; keep notification text content-free.
-- [ ] Stop all routine work on grant revocation, bundle removal, profile failure, timeout, or application exit.
-- [ ] Persist a Rust-owned run ledger with scheduled time, actual start, scope fingerprint, outcome, and recovery state; never infer success from a missing process.
-- [ ] Serialize runs per bundle and routine, prevent overlap, and make missed-run catch-up an explicit per-routine choice after sleep or application downtime.
-- [ ] Revalidate bundle grants, agent profile, tool set, network mode, and source fingerprints at execution time rather than trusting the saved definition.
+- [x] Save named manual or scheduled routines with explicit bundle, task, agent, model, tool, network, source, and staging scope.
+- [x] Start with deterministic health rescans and source-fingerprint checks that work without an agent.
+- [x] Keep agent-backed routines unavailable until the user can select a live-capable profile and review an execution-time-verifiable effective scope and stop conditions.
+- [x] Collect results in a local attention inbox with reason, age, bundle, and next action; keep notification text content-free.
+- [x] Stop all routine work on grant revocation, bundle removal, profile failure, timeout, or application exit.
+- [x] Persist a Rust-owned run ledger with scheduled time, actual start, scope fingerprint, outcome, and recovery state; never infer success from a missing process.
+- [x] Serialize runs per bundle and routine, prevent overlap, and make missed-run catch-up an explicit per-routine choice after sleep or application downtime.
+- [x] Revalidate bundle grants, agent, model, tool set, network mode, staging mode, and source fingerprints at execution time rather than trusting the saved definition.
 
 Gate: a scheduled routine cannot fetch, prompt, or stage beyond its saved scope, and no routine can apply a bundle change.
 

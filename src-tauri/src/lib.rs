@@ -44,6 +44,8 @@ mod agent_local;
 mod agent_native_sources;
 #[path = "agent/provider/agent_native_stage.rs"]
 mod agent_native_stage;
+#[path = "agent/provider/agent_routines.rs"]
+mod agent_routines;
 #[path = "agent/provider/agent_studio.rs"]
 mod agent_studio;
 // sources — attached-source intake and extraction.
@@ -77,6 +79,50 @@ use watch::WatchState;
 #[tauri::command]
 fn okf_capability_catalog() -> agent_capabilities::CapabilityCatalogInfo {
     agent_capabilities::catalog_info()
+}
+
+#[tauri::command]
+fn okf_routine_workspace(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+    bundle_root: String,
+) -> Result<agent_routines::RoutineWorkspace, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    Ok(routines.workspace(&root.to_string_lossy()))
+}
+
+#[tauri::command]
+fn save_okf_routine(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+    input: agent_routines::SaveRoutineInput,
+) -> Result<agent_routines::RoutineDefinition, String> {
+    routines.save(&grants, input)
+}
+
+#[tauri::command]
+fn remove_okf_routine(
+    routines: State<'_, agent_routines::RoutineState>,
+    routine_id: String,
+) -> Result<bool, String> {
+    routines.remove(&routine_id)
+}
+
+#[tauri::command]
+fn run_okf_routine(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+    routine_id: String,
+) -> Result<agent_routines::RoutineRun, String> {
+    routines.run(&grants, &routine_id, None)
+}
+
+#[tauri::command]
+fn run_due_okf_routines(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+) -> Result<Vec<agent_routines::RoutineRun>, String> {
+    routines.run_due(&grants, agent_routines::current_time_ms())
 }
 
 pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
@@ -973,6 +1019,11 @@ pub fn run() {
             app.manage(WatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
+            app.manage(
+                agent_routines::RoutineState::load(app.handle()).map_err(|error| {
+                    std::io::Error::other(format!("could not load OKF routines: {error}"))
+                })?,
+            );
 
             // Show-on-ready watchdog. The main window starts hidden and the
             // frontend reveals it after its first painted frame (src/App.tsx),
@@ -1044,6 +1095,11 @@ pub fn run() {
             validate_agent_artifact_critic,
             agent_catalog,
             okf_capability_catalog,
+            okf_routine_workspace,
+            save_okf_routine,
+            remove_okf_routine,
+            run_okf_routine,
+            run_due_okf_routines,
             agent_security_host_status,
             custom_agents,
             save_custom_agent,

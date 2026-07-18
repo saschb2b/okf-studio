@@ -16,9 +16,15 @@ import { ZOOM_EVENT } from "@/shared/platform/native.ts";
 import type { ZoomIntent } from "@/shared/platform/native.ts";
 import { checkForUpdate, installUpdate, RELEASES_URL } from "@/shared/platform/updater.ts";
 import type { UpdateStatus } from "@/shared/platform/updater.ts";
-import { requestAgentNotificationPermission } from "@/shared/platform/notifications.ts";
+import {
+  requestAgentNotificationPermission,
+  sendRoutineAttentionNotification,
+} from "@/shared/platform/notifications.ts";
+import { runDueOkfRoutines } from "@/shared/ipc.ts";
+import { attentionRuns } from "@/features/agent/routines.ts";
 import { OkfCapabilitySettings } from "./OkfCapabilitySettings.tsx";
 import { WorkspaceMemorySettings } from "@/features/agent/components/WorkspaceMemorySettings.tsx";
+import { OkfRoutineSettings } from "@/features/agent/components/OkfRoutineSettings.tsx";
 import { bundleContextFingerprint } from "@/features/agent/taskContext.ts";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
@@ -101,6 +107,25 @@ export function Settings() {
     return () => window.removeEventListener(ZOOM_EVENT, onZoom);
     // Re-bind when scale changes so the closure reads the current value.
   }, [s.readerScale, actions]);
+
+  useEffect(() => {
+    if (!state.activeRoot) return;
+    let active = true;
+    const poll = () => void runDueOkfRoutines().then((runs) => {
+      const count = attentionRuns(runs).length;
+      if (active && s.agentNotifications && count > 0) {
+        void sendRoutineAttentionNotification({
+          count,
+          sound: s.agentNotificationSound,
+        });
+      }
+    }).catch(() => {
+      // A blocked or revoked routine is recorded in its Rust-owned ledger.
+    });
+    poll();
+    const timer = window.setInterval(poll, 60_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [state.activeRoot, s.agentNotificationSound, s.agentNotifications]);
 
   return (
     <Dialog.Root
@@ -291,15 +316,21 @@ export function Settings() {
           <OkfCapabilitySettings />
 
           {state.activeRoot && state.bundle && (
-            <WorkspaceMemorySettings
-              bundleRoot={state.activeRoot}
-              bundleName={state.bundle.name}
-              fingerprint={bundleContextFingerprint(
-                state.activeRoot,
-                state.bundle.concepts,
-                state.bundle.issues,
-              )}
-            />
+            <>
+              <WorkspaceMemorySettings
+                bundleRoot={state.activeRoot}
+                bundleName={state.bundle.name}
+                fingerprint={bundleContextFingerprint(
+                  state.activeRoot,
+                  state.bundle.concepts,
+                  state.bundle.issues,
+                )}
+              />
+              <OkfRoutineSettings
+                bundleRoot={state.activeRoot}
+                bundleName={state.bundle.name}
+              />
+            </>
           )}
 
           <div className="field">

@@ -71,6 +71,12 @@ import type {
   AgentCriticValidation,
 } from "@/features/agent/artifact.ts";
 import type {
+  OkfRoutineDefinition,
+  OkfRoutineRun,
+  OkfRoutineWorkspace,
+  SaveOkfRoutineInput,
+} from "@/features/agent/routines.ts";
+import type {
   BundleLibraryEntry,
   FederatedBundleSelection,
   FederatedBundleStatus,
@@ -116,6 +122,127 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
   if (!isTauri()) return catalog as AgentCatalogDocument;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentCatalogDocument>("agent_catalog");
+}
+
+const MOCK_OKF_ROUTINES_KEY = "okf-studio:routines-v1";
+const MOCK_OKF_ROUTINE_RUNS_KEY = "okf-studio:routine-runs-v1";
+const OKF_ROUTINES_CHANGED_EVENT = "okf:routines-changed";
+
+function notifyOkfRoutinesChanged(): void {
+  window.dispatchEvent(new Event(OKF_ROUTINES_CHANGED_EVENT));
+}
+
+export function onOkfRoutinesChange(listener: () => void): () => void {
+  window.addEventListener(OKF_ROUTINES_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(OKF_ROUTINES_CHANGED_EVENT, listener);
+}
+
+function readMockRoutineValue<T>(key: string): T[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(parsed) ? parsed as T[] : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function okfRoutineWorkspace(bundleRoot: string): Promise<OkfRoutineWorkspace> {
+  if (!isTauri()) {
+    return {
+      schemaVersion: 1,
+      routines: readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY)
+        .filter((routine) => routine.scope.bundleRoot === bundleRoot),
+      runs: readMockRoutineValue<OkfRoutineRun>(MOCK_OKF_ROUTINE_RUNS_KEY)
+        .filter((run) => run.bundleRoot === bundleRoot),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfRoutineWorkspace>("okf_routine_workspace", { bundleRoot });
+}
+
+export async function saveOkfRoutine(input: SaveOkfRoutineInput): Promise<OkfRoutineDefinition> {
+  if (!isTauri()) {
+    const now = Date.now();
+    const routine: OkfRoutineDefinition = {
+      schemaVersion: 1,
+      id: input.id ?? `routine-${crypto.randomUUID()}`,
+      name: input.name,
+      enabled: input.enabled,
+      trigger: input.trigger,
+      scope: input.scope,
+      timeoutSeconds: input.timeoutSeconds,
+      nextRunAtMs: input.enabled && input.trigger.mode === "scheduled"
+        ? now + (input.trigger.intervalMinutes ?? 15) * 60_000
+        : null,
+      createdAtMs: now,
+      updatedAtMs: now,
+    };
+    const routines = readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY)
+      .filter((item) => item.id !== routine.id);
+    localStorage.setItem(MOCK_OKF_ROUTINES_KEY, JSON.stringify([...routines, routine]));
+    notifyOkfRoutinesChanged();
+    return routine;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const routine = await invoke<OkfRoutineDefinition>("save_okf_routine", { input });
+  notifyOkfRoutinesChanged();
+  return routine;
+}
+
+export async function removeOkfRoutine(routineId: string): Promise<boolean> {
+  if (!isTauri()) {
+    const routines = readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY);
+    localStorage.setItem(
+      MOCK_OKF_ROUTINES_KEY,
+      JSON.stringify(routines.filter((routine) => routine.id !== routineId)),
+    );
+    notifyOkfRoutinesChanged();
+    return routines.some((routine) => routine.id === routineId);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const removed = await invoke<boolean>("remove_okf_routine", { routineId });
+  if (removed) notifyOkfRoutinesChanged();
+  return removed;
+}
+
+export async function runOkfRoutine(routineId: string): Promise<OkfRoutineRun> {
+  if (!isTauri()) {
+    const routine = readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY)
+      .find((item) => item.id === routineId);
+    if (!routine) throw new Error("The routine no longer exists.");
+    const now = Date.now();
+    const run: OkfRoutineRun = {
+      schemaVersion: 1,
+      id: `run-${crypto.randomUUID()}`,
+      routineId,
+      routineName: routine.name,
+      bundleRoot: routine.scope.bundleRoot,
+      scheduledTimeMs: null,
+      actualStartMs: now,
+      completedAtMs: now,
+      scopeFingerprint: "mock-offline-scope-v1",
+      outcome: "healthy",
+      recoveryState: "complete",
+      reason: "No health findings detected.",
+      nextAction: "None",
+    };
+    const runs = readMockRoutineValue<OkfRoutineRun>(MOCK_OKF_ROUTINE_RUNS_KEY);
+    localStorage.setItem(MOCK_OKF_ROUTINE_RUNS_KEY, JSON.stringify([run, ...runs].slice(0, 512)));
+    notifyOkfRoutinesChanged();
+    return run;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const run = await invoke<OkfRoutineRun>("run_okf_routine", { routineId });
+  notifyOkfRoutinesChanged();
+  return run;
+}
+
+export async function runDueOkfRoutines(): Promise<OkfRoutineRun[]> {
+  if (!isTauri()) return [];
+  const { invoke } = await import("@tauri-apps/api/core");
+  const runs = await invoke<OkfRoutineRun[]>("run_due_okf_routines");
+  if (runs.length > 0) notifyOkfRoutinesChanged();
+  return runs;
 }
 
 export type OkfCapabilityRiskClass = "read" | "analyze" | "fetch" | "stage";

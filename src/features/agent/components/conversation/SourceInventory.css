@@ -1,0 +1,114 @@
+.source-inventory {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.source-inventory summary {
+  display: flex;
+  min-height: 32px;
+  padding: var(--space-4) var(--space-8);
+  align-items: center;
+  gap: var(--space-8);
+  cursor: pointer;
+}
+
+.source-inventory summary:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.source-inventory__summary-status {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.source-inventory__trust,
+.source-inventory__diagnostic {
+  display: flex;
+  margin: 0;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+.source-inventory__trust {
+  padding: var(--space-8);
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.source-inventory__trust svg,
+.source-inventory__diagnostic svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.source-inventory__list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.source-inventory__list > li {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border-top: 1px solid var(--border);
+}
+
+.source-inventory__identity {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.source-inventory__identity strong,
+.source-inventory__identity span,
+.source-inventory dd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-inventory__identity span,
+.source-inventory dt,
+.source-inventory dd {
+  color: var(--text-dim);
+}
+
+.source-inventory dl {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(72px, 1fr));
+  margin: 0;
+  gap: var(--space-8);
+}
+
+.source-inventory dl > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.source-inventory dt,
+.source-inventory dd {
+  margin: 0;
+}
+
+.source-inventory__diagnostic {
+  padding: var(--space-8);
+  border-radius: var(--radius-sm);
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+@media (max-width: 420px) {
+  .source-inventory dl { grid-template-columns: 1fr 1fr; }
+  .source-inventory dl > div:first-child { grid-column: 1 / -1; }
+  .source-inventory__identity { align-items: flex-start; flex-direction: column; gap: var(--space-2); }
+}

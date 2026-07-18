@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T07:30:00Z
+timestamp: 2026-07-18T08:15:00Z
 ---
 
 # Outcome
@@ -172,13 +172,13 @@ Gate: two bundles may contain the same concept path and title without identity c
 
 ## SP8: Source adapters and producer workflows
 
-- [ ] Define a typed source-adapter contract for discovery, inventory, extraction, provenance, and refresh fingerprints.
-- [ ] Refactor the existing text, Markdown, HTML, PDF, CSV, JSON, image, folder, and URL paths behind that contract.
-- [ ] Add high-value structured adapters for OpenAPI, dbt manifests, and BigQuery metadata exports before live authenticated connectors.
-- [ ] Make every adapter produce a visible source inventory and deterministic provenance before an agent proposes concepts.
-- [ ] Keep live cloud connectors deferred until credentials, least-privilege scopes, pagination, cost, and offline behavior are specified per provider.
-- [ ] Version normalized evidence and adapter contracts, preserve partial-success diagnostics, and bind refresh comparison to the original adapter plus source fingerprint.
-- [ ] Treat adapter output as untrusted evidence and keep embedded instructions inert across every media type.
+- [x] Define a typed source-adapter contract for discovery, inventory, extraction, provenance, and refresh fingerprints.
+- [x] Refactor the existing text, Markdown, HTML, PDF, CSV, JSON, image, folder, and URL paths behind that contract.
+- [x] Add high-value structured adapters for OpenAPI, dbt manifests, and BigQuery metadata exports before live authenticated connectors.
+- [x] Make every adapter produce a visible source inventory and deterministic provenance before an agent proposes concepts.
+- [x] Keep live cloud connectors deferred until credentials, least-privilege scopes, pagination, cost, and offline behavior are specified per provider.
+- [x] Version normalized evidence and adapter contracts, preserve partial-success diagnostics, and bind refresh comparison to the original adapter plus source fingerprint.
+- [x] Treat adapter output as untrusted evidence and keep embedded instructions inert across every media type.
 
 Gate: two adapters with equivalent source material produce stable normalized evidence and provenance, and malformed or partial exports fail with actionable recovery.
 

@@ -51,6 +51,8 @@ mod agent_csv;
 mod agent_json;
 #[path = "agent/sources/agent_pdf.rs"]
 mod agent_pdf;
+#[path = "agent/sources/agent_source_adapter.rs"]
+mod agent_source_adapter;
 #[path = "agent/sources/agent_sources.rs"]
 mod agent_sources;
 #[path = "agent/sources/agent_url.rs"]

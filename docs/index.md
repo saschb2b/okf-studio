@@ -22,6 +22,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 # Features
 
 * [Agent Panel](features/agent-panel.md) - Run parallel agent threads, attach OKF context, approve tools, and review proposed knowledge changes.
+* [Source Adapters and Provenance](features/source-adapters.md) - Turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible versioned provenance.
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.

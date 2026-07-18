@@ -341,7 +341,7 @@ export function AttachmentPicker({
                   onClick={() => pickNative("files")}
                 >
                   <FilePlus2 size={16} aria-hidden="true" />
-                  <span><strong>Files</strong><small>PDF, Markdown, text, HTML, CSV, or JSON</small></span>
+                  <span><strong>Files</strong><small>PDF, Markdown, text, HTML, CSV, JSON, or OpenAPI YAML</small></span>
                 </button>
                 <button
                   type="button"

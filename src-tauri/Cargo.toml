@@ -28,6 +28,7 @@ tauri-plugin-store = "2"
 tauri-plugin-opener = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml_ng = "0.10"
 sha2 = "0.10"
 pdf-extract = "0.12"
 csv = "1.4"

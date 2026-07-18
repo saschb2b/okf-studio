@@ -27,6 +27,7 @@ import { QueuedPromptCard } from "@/features/agent/components/conversation/Queue
 import { AgentSessionHistory } from "@/features/agent/components/conversation/AgentSessionHistory.tsx";
 import { WriteGrantControl } from "@/features/agent/components/conversation/WriteGrantControl.tsx";
 import { OkfContextPlanCard } from "@/features/agent/components/conversation/OkfContextPlanCard.tsx";
+import { SourceInventory } from "@/features/agent/components/conversation/SourceInventory.tsx";
 import { AgentArtifactWorkspace } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
 import type { AgentArtifactWorkspaceState } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
 import {
@@ -624,7 +625,7 @@ export function AgentConversation({
         const sources = draftSources.filter((source) =>
           selectedSourceIds === null || selectedSourceIds.has(source.id)
         ).map(
-          ({ title, content, origin, mediaType, sourceDigest, warning, imageData }) => ({
+          ({ title, content, origin, mediaType, sourceDigest, warning, imageData, adapterReceipt }) => ({
             title,
             content,
             ...(origin ? { origin } : {}),
@@ -632,6 +633,7 @@ export function AgentConversation({
             ...(sourceDigest ? { sourceDigest } : {}),
             ...(warning ? { warning } : {}),
             ...(imageData ? { imageData } : {}),
+            ...(adapterReceipt ? { adapterReceipt } : {}),
           }),
         );
         const scopedPaths = isStudioAgent ? [] : contextPaths;
@@ -2479,6 +2481,9 @@ export function AgentConversation({
                   onAcceptRefresh={() => undefined}
                 />
               </details>
+            )}
+            {attachedConcepts.length + attachedSources.length > 0 && (
+              <SourceInventory sources={attachedSources} />
             )}
             {attachedConcepts.length + attachedSources.length > 0 && (
               <div className="agent-composer__context">

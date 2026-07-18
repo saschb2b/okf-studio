@@ -111,12 +111,13 @@ const MAX_SOURCE_CONTENT_CHARS: usize = crate::agent_sources::MAX_SOURCE_CONTENT
 const MAX_SOURCE_TOTAL_CHARS: usize = crate::agent_sources::MAX_SOURCE_TOTAL_CHARS;
 const MAX_IMAGE_SOURCE_BYTES: u64 = crate::agent_sources::MAX_IMAGE_SOURCE_BYTES;
 const MAX_IMAGE_TOTAL_BYTES: u64 = crate::agent_sources::MAX_IMAGE_TOTAL_BYTES;
-const SOURCE_MEDIA_TYPES: [&str; 9] = [
+const SOURCE_MEDIA_TYPES: [&str; 10] = [
     "text/plain",
     "text/markdown",
     "text/html",
     "text/csv",
     "application/json",
+    "application/yaml",
     "application/pdf",
     "image/png",
     "image/jpeg",
@@ -5934,6 +5935,7 @@ mod tests {
             source_digest: None,
             warning: None,
             image_data: None,
+            adapter_receipt: None,
         };
         validate_sources(std::slice::from_ref(&source)).expect("source should be valid");
         let prompt = okf_prompt_blocks(
@@ -5963,6 +5965,7 @@ mod tests {
             source_digest: None,
             warning: None,
             image_data: None,
+            adapter_receipt: None,
         };
         validate_sources(std::slice::from_ref(&structured))
             .expect("structured source should be valid");
@@ -5982,6 +5985,7 @@ mod tests {
             source_digest: Some(format!("{:x}", Sha256::digest(image_bytes))),
             warning: None,
             image_data: Some(base64::engine::general_purpose::STANDARD.encode(image_bytes)),
+            adapter_receipt: None,
         };
         validate_sources(std::slice::from_ref(&image)).expect("image source should be valid");
         let blocks = source_content_blocks(vec![image]);
@@ -6000,6 +6004,7 @@ mod tests {
             source_digest: None,
             warning: None,
             image_data: None,
+            adapter_receipt: None,
         };
         assert!(validate_sources(&[invalid]).is_err());
         assert!(validate_sources(&[AgentSourceInput {
@@ -6010,6 +6015,7 @@ mod tests {
             source_digest: None,
             warning: None,
             image_data: None,
+            adapter_receipt: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
@@ -6021,6 +6027,7 @@ mod tests {
                 source_digest: None,
                 warning: None,
                 image_data: None,
+                adapter_receipt: None,
             };
             MAX_SOURCE_ATTACHMENTS + 1
         ])
@@ -6033,6 +6040,7 @@ mod tests {
             source_digest: None,
             warning: None,
             image_data: None,
+            adapter_receipt: None,
         }])
         .is_err());
         assert!(validate_sources(&vec![
@@ -6044,10 +6052,44 @@ mod tests {
                 source_digest: None,
                 warning: None,
                 image_data: None,
+                adapter_receipt: None,
             };
             3
         ])
         .is_err());
+    }
+
+    #[test]
+    fn rejects_forged_source_adapter_receipts() {
+        let source = crate::agent_sources::source_from_bytes(
+            "openapi.json".to_string(),
+            "openapi.json".to_string(),
+            "application/json",
+            br#"{"openapi":"3.1.0","info":{"title":"API","version":"1"},"paths":{}}"#.to_vec(),
+            crate::agent_source_adapter::SourceDiscovery::File,
+        )
+        .expect("adapt source");
+        validate_sources(std::slice::from_ref(&source)).expect("valid receipt");
+
+        let mut forged = source.clone();
+        forged
+            .adapter_receipt
+            .as_mut()
+            .expect("adapter receipt")
+            .evidence_fingerprint = format!("sha256-{}", "0".repeat(64));
+        assert!(validate_sources(&[forged])
+            .expect_err("reject forged evidence fingerprint")
+            .contains("evidence fingerprints"));
+
+        let mut forged = source;
+        forged
+            .adapter_receipt
+            .as_mut()
+            .expect("adapter receipt")
+            .trust = "trusted".to_string();
+        assert!(validate_sources(&[forged])
+            .expect_err("reject trusted adapter output")
+            .contains("untrusted evidence"));
     }
 
     #[test]

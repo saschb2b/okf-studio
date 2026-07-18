@@ -1218,6 +1218,53 @@ export interface AgentSourceInput {
   sourceDigest?: string;
   warning?: string;
   imageData?: string;
+  adapterReceipt?: AgentSourceAdapterReceipt;
+}
+
+export type AgentSourceDiscovery = "file" | "folder" | "url" | "image";
+
+export interface AgentSourceDiagnostic {
+  level: "warning";
+  code: string;
+  message: string;
+}
+
+export interface AgentSourceAdapterReceipt {
+  schemaVersion: 1;
+  adapterId: string;
+  adapterVersion: number;
+  discovery: AgentSourceDiscovery;
+  origin: string;
+  mediaType: string;
+  sourceFingerprint: string;
+  evidenceFingerprint: string;
+  refreshFingerprint: string;
+  trust: "untrusted";
+  diagnostics: readonly AgentSourceDiagnostic[];
+}
+
+function browserSourceReceipt(
+  adapterId: string,
+  discovery: AgentSourceDiscovery,
+  origin: string,
+  mediaType: string,
+  sourceDigit: string,
+  evidenceDigit: string,
+  diagnostics: readonly AgentSourceDiagnostic[] = [],
+): AgentSourceAdapterReceipt {
+  return {
+    schemaVersion: 1,
+    adapterId,
+    adapterVersion: 1,
+    discovery,
+    origin,
+    mediaType,
+    sourceFingerprint: `sha256-${sourceDigit.repeat(64)}`,
+    evidenceFingerprint: `sha256-${evidenceDigit.repeat(64)}`,
+    refreshFingerprint: `source-refresh-v1-${sourceDigit.repeat(64)}`,
+    trust: "untrusted",
+    diagnostics,
+  };
 }
 
 export async function pickAgentTextSources(limit: number): Promise<AgentSourceInput[]> {
@@ -1233,6 +1280,19 @@ export async function pickAgentTextSources(limit: number): Promise<AgentSourceIn
     mediaType: "application/pdf",
     sourceDigest: "a".repeat(64),
     warning: "1 of 3 pages had no extractable text. OCR was not used.",
+    adapterReceipt: browserSourceReceipt(
+      "pdf",
+      "file",
+      "research-report.pdf",
+      "application/pdf",
+      "a",
+      "e",
+      [{
+        level: "warning",
+        code: "pdf-partial-extraction",
+        message: "1 of 3 pages had no extractable text. OCR was not used.",
+      }],
+    ),
   }].slice(0, Math.max(0, limit));
 }
 
@@ -1249,6 +1309,9 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
       origin: "data/findings.csv",
       mediaType: "text/csv",
       sourceDigest: "b".repeat(64),
+      adapterReceipt: browserSourceReceipt(
+        "csv", "folder", "data/findings.csv", "text/csv", "b", "f",
+      ),
     },
     {
       title: "config/settings.json",
@@ -1256,6 +1319,9 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
       origin: "config/settings.json",
       mediaType: "application/json",
       sourceDigest: "c".repeat(64),
+      adapterReceipt: browserSourceReceipt(
+        "json", "folder", "config/settings.json", "application/json", "c", "1",
+      ),
     },
   ].slice(0, Math.max(0, limit));
 }
@@ -1273,6 +1339,9 @@ export async function pickAgentImageSources(limit: number): Promise<AgentSourceI
     mediaType: "image/png",
     sourceDigest: "3c7474b4239ada3342d87f25ec8849eb8473ee35c5471452482686098b49e81b",
     imageData: "iVBORw0KGgppbWFnZQ==",
+    adapterReceipt: browserSourceReceipt(
+      "image", "image", "architecture.png", "image/png", "3", "3",
+    ),
   }].slice(0, Math.max(0, limit));
 }
 
@@ -1288,6 +1357,9 @@ export async function fetchAgentSourceUrl(url: string): Promise<AgentSourceInput
     origin: "https://example.com/research.html",
     mediaType: "text/html",
     sourceDigest: "d".repeat(64),
+    adapterReceipt: browserSourceReceipt(
+      "html", "url", "https://example.com/research.html", "text/html", "d", "2",
+    ),
   };
 }
 

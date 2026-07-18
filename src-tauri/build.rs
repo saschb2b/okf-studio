@@ -1,7 +1,9 @@
 use serde::Deserialize;
-use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+mod capability_digest;
+use capability_digest::sha256_resource;
 
 const MAX_RESOURCE_BYTES: u64 = 256 * 1024;
 const MAX_TOTAL_RESOURCE_BYTES: u64 = 768 * 1024;
@@ -69,13 +71,6 @@ struct PackResource {
     path: String,
     media_type: String,
     sha256: String,
-}
-
-fn sha256(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
 }
 
 fn validate_capabilities() {
@@ -171,7 +166,7 @@ fn validate_capabilities() {
                 .checked_add(byte_count)
                 .expect("resource size total overflowed");
             assert_eq!(
-                sha256(&bytes),
+                sha256_resource(&bytes, &resource.media_type),
                 resource.sha256,
                 "resource digest changed for {}",
                 resource.path
@@ -184,7 +179,7 @@ fn validate_capabilities() {
     );
     println!(
         "cargo:rustc-env=OKF_CAPABILITY_MANIFEST_SHA256={}",
-        sha256(&manifest_bytes)
+        sha256_resource(&manifest_bytes, "application/json")
     );
 
     let pack_path = root.join("pack.json");
@@ -236,7 +231,7 @@ fn validate_capabilities() {
     );
     assert_eq!(
         pack.capability_manifest.sha256,
-        sha256(&manifest_bytes),
+        sha256_resource(&manifest_bytes, &pack.capability_manifest.media_type),
         "pack capability manifest digest changed"
     );
     assert!(!pack.templates.is_empty(), "pack templates are empty");
@@ -280,14 +275,14 @@ fn validate_capabilities() {
             .unwrap_or_else(|error| panic!("could not read {}: {error}", canonical.display()));
         assert_eq!(
             resource.sha256,
-            sha256(&bytes),
+            sha256_resource(&bytes, &resource.media_type),
             "pack resource digest changed for {}",
             resource.path
         );
     }
     println!(
         "cargo:rustc-env=OKF_CAPABILITY_PACK_SHA256={}",
-        sha256(&pack_bytes)
+        sha256_resource(&pack_bytes, "application/json")
     );
 }
 

@@ -185,7 +185,8 @@ mod tests {
         let result = execute_skill_tool(&call).expect("load commands");
         assert!(result.contains("Capability: okf-core@0.4.0"));
         assert!(result.contains("okf-studio://capability/okf-core/v0.4.0/commands"));
-        assert!(result.contains("SHA-256: d0b7d596d5"));
+        assert!(result
+            .contains("SHA-256: 6b45edc7fd64ae149036d110a35bb4e3d32317acbd14e7a8f51eb995ef4b0f43"));
         assert!(result.contains("## `init`"));
         assert!(!result.contains("The one rule"));
         assert_eq!(skill_tool_title(&call), "Load OKF commands");

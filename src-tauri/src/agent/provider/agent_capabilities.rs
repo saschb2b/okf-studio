@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use tauri::Manager;
+
+#[path = "../../../capability_digest.rs"]
+mod capability_digest;
+use capability_digest::sha256_resource;
 
 const MANIFEST: &str = include_str!("../../../../.agents/skills/okf/capabilities.json");
 const PACK_MANIFEST: &str = include_str!("../../../../.agents/skills/okf/pack.json");
@@ -397,7 +400,12 @@ fn validate_pack(
                 resource.path
             ));
         }
-        validate_digest(&resource.sha256, contents.as_bytes(), &resource.path)?;
+        validate_digest(
+            &resource.sha256,
+            contents.as_bytes(),
+            &resource.media_type,
+            &resource.path,
+        )?;
     }
 
     validate_unique_declared_values(
@@ -431,15 +439,25 @@ fn validate_pack_resource(
             "capability manifest reference is not the closed built-in resource".to_string(),
         );
     }
-    validate_digest(&resource.sha256, contents.as_bytes(), expected_path)
+    validate_digest(
+        &resource.sha256,
+        contents.as_bytes(),
+        expected_media_type,
+        expected_path,
+    )
 }
 
-fn validate_digest(expected: &str, bytes: &[u8], label: &str) -> Result<(), String> {
+fn validate_digest(
+    expected: &str,
+    bytes: &[u8],
+    media_type: &str,
+    label: &str,
+) -> Result<(), String> {
     if expected.len() != 64
         || !expected
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        || sha256(bytes) != expected
+        || sha256_resource(bytes, media_type) != expected
     {
         return Err(format!("capability pack resource digest changed: {label}"));
     }
@@ -484,7 +502,7 @@ fn default_pack_state(previous_manifest_sha256: Option<String>) -> CapabilityPac
         active: true,
         pack_id: pack.id.clone(),
         pack_version: pack.version.clone(),
-        manifest_sha256: sha256(PACK_MANIFEST.as_bytes()),
+        manifest_sha256: env!("OKF_CAPABILITY_PACK_SHA256").to_string(),
         rollback_label: format!("Legacy {}", full_catalog().capabilities[0].version),
         previous_manifest_sha256,
     }
@@ -706,7 +724,7 @@ fn parse_catalog(input: &str) -> Result<CapabilityCatalog, String> {
             total_resource_bytes = total_resource_bytes
                 .checked_add(contents.len())
                 .ok_or_else(|| "resource size total overflowed".to_string())?;
-            if sha256(contents.as_bytes()) != resource.sha256 {
+            if sha256_resource(contents.as_bytes(), &resource.media_type) != resource.sha256 {
                 return Err(format!("resource digest changed: {}", resource.path));
             }
         }
@@ -786,10 +804,6 @@ fn embedded_contents(path: &str) -> Option<&'static str> {
         "capabilities/revise.md" => Some(OKF_REVISE),
         _ => None,
     }
-}
-
-fn sha256(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
 }
 
 #[cfg(test)]

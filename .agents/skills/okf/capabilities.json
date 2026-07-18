@@ -35,28 +35,28 @@
           "label": "instructions",
           "path": "SKILL.md",
           "mediaType": "text/markdown",
-          "sha256": "44a69ba95ee836153ff3960656df63f50dce096962314843ff6a31a7012fd934"
+          "sha256": "27d93a64bcd18ce88e6e25a78eda704f9b6db0400b7bb129a72db8324c00d787"
         },
         {
           "id": "specification",
           "label": "specification",
           "path": "spec.md",
           "mediaType": "text/markdown",
-          "sha256": "b6393383576a2a91029fe3580927d0bf45b79429ced651212b03f76caabb1c41"
+          "sha256": "c2fe6581903cb003c5a2040d6e28e478a2937e8ae60e1411fb154c58b1fc7201"
         },
         {
           "id": "commands",
           "label": "commands",
           "path": "commands.md",
           "mediaType": "text/markdown",
-          "sha256": "d0b7d596d59f9a1270685bc777b130cb91cd1b1a0d22af4cc495c1bd37d408ff"
+          "sha256": "6b45edc7fd64ae149036d110a35bb4e3d32317acbd14e7a8f51eb995ef4b0f43"
         },
         {
           "id": "templates",
           "label": "templates",
           "path": "templates.md",
           "mediaType": "text/markdown",
-          "sha256": "248f36cbd8d2046761621e3df7589f94a0be341b39f8b1571a2de15491a68f9c"
+          "sha256": "6bf95eb019bb6fbff7092086dfaa856972423a34c8da53d75b2bc182709e71d1"
         },
         {
           "id": "changelog",

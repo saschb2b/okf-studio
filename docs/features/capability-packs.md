@@ -3,7 +3,7 @@ type: Feature
 title: Declarative OKF Capability Packs
 description: Package Studio's curated OKF skills, templates, artifact contract, and tool requirements as one inspectable and reversible built-in unit.
 tags: [feature, agents, skills, capability-pack, security, migration]
-timestamp: 2026-07-18T20:30:00Z
+timestamp: 2026-07-18T20:32:58Z
 ---
 
 # Purpose
@@ -35,6 +35,8 @@ The v1 manifest accepts only:
 - required tool IDs from Studio's compiled allowlist.
 
 Unknown fields fail deserialization. The format has no fields for scripts, hooks, binaries, installers, environment values, arbitrary paths, or user-supplied MCP commands. The two capability-discovery tools are compiled read-only Studio tools from the closed allowlist; the pack cannot define another tool. Resources resolve only through compile-time paths below the shipped OKF skill bundle. Both the build script and the runtime repeat the schema, compatibility, path, media-type, conflict, tool, size, and digest checks before the pack becomes active.
+
+Digest checks canonicalize line endings in declared Markdown, JSON, and JSON Schema resources before hashing. Git may materialize the same tracked text with LF, CRLF, or a mixture on different platforms; that checkout detail does not change the pack identity. Other media types remain byte-exact. Build-time and runtime validation share this digest implementation so neither boundary can accept a resource that the other rejects.
 
 # Upgrade, rollback, and removal
 

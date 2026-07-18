@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-18T04:00:00Z
+timestamp: 2026-07-18T05:00:00Z
 ---
 
 # Decision
@@ -47,7 +47,7 @@ The connection actor retains one confirmed option snapshot per session. `session
 | Context service | Bundle inventory, attachments, source extraction, token budget |
 | Permission service | Built-in denials, path normalization, once/thread/persistent grants |
 | Change service | Staged tree, validation, diffs, atomic apply, checkpoint/restore |
-| OKF tools | Read, search, traverse, propose, validate, provenance |
+| OKF tools | Read, search, traverse, propose, validate, provenance, deterministic health |
 
 # Security and credentials
 
@@ -91,7 +91,7 @@ Rust prepends one Studio-owned system message to every native provider request w
 
 Detailed guidance uses progressive disclosure through a closed native tool. The provider receives one `load_okf_capability_resource` function schema with manifest-derived capability and resource ID enums. Before any executor runs, the provider loop rejects a call whose name was absent from the exact tool definitions advertised for that turn. The closed dispatcher separately rejects unknown capabilities, undeclared resources, extra fields, malformed arguments, oversized calls, and excessive rounds. It returns only the selected compile-time resource with its capability version, digest, and stable `okf-studio://` URI. A successful native load emits separate tool-observed evidence; catalog delivery alone never claims that the model used the resource.
 
-The same loop advertises six read-only active-bundle tools. Their argument schemas match the ACP MCP names, and their Rust executor calls the same inventory, read, search, source-reference, traversal, and validation methods rather than duplicating query logic. The session retains a canonical bundle root; each native call reparses that root and accepts concept IDs, filters, cursors, and line ranges instead of paths. Structured output above 96 KiB fails with a bounded request to narrow the query. The executor distinguishes a completed call, a recoverable tool failure, and a fatal host error. A recoverable failure produces a failed lifecycle card and bounded `Studio tool error` result so the model can correct its call within the existing round limits. Cancellation and host shutdown remain fatal and never return to the model as tool data. The model never receives an arbitrary filesystem primitive.
+The same loop advertises ten read-only active-bundle tools. Their argument schemas match the ACP MCP names, and their Rust executor calls the same inventory, read, search, source-reference, traversal, validation, and knowledge-health methods rather than duplicating query logic. The health engine is a pure `okf-core` analysis over one parsed snapshot. It mirrors validator output only in its conformance category, labels every other finding as a fact or heuristic, and gives every rule an ID, version, severity, evidence, repairability, and suppression fingerprint. Summary, detail, affected-concept, and deterministic-repair tools use progressive disclosure. Detail calls require the summary fingerprint. Health analysis accepts at most 10,000 concepts and 50,000 intra-bundle links, including unresolved targets; exceeding that bound fails the health request without changing tolerant bundle opening. The native provider already runs tool work in its blocking worker. The MCP health path reparses its canonical root for each request and fingerprints the root again after analysis, discarding obsolete output when live reload changes the bundle. The session accepts concept IDs, finding IDs, fingerprints, filters, cursors, and line ranges instead of paths. Structured output above 96 KiB fails with a bounded request to narrow the query. The executor distinguishes a completed call, a recoverable tool failure, and a fatal host error. A recoverable failure produces a failed lifecycle card and bounded `Studio tool error` result so the model can correct its call within the existing round limits. Cancellation and host shutdown remain fatal and never return to the model as tool data. The model never receives an arbitrary filesystem primitive.
 
 An accepted local turn with user-attached extracted text adds two ephemeral source tools. Inventory maps the validated inputs to `source-1` through `source-8` and returns only bounded provenance, warnings, digests, and sizes. Read resolves one of those synthetic IDs in memory and returns a bounded line page of at most 65,536 characters. Unknown IDs and extra arguments fail closed. The source values are captured only by that blocking provider turn, never added to `LocalSession`, and removed with the tool definitions when the turn ends. Images are rejected before acceptance because native providers do not advertise image support yet.
 

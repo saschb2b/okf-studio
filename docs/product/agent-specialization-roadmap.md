@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T04:00:00Z
+timestamp: 2026-07-18T05:00:00Z
 ---
 
 # Outcome
@@ -125,13 +125,13 @@ Gate: the same explicit task produces the same bounded context plan from the sam
 
 ## SP4: Knowledge health engine
 
-- [ ] Add deterministic health categories for conformance, graph connectivity, navigation, provenance, freshness signals, duplication, and coverage hints.
-- [ ] Keep tolerant consumption intact. Health findings guide work and never make a readable bundle fail to open.
-- [ ] Add bounded Rust tools for health summary, finding detail, affected concepts, and suggested deterministic repairs.
-- [ ] Track every finding against a bundle fingerprint so live reload can resolve, retain, or invalidate it without stale UI.
-- [ ] Separate facts from heuristics and show why each finding exists.
-- [ ] Give each rule a stable ID, version, severity class, evidence fields, repairability class, and suppression fingerprint.
-- [ ] Bound the initial engine for 10,000 concepts and 50,000 links, move expensive analysis off the UI thread, and cancel obsolete work after live reload.
+- [x] Add deterministic health categories for conformance, graph connectivity, navigation, provenance, freshness signals, duplication, and coverage hints.
+- [x] Keep tolerant consumption intact. Health findings guide work and never make a readable bundle fail to open.
+- [x] Add bounded Rust tools for health summary, finding detail, affected concepts, and suggested deterministic repairs.
+- [x] Track every finding against a bundle fingerprint so live reload can resolve, retain, or invalidate it without stale UI.
+- [x] Separate facts from heuristics and show why each finding exists.
+- [x] Give each rule a stable ID, version, severity class, evidence fields, repairability class, and suppression fingerprint.
+- [x] Bound the initial engine for 10,000 concepts and 50,000 links, move expensive analysis off the UI thread, and cancel obsolete work after live reload.
 
 Gate: the fixture corpus produces stable findings with no model call, no network request, and no false claim that a heuristic is an OKF conformance error.
 

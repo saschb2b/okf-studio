@@ -26,6 +26,7 @@ struct Expected {
     warning_count: Option<usize>,
     broken_link_count: Option<usize>,
     orphan_concept_ids: Option<Vec<String>>,
+    health_finding_ids: Option<Vec<String>>,
     unknown_type: Option<String>,
     conflict_concept_ids: Option<Vec<String>>,
     missing_metadata: Option<Vec<String>>,
@@ -167,6 +168,22 @@ fn disconnected_fixture_exposes_one_broken_link_and_one_orphan() {
         expected
             .orphan_concept_ids
             .expect("fixture should declare orphanConceptIds")
+    );
+    let report = okf_core::health::analyze(&bundle).expect("health report");
+    let finding_ids = report
+        .findings
+        .iter()
+        .filter(|finding| {
+            finding.rule_id == "okf.conformance.link-target"
+                || finding.rule_id == "okf.graph.orphan-concept"
+        })
+        .map(|finding| finding.id.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        finding_ids,
+        expected
+            .health_finding_ids
+            .expect("fixture should declare healthFindingIds")
     );
 }
 

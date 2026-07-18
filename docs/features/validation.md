@@ -3,7 +3,7 @@ type: Feature
 title: Validation
 description: Surface OKF conformance — errors and warnings — in the UI without ever refusing to render the bundle.
 tags: [feature, validation, conformance]
-timestamp: 2026-07-12T00:00:00Z
+timestamp: 2026-07-18T05:00:00Z
 ---
 
 # What it does
@@ -25,3 +25,7 @@ Runs the [OKF conformance check](../reference/okf-spec-summary.md) over each bun
 # Relationship to the CLI
 
 The same logic as the bundled `scripts/okf-validate.mjs` checker, reimplemented in the [Rust core](../architecture/okf-parsing.md). The CLI stays the canonical, scriptable checker (it is a [non-goal](../product/scope-and-non-goals.md) to replace it); the app's panel is the interactive view of the same rules.
+
+# Relationship to knowledge health
+
+[Knowledge Health](knowledge-health.md) is a separate agent-facing analysis. It may report navigation, provenance, freshness, duplication, graph, or coverage signals, but it labels each as a fact or heuristic and never adds them to the OKF conformance error count. A health-analysis limit or failure cannot stop this validation surface or prevent the bundle from opening.

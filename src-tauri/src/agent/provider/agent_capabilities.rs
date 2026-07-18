@@ -24,13 +24,17 @@ const MAX_RESOURCES_PER_CAPABILITY: usize = 16;
 const MAX_RESOURCE_BYTES: usize = 256 * 1024;
 const MAX_TOTAL_RESOURCE_BYTES: usize = 768 * 1024;
 const DEFAULT_CAPABILITY_ID: &str = "okf-core";
-const ALLOWED_TOOL_IDS: [&str; 12] = [
+const ALLOWED_TOOL_IDS: [&str; 16] = [
     "okf_inventory",
     "okf_read",
     "okf_search",
     "okf_sources",
     "okf_traverse",
     "okf_validate",
+    "okf_health_summary",
+    "okf_health_finding",
+    "okf_health_affected",
+    "okf_health_repair",
     "studio_source_inventory",
     "studio_source_read",
     "studio_stage_inventory",
@@ -354,25 +358,25 @@ mod tests {
 
         let capability = default_capability();
         assert_eq!(capability.id, "okf-core");
-        assert_eq!(capability.version, "0.1.0");
+        assert_eq!(capability.version, "0.2.0");
         assert_eq!(capability.resources.len(), 5);
         assert_eq!(manifest_sha256().len(), 64);
-        for capability_id in [
-            "okf-inspect",
-            "okf-create",
-            "okf-enrich",
-            "okf-audit",
-            "okf-repair",
-            "okf-research",
-            "okf-change-impact",
-            "okf-migrate",
+        for (capability_id, expected_version) in [
+            ("okf-inspect", "0.1.0"),
+            ("okf-create", "0.1.0"),
+            ("okf-enrich", "0.1.0"),
+            ("okf-audit", "0.2.0"),
+            ("okf-repair", "0.2.0"),
+            ("okf-research", "0.1.0"),
+            ("okf-change-impact", "0.1.0"),
+            ("okf-migrate", "0.1.0"),
         ] {
             let capability = catalog
                 .capabilities
                 .iter()
                 .find(|candidate| candidate.id == capability_id)
                 .expect("curated capability should be present");
-            assert_eq!(capability.version, "0.1.0");
+            assert_eq!(capability.version, expected_version);
             assert_eq!(capability.resources.len(), 1);
             assert!(resource(capability_id, "instructions")
                 .expect("curated instructions should materialize")
@@ -385,13 +389,13 @@ mod tests {
     fn materializes_only_declared_resources_with_versioned_identity() {
         let commands = resource("okf-core", "commands").expect("commands should be declared");
         assert_eq!(commands.capability_id, "okf-core");
-        assert_eq!(commands.capability_version, "0.1.0");
+        assert_eq!(commands.capability_version, "0.2.0");
         assert_eq!(commands.resource_id, "commands");
         assert_eq!(commands.media_type, "text/markdown");
         assert_eq!(commands.sha256.len(), 64);
         assert_eq!(
             commands.uri,
-            "okf-studio://capability/okf-core/v0.1.0/commands"
+            "okf-studio://capability/okf-core/v0.2.0/commands"
         );
         assert!(commands.contents.contains("## `init`"));
         assert!(resource("okf-core", "secrets").is_err());

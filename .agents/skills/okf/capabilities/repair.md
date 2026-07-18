@@ -14,10 +14,10 @@ Use this capability when deterministic findings have bounded, reviewable repairs
 
 ## Method
 
-1. Reproduce each selected finding against the current fingerprint.
-2. Classify the repair as deterministic or judgment-dependent.
-3. Apply only deterministic transformations to a staged workspace.
-4. Preserve producer-defined types and unrelated content.
+1. Reproduce each selected finding with `okf_health_finding` against the current fingerprint.
+2. Ask `okf_health_repair` for its repairability and exact mechanical recipe.
+3. Stop when the tool returns a guided finding; do not invent a deterministic edit.
+4. Apply only deterministic recipes to a staged workspace, preserving producer-defined types and unrelated content.
 5. Validate the entire staged bundle and show the diff.
 
 ## Artifact contract

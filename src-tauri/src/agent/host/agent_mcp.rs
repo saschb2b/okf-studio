@@ -1,3 +1,7 @@
+use okf_core::health::{
+    self, HealthBasis, HealthCategory, HealthFinding, HealthRepairability, HealthReport,
+    HealthSeverity,
+};
 use okf_core::query::{self, TraversalDirection, ValidationLevel};
 use okf_core::Bundle;
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
@@ -7,6 +11,7 @@ use rmcp::{
     tool, tool_handler, tool_router, Json, ServerHandler, ServiceExt,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -35,6 +40,9 @@ const MAX_READ_CONTENT_CHARS: usize = 65_536;
 const DEFAULT_SOURCE_LIMIT: usize = 50;
 const MAX_SOURCE_LIMIT: usize = 200;
 const MAX_NATIVE_OUTPUT_BYTES: usize = 96 * 1024;
+const DEFAULT_HEALTH_LIMIT: usize = 50;
+const MAX_HEALTH_LIMIT: usize = 200;
+const MAX_HEALTH_ID_CHARS: usize = 128;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -235,19 +243,197 @@ struct ValidationItem {
     message: String,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct HealthSummaryInput {
+    /// Optional category filter. Health categories are guidance except conformance.
+    category: Option<String>,
+    /// Optional evidence basis: fact or heuristic.
+    basis: Option<String>,
+    /// Optional severity: error, warning, or advisory.
+    severity: Option<String>,
+    /// Zero-based page offset. Use nextOffset from the previous response.
+    offset: Option<usize>,
+    /// Maximum finding summaries. Defaults to 50 and cannot exceed 200.
+    limit: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct HealthFindingInput {
+    /// Stable finding ID returned by okf_health_summary.
+    finding_id: String,
+    /// Exact bundle fingerprint returned by okf_health_summary.
+    bundle_fingerprint: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct HealthAffectedInput {
+    /// Stable finding ID returned by okf_health_summary.
+    finding_id: String,
+    /// Exact bundle fingerprint returned by okf_health_summary.
+    bundle_fingerprint: String,
+    /// Zero-based affected-concept offset. Use nextOffset from the previous response.
+    offset: Option<usize>,
+    /// Maximum affected concepts. Defaults to 50 and cannot exceed 200.
+    limit: Option<usize>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct HealthSummaryOutput {
+    schema_version: u32,
+    bundle_fingerprint: String,
+    analyzed_concepts: usize,
+    analyzed_links: usize,
+    errors: usize,
+    warnings: usize,
+    advisories: usize,
+    facts: usize,
+    heuristics: usize,
+    categories: Vec<ValueCount>,
+    matching_count: usize,
+    findings: Vec<HealthFindingPreview>,
+    next_offset: Option<usize>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct HealthFindingPreview {
+    id: String,
+    rule_id: String,
+    rule_version: String,
+    category: String,
+    severity: String,
+    basis: String,
+    summary: String,
+    repairability: String,
+    affected_concept_count: usize,
+    suppression_fingerprint: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct HealthFindingOutput {
+    bundle_fingerprint: String,
+    finding: HealthFindingDetail,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct HealthFindingDetail {
+    id: String,
+    rule_id: String,
+    rule_version: String,
+    category: String,
+    severity: String,
+    basis: String,
+    summary: String,
+    why: String,
+    evidence: Vec<HealthEvidenceOutput>,
+    affected_concept_ids: Vec<String>,
+    affected_concept_count: usize,
+    affected_concept_ids_truncated: bool,
+    repairability: String,
+    suppression_fingerprint: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+struct HealthEvidenceOutput {
+    kind: String,
+    label: String,
+    value: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct HealthAffectedOutput {
+    bundle_fingerprint: String,
+    finding_id: String,
+    affected_concept_count: usize,
+    concepts: Vec<InventoryItem>,
+    next_offset: Option<usize>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct HealthRepairOutput {
+    bundle_fingerprint: String,
+    finding_id: String,
+    repairability: String,
+    repair: Option<HealthRepairDetail>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+struct HealthRepairDetail {
+    action: String,
+    target: String,
+    description: String,
+}
+
 #[derive(Clone, Debug)]
 struct OkfMcpServer {
     bundle: Arc<Bundle>,
+    bundle_root: Option<Arc<PathBuf>>,
     #[allow(dead_code)] // Read by the rmcp-generated ServerHandler implementation.
     tool_router: ToolRouter<Self>,
 }
 
 impl OkfMcpServer {
+    #[cfg(test)]
     fn new(bundle: Bundle) -> Self {
         Self {
             bundle: Arc::new(bundle),
+            bundle_root: None,
             tool_router: Self::tool_router(),
         }
+    }
+
+    fn new_live(bundle_root: PathBuf) -> Self {
+        let bundle = okf_core::read_bundle(&bundle_root);
+        Self {
+            bundle: Arc::new(bundle),
+            bundle_root: Some(Arc::new(bundle_root)),
+            tool_router: Self::tool_router(),
+        }
+    }
+
+    fn health_snapshot(
+        &self,
+        expected_fingerprint: Option<&str>,
+    ) -> Result<(Bundle, HealthReport), String> {
+        let bundle = self.bundle_root.as_deref().map_or_else(
+            || (*self.bundle).clone(),
+            |root| okf_core::read_bundle(root),
+        );
+        let report = health::analyze(&bundle).map_err(|limit| {
+            format!(
+                "Knowledge-health analysis is limited to {} {}; this bundle has {}.",
+                limit.maximum, limit.dimension, limit.actual
+            )
+        })?;
+        if expected_fingerprint.is_some_and(|expected| expected != report.bundle_fingerprint) {
+            return Err(
+                "The bundle changed after this health summary. Run okf_health_summary again."
+                    .to_string(),
+            );
+        }
+        if let Some(root) = self.bundle_root.as_deref() {
+            let current = okf_core::read_bundle(root);
+            if health::bundle_fingerprint(&current) != report.bundle_fingerprint {
+                return Err(
+                    "The bundle changed during health analysis. Run okf_health_summary again."
+                        .to_string(),
+                );
+            }
+        }
+        Ok((bundle, report))
+    }
+
+    fn health_report(&self, expected_fingerprint: Option<&str>) -> Result<HealthReport, String> {
+        self.health_snapshot(expected_fingerprint)
+            .map(|(_, report)| report)
     }
 }
 
@@ -530,6 +716,313 @@ impl OkfMcpServer {
             next_offset: result.next_offset,
         }))
     }
+
+    #[tool(
+        description = "Summarize deterministic knowledge-health findings for the active OKF bundle. Conformance facts are distinct from advisory heuristics. Returns a bundle fingerprint required by detail tools."
+    )]
+    fn okf_health_summary(
+        &self,
+        Parameters(input): Parameters<HealthSummaryInput>,
+    ) -> Result<Json<HealthSummaryOutput>, String> {
+        let category = input
+            .category
+            .as_deref()
+            .map(parse_health_category)
+            .transpose()?;
+        let basis = input.basis.as_deref().map(parse_health_basis).transpose()?;
+        let severity = input
+            .severity
+            .as_deref()
+            .map(parse_health_severity)
+            .transpose()?;
+        let offset = bounded_offset(input.offset)?;
+        let limit = input
+            .limit
+            .unwrap_or(DEFAULT_HEALTH_LIMIT)
+            .clamp(1, MAX_HEALTH_LIMIT);
+        let report = self.health_report(None)?;
+        let matching_count = report
+            .findings
+            .iter()
+            .filter(|finding| health_matches(finding, category, basis, severity))
+            .count();
+        let findings = report
+            .findings
+            .iter()
+            .filter(|finding| health_matches(finding, category, basis, severity))
+            .skip(offset)
+            .take(limit)
+            .map(health_finding_preview)
+            .collect::<Vec<_>>();
+        let next_offset =
+            (offset + findings.len() < matching_count).then_some(offset + findings.len());
+        Ok(Json(HealthSummaryOutput {
+            schema_version: report.schema_version,
+            bundle_fingerprint: report.bundle_fingerprint,
+            analyzed_concepts: report.analyzed_concepts,
+            analyzed_links: report.analyzed_links,
+            errors: report.counts.errors,
+            warnings: report.counts.warnings,
+            advisories: report.counts.advisories,
+            facts: report.counts.facts,
+            heuristics: report.counts.heuristics,
+            categories: report
+                .counts
+                .by_category
+                .into_iter()
+                .map(|(category, count)| ValueCount {
+                    value: health_category_name(category).to_string(),
+                    count,
+                })
+                .collect(),
+            matching_count,
+            findings,
+            next_offset,
+        }))
+    }
+
+    #[tool(
+        description = "Return the evidence, rationale, rule version, basis, and repairability for one health finding. Rejects a stale bundle fingerprint."
+    )]
+    fn okf_health_finding(
+        &self,
+        Parameters(input): Parameters<HealthFindingInput>,
+    ) -> Result<Json<HealthFindingOutput>, String> {
+        validate_health_finding_input(&input)?;
+        let report = self.health_report(Some(&input.bundle_fingerprint))?;
+        let finding = report
+            .findings
+            .iter()
+            .find(|finding| finding.id == input.finding_id)
+            .ok_or_else(|| "Health finding not found in this bundle revision.".to_string())?;
+        Ok(Json(HealthFindingOutput {
+            bundle_fingerprint: report.bundle_fingerprint,
+            finding: health_finding_detail(finding),
+        }))
+    }
+
+    #[tool(
+        description = "List bounded concept metadata affected by one health finding. Requires the exact bundle fingerprint from the matching health summary."
+    )]
+    fn okf_health_affected(
+        &self,
+        Parameters(input): Parameters<HealthAffectedInput>,
+    ) -> Result<Json<HealthAffectedOutput>, String> {
+        validate_health_ids(&input.finding_id, &input.bundle_fingerprint)?;
+        let offset = bounded_offset(input.offset)?;
+        let limit = input
+            .limit
+            .unwrap_or(DEFAULT_HEALTH_LIMIT)
+            .clamp(1, MAX_HEALTH_LIMIT);
+        let (bundle, report) = self.health_snapshot(Some(&input.bundle_fingerprint))?;
+        let finding = report
+            .findings
+            .iter()
+            .find(|finding| finding.id == input.finding_id)
+            .ok_or_else(|| "Health finding not found in this bundle revision.".to_string())?;
+        let affected_concept_count = finding.affected_concept_ids.len();
+        let concepts_by_id = bundle
+            .concepts
+            .iter()
+            .map(|concept| (concept.id.as_str(), concept))
+            .collect::<BTreeMap<_, _>>();
+        let concepts = finding
+            .affected_concept_ids
+            .iter()
+            .skip(offset)
+            .take(limit)
+            .filter_map(|id| concepts_by_id.get(id.as_str()).copied())
+            .map(|concept| InventoryItem {
+                id: bounded_output(&concept.id, MAX_OUTPUT_ID_CHARS),
+                title: bounded_output(&concept.title, MAX_OUTPUT_FIELD_CHARS),
+                concept_type: bounded_output(&concept.concept_type, MAX_OUTPUT_FIELD_CHARS),
+                description: bounded_output(&concept.description, MAX_OUTPUT_PROSE_CHARS),
+                tags: concept
+                    .tags
+                    .iter()
+                    .map(|tag| bounded_output(tag, MAX_OUTPUT_FIELD_CHARS))
+                    .collect(),
+                outgoing_links: concept.links.len(),
+                incoming_links: concept.cited_by.len(),
+            })
+            .collect::<Vec<_>>();
+        let next_offset =
+            (offset + concepts.len() < affected_concept_count).then_some(offset + concepts.len());
+        Ok(Json(HealthAffectedOutput {
+            bundle_fingerprint: report.bundle_fingerprint,
+            finding_id: input.finding_id,
+            affected_concept_count,
+            concepts,
+            next_offset,
+        }))
+    }
+
+    #[tool(
+        description = "Return a read-only deterministic repair recipe when a health rule has one. Guided findings never invent a mechanical repair. Requires the matching bundle fingerprint."
+    )]
+    fn okf_health_repair(
+        &self,
+        Parameters(input): Parameters<HealthFindingInput>,
+    ) -> Result<Json<HealthRepairOutput>, String> {
+        validate_health_finding_input(&input)?;
+        let report = self.health_report(Some(&input.bundle_fingerprint))?;
+        let finding = report
+            .findings
+            .iter()
+            .find(|finding| finding.id == input.finding_id)
+            .ok_or_else(|| "Health finding not found in this bundle revision.".to_string())?;
+        let repair = health::suggested_repair(finding).map(|repair| HealthRepairDetail {
+            action: repair.action,
+            target: bounded_output(&repair.target, MAX_OUTPUT_ID_CHARS),
+            description: bounded_output(&repair.description, MAX_OUTPUT_PROSE_CHARS),
+        });
+        Ok(Json(HealthRepairOutput {
+            bundle_fingerprint: report.bundle_fingerprint,
+            finding_id: input.finding_id,
+            repairability: health_repairability_name(finding.repairability).to_string(),
+            repair,
+        }))
+    }
+}
+
+fn validate_health_finding_input(input: &HealthFindingInput) -> Result<(), String> {
+    validate_health_ids(&input.finding_id, &input.bundle_fingerprint)
+}
+
+fn validate_health_ids(finding_id: &str, bundle_fingerprint: &str) -> Result<(), String> {
+    if finding_id.is_empty()
+        || finding_id.chars().count() > MAX_HEALTH_ID_CHARS
+        || bundle_fingerprint.is_empty()
+        || bundle_fingerprint.chars().count() > MAX_HEALTH_ID_CHARS
+    {
+        return Err(
+            "findingId and bundleFingerprint must be bounded non-empty health IDs.".to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn health_matches(
+    finding: &HealthFinding,
+    category: Option<HealthCategory>,
+    basis: Option<HealthBasis>,
+    severity: Option<HealthSeverity>,
+) -> bool {
+    category.is_none_or(|value| finding.category == value)
+        && basis.is_none_or(|value| finding.basis == value)
+        && severity.is_none_or(|value| finding.severity == value)
+}
+
+fn parse_health_category(value: &str) -> Result<HealthCategory, String> {
+    match value {
+        "conformance" => Ok(HealthCategory::Conformance),
+        "graph-connectivity" => Ok(HealthCategory::GraphConnectivity),
+        "navigation" => Ok(HealthCategory::Navigation),
+        "provenance" => Ok(HealthCategory::Provenance),
+        "freshness" => Ok(HealthCategory::Freshness),
+        "duplication" => Ok(HealthCategory::Duplication),
+        "coverage-hint" => Ok(HealthCategory::CoverageHint),
+        _ => Err("category must be conformance, graph-connectivity, navigation, provenance, freshness, duplication, or coverage-hint".to_string()),
+    }
+}
+
+fn parse_health_basis(value: &str) -> Result<HealthBasis, String> {
+    match value {
+        "fact" => Ok(HealthBasis::Fact),
+        "heuristic" => Ok(HealthBasis::Heuristic),
+        _ => Err("basis must be fact or heuristic".to_string()),
+    }
+}
+
+fn parse_health_severity(value: &str) -> Result<HealthSeverity, String> {
+    match value {
+        "error" => Ok(HealthSeverity::Error),
+        "warning" => Ok(HealthSeverity::Warning),
+        "advisory" => Ok(HealthSeverity::Advisory),
+        _ => Err("severity must be error, warning, or advisory".to_string()),
+    }
+}
+
+fn health_category_name(value: HealthCategory) -> &'static str {
+    match value {
+        HealthCategory::Conformance => "conformance",
+        HealthCategory::GraphConnectivity => "graph-connectivity",
+        HealthCategory::Navigation => "navigation",
+        HealthCategory::Provenance => "provenance",
+        HealthCategory::Freshness => "freshness",
+        HealthCategory::Duplication => "duplication",
+        HealthCategory::CoverageHint => "coverage-hint",
+    }
+}
+
+fn health_basis_name(value: HealthBasis) -> &'static str {
+    match value {
+        HealthBasis::Fact => "fact",
+        HealthBasis::Heuristic => "heuristic",
+    }
+}
+
+fn health_severity_name(value: HealthSeverity) -> &'static str {
+    match value {
+        HealthSeverity::Error => "error",
+        HealthSeverity::Warning => "warning",
+        HealthSeverity::Advisory => "advisory",
+    }
+}
+
+fn health_repairability_name(value: HealthRepairability) -> &'static str {
+    match value {
+        HealthRepairability::Deterministic => "deterministic",
+        HealthRepairability::Guided => "guided",
+        HealthRepairability::NotRepairable => "not-repairable",
+    }
+}
+
+fn health_finding_preview(finding: &HealthFinding) -> HealthFindingPreview {
+    HealthFindingPreview {
+        id: finding.id.clone(),
+        rule_id: finding.rule_id.clone(),
+        rule_version: finding.rule_version.clone(),
+        category: health_category_name(finding.category).to_string(),
+        severity: health_severity_name(finding.severity).to_string(),
+        basis: health_basis_name(finding.basis).to_string(),
+        summary: bounded_output(&finding.summary, MAX_OUTPUT_PROSE_CHARS),
+        repairability: health_repairability_name(finding.repairability).to_string(),
+        affected_concept_count: finding.affected_concept_ids.len(),
+        suppression_fingerprint: finding.suppression_fingerprint.clone(),
+    }
+}
+
+fn health_finding_detail(finding: &HealthFinding) -> HealthFindingDetail {
+    HealthFindingDetail {
+        id: finding.id.clone(),
+        rule_id: finding.rule_id.clone(),
+        rule_version: finding.rule_version.clone(),
+        category: health_category_name(finding.category).to_string(),
+        severity: health_severity_name(finding.severity).to_string(),
+        basis: health_basis_name(finding.basis).to_string(),
+        summary: bounded_output(&finding.summary, MAX_OUTPUT_PROSE_CHARS),
+        why: bounded_output(&finding.why, MAX_OUTPUT_PROSE_CHARS),
+        evidence: finding
+            .evidence
+            .iter()
+            .map(|item| HealthEvidenceOutput {
+                kind: bounded_output(&item.kind, MAX_OUTPUT_FIELD_CHARS),
+                label: bounded_output(&item.label, MAX_OUTPUT_FIELD_CHARS),
+                value: bounded_output(&item.value, MAX_OUTPUT_PROSE_CHARS),
+            })
+            .collect(),
+        affected_concept_ids: finding
+            .affected_concept_ids
+            .iter()
+            .take(MAX_HEALTH_LIMIT)
+            .map(|id| bounded_output(id, MAX_OUTPUT_ID_CHARS))
+            .collect(),
+        affected_concept_count: finding.affected_concept_ids.len(),
+        affected_concept_ids_truncated: finding.affected_concept_ids.len() > MAX_HEALTH_LIMIT,
+        repairability: health_repairability_name(finding.repairability).to_string(),
+        suppression_fingerprint: finding.suppression_fingerprint.clone(),
+    }
 }
 
 fn validate_optional_filter(name: &str, value: Option<&str>) -> Result<(), String> {
@@ -661,7 +1154,63 @@ pub(crate) fn native_tool_definitions() -> Vec<LocalToolDefinition> {
                 "additionalProperties": false
             }),
         },
+        LocalToolDefinition {
+            name: "okf_health_summary",
+            description: "Summarize deterministic knowledge-health findings. Keeps conformance facts distinct from advisory heuristics and returns a revision fingerprint for follow-up tools.",
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "enum": ["conformance", "graph-connectivity", "navigation", "provenance", "freshness", "duplication", "coverage-hint"]},
+                    "basis": {"type": "string", "enum": ["fact", "heuristic"]},
+                    "severity": {"type": "string", "enum": ["error", "warning", "advisory"]},
+                    "offset": {"type": "integer", "minimum": 0, "maximum": MAX_OFFSET},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": MAX_HEALTH_LIMIT}
+                },
+                "additionalProperties": false
+            }),
+        },
+        LocalToolDefinition {
+            name: "okf_health_finding",
+            description: "Inspect one health finding's rule, version, evidence, rationale, basis, affected IDs, and repairability at an exact bundle revision.",
+            parameters: health_finding_parameters(),
+        },
+        LocalToolDefinition {
+            name: "okf_health_affected",
+            description: "List bounded concept metadata affected by one health finding at an exact bundle revision.",
+            parameters: health_affected_parameters(),
+        },
+        LocalToolDefinition {
+            name: "okf_health_repair",
+            description: "Return a read-only deterministic repair recipe when the selected health rule has one; guided findings return no invented repair.",
+            parameters: health_finding_parameters(),
+        },
     ]
+}
+
+fn health_finding_parameters() -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "findingId": {"type": "string", "minLength": 1, "maxLength": MAX_HEALTH_ID_CHARS},
+            "bundleFingerprint": {"type": "string", "minLength": 1, "maxLength": MAX_HEALTH_ID_CHARS}
+        },
+        "required": ["findingId", "bundleFingerprint"],
+        "additionalProperties": false
+    })
+}
+
+fn health_affected_parameters() -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "findingId": {"type": "string", "minLength": 1, "maxLength": MAX_HEALTH_ID_CHARS},
+            "bundleFingerprint": {"type": "string", "minLength": 1, "maxLength": MAX_HEALTH_ID_CHARS},
+            "offset": {"type": "integer", "minimum": 0, "maximum": MAX_OFFSET},
+            "limit": {"type": "integer", "minimum": 1, "maximum": MAX_HEALTH_LIMIT}
+        },
+        "required": ["findingId", "bundleFingerprint"],
+        "additionalProperties": false
+    })
 }
 
 pub(crate) fn execute_native_tool(
@@ -674,7 +1223,7 @@ pub(crate) fn execute_native_tool(
     if canonical_root != bundle_root || !canonical_root.is_dir() {
         return Err("The active OKF bundle is unavailable.".to_string());
     }
-    let server = OkfMcpServer::new(okf_core::read_bundle(&canonical_root));
+    let server = OkfMcpServer::new_live(canonical_root);
     let output = match call.name.as_str() {
         "okf_inventory" => {
             let Json(output) = server.okf_inventory(Parameters(native_input(call)?))?;
@@ -700,6 +1249,22 @@ pub(crate) fn execute_native_tool(
             let Json(output) = server.okf_validate(Parameters(native_input(call)?))?;
             serde_json::to_value(output)
         }
+        "okf_health_summary" => {
+            let Json(output) = server.okf_health_summary(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_health_finding" => {
+            let Json(output) = server.okf_health_finding(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_health_affected" => {
+            let Json(output) = server.okf_health_affected(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
+        "okf_health_repair" => {
+            let Json(output) = server.okf_health_repair(Parameters(native_input(call)?))?;
+            serde_json::to_value(output)
+        }
         _ => return Err("The model requested a tool that Studio did not offer.".to_string()),
     }
     .map_err(|_| "Studio could not encode the OKF tool result.".to_string())?;
@@ -721,6 +1286,10 @@ pub(crate) fn native_tool_display(call: &LocalToolCall) -> (&'static str, &'stat
         "okf_sources" => ("List OKF sources", "search"),
         "okf_traverse" => ("Traverse OKF graph", "search"),
         "okf_validate" => ("Inspect OKF validation", "read"),
+        "okf_health_summary" => ("Summarize knowledge health", "search"),
+        "okf_health_finding" => ("Inspect health finding", "read"),
+        "okf_health_affected" => ("List affected concepts", "search"),
+        "okf_health_repair" => ("Inspect deterministic repair", "read"),
         _ => ("Use OKF tool", "other"),
     }
 }
@@ -737,7 +1306,7 @@ impl ServerHandler for OkfMcpServer {
             .with_server_info(Implementation::new("okf-studio", env!("CARGO_PKG_VERSION")))
             .with_protocol_version(ProtocolVersion::V_2024_11_05)
             .with_instructions(
-                "Read-only tools to inspect, read, search, trace sources, traverse, and validate the active Open Knowledge Format bundle.",
+                "Read-only tools to inspect, read, search, trace sources, traverse, validate, and analyze deterministic knowledge health for the active Open Knowledge Format bundle.",
             )
     }
 }
@@ -749,13 +1318,12 @@ pub fn run(bundle_root: PathBuf) -> Result<(), String> {
     if !bundle_root.is_dir() {
         return Err("OKF Studio MCP bundle root is not a directory.".to_string());
     }
-    let bundle = okf_core::read_bundle(&bundle_root);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|error| format!("OKF Studio MCP runtime failed: {error}"))?;
     runtime.block_on(async move {
-        let service = OkfMcpServer::new(bundle)
+        let service = OkfMcpServer::new_live(bundle_root)
             .serve(rmcp::transport::stdio())
             .await
             .map_err(|error| format!("OKF Studio MCP startup failed: {error}"))?;
@@ -771,6 +1339,7 @@ pub fn run(bundle_root: PathBuf) -> Result<(), String> {
 mod tests {
     use super::*;
     use rmcp::model::CallToolRequestParams;
+    use std::fs;
 
     #[test]
     fn tools_inspect_read_search_sources_traverse_and_validate_the_docs_bundle() {
@@ -852,6 +1421,49 @@ mod tests {
             validation.matching_count,
             validation.error_count + validation.warning_count
         );
+
+        let Json(health) = server
+            .okf_health_summary(Parameters(HealthSummaryInput {
+                category: None,
+                basis: Some("heuristic".to_string()),
+                severity: None,
+                offset: None,
+                limit: Some(5),
+            }))
+            .unwrap();
+        assert!(health
+            .bundle_fingerprint
+            .starts_with("okf-health-revision-"));
+        assert!(health.matching_count >= health.findings.len());
+        assert!(health
+            .findings
+            .iter()
+            .all(|finding| finding.basis == "heuristic"));
+        let selected = health.findings.first().expect("docs health finding");
+        let Json(detail) = server
+            .okf_health_finding(Parameters(HealthFindingInput {
+                finding_id: selected.id.clone(),
+                bundle_fingerprint: health.bundle_fingerprint.clone(),
+            }))
+            .unwrap();
+        assert_eq!(detail.finding.rule_id, selected.rule_id);
+        assert!(!detail.finding.why.is_empty());
+        let Json(affected) = server
+            .okf_health_affected(Parameters(HealthAffectedInput {
+                finding_id: selected.id.clone(),
+                bundle_fingerprint: health.bundle_fingerprint.clone(),
+                offset: None,
+                limit: Some(10),
+            }))
+            .unwrap();
+        assert_eq!(affected.finding_id, selected.id);
+        assert!(affected.concepts.len() <= 10);
+        assert!(server
+            .okf_health_finding(Parameters(HealthFindingInput {
+                finding_id: selected.id.clone(),
+                bundle_fingerprint: "okf-health-revision-stale".to_string(),
+            }))
+            .is_err());
     }
 
     #[test]
@@ -911,6 +1523,130 @@ mod tests {
                 limit: None,
             }))
             .is_err());
+        assert!(server
+            .okf_health_summary(Parameters(HealthSummaryInput {
+                category: Some("quality".to_string()),
+                basis: None,
+                severity: None,
+                offset: None,
+                limit: None,
+            }))
+            .is_err());
+    }
+
+    #[test]
+    fn health_repairs_are_revision_bound_and_live_reload_invalidates_stale_findings() {
+        let root =
+            std::env::temp_dir().join(format!("okf-health-mcp-{}", uuid::Uuid::new_v4().simple()));
+        fs::create_dir_all(root.join("notes")).expect("create fixture");
+        fs::write(
+            root.join("index.md"),
+            "---\nokf_version: \"0.1\"\n---\n# Health fixture\n* [Notes](notes/)\n",
+        )
+        .expect("write root index");
+        let concept_path = root.join("notes/item.md");
+        fs::write(
+            &concept_path,
+            "---\ntype: Note\ntitle: Item\ndescription: A bounded item.\ntimestamp: 2026-07-18T00:00:00Z\nresource: https://example.com/item\n---\n# Item\n",
+        )
+        .expect("write concept");
+        let canonical = root.canonicalize().expect("canonical fixture");
+        let server = OkfMcpServer::new_live(canonical);
+        let Json(summary) = server
+            .okf_health_summary(Parameters(HealthSummaryInput {
+                category: Some("navigation".to_string()),
+                basis: Some("fact".to_string()),
+                severity: None,
+                offset: None,
+                limit: Some(10),
+            }))
+            .expect("health summary");
+        let finding = summary
+            .findings
+            .iter()
+            .find(|finding| finding.rule_id == "okf.navigation.synthesized-index")
+            .expect("synthesized index finding");
+        let input = HealthFindingInput {
+            finding_id: finding.id.clone(),
+            bundle_fingerprint: summary.bundle_fingerprint.clone(),
+        };
+        let Json(repair) = server
+            .okf_health_repair(Parameters(HealthFindingInput {
+                finding_id: input.finding_id.clone(),
+                bundle_fingerprint: input.bundle_fingerprint.clone(),
+            }))
+            .expect("deterministic repair");
+        assert_eq!(repair.repairability, "deterministic");
+        assert_eq!(repair.repair.expect("repair recipe").action, "create-index");
+
+        fs::write(
+            &concept_path,
+            "---\ntype: Note\ntitle: Item\ndescription: Changed.\ntimestamp: 2026-07-18T00:00:00Z\nresource: https://example.com/item\n---\n# Item\n",
+        )
+        .expect("change bundle");
+        let error = match server.okf_health_finding(Parameters(input)) {
+            Ok(_) => panic!("stale finding must fail"),
+            Err(error) => error,
+        };
+        assert!(error.contains("bundle changed"));
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn health_detail_and_affected_concepts_stay_bounded() {
+        let root = std::env::temp_dir().join(format!(
+            "okf-health-bounds-{}",
+            uuid::Uuid::new_v4().simple()
+        ));
+        fs::create_dir_all(root.join("items")).expect("create fixture");
+        let mut index = "---\nokf_version: \"0.1\"\n---\n# Health bounds\n".to_string();
+        for number in 0..205 {
+            let id = format!("item-{number:03}");
+            index.push_str(&format!("* [Item](items/{id}.md)\n"));
+            fs::write(
+                root.join("items").join(format!("{id}.md")),
+                "---\ntype: Note\ntitle: Repeated title\ndescription: Bounded.\ntimestamp: 2026-07-18T00:00:00Z\nresource: https://example.com/item\n---\n# Repeated title\n",
+            )
+            .expect("write concept");
+        }
+        fs::write(root.join("index.md"), index).expect("write index");
+        let server = OkfMcpServer::new_live(root.canonicalize().expect("canonical fixture"));
+        let Json(summary) = server
+            .okf_health_summary(Parameters(HealthSummaryInput {
+                category: Some("duplication".to_string()),
+                basis: Some("heuristic".to_string()),
+                severity: None,
+                offset: None,
+                limit: Some(10),
+            }))
+            .expect("health summary");
+        let finding = summary
+            .findings
+            .iter()
+            .find(|finding| finding.rule_id == "okf.duplication.same-title")
+            .expect("same-title finding");
+        let Json(detail) = server
+            .okf_health_finding(Parameters(HealthFindingInput {
+                finding_id: finding.id.clone(),
+                bundle_fingerprint: summary.bundle_fingerprint.clone(),
+            }))
+            .expect("health detail");
+        assert_eq!(detail.finding.affected_concept_count, 205);
+        assert_eq!(detail.finding.affected_concept_ids.len(), MAX_HEALTH_LIMIT);
+        assert!(detail.finding.affected_concept_ids_truncated);
+
+        let Json(affected) = server
+            .okf_health_affected(Parameters(HealthAffectedInput {
+                finding_id: finding.id.clone(),
+                bundle_fingerprint: summary.bundle_fingerprint,
+                offset: Some(190),
+                limit: Some(25),
+            }))
+            .expect("affected concept page");
+        assert_eq!(affected.affected_concept_count, 205);
+        assert_eq!(affected.concepts.len(), 15);
+        assert_eq!(affected.next_offset, None);
+        fs::remove_dir_all(root).ok();
     }
 
     #[test]
@@ -931,7 +1667,11 @@ mod tests {
                 "okf_search",
                 "okf_sources",
                 "okf_traverse",
-                "okf_validate"
+                "okf_validate",
+                "okf_health_summary",
+                "okf_health_finding",
+                "okf_health_affected",
+                "okf_health_repair"
             ]
         );
         let call = LocalToolCall {
@@ -992,6 +1732,10 @@ mod tests {
                 .map(|tool| tool.name.as_ref())
                 .collect::<Vec<_>>(),
             [
+                "okf_health_affected",
+                "okf_health_finding",
+                "okf_health_repair",
+                "okf_health_summary",
                 "okf_inventory",
                 "okf_read",
                 "okf_search",

@@ -4,7 +4,7 @@
   "capabilities": [
     {
       "id": "okf-core",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Inspect, author, validate, and maintain conformant Open Knowledge Format bundles.",
       "riskClass": "stage",
       "requiredTools": [
@@ -13,7 +13,11 @@
         "okf_search",
         "okf_sources",
         "okf_traverse",
-        "okf_validate"
+        "okf_validate",
+        "okf_health_summary",
+        "okf_health_finding",
+        "okf_health_affected",
+        "okf_health_repair"
       ],
       "artifactKinds": [
         "bundle-plan",
@@ -41,7 +45,7 @@
           "label": "commands",
           "path": "commands.md",
           "mediaType": "text/markdown",
-          "sha256": "109342e59aec1f1e1c8ffb42924b05ecb22b8f84748046520f9f0c29c47068f2"
+          "sha256": "d0b7d596d59f9a1270685bc777b130cb91cd1b1a0d22af4cc495c1bd37d408ff"
         },
         {
           "id": "templates",
@@ -55,7 +59,7 @@
           "label": "capability changelog",
           "path": "capabilities/CHANGELOG.md",
           "mediaType": "text/markdown",
-          "sha256": "234d7b49d3d189fc8142ff67ef238ac567c298d91871c09de705235c93f40f4d"
+          "sha256": "fc787cee07cc4a198629be111510ca688cd750fa6a0af13449e7b9965fadf97f"
         }
       ]
     },
@@ -106,32 +110,32 @@
     },
     {
       "id": "okf-audit",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Audit conformance and knowledge-health evidence without modifying the bundle.",
       "riskClass": "analyze",
-      "requiredTools": ["okf_inventory", "okf_validate", "okf_traverse", "okf_read"],
+      "requiredTools": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair", "okf_read"],
       "artifactKinds": ["health-report"],
       "resources": [{
         "id": "instructions",
         "label": "audit method",
         "path": "capabilities/audit.md",
         "mediaType": "text/markdown",
-        "sha256": "dcd70d98bc4ac339c0c43d4e80ce8c35dceab769d04f3da503aafb55b24da3ca"
+        "sha256": "b8d506e892dc809df32b96ed24501ef47c5e74f7179a2ff731cfc988f801244d"
       }]
     },
     {
       "id": "okf-repair",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Repair reproducible OKF defects with minimal reviewed changes.",
       "riskClass": "stage",
-      "requiredTools": ["okf_inventory", "okf_validate", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+      "requiredTools": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_repair", "okf_read", "studio_stage_propose", "studio_stage_validate"],
       "artifactKinds": ["staged-revision"],
       "resources": [{
         "id": "instructions",
         "label": "repair method",
         "path": "capabilities/repair.md",
         "mediaType": "text/markdown",
-        "sha256": "09b560b21ee3143163fd3f43eb8314b66cd3ed4fd462e1b17f79e73fc450951f"
+        "sha256": "11e0eaedce660f5d7a7f5ccb596840ce8d603855523532779a3e164667ab5964"
       }]
     },
     {

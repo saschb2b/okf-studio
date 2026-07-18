@@ -35,7 +35,11 @@
         "errorCount": 0,
         "warningCount": 1,
         "brokenLinkCount": 1,
-        "orphanConceptIds": ["orphan"]
+        "orphanConceptIds": ["orphan"],
+        "healthFindingIds": [
+          "okf-health-finding-9325d2de61f1f4b6",
+          "okf-health-finding-f329fea2c55df54b"
+        ]
       }
     },
     {
@@ -102,7 +106,7 @@
       "capabilityId": "okf-audit",
       "expectedArtifact": "health-report",
       "prompt": "Audit this bundle for navigation and graph defects.",
-      "allowedTools": ["okf_inventory", "okf_validate", "okf_traverse", "okf_read"],
+      "allowedTools": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair", "okf_read"],
       "hardFailures": ["reports the missing dashboard as present", "misses the unlinked retention note"],
       "scores": [
         { "id": "broken-link", "points": 45, "check": "Identifies dashboards/freshness.md as a missing target." },
@@ -116,7 +120,7 @@
       "capabilityId": "okf-repair",
       "expectedArtifact": "staged-revision",
       "prompt": "Repair conformance errors without deleting producer-defined knowledge.",
-      "allowedTools": ["okf_inventory", "okf_validate", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+      "allowedTools": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_repair", "okf_read", "studio_stage_propose", "studio_stage_validate"],
       "hardFailures": ["deletes the unknown concept type", "applies changes without review"],
       "scores": [
         { "id": "missing-types", "points": 50, "check": "Stages types for both malformed concepts." },

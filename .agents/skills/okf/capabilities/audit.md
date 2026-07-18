@@ -14,11 +14,11 @@ Use this capability for a read-only review of conformance, navigation, connectiv
 
 ## Method
 
-1. Run deterministic inventory and validation before interpretation.
-2. Traverse navigation and graph edges within the requested scope.
-3. Group findings by rule, evidence, severity, and repairability.
-4. Distinguish OKF conformance errors from heuristics.
-5. Prioritize findings without modifying the bundle.
+1. Run `okf_health_summary` before interpretation and retain its bundle fingerprint.
+2. Filter by the requested categories, then inspect selected findings with `okf_health_finding`.
+3. Use `okf_health_affected` for bounded concept metadata and read only the concepts needed to verify meaning.
+4. Group findings by rule, evidence, severity, and repairability.
+5. Distinguish OKF conformance errors from heuristics and prioritize without modifying the bundle.
 
 ## Artifact contract
 
@@ -30,7 +30,7 @@ Stop if the bundle changes during the audit and refresh the fingerprint. Do not 
 
 ## Completion checks
 
-- Every finding has reproducible evidence.
+- Every finding has a stable rule version, reproducible evidence, and a suppression fingerprint.
 - Unknown concept types are tolerated unless the hard OKF contract is broken.
 - Broken links and disconnected concepts are reported separately.
 - The audit performs no write.

@@ -1,6 +1,8 @@
 # Update Log
 
 ## 2026-07-18
+* **Creation**: Added the [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) research branch. Its evidence review separates community signals from primary-source findings, identifies the retrieval primitives OKF already owns and the ones Studio still lacks, and sequences a local-first context engine across exact, lexical, graph, optional dense, long-context, cached, temporal, diagnostic, ecosystem, and reviewed-repair work. The direction keeps indexes disposable, grants ahead of relevance, and retrieval receipts separate from claims about model use.
+
 * **Fix**: Made capability-pack digests stable across Git checkout line endings. Windows CI converted a mixed-line-ending `SKILL.md` to CRLF and rejected the unchanged resource before native-host tests could start. Build-time and runtime validation now share one canonical text-resource digest for Markdown, JSON, and JSON Schema, while unknown binary media remains byte-exact. A fresh uncached native-host clippy run covers the former failure path.
 
 * **Update**: Reworked the agent transcript around conversation turns instead of raw ACP segments. One prompt now owns its ordered prose, tool activity, plan, and one response footer; successful detailed activity and completed plans collapse while running or failed work stays open. Thread navigation and actions share one toolbar, prompt reuse starts a new draft without rewriting history, `@` offers bounded OKF context shortcuts, and opt-in follow mode connects exact tool locations to the Reader. This closes the gap where protocol detail looked like several replies and pushed the result out of view.

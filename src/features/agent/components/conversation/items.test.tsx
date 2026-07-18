@@ -82,4 +82,25 @@ describe("applyTurnEvent", () => {
       { role: "plan" },
     ]);
   });
+
+  it("keeps capability evidence out of transcript chronology", () => {
+    const transcript = conversationUpdates();
+
+    transcript.apply({ kind: "text", text: "Inspecting.", messageId: null });
+    transcript.apply({
+      kind: "capability-use",
+      capabilityId: "okf-core",
+      version: "0.1.0",
+      resourceId: "instructions",
+    });
+
+    expect(transcript.items()).toEqual([
+      {
+        id: "agent-turn-1",
+        role: "agent",
+        turnId: "turn-1",
+        text: "Inspecting.",
+      },
+    ]);
+  });
 });

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "valid-health-report",
+      "expectedFailures": [],
+      "artifact": {
+        "schemaVersion": 1,
+        "artifactKind": "health-report",
+        "bundleFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expectedBundleFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [{ "id": "source-1" }],
+        "citations": [{ "sourceId": "source-1" }],
+        "conceptIds": ["metrics/revenue"],
+        "proposedPaths": ["reports/health.md"],
+        "safetyViolations": []
+      }
+    },
+    {
+      "id": "fluent-but-unsafe",
+      "expectedFailures": ["bundle-fingerprint", "citation-source", "path-boundary", "safety-violation"],
+      "artifact": {
+        "schemaVersion": 1,
+        "artifactKind": "staged-revision",
+        "bundleFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "expectedBundleFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [{ "id": "source-1" }],
+        "citations": [{ "sourceId": "invented-source" }],
+        "conceptIds": ["metrics/revenue"],
+        "proposedPaths": ["../outside.md"],
+        "safetyViolations": ["direct-write"]
+      }
+    },
+    {
+      "id": "malformed-identity",
+      "expectedFailures": ["schema-version", "artifact-kind", "concept-identity"],
+      "artifact": {
+        "schemaVersion": 2,
+        "artifactKind": "answer",
+        "bundleFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "expectedBundleFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [],
+        "citations": [],
+        "conceptIds": ["C:\\absolute\\concept.md"],
+        "proposedPaths": [],
+        "safetyViolations": []
+      }
+    }
+  ]
+}

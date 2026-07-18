@@ -1,19 +1,24 @@
 import type { AgentAvailableCommandInfo, AgentConnectionEvent, AgentConnectionInfo, AgentLoadedSessionInfo, AgentSessionConfigOption, AgentSessionConfigValueInput, AgentSessionInfo, AgentSessionHistoryInfo, AgentStagedChangesInfo, AgentStagedFileDiff, AgentTurnEvent, AgentTurnInfo, AgentWriteGrantMode } from "@/features/agent/connection.ts";
 import type { AgentSessionConfigFailure } from "@/features/agent/components/AgentSessionControls.tsx";
-import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
+import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import type { AcceptedOkfContextManifest, OkfTaskId, OkfTaskKickoff } from "@/features/agent/taskContext.ts";
+import { acceptOkfContextPlan, bundleContextFingerprint, createOkfContextPlan } from "@/features/agent/taskContext.ts";
+import { activeMemoryOmissions } from "@/features/agent/workspaceMemory.ts";
+import type { WorkspaceMemoryItem } from "@/features/agent/workspaceMemory.ts";
 import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
-import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
+import { Check, CircleAlert, Crosshair, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordWorkspaceTaskObservation, respondAgentPermission, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import "./AgentConversation.css";
 import type { StagedValidationState, ConversationMessage, ConversationPlan, ConversationItem, AttachedSource, ComposerState, PromptDraft, PromptSubmission, QueuedPrompt, ThreadTitle, AuthenticationState, HistoryState, SavedThreadState, PendingPermission, AgentUsage, EventStreamState, DraftSessionState, PendingSessionConfig, StageFailure } from "@/features/agent/components/conversation/types.ts";
-import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, workflowForPrompt, usageLabels, errorMessage, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
+import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, usageLabels, errorMessage, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
 import { SavedThreadWelcome, EmptyThreadWelcome, ThreadSecurityScope, ThreadTitleEditor, ThreadSurfaceClose, ThreadActionsMenu } from "@/features/agent/components/conversation/ThreadChrome.tsx";
 import { AttachmentPicker } from "@/features/agent/components/conversation/AttachmentPicker.tsx";
 import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemView, planProgressLabel, LivePlan } from "@/features/agent/components/conversation/items.tsx";
@@ -24,6 +29,20 @@ import { ContextPressureNotice } from "@/features/agent/components/conversation/
 import { QueuedPromptCard } from "@/features/agent/components/conversation/QueuedPromptCard.tsx";
 import { AgentSessionHistory } from "@/features/agent/components/conversation/AgentSessionHistory.tsx";
 import { WriteGrantControl } from "@/features/agent/components/conversation/WriteGrantControl.tsx";
+import { OkfContextPlanCard } from "@/features/agent/components/conversation/OkfContextPlanCard.tsx";
+import { SourceInventory } from "@/features/agent/components/conversation/SourceInventory.tsx";
+import { ConversationTurnFrame, groupConversationItems } from "@/features/agent/components/conversation/ConversationTurn.tsx";
+import { findOkfMention, OkfMentionMenu, okfMentionOptions, replaceOkfMention } from "@/features/agent/components/conversation/OkfMentionMenu.tsx";
+import type { OkfMentionOption } from "@/features/agent/components/conversation/OkfMentionMenu.tsx";
+import { conceptIdForToolLocation } from "@/features/agent/components/conversation/toolLocation.ts";
+import { ConversationToolbar } from "@/features/agent/components/conversation/ConversationToolbar.tsx";
+import { AgentArtifactWorkspace } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
+import type { AgentArtifactWorkspaceState } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
+import {
+  agentArtifactEnvelopeText,
+  artifactRevisionPrompt,
+} from "@/features/agent/artifact.ts";
+import type { AgentCriticState } from "@/features/agent/artifact.ts";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
 import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
@@ -32,6 +51,7 @@ import {
   freshThreadContextDraft,
   markContextSummary,
 } from "@/features/agent/components/conversation/contextRecovery.ts";
+import { useAppActions } from "@/shared/store.tsx";
 
 
 export interface AgentConversationProps {
@@ -40,7 +60,14 @@ export interface AgentConversationProps {
   bundleName: string | null;
   activeConcept: { id: string; title: string } | null;
   onCaptureReaderSelection: () => ReaderSelectionCapture;
-  concepts: readonly { id: string; title: string; type: string }[];
+  concepts: readonly {
+    id: string;
+    title: string;
+    type: string;
+    body?: string;
+    links?: readonly string[];
+    timestamp?: string | null;
+  }[];
   onOpenConcept: (conceptId: string) => void;
   issues: readonly Issue[];
   onChangeAgent: () => void;
@@ -50,12 +77,14 @@ export interface AgentConversationProps {
   onThreadTitleChange: (title: string) => void;
   onCloseThreadSurface: () => void;
   initialPrompt?: string;
+  initialKickoff?: OkfTaskKickoff;
   initialSession?: AgentSessionHistoryInfo;
   onStartFreshThread: (initialPrompt: string) => void;
   onImportSession: (session: AgentSessionHistoryInfo) => void;
   notificationsEnabled: boolean;
   notificationSound: boolean;
   onThreadStatusChange: (status: AgentThreadStatus) => void;
+  threadNavigation?: ReactNode;
 }
 
 
@@ -75,26 +104,58 @@ export function AgentConversation({
   onThreadTitleChange,
   onCloseThreadSurface,
   initialPrompt = "",
+  initialKickoff,
   initialSession,
   onStartFreshThread,
   onImportSession,
   notificationsEnabled,
   notificationSound,
   onThreadStatusChange,
+  threadNavigation,
 }: AgentConversationProps) {
+  const appActions = useAppActions();
   const conversationTitleId = useId();
   const stagedTitleId = `${conversationTitleId}-staged`;
   const bundleFolderInputId = `${conversationTitleId}-bundle-folder`;
   const promptInputId = `${conversationTitleId}-prompt`;
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
   const isStudioAgent = connection.protocolVersion === "studio-native/1";
+  const criticUnavailableReason = connection.securityScope.profile.id ===
+      "studio-native-mediated-v1"
+    ? null
+    : "Independent critique requires Studio Agent. Rust supplies only the declared evidence and exposes no tools to the critic session.";
   const conceptIds = concepts.map((concept) => concept.id);
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
     source: "default",
     value: "New thread",
   });
-  const [threadWorkflow, setThreadWorkflow] = useState<AgentThreadWorkflow>(null);
+  const [threadTaskId, setThreadTaskId] = useState<OkfTaskId | null>(
+    initialKickoff?.taskId ?? null,
+  );
+  const [acceptedContextManifest, setAcceptedContextManifest] =
+    useState<AcceptedOkfContextManifest | null>(null);
+  const [removedContextIds, setRemovedContextIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [workspaceMemory, setWorkspaceMemory] = useState<readonly WorkspaceMemoryItem[]>([]);
+  const [memorySuggestion, setMemorySuggestion] = useState<{
+    conceptId: string;
+    conceptTitle: string;
+    effect: string;
+  } | null>(null);
+  const [memoryError, setMemoryError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationItem[]>([]);
+  const [followAgent, setFollowAgent] = useState(false);
+  const followedToolRef = useRef<string | null>(null);
+  const [artifactWorkspace, setArtifactWorkspace] = useState<AgentArtifactWorkspaceState>({
+    status: "empty",
+  });
+  const artifactWorkspaceRef = useRef<AgentArtifactWorkspaceState>(artifactWorkspace);
+  const artifactOriginMessageRef = useRef<string | null>(null);
+  const artifactValidationRequestRef = useRef(0);
+  const [artifactValidationAttempt, setArtifactValidationAttempt] = useState(0);
+  const [artifactOpen, setArtifactOpen] = useState(false);
+  const [criticState, setCriticState] = useState<AgentCriticState>({ status: "idle" });
   const [markdownViewOpen, setMarkdownViewOpen] = useState(false);
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
@@ -158,17 +219,89 @@ export function AgentConversation({
   } | null>(null);
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
-  >([]);
-  const [attachedSources, setAttachedSources] = useState<AttachedSource[]>([]);
-  const [promptText, setPromptText] = useState(initialPrompt);
+  >(() => {
+    const kickoffIds = new Set(initialKickoff?.contextConceptIds ?? []);
+    return concepts
+      .filter((concept) => kickoffIds.has(concept.id))
+      .map(({ id, title, type }) => ({ id, title, type }));
+  });
+  const [attachedSources, setAttachedSources] = useState<AttachedSource[]>(() =>
+    (initialKickoff?.sources ?? []).map((source) => ({
+      id: crypto.randomUUID(),
+      ...source,
+    })),
+  );
+  const [promptText, setPromptText] = useState(initialKickoff?.prompt ?? initialPrompt);
   const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
+  const mention = findOkfMention(promptText);
+  const mentionOptions = okfMentionOptions({
+    mention,
+    bundleName,
+    activeConcept,
+    concepts,
+  });
+  let followedToolKey: string | null = null;
+  let followedConceptId: string | null = null;
+  for (let index = messages.length - 1; index >= 0 && followedConceptId === null; index -= 1) {
+    const item = messages[index];
+    if (item.role !== "tool") continue;
+    for (const location of item.locations) {
+      const conceptId = conceptIdForToolLocation(location, conceptIds);
+      if (!conceptId) continue;
+      followedToolKey = `${item.id}:${location.path}:${location.line ?? ""}`;
+      followedConceptId = conceptId;
+      break;
+    }
+  }
+
+  useEffect(() => {
+    if (!followAgent) {
+      followedToolRef.current = null;
+      return;
+    }
+    if (!followedToolKey || !followedConceptId) return;
+    if (followedToolRef.current === followedToolKey) return;
+    followedToolRef.current = followedToolKey;
+    onOpenConcept(followedConceptId);
+  }, [followAgent, followedConceptId, followedToolKey, onOpenConcept]);
+  const currentBundleFingerprint = bundleRoot
+    ? bundleContextFingerprint(bundleRoot, concepts, issues)
+    : null;
+  const memoryRemovedIds = bundleRoot && threadTaskId && currentBundleFingerprint
+    ? activeMemoryOmissions(
+        workspaceMemory,
+        bundleRoot,
+        threadTaskId,
+        currentBundleFingerprint,
+      )
+    : new Set<string>();
+  const contextPlan = bundleRoot && threadTaskId
+    ? createOkfContextPlan({
+        taskId: threadTaskId,
+        bundleRoot,
+        concepts,
+        activeConcept,
+        attachedConcepts,
+        sources: attachedSources,
+        issues,
+        removedIds: removedContextIds,
+        memoryRemovedIds,
+      })
+    : null;
+  const contextPlanIsStale = contextPlan !== null && acceptedContextManifest !== null &&
+    acceptedContextManifest.bundleFingerprint !== contextPlan.bundleFingerprint;
   const availableCommandsBySessionRef = useRef(
     new Map<string, readonly AgentAvailableCommandInfo[]>(),
   );
   const contextRecoveryTurnsRef = useRef(new Map<string, string>());
   const sessionRef = useRef<AgentSessionInfo | null>(null);
+  const criticSessionRef = useRef<AgentSessionInfo | null>(null);
+  const criticTurnIdRef = useRef<string | null>(null);
+  const criticResponseRef = useRef("");
+  const criticArtifactEnvelopeRef = useRef<string | null>(null);
+  const criticProviderLimitationsRef = useRef<string[]>([]);
   const draftSessionPromiseRef = useRef<{
     bundleRoot: string;
     promise: Promise<AgentSessionInfo>;
@@ -189,6 +322,17 @@ export function AgentConversation({
   const notificationStatusRef = useRef<AgentThreadStatus>("idle");
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
   const initialSessionLoadStartedRef = useRef(false);
+  let artifactMessageId: string | null = null;
+  let artifactEnvelope: string | null = null;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const item = messages[index];
+    if (item.role !== "agent") continue;
+    const envelope = agentArtifactEnvelopeText(item.text);
+    if (!envelope) continue;
+    artifactMessageId = item.id;
+    artifactEnvelope = envelope;
+    break;
+  }
 
   bundleRootRef.current = bundleRoot;
   connectionIdRef.current = connection.connectionId;
@@ -196,6 +340,23 @@ export function AgentConversation({
   useEffect(() => {
     if (savedThread.status === "error") savedThreadActionRef.current?.focus();
   }, [savedThread.status]);
+
+  useEffect(() => {
+    let active = true;
+    setMemorySuggestion(null);
+    setMemoryError(null);
+    if (!bundleRoot) {
+      setWorkspaceMemory([]);
+      return () => { active = false; };
+    }
+    const refresh = () => void loadWorkspaceMemory(bundleRoot).then(
+      (items) => { if (active) setWorkspaceMemory(items); },
+      (error: unknown) => { if (active) setMemoryError(errorMessage(error)); },
+    );
+    refresh();
+    const stop = onWorkspaceMemoryChange(refresh);
+    return () => { active = false; stop(); };
+  }, [bundleRoot]);
 
   async function loadSavedThread() {
     if (!bundleRoot || !supportsHistory || initialSession) {
@@ -237,13 +398,119 @@ export function AgentConversation({
     setSessionConfigFailure(null);
     setWriteGrantPreference("interactive");
     setDraftSessionState({ status: "idle" });
+    setThreadTaskId(null);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
+    const emptyArtifact: AgentArtifactWorkspaceState = { status: "empty" };
+    artifactWorkspaceRef.current = emptyArtifact;
+    artifactOriginMessageRef.current = null;
+    artifactValidationRequestRef.current += 1;
+    setArtifactWorkspace(emptyArtifact);
+    setArtifactOpen(false);
+    criticSessionRef.current = null;
+    criticTurnIdRef.current = null;
+    criticResponseRef.current = "";
+    criticArtifactEnvelopeRef.current = null;
+    criticProviderLimitationsRef.current = [];
+    setCriticState({ status: "idle" });
   }, [bundleRoot, connection.connectionId]);
+
+  useEffect(() => {
+    if (!bundleRoot || !artifactMessageId || !artifactEnvelope) {
+      if (messages.length === 0) {
+        const emptyArtifact: AgentArtifactWorkspaceState = { status: "empty" };
+        artifactWorkspaceRef.current = emptyArtifact;
+        artifactOriginMessageRef.current = null;
+        setArtifactWorkspace(emptyArtifact);
+        setCriticState({ status: "idle" });
+        setArtifactOpen(false);
+      }
+      return;
+    }
+    const requestId = ++artifactValidationRequestRef.current;
+    const current = artifactWorkspaceRef.current;
+    if (current.status === "empty" || current.status === "invalid" || current.status === "loading") {
+      const loading: AgentArtifactWorkspaceState = { status: "loading" };
+      artifactWorkspaceRef.current = loading;
+      setArtifactWorkspace(loading);
+    }
+    void validateAgentArtifact(bundleRoot, artifactEnvelope).then(
+      (result) => {
+        if (artifactValidationRequestRef.current !== requestId) return;
+        const previous = artifactWorkspaceRef.current;
+        if (result.status === "none") return;
+        if (result.status === "invalid") {
+          const next: AgentArtifactWorkspaceState =
+            previous.status === "ready" || previous.status === "stale"
+              ? {
+                  status: "stale",
+                  artifact: previous.artifact,
+                  sentRevision: previous.sentRevision,
+                  message: `${result.message} The new output remains labelled prose in the conversation.`,
+                }
+              : { status: "invalid", message: result.message };
+          artifactWorkspaceRef.current = next;
+          setArtifactWorkspace(next);
+          setArtifactOpen(true);
+          return;
+        }
+        const previousArtifact = previous.status === "ready" || previous.status === "stale"
+          ? previous.artifact
+          : null;
+        const sentRevision = previous.status === "ready" || previous.status === "stale"
+          ? previous.sentRevision
+          : null;
+        const fromNewMessage = artifactOriginMessageRef.current !== null &&
+          artifactOriginMessageRef.current !== artifactMessageId;
+        const olderThanCurrent = previousArtifact?.artifactId === result.artifact.artifactId &&
+          fromNewMessage && result.artifact.revision <= previousArtifact.revision;
+        const missesSentRevision = previousArtifact?.artifactId === result.artifact.artifactId &&
+          sentRevision !== null && result.artifact.revision > previousArtifact.revision &&
+          result.artifact.parentRevision !== sentRevision;
+        if (previousArtifact && (olderThanCurrent || missesSentRevision)) {
+          const stale: AgentArtifactWorkspaceState = {
+            status: "stale",
+            artifact: previousArtifact,
+            sentRevision,
+            message: olderThanCurrent
+              ? `The agent returned revision ${result.artifact.revision} after revision ${previousArtifact.revision}.`
+              : `The agent update does not continue from sent revision ${sentRevision}.`,
+          };
+          artifactWorkspaceRef.current = stale;
+          setArtifactWorkspace(stale);
+          setArtifactOpen(true);
+          return;
+        }
+        const ready: AgentArtifactWorkspaceState = {
+          status: "ready",
+          artifact: result.artifact,
+          sentRevision,
+        };
+        artifactOriginMessageRef.current = artifactMessageId;
+        artifactWorkspaceRef.current = ready;
+        setArtifactWorkspace(ready);
+        setCriticState({ status: "idle" });
+        setArtifactOpen(true);
+      },
+      (error: unknown) => {
+        if (artifactValidationRequestRef.current !== requestId) return;
+        const invalid: AgentArtifactWorkspaceState = {
+          status: "invalid",
+          message: `Studio could not validate this artifact. ${errorMessage(error)}`,
+        };
+        artifactWorkspaceRef.current = invalid;
+        setArtifactWorkspace(invalid);
+        setArtifactOpen(true);
+      },
+    );
+  }, [artifactEnvelope, artifactMessageId, artifactValidationAttempt, bundleRoot, messages.length]);
 
   function persistThreadMetadata(
     session: AgentSessionInfo,
     title: string,
     archived = false,
-    workflow = threadWorkflow,
+    taskId = threadTaskId,
+    contextManifest = acceptedContextManifest,
   ): Promise<AgentThreadMetadata | null> {
     if (!supportsHistory) return Promise.resolve(null);
     setThreadMetadataError(null);
@@ -253,7 +520,8 @@ export function AgentConversation({
       sessionId: session.sessionId,
       title,
       archived,
-      workflow,
+      taskId,
+      contextManifest,
     }));
     metadataSaveQueueRef.current = operation.then(() => undefined, () => undefined);
     void operation.then(
@@ -374,6 +642,7 @@ export function AgentConversation({
         initialSession.sessionId,
         initialSession.title ?? "Imported session",
         null,
+        null,
       );
     } catch (error: unknown) {
       setDraftSessionState({
@@ -405,18 +674,22 @@ export function AgentConversation({
   }
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
-    async (_previous, { draft, source, retryTurnId, compactCommand }) => {
-      const { text, concepts, sources: draftSources } = draft;
+    async (_previous, { draft, source, retryTurnId, compactCommand, artifactRevision }) => {
+      const { text, concepts: draftConcepts, sources: draftSources } = draft;
       if (!text) return { status: "error", message: "Enter a message." };
       if (!bundleRoot) return { status: "error", message: "Open an OKF bundle first." };
       const userMessage: ConversationMessage = {
         id: `user-${crypto.randomUUID()}`,
         role: "user",
         text,
+        promptDraft: {
+          text,
+          concepts: [...draftConcepts],
+          sources: [...draftSources],
+        },
       };
       try {
         let session = sessionRef.current;
-        const startsNewSession = session?.bundleRoot !== bundleRoot || messages.length === 0;
         if (session?.bundleRoot !== bundleRoot) {
           setUsage(null);
           setStagedChanges(null);
@@ -428,9 +701,35 @@ export function AgentConversation({
           setSelectingHunk(null);
           session = await ensureSession();
         }
-        const contextPaths = concepts.map((concept) => `${concept.id}.md`);
-        const sources = draftSources.map(
-          ({ title, content, origin, mediaType, sourceDigest, warning, imageData }) => ({
+        const plan = threadTaskId
+          ? createOkfContextPlan({
+              taskId: threadTaskId,
+              bundleRoot,
+              concepts,
+              activeConcept,
+              attachedConcepts: draftConcepts,
+              sources: draftSources,
+              issues,
+              removedIds: removedContextIds,
+              memoryRemovedIds,
+            })
+          : null;
+        if (plan && acceptedContextManifest &&
+          acceptedContextManifest.bundleFingerprint !== plan.bundleFingerprint) {
+          return {
+            status: "error",
+            message: "The bundle changed after this context was accepted. Review the refreshed context plan before sending.",
+          };
+        }
+        const acceptedPlan = plan ? acceptOkfContextPlan(plan) : null;
+        const contextPaths = plan
+          ? plan.objects.map((object) => object.path)
+          : draftConcepts.map((concept) => `${concept.id}.md`);
+        const selectedSourceIds = plan ? new Set(plan.sources.map((source) => source.id)) : null;
+        const sources = draftSources.filter((source) =>
+          selectedSourceIds === null || selectedSourceIds.has(source.id)
+        ).map(
+          ({ title, content, origin, mediaType, sourceDigest, warning, imageData, adapterReceipt }) => ({
             title,
             content,
             ...(origin ? { origin } : {}),
@@ -438,15 +737,26 @@ export function AgentConversation({
             ...(sourceDigest ? { sourceDigest } : {}),
             ...(warning ? { warning } : {}),
             ...(imageData ? { imageData } : {}),
+            ...(adapterReceipt ? { adapterReceipt } : {}),
           }),
         );
-        const turn = await promptAgent(
-          connection.connectionId,
-          session.sessionId,
-          text,
-          contextPaths,
-          sources,
-        );
+        const scopedPaths = isStudioAgent ? [] : contextPaths;
+        const turn = threadTaskId && acceptedPlan
+          ? await promptAgent(
+              connection.connectionId,
+              session.sessionId,
+              text,
+              scopedPaths,
+              sources,
+              { taskId: threadTaskId, contextManifest: acceptedPlan },
+            )
+          : await promptAgent(
+              connection.connectionId,
+              session.sessionId,
+              text,
+              scopedPaths,
+              sources,
+            );
         if (source === "compact" && compactCommand) {
           contextRecoveryTurnsRef.current.set(turn.turnId, compactCommand);
         }
@@ -482,13 +792,28 @@ export function AgentConversation({
         const nextTitle = threadTitle.source === "default"
           ? deriveThreadTitle(text, THREAD_STARTERS)
           : threadTitle.value;
-        const nextWorkflow = startsNewSession ? workflowForPrompt(text) : threadWorkflow;
         if (threadTitle.source === "default") {
           setThreadTitle({ source: "derived", value: nextTitle });
           onThreadTitleChange(nextTitle);
         }
-        setThreadWorkflow(nextWorkflow);
-        void persistThreadMetadata(session, nextTitle, false, nextWorkflow);
+        if (acceptedPlan) setAcceptedContextManifest(acceptedPlan);
+        if (threadTaskId && acceptedPlan) {
+          void recordWorkspaceTaskObservation({
+            bundleRoot,
+            taskId: threadTaskId,
+            validationFingerprint: acceptedPlan.bundleFingerprint,
+          });
+        }
+        if (source === "artifact" && artifactRevision) {
+          const sent: AgentArtifactWorkspaceState = {
+            status: "ready",
+            artifact: artifactRevision,
+            sentRevision: artifactRevision.revision,
+          };
+          artifactWorkspaceRef.current = sent;
+          setArtifactWorkspace(sent);
+        }
+        void persistThreadMetadata(session, nextTitle, false, threadTaskId, acceptedPlan);
         resetExport();
         if (source === "composer") {
           setAttachedConcepts([]);
@@ -499,7 +824,7 @@ export function AgentConversation({
         return { status: "idle" };
       } catch (error: unknown) {
         if (source === "queue") {
-          setAttachedConcepts(concepts);
+          setAttachedConcepts(draftConcepts);
           setAttachedSources(draftSources);
           setPromptText(text);
         }
@@ -521,6 +846,7 @@ export function AgentConversation({
   }
 
   function composerAction(formData: FormData) {
+    if (contextPlanIsStale) return;
     const promptValue = formData.get("prompt");
     const text = typeof promptValue === "string" ? promptValue.trim() : "";
     const draft: PromptDraft = {
@@ -539,6 +865,124 @@ export function AgentConversation({
       return;
     }
     startTransition(() => submitPrompt({ draft, source: "composer" }));
+  }
+
+  function sendArtifactRevision(
+    artifact: Extract<AgentArtifactWorkspaceState, { status: "ready" | "stale" }>["artifact"],
+    intent: "continue" | "export",
+  ) {
+    if (isSubmitting || activeTurn !== null) return;
+    const exportInstruction = intent === "export"
+      ? "\n\nExport this artifact as a conformant Markdown concept through reviewed staging. Do not write directly to the bundle."
+      : "";
+    const draft: PromptDraft = {
+      text: `${artifactRevisionPrompt(artifact)}${exportInstruction}`,
+      concepts: [],
+      sources: [],
+    };
+    startTransition(() => submitPrompt({
+      draft,
+      source: "artifact",
+      artifactRevision: artifact,
+    }));
+  }
+
+  async function runArtifactCritic() {
+    if (!bundleRoot || !artifactEnvelope || criticState.status === "loading" ||
+      criticUnavailableReason !== null) return;
+    const artifactMarkdown = artifactEnvelope;
+    setCriticState({ status: "loading", limitations: [] });
+    try {
+      const request = await prepareAgentArtifactCritic(bundleRoot, artifactMarkdown);
+      setCriticState({ status: "loading", limitations: request.limitations });
+      const criticSession = await newAgentSession(connection.connectionId, bundleRoot);
+      if (criticSession.stagedChanges?.granted === true) {
+        throw new Error("Studio refused a critic session that unexpectedly carried a write grant.");
+      }
+      criticSessionRef.current = criticSession;
+      criticArtifactEnvelopeRef.current = artifactMarkdown;
+      criticResponseRef.current = "";
+      const turn = await promptAgentCritic(
+        connection.connectionId,
+        criticSession.sessionId,
+        request.prompt,
+      );
+      criticTurnIdRef.current = turn.turnId;
+      const providerLimitations = turn.capabilityContext
+        .filter((capability) => capability.support !== "full")
+        .map((capability) =>
+          `${capability.capabilityId} support is ${capability.support}.`
+        );
+      if (!turn.capabilityContext.some((capability) =>
+        capability.capabilityId === "okf-audit" && capability.support === "full"
+      )) {
+        providerLimitations.push(
+          "The provider did not report full okf-audit capability for this isolated session.",
+        );
+      }
+      criticProviderLimitationsRef.current = providerLimitations;
+    } catch (error: unknown) {
+      criticSessionRef.current = null;
+      criticTurnIdRef.current = null;
+      setCriticState((current) => ({
+        status: "error",
+        message: errorMessage(error),
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+    }
+  }
+
+  async function completeCriticTurn(event: AgentTurnEvent) {
+    if (criticTurnIdRef.current !== event.turnId) return;
+    const update = event.update;
+    const criticSessionId = criticSessionRef.current?.sessionId;
+    const artifactMarkdown = criticArtifactEnvelopeRef.current;
+    const response = criticResponseRef.current;
+    criticTurnIdRef.current = null;
+    if (update.kind === "failed") {
+      setCriticState((current) => ({
+        status: "error",
+        message: `The critic session failed. ${update.message}`,
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+      return;
+    }
+    if (update.kind !== "completed" || update.stopReason !== "end-turn" || !bundleRoot || !artifactMarkdown) {
+      setCriticState((current) => ({
+        status: "error",
+        message: "The critic stopped before returning a complete structured result.",
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+      return;
+    }
+    try {
+      const result = await validateAgentArtifactCritic(
+        bundleRoot,
+        artifactMarkdown,
+        response,
+      );
+      if (criticSessionRef.current?.sessionId !== criticSessionId) return;
+      if (result.status === "invalid") {
+        setCriticState((current) => ({
+          status: "error",
+          message: result.message,
+          limitations: current.status === "loading" ? current.limitations : [],
+        }));
+        return;
+      }
+      setCriticState({
+        status: "ready",
+        report: result.report,
+        providerLimitations: criticProviderLimitationsRef.current,
+      });
+    } catch (error: unknown) {
+      if (criticSessionRef.current?.sessionId !== criticSessionId) return;
+      setCriticState((current) => ({
+        status: "error",
+        message: errorMessage(error),
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+    }
   }
 
   const applyTerminalTurnEvent = useEffectEvent((event: AgentTurnEvent) => {
@@ -569,6 +1013,7 @@ export function AgentConversation({
   });
   const updateStagedChangesEffect = useEffectEvent(updateStagedChanges);
   const reportConnectionEnd = useEffectEvent(onConnectionEnd);
+  const completeCriticTurnEffect = useEffectEvent(completeCriticTurn);
 
   useEffect(() => {
     let stopUpdates: (() => void)[] = [];
@@ -576,8 +1021,36 @@ export function AgentConversation({
     void Promise.allSettled([
       onAgentTurnUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
+        if (criticSessionRef.current?.sessionId === event.sessionId) {
+          if (event.update.kind === "text") criticResponseRef.current += event.update.text;
+          if (event.update.kind === "completed" || event.update.kind === "failed") {
+            void completeCriticTurnEffect(event);
+          }
+          return;
+        }
         if (sessionRef.current?.sessionId !== event.sessionId) return;
-        if (event.update.kind === "usage") setUsage(event.update);
+        if (event.update.kind === "capability-use") {
+          const capabilityUse = event.update;
+          setActiveTurn((current) => {
+            if (current?.turnId !== event.turnId) return current;
+            return {
+              ...current,
+              capabilityContext: current.capabilityContext.map((capability) =>
+                capability.capabilityId === capabilityUse.capabilityId &&
+                  capability.version === capabilityUse.version &&
+                  !capability.observedResourceIds.includes(capabilityUse.resourceId)
+                  ? {
+                      ...capability,
+                      observedResourceIds: [
+                        ...capability.observedResourceIds,
+                        capabilityUse.resourceId,
+                      ],
+                    }
+                  : capability,
+              ),
+            };
+          });
+        } else if (event.update.kind === "usage") setUsage(event.update);
         else applyTurnEvent(event, setMessages);
         if (event.update.kind === "completed" || event.update.kind === "failed") {
           applyTerminalTurnEvent(event);
@@ -585,6 +1058,18 @@ export function AgentConversation({
       }),
       onAgentPermissionUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
+        if (criticSessionRef.current?.sessionId === event.sessionId) {
+          if (event.update.kind === "requested") {
+            criticProviderLimitationsRef.current = [
+              ...new Set([
+                ...criticProviderLimitationsRef.current,
+                `Permission escalation was rejected: ${event.update.title ?? "unnamed request"}.`,
+              ]),
+            ];
+            void respondAgentPermission(event.requestId, null, false);
+          }
+          return;
+        }
         if (sessionRef.current?.sessionId !== event.sessionId) return;
         setPendingPermissions((current) => applyPermissionEvent(current, event));
       }),
@@ -843,6 +1328,7 @@ export function AgentConversation({
       );
       if (sessionRef.current?.sessionId !== sessionId) return;
       setExpandedDiff({ path: current.path, state: "ready", diff });
+      await runStagedValidation(sessionId, false);
     } catch (error: unknown) {
       if (sessionRef.current?.sessionId !== sessionId) return;
       setExpandedDiff({ path: current.path, state: "error", message: errorMessage(error) });
@@ -886,10 +1372,13 @@ export function AgentConversation({
   async function validateStagedChanges() {
     const session = sessionRef.current;
     if (!session || stagedValidation.status === "loading") return;
-    const sessionId = session.sessionId;
+    await runStagedValidation(session.sessionId, true);
+  }
+
+  async function runStagedValidation(sessionId: string, clearActionError: boolean) {
     const requestId = stagedValidationRequestRef.current + 1;
     stagedValidationRequestRef.current = requestId;
-    setStageError(null);
+    if (clearActionError) setStageError(null);
     setStagedValidation({ status: "loading" });
     try {
       const result = await validateAgentStagedChanges(
@@ -909,6 +1398,17 @@ export function AgentConversation({
       setStagedValidation({ status: "error", message: errorMessage(error) });
     }
   }
+
+  const runStagedValidationEffect = useEffectEvent(runStagedValidation);
+
+  useEffect(() => {
+    if (!stagedChanges || stagedChanges.files.length === 0) return;
+    const sessionId = stagedChanges.sessionId;
+    const timeout = window.setTimeout(() => {
+      void runStagedValidationEffect(sessionId, false);
+    }, 200);
+    return () => window.clearTimeout(timeout);
+  }, [stagedChanges]);
 
   async function applyStagedChanges() {
     const session = sessionRef.current;
@@ -1059,7 +1559,7 @@ export function AgentConversation({
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
   const { exportState, exportTranscript, resetExport } = useTranscriptExport({
     messages,
-    threadWorkflow,
+    threadTaskId,
     threadTitle,
     bundleName,
     agentName,
@@ -1111,8 +1611,8 @@ export function AgentConversation({
   if (isSubmitting) composerStatus = "Starting turn";
   const usageLabel = usage ? usageLabels(usage) : null;
   const contextRecoveryCommand = findContextRecoveryCommand(availableCommands);
-  const supportsBundleGeneration = threadWorkflow === "create-bundle" ||
-    threadWorkflow === "enhance-bundle";
+  const supportsBundleGeneration = threadTaskId === "okf-create" ||
+    threadTaskId === "okf-enrich";
   const hasReportedWriteAttempt = messages.some(
     (item) => item.role === "tool" && item.changeState === "not-staged",
   );
@@ -1166,16 +1666,99 @@ export function AgentConversation({
     queuedPrompt ? "1 queued message" : null,
   ].filter((part): part is string => part !== null).join(" · ");
 
-  function selectStarter(prompt: string, workflow: AgentThreadWorkflow) {
+  const transcriptTurns = groupConversationItems(
+    messages.filter((item) => item.id !== livePlanId),
+  );
+
+  function selectStarter(kickoff: OkfTaskKickoff) {
     if (!promptRef.current) return;
-    setThreadWorkflow(workflow);
-    setPromptText(prompt);
+    setThreadTaskId(kickoff.taskId);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
+    setPromptText(kickoff.prompt);
     promptRef.current.focus();
   }
 
   function changePromptText(value: string) {
     setPromptText(value);
-    if (!value.trim() && !hasSession) setThreadWorkflow(null);
+    if (!value.trim() && !hasSession) {
+      setThreadTaskId(null);
+      setAcceptedContextManifest(null);
+      setRemovedContextIds(new Set());
+    }
+  }
+
+  function reusePrompt(message: ConversationMessage) {
+    const draft = message.promptDraft;
+    setPromptText(draft?.text ?? message.text);
+    setAttachedConcepts(draft ? [...draft.concepts] : []);
+    setAttachedSources(draft ? [...draft.sources] : []);
+    setThreadTaskId(null);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
+    requestAnimationFrame(() => promptRef.current?.focus());
+  }
+
+  function selectMention(option: OkfMentionOption) {
+    if (!mention) return;
+    setPromptText(replaceOkfMention(promptText, mention, option.label));
+    if (option.kind === "concept") {
+      const concept = concepts.find((candidate) => candidate.id === option.id);
+      if (concept) {
+        setAttachedConcepts((current) => current.some((item) => item.id === concept.id)
+          ? current
+          : [...current, { id: concept.id, title: concept.title, type: concept.type }]);
+      }
+    }
+    requestAnimationFrame(() => promptRef.current?.focus());
+  }
+
+  function removeContextPlanItem(kind: "bundle-object" | "source", id: string) {
+    setRemovedContextIds((current) => new Set(current).add(`${kind}:${id}`));
+    if (kind === "bundle-object") {
+      const concept = concepts.find((candidate) => candidate.id === id);
+      if (concept && threadTaskId) {
+        setMemorySuggestion({
+          conceptId: id,
+          conceptTitle: concept.title,
+          effect: `Omit bundle-object:${id} from future ${threadTaskId} plans.`,
+        });
+      }
+      setAttachedConcepts((current) => current.filter((concept) => concept.id !== id));
+    } else {
+      setAttachedSources((current) => current.filter((source) => source.id !== id));
+    }
+  }
+
+  async function saveMemorySuggestion() {
+    if (!bundleRoot || !threadTaskId || !currentBundleFingerprint || !memorySuggestion) return;
+    setMemoryError(null);
+    try {
+      const item = await saveWorkspaceOmissionPreference({
+        bundleRoot,
+        taskId: threadTaskId,
+        conceptId: memorySuggestion.conceptId,
+        conceptTitle: memorySuggestion.conceptTitle,
+        validationFingerprint: currentBundleFingerprint,
+      });
+      setWorkspaceMemory((current) => [
+        item,
+        ...current.filter((candidate) => candidate.id !== item.id),
+      ]);
+      setMemorySuggestion(null);
+    } catch (error: unknown) {
+      setMemoryError(errorMessage(error));
+    }
+  }
+
+  function acceptRefreshedContextPlan() {
+    if (!contextPlan) return;
+    const accepted = acceptOkfContextPlan(contextPlan);
+    setAcceptedContextManifest(accepted);
+    const session = sessionRef.current;
+    if (session) {
+      void persistThreadMetadata(session, threadTitle.value, false, threadTaskId, accepted);
+    }
   }
 
   function retryStagingFailure() {
@@ -1213,7 +1796,7 @@ export function AgentConversation({
   async function generateBundleProposal() {
     const session = sessionRef.current;
     if (!session || !writeGranted || activeTurn || isSubmitting || isPreparingGeneration) return;
-    const mode = threadWorkflow === "create-bundle" ? "create" : "enhance";
+    const mode = threadTaskId === "okf-create" ? "create" : "enhance";
     if (stagedFileCount > 0 && stagedChanges?.mode !== mode) return;
     setIsPreparingGeneration(true);
     setStageError(null);
@@ -1292,7 +1875,8 @@ export function AgentConversation({
     loaded: AgentLoadedSessionInfo,
     sessionId: string,
     title: string,
-    workflow: AgentThreadWorkflow,
+    taskId: OkfTaskId | null,
+    contextManifest: AcceptedOkfContextManifest | null,
   ) {
     adoptSession(loaded);
     setMessages(loaded.messages.map((message, index) => ({
@@ -1302,7 +1886,9 @@ export function AgentConversation({
     })));
     setThreadTitle({ source: "custom", value: title });
     onThreadTitleChange(title);
-    setThreadWorkflow(workflow);
+    setThreadTaskId(taskId);
+    setAcceptedContextManifest(contextManifest);
+    setRemovedContextIds(new Set());
     setPendingPermissions([]);
     setUsage(null);
     setQueuedPrompt(null);
@@ -1322,7 +1908,7 @@ export function AgentConversation({
     setRetryingTurnId(null);
     setSavedThread({ status: "none" });
     setHistory({ status: "closed" });
-    void persistThreadMetadata(loaded, title, false, workflow);
+    void persistThreadMetadata(loaded, title, false, taskId, contextManifest);
     requestAnimationFrame(() => promptRef.current?.focus());
   }
 
@@ -1354,7 +1940,13 @@ export function AgentConversation({
         bundleRoot,
         session.sessionId,
       );
-      applyRestoredSession(loaded, session.sessionId, metadata.title, metadata.workflow);
+      applyRestoredSession(
+        loaded,
+        session.sessionId,
+        metadata.title,
+        metadata.taskId,
+        metadata.contextManifest,
+      );
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error), metadata });
     }
@@ -1386,6 +1978,9 @@ export function AgentConversation({
 
   function startFreshThread() {
     setSavedThread({ status: "none" });
+    setThreadTaskId(null);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
     requestAnimationFrame(() => promptRef.current?.focus());
   }
 
@@ -1406,7 +2001,8 @@ export function AgentConversation({
         session,
         threadTitle.value,
         true,
-        threadWorkflow,
+        threadTaskId,
+        acceptedContextManifest,
       );
       if (!metadata) return;
       sessionRef.current = null;
@@ -1422,7 +2018,9 @@ export function AgentConversation({
       acceptedDraftsRef.current.clear();
       setThreadTitle({ source: "default", value: "New thread" });
       onThreadTitleChange("New thread");
-      setThreadWorkflow(null);
+      setThreadTaskId(null);
+      setAcceptedContextManifest(null);
+      setRemovedContextIds(new Set());
       setMessages([]);
       resetExport();
       setActiveTurn(null);
@@ -1520,17 +2118,38 @@ export function AgentConversation({
 
   return (
     <section className="agent-conversation" aria-labelledby={conversationTitleId}>
-      <header className="agent-conversation__toolbar">
-        <h2 id={conversationTitleId} className="sr-only">{threadTitle.value}</h2>
-        <div
-          className="agent-conversation__toolbar-actions"
-          role="toolbar"
-          aria-label={`${threadTitle.value} actions`}
-        >
+      <ConversationToolbar
+        titleId={conversationTitleId}
+        title={threadTitle.value}
+        navigation={threadNavigation}
+      >
           <ThreadTitleEditor
             title={threadTitle.value}
             onTitleChange={changeThreadTitle}
           />
+          <button
+            type="button"
+            className="btn ghost icon"
+            aria-label={followAgent ? "Stop following agent in Reader" : "Follow agent in Reader"}
+            aria-pressed={followAgent}
+            title={followAgent ? "Stop following agent in Reader" : "Follow concept reads in Reader"}
+            onClick={() => setFollowAgent((current) => !current)}
+          >
+            <Crosshair size={14} aria-hidden="true" />
+          </button>
+          {artifactWorkspace.status !== "empty" && (
+            <button
+              type="button"
+              className="btn ghost"
+              aria-pressed={artifactOpen}
+              onClick={() => setArtifactOpen((open) => !open)}
+            >
+              <FileText size={14} aria-hidden="true" />
+              <span className="agent-conversation__action-label">
+                {artifactOpen ? "Conversation" : "Work artifact"}
+              </span>
+            </button>
+          )}
           <ThreadSecurityScope bundleName={bundleName} scope={connection.securityScope} />
           {bundleRoot && !requiresAuthentication && showWriteGrant && (
             <WriteGrantControl
@@ -1569,8 +2188,7 @@ export function AgentConversation({
             onArchive={() => void archiveThread()}
             onChangeAgent={onChangeAgent}
           />
-        </div>
-      </header>
+      </ConversationToolbar>
 
       {markdownViewOpen && (
         <ThreadMarkdownView
@@ -1676,6 +2294,7 @@ export function AgentConversation({
                 <button
                   type="button"
                   className="btn primary"
+                  data-agent-authentication-method
                   disabled={authentication.status === "authenticating"}
                   onClick={() => void authenticate(method.id)}
                 >
@@ -1715,12 +2334,29 @@ export function AgentConversation({
 
       {bundleRoot && !requiresAuthentication && history.status === "closed" && (
         <>
-          <TranscriptSurface
-            key={messages.find((item) => item.role === "user")?.id ?? "new-thread"}
-            hasItems={messages.length > 0}
-            hasUserMessage={hasSession}
-            contentVersion={messages}
-          >
+          {artifactOpen ? (
+            <AgentArtifactWorkspace
+              state={artifactWorkspace}
+              criticState={criticState}
+              criticProviderName={connection.agent?.title ?? connection.agent?.name ?? "Selected agent"}
+              criticUnavailableReason={criticUnavailableReason}
+              selectedConceptId={activeConcept?.id}
+              sending={isSubmitting || activeTurn !== null}
+              onShowConversation={() => setArtifactOpen(false)}
+              onRetry={() => setArtifactValidationAttempt((attempt) => attempt + 1)}
+              onOpenConcept={onOpenConcept}
+              onSendRevision={sendArtifactRevision}
+              onRunCritic={criticUnavailableReason === null
+                ? () => void runArtifactCritic()
+                : undefined}
+            />
+          ) : (
+            <TranscriptSurface
+              key={messages.find((item) => item.role === "user")?.id ?? "new-thread"}
+              hasItems={messages.length > 0}
+              hasUserMessage={hasSession}
+              contentVersion={messages}
+            >
             {messages.length === 0 && pendingPermissions.length === 0 ? (
               <div className="agent-conversation__welcome">
                 {savedThread.status === "none" ? (
@@ -1741,57 +2377,66 @@ export function AgentConversation({
               </div>
             ) : (
               <>
-                {messages.map((item) => {
-                  if (item.id === livePlanId) return null;
-                  const turnId = item.role === "status" ? item.turnId : undefined;
-                  return (
-                    <div
-                      key={item.id}
-                      className="agent-conversation__item"
-                      data-transcript-role={item.role}
-                    >
-                      <ConversationItemView
-                        item={item}
-                        conceptIds={conceptIds}
-                        onOpenConcept={onOpenConcept}
-                        onRetry={
-                          turnId && retryableTurnIds.has(turnId) &&
-                            activeTurn === null && !isSubmitting
-                            ? () => retryAcceptedTurn(turnId)
-                            : undefined
-                        }
-                        isRetrying={turnId === retryingTurnId}
-                        retryError={turnId ? retryErrors.get(turnId) ?? null : null}
-                        onGenerateProposal={item.id === latestBundleProposalMessageId
-                          ? () => void generateBundleProposal()
-                          : undefined}
-                        generationBlockedReason={item.id === latestBundleProposalMessageId
-                          ? !writeGranted
-                            ? "Allow edits for this thread before generating staged files."
-                            : stagedFileCount > 0 && stagedChanges?.mode !== (
-                                threadWorkflow === "create-bundle" ? "create" : "enhance"
-                              )
-                              ? "Resolve the current staged changes before generating this proposal."
-                              : null
-                          : null}
-                        generationError={
-                          item.id === latestBundleProposalMessageId &&
-                          stageError?.owner === "proposal"
-                            ? stageError.message
-                            : null
-                        }
-                        isGeneratingProposal={
-                          item.id === latestBundleProposalMessageId &&
-                          (isSubmitting || isPreparingGeneration)
-                        }
-                      />
-                    </div>
-                  );
-                })}
+                {transcriptTurns.map((turn) => (
+                  <ConversationTurnFrame
+                    key={turn.id}
+                    turn={turn}
+                    onReusePrompt={reusePrompt}
+                  >
+                    {turn.items.map((item) => {
+                      const turnId = item.role === "status" ? item.turnId : undefined;
+                      return (
+                        <div
+                          key={item.id}
+                          className="agent-conversation__item"
+                          data-transcript-role={item.role}
+                        >
+                          <ConversationItemView
+                            item={item}
+                            conceptIds={conceptIds}
+                            onOpenConcept={onOpenConcept}
+                            onRetry={
+                              turnId && retryableTurnIds.has(turnId) &&
+                                activeTurn === null && !isSubmitting
+                                ? () => retryAcceptedTurn(turnId)
+                                : undefined
+                            }
+                            isRetrying={turnId === retryingTurnId}
+                            retryError={turnId ? retryErrors.get(turnId) ?? null : null}
+                            onGenerateProposal={item.id === latestBundleProposalMessageId
+                              ? () => void generateBundleProposal()
+                              : undefined}
+                            generationBlockedReason={item.id === latestBundleProposalMessageId
+                              ? !writeGranted
+                                ? "Allow edits for this thread before generating staged files."
+                                : stagedFileCount > 0 && stagedChanges?.mode !== (
+                                    threadTaskId === "okf-create" ? "create" : "enhance"
+                                  )
+                                  ? "Resolve the current staged changes before generating this proposal."
+                                  : null
+                              : null}
+                            generationError={
+                              item.id === latestBundleProposalMessageId &&
+                              stageError?.owner === "proposal"
+                                ? stageError.message
+                                : null
+                            }
+                            isGeneratingProposal={
+                              item.id === latestBundleProposalMessageId &&
+                              (isSubmitting || isPreparingGeneration)
+                            }
+                            showResponseActions={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </ConversationTurnFrame>
+                ))}
               </>
             )}
-          </TranscriptSurface>
-          {hasLiveWork && (
+            </TranscriptSurface>
+          )}
+          {!artifactOpen && hasLiveWork && (
             <AgentLiveWorkShelf
               summary={liveWorkSummary}
               collapsible={hasCollapsibleLiveWork}
@@ -2136,6 +2781,37 @@ export function AgentConversation({
             </AgentLiveWorkShelf>
           )}
           <form ref={composerRef} className="agent-composer" action={composerAction}>
+            {contextPlan && (messages.length === 0 || contextPlanIsStale) && (
+              <OkfContextPlanCard
+                plan={contextPlan}
+                stale={contextPlanIsStale}
+                disabled={isSubmitting || activeTurn !== null}
+                onRemove={removeContextPlanItem}
+                onAcceptRefresh={acceptRefreshedContextPlan}
+                memorySuggestion={memorySuggestion}
+                memoryError={memoryError}
+                onSaveMemory={() => void saveMemorySuggestion()}
+                onDismissMemory={() => setMemorySuggestion(null)}
+              />
+            )}
+            {messages.length > 0 && acceptedContextManifest && !contextPlanIsStale && (
+              <details className="okf-context-plan-disclosure">
+                <summary>
+                  Accepted OKF task context · {acceptedContextManifest.bundleFingerprint}
+                </summary>
+                <OkfContextPlanCard
+                  plan={acceptedContextManifest}
+                  stale={false}
+                  disabled
+                  editable={false}
+                  onRemove={() => undefined}
+                  onAcceptRefresh={() => undefined}
+                />
+              </details>
+            )}
+            {attachedConcepts.length + attachedSources.length > 0 && (
+              <SourceInventory sources={attachedSources} />
+            )}
             {attachedConcepts.length + attachedSources.length > 0 && (
               <div className="agent-composer__context">
                 {attachedConcepts.map((concept) => (
@@ -2181,6 +2857,20 @@ export function AgentConversation({
                       {source.title}
                       {source.warning && <span className="sr-only"> Warning: {source.warning}</span>}
                     </span>
+                    <button
+                      id={`source-okf-task-${source.id}`}
+                      type="button"
+                      aria-label={`Start OKF work from ${source.title}`}
+                      disabled={isSubmitting || queuedPrompt !== null}
+                      onClick={() => appActions.openOkfTaskLauncher({
+                        kind: "source",
+                        id: `source:${source.id}`,
+                        title: source.title,
+                        source,
+                      }, { returnFocusId: `source-okf-task-${source.id}` })}
+                    >
+                      <Sparkles size={14} aria-hidden="true" />
+                    </button>
                     <button
                       type="button"
                       aria-label={`Remove ${source.title} source`}
@@ -2261,6 +2951,7 @@ export function AgentConversation({
                 onStartFresh={startFreshFromContext}
               />
             )}
+            <OkfMentionMenu options={mentionOptions} onSelect={selectMention} />
             <div className="agent-composer__input-shell">
               <label className="sr-only" htmlFor={promptInputId}>Message the agent</label>
               <textarea
@@ -2269,7 +2960,7 @@ export function AgentConversation({
                 name="prompt"
                 rows={3}
                 maxLength={128 * 1024}
-                placeholder={isStudioAgent ? "Message Studio Agent..." : "Ask about this bundle..."}
+                placeholder={isStudioAgent ? "Message Studio Agent... Use @ for context" : "Ask about this bundle... Use @ for context"}
                 disabled={isSubmitting || queuedPrompt !== null}
                 value={promptText}
                 onChange={(event) => changePromptText(event.target.value)}
@@ -2285,6 +2976,10 @@ export function AgentConversation({
                     return;
                   }
                   event.preventDefault();
+                  if (mentionOptions.length > 0) {
+                    selectMention(mentionOptions[0]);
+                    return;
+                  }
                   if (promptText.trim().length === 0) return;
                   event.currentTarget.form?.requestSubmit();
                 }}
@@ -2361,7 +3056,8 @@ export function AgentConversation({
                       className="btn primary icon"
                       aria-label={queuedPrompt ? "Queued" : "Queue"}
                       title={queuedPrompt ? "Queued" : "Queue"}
-                      disabled={isSubmitting || queuedPrompt !== null || promptText.trim().length === 0}
+                      disabled={isSubmitting || queuedPrompt !== null ||
+                        promptText.trim().length === 0 || contextPlanIsStale}
                     >
                       <Send size={15} aria-hidden="true" />
                     </button>
@@ -2382,7 +3078,7 @@ export function AgentConversation({
                     className="btn primary icon"
                     aria-label={isSubmitting ? "Sending..." : "Send"}
                     title={isSubmitting ? "Sending..." : "Send"}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || contextPlanIsStale}
                   >
                     <Send size={16} aria-hidden="true" />
                   </button>

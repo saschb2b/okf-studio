@@ -19,6 +19,8 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useApp } from "@/shared/store.tsx";
 import { focusAgentPanel, focusAgentPanelOpener } from "@/features/agent/agentPanelFocus.ts";
 import type { Concept } from "@/shared/types.ts";
+import { OKF_TASKS } from "@/features/agent/taskContext.ts";
+import { tasksForOkfOrigin, type OkfTaskOrigin } from "@/features/agent/taskLauncher.ts";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
 import "./CommandPalette.css";
@@ -303,6 +305,51 @@ export function CommandPalette() {
         .slice(0, TEXT_LIMIT)
     : [];
 
+  const taskConcept = needle
+    ? conceptHits[0]?.concept ?? textHits[0]?.concept
+    : byId.get(state.activeConceptId ?? "");
+  const taskOrigin: OkfTaskOrigin | null = taskConcept
+    ? {
+        kind: needle ? "search-result" : "concept",
+        id: `${needle ? "search" : "concept"}:${taskConcept.id}`,
+        title: taskConcept.title,
+        conceptId: taskConcept.id,
+      }
+    : null;
+  const taskActions: ActionItem[] = taskOrigin
+    ? tasksForOkfOrigin(taskOrigin).map((taskId) => ({
+        kind: "action",
+        id: `task:${taskId}:${taskOrigin.id}`,
+        label: `${OKF_TASKS[taskId].title}: ${taskOrigin.title}`,
+        hint: "OKF task",
+        run: () => actions.openOkfTaskLauncher(taskOrigin, {
+          preferredTaskId: taskId,
+          returnFocusId: "topbar-search",
+        }),
+      }))
+    : [];
+  const matchingIssue = taskConcept
+    ? state.bundle?.issues.find((issue) => issue.conceptId === taskConcept.id)
+    : undefined;
+  if (matchingIssue) {
+    const issueOrigin: OkfTaskOrigin = {
+      kind: "validation-finding",
+      id: `validation:${matchingIssue.level}:${taskConcept?.id}:${matchingIssue.message}`,
+      title: taskConcept?.title ?? "Validation finding",
+      issue: matchingIssue,
+    };
+    taskActions.unshift({
+      kind: "action",
+      id: `task:okf-repair:${issueOrigin.id}`,
+      label: `Repair validation issue: ${taskConcept?.title}`,
+      hint: "OKF task",
+      run: () => actions.openOkfTaskLauncher(issueOrigin, {
+        preferredTaskId: "okf-repair",
+        returnFocusId: "topbar-search",
+      }),
+    });
+  }
+
   // Ranked like concepts (fuzzy/substring on the label, best match first) so a
   // good action match doesn't lose to a weaker fuzzy concept hit for ordering
   // purposes — actions are few, so this group never grows past actionItems.length.
@@ -314,18 +361,17 @@ export function CommandPalette() {
         .map(({ a }) => a)
     : actionItems;
 
-  // Group order: Recent (zero-query only) → Actions → Concepts → In text.
-  // Actions come right after Recent, ahead of Concepts/In text, because there
-  // are at most a handful of them — buried below dozens of fuzzy concept
-  // hits, a matching action was effectively unreachable without scrolling
-  // past everything else first. Zero-query shows Recent + Actions (never a
-  // blank list).
+  // Navigation remains the primary search result. Task shortcuts follow the
+  // concept they will act on, so Enter opens the best concept instead of
+  // unexpectedly launching agent work. Zero-query still starts with recent
+  // concepts and general actions.
   const groups: Group[] = [];
   if (!needle && recentItems.length) {
     groups.push({ value: "Recent", items: recentItems });
   }
   if (actionHits.length) groups.push({ value: "Actions", items: actionHits });
   if (conceptHits.length) groups.push({ value: "Concepts", items: conceptHits });
+  if (taskActions.length) groups.push({ value: "OKF tasks", items: taskActions });
   if (textHits.length) groups.push({ value: "In text", items: textHits });
 
   function activate(item: Item, e?: ReactMouseEvent) {

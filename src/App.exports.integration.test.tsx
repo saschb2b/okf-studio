@@ -11,11 +11,28 @@ import {
 describe("OKF Studio knowledge-work exports", () => {
   it("blocks incomplete deep-research exports and saves a compliant revision", async () => {
     const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
+    const promptSpy = vi.spyOn(ipc, "promptAgent");
     const { user } = await openAgentThread("Research Export Harness");
 
     await user.click(screen.getByRole("button", { name: /Deep research/ }));
+    expect(screen.getByRole("region", { name: "Research with cited evidence" }))
+      .toHaveTextContent("okf-inspect, okf-research");
     await appendText(user, screen.getByLabelText("Message the agent"), "Omit research sections");
     await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(promptSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.stringContaining("Omit research sections"),
+      expect.any(Array),
+      expect.any(Array),
+      expect.objectContaining({
+        taskId: "okf-research",
+        contextManifest: expect.objectContaining({
+          accepted: true,
+          bundleFingerprint: expect.stringMatching(/^okf-revision-/u),
+        }),
+      }),
+    ));
     expect(await screen.findByText("Missing required sections.")).toBeInTheDocument();
     await chooseThreadAction(user, "Export thread");
     expect(await screen.findByRole("alert")).toHaveTextContent(

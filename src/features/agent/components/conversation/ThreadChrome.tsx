@@ -1,5 +1,6 @@
 import type { AgentSecurityScopeInfo } from "@/features/agent/connection.ts";
-import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
+import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import type { OkfTaskKickoff } from "@/features/agent/taskContext.ts";
 import type { RefObject, SubmitEvent } from "react";
 import { Archive as ArchiveIcon, Bot, CircleAlert, Ellipsis, FileDown, FileText, History, Pencil, ShieldQuestion, X } from "lucide-react";
 import { Menu } from "@base-ui/react/menu";
@@ -137,7 +138,7 @@ export function EmptyThreadWelcome({
   onSelectStarter,
 }: {
   isStudioAgent: boolean;
-  onSelectStarter: (prompt: string, workflow: AgentThreadWorkflow) => void;
+  onSelectStarter: (kickoff: OkfTaskKickoff) => void;
 }) {
   return (
     <>
@@ -157,7 +158,10 @@ export function EmptyThreadWelcome({
               type="button"
               className="agent-starter"
               aria-label={`${starter.title}: ${starter.description}`}
-              onClick={() => onSelectStarter(starter.prompt, starter.workflow)}
+              onClick={() => onSelectStarter({
+                prompt: starter.prompt,
+                taskId: starter.taskId,
+              })}
             >
               <Icon size={16} aria-hidden="true" />
               <span>

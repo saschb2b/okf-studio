@@ -167,6 +167,17 @@ export interface AgentTurnInfo {
   connectionId: string;
   sessionId: string;
   turnId: string;
+  capabilityContext: readonly AgentTurnCapabilityInfo[];
+}
+
+export interface AgentTurnCapabilityInfo {
+  capabilityId: string;
+  version: string;
+  manifestSha256: string;
+  support: "full" | "degraded" | "unavailable";
+  delivery: "catalog-only" | "embedded-resources" | "text-fallback" | "session-context";
+  resourceIds: readonly string[];
+  observedResourceIds: readonly string[];
 }
 
 export interface AgentPlanEntryInfo {
@@ -223,7 +234,10 @@ export interface AgentPermissionEvent {
     | { kind: "resolved"; optionId: string | null };
 }
 
-export interface AgentTurnEvent extends AgentTurnInfo {
+export interface AgentTurnEvent {
+  connectionId: string;
+  sessionId: string;
+  turnId: string;
   update:
     | { kind: "text"; text: string; messageId: string | null }
     | { kind: "plan"; entries: readonly AgentPlanEntryInfo[] }
@@ -242,6 +256,12 @@ export interface AgentTurnEvent extends AgentTurnInfo {
         usedTokens: number;
         contextWindowTokens: number;
         cost: { amount: number; currency: string } | null;
+      }
+    | {
+        kind: "capability-use";
+        capabilityId: string;
+        version: string;
+        resourceId: string;
       }
     | {
         kind: "completed";

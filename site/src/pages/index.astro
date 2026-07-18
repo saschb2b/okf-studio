@@ -23,6 +23,11 @@ const features = [
     body: "Chat with Claude, Codex, Cursor, or a local model right beside the graph and reader. Context goes in explicitly, and every proposed change is reviewed before it touches your files.",
   },
   {
+    glyph: "◫",
+    title: "Agents with an OKF method",
+    body: "Studio ships a versioned OKF capability pack for inspection, creation, authoring, revision, enrichment, audit, repair, cited research, change impact, and migration. Named tasks and ordinary chat use the same catalog, and Settings shows the exact methods, tools, writing rules, schemas, and digests.",
+  },
+  {
     glyph: "◱",
     title: "Knowledge as a graph",
     body: "Explore concepts, links, and structure visually, not a wall of files: a force-directed graph, a zoomable treemap, a sunburst, or nested circles. Your pick is remembered.",
@@ -55,7 +60,7 @@ const features = [
   {
     glyph: "⚡",
     title: "Native & fast",
-    body: "A Tauri desktop app for Windows, macOS, and Linux. Small, quick, no browser bloat.",
+    body: "A small Tauri desktop app for Windows, macOS, and Linux, with searchable settings that stay usable at desktop and narrow widths.",
   },
   {
     glyph: "✓",
@@ -78,6 +83,11 @@ const features = [
 // the feature card above stays a one-glance summary.
 const agentCards = [
   {
+    glyph: "✦",
+    title: "OKF methods built in",
+    body: "Studio ships ten focused methods, including dedicated authoring and meaning-preserving revision. Ordinary chat selects one from the same catalog as named tasks instead of receiving every workflow at once. Versions, tools, resources, and checksums remain visible in Settings.",
+  },
+  {
     glyph: "⇅",
     title: "Bring the agent you already use",
     body: "Install Claude Agent, Codex, Cursor, Gemini CLI, GitHub Copilot, Qwen Code, Cline, Auggie CLI, or Factory Droid from a searchable registry. Every build is pinned and checksum-verified, and your login and billing stay with the agent.",
@@ -95,7 +105,52 @@ const agentCards = [
   {
     glyph: "⊕",
     title: "Context on your terms",
-    body: "Attach concepts, validation findings, files, folders, web pages, or a previous thread. Text and tool calls stay in the order they happened, and a reported location opens only when it matches a concept in this bundle.",
+    body: "Choose an OKF task, then inspect its capabilities, tools, concept neighborhood, validation state, sources, and context budget before the first prompt. Add previously granted bundles as exact read-only evidence while the open bundle stays the only write destination. Remove optional context yourself, and refresh it when a bundle changes.",
+  },
+  {
+    glyph: "≡",
+    title: "Sources with receipts",
+    body: "Files, folders, images, and public pages show their adapter, origin, evidence fingerprint, refresh identity, and warnings before send. OpenAPI, dbt, and BigQuery exports become stable inventories, while every source stays untrusted evidence.",
+  },
+  {
+    glyph: "↗",
+    title: "Start from the object in view",
+    body: "Open authoring, writing improvement, audit, repair, research, enrichment, or change-impact work from a concept, graph selection, validation finding, citation, search result, or attached source. One launcher keeps the object and context plan visible before the agent starts.",
+  },
+  {
+    glyph: "↗",
+    title: "Hand work to Studio safely",
+    body: "Open a bundle, concept, validation view, or named OKF task from an installed Studio link or desktop command. Studio previews the decoded request and asks before granting a new folder. Other local agents can receive a one-shot read-only OKF MCP descriptor from Settings.",
+  },
+  {
+    glyph: "◎",
+    title: "Health findings with evidence",
+    body: "Agents can audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Writing clues stay advisory, point to the passage, and never make a valid bundle fail.",
+  },
+  {
+    glyph: "✎",
+    title: "Writing that keeps the knowledge",
+    body: "Name the reader's question, then write a concept or improve an existing one with the same versioned method across agents. The review shows each claim before and after, and Rust rejects a style-only rewrite that drops protected numbers, qualifiers, citations, links, formulas, or code.",
+  },
+  {
+    glyph: "▦",
+    title: "Plans and reports that stay usable",
+    body: "Bundle plans, source inventories, health reports, research briefs, impact maps, migrations, writing revisions, and staged revisions open as validated work beside the conversation. Edit planning fields locally, send a numbered revision when ready, and keep every bundle write behind staging and review.",
+  },
+  {
+    glyph: "✓",
+    title: "A second pass without write authority",
+    body: "Studio checks each structured result deterministically first. Studio Agent can then review general work for evidence gaps or writing revisions for clarity, structure, voice fit, and claim preservation in a separate no-tool session. A critic can never approve or apply a change.",
+  },
+  {
+    glyph: "◇",
+    title: "Memory you can inspect and delete",
+    body: "Remember a task-specific context choice only after seeing its exact effect. Studio keeps bounded metadata outside the bundle, revalidates it when the bundle changes, and shows its owner, origin, retention, use, stale state, and delete action in Settings. Prompt and response bodies, facts, citations, staged files, and credentials stay out.",
+  },
+  {
+    glyph: "⟳",
+    title: "Routine checks that fail closed",
+    body: "Run or schedule offline bundle-health and source-fingerprint checks without an agent. Studio rechecks the bundle grant and saved scope every time, records interrupted work instead of assuming success, and keeps non-healthy results in a local attention inbox. Routines cannot fetch, prompt, stage, or apply changes.",
   },
   {
     glyph: "✎",
@@ -105,7 +160,7 @@ const agentCards = [
   {
     glyph: "⊘",
     title: "Nothing happens without you",
-    body: "Permissions, the current plan, staged files, and the queued follow-up stay in a stable reading shelf above the composer while the transcript scrolls on its own. Every thread keeps its visible status and file, network, credential, and process scope.",
+    body: "Each prompt and its ordered agent work read as one turn. Completed details fold away, active work stays visible, and exact concept reads can follow in the Reader when you opt in. Every thread keeps its visible status and file, network, credential, and process scope.",
   },
 ];
 

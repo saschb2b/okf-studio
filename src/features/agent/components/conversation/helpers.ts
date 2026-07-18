@@ -1,5 +1,5 @@
 import type { AgentSecurityScopeInfo } from "@/features/agent/connection.ts";
-import type { AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
+import type { OkfTaskKickoff } from "@/features/agent/taskContext.ts";
 import type { Issue } from "@/shared/types.ts";
 import { Database, Search, Sparkles, WandSparkles } from "lucide-react";
 import type { AttachedSource, AgentUsage } from "./types.ts";
@@ -14,35 +14,35 @@ export const THREAD_STARTERS = [
     title: "Create bundle",
     description: "Turn attached evidence into a proposed OKF structure.",
     prompt: `Create a new OKF bundle from the sources I attach. First inspect the evidence, then propose the concepts, types, links, and indexes. Do not write files yet. ${BUNDLE_PROPOSAL_INSTRUCTIONS}`,
-    workflow: "create-bundle",
+    taskId: "okf-create",
     icon: WandSparkles,
   },
   {
     title: "Enhance bundle",
     description: "Find useful additions without replacing authored facts.",
     prompt: `Review this OKF bundle and the sources I attach. Propose additions or corrections without overwriting authored facts. Include only additions or changed concepts and do not write files yet. ${BUNDLE_PROPOSAL_INSTRUCTIONS}`,
-    workflow: "enhance-bundle",
+    taskId: "okf-enrich",
     icon: Sparkles,
   },
   {
     title: "Request dataset change",
     description: "Map a requested change to affected knowledge.",
     prompt: "Assess this dataset documentation and propose a change plan. Identify dependencies, validation risks, and supporting evidence. End with `## Change Plan` containing actionable steps and `## Affected Concepts` containing one bundle-relative `.md` path per bullet. Do not write files yet: ",
-    workflow: "dataset-change",
+    taskId: "okf-change-impact",
     icon: Database,
   },
   {
     title: "Deep research",
     description: "Trace a question through the bundle and sources.",
     prompt: "Research this question across the active bundle and attached sources. Cite the evidence for each finding. End with `## Sources` containing one bullet per cited source and `## Inferences` containing each inference or `None.`: ",
-    workflow: "deep-research",
+    taskId: "okf-research",
     icon: Search,
   },
-] as const;
-
-export function workflowForPrompt(prompt: string): AgentThreadWorkflow {
-  return THREAD_STARTERS.find((starter) => prompt.startsWith(starter.prompt))?.workflow ?? null;
-}
+] as const satisfies readonly (OkfTaskKickoff & {
+  title: string;
+  description: string;
+  icon: typeof WandSparkles;
+})[];
 
 export const MAX_THREAD_TITLE_CHARS = 80;
 

@@ -4,16 +4,23 @@
 fn main() {
     let mut args = std::env::args_os().skip(1);
     let mode = args.next();
-    if mode.as_deref() == Some(std::ffi::OsStr::new("--okf-mcp")) {
-        let Some(bundle_root) = args.next() else {
-            eprintln!("OKF Studio MCP requires a bundle root.");
+    if mode.as_deref() == Some(std::ffi::OsStr::new("--okf-mcp-grant")) {
+        let Some(grant_file) = args.next() else {
+            eprintln!("OKF Studio MCP requires a one-shot grant.");
+            std::process::exit(2);
+        };
+        let Some(token) = args.next() else {
+            eprintln!("OKF Studio MCP requires its one-shot token.");
             std::process::exit(2);
         };
         if args.next().is_some() {
-            eprintln!("OKF Studio MCP accepts exactly one bundle root.");
+            eprintln!("OKF Studio MCP accepts exactly one grant and token.");
             std::process::exit(2);
         }
-        if let Err(message) = okf_viewer_lib::run_agent_mcp(bundle_root.into()) {
+        if let Err(message) = okf_viewer_lib::run_agent_mcp_grant(
+            grant_file.into(),
+            token.to_string_lossy().into_owned(),
+        ) {
             eprintln!("{message}");
             std::process::exit(1);
         }

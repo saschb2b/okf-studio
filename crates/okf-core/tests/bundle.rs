@@ -9,12 +9,23 @@ use okf_core::model::{Confidence, EntryKind, IssueLevel};
 use okf_core::{read_bundle, scan_bundles};
 use std::fs;
 use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 /// Absolute path to the real `docs/` bundle (repo root / docs).
 fn docs_dir() -> PathBuf {
     Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs"))
         .canonicalize()
         .expect("docs/ bundle should exist")
+}
+
+fn concept_file_count(root: &Path) -> usize {
+    WalkDir::new(root)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file())
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "md"))
+        .filter(|entry| !matches!(entry.file_name().to_str(), Some("index.md" | "log.md")))
+        .count()
 }
 
 #[test]
@@ -31,7 +42,11 @@ fn scan_detects_docs_as_confident_root() {
 
     assert_eq!(docs_root.confidence, Confidence::Confident);
     assert_eq!(docs_root.okf_version.as_deref(), Some("0.1"));
-    assert_eq!(docs_root.concept_count, 50, "docs/ has 50 concepts");
+    assert_eq!(
+        docs_root.concept_count as usize,
+        concept_file_count(&docs),
+        "every non-reserved Markdown file should be detected as a concept"
+    );
     assert!(
         !docs_root.types.is_empty(),
         "distinct concept types should be collected"
@@ -60,7 +75,11 @@ fn read_bundle_docs_full_shape() {
     let docs = docs_dir();
     let bundle = read_bundle(&docs);
 
-    assert_eq!(bundle.concepts.len(), 50, "50 concepts parsed");
+    assert_eq!(
+        bundle.concepts.len(),
+        concept_file_count(&docs),
+        "every non-reserved Markdown file should parse as a concept"
+    );
     assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
     assert_eq!(bundle.confidence, Confidence::Confident);
 

@@ -14,6 +14,7 @@
 // canvas/sim state lives in refs and effects.
 
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
@@ -956,6 +957,7 @@ export function GraphView() {
   const orphans = orphanIds(state.bundle);
   const brokenConceptIds = (concepts ?? []).filter((c) => c.brokenLinks.length > 0).map((c) => c.id);
   const hasDefects = orphans.length > 0 || brokenConceptIds.length > 0;
+  const selectedConcept = concepts?.find((concept) => concept.id === state.activeConceptId);
   // Focus mode is on but there is no selection (or an isolate overrides it): the
   // graph falls back to Overview, so tell the newcomer how to engage focus.
   const focusFallback =
@@ -1036,6 +1038,23 @@ export function GraphView() {
             forces={forces}
             setForces={setForces}
           />
+          {selectedConcept && (
+            <button
+              id="graph-okf-task"
+              type="button"
+              className="graph-panel-toggle graph-okf-task"
+              aria-label={`Work with ${selectedConcept.title} in an OKF agent`}
+              onClick={() => actions.openOkfTaskLauncher({
+                kind: "graph-selection",
+                id: `graph:${selectedConcept.id}`,
+                title: selectedConcept.title,
+                conceptId: selectedConcept.id,
+              }, { returnFocusId: "graph-okf-task" })}
+            >
+              <Sparkles size={13} aria-hidden="true" />
+              Agent
+            </button>
+          )}
         </div>
         <div className="graph-mode" role="group" aria-label="Graph mode">
           <div className="graph-seg">

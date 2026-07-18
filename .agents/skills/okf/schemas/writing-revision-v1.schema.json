@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "okf-studio://schema/writing-revision/v1",
+  "title": "OKF writing revision data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["readerJob", "purpose", "revisionMode", "claims"],
+  "properties": {
+    "readerJob": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "purpose": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "revisionMode": { "enum": ["style-only", "enrichment"] },
+    "findingsAddressed": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+      "uniqueItems": true
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "before", "after", "status", "sourceIds"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "before": { "type": ["string", "null"], "maxLength": 8192 },
+          "after": { "type": ["string", "null"], "maxLength": 8192 },
+          "status": { "enum": ["unchanged", "reworded", "added", "removed"] },
+          "sourceIds": {
+            "type": "array",
+            "maxItems": 64,
+            "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "uniqueItems": true
+          }
+        }
+      }
+    }
+  }
+}

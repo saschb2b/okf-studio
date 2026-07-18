@@ -1,9 +1,5 @@
-export type AgentThreadWorkflow =
-  | "create-bundle"
-  | "enhance-bundle"
-  | "deep-research"
-  | "dataset-change"
-  | null;
+import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
+import { isOkfTaskId, OKF_TASKS } from "@/features/agent/taskContext.ts";
 
 export interface AgentThreadMetadata {
   bundleRoot: string;
@@ -11,7 +7,8 @@ export interface AgentThreadMetadata {
   sessionId: string;
   title: string;
   archived: boolean;
-  workflow: AgentThreadWorkflow;
+  taskId: OkfTaskId | null;
+  contextManifest: AcceptedOkfContextManifest | null;
   updatedAt: number;
 }
 
@@ -22,6 +19,14 @@ const LIMITS = {
   profileId: 256,
   sessionId: 1_024,
   title: 80,
+  contextManifest: 64 * 1024,
+} as const;
+
+const LEGACY_WORKFLOW_TASKS = {
+  "create-bundle": "okf-create",
+  "enhance-bundle": "okf-enrich",
+  "deep-research": "okf-research",
+  "dataset-change": "okf-change-impact",
 } as const;
 
 function isBoundedText(value: unknown, limit: number): value is string {
@@ -32,10 +37,101 @@ function isBoundedText(value: unknown, limit: number): value is string {
     });
 }
 
+function isOptionalBoundedText(value: unknown, limit: number): value is string | null {
+  return value === null || (
+    typeof value === "string" && value.length <= limit &&
+    !Array.from(value).some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 31 || code === 127;
+    })
+  );
+}
+
+function isSafeCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isStringList(value: unknown, limit: number): value is string[] {
+  return Array.isArray(value) && value.length <= limit &&
+    value.every((item) => isBoundedText(item, 256));
+}
+
+function isAcceptedContextManifest(value: unknown, serializedBytes: number): value is AcceptedOkfContextManifest {
+  if (!value || typeof value !== "object" || serializedBytes > LIMITS.contextManifest) return false;
+  const manifest = value as Record<string, unknown>;
+  if (manifest.accepted !== true || manifest.schemaVersion !== 1 || !isOkfTaskId(manifest.taskId)) {
+    return false;
+  }
+  const task = OKF_TASKS[manifest.taskId];
+  if (!(isStringList(manifest.capabilityIds, 16) &&
+    manifest.capabilityIds.length === task.capabilityIds.length &&
+    manifest.capabilityIds.every((item, index) => item === task.capabilityIds[index]) &&
+    isStringList(manifest.tools, 16) &&
+    manifest.tools.length === task.tools.length &&
+    manifest.tools.every((item, index) => item === task.tools[index]) &&
+    manifest.network === task.network && manifest.writes === task.writes &&
+    isBoundedText(manifest.bundleFingerprint, 128) &&
+    manifest.bundleFingerprint.startsWith("okf-revision-"))) {
+    return false;
+  }
+  if (!Array.isArray(manifest.objects) || manifest.objects.length > 64 ||
+    !manifest.objects.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const object = item as Record<string, unknown>;
+      return isBoundedText(object.id, 1_024) && isBoundedText(object.title, 1_024) &&
+        isBoundedText(object.type, 256) && isBoundedText(object.path, 4_096) &&
+        ["active-concept", "graph-neighbor", "user-attachment", "validation-finding"]
+          .includes(String(object.reason)) && typeof object.required === "boolean" &&
+        isSafeCount(object.estimatedBytes);
+    })) return false;
+  if (!Array.isArray(manifest.sources) || manifest.sources.length > 64 ||
+    !manifest.sources.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const source = item as Record<string, unknown>;
+      return isBoundedText(source.id, 1_024) && isBoundedText(source.title, 1_024) &&
+        isOptionalBoundedText(source.origin, 4_096) &&
+        isOptionalBoundedText(source.sourceDigest, 1_024) &&
+        typeof source.required === "boolean" && isSafeCount(source.estimatedBytes);
+    })) return false;
+  const validation = manifest.validation as Record<string, unknown> | undefined;
+  const budget = manifest.budget as Record<string, unknown> | undefined;
+  if (!validation || !budget || !isSafeCount(validation.errors) ||
+    !isSafeCount(validation.warnings) || !isSafeCount(budget.maxBytes) ||
+    !isSafeCount(budget.maxEstimatedTokens) || !isSafeCount(budget.selectedBytes) ||
+    !isSafeCount(budget.selectedEstimatedTokens) || budget.selectedBytes > budget.maxBytes ||
+    budget.selectedEstimatedTokens > budget.maxEstimatedTokens) return false;
+  return Array.isArray(manifest.omissions) && manifest.omissions.length <= 128 &&
+    manifest.omissions.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const omission = item as Record<string, unknown>;
+      return ["bundle-object", "source"].includes(String(omission.kind)) &&
+        isBoundedText(omission.id, 1_024) &&
+        ["removed-by-user", "budget-exceeded", "context-limit"].includes(String(omission.reason));
+    });
+}
+
 function parseMetadata(value: unknown): AgentThreadMetadata | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<AgentThreadMetadata>;
-  const workflow = (value as Record<string, unknown>).workflow;
+  const raw = value as Record<string, unknown>;
+  const hasInvalidLegacyWorkflow = raw.taskId == null && typeof raw.workflow === "string" &&
+    !(raw.workflow in LEGACY_WORKFLOW_TASKS);
+  const taskId = raw.taskId ?? (
+    typeof raw.workflow === "string"
+      ? LEGACY_WORKFLOW_TASKS[raw.workflow as keyof typeof LEGACY_WORKFLOW_TASKS]
+      : null
+  );
+  const contextManifest = raw.contextManifest;
+  let serializedManifestBytes = 0;
+  try {
+    serializedManifestBytes = contextManifest == null
+      ? 0
+      : new TextEncoder().encode(JSON.stringify(contextManifest)).byteLength;
+  } catch {
+    return null;
+  }
+  const manifestIsValid = contextManifest === undefined || contextManifest === null ||
+    isAcceptedContextManifest(contextManifest, serializedManifestBytes);
   if (!(isBoundedText(candidate.bundleRoot, LIMITS.bundleRoot) &&
     isBoundedText(candidate.profileId, LIMITS.profileId) &&
     isBoundedText(candidate.sessionId, LIMITS.sessionId) &&
@@ -43,9 +139,10 @@ function parseMetadata(value: unknown): AgentThreadMetadata | null {
     typeof candidate.updatedAt === "number" && Number.isSafeInteger(candidate.updatedAt) &&
     candidate.updatedAt >= 0 &&
     (candidate.archived === undefined || typeof candidate.archived === "boolean") &&
-    (workflow === undefined || workflow === null || workflow === "create-bundle" ||
-      workflow === "enhance-bundle" || workflow === "deep-research" ||
-      workflow === "dataset-change"))) {
+    !hasInvalidLegacyWorkflow &&
+    (taskId === null || isOkfTaskId(taskId)) &&
+    manifestIsValid &&
+    (contextManifest == null || contextManifest.taskId === taskId))) {
     return null;
   }
   return {
@@ -54,7 +151,8 @@ function parseMetadata(value: unknown): AgentThreadMetadata | null {
     sessionId: candidate.sessionId,
     title: candidate.title,
     archived: candidate.archived ?? false,
-    workflow: workflow ?? null,
+    taskId: taskId ?? null,
+    contextManifest: contextManifest ?? null,
     updatedAt: candidate.updatedAt,
   };
 }
@@ -80,9 +178,10 @@ export function parseAgentThreadMetadata(value: unknown): AgentThreadMetadata[] 
 }
 
 export function createAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "workflow"> & {
+  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "taskId" | "contextManifest"> & {
     archived?: boolean;
-    workflow?: AgentThreadWorkflow;
+    taskId?: OkfTaskId | null;
+    contextManifest?: AcceptedOkfContextManifest | null;
   },
   updatedAt = Date.now(),
 ): AgentThreadMetadata {
@@ -91,7 +190,8 @@ export function createAgentThreadMetadata(
     ...input,
     title,
     archived: input.archived ?? false,
-    workflow: input.workflow ?? null,
+    taskId: input.taskId ?? null,
+    contextManifest: input.contextManifest ?? null,
     updatedAt,
   });
   if (!metadata) {

@@ -41,6 +41,7 @@ struct SourceSummary<'a> {
     source_digest: Option<&'a str>,
     content_sha256: String,
     content_chars: usize,
+    adapter_receipt: Option<&'a crate::agent_source_adapter::SourceAdapterReceipt>,
 }
 
 #[derive(Serialize)]
@@ -58,6 +59,7 @@ struct SourceRead<'a> {
     total_lines: usize,
     truncated: bool,
     content: String,
+    adapter_receipt: Option<&'a crate::agent_source_adapter::SourceAdapterReceipt>,
 }
 
 pub(crate) fn native_tool_definitions(
@@ -72,7 +74,7 @@ pub(crate) fn native_tool_definitions(
     Ok(vec![
         LocalToolDefinition {
             name: SOURCE_INVENTORY_TOOL,
-            description: "List the text sources the user explicitly attached to this turn. Returns synthetic source IDs, provenance, extraction warnings, digests, and sizes without filesystem paths.",
+            description: "List the text sources the user explicitly attached to this turn. Returns synthetic source IDs, versioned adapter receipts, untrusted provenance, extraction warnings, digests, and sizes without filesystem paths.",
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {},
@@ -121,6 +123,7 @@ pub(crate) fn execute_native_tool(
                         source_digest: source.source_digest.as_deref(),
                         content_sha256: content_digest(source),
                         content_chars: source.content.chars().count(),
+                        adapter_receipt: source.adapter_receipt.as_ref(),
                     })
                     .collect(),
             })
@@ -158,6 +161,7 @@ pub(crate) fn execute_native_tool(
                 total_lines: lines.len(),
                 truncated: end < lines.len() || content_was_bounded,
                 content,
+                adapter_receipt: source.adapter_receipt.as_ref(),
             })
         }
         _ => return Err("The model requested a tool that Studio did not offer.".to_string()),
@@ -206,14 +210,27 @@ mod tests {
     use super::*;
 
     fn source() -> AgentSourceInput {
+        let content = "Page one\n\nFinding with provenance";
         AgentSourceInput {
             title: "research.pdf".to_string(),
-            content: "Page one\n\nFinding with provenance".to_string(),
+            content: content.to_string(),
             origin: Some("research.pdf".to_string()),
             media_type: Some("application/pdf".to_string()),
             source_digest: Some("a".repeat(64)),
             warning: Some("One page had no text.".to_string()),
             image_data: None,
+            adapter_receipt: Some(crate::agent_source_adapter::binary_receipt(
+                "pdf",
+                crate::agent_source_adapter::SourceDiscovery::File,
+                "research.pdf",
+                "application/pdf",
+                &"a".repeat(64),
+                &format!("{:x}", Sha256::digest(content.as_bytes())),
+                vec![crate::agent_source_adapter::warning(
+                    "pdf-partial-extraction",
+                    "One page had no text.",
+                )],
+            )),
         }
     }
 
@@ -236,6 +253,8 @@ mod tests {
         .expect("source inventory");
         assert!(inventory.contains("source-1"));
         assert!(inventory.contains("One page had no text."));
+        assert!(inventory.contains("\"adapterId\":\"pdf\""));
+        assert!(inventory.contains("\"trust\":\"untrusted\""));
 
         let read = LocalToolCall {
             id: "tool-2".to_string(),
@@ -245,6 +264,7 @@ mod tests {
         let output = execute_native_tool(&sources, &read).expect("source read");
         assert!(output.contains("Finding with provenance"));
         assert!(!output.contains("Page one"));
+        assert!(output.contains("\"adapterId\":\"pdf\""));
         assert_eq!(native_tool_display(&read), ("Read attached source", "read"));
 
         let mut invalid = read;

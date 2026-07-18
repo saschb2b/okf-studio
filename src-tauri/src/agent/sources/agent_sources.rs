@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
+use crate::agent_source_adapter::{self, SourceAdapterReceipt, SourceDiscovery};
+
 pub(crate) const MAX_SOURCE_ATTACHMENTS: usize = 8;
 pub(crate) const MAX_SOURCE_CONTENT_CHARS: usize = 256 * 1024;
 pub(crate) const MAX_SOURCE_TOTAL_CHARS: usize = 512 * 1024;
@@ -22,6 +24,7 @@ const MAX_FOLDER_ENTRIES: usize = 4_096;
 struct SourcePath {
     path: PathBuf,
     title: String,
+    discovery: SourceDiscovery,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -34,6 +37,8 @@ pub struct AgentSourceInput {
     pub(crate) source_digest: Option<String>,
     pub(crate) warning: Option<String>,
     pub(crate) image_data: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) adapter_receipt: Option<SourceAdapterReceipt>,
 }
 
 pub(crate) fn pick_text_sources(
@@ -48,8 +53,10 @@ pub(crate) fn pick_text_sources(
         .dialog()
         .file()
         .add_filter(
-            "PDF, text, Markdown, HTML, CSV, and JSON",
-            &["pdf", "txt", "md", "markdown", "html", "htm", "csv", "json"],
+            "PDF, text, Markdown, HTML, CSV, JSON, and OpenAPI YAML",
+            &[
+                "pdf", "txt", "md", "markdown", "html", "htm", "csv", "json", "yaml", "yml",
+            ],
         )
         .blocking_pick_files()
         .unwrap_or_default();
@@ -125,6 +132,7 @@ fn read_text_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSourceI
             Ok(SourcePath {
                 path: path.clone(),
                 title: title.to_string(),
+                discovery: SourceDiscovery::File,
             })
         })
         .collect::<Result<Vec<_>, String>>()?;
@@ -174,14 +182,24 @@ fn read_image_sources(paths: &[PathBuf], limit: usize) -> Result<Vec<AgentSource
                 return Err(format!("{title} exceeds the 8 MiB image limit."));
             }
             let media_type = image_media_type(path, &bytes)?;
+            let source_digest = format!("{:x}", sha2::Sha256::digest(&bytes));
             Ok(AgentSourceInput {
                 title: title.to_string(),
                 content: String::new(),
                 origin: Some(title.to_string()),
                 media_type: Some(media_type.to_string()),
-                source_digest: Some(format!("{:x}", sha2::Sha256::digest(&bytes))),
+                source_digest: Some(source_digest.clone()),
                 warning: None,
                 image_data: Some(base64::engine::general_purpose::STANDARD.encode(bytes)),
+                adapter_receipt: Some(agent_source_adapter::binary_receipt(
+                    "image",
+                    SourceDiscovery::Image,
+                    title,
+                    media_type,
+                    &source_digest,
+                    &source_digest,
+                    Vec::new(),
+                )),
             })
         })
         .collect()
@@ -235,13 +253,17 @@ fn read_folder_sources(root: &Path, limit: usize) -> Result<Vec<AgentSourceInput
                 .strip_prefix(root)
                 .map_err(|_| "A source folder entry escaped the selected folder.".to_string())?;
             let title = relative_path_label(relative)?;
-            paths.push(SourcePath { path, title });
+            paths.push(SourcePath {
+                path,
+                title,
+                discovery: SourceDiscovery::Folder,
+            });
         }
     }
     paths.sort_by(|left, right| left.title.cmp(&right.title));
     if paths.is_empty() {
         return Err(
-            "The selected folder contains no supported PDF, text, Markdown, HTML, CSV, or JSON files."
+            "The selected folder contains no supported PDF, text, Markdown, HTML, CSV, JSON, or OpenAPI YAML files."
                 .to_string(),
         );
     }
@@ -296,14 +318,35 @@ fn read_sources(paths: &[SourcePath], limit: usize) -> Result<Vec<AgentSourceInp
 
         let source = if media_type == "application/pdf" {
             let extraction = crate::agent_pdf::extract_in_helper(path)?;
+            let evidence_digest =
+                format!("{:x}", sha2::Sha256::digest(extraction.content.as_bytes()));
+            let diagnostics = extraction
+                .warning
+                .as_deref()
+                .map(|warning| {
+                    vec![agent_source_adapter::warning(
+                        "pdf-partial-extraction",
+                        warning,
+                    )]
+                })
+                .unwrap_or_default();
             AgentSourceInput {
                 title: title.clone(),
                 content: extraction.content,
                 origin: Some(title.clone()),
                 media_type: Some(media_type.to_string()),
-                source_digest: Some(extraction.source_digest),
+                source_digest: Some(extraction.source_digest.clone()),
                 warning: extraction.warning,
                 image_data: None,
+                adapter_receipt: Some(agent_source_adapter::binary_receipt(
+                    "pdf",
+                    source_path.discovery,
+                    title,
+                    media_type,
+                    &extraction.source_digest,
+                    &evidence_digest,
+                    diagnostics,
+                )),
             }
         } else {
             let mut bytes = Vec::with_capacity(metadata.len() as usize);
@@ -313,7 +356,13 @@ fn read_sources(paths: &[SourcePath], limit: usize) -> Result<Vec<AgentSourceInp
             if bytes.len() as u64 > file_limit {
                 return Err(format!("{title} exceeds the 256 KiB source limit."));
             }
-            source_from_bytes(title.clone(), title.clone(), media_type, bytes, false)?
+            source_from_bytes(
+                title.clone(),
+                title.clone(),
+                media_type,
+                bytes,
+                source_path.discovery,
+            )?
         };
         if source.content.trim().is_empty() {
             return Err(format!("{title} is empty."));
@@ -334,20 +383,17 @@ pub(crate) fn source_from_bytes(
     origin: String,
     media_type: &str,
     bytes: Vec<u8>,
-    retain_source_digest: bool,
+    discovery: SourceDiscovery,
 ) -> Result<AgentSourceInput, String> {
-    let digest = retain_source_digest.then(|| format!("{:x}", sha2::Sha256::digest(&bytes)));
-    let (content, source_digest) = if media_type == "text/csv" {
-        let normalization = crate::agent_csv::normalize(&bytes, &title, MAX_SOURCE_CONTENT_CHARS)?;
-        (normalization.content, Some(normalization.source_digest))
-    } else if media_type == "application/json" {
-        let normalization = crate::agent_json::normalize(&bytes, &title, MAX_SOURCE_CONTENT_CHARS)?;
-        (normalization.content, Some(normalization.source_digest))
-    } else {
-        let content =
-            String::from_utf8(bytes).map_err(|_| format!("{title} is not valid UTF-8 text."))?;
-        (content, digest)
-    };
+    let adapted = agent_source_adapter::adapt_text(
+        &title,
+        &origin,
+        media_type,
+        &bytes,
+        discovery,
+        MAX_SOURCE_CONTENT_CHARS,
+    )?;
+    let content = adapted.content;
     if content.trim().is_empty() {
         return Err(format!("{title} is empty."));
     }
@@ -361,9 +407,10 @@ pub(crate) fn source_from_bytes(
         content,
         origin: Some(origin),
         media_type: Some(media_type.to_string()),
-        source_digest,
+        source_digest: Some(adapted.source_digest),
         warning: None,
         image_data: None,
+        adapter_receipt: Some(adapted.receipt),
     })
 }
 
@@ -402,8 +449,9 @@ fn relative_path_label(path: &Path) -> Result<String, String> {
 }
 
 fn media_type_for_path(path: &Path) -> Result<&'static str, String> {
-    supported_media_type(path)
-        .ok_or_else(|| "Sources must be PDF, text, Markdown, HTML, CSV, or JSON files.".to_string())
+    supported_media_type(path).ok_or_else(|| {
+        "Sources must be PDF, text, Markdown, HTML, CSV, JSON, or OpenAPI YAML files.".to_string()
+    })
 }
 
 fn supported_media_type(path: &Path) -> Option<&'static str> {
@@ -417,6 +465,7 @@ fn supported_media_type(path: &Path) -> Option<&'static str> {
         Some("html" | "htm") => Some("text/html"),
         Some("csv") => Some("text/csv"),
         Some("json") => Some("application/json"),
+        Some("yaml" | "yml") => Some("application/yaml"),
         Some("pdf") => Some("application/pdf"),
         _ => None,
     }
@@ -446,6 +495,13 @@ mod tests {
         assert_eq!(sources[0].origin.as_deref(), Some("Research.md"));
         assert_eq!(sources[0].media_type.as_deref(), Some("text/markdown"));
         assert_eq!(sources[0].content, "# Notes\n\nVerified.");
+        let receipt = sources[0]
+            .adapter_receipt
+            .as_ref()
+            .expect("adapter receipt");
+        assert_eq!(receipt.adapter_id, "markdown");
+        assert_eq!(receipt.discovery, SourceDiscovery::File);
+        assert_eq!(receipt.trust, "untrusted");
         let serialized = serde_json::to_string(&sources).expect("serialize sources");
         assert!(!serialized.contains(root.to_string_lossy().as_ref()));
         fs::remove_dir_all(root).expect("remove temp directory");
@@ -492,6 +548,13 @@ mod tests {
         assert_eq!(sources[0].title, "diagram.png");
         assert_eq!(sources[0].origin.as_deref(), Some("diagram.png"));
         assert_eq!(sources[0].media_type.as_deref(), Some("image/png"));
+        assert_eq!(
+            sources[0]
+                .adapter_receipt
+                .as_ref()
+                .map(|receipt| receipt.adapter_id.as_str()),
+            Some("image")
+        );
         assert!(sources[0].content.is_empty());
         assert_eq!(
             sources[0].image_data.as_deref(),
@@ -594,6 +657,13 @@ mod tests {
         assert_eq!(sources.len(), 2);
         assert_eq!(sources[0].title, "reports/a-first.md");
         assert_eq!(sources[0].origin.as_deref(), Some("reports/a-first.md"));
+        assert_eq!(
+            sources[0]
+                .adapter_receipt
+                .as_ref()
+                .map(|receipt| receipt.discovery),
+            Some(SourceDiscovery::Folder)
+        );
         assert_eq!(sources[1].title, "z-last.txt");
         let serialized = serde_json::to_string(&sources).expect("serialize sources");
         assert!(!serialized.contains(root.to_string_lossy().as_ref()));

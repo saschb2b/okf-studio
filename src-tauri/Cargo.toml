@@ -16,6 +16,9 @@ path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
 
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -23,8 +26,10 @@ tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-store = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-deep-link = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml_ng = "0.10"
 sha2 = "0.10"
 pdf-extract = "0.12"
 csv = "1.4"
@@ -63,6 +68,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 # Linux only: disable WebKitGTK's native trackpad pinch-zoom (it bypasses the JS
 # guards that cover WebView2/WKWebView — see src/native.ts). Versions pinned to

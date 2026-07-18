@@ -1,6 +1,7 @@
 # Reference
 
 * [Zed Agent System Research](zed-agent-system.md) - Primary-source patterns and constraints adopted for OKF Studio.
+* [Specialized Agent Systems Research](specialized-agent-systems.md) - GitHub Copilot app and OKF ecosystem patterns for domain-specialized agents.
 
 External specifications Studio must honor, the OKF ecosystem it builds on, and a glossary of terms.
 

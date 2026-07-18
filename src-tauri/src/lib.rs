@@ -7,8 +7,14 @@
 // to its file. See docs/architecture/agent-system.md for the domains.
 //
 // host — the running ACP and MCP process host.
+#[path = "agent/host/agent_artifact.rs"]
+mod agent_artifact;
+#[path = "agent/host/agent_critic.rs"]
+mod agent_critic;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
+#[path = "agent/host/agent_mcp_grant.rs"]
+mod agent_mcp_grant;
 #[path = "agent/host/agent_process.rs"]
 mod agent_process;
 #[path = "agent/host/agent_protocol.rs"]
@@ -30,6 +36,8 @@ mod agent_install;
 #[path = "agent/registry/agent_runtime.rs"]
 mod agent_runtime;
 // provider — the native Studio Agent and its tools.
+#[path = "agent/provider/agent_capabilities.rs"]
+mod agent_capabilities;
 #[path = "agent/provider/agent_credentials.rs"]
 mod agent_credentials;
 #[path = "agent/provider/agent_local.rs"]
@@ -38,6 +46,8 @@ mod agent_local;
 mod agent_native_sources;
 #[path = "agent/provider/agent_native_stage.rs"]
 mod agent_native_stage;
+#[path = "agent/provider/agent_routines.rs"]
+mod agent_routines;
 #[path = "agent/provider/agent_studio.rs"]
 mod agent_studio;
 // sources — attached-source intake and extraction.
@@ -47,6 +57,8 @@ mod agent_csv;
 mod agent_json;
 #[path = "agent/sources/agent_pdf.rs"]
 mod agent_pdf;
+#[path = "agent/sources/agent_source_adapter.rs"]
+mod agent_source_adapter;
 #[path = "agent/sources/agent_sources.rs"]
 mod agent_sources;
 #[path = "agent/sources/agent_url.rs"]
@@ -56,17 +68,114 @@ mod agent_url;
 mod agent_stage;
 mod bundle_create;
 mod bundle_grant;
+mod bundle_library;
+mod external_entry;
 mod remote;
 mod watch;
 
 use okf_core::{Bundle, BundleRoot};
 use std::path::Path;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use watch::WatchState;
 
-pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
+#[tauri::command]
+fn okf_capability_catalog() -> agent_capabilities::CapabilityCatalogInfo {
+    agent_capabilities::catalog_info()
+}
+
+#[tauri::command]
+fn set_okf_capability_pack_active(
+    app: AppHandle,
+    active: bool,
+) -> Result<agent_capabilities::CapabilityCatalogInfo, String> {
+    let catalog = agent_capabilities::set_pack_active(&app, active)?;
+    app.emit("okf-capability-pack-changed", &catalog)
+        .map_err(|_| "Studio could not publish the capability pack change.".to_string())?;
+    Ok(catalog)
+}
+
+#[tauri::command]
+fn okf_routine_workspace(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+    bundle_root: String,
+) -> Result<agent_routines::RoutineWorkspace, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    Ok(routines.workspace(&root.to_string_lossy()))
+}
+
+#[tauri::command]
+fn save_okf_routine(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+    input: agent_routines::SaveRoutineInput,
+) -> Result<agent_routines::RoutineDefinition, String> {
+    routines.save(&grants, input)
+}
+
+#[tauri::command]
+fn remove_okf_routine(
+    routines: State<'_, agent_routines::RoutineState>,
+    routine_id: String,
+) -> Result<bool, String> {
+    routines.remove(&routine_id)
+}
+
+#[tauri::command]
+fn run_okf_routine(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+    routine_id: String,
+) -> Result<agent_routines::RoutineRun, String> {
+    routines.run(&grants, &routine_id, None)
+}
+
+#[tauri::command]
+fn run_due_okf_routines(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    routines: State<'_, agent_routines::RoutineState>,
+) -> Result<Vec<agent_routines::RoutineRun>, String> {
+    routines.run_due(&grants, agent_routines::current_time_ms())
+}
+
+pub fn run_agent_mcp_grant(grant_file: std::path::PathBuf, token: String) -> Result<(), String> {
+    let bundle_root = agent_mcp_grant::consume(&grant_file, &token)?;
     agent_mcp::run(bundle_root)
+}
+
+#[tauri::command]
+fn create_okf_mcp_grant(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<agent_mcp_grant::McpLaunchGrant, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    agent_mcp_grant::create(&root)
+}
+
+#[tauri::command]
+fn pending_external_entries(
+    state: State<'_, external_entry::ExternalEntryState>,
+) -> Result<Vec<external_entry::ExternalEntryPreview>, String> {
+    external_entry::pending(&state)
+}
+
+#[tauri::command]
+async fn accept_external_entry(
+    app: AppHandle,
+    state: State<'_, external_entry::ExternalEntryState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    request_id: String,
+) -> Result<Option<external_entry::ExternalEntryPreview>, String> {
+    external_entry::accept(app, &state, &grants, &request_id).await
+}
+
+#[tauri::command]
+fn dismiss_external_entry(
+    state: State<'_, external_entry::ExternalEntryState>,
+    request_id: String,
+) -> Result<bool, String> {
+    external_entry::dismiss(&state, &request_id)
 }
 
 pub fn run_pdf_extractor() -> Result<(), String> {
@@ -140,25 +249,145 @@ fn revoke_bundle_grant(
 #[tauri::command]
 fn scan_bundles(
     grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
     folder: String,
     max_depth: usize,
 ) -> Result<Vec<BundleRoot>, String> {
     let folder = grants.authorize_folder(Path::new(&folder))?;
+    let kind = grants
+        .grant_kind(&folder)
+        .ok_or_else(|| "The bundle folder grant is no longer available.".to_string())?;
     let roots = okf_core::scan_bundles_with_depth(&folder, max_depth);
     grants.register_bundle_roots(
         &folder,
         roots.iter().map(|root| Path::new(&root.root).to_path_buf()),
     )?;
+    library.register_detected(&folder, kind, &roots)?;
     Ok(roots)
 }
 
 #[tauri::command]
 fn read_bundle(
     grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
     root: String,
 ) -> Result<Bundle, String> {
     let root = grants.authorize_bundle(Path::new(&root))?;
-    Ok(okf_core::read_bundle(&root))
+    let bundle = okf_core::read_bundle(&root);
+    library.update_snapshot(&root, &bundle)?;
+    Ok(bundle)
+}
+
+#[tauri::command]
+fn bundle_library(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    active_root: Option<String>,
+) -> Result<Vec<bundle_library::BundleLibraryEntry>, String> {
+    let active_root = active_root
+        .map(|root| grants.authorize_bundle(Path::new(&root)))
+        .transpose()?;
+    Ok(library.entries(&grants, active_root.as_deref()))
+}
+
+#[tauri::command]
+fn preview_federated_bundles(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    bundle_ids: Vec<String>,
+) -> Result<Vec<bundle_library::FederatedBundleStatus>, String> {
+    library.preview(&grants, bundle_ids)
+}
+
+#[tauri::command]
+fn federated_inventory(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    prefix: Option<String>,
+    concept_type: Option<String>,
+    tag: Option<String>,
+    limit: usize,
+) -> Result<bundle_library::FederatedConceptPage, String> {
+    library.inventory(&grants, selections, prefix, concept_type, tag, limit)
+}
+
+#[tauri::command]
+fn federated_search(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    query: String,
+    limit: usize,
+) -> Result<bundle_library::FederatedConceptPage, String> {
+    library.search(&grants, selections, query, limit)
+}
+
+#[tauri::command]
+fn federated_sources(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    query: Option<String>,
+    limit: usize,
+) -> Result<bundle_library::FederatedSourcePage, String> {
+    library.sources(&grants, selections, query, limit)
+}
+
+#[tauri::command]
+fn federated_relationship_candidates(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    library: State<'_, bundle_library::BundleLibraryState>,
+    selections: Vec<bundle_library::FederatedBundleSelection>,
+    limit: usize,
+) -> Result<bundle_library::FederatedRelationshipPage, String> {
+    library.relationships(&grants, selections, limit)
+}
+
+#[tauri::command]
+async fn validate_agent_artifact(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    markdown: String,
+) -> Result<agent_artifact::AgentArtifactValidation, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_artifact::validate(&markdown, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not validate the agent artifact.".to_string())
+}
+
+#[tauri::command]
+async fn prepare_agent_artifact_critic(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    artifact_markdown: String,
+) -> Result<agent_critic::AgentCriticRequest, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_critic::prepare(&artifact_markdown, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not prepare the artifact critic.".to_string())?
+}
+
+#[tauri::command]
+async fn validate_agent_artifact_critic(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    artifact_markdown: String,
+    critic_markdown: String,
+) -> Result<agent_critic::AgentCriticValidation, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_critic::validate(&artifact_markdown, &critic_markdown, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not validate the artifact critic.".to_string())
 }
 
 #[tauri::command]
@@ -352,6 +581,7 @@ async fn prompt_agent(
     text: String,
     context_paths: Vec<String>,
     sources: Vec<agent_sources::AgentSourceInput>,
+    task_context: Option<agent_protocol::OkfTaskContextInput>,
 ) -> Result<agent_protocol::AgentTurnInfo, String> {
     agent_protocol::prompt(
         state.inner(),
@@ -360,8 +590,19 @@ async fn prompt_agent(
         text,
         context_paths,
         sources,
+        task_context,
     )
     .await
+}
+
+#[tauri::command]
+async fn prompt_agent_critic(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    text: String,
+) -> Result<agent_protocol::AgentTurnInfo, String> {
+    agent_protocol::prompt_isolated_critic(state.inner(), &connection_id, session_id, text).await
 }
 
 #[tauri::command]
@@ -783,7 +1024,25 @@ fn can_self_update() -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Single-instance must be the first plugin. On Windows/Linux the deep-link
+    // plugin forwards registered URLs through it; ordinary CLI entry points
+    // use the same parser and preview queue.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        let args = argv
+            .into_iter()
+            .skip(1)
+            .map(std::ffi::OsString::from)
+            .collect();
+        if let Err(error) = external_entry::queue_cli(app, args) {
+            eprintln!("[external-entry] {error}");
+        }
+    }));
+
+    let builder = builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -814,14 +1073,55 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            app.manage(external_entry::ExternalEntryState::default());
+            if let Err(error) = agent_capabilities::load_pack_state(app.handle()) {
+                eprintln!("[capability-pack] {error}");
+            }
             app.manage(
                 bundle_grant::BundleGrantState::load(app.handle()).map_err(|error| {
                     std::io::Error::other(format!("could not load bundle grants: {error}"))
                 })?,
             );
+            app.manage(
+                bundle_library::BundleLibraryState::load(app.handle()).map_err(|error| {
+                    std::io::Error::other(format!("could not load bundle library: {error}"))
+                })?,
+            );
             app.manage(WatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
+            app.manage(
+                agent_routines::RoutineState::load(app.handle()).map_err(|error| {
+                    std::io::Error::other(format!("could not load OKF routines: {error}"))
+                })?,
+            );
+
+            // Deep links and CLI requests only enter the bounded preview queue.
+            // Filesystem confirmation and activation are separate commands.
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Some(urls) = app.deep_link().get_current()? {
+                    for url in urls {
+                        if let Err(error) =
+                            external_entry::queue_deep_link(app.handle(), url.as_str())
+                        {
+                            eprintln!("[external-entry] {error}");
+                        }
+                    }
+                }
+                let handle = app.handle().clone();
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        if let Err(error) = external_entry::queue_deep_link(&handle, url.as_str()) {
+                            eprintln!("[external-entry] {error}");
+                        }
+                    }
+                });
+                let cli_args = std::env::args_os().skip(1).collect();
+                if let Err(error) = external_entry::queue_cli(app.handle(), cli_args) {
+                    eprintln!("[external-entry] {error}");
+                }
+            }
 
             // Show-on-ready watchdog. The main window starts hidden and the
             // frontend reveals it after its first painted frame (src/App.tsx),
@@ -882,7 +1182,27 @@ pub fn run() {
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            bundle_library,
+            preview_federated_bundles,
+            federated_inventory,
+            federated_search,
+            federated_sources,
+            federated_relationship_candidates,
+            validate_agent_artifact,
+            prepare_agent_artifact_critic,
+            validate_agent_artifact_critic,
             agent_catalog,
+            okf_capability_catalog,
+            set_okf_capability_pack_active,
+            okf_routine_workspace,
+            save_okf_routine,
+            remove_okf_routine,
+            run_okf_routine,
+            run_due_okf_routines,
+            create_okf_mcp_grant,
+            pending_external_entries,
+            accept_external_entry,
+            dismiss_external_entry,
             agent_security_host_status,
             custom_agents,
             save_custom_agent,
@@ -902,6 +1222,7 @@ pub fn run() {
             load_agent_session,
             set_agent_session_config_option,
             prompt_agent,
+            prompt_agent_critic,
             pick_agent_text_sources,
             pick_agent_source_folder,
             pick_agent_image_sources,

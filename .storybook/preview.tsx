@@ -5,6 +5,7 @@
 // sets in shared/theme.ts.
 import type { Preview } from "@storybook/react-vite";
 import "../src/styles.css";
+import "../src/shared/styles/chrome.css";
 
 const preview: Preview = {
   globalTypes: {

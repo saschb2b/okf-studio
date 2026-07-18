@@ -413,6 +413,17 @@ impl SessionStages {
         Ok(snapshot(session_id, stage))
     }
 
+    pub fn write_grant_is_denied(&self, session_id: &str) -> Result<bool, String> {
+        let sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        Ok(matches!(stage.grant, SessionWriteGrant::Denied))
+    }
+
     #[cfg(test)]
     fn set_grant(&self, session_id: &str, granted: bool) -> Result<AgentStagedChangesInfo, String> {
         let mut sessions = self
@@ -4012,6 +4023,7 @@ mod tests {
             .expect("read source overview");
         let source_product_index = std::fs::read_to_string(source_docs.join("product/index.md"))
             .expect("read source product index");
+        let source_concept_count = okf_core::read_bundle(&source_docs).concepts.len();
         let docs_copy = canonical_temp_dir("dogfood-docs-copy");
         copy_directory(&source_docs, &docs_copy);
 
@@ -4139,7 +4151,11 @@ mod tests {
             .expect("apply reviewed enhancement");
         assert_eq!(applied.applied_files, 3);
         let enhanced_bundle = okf_core::read_bundle(&docs_copy);
-        assert_eq!(enhanced_bundle.concepts.len(), 51);
+        assert_eq!(
+            enhanced_bundle.concepts.len(),
+            source_concept_count + 1,
+            "the reviewed enhancement should add exactly its evidence concept"
+        );
         assert!(enhanced_bundle
             .issues
             .iter()

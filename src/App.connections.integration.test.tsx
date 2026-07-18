@@ -354,7 +354,9 @@ describe("OKF Studio agent connections", () => {
       expect(screen.queryByRole("button", {
         name: /^Switch to Thread 2: Review the evidence in parallel, /,
       })).not.toBeInTheDocument();
-      await waitFor(() => expect(firstThreadTab).toHaveFocus(), { timeout: 3_000 });
+      await waitFor(() => expect(screen.getByRole("button", {
+        name: /^Switch to Thread 1: Run a long investigation, /,
+      })).toHaveFocus(), { timeout: 3_000 });
 
       await user.click(within(firstConversation).getByRole("button", { name: "Stop" }));
       expect(await within(firstConversation).findByText("Turn cancelled.")).toBeInTheDocument();
@@ -537,7 +539,7 @@ describe("OKF Studio agent connections", () => {
       expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
         .toBeInTheDocument();
       expect(await screen.findByText("Fresh bundle draft")).toBeInTheDocument();
-      expect(screen.getByText("Change staged for review")).toBeInTheDocument();
+      expect(screen.getByText("Staged")).toBeInTheDocument();
     } finally {
       await removeSavedStudioAgent(connection, profile);
     }

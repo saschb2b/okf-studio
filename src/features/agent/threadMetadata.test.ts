@@ -6,6 +6,7 @@ import {
   removeAgentThreadMetadata,
   upsertAgentThreadMetadata,
 } from "@/features/agent/threadMetadata.ts";
+import { acceptOkfContextPlan, createOkfContextPlan } from "@/features/agent/taskContext.ts";
 
 const BASE = {
   bundleRoot: "C:\\knowledge\\docs",
@@ -20,7 +21,8 @@ describe("agent thread metadata", () => {
       ...BASE,
       title: "Bundle research",
       archived: false,
-      workflow: null,
+      taskId: null,
+      contextManifest: null,
       updatedAt: 42,
     });
     expect(() => createAgentThreadMetadata({ ...BASE, sessionId: "bad\nsession" }))
@@ -33,12 +35,13 @@ describe("agent thread metadata", () => {
       { ...BASE, title: "tampered", updatedAt: Number.POSITIVE_INFINITY },
       { ...BASE, bundleRoot: "C:\\knowledge\\research", workflow: "unknown", updatedAt: 4 },
     ])).toEqual([
-      { ...BASE, archived: false, workflow: null, updatedAt: 2 },
+      { ...BASE, archived: false, taskId: null, contextManifest: null, updatedAt: 2 },
       {
         ...BASE,
         sessionId: "another-session",
         archived: false,
-        workflow: null,
+        taskId: null,
+        contextManifest: null,
         updatedAt: 1,
       },
     ]);
@@ -77,10 +80,56 @@ describe("agent thread metadata", () => {
       .not.toContainEqual(replacement);
   });
 
-  it("preserves creation workflows across archive and resume", () => {
-    for (const workflow of ["create-bundle", "enhance-bundle"] as const) {
+  it("migrates legacy workflows to stable task IDs", () => {
+    for (const [workflow, taskId] of [
+      ["create-bundle", "okf-create"],
+      ["enhance-bundle", "okf-enrich"],
+    ] as const) {
       expect(parseAgentThreadMetadata([{ ...BASE, workflow, updatedAt: 42 }]))
-        .toEqual([{ ...BASE, archived: false, workflow, updatedAt: 42 }]);
+        .toEqual([{
+          ...BASE,
+          archived: false,
+          taskId,
+          contextManifest: null,
+          updatedAt: 42,
+        }]);
     }
+  });
+
+  it("persists the accepted context manifest with its task", () => {
+    const contextManifest = acceptOkfContextPlan(createOkfContextPlan({
+      taskId: "okf-research",
+      bundleRoot: BASE.bundleRoot,
+      concepts: [],
+      activeConcept: null,
+      attachedConcepts: [],
+      sources: [],
+      issues: [],
+    }));
+    const metadata = createAgentThreadMetadata({
+      ...BASE,
+      taskId: "okf-research",
+      contextManifest,
+    }, 42);
+
+    expect(parseAgentThreadMetadata([metadata])).toEqual([metadata]);
+    expect(parseAgentThreadMetadata([{
+      ...metadata,
+      taskId: "okf-audit",
+    }])).toEqual([]);
+    expect(parseAgentThreadMetadata([{
+      ...metadata,
+      contextManifest: {
+        ...contextManifest,
+        objects: [{ id: "broken" }],
+      },
+    }])).toEqual([]);
+    expect(parseAgentThreadMetadata([{
+      ...metadata,
+      contextManifest: {
+        ...contextManifest,
+        capabilityIds: ["okf-repair"],
+      },
+    }])).toEqual([]);
   });
 });

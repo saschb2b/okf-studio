@@ -9,6 +9,37 @@ import {
 } from "@/test/appHarness.tsx";
 
 describe("OKF Studio agent turns", () => {
+  it("shows native source provenance before sending it to the agent", async () => {
+    const promptSpy = vi.spyOn(ipc, "promptAgent");
+    const { user } = await openAgentThread("Source provenance harness");
+
+    await openAttachmentMenu(user);
+    await user.click(screen.getByRole("button", { name: "Add files" }));
+
+    expect(await screen.findByText("Source inventory")).toBeInTheDocument();
+    expect(screen.getByText("1 source · 1 warning")).toBeInTheDocument();
+    expect(screen.getByText("PDF v1 · file")).toBeInTheDocument();
+    expect(screen.getByText(/Embedded instructions stay inert/)).toBeInTheDocument();
+    expect(screen.getAllByText(/OCR was not used/)).toHaveLength(2);
+
+    await fillText(user, screen.getByLabelText("Message the agent"), "Use the attached evidence");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(promptSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "Use the attached evidence",
+      [],
+      [expect.objectContaining({
+        title: "research-report.pdf",
+        adapterReceipt: expect.objectContaining({
+          adapterId: "pdf",
+          discovery: "file",
+          trust: "untrusted",
+        }),
+      })],
+    ));
+  });
+
   it("wires one accepted turn into lifecycle output, title, and export", async () => {
     const promptSpy = vi.spyOn(ipc, "promptAgent");
     const exportSpy = vi.spyOn(ipc, "exportAgentTranscript");
@@ -33,8 +64,10 @@ describe("OKF Studio agent turns", () => {
       ["product/overview.md"],
       [],
     ));
-    const plan = await screen.findByRole("region", { name: "Agent plan" });
-    expect(await within(plan).findByText("2 of 2 complete")).toBeInTheDocument();
+    const plan = await screen.findByLabelText("Agent plan");
+    expect(plan).not.toHaveAttribute("open");
+    expect(within(plan).getByText("Plan completed")).toBeVisible();
+    expect(within(plan).getByText("2 of 2 complete")).toBeVisible();
     const tool = await screen.findByRole("article", { name: "Tool: Search the bundle" });
     expect(tool).toHaveClass("agent-tool--completed");
     expect(screen.getAllByRole("article", { name: "Tool: Search the bundle" })).toHaveLength(1);

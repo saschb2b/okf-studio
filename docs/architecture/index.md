@@ -12,4 +12,5 @@ How OKF Studio is built. Enough decisions and contracts to start implementing wi
 * [IPC & Security](ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit network and process actions, and reviewed writes.
 * [Performance & Scale](performance.md) - How the app stays fast, from the bounded scan to graph rendering.
 * [Testing & Dogfooding](testing.md) - Frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
+* [OKF Agent Benchmarking](agent-benchmarking.md) - Frozen OKF task fixtures, deterministic contract checks, and opt-in provider evaluation.
 * [Build & Release](build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.

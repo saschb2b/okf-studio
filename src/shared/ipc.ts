@@ -55,7 +55,36 @@ import {
   removeAgentThreadMetadata as removeThreadMetadata,
   upsertAgentThreadMetadata,
 } from "@/features/agent/threadMetadata.ts";
-import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
+import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import {
+  createOmissionPreference,
+  createTaskRecord,
+  memoryEnvelope,
+  parseWorkspaceMemory,
+  upsertWorkspaceMemory,
+} from "@/features/agent/workspaceMemory.ts";
+import type { WorkspaceMemoryItem } from "@/features/agent/workspaceMemory.ts";
+import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
+import type {
+  AgentArtifactValidation,
+  AgentCriticRequest,
+  AgentCriticValidation,
+} from "@/features/agent/artifact.ts";
+import type {
+  OkfRoutineDefinition,
+  OkfRoutineRun,
+  OkfRoutineWorkspace,
+  SaveOkfRoutineInput,
+} from "@/features/agent/routines.ts";
+import type {
+  BundleLibraryEntry,
+  FederatedBundleSelection,
+  FederatedBundleStatus,
+  FederatedConceptPage,
+  FederatedRelationshipPage,
+  FederatedSourcePage,
+} from "@/features/agent/federation.ts";
+import { OKF_TASKS } from "@/features/agent/taskContext.ts";
 import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
@@ -93,6 +122,451 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
   if (!isTauri()) return catalog as AgentCatalogDocument;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentCatalogDocument>("agent_catalog");
+}
+
+export type ExternalEntryAction = "open" | "inspect" | "validate" | "task";
+export type ExternalEntrySource = "deepLink" | "cli";
+
+export interface ExternalEntryPreview {
+  requestId: string;
+  source: ExternalEntrySource;
+  action: ExternalEntryAction;
+  bundleRoot: string;
+  conceptId?: string;
+  taskId?: OkfTaskId;
+  promptDraft?: string;
+  omittedFields: string[];
+}
+
+export interface OkfMcpLaunchGrant {
+  command: string;
+  args: string[];
+  expiresAt: number;
+}
+
+export async function pendingExternalEntries(): Promise<ExternalEntryPreview[]> {
+  if (!isTauri()) return [];
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ExternalEntryPreview[]>("pending_external_entries");
+}
+
+export async function acceptExternalEntry(
+  requestId: string,
+): Promise<ExternalEntryPreview | null> {
+  if (!isTauri()) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ExternalEntryPreview | null>("accept_external_entry", { requestId });
+}
+
+export async function dismissExternalEntry(requestId: string): Promise<boolean> {
+  if (!isTauri()) return true;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<boolean>("dismiss_external_entry", { requestId });
+}
+
+export async function onExternalEntryRequested(
+  handler: (entry: ExternalEntryPreview) => void,
+): Promise<() => void> {
+  if (!isTauri()) return () => undefined;
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<ExternalEntryPreview>("external-entry-requested", (event) => {
+    handler(event.payload);
+  });
+}
+
+export async function createOkfMcpGrant(bundleRoot: string): Promise<OkfMcpLaunchGrant> {
+  if (!isTauri()) {
+    return {
+      command: "okf-studio",
+      args: ["--okf-mcp-grant", "<one-shot-grant>", "<one-shot-token>"],
+      expiresAt: Date.now() + 60_000,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfMcpLaunchGrant>("create_okf_mcp_grant", { bundleRoot });
+}
+
+const MOCK_OKF_ROUTINES_KEY = "okf-studio:routines-v1";
+const MOCK_OKF_ROUTINE_RUNS_KEY = "okf-studio:routine-runs-v1";
+const OKF_ROUTINES_CHANGED_EVENT = "okf:routines-changed";
+
+function notifyOkfRoutinesChanged(): void {
+  window.dispatchEvent(new Event(OKF_ROUTINES_CHANGED_EVENT));
+}
+
+export function onOkfRoutinesChange(listener: () => void): () => void {
+  window.addEventListener(OKF_ROUTINES_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(OKF_ROUTINES_CHANGED_EVENT, listener);
+}
+
+function readMockRoutineValue<T>(key: string): T[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(parsed) ? parsed as T[] : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function okfRoutineWorkspace(bundleRoot: string): Promise<OkfRoutineWorkspace> {
+  if (!isTauri()) {
+    return {
+      schemaVersion: 1,
+      routines: readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY)
+        .filter((routine) => routine.scope.bundleRoot === bundleRoot),
+      runs: readMockRoutineValue<OkfRoutineRun>(MOCK_OKF_ROUTINE_RUNS_KEY)
+        .filter((run) => run.bundleRoot === bundleRoot),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfRoutineWorkspace>("okf_routine_workspace", { bundleRoot });
+}
+
+export async function saveOkfRoutine(input: SaveOkfRoutineInput): Promise<OkfRoutineDefinition> {
+  if (!isTauri()) {
+    const now = Date.now();
+    const routine: OkfRoutineDefinition = {
+      schemaVersion: 1,
+      id: input.id ?? `routine-${crypto.randomUUID()}`,
+      name: input.name,
+      enabled: input.enabled,
+      trigger: input.trigger,
+      scope: input.scope,
+      timeoutSeconds: input.timeoutSeconds,
+      nextRunAtMs: input.enabled && input.trigger.mode === "scheduled"
+        ? now + (input.trigger.intervalMinutes ?? 15) * 60_000
+        : null,
+      createdAtMs: now,
+      updatedAtMs: now,
+    };
+    const routines = readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY)
+      .filter((item) => item.id !== routine.id);
+    localStorage.setItem(MOCK_OKF_ROUTINES_KEY, JSON.stringify([...routines, routine]));
+    notifyOkfRoutinesChanged();
+    return routine;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const routine = await invoke<OkfRoutineDefinition>("save_okf_routine", { input });
+  notifyOkfRoutinesChanged();
+  return routine;
+}
+
+export async function removeOkfRoutine(routineId: string): Promise<boolean> {
+  if (!isTauri()) {
+    const routines = readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY);
+    localStorage.setItem(
+      MOCK_OKF_ROUTINES_KEY,
+      JSON.stringify(routines.filter((routine) => routine.id !== routineId)),
+    );
+    notifyOkfRoutinesChanged();
+    return routines.some((routine) => routine.id === routineId);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const removed = await invoke<boolean>("remove_okf_routine", { routineId });
+  if (removed) notifyOkfRoutinesChanged();
+  return removed;
+}
+
+export async function runOkfRoutine(routineId: string): Promise<OkfRoutineRun> {
+  if (!isTauri()) {
+    const routine = readMockRoutineValue<OkfRoutineDefinition>(MOCK_OKF_ROUTINES_KEY)
+      .find((item) => item.id === routineId);
+    if (!routine) throw new Error("The routine no longer exists.");
+    const now = Date.now();
+    const run: OkfRoutineRun = {
+      schemaVersion: 1,
+      id: `run-${crypto.randomUUID()}`,
+      routineId,
+      routineName: routine.name,
+      bundleRoot: routine.scope.bundleRoot,
+      scheduledTimeMs: null,
+      actualStartMs: now,
+      completedAtMs: now,
+      scopeFingerprint: "mock-offline-scope-v1",
+      outcome: "healthy",
+      recoveryState: "complete",
+      reason: "No health findings detected.",
+      nextAction: "None",
+    };
+    const runs = readMockRoutineValue<OkfRoutineRun>(MOCK_OKF_ROUTINE_RUNS_KEY);
+    localStorage.setItem(MOCK_OKF_ROUTINE_RUNS_KEY, JSON.stringify([run, ...runs].slice(0, 512)));
+    notifyOkfRoutinesChanged();
+    return run;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const run = await invoke<OkfRoutineRun>("run_okf_routine", { routineId });
+  notifyOkfRoutinesChanged();
+  return run;
+}
+
+export async function runDueOkfRoutines(): Promise<OkfRoutineRun[]> {
+  if (!isTauri()) return [];
+  const { invoke } = await import("@tauri-apps/api/core");
+  const runs = await invoke<OkfRoutineRun[]>("run_due_okf_routines");
+  if (runs.length > 0) notifyOkfRoutinesChanged();
+  return runs;
+}
+
+export type OkfCapabilityRiskClass = "read" | "analyze" | "fetch" | "stage";
+
+export interface OkfCapabilityResourceInfo {
+  id: string;
+  label: string;
+  path: string;
+  mediaType: "text/markdown";
+  sha256: string;
+}
+
+export interface OkfCapabilityInfo {
+  id: string;
+  version: string;
+  description: string;
+  riskClass: OkfCapabilityRiskClass;
+  requiredTools: string[];
+  artifactKinds: string[];
+  resources: OkfCapabilityResourceInfo[];
+}
+
+export interface OkfCapabilityCatalogInfo {
+  manifestSha256: string;
+  schemaVersion: number;
+  resourceSchemaVersion: number;
+  pack: OkfCapabilityPackInfo;
+  capabilities: OkfCapabilityInfo[];
+}
+
+export interface OkfCapabilityPackInfo {
+  id: string;
+  version: string;
+  name: string;
+  description: string;
+  publisher: string;
+  provenance: "built-in";
+  manifestSha256: string;
+  compatibility: {
+    minimumStudioVersion: string;
+    capabilitySchemaVersion: number;
+    artifactSchemaVersion: number;
+  };
+  conflicts: string[];
+  requiredStudioTools: string[];
+  templateIds: string[];
+  artifactSchemaIds: string[];
+  active: boolean;
+  rollbackLabel: string;
+}
+
+const MOCK_OKF_CAPABILITY_IDS = [
+  "okf-core",
+  "okf-inspect",
+  "okf-create",
+  "okf-enrich",
+  "okf-audit",
+  "okf-repair",
+  "okf-research",
+  "okf-change-impact",
+  "okf-migrate",
+  "okf-author",
+  "okf-revise",
+] as const;
+
+const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], OkfCapabilityRiskClass> = {
+  "okf-core": "stage",
+  "okf-inspect": "read",
+  "okf-create": "analyze",
+  "okf-enrich": "stage",
+  "okf-audit": "analyze",
+  "okf-repair": "stage",
+  "okf-research": "fetch",
+  "okf-change-impact": "analyze",
+  "okf-migrate": "analyze",
+  "okf-author": "stage",
+  "okf-revise": "stage",
+};
+
+const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string> = {
+  "okf-core": "0.4.0",
+  "okf-inspect": "0.2.0",
+  "okf-create": "0.2.0",
+  "okf-enrich": "0.2.0",
+  "okf-audit": "0.3.0",
+  "okf-repair": "0.3.0",
+  "okf-research": "0.2.0",
+  "okf-change-impact": "0.2.0",
+  "okf-migrate": "0.2.0",
+  "okf-author": "0.1.0",
+  "okf-revise": "0.1.0",
+};
+
+const MOCK_OKF_CAPABILITY_ARTIFACTS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
+  "okf-core": ["source-inventory", "bundle-plan", "health-report", "research-brief", "change-impact-map", "migration-plan", "writing-revision", "staged-revision"],
+  "okf-inspect": ["health-report"],
+  "okf-create": ["source-inventory", "bundle-plan"],
+  "okf-enrich": ["source-inventory", "staged-revision"],
+  "okf-audit": ["health-report"],
+  "okf-repair": ["staged-revision"],
+  "okf-research": ["source-inventory", "research-brief"],
+  "okf-change-impact": ["change-impact-map"],
+  "okf-migrate": ["migration-plan"],
+  "okf-author": ["writing-revision", "staged-revision"],
+  "okf-revise": ["writing-revision", "staged-revision"],
+};
+
+const MOCK_OKF_CAPABILITY_TOOLS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
+  "okf-core": ["okf_inventory", "okf_read", "okf_search", "okf_sources", "okf_traverse", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair"],
+  "okf-inspect": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+  "okf-create": ["okf_health_summary", "okf_inventory", "okf_read", "okf_traverse"],
+  "okf-enrich": ["okf_health_summary", "okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+  "okf-audit": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair", "okf_read"],
+  "okf-repair": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_repair", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+  "okf-research": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_sources"],
+  "okf-change-impact": ["okf_health_summary", "okf_search", "okf_read", "okf_traverse"],
+  "okf-migrate": ["okf_health_summary", "okf_inventory", "okf_search", "okf_traverse"],
+  "okf-author": ["okf_health_summary", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+  "okf-revise": ["okf_health_summary", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+};
+
+function mockCapability(id: (typeof MOCK_OKF_CAPABILITY_IDS)[number]): OkfCapabilityInfo {
+  const name = id.replace("okf-", "");
+  return {
+    id,
+    version: MOCK_OKF_CAPABILITY_VERSIONS[id],
+    description: id === "okf-core"
+      ? "Shared OKF specification, commands, templates, and invariant guidance."
+      : `Built-in ${name} method for bounded OKF work.`,
+    riskClass: MOCK_OKF_CAPABILITY_RISKS[id],
+    requiredTools: MOCK_OKF_CAPABILITY_TOOLS[id],
+    artifactKinds: MOCK_OKF_CAPABILITY_ARTIFACTS[id],
+    resources: [{
+      id: "instructions",
+      label: `${name} instructions`,
+      path: id === "okf-core" ? "SKILL.md" : `capabilities/${name}.md`,
+      mediaType: "text/markdown",
+      sha256: "browser-preview",
+    }],
+  };
+}
+
+export async function okfCapabilityCatalog(): Promise<OkfCapabilityCatalogInfo> {
+  if (!isTauri()) {
+    return {
+      manifestSha256: "browser-preview",
+      schemaVersion: 1,
+      resourceSchemaVersion: 1,
+      pack: mockCapabilityPackInfo(true),
+      capabilities: MOCK_OKF_CAPABILITY_IDS.map(mockCapability),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfCapabilityCatalogInfo>("okf_capability_catalog");
+}
+
+export async function setOkfCapabilityPackActive(active: boolean): Promise<OkfCapabilityCatalogInfo> {
+  if (!isTauri()) {
+    const catalog: OkfCapabilityCatalogInfo = {
+      manifestSha256: "browser-preview",
+      schemaVersion: 1,
+      resourceSchemaVersion: 1,
+      pack: mockCapabilityPackInfo(active),
+      capabilities: active
+        ? MOCK_OKF_CAPABILITY_IDS.map(mockCapability)
+        : [mockCapability("okf-core")],
+    };
+    window.dispatchEvent(new CustomEvent("okf-capability-pack-changed", { detail: catalog }));
+    return catalog;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfCapabilityCatalogInfo>("set_okf_capability_pack_active", { active });
+}
+
+export async function onOkfCapabilityPackChanged(
+  handler: (catalog: OkfCapabilityCatalogInfo) => void,
+): Promise<() => void> {
+  if (!isTauri()) {
+    const listener = (event: Event) => handler((event as CustomEvent<OkfCapabilityCatalogInfo>).detail);
+    window.addEventListener("okf-capability-pack-changed", listener);
+    return () => window.removeEventListener("okf-capability-pack-changed", listener);
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<OkfCapabilityCatalogInfo>("okf-capability-pack-changed", (event) => {
+    handler(event.payload);
+  });
+}
+
+function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
+  return {
+    id: "okf-foundation",
+    version: "1.2.0",
+    name: "OKF Foundation",
+    description: "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
+    publisher: "OKF Studio",
+    provenance: "built-in",
+    manifestSha256: "browser-preview",
+    compatibility: {
+      minimumStudioVersion: "0.3.0",
+      capabilitySchemaVersion: 1,
+      artifactSchemaVersion: 1,
+    },
+    conflicts: [],
+    requiredStudioTools: [
+      "okf_capability_catalog",
+      "okf_capability_resource",
+      ...new Set(MOCK_OKF_CAPABILITY_IDS.flatMap((id) => MOCK_OKF_CAPABILITY_TOOLS[id])),
+    ],
+    templateIds: ["okf-markdown-templates"],
+    artifactSchemaIds: ["okf-artifact-v1", "writing-revision-v1"],
+    active,
+    rollbackLabel: "Legacy 0.4.0",
+  };
+}
+
+export async function validateAgentArtifact(
+  root: string,
+  markdown: string,
+): Promise<AgentArtifactValidation> {
+  if (!isTauri()) {
+    return markdown.includes("```okf-artifact")
+      ? {
+          status: "invalid",
+          message: "The desktop host is required to validate structured artifacts.",
+        }
+      : { status: "none" };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentArtifactValidation>("validate_agent_artifact", { root, markdown });
+}
+
+export async function prepareAgentArtifactCritic(
+  root: string,
+  artifactMarkdown: string,
+): Promise<AgentCriticRequest> {
+  if (!isTauri()) {
+    throw new Error("The desktop host is required to prepare an isolated critic pass.");
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCriticRequest>("prepare_agent_artifact_critic", {
+    root,
+    artifactMarkdown,
+  });
+}
+
+export async function validateAgentArtifactCritic(
+  root: string,
+  artifactMarkdown: string,
+  criticMarkdown: string,
+): Promise<AgentCriticValidation> {
+  if (!isTauri()) {
+    return {
+      status: "invalid",
+      message: "The desktop host is required to validate critic output.",
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCriticValidation>("validate_agent_artifact_critic", {
+    root,
+    artifactMarkdown,
+    criticMarkdown,
+  });
 }
 
 function browserSecurityPlatform(): AgentSecurityHostStatus["platform"] {
@@ -982,6 +1456,10 @@ export async function promptAgent(
   text: string,
   contextPaths: readonly string[] = [],
   sources: readonly AgentSourceInput[] = [],
+  taskContext?: {
+    taskId: OkfTaskId;
+    contextManifest: AcceptedOkfContextManifest;
+  },
 ): Promise<AgentTurnInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -991,6 +1469,7 @@ export async function promptAgent(
       text,
       contextPaths,
       sources,
+      taskContext,
     });
   }
   const connection = activeAgentConnectionsById.get(connectionId);
@@ -1001,7 +1480,34 @@ export async function promptAgent(
     await browserMockDelay(80);
     throw new Error("The browser mock rejected this prompt before starting a turn.");
   }
-  const info = { connectionId, sessionId, turnId: `turn-${crypto.randomUUID()}` };
+  const info: AgentTurnInfo = {
+    connectionId,
+    sessionId,
+    turnId: `turn-${crypto.randomUUID()}`,
+    capabilityContext: [{
+      capabilityId: "okf-core",
+      version: "0.1.0",
+      manifestSha256: "browser-mock",
+      support: "full",
+      delivery: connection.protocolVersion === "studio-native/1"
+        ? "catalog-only"
+        : "embedded-resources",
+      resourceIds: connection.protocolVersion === "studio-native/1"
+        ? []
+        : ["instructions", "specification", "commands", "templates"],
+      observedResourceIds: [],
+    }, ...(taskContext ? OKF_TASKS[taskContext.taskId].capabilityIds.map((capabilityId) => ({
+      capabilityId,
+      version: "0.1.0",
+      manifestSha256: "browser-mock",
+      support: "full" as const,
+      delivery: connection.protocolVersion === "studio-native/1"
+        ? "catalog-only" as const
+        : "embedded-resources" as const,
+      resourceIds: connection.protocolVersion === "studio-native/1" ? [] : ["instructions"],
+      observedResourceIds: [],
+    })) : [])],
+  };
   const mockSession = mockAgentSessions.get(sessionId);
   if (mockSession) {
     mockSession.title = text.replace(/\s+/gu, " ").trim().slice(0, 80) || "Untitled session";
@@ -1010,8 +1516,8 @@ export async function promptAgent(
   }
   mockCancelledTurns.delete(info.turnId);
   void (connection.protocolVersion === "studio-native/1"
-    ? emitMockLocalTurn(info, text, sources)
-    : emitMockTurn(info, text));
+    ? emitMockLocalTurn(info, text, sources, taskContext)
+    : emitMockTurn(info, text, taskContext));
   return info;
 }
 
@@ -1038,6 +1544,69 @@ export interface AgentSourceInput {
   sourceDigest?: string;
   warning?: string;
   imageData?: string;
+  adapterReceipt?: AgentSourceAdapterReceipt;
+}
+
+export async function promptAgentCritic(
+  connectionId: string,
+  sessionId: string,
+  text: string,
+): Promise<AgentTurnInfo> {
+  if (!isTauri()) {
+    return promptAgent(connectionId, sessionId, text);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentTurnInfo>("prompt_agent_critic", {
+    connectionId,
+    sessionId,
+    text,
+  });
+}
+
+export type AgentSourceDiscovery = "file" | "folder" | "url" | "image";
+
+export interface AgentSourceDiagnostic {
+  level: "warning";
+  code: string;
+  message: string;
+}
+
+export interface AgentSourceAdapterReceipt {
+  schemaVersion: 1;
+  adapterId: string;
+  adapterVersion: number;
+  discovery: AgentSourceDiscovery;
+  origin: string;
+  mediaType: string;
+  sourceFingerprint: string;
+  evidenceFingerprint: string;
+  refreshFingerprint: string;
+  trust: "untrusted";
+  diagnostics: readonly AgentSourceDiagnostic[];
+}
+
+function browserSourceReceipt(
+  adapterId: string,
+  discovery: AgentSourceDiscovery,
+  origin: string,
+  mediaType: string,
+  sourceDigit: string,
+  evidenceDigit: string,
+  diagnostics: readonly AgentSourceDiagnostic[] = [],
+): AgentSourceAdapterReceipt {
+  return {
+    schemaVersion: 1,
+    adapterId,
+    adapterVersion: 1,
+    discovery,
+    origin,
+    mediaType,
+    sourceFingerprint: `sha256-${sourceDigit.repeat(64)}`,
+    evidenceFingerprint: `sha256-${evidenceDigit.repeat(64)}`,
+    refreshFingerprint: `source-refresh-v1-${sourceDigit.repeat(64)}`,
+    trust: "untrusted",
+    diagnostics,
+  };
 }
 
 export async function pickAgentTextSources(limit: number): Promise<AgentSourceInput[]> {
@@ -1053,6 +1622,19 @@ export async function pickAgentTextSources(limit: number): Promise<AgentSourceIn
     mediaType: "application/pdf",
     sourceDigest: "a".repeat(64),
     warning: "1 of 3 pages had no extractable text. OCR was not used.",
+    adapterReceipt: browserSourceReceipt(
+      "pdf",
+      "file",
+      "research-report.pdf",
+      "application/pdf",
+      "a",
+      "e",
+      [{
+        level: "warning",
+        code: "pdf-partial-extraction",
+        message: "1 of 3 pages had no extractable text. OCR was not used.",
+      }],
+    ),
   }].slice(0, Math.max(0, limit));
 }
 
@@ -1069,6 +1651,9 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
       origin: "data/findings.csv",
       mediaType: "text/csv",
       sourceDigest: "b".repeat(64),
+      adapterReceipt: browserSourceReceipt(
+        "csv", "folder", "data/findings.csv", "text/csv", "b", "f",
+      ),
     },
     {
       title: "config/settings.json",
@@ -1076,6 +1661,9 @@ export async function pickAgentSourceFolder(limit: number): Promise<AgentSourceI
       origin: "config/settings.json",
       mediaType: "application/json",
       sourceDigest: "c".repeat(64),
+      adapterReceipt: browserSourceReceipt(
+        "json", "folder", "config/settings.json", "application/json", "c", "1",
+      ),
     },
   ].slice(0, Math.max(0, limit));
 }
@@ -1093,6 +1681,9 @@ export async function pickAgentImageSources(limit: number): Promise<AgentSourceI
     mediaType: "image/png",
     sourceDigest: "3c7474b4239ada3342d87f25ec8849eb8473ee35c5471452482686098b49e81b",
     imageData: "iVBORw0KGgppbWFnZQ==",
+    adapterReceipt: browserSourceReceipt(
+      "image", "image", "architecture.png", "image/png", "3", "3",
+    ),
   }].slice(0, Math.max(0, limit));
 }
 
@@ -1108,6 +1699,9 @@ export async function fetchAgentSourceUrl(url: string): Promise<AgentSourceInput
     origin: "https://example.com/research.html",
     mediaType: "text/html",
     sourceDigest: "d".repeat(64),
+    adapterReceipt: browserSourceReceipt(
+      "html", "url", "https://example.com/research.html", "text/html", "d", "2",
+    ),
   };
 }
 
@@ -1774,18 +2368,38 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
   return `Generated ${generated.length} proposed files in Studio staging.`;
 }
 
-function mockAgentResponse(text: string): string {
+function mockAgentResponse(text: string, taskId?: OkfTaskId): string {
+  if (text.startsWith("OKF critic pass for ")) {
+    const artifactId = /"artifactId"\s*:\s*"([^"]+)"/u.exec(text)?.[1] ?? "mock-artifact";
+    const artifactRevision = Number(/"revision"\s*:\s*(\d+)/u.exec(text)?.[1] ?? "1");
+    const bundleFingerprint = /"bundleFingerprint"\s*:\s*"([^"]+)"/u.exec(text)?.[1] ??
+      "okf-health-revision-browser-mock";
+    return "The bounded critic pass found no additional concern.\n\n```okf-critic\n" +
+      JSON.stringify({
+        schemaVersion: 1,
+        artifactId,
+        artifactRevision,
+        bundleFingerprint,
+        checks: [
+          { category: "coverage", status: "checked", detail: "Declared scope was reviewed." },
+          { category: "contradictions", status: "checked", detail: "No contradiction was found." },
+          { category: "unsupported-claims", status: "checked", detail: "Cited claims were reviewed." },
+          { category: "missed-relationships", status: "checked", detail: "Declared relationships were reviewed." },
+        ],
+        findings: [],
+        limitations: [],
+      }, null, 2) + "\n```";
+  }
   if (text === "/compact") {
     return "## Context summary\n\n- The thread is reviewing the active OKF bundle.\n" +
       "- Tool locations may open only matching bundle concepts.\n" +
       "- Proposed writes still require staged review and Apply.";
   }
-  if (text.startsWith("Create a new OKF bundle from the sources I attach") ||
-    text.startsWith("Review this OKF bundle and the sources I attach")) {
+  if (taskId === "okf-create" || taskId === "okf-enrich") {
     if (text.includes("Malformed proposal")) {
       return "I could not serialize the structure.\n\n```okf-proposal\n{not json}\n```";
     }
-    const enhancement = text.startsWith("Review this OKF bundle and the sources I attach");
+    const enhancement = taskId === "okf-enrich";
     const proposal = enhancement ? {
       concepts: [
         {
@@ -1843,7 +2457,11 @@ function mockAgentResponse(text: string): string {
   return `Browser ACP received: ${text}`;
 }
 
-async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
+async function emitMockTurn(
+  info: AgentTurnInfo,
+  text: string,
+  taskContext?: { taskId: OkfTaskId },
+): Promise<void> {
   const generatesBundle = text.startsWith(
     "Generate the newest reviewed `okf-proposal` into Studio staging now.",
   );
@@ -2009,7 +2627,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     },
   });
   const responseText = mockStageWrite(info, text) ?? mockBundleGeneration(info, text) ??
-    mockAgentResponse(text);
+    mockAgentResponse(text, taskContext?.taskId);
   emitAgentTurn({
     ...info,
     update: {
@@ -2085,6 +2703,7 @@ async function emitMockLocalTurn(
   info: AgentTurnInfo,
   text: string,
   sources: readonly AgentSourceInput[],
+  taskContext?: { taskId: OkfTaskId },
 ): Promise<void> {
   await browserMockDelay(100);
   if (mockCancelledTurns.has(info.turnId)) {
@@ -2094,10 +2713,7 @@ async function emitMockLocalTurn(
   }
   const loadsSkill = /\b(?:load|use)\b.*\bOKF\b.*\b(?:guidance|instructions?)\b/iu.test(text);
   const searchesBundle = /\b(?:search|inspect)\b.*\b(?:bundle|concepts?)\b/iu.test(text);
-  const guidedWorkflow = text.startsWith("Create a new OKF bundle from the sources I attach") ||
-    text.startsWith("Review this OKF bundle and the sources I attach") ||
-    text.startsWith("Research this question across the active bundle") ||
-    text.startsWith("Assess this dataset documentation and propose a change plan");
+  const guidedWorkflow = taskContext !== undefined;
   const generatesBundle = text.startsWith(
     "Generate the newest reviewed `okf-proposal` into Studio staging now.",
   );
@@ -2191,7 +2807,7 @@ async function emitMockLocalTurn(
     }
   }
   const responseText = generation.response ?? (guidedWorkflow
-    ? mockAgentResponse(text)
+    ? mockAgentResponse(text, taskContext.taskId)
     : sources.length > 0
     ? `Inspected ${sources.length} attached source${sources.length === 1 ? "" : "s"}, including ${sources[0]?.title ?? "the supplied evidence"}.`
     : loadsSkill && searchesBundle
@@ -2544,6 +3160,246 @@ export async function readBundle(root: string): Promise<Bundle> {
   return invoke<Bundle>("read_bundle", { root });
 }
 
+const MOCK_LIBRARY_IDS = {
+  active: "00000000-0000-4000-8000-000000000001",
+  primer: "00000000-0000-4000-8000-000000000002",
+  handbook: "00000000-0000-4000-8000-000000000003",
+} as const;
+
+const MOCK_LIBRARY_FINGERPRINTS: Record<string, string> = {
+  [MOCK_LIBRARY_IDS.active]: "okf-health-revision-0000000000000001",
+  [MOCK_LIBRARY_IDS.primer]: "okf-health-revision-0000000000000002",
+  [MOCK_LIBRARY_IDS.handbook]: "okf-health-revision-0000000000000003",
+};
+
+function mockBundleLibrary(): BundleLibraryEntry[] {
+  const activeTypes = [...new Set(MOCK_BUNDLE.concepts.map((concept) => concept.type))].sort();
+  const activeTags = [...new Set(MOCK_BUNDLE.concepts.flatMap((concept) => concept.tags))].sort();
+  return [
+    {
+      bundleId: MOCK_LIBRARY_IDS.active,
+      title: MOCK_BUNDLE.name,
+      kind: "localFolder",
+      conceptCount: MOCK_BUNDLE.concepts.length,
+      types: activeTypes,
+      tags: activeTags,
+      revisionFingerprint: MOCK_LIBRARY_FINGERPRINTS[MOCK_LIBRARY_IDS.active],
+      grantState: "available",
+      lastSeenEpochMs: 1_750_000_000_003,
+      active: true,
+    },
+    {
+      bundleId: MOCK_LIBRARY_IDS.primer,
+      title: "Primer design system",
+      kind: "localFolder",
+      conceptCount: 60,
+      types: ["Component", "Guideline", "Pattern", "Token"],
+      tags: ["accessibility", "design-system"],
+      revisionFingerprint: MOCK_LIBRARY_FINGERPRINTS[MOCK_LIBRARY_IDS.primer],
+      grantState: "available",
+      lastSeenEpochMs: 1_750_000_000_002,
+      active: false,
+    },
+    {
+      bundleId: MOCK_LIBRARY_IDS.handbook,
+      title: "Team Handbook",
+      kind: "localFolder",
+      conceptCount: 202,
+      types: ["Guide", "Policy", "Runbook", "Template"],
+      tags: ["operations", "people"],
+      revisionFingerprint: MOCK_LIBRARY_FINGERPRINTS[MOCK_LIBRARY_IDS.handbook],
+      grantState: "available",
+      lastSeenEpochMs: 1_750_000_000_001,
+      active: false,
+    },
+  ];
+}
+
+export async function bundleLibrary(activeRoot?: string): Promise<BundleLibraryEntry[]> {
+  if (!isTauri()) return mockBundleLibrary();
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<BundleLibraryEntry[]>("bundle_library", { activeRoot });
+}
+
+export async function previewFederatedBundles(
+  bundleIds: string[],
+): Promise<FederatedBundleStatus[]> {
+  if (!isTauri()) {
+    const byId = new Map(mockBundleLibrary().map((entry) => [entry.bundleId, entry]));
+    return bundleIds.map((bundleId) => {
+      const entry = byId.get(bundleId);
+      return entry
+        ? {
+            bundleId,
+            title: entry.title,
+            grantState: entry.grantState,
+            revisionFingerprint: entry.revisionFingerprint,
+            expectedFingerprint: null,
+          }
+        : {
+            bundleId,
+            title: "Unknown bundle",
+            grantState: "revoked",
+            revisionFingerprint: null,
+            expectedFingerprint: null,
+          };
+    });
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedBundleStatus[]>("preview_federated_bundles", { bundleIds });
+}
+
+export async function federatedInventory(
+  selections: FederatedBundleSelection[],
+  filters: { prefix?: string; conceptType?: string; tag?: string; limit?: number } = {},
+): Promise<FederatedConceptPage> {
+  if (!isTauri()) return mockFederatedConcepts(selections, "", filters.limit ?? 50);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedConceptPage>("federated_inventory", {
+    selections,
+    prefix: filters.prefix,
+    conceptType: filters.conceptType,
+    tag: filters.tag,
+    limit: filters.limit ?? 50,
+  });
+}
+
+export async function federatedSearch(
+  selections: FederatedBundleSelection[],
+  query: string,
+  limit = 50,
+): Promise<FederatedConceptPage> {
+  if (!isTauri()) return mockFederatedConcepts(selections, query, limit);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedConceptPage>("federated_search", { selections, query, limit });
+}
+
+export async function federatedSources(
+  selections: FederatedBundleSelection[],
+  query?: string,
+  limit = 50,
+): Promise<FederatedSourcePage> {
+  if (!isTauri()) {
+    const concepts = mockFederatedConcepts(selections, "", 100);
+    const results = concepts.results
+      .flatMap((concept) => {
+        const sourceConcept = MOCK_BUNDLE.concepts.find((item) => item.id === concept.conceptId);
+        return [sourceConcept?.resource, ...(sourceConcept?.externalLinks ?? [])]
+          .filter((uri): uri is string => Boolean(uri))
+          .filter((uri) => !query || uri.toLowerCase().includes(query.toLowerCase()))
+          .map((uri) => ({
+            bundleId: concept.bundleId,
+            bundleTitle: concept.bundleTitle,
+            conceptId: concept.conceptId,
+            revisionFingerprint: concept.revisionFingerprint,
+            grantState: concept.grantState,
+            uri,
+            kinds: [sourceConcept?.resource === uri ? "resource" : "citation"],
+          }));
+      })
+      .slice(0, limit);
+    return { bundles: concepts.bundles, results, truncated: results.length === limit };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedSourcePage>("federated_sources", { selections, query, limit });
+}
+
+export async function federatedRelationshipCandidates(
+  selections: FederatedBundleSelection[],
+  limit = 50,
+): Promise<FederatedRelationshipPage> {
+  if (!isTauri()) {
+    const matches = conceptsForId(mockFederatedConcepts(selections, "", 100), "overview");
+    return {
+      bundles: matches.page.bundles,
+      results: matches.results.length >= 2
+        ? [{
+            kind: "possible-duplicate",
+            basis: "matching-title",
+            evidence: matches.results[0].title.toLowerCase(),
+            requiresReview: true,
+            left: matches.results[0],
+            right: matches.results[1],
+          }]
+        : [],
+      truncated: false,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FederatedRelationshipPage>("federated_relationship_candidates", {
+    selections,
+    limit,
+  });
+}
+
+function mockFederatedConcepts(
+  selections: FederatedBundleSelection[],
+  query: string,
+  limit: number,
+): FederatedConceptPage {
+  const library = new Map(mockBundleLibrary().map((entry) => [entry.bundleId, entry]));
+  const bundles: FederatedBundleStatus[] = [];
+  const resultsByBundle: FederatedConceptPage["results"][] = [];
+  const needle = query.trim().toLowerCase();
+  for (const selection of selections) {
+    const entry = library.get(selection.bundleId);
+    const fingerprint = entry?.revisionFingerprint;
+    const changed = entry && fingerprint !== selection.revisionFingerprint;
+    bundles.push({
+      bundleId: selection.bundleId,
+      title: entry?.title ?? "Unknown bundle",
+      grantState: !entry ? "revoked" : changed ? "changed" : entry.grantState,
+      revisionFingerprint: fingerprint ?? null,
+      expectedFingerprint: selection.revisionFingerprint,
+    });
+    if (!entry || changed || entry.grantState !== "available" || !fingerprint) continue;
+    const bundleResults: FederatedConceptPage["results"] = [];
+    for (const concept of MOCK_BUNDLE.concepts) {
+      const haystack = [concept.id, concept.title, concept.type, concept.description, concept.body]
+        .join(" ")
+        .toLowerCase();
+      if (needle && !haystack.includes(needle)) continue;
+      bundleResults.push({
+        bundleId: entry.bundleId,
+        bundleTitle: entry.title,
+        conceptId: concept.id,
+        revisionFingerprint: fingerprint,
+        grantState: "available",
+        title: concept.title,
+        type: concept.type,
+        description: concept.description,
+        tags: concept.tags,
+        snippet: needle ? concept.description : "",
+      });
+    }
+    resultsByBundle.push(bundleResults);
+  }
+  const results: FederatedConceptPage["results"] = [];
+  for (let index = 0; results.length <= limit; index += 1) {
+    let found = false;
+    for (const bundleResults of resultsByBundle) {
+      const result = bundleResults.at(index);
+      if (!result) continue;
+      results.push(result);
+      found = true;
+      if (results.length > limit) break;
+    }
+    if (!found || results.length > limit) break;
+  }
+  return {
+    bundles,
+    results: results.slice(0, limit),
+    truncated: results.length > limit,
+  };
+}
+
+function conceptsForId(page: FederatedConceptPage, conceptId: string) {
+  return {
+    page,
+    results: page.results.filter((result) => result.conceptId === conceptId),
+  };
+}
+
 /**
  * Read one companion asset's text (an ODSF `*.example.html` preview or a
  * `styles/*.css` it links) for the design-system renderer. `rel` is a
@@ -2598,6 +3454,10 @@ const STORE_FILE = "okf-viewer.json";
 const RECENTS_KEY = "recentBundles";
 const AGENT_THREADS_KEY = "agentThreads";
 const MOCK_AGENT_THREADS_KEY = "okf-studio:agent-threads";
+const WORKSPACE_MEMORY_KEY = "workspaceMemoryV1";
+const WORKSPACE_MEMORY_QUARANTINE_KEY = "workspaceMemoryQuarantineV1";
+const MOCK_WORKSPACE_MEMORY_KEY = "okf-studio:workspace-memory-v1";
+export const WORKSPACE_MEMORY_CHANGED_EVENT = "okf:workspace-memory-changed";
 const RECENTS_CAP = 12;
 
 async function store() {
@@ -2669,9 +3529,10 @@ export async function loadAgentThreadMetadata(
 }
 
 export async function saveAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "workflow"> & {
+  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "taskId" | "contextManifest"> & {
     archived?: boolean;
-    workflow?: AgentThreadWorkflow;
+    taskId?: OkfTaskId | null;
+    contextManifest?: AcceptedOkfContextManifest | null;
   },
 ): Promise<AgentThreadMetadata> {
   const metadata = createAgentThreadMetadata(input);
@@ -2687,6 +3548,86 @@ export async function removeAgentThreadMetadata(
   await writeAgentThreads(
     removeThreadMetadata(await readAgentThreads(), bundleRoot, profileId, sessionId),
   );
+}
+
+async function writeWorkspaceMemory(items: readonly WorkspaceMemoryItem[]): Promise<void> {
+  const value = memoryEnvelope(items);
+  if (!isTauri()) {
+    localStorage.setItem(MOCK_WORKSPACE_MEMORY_KEY, JSON.stringify(value));
+    window.dispatchEvent(new Event(WORKSPACE_MEMORY_CHANGED_EVENT));
+    return;
+  }
+  const st = await store();
+  await st.set(WORKSPACE_MEMORY_KEY, value);
+  await st.save();
+  window.dispatchEvent(new Event(WORKSPACE_MEMORY_CHANGED_EVENT));
+}
+
+export function onWorkspaceMemoryChange(listener: () => void): () => void {
+  window.addEventListener(WORKSPACE_MEMORY_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(WORKSPACE_MEMORY_CHANGED_EVENT, listener);
+}
+
+async function readWorkspaceMemory(): Promise<WorkspaceMemoryItem[]> {
+  let raw: unknown = null;
+  if (!isTauri()) {
+    try {
+      raw = JSON.parse(localStorage.getItem(MOCK_WORKSPACE_MEMORY_KEY) ?? "null");
+    } catch {
+      raw = { schemaVersion: 0 };
+    }
+  } else {
+    raw = await (await store()).get<unknown>(WORKSPACE_MEMORY_KEY);
+  }
+  const parsed = parseWorkspaceMemory(raw);
+  if (parsed.rejectedCount > 0) {
+    const quarantine = {
+      schemaVersion: 1,
+      detectedAt: Date.now(),
+      rejectedCount: parsed.rejectedCount,
+    };
+    if (!isTauri()) {
+      localStorage.setItem(WORKSPACE_MEMORY_QUARANTINE_KEY, JSON.stringify(quarantine));
+      localStorage.setItem(MOCK_WORKSPACE_MEMORY_KEY, JSON.stringify(memoryEnvelope(parsed.items)));
+    } else {
+      const st = await store();
+      await st.set(WORKSPACE_MEMORY_QUARANTINE_KEY, quarantine);
+      await st.set(WORKSPACE_MEMORY_KEY, memoryEnvelope(parsed.items));
+      await st.save();
+    }
+  }
+  return parsed.items;
+}
+
+export async function loadWorkspaceMemory(bundleRoot: string): Promise<WorkspaceMemoryItem[]> {
+  return (await readWorkspaceMemory()).filter((item) => item.bundleRoot === bundleRoot);
+}
+
+export async function saveWorkspaceOmissionPreference(input: {
+  bundleRoot: string;
+  taskId: OkfTaskId;
+  conceptId: string;
+  conceptTitle: string;
+  validationFingerprint: string;
+  origin?: "user-action" | "agent-suggestion-accepted";
+}): Promise<WorkspaceMemoryItem> {
+  const item = createOmissionPreference(input);
+  await writeWorkspaceMemory(upsertWorkspaceMemory(await readWorkspaceMemory(), item));
+  return item;
+}
+
+export async function recordWorkspaceTaskObservation(input: {
+  bundleRoot: string;
+  taskId: OkfTaskId;
+  validationFingerprint: string;
+}): Promise<void> {
+  const item = createTaskRecord(input);
+  await writeWorkspaceMemory(upsertWorkspaceMemory(await readWorkspaceMemory(), item));
+}
+
+export async function deleteWorkspaceMemoryItem(id: string): Promise<void> {
+  const current = await readWorkspaceMemory();
+  await writeWorkspaceMemory(current.filter((item) => item.id !== id));
 }
 
 export async function recentBundles(): Promise<RecentBundle[]> {

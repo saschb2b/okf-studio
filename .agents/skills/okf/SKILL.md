@@ -1,8 +1,6 @@
 ---
 name: okf
-description: Author, validate, and maintain knowledge for AI agents as conformant Open Knowledge Format (OKF) bundles, Google's vendor-neutral spec (v0.1) of markdown files with YAML frontmatter for portable agent context. Provides commands init, add, enrich, link, index, log, validate, export, and consume over a bundle. Use when the user types /okf or asks to start an OKF bundle, document a BigQuery table, dataset, view, metric, runbook, playbook, API, or join path so an agent can read it, make internal knowledge agent-readable or portable, export a data catalog, metadata, or webpages and external URLs to OKF, or follow the OKF spec. Also apply implicitly whenever you write, transform, or export knowledge an agent will later read (table and metric docs, runbooks, deprecation notices, schemas, docstrings), so it ships as a conformant bundle with a type field per concept instead of ad-hoc prose, and whenever you edit an existing OKF bundle, keeping it conformant by refreshing timestamps, log.md, index.md, and cross-links.
-tags: [ai-agents, knowledge, documentation]
-date: 2026-06-18
+description: Create, inspect, author, revise, enrich, audit, repair, research, migrate, validate, and maintain knowledge for AI agents as conformant Open Knowledge Format (OKF) bundles. Use for /okf commands; work on an existing OKF bundle; documentation of tables, datasets, views, metrics, runbooks, playbooks, APIs, schemas, or join paths; exports from catalogs, metadata, websites, URLs, or source code; and any knowledge an agent will read later. Apply implicitly when editing an OKF bundle so conformance, timestamps, log.md, indexes, citations, and cross-links remain current.
 ---
 
 # Open Knowledge Format (OKF)
@@ -10,6 +8,25 @@ date: 2026-06-18
 OKF is Google's open, vendor-neutral spec (v0.1) for the context an AI agent needs, represented as a *bundle*. A bundle is a directory of markdown files, each a *concept* (a table, dataset, metric, runbook, playbook, API, join path), kept in version control next to the code it describes. Just markdown, just files, just YAML frontmatter. The format is the contract, so any producer can write a bundle and any consumer (an agent, a viewer, a search index) can read it with no SDK and no lock-in.
 
 Use this skill two ways. Run a **command** on demand, or apply it **implicitly** whenever you shape knowledge an agent will read. The deep normative spec lives in [spec.md](./spec.md); per-command steps in [commands.md](./commands.md); copy-paste starting points in [templates.md](./templates.md).
+
+## Choose the OKF method
+
+For every OKF request, select the narrowest method that fits the user's intended outcome. In OKF Studio generic chat, call `okf_capability_catalog` to inspect the active versioned catalog and `okf_capability_resource` to load the selected method. Outside Studio, read the matching capability file directly. State the selected capability in the first progress update. Do not claim to have used a method until its resource was loaded.
+
+| User intent | Method to load |
+| --- | --- |
+| Answer a bounded bundle question or trace known links | [`okf-inspect`](./capabilities/inspect.md) |
+| Plan a new bundle whose destination or concept map is unresolved | [`okf-create`](./capabilities/create.md) |
+| Add facts, citations, or relationships to existing knowledge | [`okf-enrich`](./capabilities/enrich.md) |
+| Review conformance or knowledge health without changing files | [`okf-audit`](./capabilities/audit.md) |
+| Fix a reproducible validation or health defect | [`okf-repair`](./capabilities/repair.md) |
+| Reconcile bundle claims with bounded external evidence | [`okf-research`](./capabilities/research.md) |
+| Find direct and downstream effects before a change | [`okf-change-impact`](./capabilities/change-impact.md) |
+| Plan a versioned schema, convention, layout, or identity change | [`okf-migrate`](./capabilities/migrate.md) |
+| Turn accepted evidence and known destinations into new concepts | [`okf-author`](./capabilities/author.md), then [`writing`](./writing.md) |
+| Improve existing prose without changing meaning | [`okf-revise`](./capabilities/revise.md), then [`writing`](./writing.md) |
+
+All methods stay discoverable, but their detailed instructions are loaded on demand. Loading every method at once wastes context and combines incompatible boundaries. For example, inspect is read-only, revise forbids knowledge changes, enrich permits sourced additions, and repair requires a reproducible defect. If one request spans several phases, run the methods in order and preserve each method's stop conditions and artifact contract.
 
 ## The one rule
 
@@ -84,6 +101,8 @@ It errors (exit 1) on the hard requirement (a concept missing frontmatter or a n
 - [spec.md](./spec.md). The full OKF v0.1 normative reference (conformance, fields, linking, versioning, non-goals, design principles).
 - [commands.md](./commands.md). Each command end to end, with the files it touches and the validate checklist.
 - [templates.md](./templates.md). Concept, root `index.md`, sub `index.md`, and `log.md` templates, plus worked BigQuery table, metric, runbook, and external-reference examples.
+- [writing.md](./writing.md). The shared reader-job, prose, structure, revision, and fact-preservation contract for authoring and revision.
+- [capabilities/](./capabilities/). The narrow inspect, create, enrich, audit, repair, research, change-impact, migrate, author, and revise methods selected by the router above.
 - [okf-validate.mjs](./okf-validate.mjs). The zero-dependency conformance checker.
 
 ## Source

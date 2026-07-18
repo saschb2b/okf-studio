@@ -7,7 +7,7 @@
 // driven by the `open` prop from app state; App mounts this component
 // unconditionally. Escape and the × button close it via onOpenChange.
 
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp } from "@/shared/store.tsx";
@@ -20,10 +20,12 @@ function Group({
   level,
   issues,
   onJump,
+  onTask,
 }: {
   level: IssueLevel;
   issues: Issue[];
   onJump: (conceptId: string) => void;
+  onTask: (issue: Issue, focusId: string) => void;
 }) {
   if (issues.length === 0) return null;
   const heading = level === "error" ? "Errors" : "Warnings";
@@ -55,6 +57,15 @@ function Group({
                   <span className="vp-msg">{issue.message}</span>
                 </div>
               )}
+              <button
+                id={`validation-okf-task-${level}-${n}`}
+                type="button"
+                className="vp-issue-agent"
+                aria-label={`Work on this ${level} with an OKF agent`}
+                onClick={() => onTask(issue, `validation-okf-task-${level}-${n}`)}
+              >
+                <Sparkles size={14} aria-hidden="true" />
+              </button>
             </li>
           );
         })}
@@ -108,6 +119,12 @@ export function ValidationPanel() {
                     onJump={(id) => {
                       actions.selectConcept(id);
                     }}
+                    onTask={(issue, focusId) => actions.openOkfTaskLauncher({
+                      kind: "validation-finding",
+                      id: `validation:${issue.level}:${issue.conceptId ?? "bundle"}:${issue.message}`,
+                      title: issue.conceptId ?? "Bundle validation",
+                      issue,
+                    }, { preferredTaskId: "okf-repair", returnFocusId: focusId })}
                   />
                   <Group
                     level="warning"
@@ -115,6 +132,12 @@ export function ValidationPanel() {
                     onJump={(id) => {
                       actions.selectConcept(id);
                     }}
+                    onTask={(issue, focusId) => actions.openOkfTaskLauncher({
+                      kind: "validation-finding",
+                      id: `validation:${issue.level}:${issue.conceptId ?? "bundle"}:${issue.message}`,
+                      title: issue.conceptId ?? "Bundle validation",
+                      issue,
+                    }, { preferredTaskId: "okf-repair", returnFocusId: focusId })}
                   />
                 </div>
               </ScrollArea.Viewport>

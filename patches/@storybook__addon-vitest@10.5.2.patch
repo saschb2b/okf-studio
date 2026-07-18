@@ -1,0 +1,13 @@
+diff --git a/dist/preset.js b/dist/preset.js
+index 96d35c6984a6f5dae9980a44e128acfb074a2479..76fbfa6d8ef1e4055cc84c57c0062336fce9f7ff 100644
+--- a/dist/preset.js
++++ b/dist/preset.js
+@@ -351,7 +351,7 @@ var importMetaResolve = (...args) => typeof import.meta.resolve != "function" &&
+ ), pathToFileURL(args[0]).href) : import.meta.resolve(...args);
+ 
+ // src/node/boot-test-runner.ts
+-var MAX_START_TIME = 3e4, vitestModulePath = fileURLToPath2(importMetaResolve("@storybook/addon-vitest/vitest")), eventQueue = [], child, ready = !1, unsubscribeStore, unsubscribeStatusStore, unsubscribeTestProviderStore, forwardUniversalStoreEvent = (storeEventName) => (event, eventInfo) => {
++var MAX_START_TIME = 12e4, vitestModulePath = fileURLToPath2(importMetaResolve("@storybook/addon-vitest/vitest")), eventQueue = [], child, ready = !1, unsubscribeStore, unsubscribeStatusStore, unsubscribeTestProviderStore, forwardUniversalStoreEvent = (storeEventName) => (event, eventInfo) => {
+   child?.send({
+     type: storeEventName,
+     args: [{ event, eventInfo }],

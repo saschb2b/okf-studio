@@ -1,19 +1,14 @@
 import type { AgentPlanEntryInfo, AgentToolLocationInfo, AgentPermissionEvent, AgentPermissionOptionInfo, AgentTurnEvent } from "@/features/agent/connection.ts";
 import type { Dispatch, SetStateAction } from "react";
-import { ArrowRightLeft, Brain, Check, Circle, CircleAlert, CircleDot, FileText, Globe, Hammer, ListChecks, Minimize2, Pencil, RotateCcw, Search, ShieldQuestion, SlidersHorizontal, Terminal, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Brain, Check, ChevronDown, Circle, CircleAlert, CircleDot, CornerUpLeft, FileText, Globe, Hammer, ListChecks, Minimize2, Pencil, RotateCcw, Search, ShieldQuestion, SlidersHorizontal, Terminal, Trash2 } from "lucide-react";
 import { BundleProposalPreview } from "@/features/agent/components/BundleProposalPreview.tsx";
 import { bundleProposalNarrative, parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { renderMarkdown } from "@/shared/render/markdown.ts";
 import { respondAgentPermission } from "@/shared/ipc.ts";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { ConversationMessage, ConversationPlan, ConversationTool, ConversationItem, PendingPermission } from "./types.ts";
 import { errorMessage } from "./helpers.ts";
-import { ResponseActions, type ResponseCopyStatus } from "./ResponseActions.tsx";
-import {
-  copyCompleteResponse,
-  copyResponseSelection,
-  responseSelectionPayload,
-} from "./responseClipboard.ts";
+import { ResponseActions } from "./ResponseActions.tsx";
 import { conceptIdForToolLocation } from "./toolLocation.ts";
 import "@/features/agent/components/AgentConversation.css";
 
@@ -107,7 +102,7 @@ export function applyTurnEvent(
   event: AgentTurnEvent,
   setMessages: Dispatch<SetStateAction<ConversationItem[]>>,
 ): void {
-  if (event.update.kind === "usage") return;
+  if (event.update.kind === "usage" || event.update.kind === "capability-use") return;
   if (event.update.kind === "text") {
     const chunkText = event.update.text;
     setMessages((current) => {
@@ -138,7 +133,7 @@ export function applyTurnEvent(
     setMessages((current) => {
       const index = current.findIndex((item) => item.id === planId);
       if (entries.length === 0) return current.filter((item) => item.id !== planId);
-      const plan: ConversationPlan = { id: planId, role: "plan", entries };
+      const plan: ConversationPlan = { id: planId, role: "plan", turnId: event.turnId, entries };
       if (index < 0) return [...current, plan];
       return current.map((item, itemIndex) => itemIndex === index ? plan : item);
     });
@@ -200,6 +195,7 @@ export function applyTurnEvent(
         id: `status-${event.turnId}`,
         role: "status",
         tone: stop.tone,
+        turnId: event.turnId,
         text: stop.text,
       },
     ]);
@@ -229,6 +225,7 @@ export interface ConversationItemViewProps {
   generationBlockedReason: string | null;
   generationError: string | null;
   isGeneratingProposal: boolean;
+  showResponseActions?: boolean;
 }
 
 export function ConversationItemView({
@@ -242,6 +239,7 @@ export function ConversationItemView({
   generationBlockedReason,
   generationError,
   isGeneratingProposal,
+  showResponseActions = true,
 }: ConversationItemViewProps) {
   if (item.role === "plan") return <PlanCard plan={item} />;
   if (item.role === "tool") {
@@ -263,6 +261,7 @@ export function ConversationItemView({
       generationBlockedReason={generationBlockedReason}
       generationError={generationError}
       isGeneratingProposal={isGeneratingProposal}
+      showResponseActions={showResponseActions}
     />
   );
 }
@@ -351,7 +350,7 @@ function ToolChangeState({ tool }: { tool: ConversationTool }) {
         ? "Studio accepted this reported change for review. It is not applied."
         : "Studio did not accept this reported change. Check the thread grant and staging limits."}
     >
-      {tool.changeState === "staged" ? "Change staged for review" : "Change not staged"}
+      {tool.changeState === "staged" ? "Staged" : "Not staged"}
     </small>
   );
 }
@@ -384,9 +383,9 @@ export function ToolCard({
     const soleConceptId = soleLocation
       ? conceptIdForToolLocation(soleLocation, conceptIds)
       : null;
-    const showSoleLocation = soleLocation !== null && (
-      !tool.title.includes(soleLocation.path) || soleConceptId !== null
-    );
+    const titleIsConceptLink = soleConceptId !== null && onOpenConcept !== undefined &&
+      soleLocation !== null && tool.title.includes(soleLocation.path);
+    const showSoleLocation = soleLocation !== null && !tool.title.includes(soleLocation.path);
     return (
       <article
         className={`agent-tool agent-tool--row agent-tool--${tool.status}`}
@@ -395,7 +394,18 @@ export function ToolCard({
         <span className="agent-tool__icon" aria-hidden="true">
           <KindIcon size={14} />
         </span>
-        <span className="agent-tool__title" title={tool.title}>{tool.title}</span>
+        {titleIsConceptLink ? (
+          <button
+            type="button"
+            className="agent-tool__title agent-tool__location-link"
+            title={`Open ${tool.title} in reader`}
+            onClick={() => onOpenConcept(soleConceptId)}
+          >
+            {tool.title}
+          </button>
+        ) : (
+          <span className="agent-tool__title" title={tool.title}>{tool.title}</span>
+        )}
         {showSoleLocation && (
           <ToolLocation
             location={soleLocation}
@@ -420,25 +430,27 @@ export function ToolCard({
   const isCommand = tool.toolKind === "execute";
   const hasBody = isCommand || tool.content.length > 0 ||
     tool.locations.length > 0 || tool.changeState !== null;
+  const expandedByDefault = tool.status === "pending" || tool.status === "in-progress" ||
+    tool.status === "failed";
   return (
-    <article
+    <details
       className={`agent-tool agent-tool--card agent-tool--${tool.status}`}
       aria-label={`Tool: ${tool.title}`}
+      open={expandedByDefault}
     >
-      <header>
+      <summary>
         <span className="agent-tool__icon" aria-hidden="true">
           <KindIcon size={14} />
         </span>
-        {isCommand
-          ? <span className="agent-tool__kind">{meta.label}</span>
-          : <span className="agent-tool__title" title={tool.title}>{tool.title}</span>}
+        {isCommand && <span className="agent-tool__kind">{meta.label}</span>}
+        <span className="agent-tool__title" title={tool.title}>{tool.title}</span>
+        <ToolChangeState tool={tool} />
         {statusNote && <small className="agent-tool__status">{statusNote}</small>}
-      </header>
+        <ChevronDown className="agent-tool__chevron" size={14} aria-hidden="true" />
+      </summary>
       {hasBody && (
         <div className="agent-tool__body">
-          {isCommand && <code>{tool.title}</code>}
           <ToolContent content={tool.content} />
-          <ToolChangeState tool={tool} />
           <ToolLocations
             locations={tool.locations}
             conceptIds={conceptIds}
@@ -446,7 +458,7 @@ export function ToolCard({
           />
         </div>
       )}
-    </article>
+    </details>
   );
 }
 
@@ -565,19 +577,19 @@ export function LivePlan({ plan }: { plan: ConversationPlan }) {
 
 export function PlanCard({ plan }: { plan: ConversationPlan }) {
   const completed = plan.entries.filter((entry) => entry.status === "completed").length;
+  const isComplete = completed === plan.entries.length;
   return (
-    <section className="agent-plan" aria-label="Agent plan">
-      <header>
+    <details className="agent-plan" aria-label="Agent plan" open={!isComplete}>
+      <summary>
         <span className="agent-plan__icon" aria-hidden="true">
           <ListChecks size={16} />
         </span>
-        <div>
-          <strong>Plan</strong>
-          <small>{completed} of {plan.entries.length} complete</small>
-        </div>
-      </header>
+        <strong>{isComplete ? "Plan completed" : "Plan"}</strong>
+        <small>{completed} of {plan.entries.length} complete</small>
+        <ChevronDown className="agent-plan__chevron" size={14} aria-hidden="true" />
+      </summary>
       <PlanEntries entries={plan.entries} />
-    </section>
+    </details>
   );
 }
 
@@ -616,6 +628,8 @@ export interface MessageProps {
   generationBlockedReason: string | null;
   generationError: string | null;
   isGeneratingProposal: boolean;
+  showResponseActions?: boolean;
+  onReusePrompt?: () => void;
 }
 
 export function Message({
@@ -627,10 +641,10 @@ export function Message({
   generationBlockedReason,
   generationError,
   isGeneratingProposal,
+  showResponseActions = true,
+  onReusePrompt,
 }: MessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
-  const [selectionAvailable, setSelectionAvailable] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<ResponseCopyStatus>("idle");
   const agentNarrative = message.role === "agent"
     ? bundleProposalNarrative(message.text)
     : message.text;
@@ -641,35 +655,6 @@ export function Message({
     ? parseBundleProposal(message.text)
     : { status: "none" } as const;
 
-  useEffect(() => {
-    if (message.role !== "agent") return;
-    function updateSelection() {
-      const container = markdownRef.current;
-      setSelectionAvailable(
-        container !== null && responseSelectionPayload(container, window.getSelection()) !== null,
-      );
-    }
-    document.addEventListener("selectionchange", updateSelection);
-    return () => document.removeEventListener("selectionchange", updateSelection);
-  }, [message.role]);
-
-  async function copySelection() {
-    const container = markdownRef.current;
-    if (!container) return;
-    try {
-      setCopyStatus(await copyResponseSelection(container) ? "selection" : "error");
-    } catch {
-      setCopyStatus("error");
-    }
-  }
-
-  async function copyResponse() {
-    try {
-      setCopyStatus(await copyCompleteResponse(message.text) ? "response" : "error");
-    } catch {
-      setCopyStatus("error");
-    }
-  }
   // Zed-style document flow: the agent's markdown IS the document (no avatar,
   // no "Agent" label), the user's message sits in a bordered editor-like
   // block, and status notices are quiet icon+text rows.
@@ -707,13 +692,19 @@ export function Message({
           generationError={generationError}
           isGenerating={isGeneratingProposal}
         />
-        {message.role === "agent" && agentNarrative && (
+        {message.role === "agent" && agentNarrative && showResponseActions && (
           <ResponseActions
-            selectionAvailable={selectionAvailable}
-            status={copyStatus}
-            onCopySelection={() => void copySelection()}
-            onCopyResponse={() => void copyResponse()}
+            selectionRootRef={markdownRef}
+            responseText={message.text}
           />
+        )}
+        {message.role === "user" && onReusePrompt && (
+          <div className="agent-message__user-actions">
+            <button type="button" className="btn ghost" onClick={onReusePrompt}>
+              <CornerUpLeft size={14} aria-hidden="true" />
+              Reuse prompt
+            </button>
+          </div>
         )}
         {onRetry && (
           <div className="agent-message__actions">

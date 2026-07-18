@@ -1,0 +1,225 @@
+.okf-context-plan {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  color: var(--text);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.okf-context-plan-disclosure {
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan-disclosure > summary {
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.okf-context-plan-disclosure[open] > summary {
+  margin-bottom: var(--space-6);
+}
+
+.okf-context-plan > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-8);
+}
+
+.okf-context-plan > header > svg {
+  margin-top: var(--space-2);
+  color: var(--accent);
+}
+
+.okf-context-plan > header > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.okf-context-plan > header strong {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan > header span,
+.okf-context-plan footer,
+.okf-context-plan__items small {
+  overflow-wrap: anywhere;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__warning {
+  margin: 0;
+  color: var(--error);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__scope {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-12);
+  margin: 0;
+}
+
+.okf-context-plan__scope > div {
+  min-width: 0;
+}
+
+.okf-context-plan__scope dt {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__scope dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__items {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.okf-context-plan__items > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 28px;
+  gap: var(--space-6);
+}
+
+.okf-context-plan__items > div > svg {
+  color: var(--text-dim);
+}
+
+.okf-context-plan__items span {
+  display: grid;
+  min-width: 0;
+}
+
+.okf-context-plan__items strong {
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.okf-context-plan__omissions {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-20);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__omissions code {
+  overflow-wrap: anywhere;
+}
+
+.okf-context-plan__memory {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.okf-context-plan__memory > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.okf-context-plan__memory strong,
+.okf-context-plan__memory span,
+.okf-context-plan__memory small,
+.okf-context-plan__memory-error {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__memory small {
+  color: var(--text-dim);
+}
+
+.okf-context-plan__memory > div:last-child {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-4);
+}
+
+.okf-context-plan__memory-error {
+  margin: 0;
+  color: var(--error);
+}
+
+.okf-context-plan__items button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.okf-context-plan__items button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--accent-dim);
+}
+
+.okf-context-plan__items button:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.okf-context-plan footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-12);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+@container (max-width: 420px) {
+  .okf-context-plan > header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .okf-context-plan > header .btn {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .okf-context-plan__scope {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .okf-context-plan__memory {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

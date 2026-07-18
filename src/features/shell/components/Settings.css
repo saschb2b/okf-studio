@@ -1,28 +1,48 @@
-/* Settings dialog layout. Surface/backdrop come from baseui.css (.ui-dialog,
-   .ui-backdrop); form controls from Base UI styled in baseui.css. */
-
 .settings-dialog {
-  width: 440px;
-  padding: var(--space-20);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
+  box-sizing: border-box;
+  top: 50%;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  transform: translate(-50%, -50%);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
+.settings-dialog[data-starting-style],
+.settings-dialog[data-ending-style] {
+  transform: translate(-50%, calc(-50% - var(--space-6)));
 }
-.field.check {
-  flex-direction: row;
-  align-items: center;
+
+.settings-anchor {
+  min-width: 0;
+  scroll-margin-top: var(--space-16);
+}
+
+.settings-anchor:focus {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--space-4);
+  border-radius: var(--radius-sm);
+}
+
+.settings-bundle-scope {
+  min-width: 0;
+}
+
+.settings-bundle-scope__header {
+  display: flex;
+  align-items: baseline;
   gap: var(--space-8);
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
 }
 
-.field-label {
-  font-weight: 600;
-}
-.field-hint {
+.settings-bundle-scope__header span {
+  color: var(--text-dim);
   font-size: var(--fs-xs);
+}
+
+.settings-bundle-scope .workspace-memory-settings {
+  margin-top: var(--space-24);
 }

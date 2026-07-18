@@ -31,6 +31,14 @@ export function agentThreadNotificationCopy(input: {
   return { title, body: `${thread} · ${agent}` };
 }
 
+export function routineAttentionNotificationCopy(count: number): { title: string; body: string } {
+  const boundedCount = Math.max(1, Math.min(32, Math.floor(count)));
+  return {
+    title: "OKF routines need attention",
+    body: `Open OKF Studio to review ${boundedCount} routine result${boundedCount === 1 ? "" : "s"}.`,
+  };
+}
+
 export async function requestAgentNotificationPermission(): Promise<boolean> {
   if (!isTauri()) return true;
   const { isPermissionGranted, requestPermission } = await import(
@@ -63,6 +71,24 @@ export async function sendAgentThreadNotification(input: {
   sendNotification({
     ...copy,
     group: "agent-threads",
+    silent: !input.sound,
+    ...(input.sound && notificationSound() ? { sound: notificationSound() } : {}),
+  });
+  return true;
+}
+
+export async function sendRoutineAttentionNotification(input: {
+  count: number;
+  sound: boolean;
+}): Promise<boolean> {
+  if (!isTauri() || document.hasFocus()) return false;
+  const { isPermissionGranted, sendNotification } = await import(
+    "@tauri-apps/plugin-notification"
+  );
+  if (!(await isPermissionGranted())) return false;
+  sendNotification({
+    ...routineAttentionNotificationCopy(input.count),
+    group: "okf-routines",
     silent: !input.sound,
     ...(input.sound && notificationSound() ? { sound: notificationSound() } : {}),
   });

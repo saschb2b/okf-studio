@@ -210,11 +210,93 @@ pub(crate) fn validate_sources(sources: &[AgentSourceInput]) -> Result<(), Strin
         }) {
             return Err("Source warnings must be bounded and contain no controls.".to_string());
         }
+        if let Some(receipt) = &source.adapter_receipt {
+            validate_source_receipt(source, receipt)?;
+        }
     }
     if total_chars > MAX_SOURCE_TOTAL_CHARS {
         return Err(format!(
             "Attached sources cannot exceed {MAX_SOURCE_TOTAL_CHARS} characters in total."
         ));
+    }
+    Ok(())
+}
+
+fn validate_source_receipt(
+    source: &AgentSourceInput,
+    receipt: &crate::agent_source_adapter::SourceAdapterReceipt,
+) -> Result<(), String> {
+    if receipt.schema_version != crate::agent_source_adapter::ADAPTER_SCHEMA_VERSION
+        || receipt.adapter_version == 0
+    {
+        return Err("Source adapter receipts must use a supported positive version.".to_string());
+    }
+    if receipt.adapter_id.is_empty()
+        || receipt.adapter_id.len() > 64
+        || !receipt
+            .adapter_id
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+        || receipt.trust != "untrusted"
+    {
+        return Err(
+            "Source adapter receipts must identify a bounded adapter and untrusted evidence."
+                .to_string(),
+        );
+    }
+    if source.origin.as_deref() != Some(receipt.origin.as_str())
+        || source.media_type.as_deref() != Some(receipt.media_type.as_str())
+    {
+        return Err("Source adapter provenance must match the attached source.".to_string());
+    }
+    let source_digest = source.source_digest.as_deref().ok_or_else(|| {
+        "Sources with adapter receipts must include their original SHA-256 digest.".to_string()
+    })?;
+    if receipt.source_fingerprint != format!("sha256-{source_digest}") {
+        return Err(
+            "Source adapter source fingerprints must match the attached source.".to_string(),
+        );
+    }
+    let evidence_digest = if let Some(image_data) = &source.image_data {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(image_data)
+            .map_err(|_| "Image source receipts require valid image data.".to_string())?;
+        format!("{:x}", Sha256::digest(bytes))
+    } else {
+        format!("{:x}", Sha256::digest(source.content.as_bytes()))
+    };
+    if receipt.evidence_fingerprint != format!("sha256-{evidence_digest}") {
+        return Err(
+            "Source adapter evidence fingerprints must match the normalized evidence.".to_string(),
+        );
+    }
+    let refresh_digest = format!(
+        "{:x}",
+        Sha256::digest(
+            format!(
+                "{}\0{}\0{}\0{}",
+                receipt.schema_version, receipt.adapter_id, receipt.adapter_version, source_digest
+            )
+            .as_bytes()
+        )
+    );
+    if receipt.refresh_fingerprint != format!("source-refresh-v1-{refresh_digest}") {
+        return Err("Source adapter refresh fingerprints must match their contract.".to_string());
+    }
+    if receipt.diagnostics.len() > 16
+        || receipt.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.is_empty()
+                || diagnostic.code.len() > 64
+                || !diagnostic
+                    .code
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+                || diagnostic.message.trim().is_empty()
+                || diagnostic.message.chars().count() > 512
+                || diagnostic.message.chars().any(char::is_control)
+        })
+    {
+        return Err("Source adapter diagnostics must be bounded and actionable.".to_string());
     }
     Ok(())
 }
@@ -237,13 +319,24 @@ pub(crate) fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<Conte
             {
                 let origin = source.origin.as_deref().unwrap_or("selected image");
                 let digest = source.source_digest.as_deref().unwrap_or("unavailable");
+                let adapter = source.adapter_receipt.as_ref().map_or_else(String::new, |receipt| {
+                    format!(
+                        "\nAdapter: {} v{}\nEvidence fingerprint: {}\nRefresh fingerprint: {}\nTrust: {}",
+                        receipt.adapter_id,
+                        receipt.adapter_version,
+                        receipt.evidence_fingerprint,
+                        receipt.refresh_fingerprint,
+                        receipt.trust
+                    )
+                });
                 return vec![
                     ContentBlock::Text(TextContent::new(format!(
-                        "## Attached user image: {}\n\nOrigin: {}\nMedia type: {}\nOriginal source SHA-256: {}",
+                        "## Attached user image: {}\n\nOrigin: {}\nMedia type: {}\nOriginal source SHA-256: {}{}",
                         source.title.trim(),
                         origin,
                         media_type,
-                        digest
+                        digest,
+                        adapter
                     ))),
                     ContentBlock::Image(ImageContent::new(data, media_type)),
                 ];
@@ -265,13 +358,24 @@ pub(crate) fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<Conte
                 .as_deref()
                 .map(|value| format!("\nExtraction warning: {value}"))
                 .unwrap_or_default();
+            let adapter = source.adapter_receipt.as_ref().map_or_else(String::new, |receipt| {
+                format!(
+                    "\nAdapter: {} v{}\nEvidence fingerprint: {}\nRefresh fingerprint: {}\nTrust: {}",
+                    receipt.adapter_id,
+                    receipt.adapter_version,
+                    receipt.evidence_fingerprint,
+                    receipt.refresh_fingerprint,
+                    receipt.trust
+                )
+            });
             vec![ContentBlock::Text(TextContent::new(format!(
-                "## Attached user source: {}\n\nOrigin: {}{}{}{}\nContent SHA-256: {}\n\n{}",
+                "## Attached user source: {}\n\nOrigin: {}{}{}{}{}\nContent SHA-256: {}\n\n{}",
                 source.title.trim(),
                 origin,
                 media_type,
                 source_digest,
                 warning,
+                adapter,
                 digest,
                 source.content
             )))]

@@ -3,6 +3,7 @@ use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 use url::{Host, Url};
 
+use crate::agent_source_adapter::SourceDiscovery;
 use crate::agent_sources::{self, AgentSourceInput};
 
 const MAX_URL_CHARS: usize = agent_sources::MAX_SOURCE_ORIGIN_CHARS;
@@ -53,7 +54,13 @@ pub(crate) fn fetch(input: String) -> Result<AgentSourceInput, String> {
         return Err("The URL response exceeds the 256 KiB source limit.".to_string());
     }
 
-    agent_sources::source_from_bytes(title, final_url.to_string(), media_type, bytes, true)
+    agent_sources::source_from_bytes(
+        title,
+        final_url.to_string(),
+        media_type,
+        bytes,
+        SourceDiscovery::Url,
+    )
 }
 
 fn validate_url(input: &str) -> Result<Url, String> {

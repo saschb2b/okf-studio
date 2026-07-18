@@ -17,6 +17,7 @@ import { Settings } from "@/features/shell/components/Settings.tsx";
 import { EmptyState } from "@/features/shell/components/EmptyState.tsx";
 import { OpenRemoteDialog } from "@/features/bundle/components/OpenRemoteDialog.tsx";
 import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDialog.tsx";
+import { ExternalEntryDialog } from "@/features/bundle/components/ExternalEntryDialog.tsx";
 import { OverviewView } from "@/features/viz/components/OverviewView.tsx";
 import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "@/features/shell/components/ShortcutsHelp.tsx";
@@ -97,6 +98,7 @@ export function App() {
       <ShortcutsHelp />
       <OpenRemoteDialog />
       <CreateBundleDialog />
+      <ExternalEntryDialog />
 
       {/* Borderless-window resize handles (Tauri only). */}
       <ResizeHandles />

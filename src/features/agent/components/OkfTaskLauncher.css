@@ -1,0 +1,162 @@
+.okf-task-launcher {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(720px, calc(100vw - var(--space-24)));
+  max-height: min(820px, calc(88vh - var(--space-24)));
+  overflow: hidden;
+}
+
+.okf-task-launcher__header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-12);
+  align-items: start;
+  padding: var(--space-16);
+  border-bottom: 1px solid var(--border);
+}
+
+.okf-task-launcher__header h2,
+.okf-task-launcher__header p,
+.okf-task-launcher__state p {
+  margin: 0;
+}
+
+.okf-task-launcher__header p,
+.okf-task-launcher__state p,
+.okf-task-launcher__tasks small {
+  color: var(--text-dim);
+}
+
+.okf-task-launcher__mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
+}
+
+.okf-task-launcher__tasks {
+  display: grid;
+  gap: var(--space-8);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-16);
+  border: 0;
+}
+
+.okf-task-launcher__body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.okf-task-launcher__tasks legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.okf-task-launcher__tasks label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-12);
+  align-items: center;
+  min-height: 48px;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.okf-task-launcher__tasks label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.okf-task-launcher__tasks span {
+  display: grid;
+}
+
+.okf-task-launcher__state {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-12);
+  margin: 0 var(--space-16) var(--space-16);
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.okf-task-launcher__state[data-status="stale"],
+.okf-task-launcher__state[data-status="overflow"],
+.okf-task-launcher__state[data-status="unsupported"] {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--border));
+}
+
+.okf-task-launcher__state p {
+  color: inherit;
+}
+
+.okf-task-launcher__body > .okf-context-plan {
+  margin: 0 var(--space-16) var(--space-16);
+  overflow: auto;
+}
+
+.okf-task-launcher__body > .federated-bundle-set {
+  margin: 0 var(--space-16) var(--space-16);
+}
+
+.okf-task-launcher__draft {
+  display: grid;
+  gap: var(--space-6);
+  margin: 0 var(--space-16) var(--space-16);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.okf-task-launcher__draft textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+  line-height: var(--lh-normal);
+}
+
+.okf-task-launcher__draft textarea:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.okf-task-launcher__draft small {
+  color: var(--text-dim);
+  font-weight: 400;
+  line-height: var(--lh-normal);
+}
+
+.okf-task-launcher__actions {
+  display: flex;
+  gap: var(--space-8);
+  justify-content: flex-end;
+  padding: var(--space-12) var(--space-16);
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 520px) {
+  .okf-task-launcher {
+    width: calc(100vw - var(--space-16));
+    max-height: calc(88vh - var(--space-16));
+  }
+
+  .okf-task-launcher__actions {
+    flex-wrap: wrap;
+  }
+}

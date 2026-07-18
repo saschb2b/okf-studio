@@ -3,12 +3,14 @@ type: Product Strategy
 title: OKF Retrieval Thesis
 description: Position OKF Studio as an inspectable context engine that compiles connected bundle knowledge for agents, models, and external retrieval systems.
 tags: [product, strategy, rag, retrieval, context, okf]
-timestamp: 2026-07-18T21:08:21Z
+timestamp: 2026-07-18T21:39:16Z
 ---
 
 # Product position
 
 OKF Studio should not ship a generic vector database beside the graph. It should turn an OKF bundle into inspectable, revision-bound model context and let each query use the evidence path that fits it.
+
+The retrieval system should remain quiet during ordinary use. The conversation shows an answer, citations, and one compact evidence summary. Route internals, candidate lists, scores, filters, and diagnostics appear only when the user opens the retrieval inspector or separate Retrieval Lab. The [retrieval experience contract](retrieval-experience-contract.md) fixes that hierarchy before implementation.
 
 The product is an OKF context engine:
 
@@ -17,7 +19,7 @@ The product is an OKF context engine:
 - downstream, it gives any connected agent a coherent evidence packet plus a receipt that explains selection, exclusions, and scope;
 - after a miss, it turns diagnostics into reviewed knowledge repairs rather than hidden index tuning.
 
-The [research brief](rag-state-and-failures.md) supports this position. The [roadmap](retrieval-intelligence-roadmap.md) converts it into measured work packages.
+The [research brief](rag-state-and-failures.md) supports this position. The [roadmap](retrieval-intelligence-roadmap.md) converts it into measured work packages, with the experience contract as a prerequisite for interface-changing work.
 
 # Why this belongs in OKF Studio
 
@@ -52,7 +54,7 @@ The bundle remains the authority. The manifest can be deleted and rebuilt. Embed
 
 ## Query router
 
-The router selects a mode from the query class, available indexes, bundle scale, provider capabilities, privacy settings, and context budget. Its decision is visible and can be overridden before a task starts.
+The router selects a mode from the query class, available indexes, bundle scale, provider capabilities, privacy settings, and context budget. Routine local selection appears in the compact evidence summary and can be inspected afterward. A preflight asks for attention only when scope, network use, expected cost, or available capability changes materially.
 
 | Query class | Default evidence path | Example |
 | --- | --- | --- |
@@ -81,6 +83,8 @@ Retrieval receipt
 
 The receipt is the retrieval equivalent of Studio's capability and tool evidence. It proves what Studio selected and delivered. It does not prove that the model used every item correctly.
 
+The compact summary belongs to the completed conversation turn. Opening its detail replaces the flexible transcript viewport and restores the previous scroll, draft, selection, and focus state when closed. The full Retrieval Lab remains a separate diagnostic workspace. Neither surface adds another persistent band above the composer.
+
 # OKF advantages and honest limits
 
 | Existing primitive | Retrieval value | Limit that remains |
@@ -101,6 +105,8 @@ The receipt is the retrieval equivalent of Studio's capability and tool evidence
 For an OKF author, Studio can explain why a concept is hard to retrieve and propose a better title, description, link, index entry, citation, or split. Retrieval quality becomes part of knowledge maintenance without turning it into conformance.
 
 For an agent user, the context plan shows the evidence route before a prompt and the receipt afterward. Wrong answers can be traced to a miss, filter, stale source, context omission, or generation failure.
+
+For an ordinary question, this traceability does not require reading retrieval machinery. The user can stay with the answer and citations, open the evidence summary when confidence is low, and enter the diagnostic workspace only when the retrieval path itself needs comparison.
 
 For teams with an existing RAG stack, Studio can export a revision-bound retrieval manifest instead of forcing them to adopt its index. Stable OKF identities then survive across Qdrant, Weaviate, PostgreSQL, a local BM25 index, or a provider file-search API.
 
@@ -141,6 +147,8 @@ The retrieval receipt can be exported as a bounded debug bundle or imported into
 - Query routing may suggest a broader source or network action, but the user must approve any new grant or fetch.
 - Existing source adapters remain the ingestion boundary. Retrieval work does not create a second parser stack in the frontend.
 - OKF v0.1 remains tolerant and vendor-neutral. Retrieval metadata cannot become a new hard bundle requirement.
+- Per-query route controls and diagnostics cannot become permanent Settings rows or persistent conversation shelves.
+- A backend package cannot ship visible controls before its surface owner, states, narrow behavior, and Storybook prototype pass the experience definition of ready.
 
 # Decisions to prove before adoption
 
@@ -151,6 +159,7 @@ The retrieval receipt can be exported as a bounded debug bundle or imported into
 - Cached full-context mode must use exact fingerprint invalidation and show a cost or latency benefit on supported providers.
 - Retrieval diagnostics must identify actionable failure classes more reliably than answer-level pass or fail alone.
 - Reviewed repairs must improve a held-out query set and must not encourage keyword stuffing or generated metadata churn.
+- The first exact-query slice must preserve the readable conversation, live-work bounds, composer reachability, focus, and scroll state under narrow and long-content pressure.
 
 # Non-goals
 

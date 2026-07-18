@@ -1,6 +1,8 @@
 # Update Log
 
 ## 2026-07-18
+* **Update**: Added the [Retrieval Experience Contract](product/retrieval-intelligence/retrieval-experience-contract.md) and made it a prerequisite throughout the retrieval roadmap. User jobs now have one surface owner; ordinary turns keep one compact evidence summary; detailed receipts replace the flexible transcript viewport; and the Retrieval Lab remains a separate diagnostic workspace. RI0A freezes the first exact-query composition, pressure states, focus, scroll, and narrow behavior through Storybook MCP before production retrieval wiring begins.
+
 * **Creation**: Added the [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) research branch. Its evidence review separates community signals from primary-source findings, identifies the retrieval primitives OKF already owns and the ones Studio still lacks, and sequences a local-first context engine across exact, lexical, graph, optional dense, long-context, cached, temporal, diagnostic, ecosystem, and reviewed-repair work. The direction keeps indexes disposable, grants ahead of relevance, and retrieval receipts separate from claims about model use.
 
 * **Fix**: Made capability-pack digests stable across Git checkout line endings. Windows CI converted a mixed-line-ending `SKILL.md` to CRLF and rejected the unchanged resource before native-host tests could start. Build-time and runtime validation now share one canonical text-resource digest for Markdown, JSON, and JSON Schema, while unknown binary media remains byte-exact. A fresh uncached native-host clippy run covers the former failure path.

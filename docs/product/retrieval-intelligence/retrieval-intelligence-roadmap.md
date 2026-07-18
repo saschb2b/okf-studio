@@ -1,9 +1,9 @@
 ---
 type: Product Roadmap
 title: OKF Retrieval Intelligence
-description: Sequenced research and work packages for turning connected OKF bundles into inspectable, routed, and provider-neutral model context.
-tags: [product, roadmap, rag, retrieval, context, search, agents]
-timestamp: 2026-07-18T21:08:21Z
+description: Sequenced research, experience gates, and work packages for turning connected OKF bundles into inspectable, routed, and provider-neutral model context.
+tags: [product, roadmap, rag, retrieval, context, search, agents, ux, storybook]
+timestamp: 2026-07-18T21:39:16Z
 ---
 
 # Outcome
@@ -12,7 +12,9 @@ OKF Studio should answer a bundle question by selecting the evidence path that f
 
 The transformation succeeds when exact lookup, relationship questions, semantic discovery, corpus-wide synthesis, temporal conflict checks, structured evidence, and small-bundle full-context tasks each have a measured route. Every route produces stable identities, source references, budget decisions, and a retrieval receipt. A failed answer can be traced to retrieval, filtering, context assembly, or generation instead of being one opaque miss.
 
-This roadmap follows the [state-of-RAG research](rag-state-and-failures.md) and implements the [OKF retrieval thesis](okf-retrieval-thesis.md).
+The interface must remain one readable workspace as those capabilities arrive. Retrieval detail uses progressive disclosure and stable surface ownership instead of adding another persistent shelf for each backend stage.
+
+This roadmap follows the [state-of-RAG research](rag-state-and-failures.md), implements the [OKF retrieval thesis](okf-retrieval-thesis.md), and is governed by the [retrieval experience contract](retrieval-experience-contract.md).
 
 # Current baseline
 
@@ -32,6 +34,8 @@ It does not have a retrieval manifest, lexical ranker, embeddings, reranker, que
 - Make repair explicit and reviewed. A missed query may suggest a bundle improvement but cannot write it.
 - Keep provider-specific cache, embedding, or reranking support behind typed adapters.
 - Benchmark retrieval and generation separately, then test the complete task.
+- Prototype interface-changing packages before backend wiring and keep one owner for each user job.
+- Preserve the conversation viewport and composer. Retrieval detail replaces flexible content or opens in the separate Retrieval Lab; it never adds an unbounded shelf.
 
 # Cross-cutting contracts
 
@@ -56,6 +60,15 @@ Provider boundary
 Privacy
 : Local indexes and receipts remain on device. Remote embedding, reranking, search, or cache calls require an explicit configured provider and disclose which text leaves the device.
 
+Surface ownership
+: Conversation, context plan, Reader, retrieval inspector, Retrieval Lab, Settings, and reviewed staging each own one class of work. A package cannot add a second owner for the same action or state.
+
+Progressive disclosure
+: Ordinary conversation shows an answer, citations, and one compact evidence summary. Candidate lists, scores, paths, filters, and route internals appear only after deliberate inspection.
+
+Layout stability
+: The conversation keeps the flexible height and the composer remains reachable. Dynamic retrieval state uses bounded regions, one scroll owner per region, and the narrow-width behavior defined in the [experience contract](retrieval-experience-contract.md).
+
 # Second-pass risks
 
 | Risk | Resolution in the package contract |
@@ -72,6 +85,17 @@ Privacy
 | Retrieval repair turns into metadata spam | Measure held-out query improvement and keep every proposal in reviewed staging |
 | The model judges its own retrieval | Use frozen relevance sets and deterministic metrics before labelled model critique |
 | Debug receipts leak source content | Store bounded identities and excerpts, redact protected values, and inherit bundle retention rules |
+| Backend packages accumulate controls in the Agent Panel | Name one surface owner and pass the experience definition of ready before implementation |
+| Receipts compete with answers for reading space | Keep one compact turn summary and move technical detail into the replace-in-place inspector |
+| Dynamic retrieval state squeezes live work or the composer | Enforce the layout invariants at 360, 440, 560, and wide widths before wiring |
+| Retrieval controls migrate into an already crowded Settings area | Keep per-query choices with the receipt and reserve Settings for persistent defaults |
+| Isolated components pass while the whole workspace fails under pressure | Screen Storybook states through MCP, then repeat the composition with live work, long content, and blocking recovery together |
+
+# Experience gate for work packages
+
+The [retrieval experience contract](retrieval-experience-contract.md) is a prerequisite for every package that changes visible behavior. Before production code, the package must name its user job, surface owner, disclosure levels, state matrix, focus and scroll behavior, narrow composition, and controls added or removed. Storybook MCP is used to inventory existing components and screen the proposed composition.
+
+Completion requires colocated stories with interaction assertions, 360-pixel and wide screening, the owning integration journey, accessibility coverage, and whole-workspace pressure review. A technical package can complete without UI when it remains an internal contract. It cannot ship a provisional interface that defers these checks to RI9 or RI12.
 
 # Work packages
 
@@ -86,6 +110,19 @@ Privacy
 - [ ] Freeze thresholds before RI2 implementation.
 
 Gate: the corpus exposes different winners for at least two query classes and can distinguish a retrieval miss from a generation miss without a live provider.
+
+## RI0A: Experience architecture and first-slice prototype
+
+- [ ] Freeze the user jobs and surface map in the [retrieval experience contract](retrieval-experience-contract.md).
+- [ ] Inventory existing Agent Panel, task launcher, Reader, graph, structured-work, Settings, and shell components through Storybook MCP before proposing another component or region.
+- [ ] Prototype the first exact or lexical question with a compact evidence summary, retrieval inspector, Reader source opening, and retained composer.
+- [ ] Make the inspector replace the flexible transcript viewport and restore transcript scroll, draft state, selected evidence, and focus when closed.
+- [ ] Cover preparing, ready, empty, partial, stale, permission-blocked, provider-unavailable, cancelled, oversized, and long-content states, marking genuinely inapplicable states in the story contract.
+- [ ] Screen the prototype at 360, 440, 560, and wide widths with live work and a blocking request present.
+- [ ] Record controls and persistent regions added, removed, or merged; reject any composition that needs another unbounded shelf.
+- [ ] Write the interaction, keyboard, focus, scroll, and recovery acceptance criteria before RI1 production wiring begins.
+
+Gate: the exact-query slice remains readable under live-work pressure, keeps the composer reachable, has one primary recovery action per blocking state, and adds no duplicate surface owner.
 
 ## RI1: Revision-bound retrieval manifest
 
@@ -108,6 +145,7 @@ Gate: rebuilding the same bundle produces the same manifest; a one-line concept 
 - [ ] Return bounded snippets with matched terms, section identity, score components, and exclusion reason codes.
 - [ ] Keep index creation cancellable and incremental without moving raw bundle content outside app data.
 - [ ] Compare against the RI0 baseline at small, medium, and generated scale.
+- [ ] Connect the first-slice prototype to real exact and lexical results without changing its surface ownership or disclosure levels.
 
 Gate: exact identifiers never lose to semantic-looking passages, lexical retrieval improves frozen recall over current substring search, and the route works offline without a model.
 
@@ -142,6 +180,7 @@ Gate: disabling or removing every embedding provider leaves a complete offline r
 - [ ] Add model-assisted routing only where RI0 shows deterministic routing is insufficient; retain confidence, model identity, and fallback.
 - [ ] Preview the chosen route, bundle set, filters, network use, and context budget before a named task starts.
 - [ ] Let the user choose another available route without rewriting the query.
+- [ ] Keep routine local route selection at disclosure level 1; require preflight attention only when scope, network use, cost, or capability changes materially.
 - [ ] Fall back to local lexical plus graph retrieval when a provider, cache, or model route fails.
 - [ ] Compare routing against one fixed hybrid pipeline and per-class oracle routes.
 
@@ -155,7 +194,8 @@ Gate: the router improves the aggregate RI0 score over a fixed route, never chan
 - [ ] Budget by estimated provider tokens and bytes, keep coherent units intact, and report every omitted candidate with a reason.
 - [ ] Define a versioned evidence-packet schema for Studio Agent, ACP text fallback, MCP resources, and export.
 - [ ] Define a versioned retrieval receipt with route, candidates, scores, filters, inclusions, omissions, budgets, timing, and fingerprints.
-- [ ] Render the receipt beside the conversation and attach it to structured research or writing artifacts without copying hidden source bodies into local memory.
+- [ ] Render one compact turn-owned evidence summary and open the full receipt in the replace-in-place retrieval inspector; never stack the receipt as another persistent conversation band.
+- [ ] Preserve transcript scroll, draft state, selected source, and focus across inspector open, close, rerun, stale recovery, and route changes.
 
 Gate: a user can answer “why was this included, why was that omitted, and which bundle revision was searched?” from the receipt without reading logs.
 
@@ -187,10 +227,11 @@ Gate: cached mode produces the same evidence scope as its canonical snapshot, in
 
 - [ ] Classify empty results, low recall, noisy candidates, filter mismatch, stale manifest, missing metadata, conflicting evidence, budget omission, provider failure, and generation non-use as separate failures.
 - [ ] Add a diffable diagnostic bundle containing query, route, candidate lists before and after each stage, context packet, receipt, answer citations, and corpus health scoped to involved concepts.
-- [ ] Build a Retrieval Lab that can compare two routes or configurations on one query without changing default settings.
+- [ ] Build a separate Retrieval Lab workspace that can compare two routes or configurations on one query without changing default settings or reducing the ordinary conversation viewport.
 - [ ] Show score components, graph paths, exact matches, provider involvement, latency, and omissions in a scan-friendly layout.
 - [ ] Keep protected content bounded and inherit bundle grant, retention, deletion, and export rules.
 - [ ] Add loading, empty, partial, stale, conflict, provider-unavailable, large, and 360-pixel states in Storybook and screen them through Storybook MCP.
+- [ ] Keep raw scores, stage tables, and diagnostic exports out of the default evidence summary and general Settings.
 - [ ] Let users export a redacted diagnostic bundle for an external RAG stack or attach it to an OKF research task.
 
 Gate: seeded failures land in the correct diagnostic class, two receipts produce a stable diff, and the lab never broadens source scope or writes a bundle.
@@ -200,6 +241,7 @@ Gate: seeded failures land in the correct diagnostic class, two receipts produce
 - [ ] Add bounded tools for query planning, retrieval, receipt inspection, and failure diagnosis to the built-in OKF capability pack.
 - [ ] Expose the same tools through Studio Agent and the one-shot granted MCP server with capability and resource receipts.
 - [ ] Add native OKF actions from search, reader, graph, validation, source inventory, and structured work surfaces.
+- [ ] Inventory every proposed entry action against the surface map and merge duplicate actions before adding another persistent control.
 - [ ] Let CLI and deep-link entry points prefill a query and route request but require the existing grant and visible confirmation boundaries.
 - [ ] Publish the retrieval-manifest and receipt schemas with adapters for at least one local search engine and one external vector store.
 - [ ] Keep tool results provider-neutral and free of absolute filesystem paths, credentials, or unbounded source bodies.
@@ -227,22 +269,25 @@ Gate: a reviewed repair improves its declared retrieval case without a held-out 
 - [ ] Update feature, architecture, UX, migration, support, site, and capability-pack documentation when behavior ships.
 - [ ] Add app-data migration, index rebuild, provider removal, cache invalidation, and rollback paths.
 - [ ] Run app, Rust, Storybook, site, OKF, ODSF, installer, and platform gates.
+- [ ] Repeat the experience definition of done with simultaneous long content, live work, blocking recovery, stale evidence, and narrow width rather than isolated happy-path stories alone.
 - [ ] Retain honest unavailable results for providers or platform paths that cannot be tested.
 
 Gate: a new user can ask a real bundle question, inspect and override the route, receive cited context from the correct scope, diagnose a seeded miss, and carry an accepted repair through reviewed staging while the app remains useful offline with no embedding model.
 
-# Experiment order
+# Delivery order
 
-The first implementation decision is earned in RI0, not assumed in this roadmap:
+RI0 establishes the measured retrieval problem. RI0A then freezes the workspace behavior before production retrieval wiring. The first delivered vertical slice connects only the manifest, exact or lexical route, compact summary, inspector, and Reader source opening. Graph, dense, cached, diagnostic, ecosystem, and repair work follow after that slice passes the experience gate.
 
 ```mermaid
 flowchart TD
-  RI0[RI0 query corpus] --> RI1[RI1 retrieval manifest]
+  RI0[RI0 query corpus] --> RI0A[RI0A experience prototype]
+  RI0A --> RI1[RI1 retrieval manifest]
   RI1 --> RI2[RI2 exact and lexical]
-  RI1 --> RI3[RI3 graph and coverage]
+  RI2 --> Slice[Exact-query vertical slice gate]
+  Slice --> RI3[RI3 graph and coverage]
   RI2 --> RI5[RI5 query router]
   RI3 --> RI5
-  RI2 --> RI4[RI4 optional dense]
+  Slice --> RI4[RI4 optional dense]
   RI3 --> RI4
   RI4 --> RI5
   RI5 --> RI6[RI6 compiler and receipt]
@@ -269,6 +314,9 @@ flowchart TD
 - Retrieval and generation failures are measured separately and then exercised together.
 - A retrieval defect can become a reviewed OKF repair but can never write directly from an index or diagnostic.
 - Existing agents can consume the same context engine through bounded Studio and MCP tools.
+- The first exact-query slice passes the experience contract before graph, dense, cached, or diagnostic UI ships.
+- Ordinary turns show one compact evidence summary; technical receipt detail stays in the replace-in-place inspector or separate Retrieval Lab.
+- Conversation, live work, and composer regions keep stable owners and remain usable at 360, 440, 560, and wide widths under simultaneous pressure.
 
 # Deferred decisions
 

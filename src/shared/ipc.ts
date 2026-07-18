@@ -1001,7 +1001,24 @@ export async function promptAgent(
     await browserMockDelay(80);
     throw new Error("The browser mock rejected this prompt before starting a turn.");
   }
-  const info = { connectionId, sessionId, turnId: `turn-${crypto.randomUUID()}` };
+  const info: AgentTurnInfo = {
+    connectionId,
+    sessionId,
+    turnId: `turn-${crypto.randomUUID()}`,
+    capabilityContext: [{
+      capabilityId: "okf-core",
+      version: "0.1.0",
+      manifestSha256: "browser-mock",
+      support: "full",
+      delivery: connection.protocolVersion === "studio-native/1"
+        ? "catalog-only"
+        : "embedded-resources",
+      resourceIds: connection.protocolVersion === "studio-native/1"
+        ? []
+        : ["instructions", "specification", "commands", "templates"],
+      observedResourceIds: [],
+    }],
+  };
   const mockSession = mockAgentSessions.get(sessionId);
   if (mockSession) {
     mockSession.title = text.replace(/\s+/gu, " ").trim().slice(0, 80) || "Untitled session";

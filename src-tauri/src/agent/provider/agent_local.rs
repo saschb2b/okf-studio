@@ -1201,18 +1201,25 @@ mod tests {
 
         let ollama_tool = parse_chat_step(
             LocalModelProvider::Ollama,
-            br#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"instructions"}}}]}}"#,
+            br#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_capability_resource","arguments":{"capabilityId":"okf-core","resourceId":"instructions"}}}]}}"#,
         )
         .expect("parse Ollama tool call");
-        assert_eq!(ollama_tool.tool_calls[0].name, "load_okf_skill_resource");
         assert_eq!(
-            ollama_tool.tool_calls[0].arguments["resource"],
+            ollama_tool.tool_calls[0].name,
+            "load_okf_capability_resource"
+        );
+        assert_eq!(
+            ollama_tool.tool_calls[0].arguments["capabilityId"],
+            "okf-core"
+        );
+        assert_eq!(
+            ollama_tool.tool_calls[0].arguments["resourceId"],
             "instructions"
         );
 
         let compatible_tool = parse_chat_step(
             LocalModelProvider::OpenAiCompatible,
-            br#"{"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call-1","type":"function","function":{"name":"load_okf_skill_resource","arguments":"{\"resource\":\"commands\"}"}}]}}]}"#,
+            br#"{"choices":[{"message":{"role":"assistant","content":null,"tool_calls":[{"id":"call-1","type":"function","function":{"name":"load_okf_capability_resource","arguments":"{\"capabilityId\":\"okf-core\",\"resourceId\":\"commands\"}"}}]}}]}"#,
         )
         .expect("parse compatible tool call");
         assert_eq!(compatible_tool.tool_calls[0].id, "call-1");
@@ -1264,11 +1271,11 @@ mod tests {
             let first_body = request_json(&first_request);
             assert_eq!(
                 first_body["tools"][0]["function"]["name"],
-                "load_okf_skill_resource"
+                "load_okf_capability_resource"
             );
             write_json_response(
                 &mut first,
-                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"instructions"}}}]}}"#,
+                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_capability_resource","arguments":{"capabilityId":"okf-core","resourceId":"instructions"}}}]}}"#,
             );
 
             let (mut second, _) = listener.accept().expect("accept second request");
@@ -1278,7 +1285,7 @@ mod tests {
                 .as_array()
                 .and_then(|messages| messages.iter().find(|message| message["role"] == "tool"))
                 .expect("tool result message");
-            assert_eq!(tool_result["tool_name"], "load_okf_skill_resource");
+            assert_eq!(tool_result["tool_name"], "load_okf_capability_resource");
             assert_eq!(tool_result["content"], "canonical resource body");
             write_json_response(
                 &mut second,
@@ -1294,12 +1301,15 @@ mod tests {
             api_key: None,
         };
         let tools = [LocalToolDefinition {
-            name: "load_okf_skill_resource",
+            name: "load_okf_capability_resource",
             description: "Load one resource.",
             parameters: serde_json::json!({
                 "type": "object",
-                "properties": {"resource": {"type": "string"}},
-                "required": ["resource"],
+                "properties": {
+                    "capabilityId": {"type": "string"},
+                    "resourceId": {"type": "string"}
+                },
+                "required": ["capabilityId", "resourceId"],
                 "additionalProperties": false
             }),
         }];
@@ -1313,8 +1323,9 @@ mod tests {
             &tools,
             |call| {
                 calls += 1;
-                assert_eq!(call.name, "load_okf_skill_resource");
-                assert_eq!(call.arguments["resource"], "instructions");
+                assert_eq!(call.name, "load_okf_capability_resource");
+                assert_eq!(call.arguments["capabilityId"], "okf-core");
+                assert_eq!(call.arguments["resourceId"], "instructions");
                 Ok(LocalToolOutcome::Completed(
                     "canonical resource body".to_string(),
                 ))
@@ -1335,7 +1346,7 @@ mod tests {
             let _ = read_http_request(&mut first);
             write_json_response(
                 &mut first,
-                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"missing"}}}]}}"#,
+                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_capability_resource","arguments":{"capabilityId":"okf-core","resourceId":"missing"}}}]}}"#,
             );
 
             let (mut second, _) = listener.accept().expect("accept correction request");
@@ -1345,7 +1356,7 @@ mod tests {
                 .as_array()
                 .and_then(|messages| messages.iter().find(|message| message["role"] == "tool"))
                 .expect("failed tool result message");
-            assert_eq!(tool_result["tool_name"], "load_okf_skill_resource");
+            assert_eq!(tool_result["tool_name"], "load_okf_capability_resource");
             assert_eq!(
                 tool_result["content"],
                 "Studio tool error: Choose an advertised resource."
@@ -1364,7 +1375,7 @@ mod tests {
             api_key: None,
         };
         let tools = [LocalToolDefinition {
-            name: "load_okf_skill_resource",
+            name: "load_okf_capability_resource",
             description: "Load one resource.",
             parameters: serde_json::json!({"type": "object"}),
         }];
@@ -1399,7 +1410,7 @@ mod tests {
             let _ = read_http_request(&mut stream);
             write_json_response(
                 &mut stream,
-                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_skill_resource","arguments":{"resource":"instructions"}}}]}}"#,
+                r#"{"message":{"role":"assistant","content":"","tool_calls":[{"type":"function","function":{"name":"load_okf_capability_resource","arguments":{"capabilityId":"okf-core","resourceId":"instructions"}}}]}}"#,
             );
         });
         let runtime = LocalModelRuntime {
@@ -1411,7 +1422,7 @@ mod tests {
             api_key: None,
         };
         let tools = [LocalToolDefinition {
-            name: "load_okf_skill_resource",
+            name: "load_okf_capability_resource",
             description: "Load one resource.",
             parameters: serde_json::json!({"type": "object"}),
         }];
@@ -1451,7 +1462,7 @@ mod tests {
             api_key: None,
         };
         let tools = [LocalToolDefinition {
-            name: "load_okf_skill_resource",
+            name: "load_okf_capability_resource",
             description: "Load one resource.",
             parameters: serde_json::json!({"type": "object"}),
         }];

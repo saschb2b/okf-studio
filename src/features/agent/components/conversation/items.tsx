@@ -107,7 +107,7 @@ export function applyTurnEvent(
   event: AgentTurnEvent,
   setMessages: Dispatch<SetStateAction<ConversationItem[]>>,
 ): void {
-  if (event.update.kind === "usage") return;
+  if (event.update.kind === "usage" || event.update.kind === "capability-use") return;
   if (event.update.kind === "text") {
     const chunkText = event.update.text;
     setMessages((current) => {

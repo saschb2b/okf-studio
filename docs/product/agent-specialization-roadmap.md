@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T00:16:16Z
+timestamp: 2026-07-18T00:42:29Z
 ---
 
 # Outcome
@@ -89,13 +89,13 @@ Gate: the suite can distinguish a fluent answer from correct OKF work, produces 
 
 ## SP1: Versioned OKF capability kernel
 
-- [ ] Replace the hard-coded single-skill catalog with a typed manifest containing capability ID, version, description, resources, required Studio tools, artifact kinds, and risk class.
-- [ ] Compile built-in resources from one canonical repository location and verify their digest at build time.
-- [ ] Expose the bounded capability catalog to Studio Agent through progressive loading and to external ACP agents through compatible resource context.
-- [ ] Record which capabilities and resource versions were attached to each accepted turn without copying their full text into the transcript.
-- [ ] Reject unknown resources, undeclared tools, duplicate IDs, invalid versions, and packs above the bounded size limit.
-- [ ] Model capability support as selected, delivered, tool-observed, degraded, or unavailable instead of treating prompt attachment as proof of use.
-- [ ] Version manifest and resource schemas independently so a content update does not require an IPC contract change.
+- [x] Replace the hard-coded single-skill catalog with a typed manifest containing capability ID, version, description, resources, required Studio tools, artifact kinds, and risk class.
+- [x] Compile built-in resources from one canonical repository location and verify their digest at build time.
+- [x] Expose the bounded capability catalog to Studio Agent through progressive loading and to external ACP agents through compatible resource context.
+- [x] Record which capabilities and resource versions were attached to each accepted turn without copying their full text into the transcript.
+- [x] Reject unknown resources, undeclared tools, duplicate IDs, invalid versions, and packs above the bounded size limit.
+- [x] Model capability support as selected, delivered, tool-observed, degraded, or unavailable instead of treating prompt attachment as proof of use.
+- [x] Version manifest and resource schemas independently so a content update does not require an IPC contract change.
 
 Gate: a fake native model and fake ACP agent receive the same selected OKF capability resources, while agents without rich resource support receive a bounded text fallback.
 

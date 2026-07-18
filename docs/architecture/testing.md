@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-18T00:16:16Z
+timestamp: 2026-07-18T00:42:29Z
 ---
 
 # Decision
@@ -18,7 +18,7 @@ The primary integration fixture is **this `docs/` bundle itself**. The app's own
 
 # Studio creation and reviewed-edit dogfood
 
-The Studio staging test copies `docs/` to a temporary directory and exercises both authoring modes against real bundle structure. The Create path derives a separate two-concept bundle from a plain-text interview note and a CSV ownership table, validates the isolated draft, materializes it in a new destination, and reads the result through `okf-core`. The Enhance path stages changes to two existing `docs/` concepts plus one linked concept, explicitly keeps every modification hunk, validates and applies the selected revision, reads the resulting 49-concept bundle, and restores the checkpoint. The test compares the original files before and after the exercise, so a passing run also proves that dogfooding did not modify the checked-in bundle.
+The Studio staging test copies `docs/` to a temporary directory and exercises both authoring modes against real bundle structure. The Create path derives a separate two-concept bundle from a plain-text interview note and a CSV ownership table, validates the isolated draft, materializes it in a new destination, and reads the result through `okf-core`. The Enhance path stages changes to two existing `docs/` concepts plus one linked concept, explicitly keeps every modification hunk, validates and applies the selected revision, proves that exactly one concept was added to the current source fixture, and restores the checkpoint. The test compares the original files before and after the exercise, so a passing run also proves that dogfooding did not modify the checked-in bundle.
 
 Frontend interaction tests cover the corresponding guided Create and Enhance starters, proposal generation, grant requirement, staged review, explicit hunk choices, validation, portable destination checks, and Apply controls. Together these tests provide deterministic coverage of Studio's reviewed-authoring boundary. They do not substitute for live-provider quality checks.
 

@@ -30,6 +30,8 @@ mod agent_install;
 #[path = "agent/registry/agent_runtime.rs"]
 mod agent_runtime;
 // provider — the native Studio Agent and its tools.
+#[path = "agent/provider/agent_capabilities.rs"]
+mod agent_capabilities;
 #[path = "agent/provider/agent_credentials.rs"]
 mod agent_credentials;
 #[path = "agent/provider/agent_local.rs"]

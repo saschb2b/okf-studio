@@ -4012,6 +4012,7 @@ mod tests {
             .expect("read source overview");
         let source_product_index = std::fs::read_to_string(source_docs.join("product/index.md"))
             .expect("read source product index");
+        let source_concept_count = okf_core::read_bundle(&source_docs).concepts.len();
         let docs_copy = canonical_temp_dir("dogfood-docs-copy");
         copy_directory(&source_docs, &docs_copy);
 
@@ -4139,7 +4140,11 @@ mod tests {
             .expect("apply reviewed enhancement");
         assert_eq!(applied.applied_files, 3);
         let enhanced_bundle = okf_core::read_bundle(&docs_copy);
-        assert_eq!(enhanced_bundle.concepts.len(), 51);
+        assert_eq!(
+            enhanced_bundle.concepts.len(),
+            source_concept_count + 1,
+            "the reviewed enhancement should add exactly its evidence concept"
+        );
         assert!(enhanced_bundle
             .issues
             .iter()

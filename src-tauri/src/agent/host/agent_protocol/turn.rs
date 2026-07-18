@@ -11,6 +11,40 @@ pub struct AgentTurnInfo {
     pub(crate) connection_id: String,
     pub(crate) session_id: String,
     pub(crate) turn_id: String,
+    pub(crate) capability_context: Vec<AgentTurnCapabilityInfo>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AgentTurnCapabilityInfo {
+    pub(crate) capability_id: String,
+    pub(crate) version: String,
+    pub(crate) manifest_sha256: String,
+    pub(crate) support: AgentCapabilitySupport,
+    pub(crate) delivery: AgentCapabilityDelivery,
+    pub(crate) resource_ids: Vec<String>,
+    pub(crate) observed_resource_ids: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum AgentCapabilitySupport {
+    Full,
+    Degraded,
+    #[allow(
+        dead_code,
+        reason = "task-specific capability selection emits this state after the curated suite lands"
+    )]
+    Unavailable,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum AgentCapabilityDelivery {
+    CatalogOnly,
+    EmbeddedResources,
+    TextFallback,
+    SessionContext,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -49,6 +83,11 @@ pub(crate) enum AgentTurnUpdate {
         used_tokens: u64,
         context_window_tokens: u64,
         cost: Option<AgentUsageCostInfo>,
+    },
+    CapabilityUse {
+        capability_id: String,
+        version: String,
+        resource_id: String,
     },
     Completed {
         stop_reason: String,

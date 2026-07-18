@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "resourceSchemaVersion": 1,
+  "capabilities": [
+    {
+      "id": "okf-core",
+      "version": "0.1.0",
+      "description": "Inspect, author, validate, and maintain conformant Open Knowledge Format bundles.",
+      "riskClass": "stage",
+      "requiredTools": [
+        "okf_inventory",
+        "okf_read",
+        "okf_search",
+        "okf_sources",
+        "okf_traverse",
+        "okf_validate"
+      ],
+      "artifactKinds": [
+        "bundle-plan",
+        "health-report",
+        "research-brief",
+        "staged-revision"
+      ],
+      "resources": [
+        {
+          "id": "instructions",
+          "label": "instructions",
+          "path": "SKILL.md",
+          "mediaType": "text/markdown",
+          "sha256": "20eda3778b8f39c0beb265b5a0939c3b3ead02d696a0c67f4957980bf180fc17"
+        },
+        {
+          "id": "specification",
+          "label": "specification",
+          "path": "spec.md",
+          "mediaType": "text/markdown",
+          "sha256": "b6393383576a2a91029fe3580927d0bf45b79429ced651212b03f76caabb1c41"
+        },
+        {
+          "id": "commands",
+          "label": "commands",
+          "path": "commands.md",
+          "mediaType": "text/markdown",
+          "sha256": "109342e59aec1f1e1c8ffb42924b05ecb22b8f84748046520f9f0c29c47068f2"
+        },
+        {
+          "id": "templates",
+          "label": "templates",
+          "path": "templates.md",
+          "mediaType": "text/markdown",
+          "sha256": "6d6e97afdf0fbc7a52003ffa4ab4d7b8b18dad986ee59860f716c8440ed1e924"
+        }
+      ]
+    }
+  ]
+}

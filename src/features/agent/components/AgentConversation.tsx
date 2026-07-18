@@ -577,7 +577,28 @@ export function AgentConversation({
       onAgentTurnUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
         if (sessionRef.current?.sessionId !== event.sessionId) return;
-        if (event.update.kind === "usage") setUsage(event.update);
+        if (event.update.kind === "capability-use") {
+          const capabilityUse = event.update;
+          setActiveTurn((current) => {
+            if (current?.turnId !== event.turnId) return current;
+            return {
+              ...current,
+              capabilityContext: current.capabilityContext.map((capability) =>
+                capability.capabilityId === capabilityUse.capabilityId &&
+                  capability.version === capabilityUse.version &&
+                  !capability.observedResourceIds.includes(capabilityUse.resourceId)
+                  ? {
+                      ...capability,
+                      observedResourceIds: [
+                        ...capability.observedResourceIds,
+                        capabilityUse.resourceId,
+                      ],
+                    }
+                  : capability,
+              ),
+            };
+          });
+        } else if (event.update.kind === "usage") setUsage(event.update);
         else applyTurnEvent(event, setMessages);
         if (event.update.kind === "completed" || event.update.kind === "failed") {
           applyTerminalTurnEvent(event);

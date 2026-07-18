@@ -8,6 +8,24 @@ const OKF_SKILL: &str = include_str!("../../../../.agents/skills/okf/SKILL.md");
 const OKF_SPEC: &str = include_str!("../../../../.agents/skills/okf/spec.md");
 const OKF_COMMANDS: &str = include_str!("../../../../.agents/skills/okf/commands.md");
 const OKF_TEMPLATES: &str = include_str!("../../../../.agents/skills/okf/templates.md");
+const CAPABILITY_CHANGELOG: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/CHANGELOG.md");
+const OKF_INSPECT: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/inspect.md");
+const OKF_CREATE: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/create.md");
+const OKF_ENRICH: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/enrich.md");
+const OKF_AUDIT: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/audit.md");
+const OKF_REPAIR: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/repair.md");
+const OKF_RESEARCH: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/research.md");
+const OKF_CHANGE_IMPACT: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/change-impact.md");
+const OKF_MIGRATE: &str =
+    include_str!("../../../../.agents/skills/okf/capabilities/migrate.md");
 const MAX_CAPABILITIES: usize = 32;
 const MAX_RESOURCES_PER_CAPABILITY: usize = 16;
 const MAX_RESOURCE_BYTES: usize = 256 * 1024;
@@ -40,6 +58,15 @@ const ALLOWED_ARTIFACT_KINDS: [&str; 7] = [
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CapabilityCatalog {
+    pub schema_version: u32,
+    pub resource_schema_version: u32,
+    pub capabilities: Vec<CapabilityDefinition>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CapabilityCatalogInfo {
+    pub manifest_sha256: String,
     pub schema_version: u32,
     pub resource_schema_version: u32,
     pub capabilities: Vec<CapabilityDefinition>,
@@ -100,6 +127,16 @@ pub(crate) fn catalog() -> &'static CapabilityCatalog {
 
 pub(crate) fn manifest_sha256() -> &'static str {
     env!("OKF_CAPABILITY_MANIFEST_SHA256")
+}
+
+pub(crate) fn catalog_info() -> CapabilityCatalogInfo {
+    let catalog = catalog();
+    CapabilityCatalogInfo {
+        manifest_sha256: manifest_sha256().to_string(),
+        schema_version: catalog.schema_version,
+        resource_schema_version: catalog.resource_schema_version,
+        capabilities: catalog.capabilities.clone(),
+    }
 }
 
 pub(crate) fn default_capability() -> &'static CapabilityDefinition {
@@ -290,6 +327,15 @@ fn embedded_contents(path: &str) -> Option<&'static str> {
         "spec.md" => Some(OKF_SPEC),
         "commands.md" => Some(OKF_COMMANDS),
         "templates.md" => Some(OKF_TEMPLATES),
+        "capabilities/CHANGELOG.md" => Some(CAPABILITY_CHANGELOG),
+        "capabilities/inspect.md" => Some(OKF_INSPECT),
+        "capabilities/create.md" => Some(OKF_CREATE),
+        "capabilities/enrich.md" => Some(OKF_ENRICH),
+        "capabilities/audit.md" => Some(OKF_AUDIT),
+        "capabilities/repair.md" => Some(OKF_REPAIR),
+        "capabilities/research.md" => Some(OKF_RESEARCH),
+        "capabilities/change-impact.md" => Some(OKF_CHANGE_IMPACT),
+        "capabilities/migrate.md" => Some(OKF_MIGRATE),
         _ => None,
     }
 }
@@ -311,13 +357,35 @@ mod tests {
         let catalog = catalog();
         assert_eq!(catalog.schema_version, 1);
         assert_eq!(catalog.resource_schema_version, 1);
-        assert_eq!(catalog.capabilities.len(), 1);
+        assert_eq!(catalog.capabilities.len(), 9);
 
         let capability = default_capability();
         assert_eq!(capability.id, "okf-core");
         assert_eq!(capability.version, "0.1.0");
-        assert_eq!(capability.resources.len(), 4);
+        assert_eq!(capability.resources.len(), 5);
         assert_eq!(manifest_sha256().len(), 64);
+        for capability_id in [
+            "okf-inspect",
+            "okf-create",
+            "okf-enrich",
+            "okf-audit",
+            "okf-repair",
+            "okf-research",
+            "okf-change-impact",
+            "okf-migrate",
+        ] {
+            let capability = catalog
+                .capabilities
+                .iter()
+                .find(|candidate| candidate.id == capability_id)
+                .expect("curated capability should be present");
+            assert_eq!(capability.version, "0.1.0");
+            assert_eq!(capability.resources.len(), 1);
+            assert!(resource(capability_id, "instructions")
+                .expect("curated instructions should materialize")
+                .contents
+                .contains("## Stop conditions"));
+        }
     }
 
     #[test]
@@ -335,6 +403,18 @@ mod tests {
         assert!(commands.contents.contains("## `init`"));
         assert!(resource("okf-core", "secrets").is_err());
         assert!(resource("unknown", "commands").is_err());
+    }
+
+    #[test]
+    fn exposes_metadata_without_resource_bodies_for_settings() {
+        let info = serde_json::to_value(catalog_info()).expect("serialize catalog metadata");
+        assert_eq!(info["capabilities"].as_array().map(Vec::len), Some(9));
+        assert_eq!(info["manifestSha256"].as_str().map(str::len), Some(64));
+        assert_eq!(
+            info["capabilities"][1]["resources"][0]["path"],
+            "capabilities/inspect.md"
+        );
+        assert!(info.to_string().find("## Trigger").is_none());
     }
 
     #[test]

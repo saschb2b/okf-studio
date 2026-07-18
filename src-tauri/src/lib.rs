@@ -67,6 +67,11 @@ use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use watch::WatchState;
 
+#[tauri::command]
+fn okf_capability_catalog() -> agent_capabilities::CapabilityCatalogInfo {
+    agent_capabilities::catalog_info()
+}
+
 pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
     agent_mcp::run(bundle_root)
 }
@@ -885,6 +890,7 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             agent_catalog,
+            okf_capability_catalog,
             agent_security_host_status,
             custom_agents,
             save_custom_agent,

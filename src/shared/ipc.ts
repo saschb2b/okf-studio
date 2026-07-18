@@ -95,6 +95,115 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
   return invoke<AgentCatalogDocument>("agent_catalog");
 }
 
+export type OkfCapabilityRiskClass = "read" | "analyze" | "fetch" | "stage";
+
+export interface OkfCapabilityResourceInfo {
+  id: string;
+  label: string;
+  path: string;
+  mediaType: "text/markdown";
+  sha256: string;
+}
+
+export interface OkfCapabilityInfo {
+  id: string;
+  version: string;
+  description: string;
+  riskClass: OkfCapabilityRiskClass;
+  requiredTools: string[];
+  artifactKinds: string[];
+  resources: OkfCapabilityResourceInfo[];
+}
+
+export interface OkfCapabilityCatalogInfo {
+  manifestSha256: string;
+  schemaVersion: number;
+  resourceSchemaVersion: number;
+  capabilities: OkfCapabilityInfo[];
+}
+
+const MOCK_OKF_CAPABILITY_IDS = [
+  "okf-core",
+  "okf-inspect",
+  "okf-create",
+  "okf-enrich",
+  "okf-audit",
+  "okf-repair",
+  "okf-research",
+  "okf-change-impact",
+  "okf-migrate",
+] as const;
+
+const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], OkfCapabilityRiskClass> = {
+  "okf-core": "stage",
+  "okf-inspect": "read",
+  "okf-create": "analyze",
+  "okf-enrich": "stage",
+  "okf-audit": "analyze",
+  "okf-repair": "stage",
+  "okf-research": "fetch",
+  "okf-change-impact": "analyze",
+  "okf-migrate": "analyze",
+};
+
+const MOCK_OKF_CAPABILITY_ARTIFACTS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
+  "okf-core": ["bundle-plan", "health-report", "research-brief", "staged-revision"],
+  "okf-inspect": ["health-report"],
+  "okf-create": ["bundle-plan"],
+  "okf-enrich": ["staged-revision"],
+  "okf-audit": ["health-report"],
+  "okf-repair": ["staged-revision"],
+  "okf-research": ["research-brief"],
+  "okf-change-impact": ["change-impact-map"],
+  "okf-migrate": ["migration-plan"],
+};
+
+const MOCK_OKF_CAPABILITY_TOOLS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
+  "okf-core": ["okf_inventory", "okf_read", "okf_search", "okf_sources", "okf_traverse", "okf_validate"],
+  "okf-inspect": ["okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+  "okf-create": ["okf_inventory", "okf_read", "okf_traverse"],
+  "okf-enrich": ["okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+  "okf-audit": ["okf_inventory", "okf_validate", "okf_traverse", "okf_read"],
+  "okf-repair": ["okf_inventory", "okf_validate", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+  "okf-research": ["okf_inventory", "okf_search", "okf_read", "okf_sources"],
+  "okf-change-impact": ["okf_search", "okf_read", "okf_traverse"],
+  "okf-migrate": ["okf_inventory", "okf_search", "okf_traverse"],
+};
+
+function mockCapability(id: (typeof MOCK_OKF_CAPABILITY_IDS)[number]): OkfCapabilityInfo {
+  const name = id.replace("okf-", "");
+  return {
+    id,
+    version: "0.1.0",
+    description: id === "okf-core"
+      ? "Shared OKF specification, commands, templates, and invariant guidance."
+      : `Built-in ${name} method for bounded OKF work.`,
+    riskClass: MOCK_OKF_CAPABILITY_RISKS[id],
+    requiredTools: MOCK_OKF_CAPABILITY_TOOLS[id],
+    artifactKinds: MOCK_OKF_CAPABILITY_ARTIFACTS[id],
+    resources: [{
+      id: "instructions",
+      label: `${name} instructions`,
+      path: id === "okf-core" ? "SKILL.md" : `capabilities/${name}.md`,
+      mediaType: "text/markdown",
+      sha256: "browser-preview",
+    }],
+  };
+}
+
+export async function okfCapabilityCatalog(): Promise<OkfCapabilityCatalogInfo> {
+  if (!isTauri()) {
+    return {
+      manifestSha256: "browser-preview",
+      schemaVersion: 1,
+      resourceSchemaVersion: 1,
+      capabilities: MOCK_OKF_CAPABILITY_IDS.map(mockCapability),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfCapabilityCatalogInfo>("okf_capability_catalog");
+}
+
 function browserSecurityPlatform(): AgentSecurityHostStatus["platform"] {
   if (navigator.userAgent.includes("Windows")) return "windows";
   if (navigator.userAgent.includes("Mac")) return "macos";

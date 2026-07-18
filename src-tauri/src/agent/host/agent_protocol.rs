@@ -5111,7 +5111,10 @@ mod tests {
                             responder: Responder<PromptResponse>,
                             connection: ConnectionTo<Client>| {
                     assert_eq!(request.session_id.to_string(), "session-1");
-                    assert_eq!(request.prompt.len(), 7);
+                    assert_eq!(
+                        request.prompt.len(),
+                        agent_capabilities::default_resources().len() + 3
+                    );
                     assert!(matches!(
                         request.prompt.last(),
                         Some(ContentBlock::Text(text)) if text.text == "Research this bundle"
@@ -5636,7 +5639,7 @@ mod tests {
                 .iter()
                 .filter(|content| matches!(content, ContentBlock::Resource(_)))
                 .count(),
-            4
+            agent_capabilities::default_resources().len()
         );
         assert!(matches!(
             prompt.last(),

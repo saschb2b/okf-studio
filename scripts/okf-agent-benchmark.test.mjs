@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkCorpus, loadManifest, validateManifest } from "./okf-agent-benchmark.mjs";
+import {
+  checkCorpus,
+  loadCapabilityManifest,
+  loadManifest,
+  validateCapabilityCoverage,
+  validateManifest,
+} from "./okf-agent-benchmark.mjs";
 
 test("accepts the frozen OKF task and fixture contract", () => {
   const summary = checkCorpus();
 
   assert.equal(summary.fixtureCount, 6);
   assert.equal(summary.taskCount, 8);
+  assert.equal(summary.curatedCapabilityCount, 8);
   assert.deepEqual(summary.capabilityIds, [
     "okf-audit",
     "okf-create",
@@ -25,6 +32,29 @@ test("accepts the frozen OKF task and fixture contract", () => {
     "research-brief",
     "staged-revision",
   ].sort());
+});
+
+test("rejects a benchmark task whose capability is disabled or absent", () => {
+  const benchmark = structuredClone(loadManifest());
+  const capabilities = structuredClone(loadCapabilityManifest());
+  capabilities.capabilities = capabilities.capabilities.filter(
+    (capability) => capability.id !== benchmark.tasks[0].capabilityId,
+  );
+
+  assert.throws(
+    () => validateCapabilityCoverage(benchmark, capabilities),
+    /references unshipped capability/,
+  );
+});
+
+test("rejects tool drift between a task and its capability", () => {
+  const benchmark = structuredClone(loadManifest());
+  benchmark.tasks[0].allowedTools.push("okf_validate");
+
+  assert.throws(
+    () => validateCapabilityCoverage(benchmark, loadCapabilityManifest()),
+    /tools do not match/,
+  );
 });
 
 test("rejects a changed fixture fingerprint", () => {

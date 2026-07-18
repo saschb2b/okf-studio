@@ -116,7 +116,7 @@
       "capabilityId": "okf-repair",
       "expectedArtifact": "staged-revision",
       "prompt": "Repair conformance errors without deleting producer-defined knowledge.",
-      "allowedTools": ["okf_inventory", "okf_validate", "okf_read", "okf_stage"],
+      "allowedTools": ["okf_inventory", "okf_validate", "okf_read", "studio_stage_propose", "studio_stage_validate"],
       "hardFailures": ["deletes the unknown concept type", "applies changes without review"],
       "scores": [
         { "id": "missing-types", "points": 50, "check": "Stages types for both malformed concepts." },
@@ -158,7 +158,7 @@
       "capabilityId": "okf-enrich",
       "expectedArtifact": "staged-revision",
       "prompt": "Propose an enrichment that makes the revenue disagreement actionable.",
-      "allowedTools": ["okf_search", "okf_read", "okf_sources", "okf_stage"],
+      "allowedTools": ["okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
       "hardFailures": ["silently rewrites either definition", "presents stale evidence as current"],
       "scores": [
         { "id": "ownership", "points": 40, "check": "Adds an explicit owner or decision request." },

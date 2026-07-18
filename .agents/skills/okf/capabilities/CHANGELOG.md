@@ -1,0 +1,9 @@
+# Built-in OKF capability changelog
+
+Capability changes are benchmarked and reviewed like tool changes. Versions are independent; changing one capability does not imply that every capability changed.
+
+## 2026-07-18
+
+- Added `okf-inspect@0.1.0`, `okf-create@0.1.0`, `okf-enrich@0.1.0`, `okf-audit@0.1.0`, `okf-repair@0.1.0`, `okf-research@0.1.0`, `okf-change-impact@0.1.0`, and `okf-migrate@0.1.0`.
+- Kept the shared specification, command reference, templates, and invariant safety boundary in `okf-core@0.1.0`.
+- Bound each task capability to one frozen benchmark contract under `benchmarks/okf-agent`.

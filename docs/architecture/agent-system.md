@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-18T00:42:29Z
+timestamp: 2026-07-18T01:24:14Z
 ---
 
 # Decision
@@ -28,6 +28,8 @@ Rust owns processes, network, credentials, filesystem mediation, persistence, an
 ACP standardizes capability negotiation, agent-owned auth, sessions, streaming, tools, permission requests, diffs, filesystem requests, cancellation, and optional restore. It avoids separate Claude and Codex clients. Rust keeps one canonical bundle-root representation from folder grant through agent connection and ACP session dispatch. On Windows it removes the verbatim prefix before storing or sending the root, and bundle comparisons treat the ordinary `C:\...` and equivalent `\\?\C:\...` forms as the same canonical directory. This preserves exact bundle scoping while accepting connections created before the normalized representation was introduced.
 
 ACP does not replace an external agent's system prompt. The native Studio Agent guarantees the packaged [OKF capability resources](../../.agents/skills/okf/capabilities.json), system prompt, scoped tools, validation, and staged writes. External agents receive bundle cwd, explicit resources, client permissions, and Studio OKF tools over MCP where supported. Studio labels first-turn capability material as client context and never claims it changed the external agent's system instructions.
+
+The packaged catalog keeps invariant trust rules in the native boundary and task method in versioned resources. `okf-core` owns the shared specification, command reference, templates, and changelog. Eight narrow capabilities own inspect, create, enrich, audit, repair, cited research, change-impact, and migration methods. Each declares one risk class, exact tool set, artifact kinds, required inputs, ordered method, stop conditions, completion checks, and worked and adversarial examples. The benchmark gate requires one task contract per narrow capability and rejects tool or artifact drift. Removing a capability removes its benchmark entry point without changing the native safety boundary. Settings exposes metadata and digests, never resource bodies or an enablement claim.
 
 Studio advertises ACP v1 session configuration support for select and boolean options. New and loaded session responses cross Rust as a complete ordered snapshot after reduction. Rust accepts at most 64 options, 64 groups per selector, and 512 values per selector; IDs, names, descriptions, categories, group labels, and value labels are non-empty where required, control-safe, and capped at 512 characters. Duplicate option and value IDs keep their first occurrence. A select is omitted when its confirmed current value is absent from the accepted values, and a future unknown option kind is omitted without hiding other usable options. Unknown semantic categories lose only their category when unsafe; they do not change provider behavior.
 

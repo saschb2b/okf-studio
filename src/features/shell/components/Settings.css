@@ -2,6 +2,7 @@
    .ui-backdrop); form controls from Base UI styled in baseui.css. */
 
 .settings-dialog {
+  box-sizing: border-box;
   width: 440px;
   padding: var(--space-20);
   display: flex;

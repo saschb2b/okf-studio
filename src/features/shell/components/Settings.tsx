@@ -17,6 +17,7 @@ import type { ZoomIntent } from "@/shared/platform/native.ts";
 import { checkForUpdate, installUpdate, RELEASES_URL } from "@/shared/platform/updater.ts";
 import type { UpdateStatus } from "@/shared/platform/updater.ts";
 import { requestAgentNotificationPermission } from "@/shared/platform/notifications.ts";
+import { OkfCapabilitySettings } from "./OkfCapabilitySettings.tsx";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
 import "./Settings.css";
@@ -284,6 +285,8 @@ export function Settings() {
               How deep autodetect descends into subfolders.
             </span>
           </div>
+
+          <OkfCapabilitySettings />
 
           <div className="field">
             <span className="field-label">Updates</span>

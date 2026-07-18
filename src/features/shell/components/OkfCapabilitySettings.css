@@ -1,0 +1,91 @@
+.settings-capabilities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.settings-capabilities h2,
+.settings-capabilities p {
+  margin: 0;
+}
+
+.settings-capability-content {
+  min-height: 120px;
+}
+
+.settings-capability-manifest,
+.settings-capability code {
+  overflow-wrap: anywhere;
+}
+
+.settings-capability-manifest {
+  font-size: var(--fs-xs);
+}
+
+.settings-capability-list {
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.settings-capability {
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-capability:last-child {
+  border-bottom: 0;
+}
+
+.settings-capability summary {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.settings-capability > p,
+.settings-capability dl,
+.settings-capability ul {
+  margin: var(--space-8) 0 0;
+  font-size: var(--fs-xs);
+}
+
+.settings-capability dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-4) var(--space-8);
+}
+
+.settings-capability dt {
+  color: var(--text-muted);
+}
+
+.settings-capability dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-capability ul {
+  padding: 0;
+  list-style: none;
+}
+
+.settings-capability li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8) 0;
+  border-top: 1px solid var(--border);
+}
+
+.settings-capability-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}

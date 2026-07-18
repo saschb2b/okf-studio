@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 const scriptDirectory = fileURLToPath(new URL(".", import.meta.url));
 export const benchmarkRoot = resolve(scriptDirectory, "../benchmarks/okf-agent");
 export const defaultManifestPath = resolve(benchmarkRoot, "manifest.json");
+export const capabilityRoot = resolve(scriptDirectory, "../.agents/skills/okf");
+export const defaultCapabilityManifestPath = resolve(capabilityRoot, "capabilities.json");
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -85,6 +87,67 @@ export function loadManifest(path = defaultManifestPath) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+export function loadCapabilityManifest(path = defaultCapabilityManifestPath) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
+export function validateCapabilityCoverage(benchmarkInput, capabilityInput) {
+  const benchmark = requireObject(benchmarkInput, "benchmark manifest");
+  const capabilityManifest = requireObject(capabilityInput, "capability manifest");
+  if (!Array.isArray(benchmark.tasks) || !Array.isArray(capabilityManifest.capabilities)) {
+    throw new Error("Benchmark tasks and capabilities must be arrays.");
+  }
+
+  const capabilities = new Map(capabilityManifest.capabilities.map((value, index) => {
+    const capability = requireObject(value, `capability manifest.capabilities[${index}]`);
+    return [requireString(capability.id, `capability manifest.capabilities[${index}].id`), capability];
+  }));
+  const taskCounts = new Map();
+  for (const value of benchmark.tasks) {
+    const task = requireObject(value, "benchmark task");
+    const taskId = requireString(task.id, "benchmark task.id");
+    const capabilityId = requireString(task.capabilityId, `task ${taskId}.capabilityId`);
+    const capability = capabilities.get(capabilityId);
+    if (!capability) throw new Error(`Task ${taskId} references unshipped capability ${capabilityId}.`);
+    taskCounts.set(capabilityId, (taskCounts.get(capabilityId) ?? 0) + 1);
+
+    const allowedTools = requireStringArray(task.allowedTools, `task ${taskId}.allowedTools`).slice().sort();
+    const requiredTools = requireStringArray(capability.requiredTools, `capability ${capabilityId}.requiredTools`).slice().sort();
+    if (JSON.stringify(allowedTools) !== JSON.stringify(requiredTools)) {
+      throw new Error(`Task ${taskId} tools do not match ${capabilityId}.`);
+    }
+    const artifactKinds = requireStringArray(capability.artifactKinds, `capability ${capabilityId}.artifactKinds`);
+    if (!artifactKinds.includes(task.expectedArtifact)) {
+      throw new Error(`Task ${taskId} expects an artifact not declared by ${capabilityId}.`);
+    }
+
+    const instructions = capability.resources.find((resource) => resource.id === "instructions");
+    if (!instructions) throw new Error(`${capabilityId} has no instructions resource.`);
+    const instructionPath = resolveInside(capabilityRoot, instructions.path, `${capabilityId} instructions path`);
+    const contents = readFileSync(instructionPath, "utf8");
+    for (const heading of [
+      "## Trigger",
+      "## Required inputs",
+      "## Method",
+      "## Artifact contract",
+      "## Stop conditions",
+      "## Completion checks",
+      "## Worked example",
+      "## Adversarial example",
+    ]) {
+      if (!contents.includes(heading)) throw new Error(`${capabilityId} instructions are missing ${heading}.`);
+    }
+  }
+
+  const curatedIds = [...capabilities.keys()].filter((id) => id !== "okf-core");
+  for (const capabilityId of curatedIds) {
+    if (taskCounts.get(capabilityId) !== 1) {
+      throw new Error(`${capabilityId} must own exactly one benchmark task.`);
+    }
+  }
+  return { curatedCapabilityCount: curatedIds.length };
+}
+
 export function validateManifest(input, root = benchmarkRoot) {
   const manifest = requireObject(input, "manifest");
   if (manifest.schemaVersion !== 1) throw new Error("manifest.schemaVersion must be 1.");
@@ -157,14 +220,17 @@ export function validateManifest(input, root = benchmarkRoot) {
 }
 
 export function checkCorpus(path = defaultManifestPath) {
-  return validateManifest(loadManifest(path));
+  const manifest = loadManifest(path);
+  const summary = validateManifest(manifest);
+  const capabilitySummary = validateCapabilityCoverage(manifest, loadCapabilityManifest());
+  return { ...summary, ...capabilitySummary };
 }
 
 function runCli() {
   const command = process.argv[2] ?? "check";
   if (command === "check") {
     const summary = checkCorpus(process.argv[3] ? resolve(process.argv[3]) : defaultManifestPath);
-    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts.\n`);
+    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts, ${summary.curatedCapabilityCount} curated capabilities.\n`);
     return;
   }
   if (command === "fingerprints") {
@@ -188,4 +254,3 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exitCode = 1;
   }
 }
-

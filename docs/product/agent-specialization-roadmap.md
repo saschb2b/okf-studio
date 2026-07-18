@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T00:42:29Z
+timestamp: 2026-07-18T01:24:14Z
 ---
 
 # Outcome
@@ -101,13 +101,13 @@ Gate: a fake native model and fake ACP agent receive the same selected OKF capab
 
 ## SP2: Curated OKF skill suite
 
-- [ ] Split the general OKF instructions into narrow skills for inspect, create, enrich, audit, repair, cited research, change impact, and specification migration.
-- [ ] Give every skill trigger guidance, required inputs, ordered method, artifact contract, stop conditions, and completion checks.
-- [ ] Keep shared specification and templates in deduplicated resources referenced by the skills.
-- [ ] Add worked examples and adversarial examples for incomplete evidence, conflicting facts, missing citations, broad rewrites, and unsafe destination requests.
-- [ ] Let the user inspect the exact built-in skill version and resources from Studio settings.
-- [ ] Give every skill a benchmark task set and an owner-visible changelog so instruction edits are evaluated like tool changes.
-- [ ] Keep task method in skills and invariant trust rules in the native system boundary; a disabled or outdated skill cannot remove the safety contract.
+- [x] Split the general OKF instructions into narrow skills for inspect, create, enrich, audit, repair, cited research, change impact, and specification migration.
+- [x] Give every skill trigger guidance, required inputs, ordered method, artifact contract, stop conditions, and completion checks.
+- [x] Keep shared specification and templates in deduplicated resources referenced by the skills.
+- [x] Add worked examples and adversarial examples for incomplete evidence, conflicting facts, missing citations, broad rewrites, and unsafe destination requests.
+- [x] Let the user inspect the exact built-in skill version and resources from Studio settings.
+- [x] Give every skill a benchmark task set and an owner-visible changelog so instruction edits are evaluated like tool changes.
+- [x] Keep task method in skills and invariant trust rules in the native system boundary; a disabled or outdated skill cannot remove the safety contract.
 
 Gate: benchmark tasks select no more than the required skill set, and disabling a skill removes its task entry points without weakening the base safety boundary.
 

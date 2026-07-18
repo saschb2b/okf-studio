@@ -49,8 +49,135 @@
           "path": "templates.md",
           "mediaType": "text/markdown",
           "sha256": "6d6e97afdf0fbc7a52003ffa4ab4d7b8b18dad986ee59860f716c8440ed1e924"
+        },
+        {
+          "id": "changelog",
+          "label": "capability changelog",
+          "path": "capabilities/CHANGELOG.md",
+          "mediaType": "text/markdown",
+          "sha256": "234d7b49d3d189fc8142ff67ef238ac567c298d91871c09de705235c93f40f4d"
         }
       ]
+    },
+    {
+      "id": "okf-inspect",
+      "version": "0.1.0",
+      "description": "Answer bounded questions about an existing bundle and trace explicit relationships.",
+      "riskClass": "read",
+      "requiredTools": ["okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+      "artifactKinds": ["health-report"],
+      "resources": [{
+        "id": "instructions",
+        "label": "inspect method",
+        "path": "capabilities/inspect.md",
+        "mediaType": "text/markdown",
+        "sha256": "d77d16c9a1503fd1ab61f0a8a3b04163cf5a259620f53922108f608b14d9836a"
+      }]
+    },
+    {
+      "id": "okf-create",
+      "version": "0.1.0",
+      "description": "Plan a new bounded, sourced, connected OKF bundle before reviewed creation.",
+      "riskClass": "analyze",
+      "requiredTools": ["okf_inventory", "okf_read", "okf_traverse"],
+      "artifactKinds": ["bundle-plan"],
+      "resources": [{
+        "id": "instructions",
+        "label": "create method",
+        "path": "capabilities/create.md",
+        "mediaType": "text/markdown",
+        "sha256": "1d1b849b14ed2423a5ca338a3d6640057075bf3f4af4f85da5e0ffd10ce58921"
+      }]
+    },
+    {
+      "id": "okf-enrich",
+      "version": "0.1.0",
+      "description": "Add cited context and links to existing concepts through reviewed staging.",
+      "riskClass": "stage",
+      "requiredTools": ["okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+      "artifactKinds": ["staged-revision"],
+      "resources": [{
+        "id": "instructions",
+        "label": "enrich method",
+        "path": "capabilities/enrich.md",
+        "mediaType": "text/markdown",
+        "sha256": "a9018ee00443049c5e763abc53fe0459839706b1d8d2816bc4e1fb0a29c5f0d3"
+      }]
+    },
+    {
+      "id": "okf-audit",
+      "version": "0.1.0",
+      "description": "Audit conformance and knowledge-health evidence without modifying the bundle.",
+      "riskClass": "analyze",
+      "requiredTools": ["okf_inventory", "okf_validate", "okf_traverse", "okf_read"],
+      "artifactKinds": ["health-report"],
+      "resources": [{
+        "id": "instructions",
+        "label": "audit method",
+        "path": "capabilities/audit.md",
+        "mediaType": "text/markdown",
+        "sha256": "dcd70d98bc4ac339c0c43d4e80ce8c35dceab769d04f3da503aafb55b24da3ca"
+      }]
+    },
+    {
+      "id": "okf-repair",
+      "version": "0.1.0",
+      "description": "Repair reproducible OKF defects with minimal reviewed changes.",
+      "riskClass": "stage",
+      "requiredTools": ["okf_inventory", "okf_validate", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+      "artifactKinds": ["staged-revision"],
+      "resources": [{
+        "id": "instructions",
+        "label": "repair method",
+        "path": "capabilities/repair.md",
+        "mediaType": "text/markdown",
+        "sha256": "09b560b21ee3143163fd3f43eb8314b66cd3ed4fd462e1b17f79e73fc450951f"
+      }]
+    },
+    {
+      "id": "okf-research",
+      "version": "0.1.0",
+      "description": "Reconcile bundle claims with bounded, cited evidence and explicit uncertainty.",
+      "riskClass": "fetch",
+      "requiredTools": ["okf_inventory", "okf_search", "okf_read", "okf_sources"],
+      "artifactKinds": ["research-brief"],
+      "resources": [{
+        "id": "instructions",
+        "label": "research method",
+        "path": "capabilities/research.md",
+        "mediaType": "text/markdown",
+        "sha256": "79649b027ae294a5eda301c78ac1f3be105af530d638121868e2aec4c0efed3f"
+      }]
+    },
+    {
+      "id": "okf-change-impact",
+      "version": "0.1.0",
+      "description": "Map direct, transitive, textual, and inferred impact before a change.",
+      "riskClass": "analyze",
+      "requiredTools": ["okf_search", "okf_read", "okf_traverse"],
+      "artifactKinds": ["change-impact-map"],
+      "resources": [{
+        "id": "instructions",
+        "label": "change-impact method",
+        "path": "capabilities/change-impact.md",
+        "mediaType": "text/markdown",
+        "sha256": "32e3b316219cb3bf277e8080c23831f0e02ec179e46321bcf513f4041ca5e65e"
+      }]
+    },
+    {
+      "id": "okf-migrate",
+      "version": "0.1.0",
+      "description": "Plan an identity-preserving, bounded, reversible specification migration.",
+      "riskClass": "analyze",
+      "requiredTools": ["okf_inventory", "okf_search", "okf_traverse"],
+      "artifactKinds": ["migration-plan"],
+      "resources": [{
+        "id": "instructions",
+        "label": "migration method",
+        "path": "capabilities/migrate.md",
+        "mediaType": "text/markdown",
+        "sha256": "abe5e6ddb23ccce811282c7af7e8493d2afb010a9937f49799c0b05164332c99"
+      }]
     }
   ]
 }

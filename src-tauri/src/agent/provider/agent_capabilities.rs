@@ -10,22 +10,15 @@ const OKF_COMMANDS: &str = include_str!("../../../../.agents/skills/okf/commands
 const OKF_TEMPLATES: &str = include_str!("../../../../.agents/skills/okf/templates.md");
 const CAPABILITY_CHANGELOG: &str =
     include_str!("../../../../.agents/skills/okf/capabilities/CHANGELOG.md");
-const OKF_INSPECT: &str =
-    include_str!("../../../../.agents/skills/okf/capabilities/inspect.md");
-const OKF_CREATE: &str =
-    include_str!("../../../../.agents/skills/okf/capabilities/create.md");
-const OKF_ENRICH: &str =
-    include_str!("../../../../.agents/skills/okf/capabilities/enrich.md");
-const OKF_AUDIT: &str =
-    include_str!("../../../../.agents/skills/okf/capabilities/audit.md");
-const OKF_REPAIR: &str =
-    include_str!("../../../../.agents/skills/okf/capabilities/repair.md");
-const OKF_RESEARCH: &str =
-    include_str!("../../../../.agents/skills/okf/capabilities/research.md");
+const OKF_INSPECT: &str = include_str!("../../../../.agents/skills/okf/capabilities/inspect.md");
+const OKF_CREATE: &str = include_str!("../../../../.agents/skills/okf/capabilities/create.md");
+const OKF_ENRICH: &str = include_str!("../../../../.agents/skills/okf/capabilities/enrich.md");
+const OKF_AUDIT: &str = include_str!("../../../../.agents/skills/okf/capabilities/audit.md");
+const OKF_REPAIR: &str = include_str!("../../../../.agents/skills/okf/capabilities/repair.md");
+const OKF_RESEARCH: &str = include_str!("../../../../.agents/skills/okf/capabilities/research.md");
 const OKF_CHANGE_IMPACT: &str =
     include_str!("../../../../.agents/skills/okf/capabilities/change-impact.md");
-const OKF_MIGRATE: &str =
-    include_str!("../../../../.agents/skills/okf/capabilities/migrate.md");
+const OKF_MIGRATE: &str = include_str!("../../../../.agents/skills/okf/capabilities/migrate.md");
 const MAX_CAPABILITIES: usize = 32;
 const MAX_RESOURCES_PER_CAPABILITY: usize = 16;
 const MAX_RESOURCE_BYTES: usize = 256 * 1024;

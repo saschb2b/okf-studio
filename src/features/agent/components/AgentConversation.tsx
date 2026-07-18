@@ -1,6 +1,8 @@
 import type { AgentAvailableCommandInfo, AgentConnectionEvent, AgentConnectionInfo, AgentLoadedSessionInfo, AgentSessionConfigOption, AgentSessionConfigValueInput, AgentSessionInfo, AgentSessionHistoryInfo, AgentStagedChangesInfo, AgentStagedFileDiff, AgentTurnEvent, AgentTurnInfo, AgentWriteGrantMode } from "@/features/agent/connection.ts";
 import type { AgentSessionConfigFailure } from "@/features/agent/components/AgentSessionControls.tsx";
-import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
+import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import type { AcceptedOkfContextManifest, OkfTaskId, OkfTaskKickoff } from "@/features/agent/taskContext.ts";
+import { acceptOkfContextPlan, createOkfContextPlan } from "@/features/agent/taskContext.ts";
 import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
@@ -13,7 +15,7 @@ import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import "./AgentConversation.css";
 import type { StagedValidationState, ConversationMessage, ConversationPlan, ConversationItem, AttachedSource, ComposerState, PromptDraft, PromptSubmission, QueuedPrompt, ThreadTitle, AuthenticationState, HistoryState, SavedThreadState, PendingPermission, AgentUsage, EventStreamState, DraftSessionState, PendingSessionConfig, StageFailure } from "@/features/agent/components/conversation/types.ts";
-import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, workflowForPrompt, usageLabels, errorMessage, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
+import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, usageLabels, errorMessage, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
 import { SavedThreadWelcome, EmptyThreadWelcome, ThreadSecurityScope, ThreadTitleEditor, ThreadSurfaceClose, ThreadActionsMenu } from "@/features/agent/components/conversation/ThreadChrome.tsx";
 import { AttachmentPicker } from "@/features/agent/components/conversation/AttachmentPicker.tsx";
 import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemView, planProgressLabel, LivePlan } from "@/features/agent/components/conversation/items.tsx";
@@ -24,6 +26,7 @@ import { ContextPressureNotice } from "@/features/agent/components/conversation/
 import { QueuedPromptCard } from "@/features/agent/components/conversation/QueuedPromptCard.tsx";
 import { AgentSessionHistory } from "@/features/agent/components/conversation/AgentSessionHistory.tsx";
 import { WriteGrantControl } from "@/features/agent/components/conversation/WriteGrantControl.tsx";
+import { OkfContextPlanCard } from "@/features/agent/components/conversation/OkfContextPlanCard.tsx";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
 import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
@@ -40,7 +43,14 @@ export interface AgentConversationProps {
   bundleName: string | null;
   activeConcept: { id: string; title: string } | null;
   onCaptureReaderSelection: () => ReaderSelectionCapture;
-  concepts: readonly { id: string; title: string; type: string }[];
+  concepts: readonly {
+    id: string;
+    title: string;
+    type: string;
+    body?: string;
+    links?: readonly string[];
+    timestamp?: string | null;
+  }[];
   onOpenConcept: (conceptId: string) => void;
   issues: readonly Issue[];
   onChangeAgent: () => void;
@@ -93,7 +103,12 @@ export function AgentConversation({
     source: "default",
     value: "New thread",
   });
-  const [threadWorkflow, setThreadWorkflow] = useState<AgentThreadWorkflow>(null);
+  const [threadTaskId, setThreadTaskId] = useState<OkfTaskId | null>(null);
+  const [acceptedContextManifest, setAcceptedContextManifest] =
+    useState<AcceptedOkfContextManifest | null>(null);
+  const [removedContextIds, setRemovedContextIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [messages, setMessages] = useState<ConversationItem[]>([]);
   const [markdownViewOpen, setMarkdownViewOpen] = useState(false);
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
@@ -164,6 +179,20 @@ export function AgentConversation({
   const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
+  const contextPlan = bundleRoot && threadTaskId
+    ? createOkfContextPlan({
+        taskId: threadTaskId,
+        bundleRoot,
+        concepts,
+        activeConcept,
+        attachedConcepts,
+        sources: attachedSources,
+        issues,
+        removedIds: removedContextIds,
+      })
+    : null;
+  const contextPlanIsStale = contextPlan !== null && acceptedContextManifest !== null &&
+    acceptedContextManifest.bundleFingerprint !== contextPlan.bundleFingerprint;
   const availableCommandsBySessionRef = useRef(
     new Map<string, readonly AgentAvailableCommandInfo[]>(),
   );
@@ -237,13 +266,17 @@ export function AgentConversation({
     setSessionConfigFailure(null);
     setWriteGrantPreference("interactive");
     setDraftSessionState({ status: "idle" });
+    setThreadTaskId(null);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
   }, [bundleRoot, connection.connectionId]);
 
   function persistThreadMetadata(
     session: AgentSessionInfo,
     title: string,
     archived = false,
-    workflow = threadWorkflow,
+    taskId = threadTaskId,
+    contextManifest = acceptedContextManifest,
   ): Promise<AgentThreadMetadata | null> {
     if (!supportsHistory) return Promise.resolve(null);
     setThreadMetadataError(null);
@@ -253,7 +286,8 @@ export function AgentConversation({
       sessionId: session.sessionId,
       title,
       archived,
-      workflow,
+      taskId,
+      contextManifest,
     }));
     metadataSaveQueueRef.current = operation.then(() => undefined, () => undefined);
     void operation.then(
@@ -374,6 +408,7 @@ export function AgentConversation({
         initialSession.sessionId,
         initialSession.title ?? "Imported session",
         null,
+        null,
       );
     } catch (error: unknown) {
       setDraftSessionState({
@@ -406,7 +441,7 @@ export function AgentConversation({
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
     async (_previous, { draft, source, retryTurnId, compactCommand }) => {
-      const { text, concepts, sources: draftSources } = draft;
+      const { text, concepts: draftConcepts, sources: draftSources } = draft;
       if (!text) return { status: "error", message: "Enter a message." };
       if (!bundleRoot) return { status: "error", message: "Open an OKF bundle first." };
       const userMessage: ConversationMessage = {
@@ -416,7 +451,6 @@ export function AgentConversation({
       };
       try {
         let session = sessionRef.current;
-        const startsNewSession = session?.bundleRoot !== bundleRoot || messages.length === 0;
         if (session?.bundleRoot !== bundleRoot) {
           setUsage(null);
           setStagedChanges(null);
@@ -428,8 +462,33 @@ export function AgentConversation({
           setSelectingHunk(null);
           session = await ensureSession();
         }
-        const contextPaths = concepts.map((concept) => `${concept.id}.md`);
-        const sources = draftSources.map(
+        const plan = threadTaskId
+          ? createOkfContextPlan({
+              taskId: threadTaskId,
+              bundleRoot,
+              concepts,
+              activeConcept,
+              attachedConcepts: draftConcepts,
+              sources: draftSources,
+              issues,
+              removedIds: removedContextIds,
+            })
+          : null;
+        if (plan && acceptedContextManifest &&
+          acceptedContextManifest.bundleFingerprint !== plan.bundleFingerprint) {
+          return {
+            status: "error",
+            message: "The bundle changed after this context was accepted. Review the refreshed context plan before sending.",
+          };
+        }
+        const acceptedPlan = plan ? acceptOkfContextPlan(plan) : null;
+        const contextPaths = plan
+          ? plan.objects.map((object) => object.path)
+          : draftConcepts.map((concept) => `${concept.id}.md`);
+        const selectedSourceIds = plan ? new Set(plan.sources.map((source) => source.id)) : null;
+        const sources = draftSources.filter((source) =>
+          selectedSourceIds === null || selectedSourceIds.has(source.id)
+        ).map(
           ({ title, content, origin, mediaType, sourceDigest, warning, imageData }) => ({
             title,
             content,
@@ -440,13 +499,23 @@ export function AgentConversation({
             ...(imageData ? { imageData } : {}),
           }),
         );
-        const turn = await promptAgent(
-          connection.connectionId,
-          session.sessionId,
-          text,
-          contextPaths,
-          sources,
-        );
+        const scopedPaths = isStudioAgent ? [] : contextPaths;
+        const turn = threadTaskId && acceptedPlan
+          ? await promptAgent(
+              connection.connectionId,
+              session.sessionId,
+              text,
+              scopedPaths,
+              sources,
+              { taskId: threadTaskId, contextManifest: acceptedPlan },
+            )
+          : await promptAgent(
+              connection.connectionId,
+              session.sessionId,
+              text,
+              scopedPaths,
+              sources,
+            );
         if (source === "compact" && compactCommand) {
           contextRecoveryTurnsRef.current.set(turn.turnId, compactCommand);
         }
@@ -482,13 +551,12 @@ export function AgentConversation({
         const nextTitle = threadTitle.source === "default"
           ? deriveThreadTitle(text, THREAD_STARTERS)
           : threadTitle.value;
-        const nextWorkflow = startsNewSession ? workflowForPrompt(text) : threadWorkflow;
         if (threadTitle.source === "default") {
           setThreadTitle({ source: "derived", value: nextTitle });
           onThreadTitleChange(nextTitle);
         }
-        setThreadWorkflow(nextWorkflow);
-        void persistThreadMetadata(session, nextTitle, false, nextWorkflow);
+        if (acceptedPlan) setAcceptedContextManifest(acceptedPlan);
+        void persistThreadMetadata(session, nextTitle, false, threadTaskId, acceptedPlan);
         resetExport();
         if (source === "composer") {
           setAttachedConcepts([]);
@@ -499,7 +567,7 @@ export function AgentConversation({
         return { status: "idle" };
       } catch (error: unknown) {
         if (source === "queue") {
-          setAttachedConcepts(concepts);
+          setAttachedConcepts(draftConcepts);
           setAttachedSources(draftSources);
           setPromptText(text);
         }
@@ -521,6 +589,7 @@ export function AgentConversation({
   }
 
   function composerAction(formData: FormData) {
+    if (contextPlanIsStale) return;
     const promptValue = formData.get("prompt");
     const text = typeof promptValue === "string" ? promptValue.trim() : "";
     const draft: PromptDraft = {
@@ -1080,7 +1149,7 @@ export function AgentConversation({
   const agentName = connection.agent?.title ?? connection.agent?.name ?? "Custom agent";
   const { exportState, exportTranscript, resetExport } = useTranscriptExport({
     messages,
-    threadWorkflow,
+    threadTaskId,
     threadTitle,
     bundleName,
     agentName,
@@ -1132,8 +1201,8 @@ export function AgentConversation({
   if (isSubmitting) composerStatus = "Starting turn";
   const usageLabel = usage ? usageLabels(usage) : null;
   const contextRecoveryCommand = findContextRecoveryCommand(availableCommands);
-  const supportsBundleGeneration = threadWorkflow === "create-bundle" ||
-    threadWorkflow === "enhance-bundle";
+  const supportsBundleGeneration = threadTaskId === "okf-create" ||
+    threadTaskId === "okf-enrich";
   const hasReportedWriteAttempt = messages.some(
     (item) => item.role === "tool" && item.changeState === "not-staged",
   );
@@ -1187,16 +1256,41 @@ export function AgentConversation({
     queuedPrompt ? "1 queued message" : null,
   ].filter((part): part is string => part !== null).join(" · ");
 
-  function selectStarter(prompt: string, workflow: AgentThreadWorkflow) {
+  function selectStarter(kickoff: OkfTaskKickoff) {
     if (!promptRef.current) return;
-    setThreadWorkflow(workflow);
-    setPromptText(prompt);
+    setThreadTaskId(kickoff.taskId);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
+    setPromptText(kickoff.prompt);
     promptRef.current.focus();
   }
 
   function changePromptText(value: string) {
     setPromptText(value);
-    if (!value.trim() && !hasSession) setThreadWorkflow(null);
+    if (!value.trim() && !hasSession) {
+      setThreadTaskId(null);
+      setAcceptedContextManifest(null);
+      setRemovedContextIds(new Set());
+    }
+  }
+
+  function removeContextPlanItem(kind: "bundle-object" | "source", id: string) {
+    setRemovedContextIds((current) => new Set(current).add(`${kind}:${id}`));
+    if (kind === "bundle-object") {
+      setAttachedConcepts((current) => current.filter((concept) => concept.id !== id));
+    } else {
+      setAttachedSources((current) => current.filter((source) => source.id !== id));
+    }
+  }
+
+  function acceptRefreshedContextPlan() {
+    if (!contextPlan) return;
+    const accepted = acceptOkfContextPlan(contextPlan);
+    setAcceptedContextManifest(accepted);
+    const session = sessionRef.current;
+    if (session) {
+      void persistThreadMetadata(session, threadTitle.value, false, threadTaskId, accepted);
+    }
   }
 
   function retryStagingFailure() {
@@ -1234,7 +1328,7 @@ export function AgentConversation({
   async function generateBundleProposal() {
     const session = sessionRef.current;
     if (!session || !writeGranted || activeTurn || isSubmitting || isPreparingGeneration) return;
-    const mode = threadWorkflow === "create-bundle" ? "create" : "enhance";
+    const mode = threadTaskId === "okf-create" ? "create" : "enhance";
     if (stagedFileCount > 0 && stagedChanges?.mode !== mode) return;
     setIsPreparingGeneration(true);
     setStageError(null);
@@ -1313,7 +1407,8 @@ export function AgentConversation({
     loaded: AgentLoadedSessionInfo,
     sessionId: string,
     title: string,
-    workflow: AgentThreadWorkflow,
+    taskId: OkfTaskId | null,
+    contextManifest: AcceptedOkfContextManifest | null,
   ) {
     adoptSession(loaded);
     setMessages(loaded.messages.map((message, index) => ({
@@ -1323,7 +1418,9 @@ export function AgentConversation({
     })));
     setThreadTitle({ source: "custom", value: title });
     onThreadTitleChange(title);
-    setThreadWorkflow(workflow);
+    setThreadTaskId(taskId);
+    setAcceptedContextManifest(contextManifest);
+    setRemovedContextIds(new Set());
     setPendingPermissions([]);
     setUsage(null);
     setQueuedPrompt(null);
@@ -1343,7 +1440,7 @@ export function AgentConversation({
     setRetryingTurnId(null);
     setSavedThread({ status: "none" });
     setHistory({ status: "closed" });
-    void persistThreadMetadata(loaded, title, false, workflow);
+    void persistThreadMetadata(loaded, title, false, taskId, contextManifest);
     requestAnimationFrame(() => promptRef.current?.focus());
   }
 
@@ -1375,7 +1472,13 @@ export function AgentConversation({
         bundleRoot,
         session.sessionId,
       );
-      applyRestoredSession(loaded, session.sessionId, metadata.title, metadata.workflow);
+      applyRestoredSession(
+        loaded,
+        session.sessionId,
+        metadata.title,
+        metadata.taskId,
+        metadata.contextManifest,
+      );
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error), metadata });
     }
@@ -1407,6 +1510,9 @@ export function AgentConversation({
 
   function startFreshThread() {
     setSavedThread({ status: "none" });
+    setThreadTaskId(null);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
     requestAnimationFrame(() => promptRef.current?.focus());
   }
 
@@ -1427,7 +1533,8 @@ export function AgentConversation({
         session,
         threadTitle.value,
         true,
-        threadWorkflow,
+        threadTaskId,
+        acceptedContextManifest,
       );
       if (!metadata) return;
       sessionRef.current = null;
@@ -1443,7 +1550,9 @@ export function AgentConversation({
       acceptedDraftsRef.current.clear();
       setThreadTitle({ source: "default", value: "New thread" });
       onThreadTitleChange("New thread");
-      setThreadWorkflow(null);
+      setThreadTaskId(null);
+      setAcceptedContextManifest(null);
+      setRemovedContextIds(new Set());
       setMessages([]);
       resetExport();
       setActiveTurn(null);
@@ -1790,7 +1899,7 @@ export function AgentConversation({
                           ? !writeGranted
                             ? "Allow edits for this thread before generating staged files."
                             : stagedFileCount > 0 && stagedChanges?.mode !== (
-                                threadWorkflow === "create-bundle" ? "create" : "enhance"
+                                threadTaskId === "okf-create" ? "create" : "enhance"
                               )
                               ? "Resolve the current staged changes before generating this proposal."
                               : null
@@ -2157,6 +2266,30 @@ export function AgentConversation({
             </AgentLiveWorkShelf>
           )}
           <form ref={composerRef} className="agent-composer" action={composerAction}>
+            {contextPlan && (messages.length === 0 || contextPlanIsStale) && (
+              <OkfContextPlanCard
+                plan={contextPlan}
+                stale={contextPlanIsStale}
+                disabled={isSubmitting || activeTurn !== null}
+                onRemove={removeContextPlanItem}
+                onAcceptRefresh={acceptRefreshedContextPlan}
+              />
+            )}
+            {messages.length > 0 && acceptedContextManifest && !contextPlanIsStale && (
+              <details className="okf-context-plan-disclosure">
+                <summary>
+                  Accepted OKF task context · {acceptedContextManifest.bundleFingerprint}
+                </summary>
+                <OkfContextPlanCard
+                  plan={acceptedContextManifest}
+                  stale={false}
+                  disabled
+                  editable={false}
+                  onRemove={() => undefined}
+                  onAcceptRefresh={() => undefined}
+                />
+              </details>
+            )}
             {attachedConcepts.length + attachedSources.length > 0 && (
               <div className="agent-composer__context">
                 {attachedConcepts.map((concept) => (
@@ -2382,7 +2515,8 @@ export function AgentConversation({
                       className="btn primary icon"
                       aria-label={queuedPrompt ? "Queued" : "Queue"}
                       title={queuedPrompt ? "Queued" : "Queue"}
-                      disabled={isSubmitting || queuedPrompt !== null || promptText.trim().length === 0}
+                      disabled={isSubmitting || queuedPrompt !== null ||
+                        promptText.trim().length === 0 || contextPlanIsStale}
                     >
                       <Send size={15} aria-hidden="true" />
                     </button>
@@ -2403,7 +2537,7 @@ export function AgentConversation({
                     className="btn primary icon"
                     aria-label={isSubmitting ? "Sending..." : "Send"}
                     title={isSubmitting ? "Sending..." : "Send"}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || contextPlanIsStale}
                   >
                     <Send size={16} aria-hidden="true" />
                   </button>

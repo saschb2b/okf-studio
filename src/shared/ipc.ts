@@ -55,7 +55,9 @@ import {
   removeAgentThreadMetadata as removeThreadMetadata,
   upsertAgentThreadMetadata,
 } from "@/features/agent/threadMetadata.ts";
-import type { AgentThreadMetadata, AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
+import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
+import { OKF_TASKS } from "@/features/agent/taskContext.ts";
 import {
   MOCK_ASSETS,
   MOCK_BUNDLE,
@@ -1091,6 +1093,10 @@ export async function promptAgent(
   text: string,
   contextPaths: readonly string[] = [],
   sources: readonly AgentSourceInput[] = [],
+  taskContext?: {
+    taskId: OkfTaskId;
+    contextManifest: AcceptedOkfContextManifest;
+  },
 ): Promise<AgentTurnInfo> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -1100,6 +1106,7 @@ export async function promptAgent(
       text,
       contextPaths,
       sources,
+      taskContext,
     });
   }
   const connection = activeAgentConnectionsById.get(connectionId);
@@ -1126,7 +1133,17 @@ export async function promptAgent(
         ? []
         : ["instructions", "specification", "commands", "templates"],
       observedResourceIds: [],
-    }],
+    }, ...(taskContext ? OKF_TASKS[taskContext.taskId].capabilityIds.map((capabilityId) => ({
+      capabilityId,
+      version: "0.1.0",
+      manifestSha256: "browser-mock",
+      support: "full" as const,
+      delivery: connection.protocolVersion === "studio-native/1"
+        ? "catalog-only" as const
+        : "embedded-resources" as const,
+      resourceIds: connection.protocolVersion === "studio-native/1" ? [] : ["instructions"],
+      observedResourceIds: [],
+    })) : [])],
   };
   const mockSession = mockAgentSessions.get(sessionId);
   if (mockSession) {
@@ -1136,8 +1153,8 @@ export async function promptAgent(
   }
   mockCancelledTurns.delete(info.turnId);
   void (connection.protocolVersion === "studio-native/1"
-    ? emitMockLocalTurn(info, text, sources)
-    : emitMockTurn(info, text));
+    ? emitMockLocalTurn(info, text, sources, taskContext)
+    : emitMockTurn(info, text, taskContext));
   return info;
 }
 
@@ -1900,18 +1917,17 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
   return `Generated ${generated.length} proposed files in Studio staging.`;
 }
 
-function mockAgentResponse(text: string): string {
+function mockAgentResponse(text: string, taskId?: OkfTaskId): string {
   if (text === "/compact") {
     return "## Context summary\n\n- The thread is reviewing the active OKF bundle.\n" +
       "- Tool locations may open only matching bundle concepts.\n" +
       "- Proposed writes still require staged review and Apply.";
   }
-  if (text.startsWith("Create a new OKF bundle from the sources I attach") ||
-    text.startsWith("Review this OKF bundle and the sources I attach")) {
+  if (taskId === "okf-create" || taskId === "okf-enrich") {
     if (text.includes("Malformed proposal")) {
       return "I could not serialize the structure.\n\n```okf-proposal\n{not json}\n```";
     }
-    const enhancement = text.startsWith("Review this OKF bundle and the sources I attach");
+    const enhancement = taskId === "okf-enrich";
     const proposal = enhancement ? {
       concepts: [
         {
@@ -1969,7 +1985,11 @@ function mockAgentResponse(text: string): string {
   return `Browser ACP received: ${text}`;
 }
 
-async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
+async function emitMockTurn(
+  info: AgentTurnInfo,
+  text: string,
+  taskContext?: { taskId: OkfTaskId },
+): Promise<void> {
   const generatesBundle = text.startsWith(
     "Generate the newest reviewed `okf-proposal` into Studio staging now.",
   );
@@ -2135,7 +2155,7 @@ async function emitMockTurn(info: AgentTurnInfo, text: string): Promise<void> {
     },
   });
   const responseText = mockStageWrite(info, text) ?? mockBundleGeneration(info, text) ??
-    mockAgentResponse(text);
+    mockAgentResponse(text, taskContext?.taskId);
   emitAgentTurn({
     ...info,
     update: {
@@ -2211,6 +2231,7 @@ async function emitMockLocalTurn(
   info: AgentTurnInfo,
   text: string,
   sources: readonly AgentSourceInput[],
+  taskContext?: { taskId: OkfTaskId },
 ): Promise<void> {
   await browserMockDelay(100);
   if (mockCancelledTurns.has(info.turnId)) {
@@ -2220,10 +2241,7 @@ async function emitMockLocalTurn(
   }
   const loadsSkill = /\b(?:load|use)\b.*\bOKF\b.*\b(?:guidance|instructions?)\b/iu.test(text);
   const searchesBundle = /\b(?:search|inspect)\b.*\b(?:bundle|concepts?)\b/iu.test(text);
-  const guidedWorkflow = text.startsWith("Create a new OKF bundle from the sources I attach") ||
-    text.startsWith("Review this OKF bundle and the sources I attach") ||
-    text.startsWith("Research this question across the active bundle") ||
-    text.startsWith("Assess this dataset documentation and propose a change plan");
+  const guidedWorkflow = taskContext !== undefined;
   const generatesBundle = text.startsWith(
     "Generate the newest reviewed `okf-proposal` into Studio staging now.",
   );
@@ -2317,7 +2335,7 @@ async function emitMockLocalTurn(
     }
   }
   const responseText = generation.response ?? (guidedWorkflow
-    ? mockAgentResponse(text)
+    ? mockAgentResponse(text, taskContext.taskId)
     : sources.length > 0
     ? `Inspected ${sources.length} attached source${sources.length === 1 ? "" : "s"}, including ${sources[0]?.title ?? "the supplied evidence"}.`
     : loadsSkill && searchesBundle
@@ -2795,9 +2813,10 @@ export async function loadAgentThreadMetadata(
 }
 
 export async function saveAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "workflow"> & {
+  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "taskId" | "contextManifest"> & {
     archived?: boolean;
-    workflow?: AgentThreadWorkflow;
+    taskId?: OkfTaskId | null;
+    contextManifest?: AcceptedOkfContextManifest | null;
   },
 ): Promise<AgentThreadMetadata> {
   const metadata = createAgentThreadMetadata(input);

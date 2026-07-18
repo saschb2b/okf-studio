@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T01:24:14Z
+timestamp: 2026-07-18T04:00:00Z
 ---
 
 # Outcome
@@ -113,13 +113,13 @@ Gate: benchmark tasks select no more than the required skill set, and disabling 
 
 ## SP3: OKF task router and context plan
 
-- [ ] Replace prompt-prefix workflow detection with stable task IDs and typed kickoff payloads.
-- [ ] Derive a visible context plan from the task, active concept, graph neighborhood, validation state, selected evidence, and user attachments.
-- [ ] Show the planned skills, bundle objects, sources, and tool scope before the first prompt; let the user remove optional context.
-- [ ] Keep task selection deterministic for explicit actions. Model-suggested task changes require confirmation when they alter tools, network, or write scope.
-- [ ] Persist task identity and the accepted context manifest with the agent-owned session pointer so restore can explain what was used.
-- [ ] Budget context by bytes and estimated tokens, prefer metadata before bodies, and explain every truncation or omitted object before send.
-- [ ] Bind the accepted plan to one bundle fingerprint and require a refreshed preview when live reload changes any planned object.
+- [x] Replace prompt-prefix workflow detection with stable task IDs and typed kickoff payloads.
+- [x] Derive a visible context plan from the task, active concept, graph neighborhood, validation state, selected evidence, and user attachments.
+- [x] Show the planned skills, bundle objects, sources, and tool scope before the first prompt; let the user remove optional context.
+- [x] Keep task selection deterministic for explicit actions. Model-suggested task changes require confirmation when they alter tools, network, or write scope.
+- [x] Persist task identity and the accepted context manifest with the agent-owned session pointer so restore can explain what was used.
+- [x] Budget context by bytes and estimated tokens, prefer metadata before bodies, and explain every truncation or omitted object before send.
+- [x] Bind the accepted plan to one bundle fingerprint and require a refreshed preview when live reload changes any planned object.
 
 Gate: the same explicit task produces the same bounded context plan from the same bundle revision, independent of provider.
 

@@ -359,6 +359,7 @@ async fn prompt_agent(
     text: String,
     context_paths: Vec<String>,
     sources: Vec<agent_sources::AgentSourceInput>,
+    task_context: Option<agent_protocol::OkfTaskContextInput>,
 ) -> Result<agent_protocol::AgentTurnInfo, String> {
     agent_protocol::prompt(
         state.inner(),
@@ -367,6 +368,7 @@ async fn prompt_agent(
         text,
         context_paths,
         sources,
+        task_context,
     )
     .await
 }

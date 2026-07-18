@@ -136,9 +136,7 @@ mod tests {
     fn builds_a_progressive_catalog_from_the_versioned_capability() {
         let message = native_system_message();
         assert_eq!(message.role, "system");
-        assert!(message
-            .content
-            .contains("- okf-core@0.1.0 [okf_inventory"));
+        assert!(message.content.contains("- okf-core@0.1.0 [okf_inventory"));
         assert!(message.content.contains("- okf-inspect@0.1.0"));
         assert!(message.content.contains("- okf-migrate@0.1.0"));
         assert!(message.content.contains("Select the narrowest capability"));

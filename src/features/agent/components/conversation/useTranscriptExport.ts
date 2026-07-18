@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AgentThreadWorkflow } from "@/features/agent/threadMetadata.ts";
+import type { OkfTaskId } from "@/features/agent/taskContext.ts";
 import {
   datasetChangeRequirements,
   researchExportRequirements,
@@ -12,21 +12,21 @@ import type { ConversationItem, ExportState, ThreadTitle } from "./types.ts";
 
 interface UseTranscriptExportInput {
   messages: readonly ConversationItem[];
-  threadWorkflow: AgentThreadWorkflow;
+  threadTaskId: OkfTaskId | null;
   threadTitle: ThreadTitle;
   bundleName: string | null;
   agentName: string;
 }
 
 /**
- * Owns the transcript-export lifecycle: the workflow export gates (research and
- * dataset-change), the native save, and the resulting idle/exporting/success/
+ * Owns the transcript-export lifecycle: the task export gates (research and
+ * change impact), the native save, and the resulting idle/exporting/success/
  * error state. It reads conversation inputs and produces no side effects beyond
  * its own state, so it is decoupled from the connection subscription lifecycle.
  */
 export function useTranscriptExport({
   messages,
-  threadWorkflow,
+  threadTaskId,
   threadTitle,
   bundleName,
   agentName,
@@ -35,7 +35,7 @@ export function useTranscriptExport({
 
   async function exportTranscript() {
     if (messages.length === 0 || exportState.status === "exporting") return;
-    if (threadWorkflow === "deep-research") {
+    if (threadTaskId === "okf-research") {
       const requirements = researchExportRequirements(messages);
       if (requirements.length > 0) {
         const missing = requirements.length === 2
@@ -50,7 +50,7 @@ export function useTranscriptExport({
         return;
       }
     }
-    if (threadWorkflow === "dataset-change") {
+    if (threadTaskId === "okf-change-impact") {
       const requirements = datasetChangeRequirements(messages);
       if (requirements.length > 0) {
         let missing = "a Change Plan with at least one step and an Affected Concepts list with bundle paths";

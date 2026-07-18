@@ -576,15 +576,6 @@ function ConnectionThreads({
 
   return (
     <div className="agent-panel__conversation" hidden={hidden}>
-      <ThreadSwitcher
-        navRef={threadNavRef}
-        agentName={connectionName}
-        threads={surfaces}
-        selectedThreadId={selectedSurface.id}
-        maxReached={surfaces.length >= MAX_THREAD_SURFACES}
-        onSelect={setSelectedSurfaceId}
-        onAdd={() => addThreadSurface()}
-      />
       {surfaces.map((surface) => (
         <div
           className="agent-panel__thread-surface"
@@ -603,6 +594,17 @@ function ConnectionThreads({
             onThreadTitleChange={(title) => renameThreadSurface(surface.id, title)}
             onThreadStatusChange={(status) => updateThreadStatus(surface.id, status)}
             onCloseThreadSurface={() => closeThreadSurface(surface.id)}
+            threadNavigation={surface.id === selectedSurface.id ? (
+              <ThreadSwitcher
+                navRef={threadNavRef}
+                agentName={connectionName}
+                threads={surfaces}
+                selectedThreadId={selectedSurface.id}
+                maxReached={surfaces.length >= MAX_THREAD_SURFACES}
+                onSelect={setSelectedSurfaceId}
+                onAdd={() => addThreadSurface()}
+              />
+            ) : undefined}
           />
         </div>
       ))}

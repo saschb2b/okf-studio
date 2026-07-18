@@ -10,6 +10,13 @@
   border-bottom: 1px solid var(--border);
 }
 
+.agent-conversation__toolbar .agent-panel__threads {
+  flex: 1 1 auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
 .agent-panel__thread {
   flex: 0 0 auto;
   min-width: 32px;

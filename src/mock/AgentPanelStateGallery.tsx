@@ -22,6 +22,8 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import type { AgentSessionConfigOption } from "@/features/agent/connection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
+import { ConversationToolbar } from "@/features/agent/components/conversation/ConversationToolbar.tsx";
+import { ThreadSwitcher } from "@/features/agent/components/conversation/ThreadSwitcher.tsx";
 import "./AgentPanelStateGallery.css";
 
 const SCENARIOS = [
@@ -206,7 +208,7 @@ function GalleryPanel({
       <PanelHeader />
       {hierarchy === "stacked" ? <StackedHierarchy /> : <MergedHierarchy />}
       <div className="agent-conversation">
-        <ThreadToolbar />
+        <ThreadToolbar includeThreadNavigation={hierarchy === "stacked"} />
         <ScenarioBody scenario={scenario} />
       </div>
     </section>
@@ -215,21 +217,12 @@ function GalleryPanel({
 
 function StackedHierarchy() {
   return (
-    <>
-      <nav className="agent-panel__connections" aria-label="Agent connections">
-        <button type="button" className="btn ghost agent-panel__connection" aria-pressed="true">
-          <span className="agent-panel__connection-label">Research agent with a deliberately long connection name</span>
-        </button>
-        <button type="button" className="btn ghost agent-panel__connection agent-panel__connection--add" aria-label="Connect another agent"><Plus size={16} aria-hidden="true" /></button>
-      </nav>
-      <nav className="agent-panel__threads" aria-label="Research agent threads">
-        <button type="button" className="btn ghost agent-panel__thread" aria-pressed="true">
-          <span className="agent-panel__thread-number">1</span>
-          <span className="agent-panel__thread-label">Quarterly source reconciliation with a long title</span>
-        </button>
-        <button type="button" className="btn ghost agent-panel__thread agent-panel__thread--add" aria-label="Start another thread"><Plus size={16} aria-hidden="true" /></button>
-      </nav>
-    </>
+    <nav className="agent-panel__connections" aria-label="Agent connections">
+      <button type="button" className="btn ghost agent-panel__connection" aria-pressed="true">
+        <span className="agent-panel__connection-label">Research agent with a deliberately long connection name</span>
+      </button>
+      <button type="button" className="btn ghost agent-panel__connection agent-panel__connection--add" aria-label="Connect another agent"><Plus size={16} aria-hidden="true" /></button>
+    </nav>
   );
 }
 
@@ -259,16 +252,31 @@ function PanelHeader() {
   );
 }
 
-function ThreadToolbar() {
+function ThreadToolbar({ includeThreadNavigation }: { includeThreadNavigation: boolean }) {
   return (
-    <header className="agent-conversation__toolbar">
-      <h2 className="sr-only">Quarterly source reconciliation</h2>
-      <div className="agent-conversation__toolbar-actions">
-        <button type="button" className="btn ghost" aria-label="Rename thread"><Pencil size={14} aria-hidden="true" /></button>
-        <button type="button" className="btn ghost"><ShieldCheck size={14} aria-hidden="true" /><span className="agent-conversation__action-label">Security</span></button>
-        <button type="button" className="btn ghost" aria-label="More thread actions"><MoreHorizontal size={14} aria-hidden="true" /></button>
-      </div>
-    </header>
+    <ConversationToolbar
+      titleId="agent-gallery-thread-title"
+      title="Quarterly source reconciliation"
+      navigation={includeThreadNavigation ? (
+        <ThreadSwitcher
+          agentName="Research agent"
+          threads={[{
+            id: "quarterly",
+            ordinal: 1,
+            title: "Quarterly source reconciliation with a long title",
+            status: "staged",
+          }]}
+          selectedThreadId="quarterly"
+          maxReached={false}
+          onSelect={() => undefined}
+          onAdd={() => undefined}
+        />
+      ) : undefined}
+    >
+      <button type="button" className="btn ghost" aria-label="Rename thread"><Pencil size={14} aria-hidden="true" /></button>
+      <button type="button" className="btn ghost"><ShieldCheck size={14} aria-hidden="true" /><span className="agent-conversation__action-label">Security</span></button>
+      <button type="button" className="btn ghost" aria-label="More thread actions"><MoreHorizontal size={14} aria-hidden="true" /></button>
+    </ConversationToolbar>
   );
 }
 

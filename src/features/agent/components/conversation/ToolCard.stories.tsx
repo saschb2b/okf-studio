@@ -86,6 +86,7 @@ export const EditCardWithDiff: Story = {
       ...base,
       title: "Edit concepts/orders.md",
       toolKind: "edit",
+      status: "in-progress",
       changeState: "staged",
       content: [{
         kind: "diff",
@@ -118,6 +119,29 @@ export const CommandCardWithOutput: Story = {
       content: [{
         kind: "text",
         text: 'OKF v0.1 check of "bundle": 139 concept(s), 0 error(s), 0 warning(s); 0 broken link(s), 0 orphan(s) [--strict]. Conformant.',
+        truncated: false,
+      }],
+    },
+  },
+  play: async ({ canvas }) => {
+    const card = canvas.getByLabelText("Tool: node okf-validate.mjs bundle --strict");
+    await expect(card).not.toHaveAttribute("open");
+    await expect(canvas.getByText(/139 concept/u)).not.toBeVisible();
+    await userEvent.click(canvas.getByText("node okf-validate.mjs bundle --strict"));
+    await expect(canvas.getByText(/139 concept/u)).toBeVisible();
+  },
+};
+
+export const CommandRunningWithOutput: Story = {
+  args: {
+    tool: {
+      ...base,
+      title: "node okf-validate.mjs bundle --strict",
+      toolKind: "execute",
+      status: "in-progress",
+      content: [{
+        kind: "text",
+        text: "Checking graph links and source references...",
         truncated: false,
       }],
     },

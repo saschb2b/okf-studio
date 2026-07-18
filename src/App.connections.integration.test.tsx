@@ -537,7 +537,7 @@ describe("OKF Studio agent connections", () => {
       expect(await screen.findByText("Generated 3 proposed files in Studio staging."))
         .toBeInTheDocument();
       expect(await screen.findByText("Fresh bundle draft")).toBeInTheDocument();
-      expect(screen.getByText("Change staged for review")).toBeInTheDocument();
+      expect(screen.getByText("Staged")).toBeInTheDocument();
     } finally {
       await removeSavedStudioAgent(connection, profile);
     }

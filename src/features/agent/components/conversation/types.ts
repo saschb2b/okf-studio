@@ -17,11 +17,13 @@ export interface ConversationMessage {
   tone?: "neutral" | "warning" | "error";
   turnId?: string;
   contextSummary?: { commandName: string };
+  promptDraft?: PromptDraft;
 }
 
 export interface ConversationPlan {
   id: string;
   role: "plan";
+  turnId: string;
   entries: readonly AgentPlanEntryInfo[];
 }
 

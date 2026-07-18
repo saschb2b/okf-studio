@@ -9,12 +9,13 @@ import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
-import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
+import { Check, CircleAlert, Crosshair, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
 import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordWorkspaceTaskObservation, respondAgentPermission, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import "./AgentConversation.css";
 import type { StagedValidationState, ConversationMessage, ConversationPlan, ConversationItem, AttachedSource, ComposerState, PromptDraft, PromptSubmission, QueuedPrompt, ThreadTitle, AuthenticationState, HistoryState, SavedThreadState, PendingPermission, AgentUsage, EventStreamState, DraftSessionState, PendingSessionConfig, StageFailure } from "@/features/agent/components/conversation/types.ts";
 import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, usageLabels, errorMessage, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
@@ -30,6 +31,11 @@ import { AgentSessionHistory } from "@/features/agent/components/conversation/Ag
 import { WriteGrantControl } from "@/features/agent/components/conversation/WriteGrantControl.tsx";
 import { OkfContextPlanCard } from "@/features/agent/components/conversation/OkfContextPlanCard.tsx";
 import { SourceInventory } from "@/features/agent/components/conversation/SourceInventory.tsx";
+import { ConversationTurnFrame, groupConversationItems } from "@/features/agent/components/conversation/ConversationTurn.tsx";
+import { findOkfMention, OkfMentionMenu, okfMentionOptions, replaceOkfMention } from "@/features/agent/components/conversation/OkfMentionMenu.tsx";
+import type { OkfMentionOption } from "@/features/agent/components/conversation/OkfMentionMenu.tsx";
+import { conceptIdForToolLocation } from "@/features/agent/components/conversation/toolLocation.ts";
+import { ConversationToolbar } from "@/features/agent/components/conversation/ConversationToolbar.tsx";
 import { AgentArtifactWorkspace } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
 import type { AgentArtifactWorkspaceState } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
 import {
@@ -78,6 +84,7 @@ export interface AgentConversationProps {
   notificationsEnabled: boolean;
   notificationSound: boolean;
   onThreadStatusChange: (status: AgentThreadStatus) => void;
+  threadNavigation?: ReactNode;
 }
 
 
@@ -104,6 +111,7 @@ export function AgentConversation({
   notificationsEnabled,
   notificationSound,
   onThreadStatusChange,
+  threadNavigation,
 }: AgentConversationProps) {
   const appActions = useAppActions();
   const conversationTitleId = useId();
@@ -137,6 +145,8 @@ export function AgentConversation({
   } | null>(null);
   const [memoryError, setMemoryError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationItem[]>([]);
+  const [followAgent, setFollowAgent] = useState(false);
+  const followedToolRef = useRef<string | null>(null);
   const [artifactWorkspace, setArtifactWorkspace] = useState<AgentArtifactWorkspaceState>({
     status: "empty",
   });
@@ -225,6 +235,37 @@ export function AgentConversation({
   const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
+  const mention = findOkfMention(promptText);
+  const mentionOptions = okfMentionOptions({
+    mention,
+    bundleName,
+    activeConcept,
+    concepts,
+  });
+  let followedToolKey: string | null = null;
+  let followedConceptId: string | null = null;
+  for (let index = messages.length - 1; index >= 0 && followedConceptId === null; index -= 1) {
+    const item = messages[index];
+    if (item.role !== "tool") continue;
+    for (const location of item.locations) {
+      const conceptId = conceptIdForToolLocation(location, conceptIds);
+      if (!conceptId) continue;
+      followedToolKey = `${item.id}:${location.path}:${location.line ?? ""}`;
+      followedConceptId = conceptId;
+      break;
+    }
+  }
+
+  useEffect(() => {
+    if (!followAgent) {
+      followedToolRef.current = null;
+      return;
+    }
+    if (!followedToolKey || !followedConceptId) return;
+    if (followedToolRef.current === followedToolKey) return;
+    followedToolRef.current = followedToolKey;
+    onOpenConcept(followedConceptId);
+  }, [followAgent, followedConceptId, followedToolKey, onOpenConcept]);
   const currentBundleFingerprint = bundleRoot
     ? bundleContextFingerprint(bundleRoot, concepts, issues)
     : null;
@@ -641,6 +682,11 @@ export function AgentConversation({
         id: `user-${crypto.randomUUID()}`,
         role: "user",
         text,
+        promptDraft: {
+          text,
+          concepts: [...draftConcepts],
+          sources: [...draftSources],
+        },
       };
       try {
         let session = sessionRef.current;
@@ -1620,6 +1666,10 @@ export function AgentConversation({
     queuedPrompt ? "1 queued message" : null,
   ].filter((part): part is string => part !== null).join(" · ");
 
+  const transcriptTurns = groupConversationItems(
+    messages.filter((item) => item.id !== livePlanId),
+  );
+
   function selectStarter(kickoff: OkfTaskKickoff) {
     if (!promptRef.current) return;
     setThreadTaskId(kickoff.taskId);
@@ -1636,6 +1686,31 @@ export function AgentConversation({
       setAcceptedContextManifest(null);
       setRemovedContextIds(new Set());
     }
+  }
+
+  function reusePrompt(message: ConversationMessage) {
+    const draft = message.promptDraft;
+    setPromptText(draft?.text ?? message.text);
+    setAttachedConcepts(draft ? [...draft.concepts] : []);
+    setAttachedSources(draft ? [...draft.sources] : []);
+    setThreadTaskId(null);
+    setAcceptedContextManifest(null);
+    setRemovedContextIds(new Set());
+    requestAnimationFrame(() => promptRef.current?.focus());
+  }
+
+  function selectMention(option: OkfMentionOption) {
+    if (!mention) return;
+    setPromptText(replaceOkfMention(promptText, mention, option.label));
+    if (option.kind === "concept") {
+      const concept = concepts.find((candidate) => candidate.id === option.id);
+      if (concept) {
+        setAttachedConcepts((current) => current.some((item) => item.id === concept.id)
+          ? current
+          : [...current, { id: concept.id, title: concept.title, type: concept.type }]);
+      }
+    }
+    requestAnimationFrame(() => promptRef.current?.focus());
   }
 
   function removeContextPlanItem(kind: "bundle-object" | "source", id: string) {
@@ -2043,17 +2118,25 @@ export function AgentConversation({
 
   return (
     <section className="agent-conversation" aria-labelledby={conversationTitleId}>
-      <header className="agent-conversation__toolbar">
-        <h2 id={conversationTitleId} className="sr-only">{threadTitle.value}</h2>
-        <div
-          className="agent-conversation__toolbar-actions"
-          role="toolbar"
-          aria-label={`${threadTitle.value} actions`}
-        >
+      <ConversationToolbar
+        titleId={conversationTitleId}
+        title={threadTitle.value}
+        navigation={threadNavigation}
+      >
           <ThreadTitleEditor
             title={threadTitle.value}
             onTitleChange={changeThreadTitle}
           />
+          <button
+            type="button"
+            className="btn ghost icon"
+            aria-label={followAgent ? "Stop following agent in Reader" : "Follow agent in Reader"}
+            aria-pressed={followAgent}
+            title={followAgent ? "Stop following agent in Reader" : "Follow concept reads in Reader"}
+            onClick={() => setFollowAgent((current) => !current)}
+          >
+            <Crosshair size={14} aria-hidden="true" />
+          </button>
           {artifactWorkspace.status !== "empty" && (
             <button
               type="button"
@@ -2105,8 +2188,7 @@ export function AgentConversation({
             onArchive={() => void archiveThread()}
             onChangeAgent={onChangeAgent}
           />
-        </div>
-      </header>
+      </ConversationToolbar>
 
       {markdownViewOpen && (
         <ThreadMarkdownView
@@ -2295,53 +2377,61 @@ export function AgentConversation({
               </div>
             ) : (
               <>
-                {messages.map((item) => {
-                  if (item.id === livePlanId) return null;
-                  const turnId = item.role === "status" ? item.turnId : undefined;
-                  return (
-                    <div
-                      key={item.id}
-                      className="agent-conversation__item"
-                      data-transcript-role={item.role}
-                    >
-                      <ConversationItemView
-                        item={item}
-                        conceptIds={conceptIds}
-                        onOpenConcept={onOpenConcept}
-                        onRetry={
-                          turnId && retryableTurnIds.has(turnId) &&
-                            activeTurn === null && !isSubmitting
-                            ? () => retryAcceptedTurn(turnId)
-                            : undefined
-                        }
-                        isRetrying={turnId === retryingTurnId}
-                        retryError={turnId ? retryErrors.get(turnId) ?? null : null}
-                        onGenerateProposal={item.id === latestBundleProposalMessageId
-                          ? () => void generateBundleProposal()
-                          : undefined}
-                        generationBlockedReason={item.id === latestBundleProposalMessageId
-                          ? !writeGranted
-                            ? "Allow edits for this thread before generating staged files."
-                            : stagedFileCount > 0 && stagedChanges?.mode !== (
-                                threadTaskId === "okf-create" ? "create" : "enhance"
-                              )
-                              ? "Resolve the current staged changes before generating this proposal."
-                              : null
-                          : null}
-                        generationError={
-                          item.id === latestBundleProposalMessageId &&
-                          stageError?.owner === "proposal"
-                            ? stageError.message
-                            : null
-                        }
-                        isGeneratingProposal={
-                          item.id === latestBundleProposalMessageId &&
-                          (isSubmitting || isPreparingGeneration)
-                        }
-                      />
-                    </div>
-                  );
-                })}
+                {transcriptTurns.map((turn) => (
+                  <ConversationTurnFrame
+                    key={turn.id}
+                    turn={turn}
+                    onReusePrompt={reusePrompt}
+                  >
+                    {turn.items.map((item) => {
+                      const turnId = item.role === "status" ? item.turnId : undefined;
+                      return (
+                        <div
+                          key={item.id}
+                          className="agent-conversation__item"
+                          data-transcript-role={item.role}
+                        >
+                          <ConversationItemView
+                            item={item}
+                            conceptIds={conceptIds}
+                            onOpenConcept={onOpenConcept}
+                            onRetry={
+                              turnId && retryableTurnIds.has(turnId) &&
+                                activeTurn === null && !isSubmitting
+                                ? () => retryAcceptedTurn(turnId)
+                                : undefined
+                            }
+                            isRetrying={turnId === retryingTurnId}
+                            retryError={turnId ? retryErrors.get(turnId) ?? null : null}
+                            onGenerateProposal={item.id === latestBundleProposalMessageId
+                              ? () => void generateBundleProposal()
+                              : undefined}
+                            generationBlockedReason={item.id === latestBundleProposalMessageId
+                              ? !writeGranted
+                                ? "Allow edits for this thread before generating staged files."
+                                : stagedFileCount > 0 && stagedChanges?.mode !== (
+                                    threadTaskId === "okf-create" ? "create" : "enhance"
+                                  )
+                                  ? "Resolve the current staged changes before generating this proposal."
+                                  : null
+                              : null}
+                            generationError={
+                              item.id === latestBundleProposalMessageId &&
+                              stageError?.owner === "proposal"
+                                ? stageError.message
+                                : null
+                            }
+                            isGeneratingProposal={
+                              item.id === latestBundleProposalMessageId &&
+                              (isSubmitting || isPreparingGeneration)
+                            }
+                            showResponseActions={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </ConversationTurnFrame>
+                ))}
               </>
             )}
             </TranscriptSurface>
@@ -2861,6 +2951,7 @@ export function AgentConversation({
                 onStartFresh={startFreshFromContext}
               />
             )}
+            <OkfMentionMenu options={mentionOptions} onSelect={selectMention} />
             <div className="agent-composer__input-shell">
               <label className="sr-only" htmlFor={promptInputId}>Message the agent</label>
               <textarea
@@ -2869,7 +2960,7 @@ export function AgentConversation({
                 name="prompt"
                 rows={3}
                 maxLength={128 * 1024}
-                placeholder={isStudioAgent ? "Message Studio Agent..." : "Ask about this bundle..."}
+                placeholder={isStudioAgent ? "Message Studio Agent... Use @ for context" : "Ask about this bundle... Use @ for context"}
                 disabled={isSubmitting || queuedPrompt !== null}
                 value={promptText}
                 onChange={(event) => changePromptText(event.target.value)}
@@ -2885,6 +2976,10 @@ export function AgentConversation({
                     return;
                   }
                   event.preventDefault();
+                  if (mentionOptions.length > 0) {
+                    selectMention(mentionOptions[0]);
+                    return;
+                  }
                   if (promptText.trim().length === 0) return;
                   event.currentTarget.form?.requestSubmit();
                 }}

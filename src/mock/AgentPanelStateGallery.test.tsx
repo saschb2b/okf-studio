@@ -45,6 +45,17 @@ describe("AgentPanelStateGallery", () => {
     expect(resumes[1]).not.toHaveClass("primary");
   });
 
+  it("keeps thread navigation and actions in one conversation toolbar", () => {
+    window.history.replaceState(null, "", "/?agent-gallery=active-queue&width=360");
+    render(<AgentPanelStateGallery />);
+
+    const actions = screen.getByRole("toolbar", {
+      name: "Quarterly source reconciliation actions",
+    });
+    const navigation = screen.getByRole("navigation", { name: "Research agent threads" });
+    expect(actions.closest("header")).toContainElement(navigation);
+  });
+
   it("keeps scenario and width choices in a reproducible URL", async () => {
     const user = userEvent.setup();
     window.history.replaceState(

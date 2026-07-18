@@ -1,34 +1,34 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent } from "storybook/test";
+import { expect, within } from "storybook/test";
+import { useRef } from "react";
 import { ResponseActions } from "./ResponseActions.tsx";
+
+function ResponseActionsExample() {
+  const responseRef = useRef<HTMLDivElement>(null);
+  return (
+    <div>
+      <div ref={responseRef}>The canonical order definition excludes draft carts.</div>
+      <ResponseActions
+        selectionRootRef={responseRef}
+        responseText="The canonical order definition excludes draft carts."
+      />
+    </div>
+  );
+}
 
 const meta = {
   title: "Agent/Conversation/ResponseActions",
-  component: ResponseActions,
-  args: {
-    selectionAvailable: true,
-    status: "idle",
-    onCopySelection: fn(),
-    onCopyResponse: fn(),
-  },
-} satisfies Meta<typeof ResponseActions>;
+  component: ResponseActionsExample,
+} satisfies Meta<typeof ResponseActionsExample>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SelectionAvailable: Story = {
-  play: async ({ args, canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Copy selection" }));
-    await expect(args.onCopySelection).toHaveBeenCalledOnce();
-    await userEvent.click(canvas.getByRole("button", { name: "Copy response" }));
-    await expect(args.onCopyResponse).toHaveBeenCalledOnce();
-  },
-};
+export const CompleteResponse: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Copy response" })).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: "Copy selection" })).toBeNull();
 
-export const NoSelection: Story = {
-  args: { selectionAvailable: false, status: "response" },
-  play: async ({ canvas }) => {
-    await expect(canvas.getByRole("button", { name: "Copy selection" })).toBeDisabled();
-    await expect(canvas.getByText("Response copied")).toBeVisible();
   },
 };

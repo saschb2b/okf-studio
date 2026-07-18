@@ -133,7 +133,7 @@ describe("OKF Studio reviewed writes", () => {
     expect(await screen.findByText(
       /Bundle write denied: writes require the Allow edits in this thread grant/,
     )).toBeInTheDocument();
-    expect(screen.getByText("Change not staged")).toBeInTheDocument();
+    expect(screen.getByText("Not staged")).toBeInTheDocument();
     expect(screen.queryByText("Staged changes")).not.toBeInTheDocument();
 
     const grantToggle = await screen.findByRole("button", { name: "Allow edits in this thread" });
@@ -152,15 +152,19 @@ describe("OKF Studio reviewed writes", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Browser ACP staged: proposals/draft.md"))
       .toBeInTheDocument();
-    expect(screen.getByText("Change staged for review")).toBeInTheDocument();
-    // The reported change renders its Zed-style inline diff in the tool
-    // card: bundle-relative path plus tinted added/removed lines.
-    const editCard = screen.getAllByRole("article", { name: "Tool: Edit the bundle" }).at(-1);
+    expect(screen.getByText("Staged")).toBeInTheDocument();
+    // A successful edit rests collapsed, then reveals its bounded diff on demand.
+    const editCard = screen.getAllByLabelText("Tool: Edit the bundle").at(-1);
     if (!editCard) throw new Error("The edit tool card was not rendered.");
     expect(editCard).toHaveClass("agent-tool--card");
-    expect(within(editCard).getByText("product/overview.md")).toBeInTheDocument();
-    expect(within(editCard).getByText("-The old scope line.")).toBeInTheDocument();
-    expect(within(editCard).getByText("+The revised scope line.")).toBeInTheDocument();
+    expect(editCard).not.toHaveAttribute("open");
+    const editSummary = editCard.querySelector("summary");
+    if (!editSummary) throw new Error("The edit tool card has no disclosure summary.");
+    await user.click(editSummary);
+    expect(editCard).toHaveAttribute("open");
+    expect(within(editCard).getByText("product/overview.md")).toBeVisible();
+    expect(within(editCard).getByText("-The old scope line.")).toBeVisible();
+    expect(within(editCard).getByText("+The revised scope line.")).toBeVisible();
     expect(await screen.findByText("Staged changes")).toBeInTheDocument();
     expect(screen.getByText("proposals/draft.md")).toBeInTheDocument();
     expect(screen.getByText(/not applied to the bundle/)).toBeInTheDocument();

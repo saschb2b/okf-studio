@@ -9,6 +9,7 @@ import { AgentLiveWorkShelf } from "./AgentLiveWorkShelf.tsx";
 const plan: ConversationPlan = {
   id: "plan-live",
   role: "plan",
+  turnId: "turn-live",
   entries: [
     { content: "Find conflicting claims", priority: "high", status: "completed" },
     { content: "Trace source references", priority: "high", status: "in-progress" },

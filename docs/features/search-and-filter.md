@@ -3,7 +3,7 @@ type: Feature
 title: Search & Filter
 description: Type filters and tag browsing that persistently narrow the view, plus full-text concept search through the global launcher.
 tags: [feature, search, filter]
-timestamp: 2026-07-13T19:42:50Z
+timestamp: 2026-07-18T06:30:00Z
 ---
 
 # What it does
@@ -13,6 +13,7 @@ Lets the user narrow a bundle quickly by text, by `type`, or by `tag`.
 # Search
 
 - **Full-text concept search** lives in the [global launcher](command-palette.md): the header search field (or `Ctrl/Cmd + K` / `/`) matches each concept's `title`, `description`, `type`, `tags`, and **body text**, case-insensitively, surfacing body matches under an *In text* group with a snippet. Enter opens the best match.
+- The best matching concept also supplies origin-bound [Native OKF Tasks](native-okf-tasks.md) below the concept results. They use the shared task launcher; they do not replace Enter's navigation behavior.
 - Keeping text lookup in one transient overlay leaves the filters below as a separate, *persistent* narrowing of the view — the two never fight over the same box.
 
 # Faceted query grammar

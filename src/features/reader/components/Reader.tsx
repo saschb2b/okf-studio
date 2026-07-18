@@ -5,7 +5,7 @@
 // side in reader-only mode and falls below the article when space is tight (the
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "@/shared/store.tsx";
@@ -669,7 +669,23 @@ export function Reader() {
             ) : (
               <span />
             )}
-            <ReaderPrefs />
+            <div className="reader-header-actions">
+              <button
+                id="reader-okf-task"
+                type="button"
+                className="reader-okf-task"
+                onClick={() => actions.openOkfTaskLauncher({
+                  kind: "concept",
+                  id: `concept:${c.id}`,
+                  title: c.title,
+                  conceptId: c.id,
+                }, { returnFocusId: "reader-okf-task" })}
+              >
+                <Sparkles size={14} aria-hidden="true" />
+                Work with agent
+              </button>
+              <ReaderPrefs />
+            </div>
           </div>
           {/* One quiet meta line, not a row of pills: the type carries its
               palette color as a dot (the same encoding the Filter lens uses),
@@ -789,15 +805,35 @@ export function Reader() {
               <div className="meta-row">
                 <dt>Resource</dt>
                 <dd>
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={() => {
-                      if (c.resource) actions.openExternal(c.resource);
-                    }}
-                  >
-                    {c.resource}
-                  </button>
+                  <span className="reader-resource-actions">
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => {
+                        if (c.resource) actions.openExternal(c.resource);
+                      }}
+                    >
+                      {c.resource}
+                    </button>
+                    <button
+                      id="reader-resource-okf-task"
+                      type="button"
+                      className="reader-resource-agent"
+                      aria-label={`Use ${c.resource} with an OKF agent`}
+                      onClick={() => {
+                        if (!c.resource) return;
+                        actions.openOkfTaskLauncher({
+                          kind: "citation",
+                          id: `citation:${c.id}:${c.resource}`,
+                          title: c.title,
+                          conceptId: c.id,
+                          url: c.resource,
+                        }, { returnFocusId: "reader-resource-okf-task" });
+                      }}
+                    >
+                      <Sparkles size={13} aria-hidden="true" />
+                    </button>
+                  </span>
                 </dd>
               </div>
             )}

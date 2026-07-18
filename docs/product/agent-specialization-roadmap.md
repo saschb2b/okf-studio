@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T05:45:00Z
+timestamp: 2026-07-18T06:30:00Z
 ---
 
 # Outcome
@@ -149,13 +149,13 @@ Gate: every artifact has loading, empty, partial, invalid, stale, and large stat
 
 ## SP6: Native OKF entry points
 
-- [ ] Add context actions from a concept, graph selection, validation finding, citation, search result, and source tray.
-- [ ] Offer only tasks that fit the selected object and current agent capabilities.
-- [ ] Use one task launcher that previews the context plan instead of scattering prompt templates across components.
-- [ ] Add command-palette actions and keyboard paths for the same task IDs.
-- [ ] Preserve the user's current workspace and return focus to the originating object when the task is cancelled.
-- [ ] Use the same launcher states for first use, authentication, unsupported capability, stale plan, context overflow, and active-thread conflict.
-- [ ] Isolate launcher and artifact states in Storybook through its MCP surface before whole-panel integration screening.
+- [x] Add context actions from a concept, graph selection, validation finding, citation, search result, and source tray.
+- [x] Offer only tasks that fit the selected object and current agent capabilities.
+- [x] Use one task launcher that previews the context plan instead of scattering prompt templates across components.
+- [x] Add command-palette actions and keyboard paths for the same task IDs.
+- [x] Preserve the user's current workspace and return focus to the originating object when the task is cancelled.
+- [x] Use the same launcher states for first use, authentication, unsupported capability, stale plan, context overflow, and active-thread conflict.
+- [x] Isolate launcher and artifact states in Storybook through its MCP surface before whole-panel integration screening.
 
 Gate: a user can start an audit, repair, cited explanation, change-impact check, or enrichment from the object in question without manually naming its path in chat.
 

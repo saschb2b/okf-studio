@@ -185,6 +185,45 @@
   overflow-wrap: anywhere;
 }
 
+.reader-header-actions,
+.reader-resource-actions {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.reader-okf-task,
+.reader-resource-agent {
+  display: inline-flex;
+  gap: var(--space-6);
+  align-items: center;
+  min-height: 28px;
+  padding: var(--space-4) var(--space-8);
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.reader-okf-task:hover,
+.reader-resource-agent:hover {
+  color: var(--text);
+  background: var(--bg-sunken);
+}
+
+.reader-okf-task:focus-visible,
+.reader-resource-agent:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.reader-resource-agent {
+  min-width: 28px;
+  justify-content: center;
+  padding-inline: var(--space-6);
+}
+
 .concept-id {
   font-family: var(--mono);
   font-size: var(--fs-xs);

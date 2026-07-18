@@ -66,6 +66,36 @@
   padding: 0;
 }
 
+.vp-issue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.vp-issue-agent {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.vp-issue-agent:hover {
+  color: var(--text);
+  background: var(--bg-sunken);
+}
+
+.vp-issue-agent:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* Flat problems-list rows (the VS Code pattern): a severity dot, the message,
    and the dim concept id beneath — no card fill, no borders, no per-row
    severity word repeating the group heading right above it. Hover carries the

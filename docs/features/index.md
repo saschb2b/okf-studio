@@ -17,5 +17,6 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Validation](validation.md) - Surface OKF conformance issues without refusing the bundle.
 * [Knowledge Health](knowledge-health.md) - Give agents deterministic quality evidence without treating heuristics as conformance.
 * [Structured Agent Work](structured-agent-work.md) - Keep validated OKF plans, reports, research, migrations, and staged revisions active beside the conversation.
+* [Native OKF Tasks](native-okf-tasks.md) - Start bounded curated work from the OKF object already in view.
 * [Live Reload](live-reload.md) - Watch the folder and refresh the graph as files change.
 * [Log View](log-view.md) - Render a bundle's log.md as a dated, newest-first change timeline.

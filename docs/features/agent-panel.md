@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-18T05:45:00Z
+timestamp: 2026-07-18T06:30:00Z
 ---
 
 # Entry and first open
@@ -41,6 +41,8 @@ The four guided starters now select stable task IDs rather than relying on the w
 Selecting a task shows a context plan above the composer before the first prompt. The plan names the selected capabilities, tool scope, network and staged-write scope, active concept, direct and reverse graph neighbors, validation counts, user-selected concepts, and attached sources. Optional objects and sources have individual remove controls. Context paths are capped at eight for the ACP boundary. Sources keep their existing attachment cap. A byte budget and estimated token count cover the selected concept bodies and source content. Every item omitted by the user, size budget, or object cap is listed with its reason before send.
 
 The plan has a deterministic revision fingerprint over the bundle root, concept identity and metadata, links, bodies, and validation findings. The accepted manifest crosses the native command boundary with the stable task ID, where Rust rechecks its size, task match, and exact curated capability route. Native providers receive it as bounded routing data and keep using scoped OKF tools. ACP providers receive the same routing block and the selected versioned capability resources, with text fallback when embedded resources are unavailable. The task and accepted manifest are stored beside the agent-owned session pointer. If live reload changes the fingerprint, the composer blocks the next send until the user reviews and accepts the refreshed plan.
+
+The same route is available through [Native OKF Tasks](native-okf-tasks.md) on concepts, graph selections, validation findings, resource citations, search results, and attached sources. One launcher owns task choice and context preview across those surfaces. It retains the requested object while the user connects or authenticates, returns focus on cancel, and opens a separate thread when the current one is busy.
 
 # Structured work surface
 
@@ -132,6 +134,8 @@ For a history-capable agent, Studio stores a bounded recent list of distinct ses
 After any saved-work choice is resolved, the ordinary empty thread states that Studio attaches OKF context on the first send and provides read-only bundle text and structured inspection tools. That first prompt keeps the user's text as its own final block and precedes it with a client-context notice, the canonical OKF skill, specification, commands, templates, and a file resource link to the active bundle's root `index.md`. Agents that advertise embedded-context support receive the four trusted skill documents as Markdown resources. Other agents receive the same documents as labelled text blocks. The bundle index remains a link because bundle content is untrusted knowledge and may change during the session. Later turns do not repeat the context. A failed first prompt retries it.
 
 The idle composer keeps optional intake behind one **Add context or sources** plus button in the prompt footer. Its popover lists bundle concepts, the current reader selection, validation issues, a previous thread for history-capable agents, pasted text or public HTTPS pages, files, folders, and capability-gated images. Opening the popover snapshots any text selection wholly inside the displayed concept. **Reader selection** stays disabled with an explanation when no eligible text is selected. Selecting concepts, issues, reader text, or pasted text stays inside the same popover with a clear Back action; native file and folder choices close it before opening the host picker. Unsupported and limit-reached entries remain visible but disabled with an explanation. The menu takes no vertical space until requested and provides one extension point for later context types. Attached items remain visible as chips above the prompt.
+
+Each attached source chip can also open [Native OKF Tasks](native-okf-tasks.md) with that source as its origin. The task launcher carries the existing bounded source object into a separate kickoff; it does not duplicate the text, expose the selected host path, or send anything until the user starts the task.
 
 Four guided starters appear in an empty thread: **Create bundle**, **Enhance bundle**, **Request dataset change**, and **Deep research**. Selecting one places a plain, inspectable prompt in the ordinary composer and focuses it at the end. The user can edit the prompt, attach context and sources, or discard it before sending. A starter does not submit, grant writes, or hide its result outside the transcript. The Deep research prompt requires a `## Sources` section with one bullet per cited source and a non-empty `## Inferences` section; `None.` is explicit when the agent made no inference. At least one source bullet must contain a Markdown link, public URL, or bundle-relative `.md` path. The Request dataset change prompt requires a `## Change Plan` list and an `## Affected Concepts` list with one bundle-relative `.md` path per bullet. The workflow marker is stored with the bounded session pointer so archive and resume preserve these export rules.
 

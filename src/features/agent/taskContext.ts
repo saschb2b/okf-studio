@@ -1,3 +1,4 @@
+import type { AgentSourceInput } from "@/shared/ipc.ts";
 import type { Issue } from "@/shared/types.ts";
 
 export const OKF_TASK_IDS = [
@@ -83,6 +84,8 @@ export const OKF_TASKS: Readonly<Record<OkfTaskId, OkfTaskDefinition>> = {
 export interface OkfTaskKickoff {
   taskId: OkfTaskId;
   prompt: string;
+  contextConceptIds?: readonly string[];
+  sources?: readonly AgentSourceInput[];
 }
 
 export interface OkfContextObject {

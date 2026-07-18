@@ -11,13 +11,15 @@ describe("OKF Studio navigation features", () => {
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
 
     await screen.findByRole("combobox");
-    // Zero-query state: Recent (1: Overview) + Actions (14) — fifteen
-    // navigable results spanning two groups, reproducing the bug where the
+    // Zero-query state: Recent + general Actions + context-aware OKF tasks,
+    // plus object-specific OKF tasks. Walk the live result count because this
+    // protects traversal across groups rather than freezing a command catalog.
+    // This reproduces the bug where the
     // combobox's `items` and `filteredItems` props disagreed on whether the
     // list was grouped, so keyboard navigation only ever toggled between the
     // first two results instead of walking the full list.
     const options = await screen.findAllByRole("option");
-    expect(options).toHaveLength(15);
+    expect(options.length).toBeGreaterThan(15);
 
     for (const option of options) {
       await user.keyboard("{ArrowDown}");

@@ -3,7 +3,7 @@ type: Feature
 title: Command Palette
 description: A global launcher (Ctrl/Cmd + K or /) that jumps to any concept, searches body text, and runs quick actions — keyboard-only, grouped results.
 tags: [feature, palette, launcher, navigation, keyboard, search]
-timestamp: 2026-06-30T23:30:00Z
+timestamp: 2026-07-18T06:30:00Z
 ---
 
 # What it does
@@ -13,8 +13,9 @@ A **global launcher** — opened with `Ctrl/Cmd + K`, with `/`, or by clicking t
 # Matching & grouping
 
 - **Fuzzy matching** over each concept's id, `title`, and `type`, and over each quick action's label, ranked so the closest match leads; with no query it offers a starting set rather than a blank box.
-- Results are **grouped** so a long list stays scannable, in this order: **Recent** (recently visited concepts), **Actions** (the quick commands), **Concepts** (id / title / type matches), **In text** (full-text body matches, each with the matching snippet). Actions sit right after Recent, ahead of Concepts/In text, because there are only ever a handful of them — sorted last, a matching action would sink below dozens of fuzzy concept hits and become unreachable without scrolling past everything else first.
+- Results are **grouped** so a long list stays scannable. With no query, **Recent** concepts and **Actions** lead. With a query, matching actions are followed by **Concepts**, origin-bound **OKF tasks**, then **In text** body matches with snippets. The concept stays ahead of its task shortcuts, so Enter opens the best navigation match instead of unexpectedly starting agent work.
 - Quick actions appear alongside concept results, so the same box launches a command or navigates to a node.
+- **OKF tasks** use the same stable IDs and [context-preview launcher](native-okf-tasks.md) as the reader, graph, validation panel, and source tray. Arrow to one to start cited research, change-impact work, enrichment, or a matching repair without copying a concept path.
 
 # Keyboard-only
 

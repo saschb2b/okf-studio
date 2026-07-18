@@ -7,7 +7,7 @@ import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
-import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
+import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
 import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
@@ -41,6 +41,7 @@ import {
   freshThreadContextDraft,
   markContextSummary,
 } from "@/features/agent/components/conversation/contextRecovery.ts";
+import { useAppActions } from "@/shared/store.tsx";
 
 
 export interface AgentConversationProps {
@@ -66,6 +67,7 @@ export interface AgentConversationProps {
   onThreadTitleChange: (title: string) => void;
   onCloseThreadSurface: () => void;
   initialPrompt?: string;
+  initialKickoff?: OkfTaskKickoff;
   initialSession?: AgentSessionHistoryInfo;
   onStartFreshThread: (initialPrompt: string) => void;
   onImportSession: (session: AgentSessionHistoryInfo) => void;
@@ -91,6 +93,7 @@ export function AgentConversation({
   onThreadTitleChange,
   onCloseThreadSurface,
   initialPrompt = "",
+  initialKickoff,
   initialSession,
   onStartFreshThread,
   onImportSession,
@@ -98,6 +101,7 @@ export function AgentConversation({
   notificationSound,
   onThreadStatusChange,
 }: AgentConversationProps) {
+  const appActions = useAppActions();
   const conversationTitleId = useId();
   const stagedTitleId = `${conversationTitleId}-staged`;
   const bundleFolderInputId = `${conversationTitleId}-bundle-folder`;
@@ -109,7 +113,9 @@ export function AgentConversation({
     source: "default",
     value: "New thread",
   });
-  const [threadTaskId, setThreadTaskId] = useState<OkfTaskId | null>(null);
+  const [threadTaskId, setThreadTaskId] = useState<OkfTaskId | null>(
+    initialKickoff?.taskId ?? null,
+  );
   const [acceptedContextManifest, setAcceptedContextManifest] =
     useState<AcceptedOkfContextManifest | null>(null);
   const [removedContextIds, setRemovedContextIds] = useState<ReadonlySet<string>>(
@@ -187,9 +193,19 @@ export function AgentConversation({
   } | null>(null);
   const [attachedConcepts, setAttachedConcepts] = useState<
     { id: string; title: string; type: string }[]
-  >([]);
-  const [attachedSources, setAttachedSources] = useState<AttachedSource[]>([]);
-  const [promptText, setPromptText] = useState(initialPrompt);
+  >(() => {
+    const kickoffIds = new Set(initialKickoff?.contextConceptIds ?? []);
+    return concepts
+      .filter((concept) => kickoffIds.has(concept.id))
+      .map(({ id, title, type }) => ({ id, title, type }));
+  });
+  const [attachedSources, setAttachedSources] = useState<AttachedSource[]>(() =>
+    (initialKickoff?.sources ?? []).map((source) => ({
+      id: crypto.randomUUID(),
+      ...source,
+    })),
+  );
+  const [promptText, setPromptText] = useState(initialKickoff?.prompt ?? initialPrompt);
   const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
@@ -1967,6 +1983,7 @@ export function AgentConversation({
                 <button
                   type="button"
                   className="btn primary"
+                  data-agent-authentication-method
                   disabled={authentication.status === "authenticating"}
                   onClick={() => void authenticate(method.id)}
                 >
@@ -2508,6 +2525,20 @@ export function AgentConversation({
                       {source.title}
                       {source.warning && <span className="sr-only"> Warning: {source.warning}</span>}
                     </span>
+                    <button
+                      id={`source-okf-task-${source.id}`}
+                      type="button"
+                      aria-label={`Start OKF work from ${source.title}`}
+                      disabled={isSubmitting || queuedPrompt !== null}
+                      onClick={() => appActions.openOkfTaskLauncher({
+                        kind: "source",
+                        id: `source:${source.id}`,
+                        title: source.title,
+                        source,
+                      }, { returnFocusId: `source-okf-task-${source.id}` })}
+                    >
+                      <Sparkles size={14} aria-hidden="true" />
+                    </button>
                     <button
                       type="button"
                       aria-label={`Remove ${source.title} source`}

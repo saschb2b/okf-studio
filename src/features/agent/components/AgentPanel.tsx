@@ -18,6 +18,18 @@ import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary.tsx";
 import { NewAgentThreadMenu } from "@/features/agent/components/NewAgentThreadMenu.tsx";
 import { ThreadStatusIndicator, threadStatusLabel } from "@/features/agent/components/conversation/ThreadStatusIndicator.tsx";
 import { ThreadSwitcher } from "@/features/agent/components/conversation/ThreadSwitcher.tsx";
+import { OkfTaskLauncher } from "@/features/agent/components/OkfTaskLauncher.tsx";
+import type { OkfTaskLauncherStatus } from "@/features/agent/components/OkfTaskLauncher.tsx";
+import {
+  bundleContextFingerprint,
+  createOkfContextPlan,
+  type OkfTaskId,
+  type OkfTaskKickoff,
+} from "@/features/agent/taskContext.ts";
+import {
+  kickoffForOkfOrigin,
+  tasksForOkfOrigin,
+} from "@/features/agent/taskLauncher.ts";
 import { aggregateThreadStatus } from "@/features/agent/threadStatus.ts";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import "./AgentPanel.css";
@@ -41,7 +53,17 @@ export function AgentPanel() {
   const [resetToken, setResetToken] = useState(0);
   // Each ConnectionThreads registers how to open one more thread surface so
   // the agent popover can start a thread on an already-connected agent.
-  const threadOpeners = useRef(new Map<string, () => void>());
+  const threadOpeners = useRef(new Map<string, (kickoff?: OkfTaskKickoff) => void>());
+  const launcherRequest = state.okfTaskLauncher;
+  const launcherTasks = launcherRequest ? tasksForOkfOrigin(launcherRequest.origin) : [];
+  const [launcherSelection, setLauncherSelection] = useState<{
+    requestId: string;
+    taskId: OkfTaskId;
+  } | null>(null);
+  const [launcherSuspension, setLauncherSuspension] = useState<{
+    requestId: string;
+    reason: "connection" | "authentication";
+  } | null>(null);
 
   // Restore the most recent explicitly connected agent once, when the panel
   // first has an open bundle after launch. An explicit Disconnect forgot the
@@ -62,6 +84,8 @@ export function AgentPanel() {
       : `${state.agentPanelWidth}px`;
 
   function closePanel() {
+    if (launcherRequest) actions.closeOkfTaskLauncher({ restoreFocus: false });
+    setLauncherSuspension(null);
     actions.togglePanel("agent", false);
     focusAgentPanelOpener();
   }
@@ -75,6 +99,7 @@ export function AgentPanel() {
 
   function closeCatalog() {
     setView(connections.length > 0 ? "conversation" : "empty");
+    setLauncherSuspension(null);
     requestAnimationFrame(() => {
       focusVisiblePanelContent(panelRef.current);
     });
@@ -84,13 +109,16 @@ export function AgentPanel() {
     (connection) => connection.connectionId === selectedConnectionId,
   ) ?? connections.at(0);
 
-  function requestNewThread(connectionId: string) {
+  function requestNewThread(connectionId: string, kickoff?: OkfTaskKickoff) {
     setSelectedConnectionId(connectionId);
     setView("conversation");
-    threadOpeners.current.get(connectionId)?.();
+    threadOpeners.current.get(connectionId)?.(kickoff);
   }
 
-  function registerThreadOpener(connectionId: string, open: (() => void) | null) {
+  function registerThreadOpener(
+    connectionId: string,
+    open: ((kickoff?: OkfTaskKickoff) => void) | null,
+  ) {
     if (open) threadOpeners.current.set(connectionId, open);
     else threadOpeners.current.delete(connectionId);
   }
@@ -99,6 +127,43 @@ export function AgentPanel() {
     : selectedConnection
       ? "conversation"
       : "empty";
+  const selectedLauncherTask = launcherRequest
+    && launcherSelection?.requestId === launcherRequest.requestId
+    && launcherTasks.includes(launcherSelection.taskId)
+    ? launcherSelection.taskId
+    : undefined;
+  const preferredLauncherTask = launcherRequest?.preferredTaskId
+    && launcherTasks.includes(launcherRequest.preferredTaskId)
+    ? launcherRequest.preferredTaskId
+    : undefined;
+  const launcherTaskId = selectedLauncherTask ?? preferredLauncherTask ?? launcherTasks.at(0);
+  const launcherSuspended = launcherRequest
+    && launcherSuspension?.requestId === launcherRequest.requestId
+    ? launcherSuspension
+    : null;
+  const launcherHidden = launcherSuspended?.reason === "connection"
+    || (launcherSuspended?.reason === "authentication" && !selectedConnection?.authenticated);
+  const launcherPlan = launcherRequest && launcherTaskId && state.activeRoot && state.bundle
+    ? createLauncherPlan(launcherRequest.origin, launcherTaskId, state.activeRoot, state.bundle)
+    : undefined;
+  const launcherFingerprint = state.activeRoot && state.bundle
+    ? bundleContextFingerprint(state.activeRoot, state.bundle.concepts, state.bundle.issues)
+    : null;
+  const launcherStatus: OkfTaskLauncherStatus = !launcherRequest || launcherTasks.length === 0
+    ? "unsupported"
+    : connections.length === 0
+      ? "first-use"
+      : selectedConnection && !selectedConnection.authenticated && selectedConnection.authMethods.length > 0
+        ? "authentication"
+        : launcherFingerprint !== launcherRequest.openedBundleFingerprint
+          ? "stale"
+          : launcherPlan?.omissions.some((omission) => omission.reason === "budget-exceeded")
+            ? "overflow"
+            : selectedConnection && ["running", "waiting"].includes(
+              connectionStatuses.get(selectedConnection.connectionId) ?? "idle",
+            )
+              ? "active-thread-conflict"
+              : "ready";
 
   // Land on a safe view and remount the failed subtree. Thread UI state is
   // lost, but saved-thread metadata lets the user resume the conversation.
@@ -190,6 +255,7 @@ export function AgentPanel() {
                 }
                 setSelectedConnectionId(connection.connectionId);
                 setView("conversation");
+                setLauncherSuspension(null);
               }}
             />
           )}
@@ -320,6 +386,58 @@ export function AgentPanel() {
           )}
         </ErrorBoundary>
       </aside>
+      {launcherRequest
+        && launcherTaskId
+        && !launcherHidden
+        && (
+        <OkfTaskLauncher
+          open
+          origin={launcherRequest.origin}
+          status={launcherStatus}
+          tasks={launcherTasks}
+          selectedTaskId={launcherTaskId}
+          plan={launcherPlan}
+          connectionName={selectedConnection ? connectionLabel(selectedConnection) : undefined}
+          onTaskChange={(taskId) => setLauncherSelection({
+            requestId: launcherRequest.requestId,
+            taskId,
+          })}
+          onClose={() => {
+            setLauncherSuspension(null);
+            actions.closeOkfTaskLauncher();
+          }}
+          onConnect={() => {
+            setLauncherSuspension({
+              requestId: launcherRequest.requestId,
+              reason: "connection",
+            });
+            openCatalog();
+          }}
+          onAuthenticate={() => {
+            setLauncherSuspension({
+              requestId: launcherRequest.requestId,
+              reason: "authentication",
+            });
+            setView("conversation");
+            requestAnimationFrame(() => {
+              document.querySelector<HTMLElement>("[data-agent-authentication-method]")?.focus();
+            });
+          }}
+          onRefresh={() => actions.openOkfTaskLauncher(launcherRequest.origin, {
+            preferredTaskId: launcherTaskId,
+            returnFocusId: launcherRequest.returnFocusId,
+          })}
+          onStart={() => {
+            if (!selectedConnection) return;
+            requestNewThread(
+              selectedConnection.connectionId,
+              kickoffForOkfOrigin(launcherTaskId, launcherRequest.origin),
+            );
+            setLauncherSuspension(null);
+            actions.closeOkfTaskLauncher({ restoreFocus: false });
+          }}
+        />
+      )}
     </>
   );
 }
@@ -332,6 +450,7 @@ interface ThreadSurface {
   title: string;
   initialPrompt: string;
   initialSession?: AgentSessionHistoryInfo;
+  initialKickoff?: OkfTaskKickoff;
   status: AgentThreadStatus;
 }
 
@@ -353,7 +472,10 @@ type ConnectionThreadsProps = Omit<
   | "onThreadStatusChange"
 > & {
   hidden: boolean;
-  onRegisterThreadOpener: (connectionId: string, open: (() => void) | null) => void;
+  onRegisterThreadOpener: (
+    connectionId: string,
+    open: ((kickoff?: OkfTaskKickoff) => void) | null,
+  ) => void;
   onConnectionStatusChange: (status: AgentThreadStatus) => void;
 };
 
@@ -378,10 +500,11 @@ function ConnectionThreads({
   function addThreadSurface(
     initialPrompt = "",
     initialSession?: AgentSessionHistoryInfo,
+    initialKickoff?: OkfTaskKickoff,
   ) {
     if (surfaces.length >= MAX_THREAD_SURFACES) return;
     const ordinal = Math.max(...surfaces.map((surface) => surface.ordinal)) + 1;
-    const surface = newThreadSurface(ordinal, initialPrompt, initialSession);
+    const surface = newThreadSurface(ordinal, initialPrompt, initialSession, initialKickoff);
     setSurfaces((current) => [...current, surface]);
     setSelectedSurfaceId(surface.id);
     requestAnimationFrame(() => {
@@ -392,7 +515,10 @@ function ConnectionThreads({
   // Keep the panel's registry pointing at the latest closure; runs after every
   // render on purpose so the opener never captures stale surface state.
   useEffect(() => {
-    onRegisterThreadOpener(connection.connectionId, addThreadSurface);
+    onRegisterThreadOpener(
+      connection.connectionId,
+      (kickoff) => addThreadSurface("", undefined, kickoff),
+    );
     return () => onRegisterThreadOpener(connection.connectionId, null);
   });
 
@@ -441,6 +567,7 @@ function ConnectionThreads({
             threadSurfaceCount={surfaces.length}
             initialPrompt={surface.initialPrompt}
             initialSession={surface.initialSession}
+            initialKickoff={surface.initialKickoff}
             onStartFreshThread={(initialPrompt) => addThreadSurface(initialPrompt)}
             onImportSession={(session) => addThreadSurface("", session)}
             onThreadTitleChange={(title) => renameThreadSurface(surface.id, title)}
@@ -457,6 +584,7 @@ function newThreadSurface(
   ordinal: number,
   initialPrompt = "",
   initialSession?: AgentSessionHistoryInfo,
+  initialKickoff?: OkfTaskKickoff,
 ): ThreadSurface {
   return {
     id: crypto.randomUUID(),
@@ -464,8 +592,38 @@ function newThreadSurface(
     title: "New thread",
     initialPrompt,
     ...(initialSession ? { initialSession } : {}),
+    ...(initialKickoff ? { initialKickoff } : {}),
     status: "idle",
   };
+}
+
+function createLauncherPlan(
+  origin: import("@/features/agent/taskLauncher.ts").OkfTaskOrigin,
+  taskId: OkfTaskId,
+  bundleRoot: string,
+  bundle: import("@/shared/types.ts").Bundle,
+) {
+  const conceptId = "conceptId" in origin
+    ? origin.conceptId
+    : origin.kind === "validation-finding"
+      ? origin.issue.conceptId
+      : null;
+  const concept = conceptId
+    ? bundle.concepts.find((candidate) => candidate.id === conceptId) ?? null
+    : null;
+  const kickoff = kickoffForOkfOrigin(taskId, origin);
+  return createOkfContextPlan({
+    taskId,
+    bundleRoot,
+    concepts: bundle.concepts,
+    activeConcept: concept ? { id: concept.id, title: concept.title } : null,
+    attachedConcepts: [],
+    sources: (kickoff.sources ?? []).map((source, index) => ({
+      id: `${origin.id}-${index}`,
+      ...source,
+    })),
+    issues: origin.kind === "validation-finding" ? [origin.issue] : bundle.issues,
+  });
 }
 
 function connectionLabel(connection: AgentConnectionInfo): string {

@@ -29,6 +29,11 @@ import {
   onWindowResized,
   openConceptWindow,
 } from "@/shared/platform/window.ts";
+import { bundleContextFingerprint, type OkfTaskId } from "@/features/agent/taskContext.ts";
+import type {
+  OkfTaskLaunchRequest,
+  OkfTaskOrigin,
+} from "@/features/agent/taskLauncher.ts";
 
 export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage" | "agent";
 
@@ -305,6 +310,8 @@ export interface State {
   /** One-shot initial query for the next palette open (e.g. the sidebar's
    *  "Open full search" hand-off); null means keep the palette's own value. */
   paletteSeed: string | null;
+  /** One native OKF task hand-off, consumed by the shared agent launcher. */
+  okfTaskLauncher: OkfTaskLaunchRequest | null;
   settingsOpen: boolean;
   help: boolean;
   settings: Settings;
@@ -361,6 +368,7 @@ function makeInitialState(): State {
   },
   palette: false,
   paletteSeed: null,
+  okfTaskLauncher: null,
   settingsOpen: false,
   help: false,
   settings: DEFAULT_SETTINGS,
@@ -403,6 +411,7 @@ type Msg =
   | { t: "agentPanelWidth"; v: number | null }
   | { t: "panel"; name: PanelName; v?: boolean }
   | { t: "palette"; v: boolean; seed?: string }
+  | { t: "okfTaskLauncher"; v: OkfTaskLaunchRequest | null }
   | { t: "settingsOpen"; v: boolean }
   | { t: "help"; v: boolean }
   | { t: "settings"; v: Settings };
@@ -700,6 +709,8 @@ function reducer(s: State, m: Msg): State {
     }
     case "palette":
       return { ...s, palette: m.v, paletteSeed: m.v ? (m.seed ?? null) : null };
+    case "okfTaskLauncher":
+      return { ...s, okfTaskLauncher: m.v };
     case "settingsOpen":
       return { ...s, settingsOpen: m.v };
     case "help":
@@ -772,6 +783,11 @@ export interface Actions {
   setAgentPanelWidth(value: number | null): void;
   togglePanel(name: PanelName, value?: boolean): void;
   setPalette(open: boolean, seed?: string): void;
+  openOkfTaskLauncher(
+    origin: OkfTaskOrigin,
+    options?: { preferredTaskId?: OkfTaskId; returnFocusId?: string },
+  ): void;
+  closeOkfTaskLauncher(options?: { restoreFocus?: boolean }): void;
   setSettingsOpen(open: boolean): void;
   setHelp(open: boolean): void;
   updateSettings(patch: Partial<Settings>): void;
@@ -1050,6 +1066,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setPalette(open, seed) {
       dispatch({ t: "palette", v: open, seed });
+    },
+    openOkfTaskLauncher(origin, options) {
+      const current = stateRef.current;
+      const bundle = current.bundle;
+      if (!bundle || !current.activeRoot) return;
+      const request: OkfTaskLaunchRequest = {
+        requestId: crypto.randomUUID(),
+        origin,
+        ...(options?.preferredTaskId
+          ? { preferredTaskId: options.preferredTaskId }
+          : {}),
+        ...(options?.returnFocusId
+          ? { returnFocusId: options.returnFocusId }
+          : {}),
+        openedBundleFingerprint: bundleContextFingerprint(
+          current.activeRoot,
+          bundle.concepts,
+          bundle.issues,
+        ),
+      };
+      dispatch({ t: "okfTaskLauncher", v: request });
+      dispatch({ t: "panel", name: "agent", v: true });
+    },
+    closeOkfTaskLauncher(options) {
+      const focusId = stateRef.current.okfTaskLauncher?.returnFocusId;
+      dispatch({ t: "okfTaskLauncher", v: null });
+      if (options?.restoreFocus !== false && focusId) {
+        requestAnimationFrame(() => document.getElementById(focusId)?.focus());
+      }
     },
     setSettingsOpen(open) {
       dispatch({ t: "settingsOpen", v: open });

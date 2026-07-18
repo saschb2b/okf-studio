@@ -93,6 +93,18 @@
   pointer-events: auto;
 }
 
+.graph-toolbar-left {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+}
+
+.graph-okf-task {
+  display: inline-flex;
+  gap: var(--space-6);
+  align-items: center;
+}
+
 /* Controls panel (top-left), Obsidian-style. */
 .graph-panel {
   display: flex;

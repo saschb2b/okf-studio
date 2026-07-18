@@ -176,6 +176,7 @@ export function TopBar() {
             <Tooltip.Trigger
               render={
                 <Toolbar.Button
+                  id="topbar-search"
                   className="topbar-search"
                   aria-label="Search and commands"
                   aria-keyshortcuts="Control+K Meta+K"

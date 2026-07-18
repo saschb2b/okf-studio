@@ -3,12 +3,18 @@ type: Feature
 title: Source Adapters and Provenance
 description: Versioned Rust adapters turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible provenance and refresh identity.
 tags: [feature, agents, sources, adapters, provenance, security]
-timestamp: 2026-07-18T08:15:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
 
 Source intake is a producer workflow, not a generic file-reading capability. The user selects a file, folder, image, or public HTTPS URL. Rust discovers and reads only that selection, chooses a closed adapter, and returns normalized evidence plus a versioned receipt. The [Agent Panel](agent-panel.md) shows the receipt before the user sends a prompt or asks an agent to propose concepts.
+
+# Why this exists
+
+Raw attachments give an agent bytes, but they do not establish how those bytes were interpreted, whether a refresh is equivalent, or which exact evidence supported the resulting concepts. Different formats also encourage one-off parsing in prompts, where malformed input, hidden instructions, and unstable ordering are difficult for the user to inspect.
+
+Adapters turn each explicit selection into repeatable evidence with visible origin, normalization, warnings, and fingerprints. The receipt lets Studio reject a forged or stale interpretation and lets the user compare later refreshes. Domain adapters preserve useful structure for OpenAPI, dbt, and BigQuery exports without granting a general filesystem reader or live cloud account.
 
 # Adapter contract
 

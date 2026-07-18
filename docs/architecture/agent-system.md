@@ -3,14 +3,26 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-18T16:00:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Decision
 
 One [Agent Panel](../features/agent-panel.md) hosts two boundaries: external agent processes over Agent Client Protocol (ACP), and a native Studio Agent backed by API or local model providers.
 
+# Why this decision exists
+
+Studio needs provider choice without duplicating bundle access, permissions, staging, and session behavior for every agent. Separate vendor integrations would drift into different security rules and make OKF specialization depend on one model or subscription. A browser-owned integration would also place process, credential, network, and filesystem authority in the wrong layer.
+
+One Rust host keeps those authorities consistent while ACP and the native provider remain replaceable execution paths. The shared capability, context, artifact, and reviewed-write contracts make OKF behavior a Studio property. Provider-specific limits stay visible without changing which layer decides access or whether a proposed revision may be applied.
+
 # Granted bundle library and federation
+
+## Why federation exists
+
+Many OKF tasks need evidence from related bundles: comparing definitions, finding a shared source, or planning a migration into one active bundle. Without a Studio-owned federation path, the user must copy that material into the destination or give an agent several filesystem roots and rely on prompt instructions to keep writes separate.
+
+The granted library reuses folders the user has already authorized and gives every result a stable bundle identity. Federation remains read-only evidence, and the active bundle remains the only staging destination. This supports cross-bundle reasoning without merging namespaces, duplicating knowledge, or widening the agent's filesystem authority.
 
 Rust owns a separate bounded library of bundles that the user previously granted. Each record has an opaque UUID, internal canonical root and scope root, title, kind, counts, type and tag summaries, last observed revision fingerprint, and last-seen time. The UUID survives rescans and restarts. Paths stay inside Rust and never serve as cross-bundle identity. The active marker is derived only after the current root passes the ordinary bundle authorization boundary.
 
@@ -38,6 +50,12 @@ Rust owns processes, network, credentials, filesystem mediation, persistence, an
 ACP standardizes capability negotiation, agent-owned auth, sessions, streaming, tools, permission requests, diffs, filesystem requests, cancellation, and optional restore. It avoids separate Claude and Codex clients. Rust keeps one canonical bundle-root representation from folder grant through agent connection and ACP session dispatch. On Windows it removes the verbatim prefix before storing or sending the root, and bundle comparisons treat the ordinary `C:\...` and equivalent `\\?\C:\...` forms as the same canonical directory. This preserves exact bundle scoping while accepting connections created before the normalized representation was introduced.
 
 ACP does not replace an external agent's system prompt. The native Studio Agent guarantees the packaged [OKF capability resources](../../.agents/skills/okf/capabilities.json), system prompt, scoped tools, validation, and staged writes. External agents receive bundle cwd, explicit resources, client permissions, and Studio OKF tools over MCP where supported. Studio labels first-turn capability material as client context and never claims it changed the external agent's system instructions.
+
+## Why capabilities are narrow
+
+One large OKF instruction bundle would make every task pay for methods and examples it does not need. It would also leave task choice implicit in prompt interpretation, making it difficult to explain which method and tool set produced a result. Provider-specific prompts would recreate the same drift across agents.
+
+The shared kernel holds format rules and invariant safety guidance. Narrow capabilities add only the method, tools, artifact kinds, and completion checks for the selected task. Studio can inspect and benchmark each route independently, while every provider receives the same declared contract through its supported delivery path.
 
 The packaged catalog keeps invariant trust rules in the native boundary and task method in versioned resources. `okf-core` owns the shared specification, command reference, templates, and changelog. Eight narrow capabilities own inspect, create, enrich, audit, repair, cited research, change-impact, and migration methods. Each declares one risk class, exact tool set, artifact kinds, required inputs, ordered method, stop conditions, completion checks, and worked and adversarial examples. The benchmark gate requires one task contract per narrow capability and rejects tool or artifact drift. Removing a capability removes its task entry point without changing the native safety boundary. Settings exposes metadata and digests, never resource bodies or an enablement claim. Guided task selection crosses IPC as a stable task ID plus an accepted bounded context manifest. Rust rejects unknown IDs, oversized manifests, task mismatches, and capability routes that differ from the curated task table. The host then attaches the selected narrow instruction resources in addition to the shared kernel and records them in the turn receipt.
 

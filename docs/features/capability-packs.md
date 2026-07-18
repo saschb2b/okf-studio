@@ -3,7 +3,7 @@ type: Feature
 title: Declarative OKF Capability Packs
 description: Package Studio's curated OKF skills, templates, artifact contract, and tool requirements as one inspectable and reversible built-in unit.
 tags: [feature, agents, skills, capability-pack, security, migration]
-timestamp: 2026-07-18T16:00:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
@@ -11,6 +11,12 @@ timestamp: 2026-07-18T16:00:00Z
 OKF specialization ships as the built-in `okf-foundation@1.0.0` capability pack. The pack binds the curated skill catalog, shared Markdown templates, the JSON Schema for the `okf-artifact-v1` envelope, and the complete closed set of Studio tool IDs those skills may require.
 
 Settings shows the pack identity, version, publisher, provenance, compatibility, conflicts, resource IDs, SHA-256 digest, activation state, and the capabilities it currently exposes. This disclosure identifies what Studio selected. It does not claim that an external agent loaded or followed a resource.
+
+# Why this exists
+
+Before the pack, OKF specialization was spread across skill files, templates, artifact schemas, tool routing, and native code. Those parts could evolve together in source control, but the installed product had no single identity for the method it was running. A user could not inspect the complete unit, compare an upgrade, or return to the earlier behavior without changing the application itself.
+
+The pack makes specialization a versioned product boundary. One digest ties the method to its required resources and tools, while activation state provides a reversible upgrade path. The closed declarative format also creates a safe extension point for future packs without treating arbitrary executable plugins as documentation.
 
 # Closed v1 format
 

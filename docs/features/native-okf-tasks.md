@@ -3,12 +3,18 @@ type: Feature
 title: Native OKF Tasks
 description: Start a bounded, curated OKF task from the concept, finding, citation, graph object, search result, or source already in view.
 tags: [feature, agents, tasks, context, launcher, keyboard]
-timestamp: 2026-07-18T06:30:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
 
 OKF work starts from the object the user is already examining. Studio provides the same task launcher from a reader concept, graph selection, validation finding, resource citation, command-palette search result, or attached source. The resulting prompt carries the selected concept IDs or bounded source evidence, so the user does not have to copy a path into chat.
+
+# Why this exists
+
+A generic composer makes the user translate visible workspace state into prompt text. They must name the concept again, decide which neighboring evidence matters, and describe whether they want an audit, repair, or enrichment. That repetition loses object identity, encourages oversized context, and lets similar requests take different capability and tool paths depending on wording.
+
+Native tasks make the selected object the starting point and the task ID the stable expression of intent. Studio can then choose a bounded method, show the exact context plan, and preserve the user's place in the graph or reader. The result is a shorter workflow and a reproducible security boundary across providers.
 
 # Task fit
 

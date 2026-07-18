@@ -3,7 +3,7 @@ type: Feature
 title: Knowledge Health
 description: Give agents deterministic, revision-bound evidence about bundle quality without turning heuristics into OKF conformance rules.
 tags: [feature, agents, health, validation, graph, provenance]
-timestamp: 2026-07-18T06:54:26Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # What it does
@@ -11,6 +11,12 @@ timestamp: 2026-07-18T06:54:26Z
 The [Agent Panel](agent-panel.md) can audit more than the one hard OKF rule without asking a model to invent its own quality criteria. A Rust-owned engine analyzes the parsed bundle and reports seven categories: conformance, graph connectivity, navigation, provenance, freshness signals, duplication, and coverage hints.
 
 This engine does not decide whether a bundle may open. [Validation](validation.md) remains the exact OKF v0.1 conformance surface, and tolerant consumption remains unchanged. Health adds evidence for agent work after the bundle is already readable.
+
+# Why this exists
+
+OKF conformance deliberately has one small hard rule. That tolerance keeps thin and producer-defined bundles readable, but it leaves graph isolation, stale provenance, duplicate concepts, and missing navigation outside the validator. Asking each agent to infer those quality criteria produced inconsistent audits and risked presenting optional guidance as a format error.
+
+Knowledge Health gives every provider the same revision-bound evidence before it reasons about repairs. It separates facts from heuristics and supplies stable finding identities, so repeated audits can be compared, dismissed findings can remain dismissed, and deterministic repairs do not depend on model phrasing. The user gets a quality view without losing OKF's tolerant-consumer contract.
 
 # Finding contract
 

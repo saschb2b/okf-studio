@@ -3,7 +3,7 @@ type: Feature
 title: Guarded External Entry Points
 description: Review bounded deep-link and CLI requests before Studio opens a bundle, prepares an OKF task, or issues a one-shot read-only MCP grant.
 tags: [feature, agents, cli, deep-link, mcp, security]
-timestamp: 2026-07-18T13:30:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
@@ -11,6 +11,12 @@ timestamp: 2026-07-18T13:30:00Z
 Files, scripts, launchers, and other local agents can hand work to OKF Studio without gaining agent, network, or filesystem authority. Every supported external request first becomes a visible preview. The preview shows the decoded target, action, concept, task, attachments, inert prompt draft, and the names of unsupported fields that Studio omitted.
 
 Parsing, filesystem confirmation, bundle opening, and task preparation are separate steps. Receiving a request never connects or authenticates an agent, submits a prompt, fetches a source, grants edits, stages a change, or applies a revision.
+
+# Why this exists
+
+OKF work often begins outside Studio: in a terminal, a file browser, a script, or another local agent. Requiring the user to reopen the bundle, find the same concept, and reconstruct the intended task breaks that handoff. Direct deep links and command-line automation would remove the friction, but they would also turn untrusted text and paths into ambient filesystem or agent authority.
+
+The preview contract preserves the useful handoff while keeping the decision inside Studio. A caller can name work, but the user still sees the decoded request and controls folder access, task start, and any later write. The one-shot MCP grant provides the same balance for local agents: bounded OKF reads without a reusable bundle-path capability.
 
 # Shared request contract
 

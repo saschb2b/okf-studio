@@ -3,12 +3,18 @@ type: Feature
 title: Structured Agent Work
 description: Rust-validated OKF plans, reports, research, impact maps, migrations, inventories, and staged revisions that remain inspectable beside the conversation.
 tags: [feature, agents, artifacts, planning, research, review]
-timestamp: 2026-07-18T06:54:26Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
 
 An agent response can contain useful work that should stay active after the prose around it scrolls away. Studio recognizes seven OKF work kinds: source inventory, bundle plan, health report, research brief, change-impact map, migration plan, and staged revision. The current artifact opens as a dedicated surface inside the docked [Agent Panel](agent-panel.md), beside the graph and reader. The transcript remains the chronological record and keeps the original agent response unchanged.
+
+# Why this exists
+
+Conversation is a poor working format for plans, inventories, and reviewable changes. Important items move out of view, concept references become plain text, and revising one field usually means asking for another full response. The user can read the answer, but Studio cannot reliably connect it to the graph, detect a stale revision, or carry it into reviewed staging.
+
+Structured work gives durable shape to the part of a response the user must inspect or continue editing. Typed identities connect it to the current bundle and sources, while explicit revisions preserve authorship and history. The dedicated surface reduces copy-and-paste work without treating agent output as trusted application state or a direct write command.
 
 # Trust boundary
 

@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-18T10:15:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Entry and first open
@@ -38,6 +38,10 @@ Native connections use the same four guided starters and thread grant as ACP con
 
 # OKF task routing and context preview
 
+## Why this exists
+
+Editable prompt text previously carried both the user's request and Studio's guess about which method, context, and tools the agent needed. Small wording changes could alter that guess, and the user could not inspect the effective route before the first send. Stable task IDs separate intent from prose. The context preview then makes the resulting capability and evidence selection reviewable before it becomes agent input.
+
 The four guided starters now select stable task IDs rather than relying on the wording of their editable prompts. The current IDs route creation, enrichment, cited research, and change-impact work to a closed capability set. Editing the prompt cannot silently change that route. Agent text cannot change it either. A wider tool, network, or staging scope requires another explicit task selection; the scope comparison is a deterministic Studio policy, not a model judgment.
 
 Selecting a task shows a context plan above the composer before the first prompt. The plan names the selected capabilities, tool scope, network and staged-write scope, active concept, direct and reverse graph neighbors, validation counts, user-selected concepts, and attached sources. Optional objects and sources have individual remove controls. Context paths are capped at eight for the ACP boundary. Sources keep their existing attachment cap. A byte budget and estimated token count cover the selected concept bodies and source content. Every item omitted by the user, size budget, or object cap is listed with its reason before send.
@@ -55,6 +59,10 @@ Audit, enrichment, cited-research, and change-impact launches also show a **Bund
 Federated task evidence is bounded and attached to the new thread as ordinary visible sources. Inventory and search results carry bundle ID, bundle title, concept ID, revision fingerprint, and grant state. Source references carry the same identity fields. Possible duplicates and unlinked relationships are labeled as review-required heuristics rather than accepted links. No external bundle becomes a staging root, and no path is exposed as its identity.
 
 # Structured work surface
+
+## Why this exists
+
+The transcript preserves chronology, but it does not keep a plan, inventory, or migration map usable while the conversation continues. The work surface gives the current validated artifact a stable place beside the bundle and keeps its revision actions explicit. This lets the user work with the result without promoting the surrounding prose, or an invalid replacement, into trusted state.
 
 A valid agent response may open the current [Structured Agent Work](structured-agent-work.md) in place of the transcript while the composer remains available. A toolbar toggle returns to the chronological conversation. The work surface uses the same selected concept as the graph and reader, keeps planning edits local, and sends a numbered revision only after an explicit action. Raw prose and invalid objects stay in the transcript. Older or stale agent revisions cannot replace the last valid surface.
 

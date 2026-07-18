@@ -3,7 +3,7 @@ type: Feature
 title: Local OKF Routines and Attention Inbox
 description: Run bounded offline bundle checks on demand or on a local schedule, with a Rust-owned recovery ledger and content-free attention notices.
 tags: [feature, agents, routines, automation, health, local-first]
-timestamp: 2026-07-18T10:15:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
@@ -14,6 +14,12 @@ Local routines turn repeatable OKF maintenance into visible, inspectable work. T
 - a SHA-256 fingerprint check over one or more explicitly named, bundle-relative source files.
 
 Both tasks work without an agent, model, credential, tool call, network request, or staging grant. A routine never applies a bundle change.
+
+# Why this exists
+
+Health checks and source-drift checks only help when someone remembers to run them. In an occasionally opened local workspace, a bundle can become stale between editing sessions and remain unnoticed until an agent or reader depends on it. Solving that with a permanently running agent would introduce standing credentials, broad process lifetime, and unclear authority for work the model does while the user is absent.
+
+Local routines automate only the checks Studio can execute and explain deterministically. The attention inbox makes missed maintenance visible when the workspace is next active, while the ledger distinguishes success, failure, skip, and interruption. This provides continuity without a background service, model cost, or unattended write access.
 
 # Saved definition
 

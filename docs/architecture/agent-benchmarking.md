@@ -3,7 +3,7 @@ type: Architecture Decision
 title: OKF Agent Benchmarking
 description: The frozen corpus, task contracts, deterministic merge gate, and opt-in provider evaluation for OKF-specialized agents.
 tags: [architecture, agents, benchmarks, testing, evaluation]
-timestamp: 2026-07-18T16:00:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Decision
@@ -16,6 +16,12 @@ The benchmark has two lanes:
 2. Provider evaluation runs the same task contracts against explicitly selected agents and models. It is opt-in because credentials, provider availability, latency, and model output are not deterministic merge dependencies.
 
 Provider output cannot redefine the expected parser facts. A fluent answer that invents a source, crosses a bundle boundary, bypasses reviewed staging, or violates another declared hard failure receives a failing result even when a model-based critic prefers the prose.
+
+# Why this decision exists
+
+General chat benchmarks and polished demos do not answer whether an agent performed correct OKF work. They rarely check bundle identity, citations, path safety, parser facts, or the reviewed-write boundary. Provider output also varies with model revisions and credentials, so making live model runs the merge gate would produce a slow and unreliable suite.
+
+The split benchmark makes the stable part of quality measurable on every change and reserves provider comparison for explicit evaluation runs. Frozen tasks expose regressions in capability routing and artifact contracts. Honest unavailable results prevent missing credentials or integrations from becoming false passes. This gives specialization work an evidence base without coupling ordinary development to a vendor endpoint.
 
 # Frozen corpus
 

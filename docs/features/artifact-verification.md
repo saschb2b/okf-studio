@@ -3,12 +3,18 @@ type: Feature
 title: Artifact Verification and Critic Passes
 description: Deterministic checks and an optional isolated OKF critic that compare findings without gaining authority over revisions or writes.
 tags: [feature, agents, artifacts, verification, critic, safety]
-timestamp: 2026-07-18T06:54:26Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
 
 Structured OKF work needs a stronger completion signal than fluent agent prose. Studio runs deterministic checks over every accepted [Structured Agent Work](structured-agent-work.md) revision. An optional independent critic may then look for semantic coverage gaps, contradictions, unsupported claims, and missed relationships. The two passes remain separate: model feedback cannot erase a deterministic failure.
+
+# Why this exists
+
+Schema validation can prove that an artifact is well formed and tied to the current bundle. It cannot prove that the work is complete, that its conclusions follow from the cited evidence, or that the producing model noticed a contradiction. Without another layer, a polished response becomes the practical completion signal and the user must audit it from scratch.
+
+The deterministic pass turns requirements that Studio can prove into stable findings. The isolated critic covers semantic questions that cannot be reduced to a parser rule. Keeping their authority separate gives the user a useful second opinion without allowing one model response to approve another or clear a machine-detected block.
 
 # Deterministic pass
 

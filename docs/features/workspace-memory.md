@@ -3,12 +3,18 @@ type: Feature
 title: Inspectable Workspace Memory
 description: Bundle-scoped local metadata that can shape future context plans without storing knowledge, conversation bodies, or write authority.
 tags: [feature, agents, memory, context, local-first]
-timestamp: 2026-07-18T09:45:00Z
+timestamp: 2026-07-18T14:20:00Z
 ---
 
 # Purpose
 
 Studio may remember bounded workspace choices without turning agent prose into hidden knowledge. Memory lives outside the bundle and is always inspectable and deletable. It cannot edit a concept, restore a session, grant a tool, or authorize a write.
+
+# Why this exists
+
+Repeated OKF tasks often need the same small workspace choices, such as omitting an irrelevant concept from one task route. Reapplying those choices every time adds friction. Storing free-form agent memory would solve the repetition by creating a larger problem: stale claims and past conversation could enter future prompts without a visible source or a bundle edit.
+
+Workspace memory retains only bounded choices and deterministic receipts. Each item states its exact future effect, belongs to one bundle, and stops applying when the bundle fingerprint changes. This gives the user continuity while keeping authored knowledge in the bundle and every prompt-affecting preference visible in Settings and the context plan.
 
 # Stored contract
 

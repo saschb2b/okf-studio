@@ -1,6 +1,7 @@
 # Product
 
 * [OKF Studio Transformation](studio-roadmap.md) - Sequenced work packages for creation, curation, querying, and reviewed agent edits.
+* [OKF Agent Specialization](agent-specialization-roadmap.md) - The next transformation from an agent-capable workspace into a domain-specialized OKF agent system.
 * [OKF Viewer to OKF Studio](migration-notes.md) - Upgrade behavior for bundle-folder grants, local data, credentials, billing, and compatibility names.
 
 Vision, audience, principles, and scope for OKF Studio.

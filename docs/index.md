@@ -12,6 +12,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 
 * [Overview](product/overview.md) - A local-first workspace for exploring, creating, curating, and querying connected OKF bundles with user-chosen agents.
 * [OKF Studio Transformation](product/studio-roadmap.md) - Sequenced work packages for creation, curation, querying, reviewed writes, and external-agent isolation.
+* [OKF Agent Specialization](product/agent-specialization-roadmap.md) - Sequenced work packages for specialized OKF skills, artifacts, routines, and entry points.
 * [OKF Viewer to OKF Studio](product/migration-notes.md) - How existing local data, credentials, and compatibility identifiers behave on upgrade.
 * [Personas & Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
 * [How It Compares](product/comparison.md) - OKF Studio vs. the reference visualizer, PKM tools, static-site generators, editors, and agent chat surfaces.
@@ -61,6 +62,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 # Reference
 
 * [Zed Agent System Research](reference/zed-agent-system.md) - Primary-source patterns and constraints adopted for OKF Studio.
+* [Specialized Agent Systems Research](reference/specialized-agent-systems.md) - Product patterns for turning the agent foundation into an OKF-specialized workspace.
 * [OKF Spec Summary](reference/okf-spec-summary.md) - The v0.1 rules Studio must honor.
 * [OKF Reference HTML Visualizer](reference/okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.
 * [OKF Sample Bundles](reference/okf-sample-bundles.md) - The GA4, Stack Overflow, and Bitcoin bundles used as additional fixtures.

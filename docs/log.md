@@ -1,5 +1,8 @@
 # Update Log
 
+## 2026-07-18
+* **Creation**: Added the [OKF Agent Specialization](product/agent-specialization-roadmap.md) roadmap and its [primary-source research](reference/specialized-agent-systems.md). The next transformation treats specialization as a stack of versioned skills, typed OKF objects, deterministic health tools, structured work surfaces, inspectable memory, scoped routines, and guarded OS entry points rather than a larger system prompt.
+
 ## 2026-07-17
 * **Update**: Moved two protocol-dependent future items out of the completed Studio work packages and into the roadmap's deferred decisions. The roadmap now distinguishes shipped work from authentication and permission features that ACP cannot safely support yet.
 * **Update**: Removed ten stale Agent Panel review screenshots from `docs/ux`. The linked dogfood record keeps the tested journeys, measurements, and findings as text, while the reproducible state gallery remains the source for current visual checks.

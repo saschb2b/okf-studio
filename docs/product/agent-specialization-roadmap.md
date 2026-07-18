@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T16:00:00Z
+timestamp: 2026-07-18T16:30:00Z
 ---
 
 # Outcome
@@ -276,3 +276,7 @@ flowchart TD
 - OS-wide content indexing is not planned. It would copy bundle knowledge into operating-system indexes with different retention and access controls.
 - Voice input is an optional composer input, not an OKF specialization dependency.
 - Automatic cross-bundle writes are not planned. Federation remains read-only evidence feeding one explicitly selected destination revision.
+
+# Follow-on transformation
+
+This roadmap completed the domain task, context, safety, artifact, and integration foundation. It did not yet define how agents should write or revise the prose inside OKF concepts. [OKF Writing Quality](okf-writing-quality-roadmap.md) plans that follow-on work around reader purpose, evidence-preserving revision, advisory diagnostics, and provider benchmarks based on real writing rather than fluent output alone.

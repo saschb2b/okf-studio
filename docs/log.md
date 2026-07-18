@@ -1,6 +1,7 @@
 # Update Log
 
 ## 2026-07-18
+* **Creation**: Added the [OKF Writing Quality](product/okf-writing-quality-roadmap.md) roadmap. It defines a purpose-built writing contract, author and revision capabilities, advisory diagnostics, claim-preserving review artifacts, and live provider benchmarks so clearer prose cannot hide lost or invented knowledge.
 
 * **Update**: Added explicit problem-and-value rationale to the OKF specialization feature and architecture concepts. Each now identifies the previous workflow gap, the user or trust cost it created, and why the implemented boundary addresses that gap.
 * **Creation**: Added [Declarative OKF Capability Packs](features/capability-packs.md). The built-in `okf-foundation@1.0.0` pack digest-binds the curated skills, shared templates, `okf-artifact-v1` schema, compatibility contract, conflicts, and closed Studio tool set. Build-time and runtime validation reject unknown fields and leave no script, hook, binary, installer, environment, or MCP-command surface. Settings exposes the pack and can switch to the retained single-capability legacy mode without changing profiles, sessions, checkpoints, settings, memory, routines, credentials, or grants. The benchmark gate now covers four honest provider rows, stable shuffled artifact scoring, seven story-and-test journey contracts, and non-overwriting local provider reports.

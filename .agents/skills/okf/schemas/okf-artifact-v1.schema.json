@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "okf-studio://schema/okf-artifact/v1",
+  "title": "OKF Studio artifact envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactId",
+    "artifactKind",
+    "taskId",
+    "turnId",
+    "bundleFingerprint",
+    "revision",
+    "status",
+    "sources",
+    "citations",
+    "data"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "artifactId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "artifactKind": {
+      "enum": [
+        "source-inventory",
+        "bundle-plan",
+        "health-report",
+        "research-brief",
+        "change-impact-map",
+        "migration-plan",
+        "staged-revision"
+      ]
+    },
+    "taskId": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "turnId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "bundleFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["ready", "partial"] },
+    "sources": { "type": "array", "maxItems": 64 },
+    "citations": { "type": "array", "maxItems": 256 },
+    "data": { "type": "object" }
+  }
+}

@@ -3,7 +3,7 @@ type: Architecture Decision
 title: OKF Agent Benchmarking
 description: The frozen corpus, task contracts, deterministic merge gate, and opt-in provider evaluation for OKF-specialized agents.
 tags: [architecture, agents, benchmarks, testing, evaluation]
-timestamp: 2026-07-18T06:54:26Z
+timestamp: 2026-07-18T16:00:00Z
 ---
 
 # Decision
@@ -47,12 +47,14 @@ The manifest checker rejects duplicate IDs, unknown fixtures, path traversal, sy
 
 # Reports and privacy
 
-Provider reports belong in app data, not in the source tree or the user's bundle. A report records app and benchmark versions, capability versions, fixture fingerprints, provider-reported agent and model identity, delivered resources, observed tools, artifact validation, hard failures, deterministic scores, timing, context and cost when reported, and unavailable cases. Studio does not upload evaluation data.
+Provider reports belong in app data, not in the source tree or the user's bundle. A report records app and benchmark versions, capability-pack identity and digest, capability versions, fixture fingerprints, provider-reported agent and model identity, delivered resources, observed tools, artifact validation, hard failures, deterministic scores, timing, context volume, tool-call and invalid-claim counts, and cost when reported. The report writer validates that every task and frozen fixture is present, publishes a new JSON file without overwriting an earlier run, and records unavailable work with zero measurements and no invented score. Studio does not upload evaluation data.
 
-The merge gate now covers two critic contracts beside the eight task contracts. A manually dispatched provider workflow records the chosen provider, model, exact corpus, and every not-run task as an artifact. It does not turn missing credentials, adapter support, or model output into a pass. Live provider adapters, repeated shuffled runs, scoring reports, and the provider matrix remain SP13 completion work; until they exist, the opt-in workflow is an inspectable evaluation plan rather than an agent-quality claim.
+The provider matrix covers Studio Agent, Codex ACP, Claude ACP, and a local model. Each row classifies all eight OKF tasks as supported, degraded, or unavailable, names integration-specific limitations, and records the clean repository environment as unavailable when no endpoint, installation, or authentication exists. Missing credentials, adapter support, or model output never become a pass.
+
+Three artifact cases machine-score schema, bundle identity, citation references, concept identity, proposed paths, and hard safety violations. A fluent but unsafe case must fail. The same cases produce identical results in shuffled order. Seven journey contracts bind first use, an object action, federated search, artifact review, memory, routines, and OS entry to both a real Storybook export and an automated test. A renamed or removed journey surface therefore breaks the benchmark gate instead of silently narrowing completion coverage.
 
 # Commands
 
-`pnpm test:agent-benchmarks` runs the Node contract tests and corpus check. `cargo test -p okf-core --test agent_benchmarks` runs the parser assertions. Both are local and network-free.
+`pnpm test:agent-benchmarks` runs the Node corpus, provider-matrix, report, artifact-scoring, and journey checks. `cargo test -p okf-core --test agent_benchmarks` runs the parser assertions. Both are local and network-free. `node scripts/okf-agent-benchmark.mjs record <report.json> <app-data-root>` validates and stores one explicitly produced provider report without replacing an earlier report.
 
 This contract implements the first stage of [OKF Agent Specialization](../product/agent-specialization-roadmap.md) and extends [Testing & Dogfooding](testing.md).

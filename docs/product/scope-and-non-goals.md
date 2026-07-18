@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What OKF Studio ships now, what is deferred, and what it deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-18T14:20:00Z
+timestamp: 2026-07-18T16:00:00Z
 ---
 
 # Current scope
@@ -37,4 +37,5 @@ Studio covers the complete local knowledge loop:
 - **Not a git client.** [Open-from-URL](../features/bundle-switcher.md) fetches a GitHub repo tarball or a direct archive as a one-shot download. It does not clone, pull, push, branch, or merge. Git metadata is protected from staged writes.
 - **Not a general autonomous computer operator.** Studio tools are closed and bundle-scoped. External ACP processes retain normal operating-system access until a verified isolation host exists, so they remain interactive and ineligible for unattended writes.
 - **Not a headless validator CLI.** The `validate` desktop command opens the granted bundle and its visible Validation surface. Machine-readable conformance remains the standalone `scripts/okf-validate.mjs`.
+- **Not a capability marketplace.** Studio 0.3 ships one build-verified declarative OKF pack. It does not import third-party packs, executable skills, hooks, binaries, or MCP servers.
 - **Not tied to one bundle schema.** It must never assume a specific set of `type` values or domain.

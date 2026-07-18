@@ -331,7 +331,29 @@ export interface OkfCapabilityCatalogInfo {
   manifestSha256: string;
   schemaVersion: number;
   resourceSchemaVersion: number;
+  pack: OkfCapabilityPackInfo;
   capabilities: OkfCapabilityInfo[];
+}
+
+export interface OkfCapabilityPackInfo {
+  id: string;
+  version: string;
+  name: string;
+  description: string;
+  publisher: string;
+  provenance: "built-in";
+  manifestSha256: string;
+  compatibility: {
+    minimumStudioVersion: string;
+    capabilitySchemaVersion: number;
+    artifactSchemaVersion: number;
+  };
+  conflicts: string[];
+  requiredStudioTools: string[];
+  templateIds: string[];
+  artifactSchemaIds: string[];
+  active: boolean;
+  rollbackLabel: string;
 }
 
 const MOCK_OKF_CAPABILITY_IDS = [
@@ -421,11 +443,69 @@ export async function okfCapabilityCatalog(): Promise<OkfCapabilityCatalogInfo> 
       manifestSha256: "browser-preview",
       schemaVersion: 1,
       resourceSchemaVersion: 1,
+      pack: mockCapabilityPackInfo(true),
       capabilities: MOCK_OKF_CAPABILITY_IDS.map(mockCapability),
     };
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<OkfCapabilityCatalogInfo>("okf_capability_catalog");
+}
+
+export async function setOkfCapabilityPackActive(active: boolean): Promise<OkfCapabilityCatalogInfo> {
+  if (!isTauri()) {
+    const catalog: OkfCapabilityCatalogInfo = {
+      manifestSha256: "browser-preview",
+      schemaVersion: 1,
+      resourceSchemaVersion: 1,
+      pack: mockCapabilityPackInfo(active),
+      capabilities: active
+        ? MOCK_OKF_CAPABILITY_IDS.map(mockCapability)
+        : [mockCapability("okf-core")],
+    };
+    window.dispatchEvent(new CustomEvent("okf-capability-pack-changed", { detail: catalog }));
+    return catalog;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfCapabilityCatalogInfo>("set_okf_capability_pack_active", { active });
+}
+
+export async function onOkfCapabilityPackChanged(
+  handler: (catalog: OkfCapabilityCatalogInfo) => void,
+): Promise<() => void> {
+  if (!isTauri()) {
+    const listener = (event: Event) => handler((event as CustomEvent<OkfCapabilityCatalogInfo>).detail);
+    window.addEventListener("okf-capability-pack-changed", listener);
+    return () => window.removeEventListener("okf-capability-pack-changed", listener);
+  }
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<OkfCapabilityCatalogInfo>("okf-capability-pack-changed", (event) => {
+    handler(event.payload);
+  });
+}
+
+function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
+  return {
+    id: "okf-foundation",
+    version: "1.0.0",
+    name: "OKF Foundation",
+    description: "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
+    publisher: "OKF Studio",
+    provenance: "built-in",
+    manifestSha256: "browser-preview",
+    compatibility: {
+      minimumStudioVersion: "0.3.0",
+      capabilitySchemaVersion: 1,
+      artifactSchemaVersion: 1,
+    },
+    conflicts: [],
+    requiredStudioTools: [...new Set(MOCK_OKF_CAPABILITY_IDS.flatMap(
+      (id) => MOCK_OKF_CAPABILITY_TOOLS[id],
+    ))],
+    templateIds: ["okf-markdown-templates"],
+    artifactSchemaIds: ["okf-artifact-v1"],
+    active,
+    rollbackLabel: "Legacy 0.3.0",
+  };
 }
 
 export async function validateAgentArtifact(

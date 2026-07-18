@@ -37,4 +37,19 @@ describe("OKF task launcher", () => {
       expect.objectContaining({ content: "Missing type", origin: "features/agent-panel.md" }),
     ]);
   });
+
+  it("removes task entry points whose capability pack is inactive", () => {
+    const origin = {
+      kind: "concept" as const,
+      id: "concept:overview",
+      title: "Overview",
+      conceptId: "overview",
+    };
+
+    expect(tasksForOkfOrigin(origin, new Set(["okf-audit", "okf-research"]))).toEqual([
+      "okf-audit",
+      "okf-research",
+    ]);
+    expect(tasksForOkfOrigin(origin, new Set(["okf-core"]))).toEqual([]);
+  });
 });

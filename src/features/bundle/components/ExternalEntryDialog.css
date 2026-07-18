@@ -124,7 +124,7 @@
 }
 
 .external-entry__boundary svg {
-  color: var(--success);
+  color: var(--ok);
 }
 
 .external-entry__boundary p {

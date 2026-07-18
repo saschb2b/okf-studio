@@ -75,13 +75,24 @@ mod watch;
 
 use okf_core::{Bundle, BundleRoot};
 use std::path::Path;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use watch::WatchState;
 
 #[tauri::command]
 fn okf_capability_catalog() -> agent_capabilities::CapabilityCatalogInfo {
     agent_capabilities::catalog_info()
+}
+
+#[tauri::command]
+fn set_okf_capability_pack_active(
+    app: AppHandle,
+    active: bool,
+) -> Result<agent_capabilities::CapabilityCatalogInfo, String> {
+    let catalog = agent_capabilities::set_pack_active(&app, active)?;
+    app.emit("okf-capability-pack-changed", &catalog)
+        .map_err(|_| "Studio could not publish the capability pack change.".to_string())?;
+    Ok(catalog)
 }
 
 #[tauri::command]
@@ -1063,6 +1074,9 @@ pub fn run() {
     builder
         .setup(|app| {
             app.manage(external_entry::ExternalEntryState::default());
+            if let Err(error) = agent_capabilities::load_pack_state(app.handle()) {
+                eprintln!("[capability-pack] {error}");
+            }
             app.manage(
                 bundle_grant::BundleGrantState::load(app.handle()).map_err(|error| {
                     std::io::Error::other(format!("could not load bundle grants: {error}"))
@@ -1179,6 +1193,7 @@ pub fn run() {
             validate_agent_artifact_critic,
             agent_catalog,
             okf_capability_catalog,
+            set_okf_capability_pack_active,
             okf_routine_workspace,
             save_okf_routine,
             remove_okf_routine,

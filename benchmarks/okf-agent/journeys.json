@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "journeys": [
+    {
+      "id": "first-use",
+      "story": { "path": "src/features/agent/components/OkfTaskLauncher.stories.tsx", "exportName": "FirstUse" },
+      "test": { "path": "src/App.okfTasks.integration.test.tsx", "contains": "preserves the task while the user chooses an authentication method" }
+    },
+    {
+      "id": "object-action",
+      "story": { "path": "src/features/agent/components/OkfTaskLauncher.stories.tsx", "exportName": "Ready" },
+      "test": { "path": "src/App.okfTasks.integration.test.tsx", "contains": "starts a bounded task from the reader without replacing the current thread" }
+    },
+    {
+      "id": "federated-search",
+      "story": { "path": "src/features/agent/components/FederatedBundleSet.stories.tsx", "exportName": "PartialUnavailable" },
+      "test": { "path": "src/features/agent/federatedTaskEvidence.test.ts", "contains": "keeps bundle identities and revisions attached to every concept result" }
+    },
+    {
+      "id": "artifact-review",
+      "story": { "path": "src/features/agent/components/AgentArtifactWorkspace.stories.tsx", "exportName": "CriticCompared" },
+      "test": { "path": "src/features/agent/components/AgentArtifactWorkspace.test.tsx", "contains": "keeps critic review separate from revision and apply actions" }
+    },
+    {
+      "id": "memory",
+      "story": { "path": "src/features/agent/components/WorkspaceMemorySettings.stories.tsx", "exportName": "Ready" },
+      "test": { "path": "src/features/agent/workspaceMemory.test.ts", "contains": "stops changing future context plans as soon as the preference is deleted" }
+    },
+    {
+      "id": "routine",
+      "story": { "path": "src/features/agent/components/OkfRoutineSettings.stories.tsx", "exportName": "CreateManual" },
+      "test": { "path": "src/features/agent/routines.test.ts", "contains": "creates a closed offline scope that cannot prompt, fetch, stage, or apply" }
+    },
+    {
+      "id": "os-entry",
+      "story": { "path": "src/features/bundle/components/ExternalEntryDialog.stories.tsx", "exportName": "TaskWithUntrustedFields" },
+      "test": { "path": "src-tauri/src/external_entry.rs", "contains": "parses_a_closed_deep_link_without_executing_it" }
+    }
+  ]
+}

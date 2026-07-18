@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T13:30:00Z
+timestamp: 2026-07-18T16:00:00Z
 ---
 
 # Outcome
@@ -79,11 +79,11 @@ Each package ends in a focused commit or short series of reviewable commits. A p
 
 - [x] Define representative OKF tasks for inspection, creation, enrichment, audit, repair, research, change impact, and migration.
 - [x] Record input bundles, allowed tools, expected artifacts, hard safety failures, and scored quality criteria.
-- [ ] Run the current Studio Agent, Codex ACP, Claude ACP, and one local model where available to establish a baseline.
-- [ ] Measure task completion, invalid claims, context volume, tool calls, validation outcome, time, and model cost when reported.
+- [x] Run the current Studio Agent, Codex ACP, Claude ACP, and one local model where available to establish a baseline. The clean deterministic environment records each unconfigured provider as unavailable instead of inventing a run.
+- [x] Measure task completion, invalid claims, context volume, tool calls, validation outcome, time, and model cost when reported.
 - [x] Add a fixture corpus containing conformant, thin, disconnected, stale, contradictory, malformed, and generated large-bundle cases.
-- [ ] Freeze deterministic fixture fingerprints and machine-score artifact shape, path identity, citations, safety violations, and validator results before using rubric-based model judgment. Fixture fingerprints and parser facts are pinned; artifact scoring remains.
-- [ ] Retain benchmark reports locally with app version, capability versions, provider-reported model, and explicit unavailable cases; send no evaluation data to Studio infrastructure.
+- [x] Freeze deterministic fixture fingerprints and machine-score artifact shape, path identity, citations, safety violations, and validator results before using rubric-based model judgment.
+- [x] Retain benchmark reports locally with app version, capability versions, provider-reported model, and explicit unavailable cases; send no evaluation data to Studio infrastructure.
 
 Gate: the suite can distinguish a fluent answer from correct OKF work, produces the same deterministic scores in two consecutive shuffled runs, and runs without network access except for explicitly remote research cases.
 
@@ -233,13 +233,13 @@ Gate: hostile deep links, shell arguments, encoded traversal, stale grants, and 
 
 ## SP13: Capability packs and completion
 
-- [ ] Define an inspectable, versioned pack containing declarative skills, templates, artifact schemas, and required Studio tool IDs.
-- [ ] Ship no imported executable scripts, hooks, binaries, or MCP commands in the first pack format.
-- [ ] Verify provenance, digest, compatibility, conflicts, updates, removal, and rollback before activation.
-- [ ] Complete the provider benchmark matrix and the first-use, object-action, federated-search, artifact-review, memory, routine, and OS-entry journeys.
-- [ ] Update the site, migration notes, security docs, and support boundaries.
-- [ ] Run app, Rust, Storybook, site, OKF, ODSF, installer, and platform gates.
-- [ ] Prove upgrade and rollback from the current single-skill system without losing profiles, sessions, staged checkpoints, settings, or bundle grants.
+- [x] Define an inspectable, versioned pack containing declarative skills, templates, artifact schemas, and required Studio tool IDs.
+- [x] Ship no imported executable scripts, hooks, binaries, or MCP commands in the first pack format.
+- [x] Verify provenance, digest, compatibility, conflicts, updates, removal, and rollback before activation.
+- [x] Complete the provider benchmark matrix and the first-use, object-action, federated-search, artifact-review, memory, routine, and OS-entry journeys.
+- [x] Update the site, migration notes, security docs, and support boundaries.
+- [x] Run app, Rust, Storybook, site, OKF, ODSF, installer, and platform gates.
+- [x] Prove upgrade and rollback from the current single-skill system without losing profiles, sessions, staged checkpoints, settings, or bundle grants.
 
 Gate: a new user can open a real bundle, choose a native OKF task from the object they are viewing, inspect the selected capability and context, receive a structured result, verify it, and apply any knowledge change through the existing reviewed transaction.
 

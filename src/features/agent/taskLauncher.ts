@@ -62,8 +62,14 @@ const ORIGIN_TASKS: Readonly<Record<OkfTaskOrigin["kind"], readonly OkfTaskId[]>
   ],
 };
 
-export function tasksForOkfOrigin(origin: OkfTaskOrigin): readonly OkfTaskId[] {
-  return ORIGIN_TASKS[origin.kind];
+export function tasksForOkfOrigin(
+  origin: OkfTaskOrigin,
+  availableCapabilityIds?: ReadonlySet<string>,
+): readonly OkfTaskId[] {
+  const tasks = ORIGIN_TASKS[origin.kind];
+  return availableCapabilityIds
+    ? tasks.filter((taskId) => availableCapabilityIds.has(taskId))
+    : tasks;
 }
 
 export function kickoffForOkfOrigin(

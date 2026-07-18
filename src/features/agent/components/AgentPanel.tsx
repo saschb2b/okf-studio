@@ -9,6 +9,8 @@ import { focusAgentPanelOpener } from "@/features/agent/agentPanelFocus.ts";
 import {
   agentRestoreStatus,
   maybeRestoreLastAgentConnection,
+  okfCapabilityCatalog,
+  onOkfCapabilityPackChanged,
   subscribeAgentRestore,
 } from "@/shared/ipc.ts";
 import { AgentConnectionCatalog } from "@/features/agent/components/AgentConnectionCatalog.tsx";
@@ -51,11 +53,16 @@ export function AgentPanel() {
     () => new Map<string, AgentThreadStatus>(),
   );
   const [resetToken, setResetToken] = useState(0);
+  const [activeOkfCapabilities, setActiveOkfCapabilities] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   // Each ConnectionThreads registers how to open one more thread surface so
   // the agent popover can start a thread on an already-connected agent.
   const threadOpeners = useRef(new Map<string, (kickoff?: OkfTaskKickoff) => void>());
   const launcherRequest = state.okfTaskLauncher;
-  const launcherTasks = launcherRequest ? tasksForOkfOrigin(launcherRequest.origin) : [];
+  const launcherTasks = launcherRequest
+    ? tasksForOkfOrigin(launcherRequest.origin, activeOkfCapabilities)
+    : [];
   const [launcherSelection, setLauncherSelection] = useState<{
     requestId: string;
     taskId: OkfTaskId;
@@ -73,6 +80,25 @@ export function AgentPanel() {
   const restoreState = useSyncExternalStore(subscribeAgentRestore, agentRestoreStatus);
   const panelOpen = state.panels.agent;
   const activeRoot = state.activeRoot;
+  useEffect(() => {
+    let current = true;
+    let unlisten: (() => void) | null = null;
+    const update = (catalog: Awaited<ReturnType<typeof okfCapabilityCatalog>>) => {
+      if (current) setActiveOkfCapabilities(new Set(catalog.capabilities.map(({ id }) => id)));
+    };
+    const clear = () => {
+      if (current) setActiveOkfCapabilities(new Set());
+    };
+    void okfCapabilityCatalog().then(update, clear);
+    void onOkfCapabilityPackChanged(update).then((dispose) => {
+      if (current) unlisten = dispose;
+      else dispose();
+    });
+    return () => {
+      current = false;
+      unlisten?.();
+    };
+  }, []);
   useEffect(() => {
     if (panelOpen && activeRoot) maybeRestoreLastAgentConnection(activeRoot);
   }, [panelOpen, activeRoot]);

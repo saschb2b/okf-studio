@@ -1,11 +1,15 @@
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, readdirSync } from "node:fs";
+import { linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = fileURLToPath(new URL(".", import.meta.url));
+const repositoryRoot = resolve(scriptDirectory, "..");
 export const benchmarkRoot = resolve(scriptDirectory, "../benchmarks/okf-agent");
 export const defaultManifestPath = resolve(benchmarkRoot, "manifest.json");
+export const defaultProviderMatrixPath = resolve(benchmarkRoot, "provider-matrix.json");
+export const defaultJourneyPath = resolve(benchmarkRoot, "journeys.json");
+export const defaultArtifactScoringPath = resolve(benchmarkRoot, "artifact-scoring.json");
 export const capabilityRoot = resolve(scriptDirectory, "../.agents/skills/okf");
 export const defaultCapabilityManifestPath = resolve(capabilityRoot, "capabilities.json");
 
@@ -89,6 +93,259 @@ export function loadManifest(path = defaultManifestPath) {
 
 export function loadCapabilityManifest(path = defaultCapabilityManifestPath) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function loadJson(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
+const REQUIRED_PROVIDER_IDS = ["studio-agent", "codex-acp", "claude-acp", "local-model"];
+const REQUIRED_JOURNEY_IDS = [
+  "first-use",
+  "object-action",
+  "federated-search",
+  "artifact-review",
+  "memory",
+  "routine",
+  "os-entry",
+];
+const REQUIRED_TASK_CAPABILITY_IDS = [
+  "okf-inspect",
+  "okf-create",
+  "okf-enrich",
+  "okf-audit",
+  "okf-repair",
+  "okf-research",
+  "okf-change-impact",
+  "okf-migrate",
+];
+const ARTIFACT_KINDS = new Set([
+  "source-inventory",
+  "bundle-plan",
+  "health-report",
+  "research-brief",
+  "change-impact-map",
+  "migration-plan",
+  "staged-revision",
+]);
+
+export function validateProviderMatrix(input) {
+  const matrix = requireObject(input, "provider matrix");
+  if (matrix.schemaVersion !== 1) throw new Error("provider matrix.schemaVersion must be 1.");
+  requireString(matrix.appVersion, "provider matrix.appVersion");
+  if (!Array.isArray(matrix.providers)) throw new Error("provider matrix.providers must be an array.");
+  requireUniqueIds(matrix.providers, "provider matrix.providers");
+  const providers = new Map(matrix.providers.map((provider) => [provider.id, provider]));
+  for (const id of REQUIRED_PROVIDER_IDS) {
+    const provider = requireObject(providers.get(id), `provider ${id}`);
+    requireString(provider.name, `provider ${id}.name`);
+    requireString(provider.integration, `provider ${id}.integration`);
+    requireString(provider.availability, `provider ${id}.availability`);
+    const support = requireObject(provider.taskSupport, `provider ${id}.taskSupport`);
+    const taskIds = Object.keys(support).sort();
+    if (JSON.stringify(taskIds) !== JSON.stringify(REQUIRED_TASK_CAPABILITY_IDS.slice().sort())) {
+      throw new Error(`Provider ${id} must classify every OKF task exactly once.`);
+    }
+    for (const [taskId, state] of Object.entries(support)) {
+      if (!new Set(["supported", "degraded", "unavailable"]).has(state)) {
+        throw new Error(`Provider ${id} uses invalid support state for ${taskId}.`);
+      }
+    }
+    if (!Array.isArray(provider.limitations)) throw new Error(`Provider ${id}.limitations must be an array.`);
+    provider.limitations.forEach((value, index) => requireString(value, `provider ${id}.limitations[${index}]`));
+    const baseline = requireObject(provider.baseline, `provider ${id}.baseline`);
+    if (!new Set(["completed", "unavailable"]).has(baseline.status)) {
+      throw new Error(`Provider ${id} baseline status is invalid.`);
+    }
+    if (baseline.status === "unavailable") {
+      requireString(baseline.reason, `provider ${id}.baseline.reason`);
+      if (baseline.reportPath !== null) throw new Error(`Unavailable provider ${id} cannot claim a report.`);
+    } else {
+      requireString(baseline.reportPath, `provider ${id}.baseline.reportPath`);
+    }
+  }
+  if (providers.size !== REQUIRED_PROVIDER_IDS.length) {
+    throw new Error("Provider matrix contains an undeclared provider.");
+  }
+  return { providerCount: providers.size };
+}
+
+export function validateJourneys(input) {
+  const document = requireObject(input, "journey manifest");
+  if (document.schemaVersion !== 1) throw new Error("journey manifest.schemaVersion must be 1.");
+  if (!Array.isArray(document.journeys)) throw new Error("journey manifest.journeys must be an array.");
+  requireUniqueIds(document.journeys, "journey manifest.journeys");
+  const journeys = new Map(document.journeys.map((journey) => [journey.id, journey]));
+  for (const id of REQUIRED_JOURNEY_IDS) {
+    const journey = requireObject(journeys.get(id), `journey ${id}`);
+    const story = requireObject(journey.story, `journey ${id}.story`);
+    const storyPath = resolveInside(repositoryRoot, requireString(story.path, `journey ${id}.story.path`), `journey ${id}.story.path`);
+    const exportName = requireString(story.exportName, `journey ${id}.story.exportName`);
+    if (!readFileSync(storyPath, "utf8").includes(`export const ${exportName}`)) {
+      throw new Error(`Journey ${id} story export is missing.`);
+    }
+    const testEvidence = requireObject(journey.test, `journey ${id}.test`);
+    const testPath = resolveInside(repositoryRoot, requireString(testEvidence.path, `journey ${id}.test.path`), `journey ${id}.test.path`);
+    const pattern = requireString(testEvidence.contains, `journey ${id}.test.contains`);
+    if (!readFileSync(testPath, "utf8").includes(pattern)) {
+      throw new Error(`Journey ${id} test evidence is missing.`);
+    }
+  }
+  if (journeys.size !== REQUIRED_JOURNEY_IDS.length) {
+    throw new Error("Journey manifest contains an undeclared journey.");
+  }
+  return { journeyCount: journeys.size };
+}
+
+export function scoreArtifact(artifactInput) {
+  const failures = [];
+  const artifact = requireObject(artifactInput, "artifact scoring input");
+  if (artifact.schemaVersion !== 1) failures.push("schema-version");
+  if (!ARTIFACT_KINDS.has(artifact.artifactKind)) failures.push("artifact-kind");
+  if (artifact.bundleFingerprint !== artifact.expectedBundleFingerprint) failures.push("bundle-fingerprint");
+
+  const sources = Array.isArray(artifact.sources) ? artifact.sources : [];
+  const sourceIds = new Set(sources.map((source) => source?.id).filter((id) => typeof id === "string"));
+  const citations = Array.isArray(artifact.citations) ? artifact.citations : [];
+  if (citations.some((citation) => !sourceIds.has(citation?.sourceId))) failures.push("citation-source");
+
+  const conceptIds = Array.isArray(artifact.conceptIds) ? artifact.conceptIds : [];
+  if (conceptIds.some((id) => !isPortableRelativeId(id))) failures.push("concept-identity");
+  const proposedPaths = Array.isArray(artifact.proposedPaths) ? artifact.proposedPaths : [];
+  if (proposedPaths.some((path) => !isPortableRelativeId(path) || !path.endsWith(".md"))) {
+    failures.push("path-boundary");
+  }
+  if (Array.isArray(artifact.safetyViolations) && artifact.safetyViolations.length > 0) {
+    failures.push("safety-violation");
+  }
+  return failures.sort();
+}
+
+function isPortableRelativeId(value) {
+  return typeof value === "string"
+    && value.length > 0
+    && value.length <= 2048
+    && !value.includes("\\")
+    && !value.startsWith("/")
+    && !value.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
+}
+
+export function validateArtifactScoring(input) {
+  const document = requireObject(input, "artifact scoring manifest");
+  if (document.schemaVersion !== 1) throw new Error("artifact scoring schemaVersion must be 1.");
+  if (!Array.isArray(document.cases) || document.cases.length === 0) {
+    throw new Error("artifact scoring cases must be a non-empty array.");
+  }
+  requireUniqueIds(document.cases, "artifact scoring cases");
+  for (const scoringCase of document.cases) {
+    const expected = Array.isArray(scoringCase.expectedFailures)
+      ? scoringCase.expectedFailures.slice().sort()
+      : null;
+    if (!expected) throw new Error(`Artifact case ${scoringCase.id} needs expected failures.`);
+    const actual = scoreArtifact(scoringCase.artifact);
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error(`Artifact case ${scoringCase.id} score changed: ${actual.join(", ")}.`);
+    }
+  }
+  return { artifactScoringCaseCount: document.cases.length };
+}
+
+export function validateProviderReport(input) {
+  const report = requireObject(input, "provider report");
+  if (report.schemaVersion !== 1) throw new Error("provider report.schemaVersion must be 1.");
+  const reportId = requireString(report.reportId, "provider report.reportId");
+  if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(reportId)) throw new Error("provider report.reportId is invalid.");
+  requireString(report.createdAt, "provider report.createdAt");
+  if (Number.isNaN(Date.parse(report.createdAt))) throw new Error("provider report.createdAt is invalid.");
+  requireString(report.appVersion, "provider report.appVersion");
+  requireString(report.benchmarkVersion, "provider report.benchmarkVersion");
+  const pack = requireObject(report.pack, "provider report.pack");
+  requireString(pack.id, "provider report.pack.id");
+  requireString(pack.version, "provider report.pack.version");
+  if (!/^[a-f0-9]{64}$/.test(requireString(pack.sha256, "provider report.pack.sha256"))) {
+    throw new Error("provider report.pack.sha256 is invalid.");
+  }
+  const provider = requireObject(report.provider, "provider report.provider");
+  if (!REQUIRED_PROVIDER_IDS.includes(requireString(provider.id, "provider report.provider.id"))) {
+    throw new Error("provider report.provider.id is unsupported.");
+  }
+  if (!new Set(["completed", "unavailable"]).has(provider.status)) {
+    throw new Error("provider report.provider.status is invalid.");
+  }
+  if (provider.status === "completed") requireString(provider.model, "provider report.provider.model");
+  if (provider.status === "unavailable") requireString(provider.reason, "provider report.provider.reason");
+  const fixtureFingerprints = requireObject(report.fixtureFingerprints, "provider report.fixtureFingerprints");
+  const expectedFixtures = Object.fromEntries(loadManifest().fixtures.map((fixture) => [fixture.id, fixture.sha256]));
+  if (JSON.stringify(Object.entries(fixtureFingerprints).sort())
+    !== JSON.stringify(Object.entries(expectedFixtures).sort())) {
+    throw new Error("provider report fixture fingerprints do not match the frozen corpus.");
+  }
+  const capabilityVersions = requireObject(report.capabilityVersions, "provider report.capabilityVersions");
+  const expectedCapabilities = Object.fromEntries(loadCapabilityManifest().capabilities.map(
+    (capability) => [capability.id, capability.version],
+  ));
+  if (JSON.stringify(Object.entries(capabilityVersions).sort())
+    !== JSON.stringify(Object.entries(expectedCapabilities).sort())) {
+    throw new Error("provider report capability versions do not match the shipped catalog.");
+  }
+  if (!Array.isArray(report.deliveredResources)
+    || report.deliveredResources.some((value) => typeof value !== "string")
+    || new Set(report.deliveredResources).size !== report.deliveredResources.length) {
+    throw new Error("provider report.deliveredResources must be a unique string array.");
+  }
+  if (!Array.isArray(report.tasks) || report.tasks.length !== REQUIRED_TASK_CAPABILITY_IDS.length) {
+    throw new Error("provider report must retain every benchmark task.");
+  }
+  requireUniqueIds(report.tasks, "provider report.tasks");
+  const taskIds = report.tasks.map((task) => task.id).sort();
+  if (JSON.stringify(taskIds) !== JSON.stringify(REQUIRED_TASK_CAPABILITY_IDS.slice().sort())) {
+    throw new Error("provider report task IDs do not match the benchmark matrix.");
+  }
+  for (const task of report.tasks) {
+    if (!new Set(["completed", "failed", "unavailable"]).has(task.status)) {
+      throw new Error(`Provider report task ${task.id} status is invalid.`);
+    }
+    for (const field of ["contextBytes", "toolCallCount", "invalidClaimCount", "timingMs"]) {
+      if (!Number.isInteger(task[field]) || task[field] < 0) {
+        throw new Error(`Provider report task ${task.id}.${field} is invalid.`);
+      }
+    }
+    if (task.deterministicScore !== null
+      && (!Number.isInteger(task.deterministicScore)
+        || task.deterministicScore < 0
+        || task.deterministicScore > 100)) {
+      throw new Error(`Provider report task ${task.id}.deterministicScore is invalid.`);
+    }
+    if (typeof task.artifactValid !== "boolean") {
+      throw new Error(`Provider report task ${task.id}.artifactValid is invalid.`);
+    }
+    if (!Array.isArray(task.hardFailures) || !Array.isArray(task.observedTools)) {
+      throw new Error(`Provider report task ${task.id} evidence is invalid.`);
+    }
+    if (task.cost !== null) {
+      const cost = requireObject(task.cost, `provider report task ${task.id}.cost`);
+      if (typeof cost.value !== "number" || cost.value < 0) {
+        throw new Error(`Provider report task ${task.id}.cost is invalid.`);
+      }
+      requireString(cost.currency, `provider report task ${task.id}.cost.currency`);
+    }
+  }
+  return report;
+}
+
+export function writeProviderReport(input, appDataRoot) {
+  const report = validateProviderReport(input);
+  const directory = resolve(appDataRoot, "agent-benchmarks");
+  mkdirSync(directory, { recursive: true });
+  const destination = resolveInside(directory, `${report.reportId}.json`, "provider report destination");
+  const temporary = resolveInside(directory, `.${report.reportId}.tmp`, "provider report temporary path");
+  writeFileSync(temporary, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+  try {
+    linkSync(temporary, destination);
+  } finally {
+    unlinkSync(temporary);
+  }
+  return destination;
 }
 
 export function validateCapabilityCoverage(benchmarkInput, capabilityInput) {
@@ -265,14 +522,17 @@ export function checkCorpus(path = defaultManifestPath) {
   const manifest = loadManifest(path);
   const summary = validateManifest(manifest);
   const capabilitySummary = validateCapabilityCoverage(manifest, loadCapabilityManifest());
-  return { ...summary, ...capabilitySummary };
+  const providerSummary = validateProviderMatrix(loadJson(defaultProviderMatrixPath));
+  const journeySummary = validateJourneys(loadJson(defaultJourneyPath));
+  const scoringSummary = validateArtifactScoring(loadJson(defaultArtifactScoringPath));
+  return { ...summary, ...capabilitySummary, ...providerSummary, ...journeySummary, ...scoringSummary };
 }
 
 function runCli() {
   const command = process.argv[2] ?? "check";
   if (command === "check") {
     const summary = checkCorpus(process.argv[3] ? resolve(process.argv[3]) : defaultManifestPath);
-    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts, ${summary.criticCaseCount} critic contracts, ${summary.curatedCapabilityCount} curated capabilities.\n`);
+    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts, ${summary.criticCaseCount} critic contracts, ${summary.curatedCapabilityCount} curated capabilities, ${summary.providerCount} provider rows, ${summary.journeyCount} journeys, ${summary.artifactScoringCaseCount} artifact scoring cases.\n`);
     return;
   }
   if (command === "fingerprints") {
@@ -283,6 +543,16 @@ function runCli() {
         : fingerprintValue(fixture.generator);
       process.stdout.write(`${fixture.id} ${fingerprint}\n`);
     }
+    return;
+  }
+  if (command === "record") {
+    const inputPath = process.argv[3];
+    const appDataRoot = process.argv[4];
+    if (!inputPath || !appDataRoot) {
+      throw new Error("record requires a provider-report JSON file and an explicit app-data root.");
+    }
+    const destination = writeProviderReport(loadJson(resolve(inputPath)), resolve(appDataRoot));
+    process.stdout.write(`Stored OKF provider report at ${destination}.\n`);
     return;
   }
   throw new Error(`Unknown benchmark command: ${command}`);

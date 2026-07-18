@@ -1,9 +1,16 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
+use tauri::Manager;
 
 const MANIFEST: &str = include_str!("../../../../.agents/skills/okf/capabilities.json");
+const PACK_MANIFEST: &str = include_str!("../../../../.agents/skills/okf/pack.json");
+const ARTIFACT_SCHEMA: &str =
+    include_str!("../../../../.agents/skills/okf/schemas/okf-artifact-v1.schema.json");
 const OKF_SKILL: &str = include_str!("../../../../.agents/skills/okf/SKILL.md");
 const OKF_SPEC: &str = include_str!("../../../../.agents/skills/okf/spec.md");
 const OKF_COMMANDS: &str = include_str!("../../../../.agents/skills/okf/commands.md");
@@ -24,6 +31,9 @@ const MAX_RESOURCES_PER_CAPABILITY: usize = 16;
 const MAX_RESOURCE_BYTES: usize = 256 * 1024;
 const MAX_TOTAL_RESOURCE_BYTES: usize = 768 * 1024;
 const DEFAULT_CAPABILITY_ID: &str = "okf-core";
+const PACK_STATE_SCHEMA_VERSION: u32 = 1;
+const PACK_STATE_FILE: &str = "capability-pack-state.json";
+const PACK_STATE_BACKUP_FILE: &str = "capability-pack-state.previous.json";
 const ALLOWED_TOOL_IDS: [&str; 16] = [
     "okf_inventory",
     "okf_read",
@@ -66,7 +76,80 @@ pub(crate) struct CapabilityCatalogInfo {
     pub manifest_sha256: String,
     pub schema_version: u32,
     pub resource_schema_version: u32,
+    pub pack: CapabilityPackInfo,
     pub capabilities: Vec<CapabilityDefinition>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CapabilityPackManifest {
+    schema_version: u32,
+    id: String,
+    version: String,
+    name: String,
+    description: String,
+    publisher: String,
+    provenance: CapabilityPackProvenance,
+    compatibility: CapabilityPackCompatibility,
+    conflicts: Vec<String>,
+    capability_manifest: PackResourceDefinition,
+    templates: Vec<PackResourceDefinition>,
+    artifact_schemas: Vec<PackResourceDefinition>,
+    required_studio_tools: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum CapabilityPackProvenance {
+    BuiltIn,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct CapabilityPackCompatibility {
+    minimum_studio_version: String,
+    capability_schema_version: u32,
+    artifact_schema_version: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PackResourceDefinition {
+    id: Option<String>,
+    path: String,
+    media_type: String,
+    sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CapabilityPackInfo {
+    pub id: String,
+    pub version: String,
+    pub name: String,
+    pub description: String,
+    pub publisher: String,
+    pub provenance: CapabilityPackProvenance,
+    pub manifest_sha256: String,
+    pub compatibility: CapabilityPackCompatibility,
+    pub conflicts: Vec<String>,
+    pub required_studio_tools: Vec<String>,
+    pub template_ids: Vec<String>,
+    pub artifact_schema_ids: Vec<String>,
+    pub active: bool,
+    pub rollback_label: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CapabilityPackState {
+    schema_version: u32,
+    active: bool,
+    pack_id: String,
+    pack_version: String,
+    manifest_sha256: String,
+    rollback_label: String,
+    previous_manifest_sha256: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -113,12 +196,36 @@ pub(crate) struct CapabilityResource {
 }
 
 static CATALOG: OnceLock<CapabilityCatalog> = OnceLock::new();
+static LEGACY_CATALOG: OnceLock<CapabilityCatalog> = OnceLock::new();
+static PACK: OnceLock<CapabilityPackManifest> = OnceLock::new();
+static PACK_ACTIVE: AtomicBool = AtomicBool::new(true);
 
 pub(crate) fn catalog() -> &'static CapabilityCatalog {
+    if !PACK_ACTIVE.load(Ordering::Acquire) {
+        return legacy_catalog();
+    }
     CATALOG.get_or_init(|| {
         parse_catalog(MANIFEST).unwrap_or_else(|error| {
             panic!("the build-verified OKF capability manifest is invalid at runtime: {error}")
         })
+    })
+}
+
+fn full_catalog() -> &'static CapabilityCatalog {
+    CATALOG.get_or_init(|| {
+        parse_catalog(MANIFEST).unwrap_or_else(|error| {
+            panic!("the build-verified OKF capability manifest is invalid at runtime: {error}")
+        })
+    })
+}
+
+fn legacy_catalog() -> &'static CapabilityCatalog {
+    LEGACY_CATALOG.get_or_init(|| {
+        let mut legacy = full_catalog().clone();
+        legacy
+            .capabilities
+            .retain(|capability| capability.id == DEFAULT_CAPABILITY_ID);
+        legacy
     })
 }
 
@@ -132,8 +239,64 @@ pub(crate) fn catalog_info() -> CapabilityCatalogInfo {
         manifest_sha256: manifest_sha256().to_string(),
         schema_version: catalog.schema_version,
         resource_schema_version: catalog.resource_schema_version,
+        pack: pack_info(),
         capabilities: catalog.capabilities.clone(),
     }
+}
+
+pub(crate) fn load_pack_state(app: &tauri::AppHandle) -> Result<(), String> {
+    let path = pack_state_path(app)?;
+    let state = load_or_migrate_pack_state(&path)?;
+    PACK_ACTIVE.store(state.active, Ordering::Release);
+    Ok(())
+}
+
+pub(crate) fn set_pack_active(
+    app: &tauri::AppHandle,
+    active: bool,
+) -> Result<CapabilityCatalogInfo, String> {
+    let path = pack_state_path(app)?;
+    let mut state = load_or_migrate_pack_state(&path)?;
+    state.active = active;
+    persist_pack_state(&path, &state)?;
+    PACK_ACTIVE.store(active, Ordering::Release);
+    Ok(catalog_info())
+}
+
+fn pack_info() -> CapabilityPackInfo {
+    let pack = pack();
+    CapabilityPackInfo {
+        id: pack.id.clone(),
+        version: pack.version.clone(),
+        name: pack.name.clone(),
+        description: pack.description.clone(),
+        publisher: pack.publisher.clone(),
+        provenance: pack.provenance,
+        manifest_sha256: env!("OKF_CAPABILITY_PACK_SHA256").to_string(),
+        compatibility: pack.compatibility.clone(),
+        conflicts: pack.conflicts.clone(),
+        required_studio_tools: pack.required_studio_tools.clone(),
+        template_ids: pack
+            .templates
+            .iter()
+            .filter_map(|resource| resource.id.clone())
+            .collect(),
+        artifact_schema_ids: pack
+            .artifact_schemas
+            .iter()
+            .filter_map(|resource| resource.id.clone())
+            .collect(),
+        active: PACK_ACTIVE.load(Ordering::Acquire),
+        rollback_label: format!("Legacy {}", default_capability().version),
+    }
+}
+
+fn pack() -> &'static CapabilityPackManifest {
+    PACK.get_or_init(|| {
+        validate_pack(PACK_MANIFEST, full_catalog()).unwrap_or_else(|error| {
+            panic!("the build-verified OKF capability pack is invalid at runtime: {error}")
+        })
+    })
 }
 
 pub(crate) fn default_capability() -> &'static CapabilityDefinition {
@@ -151,6 +314,282 @@ pub(crate) fn default_resources() -> Vec<CapabilityResource> {
         .iter()
         .map(|resource| materialize_resource(capability, resource))
         .collect()
+}
+
+fn validate_pack(
+    input: &str,
+    capability_catalog: &CapabilityCatalog,
+) -> Result<CapabilityPackManifest, String> {
+    let pack: CapabilityPackManifest =
+        serde_json::from_str(input).map_err(|error| format!("invalid pack JSON: {error}"))?;
+    if pack.schema_version != 1 {
+        return Err("unsupported capability pack schema version".to_string());
+    }
+    validate_identifier(&pack.id, "pack ID")?;
+    validate_version(&pack.version)?;
+    validate_version(&pack.compatibility.minimum_studio_version)?;
+    if version_tuple(&pack.compatibility.minimum_studio_version)?
+        > version_tuple(env!("CARGO_PKG_VERSION"))?
+    {
+        return Err("capability pack requires a newer Studio version".to_string());
+    }
+    if pack.compatibility.capability_schema_version != capability_catalog.schema_version
+        || pack.compatibility.artifact_schema_version != 1
+    {
+        return Err("capability pack schema compatibility does not match Studio".to_string());
+    }
+    for (label, value) in [
+        ("pack name", pack.name.as_str()),
+        ("pack description", pack.description.as_str()),
+        ("pack publisher", pack.publisher.as_str()),
+    ] {
+        if value.trim().is_empty() || value.chars().count() > 512 {
+            return Err(format!("invalid {label}"));
+        }
+    }
+
+    let mut conflicts = HashSet::new();
+    if pack.conflicts.len() > 16 {
+        return Err("capability pack conflict list is too large".to_string());
+    }
+    for conflict in &pack.conflicts {
+        validate_identifier(conflict, "conflicting pack ID")?;
+        if conflict == &pack.id || !conflicts.insert(conflict) {
+            return Err("capability pack conflicts must be unique and external".to_string());
+        }
+    }
+
+    validate_pack_resource(
+        &pack.capability_manifest,
+        "capabilities.json",
+        "application/json",
+        MANIFEST,
+    )?;
+    if pack.templates.is_empty() || pack.artifact_schemas.is_empty() {
+        return Err("capability pack requires templates and artifact schemas".to_string());
+    }
+    let mut resource_ids = HashSet::new();
+    for resource in pack.templates.iter().chain(&pack.artifact_schemas) {
+        let id = resource
+            .id
+            .as_deref()
+            .ok_or_else(|| "pack resources require IDs".to_string())?;
+        validate_identifier(id, "pack resource ID")?;
+        if !resource_ids.insert(id) {
+            return Err(format!("duplicate pack resource ID: {id}"));
+        }
+        let contents = pack_resource_contents(&resource.path)
+            .ok_or_else(|| format!("unknown declarative pack resource: {}", resource.path))?;
+        if !matches!(
+            resource.media_type.as_str(),
+            "text/markdown" | "application/schema+json"
+        ) {
+            return Err(format!(
+                "pack resource {} has an unsupported media type",
+                resource.path
+            ));
+        }
+        validate_digest(&resource.sha256, contents.as_bytes(), &resource.path)?;
+    }
+
+    validate_unique_declared_values(
+        &pack.required_studio_tools,
+        &ALLOWED_TOOL_IDS,
+        "pack Studio tool",
+    )?;
+    let pack_tools = pack.required_studio_tools.iter().collect::<HashSet<_>>();
+    if capability_catalog
+        .capabilities
+        .iter()
+        .flat_map(|capability| &capability.required_tools)
+        .any(|tool| !pack_tools.contains(tool))
+    {
+        return Err("capability pack omits a tool required by one of its skills".to_string());
+    }
+    Ok(pack)
+}
+
+fn validate_pack_resource(
+    resource: &PackResourceDefinition,
+    expected_path: &str,
+    expected_media_type: &str,
+    contents: &str,
+) -> Result<(), String> {
+    if resource.id.is_some()
+        || resource.path != expected_path
+        || resource.media_type != expected_media_type
+    {
+        return Err(
+            "capability manifest reference is not the closed built-in resource".to_string(),
+        );
+    }
+    validate_digest(&resource.sha256, contents.as_bytes(), expected_path)
+}
+
+fn validate_digest(expected: &str, bytes: &[u8], label: &str) -> Result<(), String> {
+    if expected.len() != 64
+        || !expected
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        || sha256(bytes) != expected
+    {
+        return Err(format!("capability pack resource digest changed: {label}"));
+    }
+    Ok(())
+}
+
+fn pack_resource_contents(path: &str) -> Option<&'static str> {
+    match path {
+        "templates.md" => Some(OKF_TEMPLATES),
+        "schemas/okf-artifact-v1.schema.json" => Some(ARTIFACT_SCHEMA),
+        _ => None,
+    }
+}
+
+fn version_tuple(version: &str) -> Result<(u32, u32, u32), String> {
+    validate_version(version)?;
+    let mut parts = version.split('.');
+    let parse = |value: Option<&str>| {
+        value
+            .and_then(|part| part.parse::<u32>().ok())
+            .ok_or_else(|| format!("invalid capability version: {version}"))
+    };
+    Ok((
+        parse(parts.next())?,
+        parse(parts.next())?,
+        parse(parts.next())?,
+    ))
+}
+
+fn pack_state_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|root| root.join("agents").join(PACK_STATE_FILE))
+        .map_err(|_| "Studio could not resolve capability pack storage.".to_string())
+}
+
+fn default_pack_state(previous_manifest_sha256: Option<String>) -> CapabilityPackState {
+    let pack = pack();
+    CapabilityPackState {
+        schema_version: PACK_STATE_SCHEMA_VERSION,
+        active: true,
+        pack_id: pack.id.clone(),
+        pack_version: pack.version.clone(),
+        manifest_sha256: sha256(PACK_MANIFEST.as_bytes()),
+        rollback_label: format!("Legacy {}", full_catalog().capabilities[0].version),
+        previous_manifest_sha256,
+    }
+}
+
+fn load_or_migrate_pack_state(path: &Path) -> Result<CapabilityPackState, String> {
+    recover_pack_state(path)?;
+    let current_digest = env!("OKF_CAPABILITY_PACK_SHA256").to_string();
+    let mut state = if path.exists() {
+        let body = std::fs::read(path)
+            .map_err(|_| "Studio could not read capability pack state.".to_string())?;
+        if body.len() > 64 * 1024 {
+            quarantine_pack_state(path)?;
+            default_pack_state(None)
+        } else {
+            match serde_json::from_slice::<CapabilityPackState>(&body) {
+                Ok(candidate)
+                    if candidate.schema_version == PACK_STATE_SCHEMA_VERSION
+                        && !candidate.pack_id.is_empty()
+                        && !candidate.pack_version.is_empty()
+                        && candidate.manifest_sha256.len() == 64 =>
+                {
+                    candidate
+                }
+                _ => {
+                    quarantine_pack_state(path)?;
+                    default_pack_state(None)
+                }
+            }
+        }
+    } else {
+        default_pack_state(None)
+    };
+
+    if state.pack_id != pack().id
+        || state.pack_version != pack().version
+        || state.manifest_sha256 != current_digest
+    {
+        let active = state.active;
+        state = default_pack_state(Some(state.manifest_sha256));
+        state.active = active;
+    }
+    persist_pack_state(path, &state)?;
+    Ok(state)
+}
+
+fn persist_pack_state(path: &Path, state: &CapabilityPackState) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "Capability pack storage path is invalid.".to_string())?;
+    std::fs::create_dir_all(parent)
+        .map_err(|_| "Studio could not prepare capability pack storage.".to_string())?;
+    let temporary = parent.join(format!(".{PACK_STATE_FILE}.{}.tmp", uuid::Uuid::new_v4()));
+    let body = serde_json::to_vec_pretty(state)
+        .map_err(|_| "Studio could not encode capability pack state.".to_string())?;
+    let mut output = std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&temporary)
+        .map_err(|_| "Studio could not create capability pack state.".to_string())?;
+    output
+        .write_all(&body)
+        .and_then(|_| output.sync_all())
+        .map_err(|_| "Studio could not save capability pack state.".to_string())?;
+    drop(output);
+
+    let backup = parent.join(PACK_STATE_BACKUP_FILE);
+    if backup.exists() {
+        std::fs::remove_file(&backup).map_err(|_| {
+            "Studio could not clear stale capability pack recovery state.".to_string()
+        })?;
+    }
+    if path.exists() {
+        std::fs::rename(path, &backup).map_err(|_| {
+            "Studio could not prepare capability pack state replacement.".to_string()
+        })?;
+    }
+    if std::fs::rename(&temporary, path).is_err() {
+        let _ = std::fs::remove_file(&temporary);
+        if backup.exists() {
+            let _ = std::fs::rename(&backup, path);
+        }
+        return Err("Studio could not publish capability pack state.".to_string());
+    }
+    if backup.exists() {
+        std::fs::remove_file(backup).map_err(|_| {
+            "Studio could not finish capability pack state replacement.".to_string()
+        })?;
+    }
+    Ok(())
+}
+
+fn recover_pack_state(path: &Path) -> Result<(), String> {
+    let Some(parent) = path.parent() else {
+        return Err("Capability pack storage path is invalid.".to_string());
+    };
+    let backup = parent.join(PACK_STATE_BACKUP_FILE);
+    if !path.exists() && backup.exists() {
+        std::fs::rename(backup, path)
+            .map_err(|_| "Studio could not recover capability pack state.".to_string())?;
+    }
+    Ok(())
+}
+
+fn quarantine_pack_state(path: &Path) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "Capability pack storage path is invalid.".to_string())?;
+    let quarantine = parent.join(format!(
+        "capability-pack-state.invalid-{}.json",
+        uuid::Uuid::new_v4()
+    ));
+    std::fs::rename(path, quarantine)
+        .map_err(|_| "Studio could not quarantine invalid capability pack state.".to_string())
 }
 
 pub(crate) fn resource(
@@ -407,6 +846,9 @@ mod tests {
         let info = serde_json::to_value(catalog_info()).expect("serialize catalog metadata");
         assert_eq!(info["capabilities"].as_array().map(Vec::len), Some(9));
         assert_eq!(info["manifestSha256"].as_str().map(str::len), Some(64));
+        assert_eq!(info["pack"]["id"], "okf-foundation");
+        assert_eq!(info["pack"]["provenance"], "built-in");
+        assert_eq!(info["pack"]["artifactSchemaIds"][0], "okf-artifact-v1");
         assert_eq!(
             info["capabilities"][1]["resources"][0]["path"],
             "capabilities/inspect.md"
@@ -444,5 +886,90 @@ mod tests {
         assert!(parse_catalog(&invalid_version.to_string())
             .expect_err("invalid versions should fail")
             .contains("invalid capability version"));
+    }
+
+    #[test]
+    fn pack_rejects_executable_surfaces_conflicts_and_digest_drift() {
+        let catalog = full_catalog();
+
+        let mut executable: serde_json::Value =
+            serde_json::from_str(PACK_MANIFEST).expect("pack manifest JSON");
+        executable["scripts"] = serde_json::json!(["install.sh"]);
+        assert!(validate_pack(&executable.to_string(), catalog)
+            .expect_err("scripts must not enter the declarative pack schema")
+            .contains("unknown field"));
+
+        let mut conflict: serde_json::Value =
+            serde_json::from_str(PACK_MANIFEST).expect("pack manifest JSON");
+        conflict["conflicts"] = serde_json::json!(["okf-foundation"]);
+        assert!(validate_pack(&conflict.to_string(), catalog)
+            .expect_err("a pack cannot conflict with itself")
+            .contains("conflicts must be unique and external"));
+
+        let mut drift: serde_json::Value =
+            serde_json::from_str(PACK_MANIFEST).expect("pack manifest JSON");
+        drift["artifactSchemas"][0]["sha256"] = serde_json::json!("0".repeat(64));
+        assert!(validate_pack(&drift.to_string(), catalog)
+            .expect_err("resource drift must fail before activation")
+            .contains("resource digest changed"));
+    }
+
+    #[test]
+    fn migrates_updates_and_rolls_back_without_touching_other_agent_state() {
+        let root = std::env::temp_dir().join(format!(
+            "okf-capability-pack-state-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let agents = root.join("agents");
+        std::fs::create_dir_all(&agents).expect("create agent state fixture");
+        let sentinels = [
+            "custom-agents.json",
+            "local-models.json",
+            "sessions.json",
+            "checkpoint.json",
+            "bundle-grants.json",
+        ];
+        for sentinel in sentinels {
+            std::fs::write(agents.join(sentinel), b"preserve-me").expect("write sentinel");
+        }
+
+        let state_path = agents.join(PACK_STATE_FILE);
+        let migrated = load_or_migrate_pack_state(&state_path).expect("migrate legacy state");
+        assert!(migrated.active);
+        assert_eq!(migrated.pack_id, "okf-foundation");
+
+        let mut prior = migrated.clone();
+        prior.manifest_sha256 = "0".repeat(64);
+        prior.active = false;
+        persist_pack_state(&state_path, &prior).expect("save prior receipt");
+        let updated = load_or_migrate_pack_state(&state_path).expect("activate verified update");
+        assert_eq!(updated.previous_manifest_sha256, Some("0".repeat(64)));
+        assert!(
+            !updated.active,
+            "an update must preserve an explicit rollback"
+        );
+
+        let mut rolled_back = updated;
+        rolled_back.active = true;
+        persist_pack_state(&state_path, &rolled_back).expect("restore pack");
+        assert!(
+            load_or_migrate_pack_state(&state_path)
+                .expect("load restored pack")
+                .active
+        );
+        let backup = agents.join(PACK_STATE_BACKUP_FILE);
+        std::fs::rename(&state_path, &backup).expect("simulate interrupted replacement");
+        assert!(
+            load_or_migrate_pack_state(&state_path)
+                .expect("recover interrupted replacement")
+                .active
+        );
+        for sentinel in sentinels {
+            assert_eq!(
+                std::fs::read(agents.join(sentinel)).expect("read sentinel"),
+                b"preserve-me"
+            );
+        }
+        std::fs::remove_dir_all(root).expect("remove state fixture");
     }
 }

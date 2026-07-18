@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.3.0",
+  "providers": [
+    {
+      "id": "studio-agent",
+      "name": "Studio Agent",
+      "integration": "native-provider-loop",
+      "availability": "configuration-required",
+      "taskSupport": {
+        "okf-inspect": "supported",
+        "okf-create": "supported",
+        "okf-enrich": "supported",
+        "okf-audit": "supported",
+        "okf-repair": "supported",
+        "okf-research": "degraded",
+        "okf-change-impact": "supported",
+        "okf-migrate": "supported"
+      },
+      "limitations": ["Cited remote research requires sources explicitly added through Studio."],
+      "baseline": {
+        "status": "unavailable",
+        "reason": "The deterministic repository gate has no configured native model endpoint.",
+        "reportPath": null
+      }
+    },
+    {
+      "id": "codex-acp",
+      "name": "Codex ACP",
+      "integration": "external-acp",
+      "availability": "installation-and-authentication-required",
+      "taskSupport": {
+        "okf-inspect": "supported",
+        "okf-create": "supported",
+        "okf-enrich": "supported",
+        "okf-audit": "supported",
+        "okf-repair": "supported",
+        "okf-research": "degraded",
+        "okf-change-impact": "supported",
+        "okf-migrate": "supported"
+      },
+      "limitations": ["Capability use is observed only when the agent exposes resource or tool evidence."],
+      "baseline": {
+        "status": "unavailable",
+        "reason": "The deterministic repository gate does not install or authenticate an external Codex agent.",
+        "reportPath": null
+      }
+    },
+    {
+      "id": "claude-acp",
+      "name": "Claude ACP",
+      "integration": "external-acp",
+      "availability": "installation-and-authentication-required",
+      "taskSupport": {
+        "okf-inspect": "supported",
+        "okf-create": "supported",
+        "okf-enrich": "supported",
+        "okf-audit": "supported",
+        "okf-repair": "supported",
+        "okf-research": "degraded",
+        "okf-change-impact": "supported",
+        "okf-migrate": "supported"
+      },
+      "limitations": ["Capability use is observed only when the agent exposes resource or tool evidence."],
+      "baseline": {
+        "status": "unavailable",
+        "reason": "The deterministic repository gate does not install or authenticate an external Claude agent.",
+        "reportPath": null
+      }
+    },
+    {
+      "id": "local-model",
+      "name": "Local model",
+      "integration": "native-provider-loop",
+      "availability": "local-endpoint-required",
+      "taskSupport": {
+        "okf-inspect": "supported",
+        "okf-create": "degraded",
+        "okf-enrich": "degraded",
+        "okf-audit": "supported",
+        "okf-repair": "degraded",
+        "okf-research": "degraded",
+        "okf-change-impact": "supported",
+        "okf-migrate": "degraded"
+      },
+      "limitations": ["Structured artifact quality and tool calling depend on the configured model."],
+      "baseline": {
+        "status": "unavailable",
+        "reason": "The deterministic repository gate has no required local inference endpoint.",
+        "reportPath": null
+      }
+    }
+  ]
+}

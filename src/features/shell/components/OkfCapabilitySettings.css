@@ -13,6 +13,95 @@
   min-height: 120px;
 }
 
+.settings-capability-pack {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+
+.settings-capability-pack > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.settings-capability-pack h3,
+.settings-capability-pack dl {
+  margin: 0;
+}
+
+.settings-capability-pack header p,
+.settings-capability-pack dl,
+.settings-capability-pack__notice,
+.settings-capability-pack__error {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.settings-capability-pack header p {
+  margin-top: var(--space-4);
+  color: var(--text-dim);
+}
+
+.settings-capability-pack__status {
+  flex: none;
+  padding: var(--space-2) var(--space-6);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius);
+  color: var(--warn);
+  font-size: var(--fs-xs);
+}
+
+.settings-capability-pack__status[data-active="true"] {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.settings-capability-pack dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-4) var(--space-8);
+}
+
+.settings-capability-pack dt {
+  color: var(--text-muted);
+}
+
+.settings-capability-pack dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-capability-pack__tools summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.settings-capability-pack__tools span {
+  display: block;
+  margin-top: var(--space-4);
+  color: var(--text-dim);
+}
+
+.settings-capability-pack__notice {
+  padding: var(--space-8);
+  border-left: 2px solid var(--warn);
+  background: var(--bg);
+}
+
+.settings-capability-pack__error {
+  color: var(--error);
+}
+
+.settings-capability-pack .btn {
+  justify-self: start;
+}
+
 .settings-capability-manifest,
 .settings-capability code {
   overflow-wrap: anywhere;
@@ -88,4 +177,22 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
+}
+
+@media (max-width: 520px) {
+  .settings-capability-pack > header {
+    display: grid;
+  }
+
+  .settings-capability-pack__status {
+    justify-self: start;
+  }
+
+  .settings-capability-pack dl {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-capability-pack dd + dt {
+    margin-top: var(--space-4);
+  }
 }

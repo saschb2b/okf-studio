@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "id": "okf-foundation",
+  "version": "1.0.0",
+  "name": "OKF Foundation",
+  "description": "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
+  "publisher": "OKF Studio",
+  "provenance": "built-in",
+  "compatibility": {
+    "minimumStudioVersion": "0.3.0",
+    "capabilitySchemaVersion": 1,
+    "artifactSchemaVersion": 1
+  },
+  "conflicts": [],
+  "capabilityManifest": {
+    "path": "capabilities.json",
+    "mediaType": "application/json",
+    "sha256": "6aa1c3a57fcd96d0a4199f4f4621dc9840ddf62e8afd3d2d2ff6424fd30dc034"
+  },
+  "templates": [
+    {
+      "id": "okf-markdown-templates",
+      "path": "templates.md",
+      "mediaType": "text/markdown",
+      "sha256": "248f36cbd8d2046761621e3df7589f94a0be341b39f8b1571a2de15491a68f9c"
+    }
+  ],
+  "artifactSchemas": [
+    {
+      "id": "okf-artifact-v1",
+      "path": "schemas/okf-artifact-v1.schema.json",
+      "mediaType": "application/schema+json",
+      "sha256": "5d5078445da12108562cca48e816a4163e3e8761359f1f01075055f079c2d721"
+    }
+  ],
+  "requiredStudioTools": [
+    "okf_inventory",
+    "okf_read",
+    "okf_search",
+    "okf_sources",
+    "okf_traverse",
+    "okf_validate",
+    "okf_health_summary",
+    "okf_health_finding",
+    "okf_health_affected",
+    "okf_health_repair",
+    "studio_source_inventory",
+    "studio_source_read",
+    "studio_stage_inventory",
+    "studio_stage_read",
+    "studio_stage_propose",
+    "studio_stage_validate"
+  ]
+}

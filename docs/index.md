@@ -39,6 +39,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Inspectable Workspace Memory](features/workspace-memory.md) - Apply only current, bundle-scoped local preferences to context plans and keep every item inspectable and deletable.
 * [Local OKF Routines and Attention Inbox](features/local-routines.md) - Schedule deterministic offline maintenance with a Rust-owned recovery ledger and visible attention results.
 * [Guarded External Entry Points](features/external-entry-points.md) - Review deep-link and CLI handoffs and issue one-shot read-only MCP grants without silently starting an agent.
+* [Declarative OKF Capability Packs](features/capability-packs.md) - Inspect and reversibly activate the digest-bound skills, templates, artifact schema, and tool contract Studio gives agents.
 * [Native OKF Tasks](features/native-okf-tasks.md) - Start bounded curated work from the OKF object already in view.
 * [Live Reload](features/live-reload.md) - Watch the folder and refresh the graph as files change.
 * [Log View](features/log-view.md) - Render a bundle's log.md as a dated, newest-first change timeline.

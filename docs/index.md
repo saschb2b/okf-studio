@@ -36,6 +36,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Knowledge Health](features/knowledge-health.md) - Give agents deterministic quality evidence without turning heuristics into conformance.
 * [Structured Agent Work](features/structured-agent-work.md) - Keep validated OKF plans, reports, research, migrations, and staged revisions active beside the conversation.
 * [Artifact Verification and Critic Passes](features/artifact-verification.md) - Compare deterministic checks with an optional isolated critic whose findings cannot approve or apply work.
+* [Inspectable Workspace Memory](features/workspace-memory.md) - Apply only current, bundle-scoped local preferences to context plans and keep every item inspectable and deletable.
 * [Native OKF Tasks](features/native-okf-tasks.md) - Start bounded curated work from the OKF object already in view.
 * [Live Reload](features/live-reload.md) - Watch the folder and refresh the graph as files change.
 * [Log View](features/log-view.md) - Render a bundle's log.md as a dated, newest-first change timeline.

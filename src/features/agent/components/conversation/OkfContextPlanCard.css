@@ -132,6 +132,47 @@
   overflow-wrap: anywhere;
 }
 
+.okf-context-plan__memory {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.okf-context-plan__memory > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.okf-context-plan__memory strong,
+.okf-context-plan__memory span,
+.okf-context-plan__memory small,
+.okf-context-plan__memory-error {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__memory small {
+  color: var(--text-dim);
+}
+
+.okf-context-plan__memory > div:last-child {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-4);
+}
+
+.okf-context-plan__memory-error {
+  margin: 0;
+  color: var(--error);
+}
+
 .okf-context-plan__items button {
   display: grid;
   width: 28px;
@@ -175,5 +216,10 @@
 
   .okf-context-plan__scope {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .okf-context-plan__memory {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

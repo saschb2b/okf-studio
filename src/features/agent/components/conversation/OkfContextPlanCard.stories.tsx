@@ -56,3 +56,29 @@ export const BundleChanged: Story = {
     await expect(args.onAcceptRefresh).toHaveBeenCalled();
   },
 };
+
+export const MemorySuggestion: Story = {
+  args: {
+    memorySuggestion: {
+      conceptTitle: "Agent Panel",
+      effect: "Omit bundle-object:features/agent-panel from future okf-enrich plans.",
+    },
+    onSaveMemory: fn(),
+    onDismissMemory: fn(),
+  },
+  play: async ({ canvas, args }) => {
+    await expect(canvas.getByRole("region", { name: "Workspace memory suggestion" }))
+      .toHaveTextContent("User-owned");
+    await userEvent.click(canvas.getByRole("button", { name: "Remember" }));
+    await expect(args.onSaveMemory).toHaveBeenCalled();
+  },
+};
+
+export const MemoryError: Story = {
+  args: {
+    memoryError: "Studio could not save this workspace preference.",
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("alert")).toHaveTextContent("could not save");
+  },
+};

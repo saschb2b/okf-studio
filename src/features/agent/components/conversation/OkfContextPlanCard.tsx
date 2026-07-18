@@ -11,6 +11,10 @@ export interface OkfContextPlanCardProps {
   editable?: boolean;
   onRemove: (kind: "bundle-object" | "source", id: string) => void;
   onAcceptRefresh: () => void;
+  memorySuggestion?: { conceptTitle: string; effect: string } | null;
+  memoryError?: string | null;
+  onSaveMemory?: () => void;
+  onDismissMemory?: () => void;
 }
 
 function bytesLabel(bytes: number): string {
@@ -25,6 +29,10 @@ export function OkfContextPlanCard({
   editable = true,
   onRemove,
   onAcceptRefresh,
+  memorySuggestion = null,
+  memoryError = null,
+  onSaveMemory,
+  onDismissMemory,
 }: OkfContextPlanCardProps) {
   const titleId = useId();
   const task = OKF_TASKS[plan.taskId];
@@ -122,6 +130,26 @@ export function OkfContextPlanCard({
           ))}
         </ul>
       )}
+      {memorySuggestion && onSaveMemory && onDismissMemory && (
+        <section className="okf-context-plan__memory" aria-label="Workspace memory suggestion">
+          <div>
+            <strong>Remember this context choice?</strong>
+            <span>{memorySuggestion.effect}</span>
+            <small>
+              User-owned · bundle scoped · revalidated after bundle changes · retained 180 days
+            </small>
+          </div>
+          <div>
+            <button type="button" className="btn" disabled={disabled} onClick={onSaveMemory}>
+              Remember
+            </button>
+            <button type="button" className="btn ghost" onClick={onDismissMemory}>
+              Not now
+            </button>
+          </div>
+        </section>
+      )}
+      {memoryError && <p className="okf-context-plan__memory-error" role="alert">{memoryError}</p>}
       <footer>
         <span>
           {bytesLabel(plan.budget.selectedBytes)} of {bytesLabel(plan.budget.maxBytes)} planned ·

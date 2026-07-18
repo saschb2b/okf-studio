@@ -96,4 +96,22 @@ describe("OKF task context", () => {
     expect(taskScopeChangeRequiresConfirmation("okf-enrich", "okf-audit")).toBe(true);
     expect(taskScopeChangeRequiresConfirmation("okf-audit", "okf-audit")).toBe(false);
   });
+
+  it("shows a revalidated workspace preference as the exact omission reason", () => {
+    const plan = createOkfContextPlan({
+      taskId: "okf-audit",
+      bundleRoot: "C:\\knowledge\\docs",
+      concepts,
+      activeConcept: { id: "features/search", title: "Search" },
+      attachedConcepts: [],
+      sources: [],
+      issues: [],
+      memoryRemovedIds: new Set(["bundle-object:features/search"]),
+    });
+    expect(plan.omissions).toContainEqual({
+      kind: "bundle-object",
+      id: "features/search",
+      reason: "workspace-preference",
+    });
+  });
 });

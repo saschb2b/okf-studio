@@ -56,6 +56,14 @@ import {
   upsertAgentThreadMetadata,
 } from "@/features/agent/threadMetadata.ts";
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import {
+  createOmissionPreference,
+  createTaskRecord,
+  memoryEnvelope,
+  parseWorkspaceMemory,
+  upsertWorkspaceMemory,
+} from "@/features/agent/workspaceMemory.ts";
+import type { WorkspaceMemoryItem } from "@/features/agent/workspaceMemory.ts";
 import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
 import type {
   AgentArtifactValidation,
@@ -3165,6 +3173,10 @@ const STORE_FILE = "okf-viewer.json";
 const RECENTS_KEY = "recentBundles";
 const AGENT_THREADS_KEY = "agentThreads";
 const MOCK_AGENT_THREADS_KEY = "okf-studio:agent-threads";
+const WORKSPACE_MEMORY_KEY = "workspaceMemoryV1";
+const WORKSPACE_MEMORY_QUARANTINE_KEY = "workspaceMemoryQuarantineV1";
+const MOCK_WORKSPACE_MEMORY_KEY = "okf-studio:workspace-memory-v1";
+export const WORKSPACE_MEMORY_CHANGED_EVENT = "okf:workspace-memory-changed";
 const RECENTS_CAP = 12;
 
 async function store() {
@@ -3255,6 +3267,86 @@ export async function removeAgentThreadMetadata(
   await writeAgentThreads(
     removeThreadMetadata(await readAgentThreads(), bundleRoot, profileId, sessionId),
   );
+}
+
+async function writeWorkspaceMemory(items: readonly WorkspaceMemoryItem[]): Promise<void> {
+  const value = memoryEnvelope(items);
+  if (!isTauri()) {
+    localStorage.setItem(MOCK_WORKSPACE_MEMORY_KEY, JSON.stringify(value));
+    window.dispatchEvent(new Event(WORKSPACE_MEMORY_CHANGED_EVENT));
+    return;
+  }
+  const st = await store();
+  await st.set(WORKSPACE_MEMORY_KEY, value);
+  await st.save();
+  window.dispatchEvent(new Event(WORKSPACE_MEMORY_CHANGED_EVENT));
+}
+
+export function onWorkspaceMemoryChange(listener: () => void): () => void {
+  window.addEventListener(WORKSPACE_MEMORY_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(WORKSPACE_MEMORY_CHANGED_EVENT, listener);
+}
+
+async function readWorkspaceMemory(): Promise<WorkspaceMemoryItem[]> {
+  let raw: unknown = null;
+  if (!isTauri()) {
+    try {
+      raw = JSON.parse(localStorage.getItem(MOCK_WORKSPACE_MEMORY_KEY) ?? "null");
+    } catch {
+      raw = { schemaVersion: 0 };
+    }
+  } else {
+    raw = await (await store()).get<unknown>(WORKSPACE_MEMORY_KEY);
+  }
+  const parsed = parseWorkspaceMemory(raw);
+  if (parsed.rejectedCount > 0) {
+    const quarantine = {
+      schemaVersion: 1,
+      detectedAt: Date.now(),
+      rejectedCount: parsed.rejectedCount,
+    };
+    if (!isTauri()) {
+      localStorage.setItem(WORKSPACE_MEMORY_QUARANTINE_KEY, JSON.stringify(quarantine));
+      localStorage.setItem(MOCK_WORKSPACE_MEMORY_KEY, JSON.stringify(memoryEnvelope(parsed.items)));
+    } else {
+      const st = await store();
+      await st.set(WORKSPACE_MEMORY_QUARANTINE_KEY, quarantine);
+      await st.set(WORKSPACE_MEMORY_KEY, memoryEnvelope(parsed.items));
+      await st.save();
+    }
+  }
+  return parsed.items;
+}
+
+export async function loadWorkspaceMemory(bundleRoot: string): Promise<WorkspaceMemoryItem[]> {
+  return (await readWorkspaceMemory()).filter((item) => item.bundleRoot === bundleRoot);
+}
+
+export async function saveWorkspaceOmissionPreference(input: {
+  bundleRoot: string;
+  taskId: OkfTaskId;
+  conceptId: string;
+  conceptTitle: string;
+  validationFingerprint: string;
+  origin?: "user-action" | "agent-suggestion-accepted";
+}): Promise<WorkspaceMemoryItem> {
+  const item = createOmissionPreference(input);
+  await writeWorkspaceMemory(upsertWorkspaceMemory(await readWorkspaceMemory(), item));
+  return item;
+}
+
+export async function recordWorkspaceTaskObservation(input: {
+  bundleRoot: string;
+  taskId: OkfTaskId;
+  validationFingerprint: string;
+}): Promise<void> {
+  const item = createTaskRecord(input);
+  await writeWorkspaceMemory(upsertWorkspaceMemory(await readWorkspaceMemory(), item));
+}
+
+export async function deleteWorkspaceMemoryItem(id: string): Promise<void> {
+  const current = await readWorkspaceMemory();
+  await writeWorkspaceMemory(current.filter((item) => item.id !== id));
 }
 
 export async function recentBundles(): Promise<RecentBundle[]> {

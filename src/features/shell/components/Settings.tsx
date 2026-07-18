@@ -18,6 +18,8 @@ import { checkForUpdate, installUpdate, RELEASES_URL } from "@/shared/platform/u
 import type { UpdateStatus } from "@/shared/platform/updater.ts";
 import { requestAgentNotificationPermission } from "@/shared/platform/notifications.ts";
 import { OkfCapabilitySettings } from "./OkfCapabilitySettings.tsx";
+import { WorkspaceMemorySettings } from "@/features/agent/components/WorkspaceMemorySettings.tsx";
+import { bundleContextFingerprint } from "@/features/agent/taskContext.ts";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
 import "./Settings.css";
@@ -287,6 +289,18 @@ export function Settings() {
           </div>
 
           <OkfCapabilitySettings />
+
+          {state.activeRoot && state.bundle && (
+            <WorkspaceMemorySettings
+              bundleRoot={state.activeRoot}
+              bundleName={state.bundle.name}
+              fingerprint={bundleContextFingerprint(
+                state.activeRoot,
+                state.bundle.concepts,
+                state.bundle.issues,
+              )}
+            />
+          )}
 
           <div className="field">
             <span className="field-label">Updates</span>

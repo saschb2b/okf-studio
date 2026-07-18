@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T08:15:00Z
+timestamp: 2026-07-18T09:45:00Z
 ---
 
 # Outcome
@@ -196,13 +196,13 @@ Gate: the critic catches seeded semantic defects without changing the staged rev
 
 ## SP10: Inspectable workspace memory
 
-- [ ] Store bundle-scoped preferences, dismissed finding fingerprints, task records, and routine definitions outside the bundle.
-- [ ] Show origin, owner, last validation, last use, retention, and delete controls for every memory item.
-- [ ] Revalidate bundle-related hints against the current fingerprint before attaching them.
-- [ ] Never turn an agent statement into memory without an explicit user action or deterministic Studio observation.
-- [ ] Keep authored facts, citations, staged files, credentials, prompt bodies, and response bodies out of memory.
-- [ ] Use a versioned local schema, per-kind retention limits, bounded counts, and corruption quarantine that cannot block opening a bundle.
-- [ ] Show the exact context-plan effect of each memory item before the user accepts an agent-suggested preference.
+- [x] Store bundle-scoped preferences, dismissed finding fingerprints, task records, and routine definitions outside the bundle.
+- [x] Show origin, owner, last validation, last use, retention, and delete controls for every memory item.
+- [x] Revalidate bundle-related hints against the current fingerprint before attaching them.
+- [x] Never turn an agent statement into memory without an explicit user action or deterministic Studio observation.
+- [x] Keep authored facts, citations, staged files, credentials, prompt bodies, and response bodies out of memory.
+- [x] Use a versioned local schema, per-kind retention limits, bounded counts, and corruption quarantine that cannot block opening a bundle.
+- [x] Show the exact context-plan effect of each memory item before the user accepts an agent-suggested preference.
 
 Gate: deleting memory changes future context plans but cannot change the bundle or break session restoration.
 

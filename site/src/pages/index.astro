@@ -128,6 +128,11 @@ const agentCards = [
     body: "Studio checks each structured result deterministically first. Studio Agent can then review coverage, contradictions, unsupported claims, and missed relationships in a separate session with only the declared evidence and no tools. Unavailable checks stay unavailable, and a critic can never approve or apply a change.",
   },
   {
+    glyph: "◇",
+    title: "Memory you can inspect and delete",
+    body: "Remember a task-specific context choice only after seeing its exact effect. Studio keeps bounded metadata outside the bundle, revalidates it when the bundle changes, and shows its owner, origin, retention, use, stale state, and delete action in Settings. Prompt and response bodies, facts, citations, staged files, and credentials stay out.",
+  },
+  {
     glyph: "✎",
     title: "Writes you review, always",
     body: "Proposed changes land in a staged tree first. Review each diff hunk, validate against the OKF spec, then apply in one transaction you can restore. A verified Linux or Windows Restricted offline agent can stage for 30 minutes unattended, but it still cannot apply changes.",

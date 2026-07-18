@@ -117,7 +117,7 @@ export interface OkfContextBudget {
 export interface OkfContextOmission {
   kind: "bundle-object" | "source";
   id: string;
-  reason: "removed-by-user" | "budget-exceeded" | "context-limit";
+  reason: "removed-by-user" | "workspace-preference" | "budget-exceeded" | "context-limit";
 }
 
 export interface OkfContextPlan {
@@ -162,6 +162,7 @@ interface ContextPlanInput {
   }[];
   issues: readonly Issue[];
   removedIds?: ReadonlySet<string>;
+  memoryRemovedIds?: ReadonlySet<string>;
   maxBytes?: number;
 }
 
@@ -214,6 +215,7 @@ export function bundleContextFingerprint(
 export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
   const task = OKF_TASKS[input.taskId];
   const removed = input.removedIds ?? new Set<string>();
+  const memoryRemoved = input.memoryRemovedIds ?? new Set<string>();
   const maxBytes = input.maxBytes ?? DEFAULT_CONTEXT_BYTES;
   const conceptById = new Map(input.concepts.map((concept) => [concept.id, concept]));
   const candidates = new Map<string, OkfContextObject>();
@@ -288,6 +290,10 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
   const objects: OkfContextObject[] = [];
   const sources: OkfContextSource[] = [];
   const include = (kind: OkfContextOmission["kind"], id: string, bytes: number, required: boolean) => {
+    if (!required && memoryRemoved.has(`${kind}:${id}`)) {
+      omissions.push({ kind, id, reason: "workspace-preference" });
+      return false;
+    }
     if (!required && removed.has(`${kind}:${id}`)) {
       omissions.push({ kind, id, reason: "removed-by-user" });
       return false;

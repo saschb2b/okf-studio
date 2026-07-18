@@ -1,9 +1,9 @@
 ---
 type: Reference
 title: Settings & Preferences
-description: The local preferences surface for theme, reading, scan tuning, agent notifications, motion, updates, and reset.
+description: The local preferences surface for theme, reading, scan tuning, agent notifications, workspace memory, motion, updates, and reset.
 tags: [ux, settings, preferences]
-timestamp: 2026-07-18T01:24:14Z
+timestamp: 2026-07-18T09:45:00Z
 ---
 
 # Opening Settings
@@ -17,6 +17,7 @@ Settings open from the **⚙ at the foot of the [Activity Bar](browsing-layout.m
 - **Recent bundles** are no longer managed here — they moved to the top-left [Bundle Switcher](../features/bundle-switcher.md) (pin and remove there), closer to where you actually switch context. The [First Run](first-run.md) re-entry flow surfaces them on launch.
 - **Scan tuning.** The **max depth** the [autodetect](../features/folder-autodetect.md) scan descends is user-configurable and drives [detection](../architecture/bundle-detection.md). The **ignore-list** of skipped directories (`.git`, `node_modules`, `target`, `dist`, `build`, `.venv`, and hidden dirs) is a fixed sensible default for now; making it editable is a [later](../product/scope-and-non-goals.md) refinement.
 - **Built-in OKF capabilities.** An inspectable catalog lists every shipped capability's exact version, risk class, required tools, artifact kinds, resource paths, and SHA-256 digests. The manifest digest identifies the complete installed set. This is disclosure, not a claim that an external agent followed delivered guidance; see [Agent System](../architecture/agent-system.md).
+- **Workspace memory.** For the active bundle, an inspectable list shows every bounded local preference and deterministic task record with origin, owner, current or stale validation, last use, retention, exact context effect, and deletion. Memory stores no conversation or knowledge bodies; see [Inspectable Workspace Memory](../features/workspace-memory.md).
 - **Agent notifications.** Disabled by default. Enabling them explicitly requests operating-system notification permission. Studio then alerts only when an unfocused background thread completes, fails, or waits for permission, using a generic state plus a bounded thread title and agent name. Prompt, response, source, concept, path, permission, and staged content are excluded. The operating system's focus and per-app settings remain authoritative.
 - **Agent notification sound.** A separate preference, available only after notifications are enabled. Studio asks for sound when allowed; the operating system decides whether and how it plays.
 - **Reduce motion.** Override the OS reduce-motion setting honored in [Accessibility](accessibility.md).

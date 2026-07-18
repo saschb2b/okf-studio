@@ -2,14 +2,16 @@ import type { AgentAvailableCommandInfo, AgentConnectionEvent, AgentConnectionIn
 import type { AgentSessionConfigFailure } from "@/features/agent/components/AgentSessionControls.tsx";
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
 import type { AcceptedOkfContextManifest, OkfTaskId, OkfTaskKickoff } from "@/features/agent/taskContext.ts";
-import { acceptOkfContextPlan, createOkfContextPlan } from "@/features/agent/taskContext.ts";
+import { acceptOkfContextPlan, bundleContextFingerprint, createOkfContextPlan } from "@/features/agent/taskContext.ts";
+import { activeMemoryOmissions } from "@/features/agent/workspaceMemory.ts";
+import type { WorkspaceMemoryItem } from "@/features/agent/workspaceMemory.ts";
 import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, prepareAgentArtifactCritic, respondAgentPermission, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordWorkspaceTaskObservation, respondAgentPermission, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
@@ -127,6 +129,13 @@ export function AgentConversation({
   const [removedContextIds, setRemovedContextIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  const [workspaceMemory, setWorkspaceMemory] = useState<readonly WorkspaceMemoryItem[]>([]);
+  const [memorySuggestion, setMemorySuggestion] = useState<{
+    conceptId: string;
+    conceptTitle: string;
+    effect: string;
+  } | null>(null);
+  const [memoryError, setMemoryError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationItem[]>([]);
   const [artifactWorkspace, setArtifactWorkspace] = useState<AgentArtifactWorkspaceState>({
     status: "empty",
@@ -216,6 +225,17 @@ export function AgentConversation({
   const [queuedPrompt, setQueuedPrompt] = useState<QueuedPrompt | null>(null);
   const [sourcePickerError, setSourcePickerError] = useState<string | null>(null);
   const [sourcePicker, setSourcePicker] = useState<"files" | "folder" | "images" | null>(null);
+  const currentBundleFingerprint = bundleRoot
+    ? bundleContextFingerprint(bundleRoot, concepts, issues)
+    : null;
+  const memoryRemovedIds = bundleRoot && threadTaskId && currentBundleFingerprint
+    ? activeMemoryOmissions(
+        workspaceMemory,
+        bundleRoot,
+        threadTaskId,
+        currentBundleFingerprint,
+      )
+    : new Set<string>();
   const contextPlan = bundleRoot && threadTaskId
     ? createOkfContextPlan({
         taskId: threadTaskId,
@@ -226,6 +246,7 @@ export function AgentConversation({
         sources: attachedSources,
         issues,
         removedIds: removedContextIds,
+        memoryRemovedIds,
       })
     : null;
   const contextPlanIsStale = contextPlan !== null && acceptedContextManifest !== null &&
@@ -278,6 +299,23 @@ export function AgentConversation({
   useEffect(() => {
     if (savedThread.status === "error") savedThreadActionRef.current?.focus();
   }, [savedThread.status]);
+
+  useEffect(() => {
+    let active = true;
+    setMemorySuggestion(null);
+    setMemoryError(null);
+    if (!bundleRoot) {
+      setWorkspaceMemory([]);
+      return () => { active = false; };
+    }
+    const refresh = () => void loadWorkspaceMemory(bundleRoot).then(
+      (items) => { if (active) setWorkspaceMemory(items); },
+      (error: unknown) => { if (active) setMemoryError(errorMessage(error)); },
+    );
+    refresh();
+    const stop = onWorkspaceMemoryChange(refresh);
+    return () => { active = false; stop(); };
+  }, [bundleRoot]);
 
   async function loadSavedThread() {
     if (!bundleRoot || !supportsHistory || initialSession) {
@@ -627,6 +665,7 @@ export function AgentConversation({
               sources: draftSources,
               issues,
               removedIds: removedContextIds,
+              memoryRemovedIds,
             })
           : null;
         if (plan && acceptedContextManifest &&
@@ -712,6 +751,13 @@ export function AgentConversation({
           onThreadTitleChange(nextTitle);
         }
         if (acceptedPlan) setAcceptedContextManifest(acceptedPlan);
+        if (threadTaskId && acceptedPlan) {
+          void recordWorkspaceTaskObservation({
+            bundleRoot,
+            taskId: threadTaskId,
+            validationFingerprint: acceptedPlan.bundleFingerprint,
+          });
+        }
         if (source === "artifact" && artifactRevision) {
           const sent: AgentArtifactWorkspaceState = {
             status: "ready",
@@ -1595,9 +1641,38 @@ export function AgentConversation({
   function removeContextPlanItem(kind: "bundle-object" | "source", id: string) {
     setRemovedContextIds((current) => new Set(current).add(`${kind}:${id}`));
     if (kind === "bundle-object") {
+      const concept = concepts.find((candidate) => candidate.id === id);
+      if (concept && threadTaskId) {
+        setMemorySuggestion({
+          conceptId: id,
+          conceptTitle: concept.title,
+          effect: `Omit bundle-object:${id} from future ${threadTaskId} plans.`,
+        });
+      }
       setAttachedConcepts((current) => current.filter((concept) => concept.id !== id));
     } else {
       setAttachedSources((current) => current.filter((source) => source.id !== id));
+    }
+  }
+
+  async function saveMemorySuggestion() {
+    if (!bundleRoot || !threadTaskId || !currentBundleFingerprint || !memorySuggestion) return;
+    setMemoryError(null);
+    try {
+      const item = await saveWorkspaceOmissionPreference({
+        bundleRoot,
+        taskId: threadTaskId,
+        conceptId: memorySuggestion.conceptId,
+        conceptTitle: memorySuggestion.conceptTitle,
+        validationFingerprint: currentBundleFingerprint,
+      });
+      setWorkspaceMemory((current) => [
+        item,
+        ...current.filter((candidate) => candidate.id !== item.id),
+      ]);
+      setMemorySuggestion(null);
+    } catch (error: unknown) {
+      setMemoryError(errorMessage(error));
     }
   }
 
@@ -2623,6 +2698,10 @@ export function AgentConversation({
                 disabled={isSubmitting || activeTurn !== null}
                 onRemove={removeContextPlanItem}
                 onAcceptRefresh={acceptRefreshedContextPlan}
+                memorySuggestion={memorySuggestion}
+                memoryError={memoryError}
+                onSaveMemory={() => void saveMemorySuggestion()}
+                onDismissMemory={() => setMemorySuggestion(null)}
               />
             )}
             {messages.length > 0 && acceptedContextManifest && !contextPlanIsStale && (

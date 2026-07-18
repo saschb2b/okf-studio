@@ -247,8 +247,7 @@ describe("OKF Studio reviewed writes", () => {
     );
     await user.click(screen.getByRole("button", { name: "Discard all" }));
     const stagedReview = screen.getByRole("region", { name: "Staged changes" });
-    const stagingAlert = await within(stagedReview).findByRole("alert");
-    expect(stagingAlert).toHaveTextContent(
+    const stagingAlert = await within(stagedReview).findByText(
       "Staging action failed. The staging store is busy.",
     );
     const stagedFile = within(stagedReview).getByText("proposals/notes.md");

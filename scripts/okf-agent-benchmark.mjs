@@ -150,7 +150,7 @@ export function validateCapabilityCoverage(benchmarkInput, capabilityInput) {
 
 export function validateManifest(input, root = benchmarkRoot) {
   const manifest = requireObject(input, "manifest");
-  if (manifest.schemaVersion !== 1) throw new Error("manifest.schemaVersion must be 1.");
+  if (manifest.schemaVersion !== 2) throw new Error("manifest.schemaVersion must be 2.");
   if (!Array.isArray(manifest.fixtures) || manifest.fixtures.length === 0) {
     throw new Error("manifest.fixtures must be a non-empty array.");
   }
@@ -185,9 +185,11 @@ export function validateManifest(input, root = benchmarkRoot) {
 
   const capabilityIds = new Set();
   const artifactKinds = new Set();
+  const taskIds = new Set();
   for (const [index, value] of manifest.tasks.entries()) {
     const task = requireObject(value, `manifest.tasks[${index}]`);
     const id = requireString(task.id, `manifest.tasks[${index}].id`);
+    taskIds.add(id);
     const fixtureId = requireString(task.fixtureId, `task ${id}.fixtureId`);
     if (!fixtureIds.has(fixtureId)) throw new Error(`Task ${id} references unknown fixture ${fixtureId}.`);
     capabilityIds.add(requireString(task.capabilityId, `task ${id}.capabilityId`));
@@ -210,11 +212,51 @@ export function validateManifest(input, root = benchmarkRoot) {
     if (points !== 100) throw new Error(`Task ${id} score weights must total 100, received ${points}.`);
   }
 
+  if (!Array.isArray(manifest.criticCases) || manifest.criticCases.length === 0) {
+    throw new Error("manifest.criticCases must be a non-empty array.");
+  }
+  requireUniqueIds(manifest.criticCases, "manifest.criticCases");
+  const criticCategories = new Set([
+    "coverage",
+    "contradictions",
+    "unsupported-claims",
+    "missed-relationships",
+  ]);
+  for (const [index, value] of manifest.criticCases.entries()) {
+    const criticCase = requireObject(value, `manifest.criticCases[${index}]`);
+    const id = requireString(criticCase.id, `manifest.criticCases[${index}].id`);
+    const taskId = requireString(criticCase.taskId, `critic case ${id}.taskId`);
+    if (!taskIds.has(taskId)) throw new Error(`Critic case ${id} references unknown task ${taskId}.`);
+    requireString(criticCase.seededDefect, `critic case ${id}.seededDefect`);
+    const category = requireString(criticCase.expectedCategory, `critic case ${id}.expectedCategory`);
+    if (!criticCategories.has(category)) {
+      throw new Error(`Critic case ${id} uses an unsupported category.`);
+    }
+    const referenceKinds = requireStringArray(
+      criticCase.requiredReferenceKinds,
+      `critic case ${id}.requiredReferenceKinds`,
+    );
+    if (referenceKinds.some((kind) => !["field", "concept", "source"].includes(kind))) {
+      throw new Error(`Critic case ${id} uses an unsupported reference kind.`);
+    }
+    if (!["concerns-found", "inconclusive"].includes(criticCase.expectedOutcome)) {
+      throw new Error(`Critic case ${id} must expect a concern or an inconclusive result.`);
+    }
+    if (typeof criticCase.deterministicCompletionBlocked !== "boolean") {
+      throw new Error(`Critic case ${id}.deterministicCompletionBlocked must be boolean.`);
+    }
+    if (criticCase.criticMayOverrideDeterministic !== false) {
+      throw new Error(`Critic case ${id} must not let a critic override deterministic checks.`);
+    }
+    requireStringArray(criticCase.hardFailures, `critic case ${id}.hardFailures`);
+  }
+
   return {
     fixtureCount: fixtureIds.size,
     taskCount: manifest.tasks.length,
     capabilityIds: [...capabilityIds].sort(),
     artifactKinds: [...artifactKinds].sort(),
+    criticCaseCount: manifest.criticCases.length,
     fingerprints: Object.fromEntries([...fingerprints].sort()),
   };
 }
@@ -230,7 +272,7 @@ function runCli() {
   const command = process.argv[2] ?? "check";
   if (command === "check") {
     const summary = checkCorpus(process.argv[3] ? resolve(process.argv[3]) : defaultManifestPath);
-    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts, ${summary.curatedCapabilityCount} curated capabilities.\n`);
+    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts, ${summary.criticCaseCount} critic contracts, ${summary.curatedCapabilityCount} curated capabilities.\n`);
     return;
   }
   if (command === "fingerprints") {

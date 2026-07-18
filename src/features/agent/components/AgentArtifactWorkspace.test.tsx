@@ -25,6 +25,12 @@ const artifact: AgentArtifact = {
   items: [],
   missingFields: [],
   large: false,
+  verification: {
+    errors: 0,
+    warnings: 0,
+    completionBlocked: false,
+    findings: [],
+  },
 };
 
 describe("AgentArtifactWorkspace", () => {
@@ -67,5 +73,20 @@ describe("AgentArtifactWorkspace", () => {
     );
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send revision 2" })).toBeDisabled();
+  });
+
+  it("keeps critic review separate from revision and apply actions", () => {
+    const onRunCritic = vi.fn();
+    render(
+      <AgentArtifactWorkspace
+        state={{ status: "ready", artifact, sentRevision: null }}
+        criticState={{ status: "idle" }}
+        onShowConversation={vi.fn()}
+        onRunCritic={onRunCritic}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Run critic" }));
+    expect(onRunCritic).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: /approve|apply/iu })).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,55 @@
+name: OKF agent provider evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider or agent label
+        required: true
+        type: string
+      model:
+        description: Model label
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Build explicit provider evaluation plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      EVAL_PROVIDER: ${{ inputs.provider }}
+      EVAL_MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:agent-benchmarks
+
+      - name: Record the opt-in evaluation scope
+        run: >-
+          node scripts/okf-agent-provider-eval.mjs
+          --provider "$EVAL_PROVIDER"
+          --model "$EVAL_MODEL"
+          --output .artifacts/okf-agent-provider-eval-plan.json
+
+      - name: Upload evaluation plan
+        uses: actions/upload-artifact@v6
+        with:
+          name: okf-agent-provider-eval-plan
+          path: .artifacts/okf-agent-provider-eval-plan.json
+          if-no-files-found: error

@@ -184,13 +184,13 @@ Gate: two adapters with equivalent source material produce stable normalized evi
 
 ## SP9: Verification and critic passes
 
-- [ ] Run deterministic checks after each artifact or staged-revision update and before any optional model critique.
-- [ ] Add a read-only OKF critic role with a separate bounded context for coverage, contradictions, unsupported claims, and missed relationships.
-- [ ] Prevent the critic from editing, approving, applying, expanding scope, or treating its own inference as evidence.
-- [ ] Compare the critic result with deterministic findings and show agreements, disagreements, and unverified questions.
-- [ ] Feed benchmark regressions into CI with model-free contract tests and an opt-in provider evaluation job.
-- [ ] Require claim-level references from critic findings to artifact fields, concept IDs, or source IDs and reject unresolvable references from the structured result.
-- [ ] Record provider and capability limitations beside the critic result so an absent check never appears as a pass.
+- [x] Run deterministic checks after each artifact or staged-revision update and before any optional model critique.
+- [x] Add a read-only OKF critic role with a separate bounded context for coverage, contradictions, unsupported claims, and missed relationships.
+- [x] Prevent the critic from editing, approving, applying, expanding scope, or treating its own inference as evidence.
+- [x] Compare the critic result with deterministic findings and show agreements, disagreements, and unverified questions.
+- [x] Feed benchmark regressions into CI with model-free contract tests and an opt-in provider evaluation job.
+- [x] Require claim-level references from critic findings to artifact fields, concept IDs, or source IDs and reject unresolvable references from the structured result.
+- [x] Record provider and capability limitations beside the critic result so an absent check never appears as a pass.
 
 Gate: the critic catches seeded semantic defects without changing the staged revision, and deterministic failures block completion even when the critic approves.
 

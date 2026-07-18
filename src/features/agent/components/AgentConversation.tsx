@@ -9,7 +9,7 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, prepareAgentArtifactCritic, respondAgentPermission, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
@@ -34,6 +34,7 @@ import {
   agentArtifactEnvelopeText,
   artifactRevisionPrompt,
 } from "@/features/agent/artifact.ts";
+import type { AgentCriticState } from "@/features/agent/artifact.ts";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
 import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
@@ -109,6 +110,10 @@ export function AgentConversation({
   const promptInputId = `${conversationTitleId}-prompt`;
   const supportsHistory = connection.capabilities.sessionList && connection.capabilities.loadSession;
   const isStudioAgent = connection.protocolVersion === "studio-native/1";
+  const criticUnavailableReason = connection.securityScope.profile.id ===
+      "studio-native-mediated-v1"
+    ? null
+    : "Independent critique requires Studio Agent. Rust supplies only the declared evidence and exposes no tools to the critic session.";
   const conceptIds = concepts.map((concept) => concept.id);
   const [threadTitle, setThreadTitle] = useState<ThreadTitle>({
     source: "default",
@@ -131,6 +136,7 @@ export function AgentConversation({
   const artifactValidationRequestRef = useRef(0);
   const [artifactValidationAttempt, setArtifactValidationAttempt] = useState(0);
   const [artifactOpen, setArtifactOpen] = useState(false);
+  const [criticState, setCriticState] = useState<AgentCriticState>({ status: "idle" });
   const [markdownViewOpen, setMarkdownViewOpen] = useState(false);
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
@@ -229,6 +235,11 @@ export function AgentConversation({
   );
   const contextRecoveryTurnsRef = useRef(new Map<string, string>());
   const sessionRef = useRef<AgentSessionInfo | null>(null);
+  const criticSessionRef = useRef<AgentSessionInfo | null>(null);
+  const criticTurnIdRef = useRef<string | null>(null);
+  const criticResponseRef = useRef("");
+  const criticArtifactEnvelopeRef = useRef<string | null>(null);
+  const criticProviderLimitationsRef = useRef<string[]>([]);
   const draftSessionPromiseRef = useRef<{
     bundleRoot: string;
     promise: Promise<AgentSessionInfo>;
@@ -317,6 +328,12 @@ export function AgentConversation({
     artifactValidationRequestRef.current += 1;
     setArtifactWorkspace(emptyArtifact);
     setArtifactOpen(false);
+    criticSessionRef.current = null;
+    criticTurnIdRef.current = null;
+    criticResponseRef.current = "";
+    criticArtifactEnvelopeRef.current = null;
+    criticProviderLimitationsRef.current = [];
+    setCriticState({ status: "idle" });
   }, [bundleRoot, connection.connectionId]);
 
   useEffect(() => {
@@ -326,6 +343,7 @@ export function AgentConversation({
         artifactWorkspaceRef.current = emptyArtifact;
         artifactOriginMessageRef.current = null;
         setArtifactWorkspace(emptyArtifact);
+        setCriticState({ status: "idle" });
         setArtifactOpen(false);
       }
       return;
@@ -392,6 +410,7 @@ export function AgentConversation({
         artifactOriginMessageRef.current = artifactMessageId;
         artifactWorkspaceRef.current = ready;
         setArtifactWorkspace(ready);
+        setCriticState({ status: "idle" });
         setArtifactOpen(true);
       },
       (error: unknown) => {
@@ -776,6 +795,104 @@ export function AgentConversation({
     }));
   }
 
+  async function runArtifactCritic() {
+    if (!bundleRoot || !artifactEnvelope || criticState.status === "loading" ||
+      criticUnavailableReason !== null) return;
+    const artifactMarkdown = artifactEnvelope;
+    setCriticState({ status: "loading", limitations: [] });
+    try {
+      const request = await prepareAgentArtifactCritic(bundleRoot, artifactMarkdown);
+      setCriticState({ status: "loading", limitations: request.limitations });
+      const criticSession = await newAgentSession(connection.connectionId, bundleRoot);
+      if (criticSession.stagedChanges?.granted === true) {
+        throw new Error("Studio refused a critic session that unexpectedly carried a write grant.");
+      }
+      criticSessionRef.current = criticSession;
+      criticArtifactEnvelopeRef.current = artifactMarkdown;
+      criticResponseRef.current = "";
+      const turn = await promptAgentCritic(
+        connection.connectionId,
+        criticSession.sessionId,
+        request.prompt,
+      );
+      criticTurnIdRef.current = turn.turnId;
+      const providerLimitations = turn.capabilityContext
+        .filter((capability) => capability.support !== "full")
+        .map((capability) =>
+          `${capability.capabilityId} support is ${capability.support}.`
+        );
+      if (!turn.capabilityContext.some((capability) =>
+        capability.capabilityId === "okf-audit" && capability.support === "full"
+      )) {
+        providerLimitations.push(
+          "The provider did not report full okf-audit capability for this isolated session.",
+        );
+      }
+      criticProviderLimitationsRef.current = providerLimitations;
+    } catch (error: unknown) {
+      criticSessionRef.current = null;
+      criticTurnIdRef.current = null;
+      setCriticState((current) => ({
+        status: "error",
+        message: errorMessage(error),
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+    }
+  }
+
+  async function completeCriticTurn(event: AgentTurnEvent) {
+    if (criticTurnIdRef.current !== event.turnId) return;
+    const update = event.update;
+    const criticSessionId = criticSessionRef.current?.sessionId;
+    const artifactMarkdown = criticArtifactEnvelopeRef.current;
+    const response = criticResponseRef.current;
+    criticTurnIdRef.current = null;
+    if (update.kind === "failed") {
+      setCriticState((current) => ({
+        status: "error",
+        message: `The critic session failed. ${update.message}`,
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+      return;
+    }
+    if (update.kind !== "completed" || update.stopReason !== "end-turn" || !bundleRoot || !artifactMarkdown) {
+      setCriticState((current) => ({
+        status: "error",
+        message: "The critic stopped before returning a complete structured result.",
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+      return;
+    }
+    try {
+      const result = await validateAgentArtifactCritic(
+        bundleRoot,
+        artifactMarkdown,
+        response,
+      );
+      if (criticSessionRef.current?.sessionId !== criticSessionId) return;
+      if (result.status === "invalid") {
+        setCriticState((current) => ({
+          status: "error",
+          message: result.message,
+          limitations: current.status === "loading" ? current.limitations : [],
+        }));
+        return;
+      }
+      setCriticState({
+        status: "ready",
+        report: result.report,
+        providerLimitations: criticProviderLimitationsRef.current,
+      });
+    } catch (error: unknown) {
+      if (criticSessionRef.current?.sessionId !== criticSessionId) return;
+      setCriticState((current) => ({
+        status: "error",
+        message: errorMessage(error),
+        limitations: current.status === "loading" ? current.limitations : [],
+      }));
+    }
+  }
+
   const applyTerminalTurnEvent = useEffectEvent((event: AgentTurnEvent) => {
     completedTurnsRef.current.add(event.turnId);
     if (event.update.kind === "failed") {
@@ -804,6 +921,7 @@ export function AgentConversation({
   });
   const updateStagedChangesEffect = useEffectEvent(updateStagedChanges);
   const reportConnectionEnd = useEffectEvent(onConnectionEnd);
+  const completeCriticTurnEffect = useEffectEvent(completeCriticTurn);
 
   useEffect(() => {
     let stopUpdates: (() => void)[] = [];
@@ -811,6 +929,13 @@ export function AgentConversation({
     void Promise.allSettled([
       onAgentTurnUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
+        if (criticSessionRef.current?.sessionId === event.sessionId) {
+          if (event.update.kind === "text") criticResponseRef.current += event.update.text;
+          if (event.update.kind === "completed" || event.update.kind === "failed") {
+            void completeCriticTurnEffect(event);
+          }
+          return;
+        }
         if (sessionRef.current?.sessionId !== event.sessionId) return;
         if (event.update.kind === "capability-use") {
           const capabilityUse = event.update;
@@ -841,6 +966,18 @@ export function AgentConversation({
       }),
       onAgentPermissionUpdate((event) => {
         if (event.connectionId !== connection.connectionId) return;
+        if (criticSessionRef.current?.sessionId === event.sessionId) {
+          if (event.update.kind === "requested") {
+            criticProviderLimitationsRef.current = [
+              ...new Set([
+                ...criticProviderLimitationsRef.current,
+                `Permission escalation was rejected: ${event.update.title ?? "unnamed request"}.`,
+              ]),
+            ];
+            void respondAgentPermission(event.requestId, null, false);
+          }
+          return;
+        }
         if (sessionRef.current?.sessionId !== event.sessionId) return;
         setPendingPermissions((current) => applyPermissionEvent(current, event));
       }),
@@ -1099,6 +1236,7 @@ export function AgentConversation({
       );
       if (sessionRef.current?.sessionId !== sessionId) return;
       setExpandedDiff({ path: current.path, state: "ready", diff });
+      await runStagedValidation(sessionId, false);
     } catch (error: unknown) {
       if (sessionRef.current?.sessionId !== sessionId) return;
       setExpandedDiff({ path: current.path, state: "error", message: errorMessage(error) });
@@ -1142,10 +1280,13 @@ export function AgentConversation({
   async function validateStagedChanges() {
     const session = sessionRef.current;
     if (!session || stagedValidation.status === "loading") return;
-    const sessionId = session.sessionId;
+    await runStagedValidation(session.sessionId, true);
+  }
+
+  async function runStagedValidation(sessionId: string, clearActionError: boolean) {
     const requestId = stagedValidationRequestRef.current + 1;
     stagedValidationRequestRef.current = requestId;
-    setStageError(null);
+    if (clearActionError) setStageError(null);
     setStagedValidation({ status: "loading" });
     try {
       const result = await validateAgentStagedChanges(
@@ -1165,6 +1306,17 @@ export function AgentConversation({
       setStagedValidation({ status: "error", message: errorMessage(error) });
     }
   }
+
+  const runStagedValidationEffect = useEffectEvent(runStagedValidation);
+
+  useEffect(() => {
+    if (!stagedChanges || stagedChanges.files.length === 0) return;
+    const sessionId = stagedChanges.sessionId;
+    const timeout = window.setTimeout(() => {
+      void runStagedValidationEffect(sessionId, false);
+    }, 200);
+    return () => window.clearTimeout(timeout);
+  }, [stagedChanges]);
 
   async function applyStagedChanges() {
     const session = sessionRef.current;
@@ -2028,12 +2180,18 @@ export function AgentConversation({
           {artifactOpen ? (
             <AgentArtifactWorkspace
               state={artifactWorkspace}
+              criticState={criticState}
+              criticProviderName={connection.agent?.title ?? connection.agent?.name ?? "Selected agent"}
+              criticUnavailableReason={criticUnavailableReason}
               selectedConceptId={activeConcept?.id}
               sending={isSubmitting || activeTurn !== null}
               onShowConversation={() => setArtifactOpen(false)}
               onRetry={() => setArtifactValidationAttempt((attempt) => attempt + 1)}
               onOpenConcept={onOpenConcept}
               onSendRevision={sendArtifactRevision}
+              onRunCritic={criticUnavailableReason === null
+                ? () => void runArtifactCritic()
+                : undefined}
             />
           ) : (
             <TranscriptSurface

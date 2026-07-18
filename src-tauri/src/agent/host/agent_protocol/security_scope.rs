@@ -203,6 +203,10 @@ impl AgentSecurityScopeInfo {
     pub(crate) fn unattended_eligible(&self) -> bool {
         self.profile.unattended_eligible
     }
+
+    pub(crate) fn is_native_provider(&self) -> bool {
+        self.profile.id == AgentSecurityProfileId::StudioNativeMediatedV1
+    }
 }
 
 fn external_stop_conditions() -> Vec<AgentSecurityStopCondition> {

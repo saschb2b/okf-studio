@@ -483,6 +483,7 @@ enum AgentHostCommand {
         context_paths: Vec<String>,
         sources: Vec<AgentSourceInput>,
         task_context: Option<OkfTaskContextInput>,
+        mode: AgentPromptMode,
         response: tokio::sync::oneshot::Sender<Result<AgentTurnInfo, String>>,
     },
     CancelTurn {
@@ -490,6 +491,26 @@ enum AgentHostCommand {
         turn_id: String,
         response: tokio::sync::oneshot::Sender<Result<bool, String>>,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AgentPromptMode {
+    Standard,
+    IsolatedCritic,
+}
+
+fn local_prompt_tools(
+    mode: AgentPromptMode,
+    source_tools: Vec<agent_local::LocalToolDefinition>,
+) -> Vec<agent_local::LocalToolDefinition> {
+    if mode == AgentPromptMode::IsolatedCritic {
+        return Vec::new();
+    }
+    let mut tools = agent_studio::native_skill_tools();
+    tools.extend(agent_mcp::native_tool_definitions());
+    tools.extend(source_tools);
+    tools.extend(agent_native_stage::native_tool_definitions());
+    tools
 }
 
 impl Drop for AgentHostState {
@@ -771,8 +792,18 @@ async fn run_local_connection(
                 context_paths,
                 sources,
                 task_context,
+                mode,
                 response,
             } => {
+                if mode == AgentPromptMode::IsolatedCritic
+                    && (!context_paths.is_empty() || !sources.is_empty() || task_context.is_some())
+                {
+                    let _ = response.send(Err(
+                        "An isolated critic prompt accepts only its Rust-prepared evidence packet."
+                            .to_string(),
+                    ));
+                    continue;
+                }
                 if !context_paths.is_empty() {
                     let _ = response.send(Err(
                         "Local Studio Agent bundle attachments are unavailable; use its scoped OKF tools."
@@ -877,10 +908,7 @@ async fn run_local_connection(
                     let tool_live = Arc::clone(&task_live);
                     let result = tokio::task::spawn_blocking(move || {
                         let request_messages = local_request_messages(&messages);
-                        let mut tools = agent_studio::native_skill_tools();
-                        tools.extend(agent_mcp::native_tool_definitions());
-                        tools.extend(source_tools);
-                        tools.extend(agent_native_stage::native_tool_definitions());
+                        let tools = local_prompt_tools(mode, source_tools);
                         agent_local::chat_with_tools(
                             &task_runtime,
                             &request_messages,
@@ -1859,11 +1887,63 @@ pub async fn prompt(
             context_paths,
             sources,
             task_context,
+            mode: AgentPromptMode::Standard,
             response: response_tx,
         })
         .await
         .map_err(|_| "Agent connection ended before accepting the prompt.".to_string())?;
     command_response(response_rx, "prompt").await
+}
+
+pub async fn prompt_isolated_critic(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: String,
+    text: String,
+) -> Result<AgentTurnInfo, String> {
+    let text = text.trim().to_string();
+    if text.is_empty() || text.chars().count() > MAX_PROMPT_CHARS {
+        return Err("The prepared critic prompt is empty or exceeds the host limit.".to_string());
+    }
+    let commands = {
+        let workers = state
+            .workers
+            .lock()
+            .map_err(|_| "Agent host state is unavailable.".to_string())?;
+        let worker = workers
+            .get(connection_id)
+            .ok_or_else(|| "Agent connection was not found.".to_string())?;
+        let is_native = worker
+            .security_scope
+            .get()
+            .is_some_and(AgentSecurityScopeInfo::is_native_provider);
+        if !is_native {
+            return Err(
+                "Isolated artifact critique requires Studio Agent; external ACP processes are not eligible."
+                    .to_string(),
+            );
+        }
+        if !worker.stages.write_grant_is_denied(&session_id)? {
+            return Err("Studio refused a critic session with a write grant.".to_string());
+        }
+        worker.commands.clone()
+    };
+    let turn_id = format!("turn-{}", uuid::Uuid::new_v4());
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::Prompt {
+            session_id,
+            turn_id,
+            text,
+            context_paths: Vec::new(),
+            sources: Vec::new(),
+            task_context: None,
+            mode: AgentPromptMode::IsolatedCritic,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before accepting the critic prompt.".to_string())?;
+    command_response(response_rx, "critic prompt").await
 }
 
 pub async fn cancel_turn(
@@ -2699,7 +2779,11 @@ async fn run_connection(
                                 };
                                 let _ = response.send(result);
                             }
-                            AgentHostCommand::Prompt { session_id, turn_id, text, context_paths, sources, task_context, response } => {
+                            AgentHostCommand::Prompt { session_id, turn_id, text, context_paths, sources, task_context, mode, response } => {
+                                if mode == AgentPromptMode::IsolatedCritic {
+                                    let _ = response.send(Err("Isolated artifact critique is unavailable to external ACP processes.".to_string()));
+                                    continue;
+                                }
                                 if sources.iter().any(|source| source.image_data.is_some()) && !supports_images {
                                     let _ = response.send(Err("This agent did not advertise image prompt support.".to_string()));
                                     continue;
@@ -3504,6 +3588,16 @@ mod tests {
         ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
     };
     use agent_client_protocol::{Dispatch, Responder};
+
+    #[test]
+    fn isolated_critic_prompt_has_no_tools() {
+        let tools = local_prompt_tools(
+            AgentPromptMode::IsolatedCritic,
+            agent_studio::native_skill_tools(),
+        );
+        assert!(tools.is_empty());
+        assert!(!local_prompt_tools(AgentPromptMode::Standard, Vec::new()).is_empty());
+    }
 
     fn test_security_scope() -> Arc<OnceLock<AgentSecurityScopeInfo>> {
         #[cfg(unix)]
@@ -4997,6 +5091,7 @@ mod tests {
                 context_paths: Vec::new(),
                 sources: Vec::new(),
                 task_context: None,
+                mode: AgentPromptMode::Standard,
                 response: prompt_tx,
             })
             .await
@@ -5464,6 +5559,7 @@ mod tests {
                 context_paths: Vec::new(),
                 sources: Vec::new(),
                 task_context: None,
+                mode: AgentPromptMode::Standard,
                 response: prompt_tx,
             })
             .await
@@ -5700,6 +5796,7 @@ mod tests {
                 context_paths: Vec::new(),
                 sources: Vec::new(),
                 task_context: None,
+                mode: AgentPromptMode::Standard,
                 response: prompt_tx,
             })
             .await
@@ -6221,6 +6318,7 @@ mod tests {
                 context_paths: Vec::new(),
                 sources: Vec::new(),
                 task_context: None,
+                mode: AgentPromptMode::Standard,
                 response: prompt_tx,
             })
             .await

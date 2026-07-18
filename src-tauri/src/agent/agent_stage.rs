@@ -413,6 +413,17 @@ impl SessionStages {
         Ok(snapshot(session_id, stage))
     }
 
+    pub fn write_grant_is_denied(&self, session_id: &str) -> Result<bool, String> {
+        let sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get(session_id)
+            .ok_or_else(|| "The ACP session is not active.".to_string())?;
+        Ok(matches!(stage.grant, SessionWriteGrant::Denied))
+    }
+
     #[cfg(test)]
     fn set_grant(&self, session_id: &str, granted: bool) -> Result<AgentStagedChangesInfo, String> {
         let mut sessions = self

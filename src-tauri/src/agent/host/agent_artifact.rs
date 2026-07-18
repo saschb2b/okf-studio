@@ -143,6 +143,44 @@ pub struct AgentArtifact {
     pub items: Vec<AgentArtifactItem>,
     pub missing_fields: Vec<String>,
     pub large: bool,
+    pub verification: AgentArtifactVerification,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentArtifactVerificationCategory {
+    Completeness,
+    Evidence,
+    Identity,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentArtifactVerificationLevel {
+    Error,
+    Warning,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentArtifactVerificationFinding {
+    pub rule_id: &'static str,
+    pub rule_version: u32,
+    pub category: AgentArtifactVerificationCategory,
+    pub level: AgentArtifactVerificationLevel,
+    pub message: String,
+    pub field_ids: Vec<String>,
+    pub concept_ids: Vec<String>,
+    pub source_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentArtifactVerification {
+    pub errors: usize,
+    pub warnings: usize,
+    pub completion_blocked: bool,
+    pub findings: Vec<AgentArtifactVerificationFinding>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -409,7 +447,7 @@ fn validate_envelope(envelope: ArtifactEnvelope, bundle: &Bundle) -> Result<Agen
     let large = items.len() > LARGE_ITEM_COUNT
         || concept_references.len() > LARGE_ITEM_COUNT
         || total_text > LARGE_TEXT_CHARS;
-    Ok(AgentArtifact {
+    let mut artifact = AgentArtifact {
         schema_version: envelope.schema_version,
         artifact_id: envelope.artifact_id,
         kind: envelope.kind,
@@ -426,7 +464,145 @@ fn validate_envelope(envelope: ArtifactEnvelope, bundle: &Bundle) -> Result<Agen
         items,
         missing_fields,
         large,
-    })
+        verification: AgentArtifactVerification::default(),
+    };
+    artifact.verification = verify_artifact(&artifact);
+    Ok(artifact)
+}
+
+fn verify_artifact(artifact: &AgentArtifact) -> AgentArtifactVerification {
+    let mut findings = Vec::new();
+
+    if artifact.status == AgentArtifactStatus::Partial || !artifact.missing_fields.is_empty() {
+        findings.push(AgentArtifactVerificationFinding {
+            rule_id: "artifact-completeness",
+            rule_version: 1,
+            category: AgentArtifactVerificationCategory::Completeness,
+            level: AgentArtifactVerificationLevel::Error,
+            message: "The artifact is partial and cannot be treated as complete.".to_string(),
+            field_ids: artifact.missing_fields.clone(),
+            concept_ids: Vec::new(),
+            source_ids: Vec::new(),
+        });
+    }
+
+    let declared_concepts = artifact
+        .concept_references
+        .iter()
+        .map(|reference| reference.concept_id.as_str())
+        .collect::<BTreeSet<_>>();
+    let out_of_scope_items = artifact
+        .items
+        .iter()
+        .filter_map(|item| {
+            let path = item.concept_path.as_deref()?;
+            let id = path.strip_suffix(".md").unwrap_or(path);
+            (!declared_concepts.contains(id)).then(|| id.to_string())
+        })
+        .collect::<BTreeSet<_>>();
+    if !out_of_scope_items.is_empty() {
+        findings.push(AgentArtifactVerificationFinding {
+            rule_id: "artifact-item-scope",
+            rule_version: 1,
+            category: AgentArtifactVerificationCategory::Identity,
+            level: AgentArtifactVerificationLevel::Error,
+            message: "One or more work items name concepts outside the artifact's declared scope."
+                .to_string(),
+            field_ids: Vec::new(),
+            concept_ids: out_of_scope_items.into_iter().collect(),
+            source_ids: Vec::new(),
+        });
+    }
+
+    let proposed_concepts = artifact
+        .concept_references
+        .iter()
+        .filter(|reference| !reference.exists)
+        .map(|reference| reference.concept_id.clone())
+        .collect::<Vec<_>>();
+    if !proposed_concepts.is_empty() {
+        findings.push(AgentArtifactVerificationFinding {
+            rule_id: "artifact-proposed-concepts",
+            rule_version: 1,
+            category: AgentArtifactVerificationCategory::Identity,
+            level: AgentArtifactVerificationLevel::Warning,
+            message: "The artifact refers to concepts that do not yet exist in the active bundle."
+                .to_string(),
+            field_ids: Vec::new(),
+            concept_ids: proposed_concepts,
+            source_ids: Vec::new(),
+        });
+    }
+
+    let used_sources = artifact
+        .citations
+        .iter()
+        .map(|citation| citation.source_id.as_str())
+        .chain(
+            artifact
+                .items
+                .iter()
+                .flat_map(|item| item.source_ids.iter().map(String::as_str)),
+        )
+        .collect::<BTreeSet<_>>();
+    let unused_sources = artifact
+        .sources
+        .iter()
+        .filter(|source| !used_sources.contains(source.id.as_str()))
+        .map(|source| source.id.clone())
+        .collect::<Vec<_>>();
+    if !unused_sources.is_empty() {
+        findings.push(AgentArtifactVerificationFinding {
+            rule_id: "artifact-unused-sources",
+            rule_version: 1,
+            category: AgentArtifactVerificationCategory::Evidence,
+            level: AgentArtifactVerificationLevel::Warning,
+            message: "Declared sources are not connected to a citation or work item.".to_string(),
+            field_ids: Vec::new(),
+            concept_ids: Vec::new(),
+            source_ids: unused_sources,
+        });
+    }
+
+    let unsupported_items = artifact
+        .items
+        .iter()
+        .filter(|item| {
+            matches!(
+                item.status,
+                AgentArtifactItemStatus::Complete | AgentArtifactItemStatus::Advisory
+            ) && item.source_ids.is_empty()
+                && item.concept_path.is_none()
+        })
+        .map(|item| item.id.clone())
+        .collect::<Vec<_>>();
+    if !unsupported_items.is_empty() {
+        findings.push(AgentArtifactVerificationFinding {
+            rule_id: "artifact-item-evidence",
+            rule_version: 1,
+            category: AgentArtifactVerificationCategory::Evidence,
+            level: AgentArtifactVerificationLevel::Warning,
+            message: format!(
+                "Completed or advisory work items lack a concept or source reference: {}.",
+                unsupported_items.join(", ")
+            ),
+            field_ids: Vec::new(),
+            concept_ids: Vec::new(),
+            source_ids: Vec::new(),
+        });
+    }
+
+    let errors = findings
+        .iter()
+        .filter(|finding| finding.level == AgentArtifactVerificationLevel::Error)
+        .count();
+    let warnings = findings.len().saturating_sub(errors);
+    AgentArtifactVerification {
+        errors,
+        warnings,
+        completion_blocked: errors > 0,
+        findings,
+    }
 }
 
 fn validate_source_reference(
@@ -620,6 +796,8 @@ mod tests {
         assert_eq!(artifact.concept_references.len(), 1);
         assert!(artifact.concept_references[0].exists);
         assert!(artifact.missing_fields.is_empty());
+        assert!(!artifact.verification.completion_blocked);
+        assert!(artifact.verification.findings.is_empty());
     }
 
     #[test]
@@ -636,6 +814,8 @@ mod tests {
             panic!("expected partial artifact");
         };
         assert_eq!(artifact.missing_fields, ["question", "conclusion"]);
+        assert!(artifact.verification.completion_blocked);
+        assert_eq!(artifact.verification.errors, 1);
 
         for body in [
             serde_json::json!({"bundleFingerprint": "okf-health-revision-stale"}),

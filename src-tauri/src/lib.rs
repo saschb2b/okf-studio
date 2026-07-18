@@ -9,6 +9,8 @@
 // host — the running ACP and MCP process host.
 #[path = "agent/host/agent_artifact.rs"]
 mod agent_artifact;
+#[path = "agent/host/agent_critic.rs"]
+mod agent_critic;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_process.rs"]
@@ -263,6 +265,37 @@ async fn validate_agent_artifact(
 }
 
 #[tauri::command]
+async fn prepare_agent_artifact_critic(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    artifact_markdown: String,
+) -> Result<agent_critic::AgentCriticRequest, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_critic::prepare(&artifact_markdown, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not prepare the artifact critic.".to_string())?
+}
+
+#[tauri::command]
+async fn validate_agent_artifact_critic(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    artifact_markdown: String,
+    critic_markdown: String,
+) -> Result<agent_critic::AgentCriticValidation, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_critic::validate(&artifact_markdown, &critic_markdown, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not validate the artifact critic.".to_string())
+}
+
+#[tauri::command]
 fn agent_catalog() -> Result<agent_catalog::AgentCatalog, String> {
     agent_catalog::load()
 }
@@ -465,6 +498,16 @@ async fn prompt_agent(
         task_context,
     )
     .await
+}
+
+#[tauri::command]
+async fn prompt_agent_critic(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    text: String,
+) -> Result<agent_protocol::AgentTurnInfo, String> {
+    agent_protocol::prompt_isolated_critic(state.inner(), &connection_id, session_id, text).await
 }
 
 #[tauri::command]
@@ -997,6 +1040,8 @@ pub fn run() {
             federated_sources,
             federated_relationship_candidates,
             validate_agent_artifact,
+            prepare_agent_artifact_critic,
+            validate_agent_artifact_critic,
             agent_catalog,
             okf_capability_catalog,
             agent_security_host_status,
@@ -1018,6 +1063,7 @@ pub fn run() {
             load_agent_session,
             set_agent_session_config_option,
             prompt_agent,
+            prompt_agent_critic,
             pick_agent_text_sources,
             pick_agent_source_folder,
             pick_agent_image_sources,

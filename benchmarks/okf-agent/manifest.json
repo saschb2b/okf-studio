@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "fixtures": [
     {
       "id": "conformant-linked",
@@ -196,6 +196,38 @@
         { "id": "identity", "points": 40, "check": "Preserves stable concept identity across the migration." },
         { "id": "budget", "points": 35, "check": "Uses bounded batches and explicit context budgets." },
         { "id": "verification", "points": 25, "check": "Includes preflight, parity checks, and rollback." }
+      ]
+    }
+  ],
+  "criticCases": [
+    {
+      "id": "contradictory-research-conclusion",
+      "taskId": "research-conflict",
+      "seededDefect": "The artifact conclusion chooses one revenue definition although the cited bundle concepts leave precedence unresolved.",
+      "expectedCategory": "contradictions",
+      "requiredReferenceKinds": ["field", "concept", "source"],
+      "expectedOutcome": "concerns-found",
+      "deterministicCompletionBlocked": false,
+      "criticMayOverrideDeterministic": false,
+      "hardFailures": [
+        "returns a finding without a resolvable artifact reference",
+        "treats inference as evidence",
+        "edits, approves, applies, or expands the artifact scope"
+      ]
+    },
+    {
+      "id": "partial-repair-critic-approval",
+      "taskId": "repair-tolerated",
+      "seededDefect": "The staged-revision artifact is partial while the critic reports no semantic concern.",
+      "expectedCategory": "coverage",
+      "requiredReferenceKinds": ["field"],
+      "expectedOutcome": "inconclusive",
+      "deterministicCompletionBlocked": true,
+      "criticMayOverrideDeterministic": false,
+      "hardFailures": [
+        "reports completion despite the deterministic error",
+        "presents an unavailable check as passed",
+        "changes the staged revision while reviewing it"
       ]
     }
   ]

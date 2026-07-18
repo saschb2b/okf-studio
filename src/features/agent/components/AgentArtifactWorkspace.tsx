@@ -1,9 +1,9 @@
-import type { AgentArtifact } from "@/features/agent/artifact.ts";
+import type { AgentArtifact, AgentCriticState } from "@/features/agent/artifact.ts";
 import {
   AGENT_ARTIFACT_KIND_LABELS,
   applyArtifactFieldEdits,
 } from "@/features/agent/artifact.ts";
-import { ArrowLeft, CircleAlert, ExternalLink, FileText, RotateCcw, Send } from "lucide-react";
+import { ArrowLeft, CircleAlert, CircleHelp, ExternalLink, FileText, RotateCcw, ScanSearch, Send, ShieldCheck } from "lucide-react";
 import { useId, useState } from "react";
 import "./AgentArtifactWorkspace.css";
 
@@ -18,22 +18,30 @@ export type AgentArtifactWorkspaceState =
 
 interface AgentArtifactWorkspaceProps {
   state: AgentArtifactWorkspaceState;
+  criticState?: AgentCriticState;
+  criticProviderName?: string;
+  criticUnavailableReason?: string | null;
   selectedConceptId?: string | null;
   sending?: boolean;
   onShowConversation: () => void;
   onRetry?: () => void;
   onOpenConcept?: (conceptId: string) => void;
   onSendRevision?: (artifact: AgentArtifact, intent: "continue" | "export") => void;
+  onRunCritic?: () => void;
 }
 
 export function AgentArtifactWorkspace({
   state,
+  criticState = { status: "idle" },
+  criticProviderName = "Selected agent",
+  criticUnavailableReason = null,
   selectedConceptId = null,
   sending = false,
   onShowConversation,
   onRetry,
   onOpenConcept,
   onSendRevision,
+  onRunCritic,
 }: AgentArtifactWorkspaceProps) {
   if (state.status === "empty" || state.status === "loading" || state.status === "invalid") {
     return (
@@ -76,34 +84,46 @@ export function AgentArtifactWorkspace({
     <ArtifactReadyView
       key={`${state.artifact.artifactId}:${state.artifact.revision}`}
       state={state}
+      criticState={criticState}
+      criticProviderName={criticProviderName}
+      criticUnavailableReason={criticUnavailableReason}
       selectedConceptId={selectedConceptId}
       sending={sending}
       onShowConversation={onShowConversation}
       onRetry={onRetry}
       onOpenConcept={onOpenConcept}
       onSendRevision={onSendRevision}
+      onRunCritic={onRunCritic}
     />
   );
 }
 
 interface ArtifactReadyViewProps {
   state: Extract<AgentArtifactWorkspaceState, { status: "ready" | "stale" }>;
+  criticState: AgentCriticState;
+  criticProviderName: string;
+  criticUnavailableReason: string | null;
   selectedConceptId: string | null;
   sending: boolean;
   onShowConversation: () => void;
   onRetry?: () => void;
   onOpenConcept?: (conceptId: string) => void;
   onSendRevision?: (artifact: AgentArtifact, intent: "continue" | "export") => void;
+  onRunCritic?: () => void;
 }
 
 function ArtifactReadyView({
   state,
+  criticState,
+  criticProviderName,
+  criticUnavailableReason,
   selectedConceptId,
   sending,
   onShowConversation,
   onRetry,
   onOpenConcept,
   onSendRevision,
+  onRunCritic,
 }: ArtifactReadyViewProps) {
   const { artifact } = state;
   const titleId = useId();
@@ -175,6 +195,13 @@ function ArtifactReadyView({
       )}
 
       <div className="agent-artifact__body">
+        <ArtifactVerificationPanel
+          artifact={artifact}
+          criticState={criticState}
+        criticProviderName={criticProviderName}
+        criticUnavailableReason={criticUnavailableReason}
+          onRunCritic={onRunCritic}
+        />
         {artifact.fields.length > 0 && (
           <section className="agent-artifact__section" aria-labelledby={fieldsId}>
             <h4 id={fieldsId}>Planning fields</h4>
@@ -301,6 +328,156 @@ function ArtifactReadyView({
           {sending ? "Sending..." : `Send revision ${revision}`}
         </button>
       </footer>
+    </section>
+  );
+}
+
+interface ArtifactVerificationPanelProps {
+  artifact: AgentArtifact;
+  criticState: AgentCriticState;
+  criticProviderName: string;
+  criticUnavailableReason: string | null;
+  onRunCritic?: () => void;
+}
+
+function ArtifactVerificationPanel({
+  artifact,
+  criticState,
+  criticProviderName,
+  criticUnavailableReason,
+  onRunCritic,
+}: ArtifactVerificationPanelProps) {
+  const verificationId = useId();
+  const criticId = useId();
+  const verification = artifact.verification;
+  const resultLabel = verification.completionBlocked
+    ? `${verification.errors} blocking`
+    : verification.warnings > 0
+      ? `${verification.warnings} advisory`
+      : "Checks passed";
+
+  return (
+    <section className="agent-artifact__verification" aria-labelledby={verificationId}>
+      <header className="agent-artifact__verification-header">
+        <ShieldCheck size={18} aria-hidden="true" />
+        <div>
+          <h4 id={verificationId}>Deterministic verification</h4>
+          <p>Studio checks this exact artifact revision before any model critique.</p>
+        </div>
+        <span data-blocked={verification.completionBlocked || undefined}>{resultLabel}</span>
+      </header>
+
+      {verification.findings.length === 0 ? (
+        <p className="agent-artifact__verification-empty">
+          No deterministic completeness, identity, or evidence defect was found.
+        </p>
+      ) : (
+        <ul className="agent-artifact__verification-findings">
+          {verification.findings.map((finding) => (
+            <li key={finding.ruleId} data-level={finding.level}>
+              <strong>{finding.category}</strong>
+              <span>{finding.message}</span>
+              <small>{finding.ruleId} v{finding.ruleVersion}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <section className="agent-artifact__critic" aria-labelledby={criticId}>
+        <header>
+          <ScanSearch size={17} aria-hidden="true" />
+          <div>
+            <h5 id={criticId}>Independent critic</h5>
+            <p>{criticProviderName} · separate read-only session</p>
+          </div>
+        </header>
+
+        {criticState.status === "idle" && (
+          <div className="agent-artifact__critic-action">
+            <p>{criticUnavailableReason ?? "Optionally check semantic coverage and contradictions. The critic cannot clear deterministic failures."}</p>
+            <button type="button" className="btn ghost" disabled={!onRunCritic || criticUnavailableReason !== null} onClick={onRunCritic}>
+              Run critic
+            </button>
+          </div>
+        )}
+
+        {criticState.status === "loading" && (
+          <div className="agent-artifact__critic-state" role="status">
+            <span className="spinner" aria-hidden="true" />
+            <p>Reviewing the bounded artifact context. Writes and permission escalation are disabled.</p>
+          </div>
+        )}
+
+        {criticState.status === "error" && (
+          <div className="agent-artifact__critic-state agent-artifact__critic-state--error" role="alert">
+            <CircleAlert size={16} aria-hidden="true" />
+            <div>
+              <strong>Critic result unavailable</strong>
+              <p>{criticState.message}</p>
+            </div>
+            <button type="button" className="btn ghost" disabled={!onRunCritic} onClick={onRunCritic}>
+              Retry
+            </button>
+          </div>
+        )}
+
+        {criticState.status === "ready" && (
+          <div className="agent-artifact__critic-report">
+            <div className="agent-artifact__critic-outcome">
+              <strong>{criticState.report.outcome.replaceAll("-", " ")}</strong>
+              <span>
+                {criticState.report.comparison.agreements.length} agreements ·{" "}
+                {criticState.report.comparison.disagreements.length} disagreements ·{" "}
+                {criticState.report.comparison.unverifiedQuestions.length} open questions
+              </span>
+              <button type="button" className="btn ghost" disabled={!onRunCritic} onClick={onRunCritic}>
+                Run again
+              </button>
+            </div>
+
+            <ul className="agent-artifact__critic-checks">
+              {criticState.report.checks.map((check) => (
+                <li key={check.category} data-status={check.status}>
+                  <span>{check.category.replaceAll("-", " ")}</span>
+                  <strong>{check.status}</strong>
+                  <small>{check.detail}</small>
+                </li>
+              ))}
+            </ul>
+
+            {criticState.report.findings.length > 0 && (
+              <ul className="agent-artifact__critic-findings">
+                {criticState.report.findings.map((finding) => (
+                  <li key={finding.id} data-severity={finding.severity}>
+                    <CircleHelp size={14} aria-hidden="true" />
+                    <div>
+                      <strong>{finding.category.replaceAll("-", " ")}</strong>
+                      <p>{finding.claim}</p>
+                      <small>
+                        {finding.references.map((reference) => `${reference.kind}:${reference.id}`).join(" · ")}
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {(criticState.report.limitations.length > 0 || criticState.providerLimitations.length > 0) && (
+              <details className="agent-artifact__critic-limitations">
+                <summary>Capabilities and limitations</summary>
+                <ul>
+                  {criticState.report.limitations.map((limitation) => (
+                    <li key={limitation.code}>{limitation.detail}</li>
+                  ))}
+                  {criticState.providerLimitations.map((limitation, index) => (
+                    <li key={`${index}:${limitation}`}>{limitation}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+      </section>
     </section>
   );
 }

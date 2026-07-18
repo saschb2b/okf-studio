@@ -3,7 +3,7 @@ type: Feature
 title: Structured Agent Work
 description: Rust-validated OKF plans, reports, research, impact maps, migrations, inventories, and staged revisions that remain inspectable beside the conversation.
 tags: [feature, agents, artifacts, planning, research, review]
-timestamp: 2026-07-18T05:45:00Z
+timestamp: 2026-07-18T06:54:26Z
 ---
 
 # Purpose
@@ -32,6 +32,8 @@ Export is not a direct file write. The agent receives an instruction to turn the
 
 # Isolation and verification
 
-The `AgentArtifactWorkspace` Storybook component covers ready, loading, empty, partial, invalid, stale, large, and 360-pixel states. Its interaction checks cover concept selection, local field edits, explicit send, retry, stale read-only behavior, focus, overflow, and revision handling. Storybook MCP is the required isolation screen; whole-panel integration remains a separate check.
+Every accepted revision carries the Rust-owned deterministic result described in [Artifact Verification and Critic Passes](artifact-verification.md). A partial or out-of-scope artifact remains completion-blocked even when an optional critic finds no semantic concern. The critic is a separate read-only session, not another revision editor or approval step.
+
+The `AgentArtifactWorkspace` Storybook component covers ready, loading, empty, partial, invalid, stale, large, deterministic verification, compared and unavailable critic results, a Standard-agent boundary, and 360-pixel states. Its interaction checks cover concept selection, local field edits, explicit send, retry, stale read-only behavior, focus, overflow, and revision handling. Storybook MCP is the required isolation screen; whole-panel integration remains a separate check.
 
 Related architecture: [Agent System](../architecture/agent-system.md). Related product sequence: [OKF Agent Specialization](../product/agent-specialization-roadmap.md).

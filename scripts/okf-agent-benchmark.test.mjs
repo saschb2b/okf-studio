@@ -14,6 +14,7 @@ test("accepts the frozen OKF task and fixture contract", () => {
   assert.equal(summary.fixtureCount, 6);
   assert.equal(summary.taskCount, 8);
   assert.equal(summary.curatedCapabilityCount, 8);
+  assert.equal(summary.criticCaseCount, 2);
   assert.deepEqual(summary.capabilityIds, [
     "okf-audit",
     "okf-create",
@@ -94,5 +95,25 @@ test("rejects score weights that do not total 100", () => {
   assert.throws(
     () => validateManifest(manifest),
     /Task inspect-linked score weights must total 100, received 99/,
+  );
+});
+
+test("rejects a critic contract without resolvable claim reference kinds", () => {
+  const manifest = structuredClone(loadManifest());
+  manifest.criticCases[0].requiredReferenceKinds = ["paragraph"];
+
+  assert.throws(
+    () => validateManifest(manifest),
+    /uses an unsupported reference kind/,
+  );
+});
+
+test("rejects critic authority over deterministic completion", () => {
+  const manifest = structuredClone(loadManifest());
+  manifest.criticCases[0].criticMayOverrideDeterministic = true;
+
+  assert.throws(
+    () => validateManifest(manifest),
+    /must not let a critic override deterministic checks/,
   );
 });

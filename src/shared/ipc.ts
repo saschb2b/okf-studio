@@ -57,7 +57,11 @@ import {
 } from "@/features/agent/threadMetadata.ts";
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
 import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
-import type { AgentArtifactValidation } from "@/features/agent/artifact.ts";
+import type {
+  AgentArtifactValidation,
+  AgentCriticRequest,
+  AgentCriticValidation,
+} from "@/features/agent/artifact.ts";
 import type {
   BundleLibraryEntry,
   FederatedBundleSelection,
@@ -241,6 +245,39 @@ export async function validateAgentArtifact(
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentArtifactValidation>("validate_agent_artifact", { root, markdown });
+}
+
+export async function prepareAgentArtifactCritic(
+  root: string,
+  artifactMarkdown: string,
+): Promise<AgentCriticRequest> {
+  if (!isTauri()) {
+    throw new Error("The desktop host is required to prepare an isolated critic pass.");
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCriticRequest>("prepare_agent_artifact_critic", {
+    root,
+    artifactMarkdown,
+  });
+}
+
+export async function validateAgentArtifactCritic(
+  root: string,
+  artifactMarkdown: string,
+  criticMarkdown: string,
+): Promise<AgentCriticValidation> {
+  if (!isTauri()) {
+    return {
+      status: "invalid",
+      message: "The desktop host is required to validate critic output.",
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCriticValidation>("validate_agent_artifact_critic", {
+    root,
+    artifactMarkdown,
+    criticMarkdown,
+  });
 }
 
 function browserSecurityPlatform(): AgentSecurityHostStatus["platform"] {
@@ -1221,6 +1258,22 @@ export interface AgentSourceInput {
   adapterReceipt?: AgentSourceAdapterReceipt;
 }
 
+export async function promptAgentCritic(
+  connectionId: string,
+  sessionId: string,
+  text: string,
+): Promise<AgentTurnInfo> {
+  if (!isTauri()) {
+    return promptAgent(connectionId, sessionId, text);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentTurnInfo>("prompt_agent_critic", {
+    connectionId,
+    sessionId,
+    text,
+  });
+}
+
 export type AgentSourceDiscovery = "file" | "folder" | "url" | "image";
 
 export interface AgentSourceDiagnostic {
@@ -2027,6 +2080,27 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
 }
 
 function mockAgentResponse(text: string, taskId?: OkfTaskId): string {
+  if (text.startsWith("OKF critic pass for ")) {
+    const artifactId = /"artifactId"\s*:\s*"([^"]+)"/u.exec(text)?.[1] ?? "mock-artifact";
+    const artifactRevision = Number(/"revision"\s*:\s*(\d+)/u.exec(text)?.[1] ?? "1");
+    const bundleFingerprint = /"bundleFingerprint"\s*:\s*"([^"]+)"/u.exec(text)?.[1] ??
+      "okf-health-revision-browser-mock";
+    return "The bounded critic pass found no additional concern.\n\n```okf-critic\n" +
+      JSON.stringify({
+        schemaVersion: 1,
+        artifactId,
+        artifactRevision,
+        bundleFingerprint,
+        checks: [
+          { category: "coverage", status: "checked", detail: "Declared scope was reviewed." },
+          { category: "contradictions", status: "checked", detail: "No contradiction was found." },
+          { category: "unsupported-claims", status: "checked", detail: "Cited claims were reviewed." },
+          { category: "missed-relationships", status: "checked", detail: "Declared relationships were reviewed." },
+        ],
+        findings: [],
+        limitations: [],
+      }, null, 2) + "\n```";
+  }
   if (text === "/compact") {
     return "## Context summary\n\n- The thread is reviewing the active OKF bundle.\n" +
       "- Tool locations may open only matching bundle concepts.\n" +

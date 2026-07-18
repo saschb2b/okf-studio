@@ -3,7 +3,7 @@ type: Architecture Decision
 title: OKF Agent Benchmarking
 description: The frozen corpus, task contracts, deterministic merge gate, and opt-in provider evaluation for OKF-specialized agents.
 tags: [architecture, agents, benchmarks, testing, evaluation]
-timestamp: 2026-07-18T00:16:16Z
+timestamp: 2026-07-18T06:54:26Z
 ---
 
 # Decision
@@ -19,7 +19,7 @@ Provider output cannot redefine the expected parser facts. A fluent answer that 
 
 # Frozen corpus
 
-The first corpus contains five checked-in bundles and one deterministic generated-scale specification:
+The first corpus contains five checked-in bundles and one deterministic generated-scale specification. Manifest schema 2 also freezes critic cases that seed semantic defects, require resolvable artifact reference kinds, and prohibit critic authority over deterministic completion:
 
 | Fixture | Purpose |
 | --- | --- |
@@ -49,7 +49,7 @@ The manifest checker rejects duplicate IDs, unknown fixtures, path traversal, sy
 
 Provider reports belong in app data, not in the source tree or the user's bundle. A report records app and benchmark versions, capability versions, fixture fingerprints, provider-reported agent and model identity, delivered resources, observed tools, artifact validation, hard failures, deterministic scores, timing, context and cost when reported, and unavailable cases. Studio does not upload evaluation data.
 
-The report store, repeated shuffled runs, provider adapters, and model-judged checks are later SP0 implementation work. Until those exist, the repository gate proves corpus integrity and parser truth only; it does not claim agent quality.
+The merge gate now covers two critic contracts beside the eight task contracts. A manually dispatched provider workflow records the chosen provider, model, exact corpus, and every not-run task as an artifact. It does not turn missing credentials, adapter support, or model output into a pass. Live provider adapters, repeated shuffled runs, scoring reports, and the provider matrix remain SP13 completion work; until they exist, the opt-in workflow is an inspectable evaluation plan rather than an agent-quality claim.
 
 # Commands
 

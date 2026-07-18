@@ -3,7 +3,7 @@ type: Feature
 title: Knowledge Health
 description: Give agents deterministic, revision-bound evidence about bundle quality without turning heuristics into OKF conformance rules.
 tags: [feature, agents, health, validation, graph, provenance]
-timestamp: 2026-07-18T05:00:00Z
+timestamp: 2026-07-18T06:54:26Z
 ---
 
 # What it does
@@ -44,3 +44,5 @@ The initial engine accepts at most 10,000 concepts and 50,000 intra-bundle links
 # Verification
 
 The frozen [agent benchmark corpus](../reference/specialized-agent-systems.md#structured-work-and-verification) must produce the same ordered findings on repeated runs. Tests also cover the exact 10,000-concept and 50,000-link boundary, tolerant malformed bundles, deterministic repair recipes, and stale-fingerprint rejection after a file change.
+
+Artifact-level checks reuse the same principle without pretending every heuristic is conformance. [Artifact Verification and Critic Passes](artifact-verification.md) keeps deterministic completion blocks separate from optional model critique and shows disagreement rather than letting one result overwrite the other.

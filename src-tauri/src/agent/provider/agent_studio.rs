@@ -139,6 +139,8 @@ mod tests {
         assert!(message.content.contains("- okf-core@0.3.0 [okf_inventory"));
         assert!(message.content.contains("- okf-inspect@0.2.0"));
         assert!(message.content.contains("- okf-migrate@0.2.0"));
+        assert!(message.content.contains("- okf-author@0.1.0"));
+        assert!(message.content.contains("- okf-revise@0.1.0"));
         assert!(message.content.contains("Select the narrowest capability"));
         assert!(message
             .content

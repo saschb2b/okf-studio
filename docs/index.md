@@ -35,6 +35,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Command Palette](features/command-palette.md) - Jump to any concept and run quick actions from the keyboard.
 * [Validation](features/validation.md) - Surface OKF conformance errors and warnings without refusing the bundle.
 * [Knowledge Health](features/knowledge-health.md) - Give agents deterministic quality evidence without turning heuristics into conformance.
+* [OKF Writing](features/okf-writing.md) - Author and revise concepts around a reader job while preserving claims and references.
 * [Structured Agent Work](features/structured-agent-work.md) - Keep validated OKF plans, reports, research, migrations, and staged revisions active beside the conversation.
 * [Artifact Verification and Critic Passes](features/artifact-verification.md) - Compare deterministic checks with an optional isolated critic whose findings cannot approve or apply work.
 * [Inspectable Workspace Memory](features/workspace-memory.md) - Apply only current, bundle-scoped local preferences to context plans and keep every item inspectable and deletable.

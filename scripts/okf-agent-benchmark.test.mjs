@@ -8,6 +8,7 @@ import {
   defaultArtifactScoringPath,
   defaultJourneyPath,
   defaultProviderMatrixPath,
+  defaultWritingCorpusPath,
   loadCapabilityManifest,
   loadManifest,
   scoreArtifact,
@@ -17,6 +18,7 @@ import {
   validateManifest,
   validateProviderMatrix,
   validateProviderReport,
+  validateWritingCorpus,
   writeProviderReport,
 } from "./okf-agent-benchmark.mjs";
 
@@ -24,12 +26,13 @@ test("accepts the frozen OKF task and fixture contract", () => {
   const summary = checkCorpus();
 
   assert.equal(summary.fixtureCount, 6);
-  assert.equal(summary.taskCount, 8);
-  assert.equal(summary.curatedCapabilityCount, 8);
+  assert.equal(summary.taskCount, 10);
+  assert.equal(summary.curatedCapabilityCount, 10);
   assert.equal(summary.criticCaseCount, 2);
   assert.equal(summary.providerCount, 4);
   assert.equal(summary.journeyCount, 7);
   assert.equal(summary.artifactScoringCaseCount, 3);
+  assert.equal(summary.writingCaseCount, 7);
   assert.deepEqual(summary.capabilityIds, [
     "okf-audit",
     "okf-create",
@@ -39,6 +42,8 @@ test("accepts the frozen OKF task and fixture contract", () => {
     "okf-repair",
     "okf-research",
     "okf-change-impact",
+    "okf-author",
+    "okf-revise",
   ].sort());
   assert.deepEqual(summary.artifactKinds, [
     "bundle-plan",
@@ -47,7 +52,18 @@ test("accepts the frozen OKF task and fixture contract", () => {
     "migration-plan",
     "research-brief",
     "staged-revision",
+    "writing-revision",
   ].sort());
+});
+
+test("writing corpus rejects polish that loses required knowledge", () => {
+  const corpus = JSON.parse(readFileSync(defaultWritingCorpusPath, "utf8"));
+  assert.equal(validateWritingCorpus(corpus).writingCaseCount, 7);
+  corpus.cases[1].reference = "Revenue excludes refunds.[^finance]";
+  assert.throws(
+    () => validateWritingCorpus(corpus),
+    /reference score changed: missing-fragment:after settlement/,
+  );
 });
 
 test("requires an explicit support classification and honest baseline for every provider", () => {
@@ -129,6 +145,12 @@ test("retains an unavailable provider report locally without inventing measureme
       observedTools: [],
       cost: null,
     })),
+    writingEvaluation: {
+      status: "unavailable",
+      reason: "No provider is configured on this deterministic test host.",
+      cases: null,
+      blindReview: null,
+    },
   };
   assert.equal(validateProviderReport(report).provider.status, "unavailable");
   const root = mkdtempSync(join(tmpdir(), "okf-agent-report-"));

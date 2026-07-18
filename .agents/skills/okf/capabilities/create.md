@@ -19,6 +19,7 @@ Use this capability when the user wants a new bundle or a new bounded knowledge 
 3. Propose stable concept identities, types, and links.
 4. Plan the root index and navigation paths.
 5. Validate the plan against the shared OKF specification before any staged revision.
+6. When the accepted plan becomes concept prose, hand it to `okf-author` and load the shared `writing` resource.
 
 ## Artifact contract
 

@@ -18,7 +18,8 @@ Use this capability to add missing context, provenance, links, examples, ownersh
 2. Inventory current claims and provenance.
 3. Compare proposed evidence with existing facts and flag conflicts.
 4. Draft the smallest additive change that makes the requested knowledge usable.
-5. Validate and stage the revision for review.
+5. Load the shared `writing` resource for new or substantially revised prose, then reconcile existing and added claims.
+6. Validate and stage the revision for review.
 
 ## Artifact contract
 

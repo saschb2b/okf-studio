@@ -26,6 +26,11 @@ pub enum AgentCriticCategory {
     Contradictions,
     UnsupportedClaims,
     MissedRelationships,
+    Clarity,
+    Redundancy,
+    Structure,
+    VoiceFit,
+    ClaimPreservation,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -218,6 +223,7 @@ pub fn prepare(markdown: &str, bundle: &Bundle) -> Result<AgentCriticRequest, St
     let prompt = critic_prompt(
         &artifact.artifact_id,
         artifact.revision,
+        artifact.kind,
         &artifact_json,
         &evidence_json,
     );
@@ -299,12 +305,7 @@ fn validate_envelope(
         ));
     }
 
-    let expected_categories = [
-        AgentCriticCategory::Coverage,
-        AgentCriticCategory::Contradictions,
-        AgentCriticCategory::UnsupportedClaims,
-        AgentCriticCategory::MissedRelationships,
-    ];
+    let expected_categories = expected_categories(artifact.kind);
     let mut seen_categories = BTreeSet::new();
     let mut checks = Vec::with_capacity(envelope.checks.len());
     for check in envelope.checks {
@@ -322,10 +323,14 @@ fn validate_envelope(
         .iter()
         .any(|category| !seen_categories.contains(category))
     {
-        return Err(
-            "The critic must report coverage, contradictions, unsupported claims, and missed relationships."
-                .to_string(),
-        );
+        return Err(format!(
+            "The critic must report every required {} check category.",
+            if artifact.kind == agent_artifact::AgentArtifactKind::WritingRevision {
+                "writing"
+            } else {
+                "artifact"
+            }
+        ));
     }
 
     let field_ids = artifact
@@ -542,12 +547,40 @@ fn critic_evidence_json(bundle: &Bundle, context_paths: &[String]) -> Result<Str
 fn critic_prompt(
     artifact_id: &str,
     artifact_revision: u32,
+    artifact_kind: agent_artifact::AgentArtifactKind,
     artifact_json: &str,
     evidence_json: &str,
 ) -> String {
+    let checks = if artifact_kind == agent_artifact::AgentArtifactKind::WritingRevision {
+        "clarity, redundancy, structure, voice fit, and claim preservation"
+    } else {
+        "coverage, contradictions, unsupported claims, and missed relationships"
+    };
+    let check_count = expected_categories(artifact_kind).len();
     format!(
-        "OKF critic pass for {artifact_id}, revision {artifact_revision}.\n\nYou are an independent read-only OKF critic. Review only the validated artifact and the exact declared bundle evidence embedded below. You have no tools. Check coverage, contradictions, unsupported claims, and missed relationships. Do not edit, stage, approve, apply, expand scope, fetch new evidence, or present inference as evidence. A deterministic error remains blocking even if you find no concern. Return concise prose followed by exactly one JSON object in an okf-critic fence. Use schemaVersion 1; bind artifactId, artifactRevision, and bundleFingerprint exactly; report all four check categories with checked or unavailable status; give every finding an artifact field, concept, or source reference; use basis inference only with severity question; and name unavailable checks in limitations. Unknown fields are rejected.\n\nValidated artifact:\n```json\n{artifact_json}\n```\n\nExact declared concept evidence:\n```json\n{evidence_json}\n```"
+        "OKF critic pass for {artifact_id}, revision {artifact_revision}.\n\nYou are an independent read-only OKF critic. Review only the validated artifact and the exact declared bundle evidence embedded below. You have no tools. Check {checks}. Do not edit, stage, approve, apply, expand scope, fetch new evidence, or present inference as evidence. A deterministic error remains blocking even if you find no concern. Return concise prose followed by exactly one JSON object in an okf-critic fence. Use schemaVersion 1; bind artifactId, artifactRevision, and bundleFingerprint exactly; report all {check_count} required categories with checked or unavailable status; give every finding an artifact field, concept, or source reference; use basis inference only with severity question; and name unavailable checks in limitations. Unknown fields are rejected.\n\nValidated artifact:\n```json\n{artifact_json}\n```\n\nExact declared concept evidence:\n```json\n{evidence_json}\n```"
     )
+}
+
+fn expected_categories(
+    artifact_kind: agent_artifact::AgentArtifactKind,
+) -> &'static [AgentCriticCategory] {
+    if artifact_kind == agent_artifact::AgentArtifactKind::WritingRevision {
+        &[
+            AgentCriticCategory::Clarity,
+            AgentCriticCategory::Redundancy,
+            AgentCriticCategory::Structure,
+            AgentCriticCategory::VoiceFit,
+            AgentCriticCategory::ClaimPreservation,
+        ]
+    } else {
+        &[
+            AgentCriticCategory::Coverage,
+            AgentCriticCategory::Contradictions,
+            AgentCriticCategory::UnsupportedClaims,
+            AgentCriticCategory::MissedRelationships,
+        ]
+    }
 }
 
 fn host_limitations() -> Vec<AgentCriticLimitation> {
@@ -692,6 +725,46 @@ mod tests {
         )
     }
 
+    fn writing_artifact_markdown(bundle: &Bundle) -> String {
+        format!(
+            "```okf-artifact\n{}\n```",
+            serde_json::json!({
+                "schemaVersion": 1,
+                "artifactId": "writing-critic-seed",
+                "kind": "writing-revision",
+                "revision": 1,
+                "parentRevision": null,
+                "bundleFingerprint": health::bundle_fingerprint(bundle),
+                "title": "Agent panel writing revision",
+                "status": "complete",
+                "summary": "Lead with the review boundary.",
+                "conceptPaths": ["features/agent-panel.md"],
+                "sources": [{
+                    "id": "panel-source",
+                    "label": "Agent panel",
+                    "kind": "bundle",
+                    "reference": "features/agent-panel.md"
+                }],
+                "citations": [],
+                "fields": [
+                    {"id": "reader-job", "label": "Reader job", "value": "Explain the boundary.", "editable": false},
+                    {"id": "purpose", "label": "Purpose", "value": "Improve directness.", "editable": false},
+                    {"id": "revision-mode", "label": "Revision mode", "value": "style-only", "editable": false}
+                ],
+                "items": [{
+                    "id": "review-boundary",
+                    "label": "Review boundary",
+                    "detail": "Reworded without changing meaning.",
+                    "status": "reworded",
+                    "conceptPath": "features/agent-panel.md",
+                    "before": "Reviewed staging keeps edits outside the bundle.",
+                    "after": "Edits stay outside the bundle during reviewed staging.",
+                    "sourceIds": ["panel-source"]
+                }]
+            })
+        )
+    }
+
     #[test]
     fn prepares_a_bounded_read_only_request() {
         let bundle = docs();
@@ -705,6 +778,17 @@ mod tests {
             .contains("First open makes no account or network request."));
         assert!(request.prompt.contains("You have no tools."));
         assert_eq!(request.limitations.len(), 2);
+    }
+
+    #[test]
+    fn writing_critic_uses_the_narrow_writing_review_contract() {
+        let bundle = docs();
+        let request = prepare(&writing_artifact_markdown(&bundle), &bundle).expect("request");
+        assert!(request
+            .prompt
+            .contains("clarity, redundancy, structure, voice fit, and claim preservation"));
+        assert!(request.prompt.contains("You have no tools"));
+        assert!(!request.prompt.contains("report all four check categories"));
     }
 
     #[test]

@@ -1770,6 +1770,8 @@ fn task_capability_ids(task_id: &str) -> Option<&'static [&'static str]> {
         "okf-research" => Some(&["okf-inspect", "okf-research"]),
         "okf-change-impact" => Some(&["okf-inspect", "okf-change-impact"]),
         "okf-migrate" => Some(&["okf-inspect", "okf-migrate"]),
+        "okf-author" => Some(&["okf-author"]),
+        "okf-revise" => Some(&["okf-revise"]),
         _ => None,
     }
 }

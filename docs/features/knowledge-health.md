@@ -3,12 +3,12 @@ type: Feature
 title: Knowledge Health
 description: Give agents deterministic, revision-bound evidence about bundle quality without turning heuristics into OKF conformance rules.
 tags: [feature, agents, health, validation, graph, provenance]
-timestamp: 2026-07-18T14:20:00Z
+timestamp: 2026-07-18T17:20:00Z
 ---
 
 # What it does
 
-The [Agent Panel](agent-panel.md) can audit more than the one hard OKF rule without asking a model to invent its own quality criteria. A Rust-owned engine analyzes the parsed bundle and reports seven categories: conformance, graph connectivity, navigation, provenance, freshness signals, duplication, and coverage hints.
+The [Agent Panel](agent-panel.md) can audit more than the one hard OKF rule without asking a model to invent its own quality criteria. A Rust-owned engine analyzes the parsed bundle and reports eight categories: conformance, graph connectivity, navigation, provenance, freshness signals, duplication, coverage hints, and advisory writing patterns.
 
 This engine does not decide whether a bundle may open. [Validation](validation.md) remains the exact OKF v0.1 conformance surface, and tolerant consumption remains unchanged. Health adds evidence for agent work after the bundle is already readable.
 
@@ -31,6 +31,8 @@ Every finding carries:
 - the fingerprint of the complete bundle revision that was analyzed.
 
 Conformance findings are always facts copied from the existing validator. Missing optional metadata, isolation, title similarity, and other quality signals never become conformance errors.
+
+The writing category finds observable patterns such as generic framing, empty headings, repeated adjacent paragraphs, and repeated bold-label bullets. Each is a heuristic with a path and evidence excerpt or count. These findings support the explicit [OKF Writing](okf-writing.md) workflow and never become a readability score, word blacklist, or validity gate.
 
 # Agent tools
 

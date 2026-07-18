@@ -19,6 +19,7 @@ Use this capability when bundle knowledge must be checked, expanded, or reconcil
 3. Record source identity, retrieval time, and the claim each source supports.
 4. Compare evidence with bundle claims and expose conflicts or uncertainty.
 5. Produce a brief before proposing any enrichment.
+6. Load the shared `writing` resource when research results become concept prose; the brief itself remains evidence-first.
 
 ## Artifact contract
 

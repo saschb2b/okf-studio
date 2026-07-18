@@ -922,7 +922,8 @@ fn parse_health_category(value: &str) -> Result<HealthCategory, String> {
         "freshness" => Ok(HealthCategory::Freshness),
         "duplication" => Ok(HealthCategory::Duplication),
         "coverage-hint" => Ok(HealthCategory::CoverageHint),
-        _ => Err("category must be conformance, graph-connectivity, navigation, provenance, freshness, duplication, or coverage-hint".to_string()),
+        "writing" => Ok(HealthCategory::Writing),
+        _ => Err("category must be conformance, graph-connectivity, navigation, provenance, freshness, duplication, coverage-hint, or writing".to_string()),
     }
 }
 
@@ -952,6 +953,7 @@ fn health_category_name(value: HealthCategory) -> &'static str {
         HealthCategory::Freshness => "freshness",
         HealthCategory::Duplication => "duplication",
         HealthCategory::CoverageHint => "coverage-hint",
+        HealthCategory::Writing => "writing",
     }
 }
 

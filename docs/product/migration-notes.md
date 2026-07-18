@@ -3,7 +3,7 @@ type: Migration Guide
 title: OKF Viewer to OKF Studio
 description: What changes, including bundle-folder grants, and what stays compatible when OKF Viewer upgrades to OKF Studio.
 tags: [product, migration, upgrade, compatibility, credentials]
-timestamp: 2026-07-18T16:00:00Z
+timestamp: 2026-07-18T17:20:00Z
 ---
 
 # Upgrade in place
@@ -41,7 +41,7 @@ Installed Studio builds add the `okf-studio://` scheme through the ordinary appl
 
 One-shot MCP launch records are temporary, expire after 60 seconds, and are deleted when consumed. They are not profiles and do not need migration or rollback. Existing agent profiles, session pointers, staged checkpoints, settings, and bundle grants keep their current storage and meaning.
 
-The curated OKF methods now belong to the built-in `okf-foundation@1.0.0` pack. First launch creates `agents/capability-pack-state.json` with the verified pack identity and digest. **Use Legacy 0.3.0** rolls routing back to the former single `okf-core` capability; **Restore OKF Foundation** re-enables the curated tasks. This receipt is new and independent. Neither migration nor rollback rewrites custom profiles, endpoint profiles, agent-owned session pointers, Apply checkpoints, the preference store, credentials, workspace memory, routines, or bundle grants. Removing the application may leave this ordinary app-data receipt for a later reinstall, like the other local settings.
+The curated OKF methods now belong to the built-in `okf-foundation@1.1.0` pack. The update adds a writing resource, author and revise capabilities, and a writing-revision schema. It does not rewrite an existing concept or bundle. First launch creates `agents/capability-pack-state.json` with the verified pack identity and digest. **Use Legacy 0.3.0** rolls routing back to the former single `okf-core` capability; **Restore OKF Foundation** re-enables the curated tasks. This receipt is new and independent. Neither migration nor rollback rewrites custom profiles, endpoint profiles, agent-owned session pointers, Apply checkpoints, the preference store, credentials, workspace memory, routines, or bundle grants. Removing the application may leave this ordinary app-data receipt for a later reinstall, like the other local settings.
 
 # Bundle folder grants
 

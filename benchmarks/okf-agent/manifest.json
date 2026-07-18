@@ -197,6 +197,35 @@
         { "id": "budget", "points": 35, "check": "Uses bounded batches and explicit context budgets." },
         { "id": "verification", "points": 25, "check": "Includes preflight, parity checks, and rollback." }
       ]
+    },
+    {
+      "id": "author-runbook",
+      "fixtureId": "conformant-linked",
+      "capabilityId": "okf-author",
+      "expectedArtifact": "writing-revision",
+      "prompt": "Author a refund-mismatch runbook from the accepted bundle evidence without losing the settlement boundary.",
+      "allowedTools": ["okf_health_summary", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+      "hardFailures": ["adds an unsupported operational step", "omits the evidence or claim ledger", "applies the concept without review"],
+      "scores": [
+        { "id": "reader-job", "points": 25, "check": "Opens with the operator's mismatch action." },
+        { "id": "evidence", "points": 35, "check": "Maps each new claim to bundle evidence." },
+        { "id": "qualification", "points": 25, "check": "Preserves settlement and review boundaries." },
+        { "id": "staging", "points": 15, "check": "Leaves the authored files staged for review." }
+      ]
+    },
+    {
+      "id": "revise-product-rationale",
+      "fixtureId": "thin-bundle",
+      "capabilityId": "okf-revise",
+      "expectedArtifact": "writing-revision",
+      "prompt": "Revise the supplied product rationale for directness without changing any factual claim.",
+      "allowedTools": ["okf_health_summary", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+      "hardFailures": ["adds a new product claim", "drops a qualifier, citation, or link", "returns no complete claim ledger"],
+      "scores": [
+        { "id": "preservation", "points": 45, "check": "Accounts for every original claim and reference." },
+        { "id": "directness", "points": 30, "check": "Leads with the reader answer and removes generic framing." },
+        { "id": "scope", "points": 25, "check": "Stages only the selected concept path." }
+      ]
     }
   ],
   "criticCases": [

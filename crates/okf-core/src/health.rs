@@ -22,6 +22,7 @@ pub enum HealthCategory {
     Freshness,
     Duplication,
     CoverageHint,
+    Writing,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -156,6 +157,7 @@ pub fn analyze(bundle: &Bundle) -> Result<HealthReport, HealthLimitExceeded> {
     add_freshness_findings(bundle, &mut findings);
     add_duplication_findings(bundle, &mut findings);
     add_coverage_findings(bundle, &mut findings);
+    add_writing_findings(bundle, &mut findings);
     findings.sort_by(|left, right| {
         severity_rank(left.severity)
             .cmp(&severity_rank(right.severity))
@@ -525,6 +527,223 @@ fn add_coverage_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
     }
 }
 
+fn add_writing_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
+    for concept in &bundle.concepts {
+        let path = format!("{}.md", concept.id);
+        let structured_shape = writing_shape_is_structured(&concept.concept_type);
+        let deliberate_repetition = allows_deliberate_repetition(&concept.concept_type);
+        let lines = concept.body.lines().collect::<Vec<_>>();
+        let non_empty = lines
+            .iter()
+            .enumerate()
+            .filter(|(_, line)| !line.trim().is_empty())
+            .collect::<Vec<_>>();
+
+        if let Some((line_index, line)) = non_empty.first() {
+            let normalized = normalize(line);
+            if !is_quoted_or_code(line)
+                && [
+                    "in today's",
+                    "when it comes to",
+                    "let's dive",
+                    "it is important to note",
+                ]
+                .iter()
+                .any(|phrase| normalized.contains(phrase))
+            {
+                findings.push(writing_finding(
+                    "okf.writing.generic-opener",
+                    concept,
+                    &path,
+                    *line_index + 1,
+                    line,
+                    "The concept opens with generic framing",
+                    "The opening delays the reader's answer. Review whether the concept can begin with its governing fact.",
+                ));
+            }
+        }
+
+        if let Some((line_index, line)) = non_empty.last() {
+            let normalized = normalize(line);
+            if !is_quoted_or_code(line)
+                && [
+                    "in conclusion",
+                    "ultimately",
+                    "there you have it",
+                    "i hope this helps",
+                ]
+                .iter()
+                .any(|phrase| normalized.contains(phrase))
+            {
+                findings.push(writing_finding(
+                    "okf.writing.generic-closer",
+                    concept,
+                    &path,
+                    *line_index + 1,
+                    line,
+                    "The concept ends with a generic summary",
+                    "The closing may repeat the body without adding knowledge. Review it in context before removing anything.",
+                ));
+            }
+        }
+
+        let mut in_code_fence = false;
+        for (line_index, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+                in_code_fence = !in_code_fence;
+                continue;
+            }
+            if in_code_fence {
+                continue;
+            }
+            if trimmed.starts_with('#') && trimmed.trim_matches('#').trim().is_empty() {
+                findings.push(writing_finding(
+                    "okf.writing.empty-heading",
+                    concept,
+                    &path,
+                    line_index + 1,
+                    line,
+                    "The concept contains an empty heading",
+                    "An empty heading adds navigation structure without naming a subject.",
+                ));
+            }
+            let heading_depth = trimmed
+                .chars()
+                .take_while(|character| *character == '#')
+                .count();
+            if heading_depth >= 5 && trimmed.chars().nth(heading_depth) == Some(' ') {
+                findings.push(writing_finding(
+                    "okf.writing.excessive-heading-depth",
+                    concept,
+                    &path,
+                    line_index + 1,
+                    line,
+                    "The concept uses a deeply nested heading",
+                    "Five or more heading levels can hide the concept's main structure. Confirm that the hierarchy is necessary.",
+                ));
+            }
+        }
+
+        let paragraphs = concept
+            .body
+            .split("\n\n")
+            .map(str::trim)
+            .filter(|paragraph| !paragraph.is_empty())
+            .collect::<Vec<_>>();
+        for (index, pair) in paragraphs.windows(2).enumerate() {
+            let normalized = normalize(pair[0]);
+            if !deliberate_repetition
+                && normalized.chars().count() >= 40
+                && normalized == normalize(pair[1])
+            {
+                findings.push(finding(FindingInput {
+                    rule_id: "okf.writing.duplicate-paragraph",
+                    rule_version: "1.0.0",
+                    category: HealthCategory::Writing,
+                    severity: HealthSeverity::Advisory,
+                    basis: HealthBasis::Heuristic,
+                    summary: format!("{} repeats an adjacent paragraph", concept.title),
+                    why: "Adjacent repeated prose can be an accidental generation or merge artifact. Compare both paragraphs before deleting either one.".to_string(),
+                    evidence: vec![
+                        evidence("path", "Concept path", &path),
+                        evidence("paragraph", "Repeated paragraph", &bounded_excerpt(pair[0])),
+                        evidence("position", "Paragraph position", &(index + 1).to_string()),
+                    ],
+                    affected: vec![concept.id.clone()],
+                    repairability: HealthRepairability::Guided,
+                }));
+            }
+        }
+
+        let labelled_bullets = lines
+            .iter()
+            .filter(|line| {
+                let line = line.trim_start();
+                line.starts_with("- **") && (line.contains("**:") || line.contains("**. "))
+            })
+            .count();
+        if labelled_bullets >= 3 && !structured_shape {
+            findings.push(finding(FindingInput {
+                rule_id: "okf.writing.bold-label-list",
+                rule_version: "1.0.0",
+                category: HealthCategory::Writing,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Heuristic,
+                summary: format!("{} uses repeated bold-label bullets", concept.title),
+                why: "Labelled bullets are valid for independent fields, but connected reasoning is easier to follow as prose or a table. Review the information shape.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence("count", "Matching bullets", &labelled_bullets.to_string()),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+    }
+}
+
+fn writing_shape_is_structured(concept_type: &str) -> bool {
+    let concept_type = concept_type.to_lowercase();
+    [
+        "reference",
+        "runbook",
+        "playbook",
+        "checklist",
+        "incident",
+        "procedure",
+        "schema",
+        "standard",
+    ]
+    .iter()
+    .any(|shape| concept_type.contains(shape))
+}
+
+fn allows_deliberate_repetition(concept_type: &str) -> bool {
+    let concept_type = concept_type.to_lowercase();
+    ["runbook", "playbook", "incident", "procedure", "standard"]
+        .iter()
+        .any(|shape| concept_type.contains(shape))
+}
+
+fn is_quoted_or_code(line: &str) -> bool {
+    matches!(
+        line.trim_start().chars().next(),
+        Some('>' | '"' | '\'' | '“' | '`')
+    )
+}
+
+fn writing_finding(
+    rule_id: &'static str,
+    concept: &crate::Concept,
+    path: &str,
+    line_number: usize,
+    line: &str,
+    summary: &'static str,
+    why: &'static str,
+) -> HealthFinding {
+    finding(FindingInput {
+        rule_id,
+        rule_version: "1.0.0",
+        category: HealthCategory::Writing,
+        severity: HealthSeverity::Advisory,
+        basis: HealthBasis::Heuristic,
+        summary: format!("{}: {summary}", concept.title),
+        why: why.to_string(),
+        evidence: vec![
+            evidence("path", "Concept path", path),
+            evidence("line", "Line", &line_number.to_string()),
+            evidence("excerpt", "Excerpt", &bounded_excerpt(line)),
+        ],
+        affected: vec![concept.id.clone()],
+        repairability: HealthRepairability::Guided,
+    })
+}
+
+fn bounded_excerpt(value: &str) -> String {
+    value.chars().take(160).collect()
+}
+
 fn finding(mut input: FindingInput<'_>) -> HealthFinding {
     input.affected.sort();
     input.affected.dedup();
@@ -775,5 +994,120 @@ mod tests {
         let limit = analyze(&bundle).expect_err("one link beyond the contract");
         assert_eq!(limit.dimension, "links");
         assert_eq!(limit.actual, MAX_HEALTH_LINKS + 1);
+    }
+
+    #[test]
+    fn writing_findings_are_advisory_stable_and_point_to_evidence() {
+        let repeated =
+            "Reviewed staging keeps an agent edit outside the bundle until the user accepts it.";
+        let concept = Concept {
+            id: "writing/example".to_string(),
+            concept_type: "Product Rationale".to_string(),
+            title: "Writing example".to_string(),
+            description: "Writing diagnostics fixture".to_string(),
+            tags: Vec::new(),
+            timestamp: Some("2026-07-18T00:00:00Z".to_string()),
+            resource: None,
+            extra: BTreeMap::new(),
+            body: format!(
+                "In today's AI landscape, this feature matters.\n\n{repeated}\n\n{repeated}\n\n- **Speed**: Fast\n- **Scale**: Large\n- **Quality**: High\n\nIn conclusion, this is useful."
+            ),
+            links: Vec::new(),
+            external_links: Vec::new(),
+            broken_links: Vec::new(),
+            cited_by: Vec::new(),
+            degree: 0,
+        };
+        let bundle = Bundle {
+            root: String::new(),
+            name: "Writing".to_string(),
+            okf_version: Some("0.1".to_string()),
+            odsf_version: None,
+            concepts: vec![concept],
+            indexes: Vec::new(),
+            log: Vec::new(),
+            issues: Vec::new(),
+            confidence: Confidence::Confident,
+        };
+
+        let first = analyze(&bundle).expect("writing health report");
+        let second = analyze(&bundle).expect("stable writing health report");
+        assert_eq!(first, second);
+        let writing = first
+            .findings
+            .iter()
+            .filter(|finding| finding.category == HealthCategory::Writing)
+            .collect::<Vec<_>>();
+        assert_eq!(writing.len(), 4);
+        assert!(writing.iter().all(|finding| {
+            finding.severity == HealthSeverity::Advisory
+                && finding.basis == HealthBasis::Heuristic
+                && finding.repairability == HealthRepairability::Guided
+                && finding.evidence.iter().any(|item| item.kind == "path")
+        }));
+    }
+
+    #[test]
+    fn writing_diagnostics_respect_structured_and_exact_text() {
+        let concept = |id: &str, concept_type: &str, body: &str| Concept {
+            id: id.to_string(),
+            concept_type: concept_type.to_string(),
+            title: id.to_string(),
+            description: "False-positive fixture".to_string(),
+            tags: Vec::new(),
+            timestamp: Some("2026-07-18T00:00:00Z".to_string()),
+            resource: None,
+            extra: BTreeMap::new(),
+            body: body.to_string(),
+            links: Vec::new(),
+            external_links: Vec::new(),
+            broken_links: Vec::new(),
+            cited_by: Vec::new(),
+            degree: 0,
+        };
+        let warning = "WARNING: Stop the procedure and isolate the host before continuing.";
+        let bundle = Bundle {
+            root: String::new(),
+            name: "Writing exceptions".to_string(),
+            okf_version: Some("0.1".to_string()),
+            odsf_version: None,
+            concepts: vec![
+                concept(
+                    "standard",
+                    "Technical Standard",
+                    "> It is important to note that this sentence is normative source text.\n\n> In conclusion, retain this exact quotation.",
+                ),
+                concept(
+                    "reference",
+                    "API Reference",
+                    "- **Path**: `/v1/bundles`\n- **Method**: `GET`\n- **Result**: Bundle metadata",
+                ),
+                concept(
+                    "checklist",
+                    "Deployment Checklist",
+                    "- **Build**: Complete\n- **Test**: Complete\n- **Release**: Pending",
+                ),
+                concept(
+                    "incident",
+                    "Incident Procedure",
+                    &format!("{warning}\n\n{warning}"),
+                ),
+                concept(
+                    "schema",
+                    "Generated Schema",
+                    "```markdown\n#####\n```",
+                ),
+            ],
+            indexes: Vec::new(),
+            log: Vec::new(),
+            issues: Vec::new(),
+            confidence: Confidence::Confident,
+        };
+
+        let report = analyze(&bundle).expect("writing exception report");
+        assert!(report
+            .findings
+            .iter()
+            .all(|finding| finding.category != HealthCategory::Writing));
     }
 }

@@ -348,6 +348,34 @@
   border-bottom: 1px solid var(--border);
 }
 
+.agent-artifact__writing-summary {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(12rem, 1fr);
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-10) var(--space-12);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+.agent-artifact__writing-summary > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.agent-artifact__writing-summary strong {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-tight);
+}
+
+.agent-artifact__writing-summary span,
+.agent-artifact__writing-summary p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
 .agent-artifact__section h4 {
   margin: 0 0 var(--space-8);
   font-size: var(--fs-sm);
@@ -466,7 +494,7 @@
   background: var(--bg-sunken);
 }
 
-.agent-artifact__items > li > div {
+.agent-artifact__item-heading {
   display: flex;
   justify-content: space-between;
   gap: var(--space-8);
@@ -477,6 +505,34 @@
   color: var(--text-dim);
   font-size: var(--fs-sm);
   line-height: var(--lh-normal);
+}
+
+.agent-artifact__claim-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin: var(--space-8) 0;
+}
+
+.agent-artifact__claim-comparison > div {
+  min-width: 0;
+  padding: var(--space-8);
+  border-left: 2px solid var(--border-strong);
+  background: var(--bg);
+}
+
+.agent-artifact__claim-comparison span {
+  display: block;
+  margin-bottom: var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.agent-artifact__claim-comparison p {
+  margin: 0;
+  color: var(--text);
+  white-space: pre-wrap;
 }
 
 .agent-artifact__items small {
@@ -540,6 +596,14 @@
 }
 
 @media (max-width: 480px) {
+  .agent-artifact__writing-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-artifact__claim-comparison {
+    grid-template-columns: 1fr;
+  }
+
   .agent-artifact__verification-header,
   .agent-artifact__verification-findings > li {
     grid-template-columns: auto minmax(0, 1fr);

@@ -33,6 +33,8 @@ const TASK_IDS: &[&str] = &[
     "okf-research",
     "okf-change-impact",
     "okf-migrate",
+    "okf-author",
+    "okf-revise",
 ];
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]

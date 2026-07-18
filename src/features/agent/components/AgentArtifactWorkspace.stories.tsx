@@ -336,3 +336,75 @@ export const CriticError: Story = {
     await waitFor(() => expect(args.onRunCritic).toHaveBeenCalled());
   },
 };
+
+const writingArtifact: AgentArtifact = {
+  ...artifact,
+  artifactId: "writing-agent-panel-rationale",
+  kind: "writing-revision",
+  title: "Agent Panel rationale revision",
+  summary: "Lead with the review boundary and the product gap it closes.",
+  conceptReferences: [artifact.conceptReferences[0]],
+  fields: [
+    {
+      id: "reader-job",
+      label: "Reader job",
+      value: "Explain why reviewed staging exists.",
+      editable: false,
+    },
+    {
+      id: "purpose",
+      label: "Purpose",
+      value: "Replace generic feature framing with the actual safety boundary.",
+      editable: false,
+    },
+    {
+      id: "revision-mode",
+      label: "Revision mode",
+      value: "style-only",
+      editable: false,
+    },
+  ],
+  items: [
+    {
+      id: "claim-review-boundary",
+      label: "Review boundary",
+      detail: "Reworded: agent edits stay outside the bundle until validation, review, and Apply.",
+      status: "reworded",
+      conceptPath: "features/agent-panel.md",
+      before: "Agent edits can be reviewed before they are applied.",
+      after: "Agent edits stay outside the bundle until validation, review, and Apply.",
+      sourceIds: ["agent-panel"],
+    },
+    {
+      id: "claim-apply-authority",
+      label: "Apply authority",
+      detail: "Unchanged: Apply remains a separate user action.",
+      status: "unchanged",
+      conceptPath: "features/agent-panel.md",
+      before: "Apply remains a separate user action.",
+      after: "Apply remains a separate user action.",
+      sourceIds: ["agent-panel"],
+    },
+  ],
+};
+
+export const WritingRevision: Story = {
+  args: {
+    state: { status: "ready", artifact: writingArtifact, sentRevision: null },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Wording only")).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Claim ledger" })).toBeVisible();
+    await expect(canvas.getByText("0 added, 0 removed", { exact: false })).toBeVisible();
+    await expect(canvas.getByText("Agent edits can be reviewed before they are applied.")).toBeVisible();
+    await expect(canvas.getByText("Optionally check clarity, structure, voice fit, and claim preservation.", { exact: false })).toBeVisible();
+  },
+};
+
+export const WritingRevisionNarrow: Story = {
+  args: WritingRevision.args,
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+};

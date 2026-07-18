@@ -3,7 +3,7 @@ type: Feature
 title: Native OKF Tasks
 description: Start a bounded, curated OKF task from the concept, finding, citation, graph object, search result, or source already in view.
 tags: [feature, agents, tasks, context, launcher, keyboard]
-timestamp: 2026-07-18T14:20:00Z
+timestamp: 2026-07-18T17:20:00Z
 ---
 
 # Purpose
@@ -20,12 +20,14 @@ Native tasks make the selected object the starting point and the task ID the sta
 
 Each origin has a closed task set:
 
-- concepts offer audit, enrichment, cited research, and change impact;
+- concepts offer meaning-preserving writing revision, audit, enrichment, cited research, and change impact;
 - graph selections prioritize change impact, then audit and enrichment;
 - search results offer cited research, change impact, and enrichment;
 - validation findings prioritize repair, then audit and cited research;
 - citations offer cited research, enrichment, and change impact; and
-- sources offer enrichment, cited research, and creation.
+- sources offer concept authoring, enrichment, cited research, and creation.
+
+The author and revise routes use the [OKF Writing](okf-writing.md) contract. Authoring begins from accepted evidence; revision begins from an existing concept and cannot silently become enrichment.
 
 These are the stable task IDs and curated capabilities described by the [Agent Panel](agent-panel.md#okf-task-routing-and-context-preview). Every connected agent receives the same bounded capability kernel or its declared text fallback, so the launcher never invents a provider-specific task. A future provider capability advertisement may narrow the set further; absence of such a protocol signal does not create a wider route.
 

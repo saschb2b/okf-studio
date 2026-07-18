@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "review": {
+    "method": "blind-pairwise",
+    "minimumPreferenceRate": 0.7,
+    "dimensions": ["directness", "coherence", "concreteness", "structure", "voice-fit", "usefulness"],
+    "hardGates": ["required-knowledge", "qualifications", "citations", "links", "unsupported-claims"]
+  },
+  "cases": [
+    {
+      "id": "product-rationale",
+      "kind": "product-rationale",
+      "readerJob": "Explain why reviewed staging exists and which gap it closes.",
+      "requiredFragments": ["outside the bundle", "validates", "applies"],
+      "requiredCitations": [],
+      "requiredLinks": [],
+      "unsupportedFragments": ["guarantees correctness"],
+      "baseline": "In today's rapidly evolving AI landscape, reviewed staging is a powerful and robust feature. It is important to note that changes stay outside the bundle. Moreover, the user validates them and ultimately applies them.",
+      "reference": "Reviewed staging keeps agent edits outside the bundle until the user validates and applies them. It closes the gap between generated text and an accepted knowledge change.",
+      "expectedBaselineFailures": ["generic-opener", "inflated-language", "transition-filler"],
+      "expectedReferenceFailures": []
+    },
+    {
+      "id": "qualified-metric",
+      "kind": "reference",
+      "readerJob": "Define when refunds leave reported revenue.",
+      "requiredFragments": ["refunds", "after settlement"],
+      "requiredCitations": ["[^finance]"],
+      "requiredLinks": [],
+      "unsupportedFragments": ["immediately"],
+      "baseline": "Revenue excludes refunds.[^finance]",
+      "reference": "Revenue excludes refunds after settlement.[^finance]",
+      "expectedBaselineFailures": ["missing-fragment:after settlement"],
+      "expectedReferenceFailures": []
+    },
+    {
+      "id": "runbook-sequence",
+      "kind": "runbook",
+      "readerJob": "Tell an operator how to handle a refund mismatch.",
+      "requiredFragments": ["stop the export", "refund ledger", "resume"],
+      "requiredCitations": [],
+      "requiredLinks": ["/metrics/net-revenue.md"],
+      "unsupportedFragments": ["delete the ledger"],
+      "baseline": "There are several important steps. Review the refund ledger and resume. See [/metrics/net-revenue.md](/metrics/net-revenue.md).",
+      "reference": "1. Stop the export.\n2. Compare the refund ledger with [/metrics/net-revenue.md](/metrics/net-revenue.md).\n3. Resume only after the mismatch is resolved.",
+      "expectedBaselineFailures": ["missing-fragment:stop the export"],
+      "expectedReferenceFailures": []
+    },
+    {
+      "id": "architecture-boundary",
+      "kind": "architecture",
+      "readerJob": "State which process owns filesystem access.",
+      "requiredFragments": ["Rust core", "filesystem", "webview"],
+      "requiredCitations": [],
+      "requiredLinks": [],
+      "unsupportedFragments": ["webview reads files directly"],
+      "baseline": "The architecture is robust, seamless, and secure. It leverages multiple layers for filesystem operations.",
+      "reference": "The Rust core owns filesystem access. The webview receives typed results and does not read bundle files directly.",
+      "expectedBaselineFailures": ["inflated-language", "missing-fragment:Rust core", "missing-fragment:webview"],
+      "expectedReferenceFailures": []
+    },
+    {
+      "id": "decision-uncertainty",
+      "kind": "decision",
+      "readerJob": "Record an unresolved provider choice without inventing consensus.",
+      "requiredFragments": ["unresolved", "benchmark"],
+      "requiredCitations": [],
+      "requiredLinks": [],
+      "unsupportedFragments": ["experts agree", "best provider"],
+      "baseline": "Experts agree that Provider A is the best provider for this robust workflow.",
+      "reference": "The provider choice is unresolved. Decide after the benchmark compares factual retention and tool support.",
+      "expectedBaselineFailures": ["inflated-language", "missing-fragment:unresolved", "missing-fragment:benchmark", "unsupported:experts agree", "unsupported:best provider"],
+      "expectedReferenceFailures": []
+    },
+    {
+      "id": "exact-technical-language",
+      "kind": "api-reference",
+      "readerJob": "Preserve the exact API parameter and failure code.",
+      "requiredFragments": ["bundleFingerprint", "STALE_REVISION", "SHA-256"],
+      "requiredCitations": [],
+      "requiredLinks": [],
+      "unsupportedFragments": ["fingerprint can be omitted"],
+      "baseline": "The request uses a fingerprint and returns an error when it is old.",
+      "reference": "Send `bundleFingerprint` as the SHA-256 revision identity. A mismatch returns `STALE_REVISION`.",
+      "expectedBaselineFailures": ["missing-fragment:bundleFingerprint", "missing-fragment:STALE_REVISION", "missing-fragment:SHA-256"],
+      "expectedReferenceFailures": []
+    },
+    {
+      "id": "source-voice",
+      "kind": "source-derived",
+      "readerJob": "Retain an attributed policy requirement without promotional framing.",
+      "requiredFragments": ["seven years", "Policy 14"],
+      "requiredAlternatives": [["must retain", "requires records to be retained", "records are required to be retained"]],
+      "requiredCitations": ["[^policy14]"],
+      "requiredLinks": [],
+      "unsupportedFragments": ["industry-leading"],
+      "baseline": "Our industry-leading compliance posture seamlessly retains records. Policy 14 applies.[^policy14]",
+      "reference": "Policy 14 says finance records must retain their audit trail for seven years.[^policy14]",
+      "expectedBaselineFailures": ["inflated-language", "missing-alternative:must retain|requires records to be retained|records are required to be retained", "missing-fragment:seven years", "unsupported:industry-leading"],
+      "expectedReferenceFailures": []
+    }
+  ]
+}

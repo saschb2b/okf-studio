@@ -11,12 +11,15 @@ const MANIFEST: &str = include_str!("../../../../.agents/skills/okf/capabilities
 const PACK_MANIFEST: &str = include_str!("../../../../.agents/skills/okf/pack.json");
 const ARTIFACT_SCHEMA: &str =
     include_str!("../../../../.agents/skills/okf/schemas/okf-artifact-v1.schema.json");
+const WRITING_REVISION_SCHEMA: &str =
+    include_str!("../../../../.agents/skills/okf/schemas/writing-revision-v1.schema.json");
 const OKF_SKILL: &str = include_str!("../../../../.agents/skills/okf/SKILL.md");
 const OKF_SPEC: &str = include_str!("../../../../.agents/skills/okf/spec.md");
 const OKF_COMMANDS: &str = include_str!("../../../../.agents/skills/okf/commands.md");
 const OKF_TEMPLATES: &str = include_str!("../../../../.agents/skills/okf/templates.md");
 const CAPABILITY_CHANGELOG: &str =
     include_str!("../../../../.agents/skills/okf/capabilities/CHANGELOG.md");
+const OKF_WRITING: &str = include_str!("../../../../.agents/skills/okf/writing.md");
 const OKF_INSPECT: &str = include_str!("../../../../.agents/skills/okf/capabilities/inspect.md");
 const OKF_CREATE: &str = include_str!("../../../../.agents/skills/okf/capabilities/create.md");
 const OKF_ENRICH: &str = include_str!("../../../../.agents/skills/okf/capabilities/enrich.md");
@@ -26,6 +29,8 @@ const OKF_RESEARCH: &str = include_str!("../../../../.agents/skills/okf/capabili
 const OKF_CHANGE_IMPACT: &str =
     include_str!("../../../../.agents/skills/okf/capabilities/change-impact.md");
 const OKF_MIGRATE: &str = include_str!("../../../../.agents/skills/okf/capabilities/migrate.md");
+const OKF_AUTHOR: &str = include_str!("../../../../.agents/skills/okf/capabilities/author.md");
+const OKF_REVISE: &str = include_str!("../../../../.agents/skills/okf/capabilities/revise.md");
 const MAX_CAPABILITIES: usize = 32;
 const MAX_RESOURCES_PER_CAPABILITY: usize = 16;
 const MAX_RESOURCE_BYTES: usize = 256 * 1024;
@@ -52,13 +57,14 @@ const ALLOWED_TOOL_IDS: [&str; 16] = [
     "studio_stage_propose",
     "studio_stage_validate",
 ];
-const ALLOWED_ARTIFACT_KINDS: [&str; 7] = [
+const ALLOWED_ARTIFACT_KINDS: [&str; 8] = [
     "bundle-plan",
     "change-impact-map",
     "health-report",
     "migration-plan",
     "research-brief",
     "source-inventory",
+    "writing-revision",
     "staged-revision",
 ];
 
@@ -442,6 +448,7 @@ fn pack_resource_contents(path: &str) -> Option<&'static str> {
     match path {
         "templates.md" => Some(OKF_TEMPLATES),
         "schemas/okf-artifact-v1.schema.json" => Some(ARTIFACT_SCHEMA),
+        "schemas/writing-revision-v1.schema.json" => Some(WRITING_REVISION_SCHEMA),
         _ => None,
     }
 }
@@ -764,6 +771,7 @@ fn embedded_contents(path: &str) -> Option<&'static str> {
         "commands.md" => Some(OKF_COMMANDS),
         "templates.md" => Some(OKF_TEMPLATES),
         "capabilities/CHANGELOG.md" => Some(CAPABILITY_CHANGELOG),
+        "writing.md" => Some(OKF_WRITING),
         "capabilities/inspect.md" => Some(OKF_INSPECT),
         "capabilities/create.md" => Some(OKF_CREATE),
         "capabilities/enrich.md" => Some(OKF_ENRICH),
@@ -772,6 +780,8 @@ fn embedded_contents(path: &str) -> Option<&'static str> {
         "capabilities/research.md" => Some(OKF_RESEARCH),
         "capabilities/change-impact.md" => Some(OKF_CHANGE_IMPACT),
         "capabilities/migrate.md" => Some(OKF_MIGRATE),
+        "capabilities/author.md" => Some(OKF_AUTHOR),
+        "capabilities/revise.md" => Some(OKF_REVISE),
         _ => None,
     }
 }
@@ -793,12 +803,12 @@ mod tests {
         let catalog = catalog();
         assert_eq!(catalog.schema_version, 1);
         assert_eq!(catalog.resource_schema_version, 1);
-        assert_eq!(catalog.capabilities.len(), 9);
+        assert_eq!(catalog.capabilities.len(), 11);
 
         let capability = default_capability();
         assert_eq!(capability.id, "okf-core");
         assert_eq!(capability.version, "0.3.0");
-        assert_eq!(capability.resources.len(), 5);
+        assert_eq!(capability.resources.len(), 6);
         assert_eq!(manifest_sha256().len(), 64);
         for (capability_id, expected_version) in [
             ("okf-inspect", "0.2.0"),
@@ -809,6 +819,8 @@ mod tests {
             ("okf-research", "0.2.0"),
             ("okf-change-impact", "0.2.0"),
             ("okf-migrate", "0.2.0"),
+            ("okf-author", "0.1.0"),
+            ("okf-revise", "0.1.0"),
         ] {
             let capability = catalog
                 .capabilities
@@ -844,11 +856,14 @@ mod tests {
     #[test]
     fn exposes_metadata_without_resource_bodies_for_settings() {
         let info = serde_json::to_value(catalog_info()).expect("serialize catalog metadata");
-        assert_eq!(info["capabilities"].as_array().map(Vec::len), Some(9));
+        assert_eq!(info["capabilities"].as_array().map(Vec::len), Some(11));
         assert_eq!(info["manifestSha256"].as_str().map(str::len), Some(64));
         assert_eq!(info["pack"]["id"], "okf-foundation");
         assert_eq!(info["pack"]["provenance"], "built-in");
-        assert_eq!(info["pack"]["artifactSchemaIds"][0], "okf-artifact-v1");
+        assert_eq!(
+            info["pack"]["artifactSchemaIds"],
+            serde_json::json!(["okf-artifact-v1", "writing-revision-v1"])
+        );
         assert_eq!(
             info["capabilities"][1]["resources"][0]["path"],
             "capabilities/inspect.md"

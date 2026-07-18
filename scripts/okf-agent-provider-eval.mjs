@@ -1,6 +1,11 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { loadManifest, validateManifest } from "./okf-agent-benchmark.mjs";
+import {
+  defaultWritingCorpusPath,
+  loadManifest,
+  validateManifest,
+  validateWritingCorpus,
+} from "./okf-agent-benchmark.mjs";
 
 function argument(name) {
   const index = process.argv.indexOf(name);
@@ -21,6 +26,9 @@ if (!output) throw new Error("--output is required.");
 
 const manifest = loadManifest();
 const summary = validateManifest(manifest);
+const writingCorpus = JSON.parse(readFileSync(defaultWritingCorpusPath, "utf8"));
+const writingSummary = validateWritingCorpus(writingCorpus);
+const writingCaseIds = writingCorpus.cases.map((writingCase) => writingCase.id);
 const plan = {
   schemaVersion: 1,
   benchmarkSchemaVersion: manifest.schemaVersion,
@@ -30,12 +38,14 @@ const plan = {
   status: "not-run",
   limitations: [
     "This workflow records an explicit provider evaluation plan; it does not treat missing credentials, provider access, or model output as a pass.",
-    "Live adapter execution and scored provider reports remain completion work for SP13.",
+    "Blind preference remains a human decision. Model critique may be retained only as a labelled secondary signal.",
   ],
   corpus: {
     fixtureCount: summary.fixtureCount,
     taskCount: summary.taskCount,
     criticCaseCount: summary.criticCaseCount,
+    writingCaseCount: writingSummary.writingCaseCount,
+    writingPreferenceThreshold: writingSummary.writingPreferenceThreshold,
   },
   tasks: manifest.tasks.map((task) => ({
     taskId: task.id,
@@ -44,6 +54,25 @@ const plan = {
     expectedArtifact: task.expectedArtifact,
     status: "not-run",
   })),
+  writingEvaluation: {
+    status: "not-run",
+    hardRequirements: [
+      "required knowledge retained",
+      "qualifications retained",
+      "citations retained",
+      "links retained",
+      "zero unsupported claims",
+    ],
+    runs: [
+      { run: 1, order: writingCaseIds },
+      { run: 2, order: [...writingCaseIds].reverse() },
+    ],
+    blindReview: {
+      dimensions: writingCorpus.review.dimensions,
+      threshold: writingSummary.writingPreferenceThreshold,
+      status: "not-run",
+    },
+  },
 };
 
 const target = resolve(output);

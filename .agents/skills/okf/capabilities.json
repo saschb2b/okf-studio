@@ -26,6 +26,7 @@
         "research-brief",
         "change-impact-map",
         "migration-plan",
+        "writing-revision",
         "staged-revision"
       ],
       "resources": [
@@ -62,7 +63,14 @@
           "label": "capability changelog",
           "path": "capabilities/CHANGELOG.md",
           "mediaType": "text/markdown",
-          "sha256": "9db9ae863d0c180afddeb968dee831085d474433370104b3182ab8a9db07125e"
+          "sha256": "cd7fe93cce5a4574089c908ec4838d6b158c32feab06b978cbd81cbf7e8290df"
+        },
+        {
+          "id": "writing",
+          "label": "OKF writing contract",
+          "path": "writing.md",
+          "mediaType": "text/markdown",
+          "sha256": "ce929f21a0620e02b59d0efd93f3bafb6082e2dddeda6b4791621d2a40ca3e35"
         }
       ]
     },
@@ -93,7 +101,7 @@
         "label": "create method",
         "path": "capabilities/create.md",
         "mediaType": "text/markdown",
-        "sha256": "559eb3616f8c07a8a0abc22e5e84ec268e8ec1197c77802e94790b8312e87c69"
+        "sha256": "c9a2208ec36d872f70da46728a17abf45df4ea02ba7b879aefec6fcc8bfba706"
       }]
     },
     {
@@ -108,7 +116,7 @@
         "label": "enrich method",
         "path": "capabilities/enrich.md",
         "mediaType": "text/markdown",
-        "sha256": "d19902de3d3e6cb7529dd62029d939dc2deb101f3d9039d72bf1c00aa2b093ee"
+        "sha256": "ae3ed602b1664ccf10fd80ff421660fc5ef3068758ff86be06b57705714415fb"
       }]
     },
     {
@@ -153,7 +161,7 @@
         "label": "research method",
         "path": "capabilities/research.md",
         "mediaType": "text/markdown",
-        "sha256": "88561eb23f390483e89aa2303eff4c8b031cd84b8d5bd7d41ef8080ac64f9d00"
+        "sha256": "bedc28ec002206a64f3f8f58515de39bec3fb4285e1af4166a102d382647877f"
       }]
     },
     {
@@ -183,7 +191,37 @@
         "label": "migration method",
         "path": "capabilities/migrate.md",
         "mediaType": "text/markdown",
-        "sha256": "97067452c47b6ec5b2668bb10d7e2a9a379c7789ef2cb3c856237a7a337b0a05"
+        "sha256": "e2763a7130c4cc7e56e10baadf98b526f46db53faea45354b6bb3478baa7c000"
+      }]
+    },
+    {
+      "id": "okf-author",
+      "version": "0.1.0",
+      "description": "Turn accepted evidence or a reviewed plan into direct, sourced OKF concept prose.",
+      "riskClass": "stage",
+      "requiredTools": ["okf_health_summary", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+      "artifactKinds": ["writing-revision", "staged-revision"],
+      "resources": [{
+        "id": "instructions",
+        "label": "author method",
+        "path": "capabilities/author.md",
+        "mediaType": "text/markdown",
+        "sha256": "febd3c433afdaa645873632f2f297430412115188533ff7e9e83aa7da25d3e60"
+      }]
+    },
+    {
+      "id": "okf-revise",
+      "version": "0.1.0",
+      "description": "Improve existing OKF prose while preserving every supported claim and reference.",
+      "riskClass": "stage",
+      "requiredTools": ["okf_health_summary", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+      "artifactKinds": ["writing-revision", "staged-revision"],
+      "resources": [{
+        "id": "instructions",
+        "label": "revise method",
+        "path": "capabilities/revise.md",
+        "mediaType": "text/markdown",
+        "sha256": "785a4db087627ac22cc4bd5b79596ede0814255009e3336c5a4ac2e80507f891"
       }]
     }
   ]

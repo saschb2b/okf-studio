@@ -9,6 +9,8 @@ export const OKF_TASK_IDS = [
   "okf-research",
   "okf-change-impact",
   "okf-migrate",
+  "okf-author",
+  "okf-revise",
 ] as const;
 
 export type OkfTaskId = (typeof OKF_TASK_IDS)[number];
@@ -75,6 +77,22 @@ export const OKF_TASKS: Readonly<Record<OkfTaskId, OkfTaskDefinition>> = {
     id: "okf-migrate",
     title: "Plan an OKF migration",
     capabilityIds: ["okf-inspect", "okf-migrate"],
+    tools: ["read", "search", "validate", "stage"],
+    network: false,
+    writes: true,
+  },
+  "okf-author": {
+    id: "okf-author",
+    title: "Write an OKF concept",
+    capabilityIds: ["okf-author"],
+    tools: ["read", "search", "validate", "stage"],
+    network: false,
+    writes: true,
+  },
+  "okf-revise": {
+    id: "okf-revise",
+    title: "Improve this writing",
+    capabilityIds: ["okf-revise"],
     tools: ["read", "search", "validate", "stage"],
     network: false,
     writes: true,

@@ -89,4 +89,36 @@ describe("AgentArtifactWorkspace", () => {
     expect(onRunCritic).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: /approve|apply/iu })).not.toBeInTheDocument();
   });
+
+  it("separates wording edits from knowledge changes in a writing revision", () => {
+    render(
+      <AgentArtifactWorkspace
+        state={{
+          status: "ready",
+          artifact: {
+            ...artifact,
+            kind: "writing-revision",
+            fields: [
+              { id: "reader-job", label: "Reader job", value: "Explain the boundary.", editable: false },
+              { id: "purpose", label: "Purpose", value: "Lead with the point.", editable: false },
+              { id: "revision-mode", label: "Revision mode", value: "style-only", editable: false },
+            ],
+            items: [{
+              id: "review-boundary",
+              label: "Review boundary",
+              detail: "The claim is reworded without changing Apply authority.",
+              status: "reworded",
+              conceptPath: "product/overview.md",
+              sourceIds: [],
+            }],
+          },
+          sentRevision: null,
+        }}
+        onShowConversation={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Wording only")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claim ledger" })).toBeInTheDocument();
+    expect(screen.getByText(/0 added, 0 removed/)).toBeInTheDocument();
+  });
 });

@@ -15,7 +15,9 @@
         "okf-repair": "supported",
         "okf-research": "degraded",
         "okf-change-impact": "supported",
-        "okf-migrate": "supported"
+        "okf-migrate": "supported",
+        "okf-author": "supported",
+        "okf-revise": "supported"
       },
       "limitations": ["Cited remote research requires sources explicitly added through Studio."],
       "baseline": {
@@ -37,7 +39,9 @@
         "okf-repair": "supported",
         "okf-research": "degraded",
         "okf-change-impact": "supported",
-        "okf-migrate": "supported"
+        "okf-migrate": "supported",
+        "okf-author": "supported",
+        "okf-revise": "supported"
       },
       "limitations": ["Capability use is observed only when the agent exposes resource or tool evidence."],
       "baseline": {
@@ -59,7 +63,9 @@
         "okf-repair": "supported",
         "okf-research": "degraded",
         "okf-change-impact": "supported",
-        "okf-migrate": "supported"
+        "okf-migrate": "supported",
+        "okf-author": "supported",
+        "okf-revise": "supported"
       },
       "limitations": ["Capability use is observed only when the agent exposes resource or tool evidence."],
       "baseline": {
@@ -81,7 +87,9 @@
         "okf-repair": "degraded",
         "okf-research": "degraded",
         "okf-change-impact": "supported",
-        "okf-migrate": "degraded"
+        "okf-migrate": "degraded",
+        "okf-author": "degraded",
+        "okf-revise": "degraded"
       },
       "limitations": ["Structured artifact quality and tool calling depend on the configured model."],
       "baseline": {

@@ -10,6 +10,7 @@ export const defaultManifestPath = resolve(benchmarkRoot, "manifest.json");
 export const defaultProviderMatrixPath = resolve(benchmarkRoot, "provider-matrix.json");
 export const defaultJourneyPath = resolve(benchmarkRoot, "journeys.json");
 export const defaultArtifactScoringPath = resolve(benchmarkRoot, "artifact-scoring.json");
+export const defaultWritingCorpusPath = resolve(benchmarkRoot, "writing-corpus.json");
 export const capabilityRoot = resolve(scriptDirectory, "../.agents/skills/okf");
 export const defaultCapabilityManifestPath = resolve(capabilityRoot, "capabilities.json");
 
@@ -118,6 +119,8 @@ const REQUIRED_TASK_CAPABILITY_IDS = [
   "okf-research",
   "okf-change-impact",
   "okf-migrate",
+  "okf-author",
+  "okf-revise",
 ];
 const ARTIFACT_KINDS = new Set([
   "source-inventory",
@@ -126,8 +129,103 @@ const ARTIFACT_KINDS = new Set([
   "research-brief",
   "change-impact-map",
   "migration-plan",
+  "writing-revision",
   "staged-revision",
 ]);
+
+const WRITING_STYLE_PATTERNS = [
+  ["generic-opener", /\bin today's\b|\bwhen it comes to\b/i],
+  ["transition-filler", /\bmoreover\b|\bfurthermore\b|\bit is important to note\b/i],
+  ["inflated-language", /\brobust\b|\bseamless\b|\bleverage(?:s|d|ing)?\b|\bpowerful\b|\bindustry-leading\b/i],
+  ["em-dash", /—/],
+];
+
+export function scoreWritingSample(sampleInput, contractInput) {
+  const sample = requireString(sampleInput, "writing sample");
+  const contract = requireObject(contractInput, "writing contract");
+  const normalized = sample.toLocaleLowerCase("en");
+  const failures = [];
+  for (const fragment of requireStringArray(contract.requiredFragments, "writing contract.requiredFragments")) {
+    if (!normalized.includes(fragment.toLocaleLowerCase("en"))) failures.push(`missing-fragment:${fragment}`);
+  }
+  for (const alternatives of contract.requiredAlternatives ?? []) {
+    const accepted = requireStringArray(alternatives, "writing contract.requiredAlternatives entry");
+    if (!accepted.some((fragment) => normalized.includes(fragment.toLocaleLowerCase("en")))) {
+      failures.push(`missing-alternative:${accepted.join("|")}`);
+    }
+  }
+  for (const citation of contract.requiredCitations ?? []) {
+    if (!sample.includes(requireString(citation, "writing contract citation"))) failures.push(`missing-citation:${citation}`);
+  }
+  for (const link of contract.requiredLinks ?? []) {
+    if (!sample.includes(requireString(link, "writing contract link"))) failures.push(`missing-link:${link}`);
+  }
+  for (const fragment of contract.unsupportedFragments ?? []) {
+    const unsupported = requireString(fragment, "writing contract unsupported fragment");
+    if (normalized.includes(unsupported.toLocaleLowerCase("en"))) failures.push(`unsupported:${unsupported}`);
+  }
+  for (const [id, pattern] of WRITING_STYLE_PATTERNS) {
+    if (pattern.test(sample)) failures.push(id);
+  }
+  return failures.sort();
+}
+
+export function validateWritingCorpus(input) {
+  const document = requireObject(input, "writing corpus");
+  if (document.schemaVersion !== 1) throw new Error("writing corpus.schemaVersion must be 1.");
+  const review = requireObject(document.review, "writing corpus.review");
+  if (review.method !== "blind-pairwise") throw new Error("writing review must be blind-pairwise.");
+  if (typeof review.minimumPreferenceRate !== "number"
+    || review.minimumPreferenceRate <= 0.5
+    || review.minimumPreferenceRate > 1) {
+    throw new Error("writing review minimumPreferenceRate must be above 0.5 and at most 1.");
+  }
+  requireStringArray(review.dimensions, "writing review.dimensions");
+  requireStringArray(review.hardGates, "writing review.hardGates");
+  if (!Array.isArray(document.cases) || document.cases.length === 0) {
+    throw new Error("writing corpus.cases must be a non-empty array.");
+  }
+  requireUniqueIds(document.cases, "writing corpus.cases");
+  for (const value of document.cases) {
+    const writingCase = requireObject(value, "writing case");
+    const id = requireString(writingCase.id, "writing case.id");
+    requireString(writingCase.kind, `writing case ${id}.kind`);
+    requireString(writingCase.readerJob, `writing case ${id}.readerJob`);
+    requireStringArray(writingCase.requiredFragments, `writing case ${id}.requiredFragments`);
+    if (!Array.isArray(writingCase.requiredCitations)
+      || !Array.isArray(writingCase.requiredLinks)
+      || !Array.isArray(writingCase.unsupportedFragments)) {
+      throw new Error(`Writing case ${id} reference contracts must be arrays.`);
+    }
+    if (writingCase.requiredAlternatives !== undefined) {
+      if (!Array.isArray(writingCase.requiredAlternatives)) {
+        throw new Error(`Writing case ${id} requiredAlternatives must be an array.`);
+      }
+      for (const alternatives of writingCase.requiredAlternatives) {
+        requireStringArray(alternatives, `writing case ${id}.requiredAlternatives entry`);
+      }
+    }
+    const baselineFailures = scoreWritingSample(writingCase.baseline, writingCase);
+    const expectedBaseline = requireStringArray(
+      writingCase.expectedBaselineFailures,
+      `writing case ${id}.expectedBaselineFailures`,
+    ).slice().sort();
+    if (JSON.stringify(baselineFailures) !== JSON.stringify(expectedBaseline)) {
+      throw new Error(`Writing case ${id} baseline score changed: ${baselineFailures.join(", ")}.`);
+    }
+    const referenceFailures = scoreWritingSample(writingCase.reference, writingCase);
+    const expectedReference = Array.isArray(writingCase.expectedReferenceFailures)
+      ? writingCase.expectedReferenceFailures.slice().sort()
+      : null;
+    if (!expectedReference || JSON.stringify(referenceFailures) !== JSON.stringify(expectedReference)) {
+      throw new Error(`Writing case ${id} reference score changed: ${referenceFailures.join(", ")}.`);
+    }
+  }
+  return {
+    writingCaseCount: document.cases.length,
+    writingPreferenceThreshold: review.minimumPreferenceRate,
+  };
+}
 
 export function validateProviderMatrix(input) {
   const matrix = requireObject(input, "provider matrix");
@@ -330,6 +428,66 @@ export function validateProviderReport(input) {
       requireString(cost.currency, `provider report task ${task.id}.cost.currency`);
     }
   }
+  const writingEvaluation = requireObject(report.writingEvaluation, "provider report.writingEvaluation");
+  if (!new Set(["completed", "unavailable"]).has(writingEvaluation.status)) {
+    throw new Error("provider report.writingEvaluation.status is invalid.");
+  }
+  if (writingEvaluation.status === "unavailable") {
+    requireString(writingEvaluation.reason, "provider report.writingEvaluation.reason");
+    if (writingEvaluation.cases !== null || writingEvaluation.blindReview !== null) {
+      throw new Error("Unavailable writing evaluation cannot claim case or review results.");
+    }
+  } else {
+    const corpus = loadJson(defaultWritingCorpusPath);
+    const expectedIds = corpus.cases.map((writingCase) => writingCase.id).sort();
+    if (!Array.isArray(writingEvaluation.cases)) {
+      throw new Error("Completed writing evaluation requires case results.");
+    }
+    requireUniqueIds(writingEvaluation.cases, "provider report writing cases");
+    if (JSON.stringify(writingEvaluation.cases.map((writingCase) => writingCase.id).sort())
+      !== JSON.stringify(expectedIds)) {
+      throw new Error("Provider writing cases do not match the frozen corpus.");
+    }
+    for (const writingCase of writingEvaluation.cases) {
+      for (const field of ["unsupportedClaimCount", "writingFindingCount"]) {
+        if (!Number.isInteger(writingCase[field]) || writingCase[field] < 0) {
+          throw new Error(`Provider writing case ${writingCase.id}.${field} is invalid.`);
+        }
+      }
+      for (const field of [
+        "requiredKnowledgeRetained",
+        "qualificationsRetained",
+        "citationsRetained",
+        "linksRetained",
+      ]) {
+        if (typeof writingCase[field] !== "boolean") {
+          throw new Error(`Provider writing case ${writingCase.id}.${field} is invalid.`);
+        }
+      }
+      requireString(writingCase.outputSha256, `provider writing case ${writingCase.id}.outputSha256`);
+      if (!/^[a-f0-9]{64}$/.test(writingCase.outputSha256)) {
+        throw new Error(`Provider writing case ${writingCase.id}.outputSha256 is invalid.`);
+      }
+    }
+    const blindReview = requireObject(writingEvaluation.blindReview, "provider writing blind review");
+    if (blindReview.blinded !== true
+      || !Number.isInteger(blindReview.comparisonCount)
+      || blindReview.comparisonCount <= 0
+      || typeof blindReview.preferenceRate !== "number"
+      || blindReview.preferenceRate < corpus.review.minimumPreferenceRate
+      || blindReview.preferenceRate > 1) {
+      throw new Error("Provider writing blind review does not meet the frozen threshold.");
+    }
+    if (writingEvaluation.cases.some((writingCase) =>
+      !writingCase.requiredKnowledgeRetained
+      || !writingCase.qualificationsRetained
+      || !writingCase.citationsRetained
+      || !writingCase.linksRetained
+      || writingCase.unsupportedClaimCount !== 0
+    )) {
+      throw new Error("Provider writing evaluation has a hard fact-preservation failure.");
+    }
+  }
   return report;
 }
 
@@ -525,14 +683,15 @@ export function checkCorpus(path = defaultManifestPath) {
   const providerSummary = validateProviderMatrix(loadJson(defaultProviderMatrixPath));
   const journeySummary = validateJourneys(loadJson(defaultJourneyPath));
   const scoringSummary = validateArtifactScoring(loadJson(defaultArtifactScoringPath));
-  return { ...summary, ...capabilitySummary, ...providerSummary, ...journeySummary, ...scoringSummary };
+  const writingSummary = validateWritingCorpus(loadJson(defaultWritingCorpusPath));
+  return { ...summary, ...capabilitySummary, ...providerSummary, ...journeySummary, ...scoringSummary, ...writingSummary };
 }
 
 function runCli() {
   const command = process.argv[2] ?? "check";
   if (command === "check") {
     const summary = checkCorpus(process.argv[3] ? resolve(process.argv[3]) : defaultManifestPath);
-    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts, ${summary.criticCaseCount} critic contracts, ${summary.curatedCapabilityCount} curated capabilities, ${summary.providerCount} provider rows, ${summary.journeyCount} journeys, ${summary.artifactScoringCaseCount} artifact scoring cases.\n`);
+    process.stdout.write(`OKF agent benchmark: ${summary.fixtureCount} frozen fixtures, ${summary.taskCount} task contracts, ${summary.criticCaseCount} critic contracts, ${summary.curatedCapabilityCount} curated capabilities, ${summary.providerCount} provider rows, ${summary.journeyCount} journeys, ${summary.artifactScoringCaseCount} artifact scoring cases, ${summary.writingCaseCount} writing cases.\n`);
     return;
   }
   if (command === "fingerprints") {

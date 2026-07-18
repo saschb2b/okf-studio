@@ -45,12 +45,12 @@ export interface OkfTaskLaunchRequest {
 }
 
 const ORIGIN_TASKS: Readonly<Record<OkfTaskOrigin["kind"], readonly OkfTaskId[]>> = {
-  concept: ["okf-audit", "okf-enrich", "okf-research", "okf-change-impact"],
+  concept: ["okf-revise", "okf-audit", "okf-enrich", "okf-research", "okf-change-impact"],
   "graph-selection": ["okf-change-impact", "okf-audit", "okf-enrich"],
   "search-result": ["okf-research", "okf-change-impact", "okf-enrich"],
   "validation-finding": ["okf-repair", "okf-audit", "okf-research"],
   citation: ["okf-research", "okf-enrich", "okf-change-impact"],
-  source: ["okf-enrich", "okf-research", "okf-create"],
+  source: ["okf-author", "okf-enrich", "okf-research", "okf-create"],
   external: [
     "okf-create",
     "okf-enrich",
@@ -59,6 +59,8 @@ const ORIGIN_TASKS: Readonly<Record<OkfTaskOrigin["kind"], readonly OkfTaskId[]>
     "okf-research",
     "okf-change-impact",
     "okf-migrate",
+    "okf-author",
+    "okf-revise",
   ],
 };
 
@@ -117,6 +119,8 @@ function taskPrompt(taskId: OkfTaskId, object: string): string {
     "okf-research": "Explain this OKF context with cited evidence and separate inference",
     "okf-change-impact": "Assess the downstream OKF change impact of this context",
     "okf-migrate": "Plan an OKF migration for this context",
+    "okf-author": "Write an OKF concept from this accepted evidence",
+    "okf-revise": "Improve this OKF writing without changing its meaning",
   };
   return `${instruction[taskId]}: ${object}. Use the attached object as the starting scope, preview any scope expansion, and keep writes staged for review.`;
 }

@@ -140,6 +140,13 @@ function ArtifactReadyView({
   const displayedItems = artifact.items.slice(0, DISPLAY_ITEM_LIMIT);
   const hiddenItemCount = artifact.items.length - displayedItems.length;
   const revision = artifact.revision + 1;
+  const writingRevision = artifact.kind === "writing-revision";
+  const claimCounts = writingRevision
+    ? Object.fromEntries(["unchanged", "reworded", "added", "removed"].map((status) => [
+        status,
+        artifact.items.filter((item) => item.status === status).length,
+      ]))
+    : null;
 
   function send(intent: "continue" | "export") {
     onSendRevision?.(applyArtifactFieldEdits(artifact, fieldValues), intent);
@@ -195,6 +202,21 @@ function ArtifactReadyView({
       )}
 
       <div className="agent-artifact__body">
+        {claimCounts && (
+          <section className="agent-artifact__writing-summary" aria-label="Writing change summary">
+            <div>
+              <strong>{claimCounts.added + claimCounts.removed === 0 ? "Wording only" : "Knowledge changes included"}</strong>
+              <span>
+                {claimCounts.reworded} reworded, {claimCounts.added} added, {claimCounts.removed} removed
+              </span>
+            </div>
+            <p>
+              {claimCounts.added + claimCounts.removed === 0
+                ? "The ledger reports no added or removed claim. Review each mapping before staging."
+                : "Added and removed claims change bundle knowledge and require evidence-backed review."}
+            </p>
+          </section>
+        )}
         <ArtifactVerificationPanel
           artifact={artifact}
           criticState={criticState}
@@ -204,7 +226,7 @@ function ArtifactReadyView({
         />
         {artifact.fields.length > 0 && (
           <section className="agent-artifact__section" aria-labelledby={fieldsId}>
-            <h4 id={fieldsId}>Planning fields</h4>
+            <h4 id={fieldsId}>{writingRevision ? "Revision context" : "Planning fields"}</h4>
             <dl className="agent-artifact__fields">
               {artifact.fields.map((field) => (
                 <div key={field.id} className="agent-artifact__field">
@@ -255,15 +277,27 @@ function ArtifactReadyView({
 
         {displayedItems.length > 0 && (
           <section className="agent-artifact__section" aria-labelledby={itemsId}>
-            <h4 id={itemsId}>Work items</h4>
+            <h4 id={itemsId}>{writingRevision ? "Claim ledger" : "Work items"}</h4>
             <ol className="agent-artifact__items">
               {displayedItems.map((item) => (
                 <li key={item.id}>
-                  <div>
+                  <div className="agent-artifact__item-heading">
                     <strong>{item.label}</strong>
                     <span>{item.status.replace("-", " ")}</span>
                   </div>
                   <p>{item.detail || "No detail supplied."}</p>
+                  {writingRevision && Boolean(item.before ?? item.after) && (
+                    <div className="agent-artifact__claim-comparison">
+                      <div>
+                        <span>Before</span>
+                        <p>{item.before ?? "No prior claim"}</p>
+                      </div>
+                      <div>
+                        <span>After</span>
+                        <p>{item.after ?? "Claim removed"}</p>
+                      </div>
+                    </div>
+                  )}
                   {item.conceptPath && (
                     <small><FileText size={12} aria-hidden="true" />{item.conceptPath}</small>
                   )}
@@ -394,7 +428,12 @@ function ArtifactVerificationPanel({
 
         {criticState.status === "idle" && (
           <div className="agent-artifact__critic-action">
-            <p>{criticUnavailableReason ?? "Optionally check semantic coverage and contradictions. The critic cannot clear deterministic failures."}</p>
+            <p>
+              {criticUnavailableReason
+                ?? (artifact.kind === "writing-revision"
+                  ? "Optionally check clarity, structure, voice fit, and claim preservation. The critic cannot clear deterministic failures."
+                  : "Optionally check semantic coverage and contradictions. The critic cannot clear deterministic failures.")}
+            </p>
             <button type="button" className="btn ghost" disabled={!onRunCritic || criticUnavailableReason !== null} onClick={onRunCritic}>
               Run critic
             </button>

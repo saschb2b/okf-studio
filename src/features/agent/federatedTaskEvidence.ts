@@ -61,6 +61,8 @@ export async function collectFederatedTaskEvidence(
     case "okf-create":
     case "okf-repair":
     case "okf-migrate":
+    case "okf-author":
+    case "okf-revise":
       break;
   }
 

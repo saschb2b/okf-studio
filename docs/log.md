@@ -1,6 +1,10 @@
 # Update Log
 
 ## 2026-07-18
+* **Creation**: Added the [OKF Writing Quality Dogfood](product/okf-writing-quality-dogfood.md) record. Two external Codex runs retained 14 prompts and outputs and passed every deterministic knowledge-preservation gate. Storybook MCP passed the writing states and complete component suite. The record leaves the unconfigured Studio Agent run, blind human preference, protected updater signing, and other platform packages explicitly open.
+
+* **Creation**: Added [OKF Writing](features/okf-writing.md) and upgraded the built-in capability pack to `okf-foundation@1.1.0`. Dedicated author and revise methods now share one reader-job and evidence-preservation contract. Advisory writing diagnostics point to visible passages without affecting conformance. Writing-revision artifacts expose before-and-after claims and reject style-only knowledge changes or lost protected numbers, qualifiers, citations, links, formulas, and code before reviewed staging. The benchmark freezes seven writing cases and records unconfigured providers as unavailable instead of inventing a pass.
+
 * **Creation**: Added the [OKF Writing Quality](product/okf-writing-quality-roadmap.md) roadmap. It defines a purpose-built writing contract, author and revision capabilities, advisory diagnostics, claim-preserving review artifacts, and live provider benchmarks so clearer prose cannot hide lost or invented knowledge.
 
 * **Update**: Added explicit problem-and-value rationale to the OKF specialization feature and architecture concepts. Each now identifies the previous workflow gap, the user or trust cost it created, and why the implemented boundary addresses that gap.

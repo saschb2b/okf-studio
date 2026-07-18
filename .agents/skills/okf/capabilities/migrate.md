@@ -19,6 +19,7 @@ Use this capability for a versioned schema, convention, layout, or identity migr
 3. Define identity-preserving transformations and explicit exceptions.
 4. Plan bounded batches, checkpoints, validation, and parity measures.
 5. Rehearse on a copy or staged workspace before any apply action.
+6. Load the shared `writing` resource only for concept prose changed by the migration, not for mechanical identity updates.
 
 ## Artifact contract
 

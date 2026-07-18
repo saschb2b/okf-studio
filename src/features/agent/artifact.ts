@@ -5,6 +5,7 @@ export type AgentArtifactKind =
   | "research-brief"
   | "change-impact-map"
   | "migration-plan"
+  | "writing-revision"
   | "staged-revision";
 
 export type AgentArtifactStatus = "partial" | "complete";
@@ -14,7 +15,11 @@ export type AgentArtifactItemStatus =
   | "in-progress"
   | "complete"
   | "blocked"
-  | "advisory";
+  | "advisory"
+  | "unchanged"
+  | "reworded"
+  | "added"
+  | "removed";
 
 export interface AgentArtifactConceptReference {
   path: string;
@@ -47,6 +52,8 @@ export interface AgentArtifactItem {
   detail: string;
   status: AgentArtifactItemStatus;
   conceptPath: string | null;
+  before?: string | null;
+  after?: string | null;
   sourceIds: readonly string[];
 }
 
@@ -98,7 +105,12 @@ export type AgentCriticCategory =
   | "coverage"
   | "contradictions"
   | "unsupported-claims"
-  | "missed-relationships";
+  | "missed-relationships"
+  | "clarity"
+  | "redundancy"
+  | "structure"
+  | "voice-fit"
+  | "claim-preservation";
 export type AgentCriticCheckStatus = "checked" | "unavailable";
 export type AgentCriticFindingSeverity = "error" | "warning" | "question";
 export type AgentCriticFindingBasis = "evidence" | "inference";
@@ -183,6 +195,7 @@ export const AGENT_ARTIFACT_KIND_LABELS: Readonly<Record<AgentArtifactKind, stri
   "research-brief": "Research brief",
   "change-impact-map": "Change-impact map",
   "migration-plan": "Migration plan",
+  "writing-revision": "Writing revision",
   "staged-revision": "Staged revision",
 };
 

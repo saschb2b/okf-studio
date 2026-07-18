@@ -34,6 +34,7 @@ pub enum AgentArtifactKind {
     ResearchBrief,
     ChangeImpactMap,
     MigrationPlan,
+    WritingRevision,
     StagedRevision,
 }
 
@@ -60,6 +61,10 @@ pub enum AgentArtifactItemStatus {
     Complete,
     Blocked,
     Advisory,
+    Unchanged,
+    Reworded,
+    Added,
+    Removed,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -120,6 +125,10 @@ struct ArtifactItemInput {
     detail: String,
     status: AgentArtifactItemStatus,
     concept_path: Option<String>,
+    #[serde(default)]
+    before: Option<String>,
+    #[serde(default)]
+    after: Option<String>,
     #[serde(default)]
     source_ids: Vec<String>,
 }
@@ -224,6 +233,8 @@ pub struct AgentArtifactItem {
     pub detail: String,
     pub status: AgentArtifactItemStatus,
     pub concept_path: Option<String>,
+    pub before: Option<String>,
+    pub after: Option<String>,
     pub source_ids: Vec<String>,
 }
 
@@ -388,6 +399,12 @@ fn validate_envelope(envelope: ArtifactEnvelope, bundle: &Bundle) -> Result<Agen
         validate_identifier("item id", &item.id, MAX_ARTIFACT_ID_CHARS)?;
         validate_text("item label", &item.label, MAX_TITLE_CHARS, false)?;
         validate_text("item detail", &item.detail, MAX_FIELD_VALUE_CHARS, true)?;
+        if let Some(before) = &item.before {
+            validate_text("item before text", before, MAX_FIELD_VALUE_CHARS, false)?;
+        }
+        if let Some(after) = &item.after {
+            validate_text("item after text", after, MAX_FIELD_VALUE_CHARS, false)?;
+        }
         if !item_ids.insert(item.id.clone()) {
             return Err(format!("Artifact item id {} is duplicated.", item.id));
         }
@@ -410,13 +427,23 @@ fn validate_envelope(envelope: ArtifactEnvelope, bundle: &Bundle) -> Result<Agen
                 ));
             }
         }
-        total_text += item.detail.chars().count();
+        total_text += item.detail.chars().count()
+            + item
+                .before
+                .as_deref()
+                .map_or(0, |value| value.chars().count())
+            + item
+                .after
+                .as_deref()
+                .map_or(0, |value| value.chars().count());
         items.push(AgentArtifactItem {
             id: item.id,
             label: item.label,
             detail: item.detail,
             status: item.status,
             concept_path,
+            before: item.before,
+            after: item.after,
             source_ids: item.source_ids,
         });
     }
@@ -443,6 +470,78 @@ fn validate_envelope(envelope: ArtifactEnvelope, bundle: &Bundle) -> Result<Agen
             "A research brief with external sources requires claim-level citations.".to_string(),
         );
     }
+    if envelope.kind == AgentArtifactKind::WritingRevision {
+        if concept_references.is_empty() {
+            return Err("A writing revision requires at least one concept path.".to_string());
+        }
+        if items.is_empty() {
+            return Err("A writing revision requires a claim ledger.".to_string());
+        }
+        let revision_mode = fields
+            .iter()
+            .find(|field| field.id == "revision-mode")
+            .map(|field| field.value.as_str());
+        let changes_meaning = items.iter().any(|item| {
+            matches!(
+                item.status,
+                AgentArtifactItemStatus::Added | AgentArtifactItemStatus::Removed
+            )
+        });
+        if revision_mode == Some("style-only") && changes_meaning {
+            return Err(
+                "A style-only writing revision cannot add or remove a claim. Route the change through enrichment."
+                    .to_string(),
+            );
+        }
+        if items
+            .iter()
+            .any(|item| item.status == AgentArtifactItemStatus::Added && item.source_ids.is_empty())
+        {
+            return Err("Every added writing claim requires a source reference.".to_string());
+        }
+        for item in &items {
+            match item.status {
+                AgentArtifactItemStatus::Unchanged | AgentArtifactItemStatus::Reworded => {
+                    let (Some(before), Some(after)) = (&item.before, &item.after) else {
+                        return Err(format!(
+                            "Writing claim {} requires before and after text.",
+                            item.id
+                        ));
+                    };
+                    let missing = missing_protected_fragments(before, after);
+                    if !missing.is_empty() {
+                        return Err(format!(
+                            "Writing claim {} drops protected content: {}.",
+                            item.id,
+                            missing.join(", ")
+                        ));
+                    }
+                }
+                AgentArtifactItemStatus::Added => {
+                    if item.before.is_some() || item.after.is_none() {
+                        return Err(format!(
+                            "Added writing claim {} requires after text and no before text.",
+                            item.id
+                        ));
+                    }
+                }
+                AgentArtifactItemStatus::Removed => {
+                    if item.before.is_none() || item.after.is_some() {
+                        return Err(format!(
+                            "Removed writing claim {} requires before text and no after text.",
+                            item.id
+                        ));
+                    }
+                }
+                _ => {
+                    return Err(format!(
+                        "Writing claim {} has an unsupported ledger status.",
+                        item.id
+                    ));
+                }
+            }
+        }
+    }
 
     let large = items.len() > LARGE_ITEM_COUNT
         || concept_references.len() > LARGE_ITEM_COUNT
@@ -468,6 +567,101 @@ fn validate_envelope(envelope: ArtifactEnvelope, bundle: &Bundle) -> Result<Agen
     };
     artifact.verification = verify_artifact(&artifact);
     Ok(artifact)
+}
+
+fn missing_protected_fragments(before: &str, after: &str) -> Vec<String> {
+    const QUALIFIERS: [&str; 14] = [
+        "at least",
+        "at most",
+        "no more than",
+        "only",
+        "unless",
+        "except",
+        "may",
+        "might",
+        "must",
+        "should",
+        "not",
+        "never",
+        "always",
+        "approximately",
+    ];
+
+    let mut protected = BTreeSet::new();
+    protected.extend(numeric_fragments(before));
+    protected.extend(bounded_fragments(before, "](", ")"));
+    protected.extend(bounded_fragments(before, "[^", "]"));
+    protected.extend(delimited_fragments(before, '`'));
+    protected.extend(delimited_fragments(before, '$'));
+
+    let before_lower = before.to_lowercase();
+    let after_lower = after.to_lowercase();
+    for qualifier in QUALIFIERS {
+        if before_lower.contains(qualifier) && !after_lower.contains(qualifier) {
+            protected.insert(qualifier.to_string());
+        }
+    }
+
+    protected
+        .into_iter()
+        .filter(|fragment| {
+            let lower = fragment.to_lowercase();
+            !after.contains(fragment) && !after_lower.contains(&lower)
+        })
+        .collect()
+}
+
+fn numeric_fragments(value: &str) -> Vec<String> {
+    let characters = value.chars().collect::<Vec<_>>();
+    let mut fragments = Vec::new();
+    let mut index = 0;
+    while index < characters.len() {
+        if !characters[index].is_ascii_digit() {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        index += 1;
+        while index < characters.len()
+            && (characters[index].is_ascii_alphanumeric()
+                || matches!(characters[index], '.' | ',' | ':' | '%' | '+' | '-'))
+        {
+            index += 1;
+        }
+        fragments.push(characters[start..index].iter().collect());
+    }
+    fragments
+}
+
+fn bounded_fragments(value: &str, opener: &str, closer: &str) -> Vec<String> {
+    let mut fragments = Vec::new();
+    let mut remainder = value;
+    while let Some(start) = remainder.find(opener) {
+        let candidate = &remainder[start..];
+        let Some(end) = candidate[opener.len()..].find(closer) else {
+            break;
+        };
+        let end = opener.len() + end + closer.len();
+        fragments.push(candidate[..end].to_string());
+        remainder = &candidate[end..];
+    }
+    fragments
+}
+
+fn delimited_fragments(value: &str, delimiter: char) -> Vec<String> {
+    let mut fragments = Vec::new();
+    let mut remainder = value;
+    while let Some(start) = remainder.find(delimiter) {
+        let after_start = &remainder[start + delimiter.len_utf8()..];
+        let Some(end) = after_start.find(delimiter) else {
+            break;
+        };
+        if end > 0 {
+            fragments.push(after_start[..end].to_string());
+        }
+        remainder = &after_start[end + delimiter.len_utf8()..];
+    }
+    fragments
 }
 
 fn verify_artifact(artifact: &AgentArtifact) -> AgentArtifactVerification {
@@ -710,6 +904,7 @@ fn is_planning_kind(kind: AgentArtifactKind) -> bool {
             | AgentArtifactKind::ResearchBrief
             | AgentArtifactKind::ChangeImpactMap
             | AgentArtifactKind::MigrationPlan
+            | AgentArtifactKind::WritingRevision
     )
 }
 
@@ -721,6 +916,7 @@ fn required_fields(kind: AgentArtifactKind) -> &'static [&'static str] {
         AgentArtifactKind::ResearchBrief => &["question", "conclusion"],
         AgentArtifactKind::ChangeImpactMap => &["target", "proposed-change"],
         AgentArtifactKind::MigrationPlan => &["source-version", "target-version", "rollback"],
+        AgentArtifactKind::WritingRevision => &["reader-job", "purpose", "revision-mode"],
         AgentArtifactKind::StagedRevision => &["revision-summary"],
     }
 }
@@ -733,6 +929,7 @@ fn artifact_kind_name(kind: AgentArtifactKind) -> &'static str {
         AgentArtifactKind::ResearchBrief => "research-brief",
         AgentArtifactKind::ChangeImpactMap => "change-impact-map",
         AgentArtifactKind::MigrationPlan => "migration-plan",
+        AgentArtifactKind::WritingRevision => "writing-revision",
         AgentArtifactKind::StagedRevision => "staged-revision",
     }
 }
@@ -839,6 +1036,71 @@ mod tests {
         );
         assert!(matches!(
             validate("```okf-artifact\n{no}\n```", &bundle),
+            AgentArtifactValidation::Invalid { .. }
+        ));
+    }
+
+    #[test]
+    fn writing_revision_requires_a_complete_fact_preserving_claim_ledger() {
+        let bundle = docs();
+        let ready = artifact_json(
+            &bundle,
+            serde_json::json!({
+                "kind": "writing-revision",
+                "title": "Agent panel rationale revision",
+                "fields": [
+                    {"id": "reader-job", "label": "Reader job", "value": "Explain why the panel exists.", "editable": false},
+                    {"id": "purpose", "label": "Purpose", "value": "Lead with the review boundary.", "editable": false},
+                    {"id": "revision-mode", "label": "Revision mode", "value": "style-only", "editable": false}
+                ],
+                "items": [{
+                    "id": "claim-review-boundary",
+                    "label": "Review boundary",
+                    "detail": "Reworded without changing the separate Apply action.",
+                    "status": "reworded",
+                    "conceptPath": "features/agent-panel.md",
+                    "before": "Apply may proceed only after 30 days; keep [review](https://example.com/review), [^policy], `$loss < 5$`, and `apply_revision`.",
+                    "after": "After 30 days, Apply may proceed only with [review](https://example.com/review), [^policy], `$loss < 5$`, and `apply_revision`.",
+                    "sourceIds": ["source-1"]
+                }]
+            }),
+        );
+        assert!(matches!(
+            validate(&ready, &bundle),
+            AgentArtifactValidation::Ready { .. }
+        ));
+
+        let dropped_claim = ready.replace("\"reworded\"", "\"removed\"");
+        let AgentArtifactValidation::Invalid { message } = validate(&dropped_claim, &bundle) else {
+            panic!("style-only removed claim should be rejected");
+        };
+        assert!(message.contains("cannot add or remove a claim"));
+
+        let lost_protected_content = ready.replace(
+            "After 30 days, Apply may proceed only with [review](https://example.com/review), [^policy], `$loss < 5$`, and `apply_revision`.",
+            "Apply proceeds after the trial.",
+        );
+        let AgentArtifactValidation::Invalid { message } =
+            validate(&lost_protected_content, &bundle)
+        else {
+            panic!("protected claim content should be rejected when dropped");
+        };
+        assert!(message.contains("drops protected content"));
+
+        let no_ledger = artifact_json(
+            &bundle,
+            serde_json::json!({
+                "kind": "writing-revision",
+                "fields": [
+                    {"id": "reader-job", "label": "Reader job", "value": "Explain why.", "editable": false},
+                    {"id": "purpose", "label": "Purpose", "value": "Clarify.", "editable": false},
+                    {"id": "revision-mode", "label": "Revision mode", "value": "style-only", "editable": false}
+                ],
+                "items": []
+            }),
+        );
+        assert!(matches!(
+            validate(&no_ledger, &bundle),
             AgentArtifactValidation::Invalid { .. }
         ));
     }

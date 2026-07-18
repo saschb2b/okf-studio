@@ -366,6 +366,8 @@ const MOCK_OKF_CAPABILITY_IDS = [
   "okf-research",
   "okf-change-impact",
   "okf-migrate",
+  "okf-author",
+  "okf-revise",
 ] as const;
 
 const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], OkfCapabilityRiskClass> = {
@@ -378,6 +380,8 @@ const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number]
   "okf-research": "fetch",
   "okf-change-impact": "analyze",
   "okf-migrate": "analyze",
+  "okf-author": "stage",
+  "okf-revise": "stage",
 };
 
 const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string> = {
@@ -390,10 +394,12 @@ const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[numb
   "okf-research": "0.2.0",
   "okf-change-impact": "0.2.0",
   "okf-migrate": "0.2.0",
+  "okf-author": "0.1.0",
+  "okf-revise": "0.1.0",
 };
 
 const MOCK_OKF_CAPABILITY_ARTIFACTS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
-  "okf-core": ["source-inventory", "bundle-plan", "health-report", "research-brief", "change-impact-map", "migration-plan", "staged-revision"],
+  "okf-core": ["source-inventory", "bundle-plan", "health-report", "research-brief", "change-impact-map", "migration-plan", "writing-revision", "staged-revision"],
   "okf-inspect": ["health-report"],
   "okf-create": ["source-inventory", "bundle-plan"],
   "okf-enrich": ["source-inventory", "staged-revision"],
@@ -402,6 +408,8 @@ const MOCK_OKF_CAPABILITY_ARTIFACTS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[num
   "okf-research": ["source-inventory", "research-brief"],
   "okf-change-impact": ["change-impact-map"],
   "okf-migrate": ["migration-plan"],
+  "okf-author": ["writing-revision", "staged-revision"],
+  "okf-revise": ["writing-revision", "staged-revision"],
 };
 
 const MOCK_OKF_CAPABILITY_TOOLS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
@@ -414,6 +422,8 @@ const MOCK_OKF_CAPABILITY_TOOLS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number]
   "okf-research": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_sources"],
   "okf-change-impact": ["okf_health_summary", "okf_search", "okf_read", "okf_traverse"],
   "okf-migrate": ["okf_health_summary", "okf_inventory", "okf_search", "okf_traverse"],
+  "okf-author": ["okf_health_summary", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+  "okf-revise": ["okf_health_summary", "okf_read", "studio_stage_propose", "studio_stage_validate"],
 };
 
 function mockCapability(id: (typeof MOCK_OKF_CAPABILITY_IDS)[number]): OkfCapabilityInfo {
@@ -486,7 +496,7 @@ export async function onOkfCapabilityPackChanged(
 function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
   return {
     id: "okf-foundation",
-    version: "1.0.0",
+    version: "1.1.0",
     name: "OKF Foundation",
     description: "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
     publisher: "OKF Studio",
@@ -502,7 +512,7 @@ function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
       (id) => MOCK_OKF_CAPABILITY_TOOLS[id],
     ))],
     templateIds: ["okf-markdown-templates"],
-    artifactSchemaIds: ["okf-artifact-v1"],
+    artifactSchemaIds: ["okf-artifact-v1", "writing-revision-v1"],
     active,
     rollbackLabel: "Legacy 0.3.0",
   };

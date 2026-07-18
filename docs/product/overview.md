@@ -1,9 +1,9 @@
 ---
 type: Product
-title: OKF Studio — Overview
+title: OKF Studio overview
 description: A local-first desktop workspace for exploring, creating, curating, and querying connected OKF bundles with user-chosen agents.
 tags: [product, vision, desktop]
-timestamp: 2026-07-13T18:51:16Z
+timestamp: 2026-07-18T20:00:00Z
 ---
 
 # What it is
@@ -12,7 +12,7 @@ OKF Studio is a local-first desktop workspace for [Open Knowledge Format](../ref
 
 Folder opening remains read-only. Agent processes and network actions start only when the user chooses them. External agents own their authentication, and Studio requires no account.
 
-It is the desktop counterpart to the single-file HTML visualizer that ships with the OKF reference implementation — but native, multi-bundle, folder-aware, and live-reloading.
+Studio extends the reference implementation's single-file HTML visualizer with native folder access, multiple bundles, and live reload.
 
 # The one-liner
 
@@ -20,9 +20,9 @@ It is the desktop counterpart to the single-file HTML visualizer that ships with
 
 # Who it's for
 
-- **Engineers and data folks** who keep OKF bundles in their repos (table docs, runbooks, metric definitions) and want to explore them without a web server or a cloud account.
+- **Engineers and data practitioners** who keep table documentation, runbooks, and metric definitions in repository-local OKF bundles and want to explore them without a web server or cloud account.
 - **Agent / AI builders** who curate agent-readable knowledge and need to see the relationship graph their agents will traverse.
-- **Anyone handed a bundle** (a `.tar`, a repo subdirectory) who wants to understand it quickly.
+- **Bundle readers** who receive a repository subdirectory or archive and need to understand it quickly.
 
 See [Personas & Use Cases](personas.md) for these audiences as concrete personas with the jobs they hire the app to do, and [How It Compares](comparison.md) for where it sits against PKM tools, static-site generators, and the OKF reference visualizer.
 
@@ -35,7 +35,7 @@ OKF is markdown with frontmatter, which makes bundles portable but leaves their 
 1. Choose a folder ([First Run](../ux/first-run.md)).
 2. The [Rust core](../architecture/tech-stack.md) scans it and [detects bundles](../architecture/bundle-detection.md).
 3. Each bundle is [parsed](../architecture/okf-parsing.md) into concepts, links, and backlinks.
-4. The frontend renders the [graph](../features/graph-view.md) + [reader](../features/concept-reader.md), with [search](../features/search-and-filter.md), [navigation](../features/navigation.md), and [live reload](../features/live-reload.md).
+4. The frontend renders the [graph](../features/graph-view.md) and [reader](../features/concept-reader.md), with [search](../features/search-and-filter.md), [navigation](../features/navigation.md), and [live reload](../features/live-reload.md).
 5. When chosen, the [Agent Panel](../features/agent-panel.md) starts a compatible agent and attaches only the active bundle and explicit sources through the [Agent System](../architecture/agent-system.md).
 6. Research stays in the thread; proposed bundle changes enter the staged validation and review flow before any filesystem write.
 

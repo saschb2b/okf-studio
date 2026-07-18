@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What OKF Studio ships now, what is deferred, and what it deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-18T16:00:00Z
+timestamp: 2026-07-18T20:00:00Z
 ---
 
 # Current scope
@@ -25,14 +25,14 @@ Studio covers the complete local knowledge loop:
 - Tag-browsing views and saved filters.
 - Export: the current graph as PNG/SVG, or the bundle as a static self-contained HTML.
 - "Cited by" graph focus mode and shortest-path-between-concepts.
-- **Folder-as-workspace grouping** — treat the containing folder as a first-class entity that groups the bundles it holds, so bundles from one repo or context are visually connected (today recents are per-bundle via the [Bundle Switcher](../features/bundle-switcher.md), with the folder kept only as the read scope).
-- **Editable scan ignore-list** — the directories the [scan](../architecture/bundle-detection.md) skips are a fixed default today; let users add/remove entries in [Settings](../ux/settings.md) (the **max depth** is already configurable).
-- **Custom-frame platform polish** — the [borderless title bar](../ux/browsing-layout.md) still trades away two per-OS niceties: the Windows 11 **Snap Layouts** flyout on the maximize button, and macOS **traffic-light** placement. (Rounded corners are now drawn ourselves via a transparent window; a solid-corner fallback for environments without compositing could be a later refinement.)
+- **Folder-as-workspace grouping.** Treat the containing folder as a first-class entity so bundles from one repository or context are visibly connected. Recent items are currently per-bundle through the [Bundle Switcher](../features/bundle-switcher.md); the folder remains only the read scope.
+- **Editable scan ignore-list.** Let users change the directories that the [scan](../architecture/bundle-detection.md) skips in [Settings](../ux/settings.md). The ignore-list is currently fixed, while the maximum scan depth is configurable.
+- **Custom-frame platform polish.** Restore the Windows 11 Snap Layouts flyout on the maximize button and native macOS traffic-light placement. The [borderless title bar](../ux/browsing-layout.md) currently gives up both behaviors. Studio draws rounded corners through a transparent window; environments without compositing may still need a solid-corner fallback.
 
 # Non-goals
 
 - **Not an unreviewed editor.** Opening a bundle remains read-only. Studio authoring happens only through an explicit thread write grant, staged changes, conformance validation, diff review, and atomic apply. See [Agent System](../architecture/agent-system.md).
-- **Not a general markdown wiki.** It renders markdown, but it is organized around OKF concepts, types, and links — not arbitrary note-taking.
+- **Not a general markdown wiki.** It renders markdown and organizes it around OKF concepts, types, and links. It does not provide arbitrary note-taking.
 - **Not a cloud / sync product.** No Studio backend, account, telemetry, or bundle synchronization exists. Optional providers and remote sources are explicit connections, not a Studio cloud.
 - **Not a git client.** [Open-from-URL](../features/bundle-switcher.md) fetches a GitHub repo tarball or a direct archive as a one-shot download. It does not clone, pull, push, branch, or merge. Git metadata is protected from staged writes.
 - **Not a general autonomous computer operator.** Studio tools are closed and bundle-scoped. External ACP processes retain normal operating-system access until a verified isolation host exists, so they remain interactive and ineligible for unattended writes.

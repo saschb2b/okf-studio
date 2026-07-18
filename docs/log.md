@@ -1,6 +1,8 @@
 # Update Log
 
 ## 2026-07-18
+* **Update**: Rewrote the bundle entry points for direct navigation and plainer language. The root index now routes readers by job; the product overview, principles, and scope retain their existing claims while removing promotional phrasing, compressed asides, and ambiguous audience labels.
+
 * **Creation**: Added the [OKF Writing Quality Dogfood](product/okf-writing-quality-dogfood.md) record. Two external Codex runs retained 14 prompts and outputs and passed every deterministic knowledge-preservation gate. Storybook MCP passed the writing states and complete component suite. The record leaves the unconfigured Studio Agent run, blind human preference, protected updater signing, and other platform packages explicitly open.
 
 * **Creation**: Added [OKF Writing](features/okf-writing.md) and upgraded the built-in capability pack to `okf-foundation@1.1.0`. Dedicated author and revise methods now share one reader-job and evidence-preservation contract. Advisory writing diagnostics point to visible passages without affecting conformance. Writing-revision artifacts expose before-and-after claims and reject style-only knowledge changes or lost protected numbers, qualifiers, citations, links, formulas, and code before reviewed staging. The benchmark freezes seven writing cases and records unconfigured providers as unavailable instead of inventing a pass.

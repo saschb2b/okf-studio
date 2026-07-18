@@ -22,7 +22,7 @@ Use this capability for a read-only review of conformance, navigation, connectiv
 
 ## Artifact contract
 
-Return a `health-report` containing rule IDs, evidence fields, affected concept IDs, severity, fact-or-heuristic classification, repairability, and bundle fingerprint.
+Return a `health-report` envelope from the shared templates with a `health-summary` field, rule IDs, evidence fields, affected concept paths, severity, fact-or-heuristic classification, repairability, and exact bundle fingerprint.
 
 ## Stop conditions
 

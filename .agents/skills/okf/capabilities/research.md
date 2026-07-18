@@ -14,7 +14,7 @@ Use this capability when bundle knowledge must be checked, expanded, or reconcil
 
 ## Method
 
-1. Inventory relevant bundle claims before consulting external evidence.
+1. Run `okf_health_summary`, retain its exact bundle fingerprint, then inventory relevant bundle claims before consulting external evidence.
 2. Search only the approved source scope and prefer primary sources.
 3. Record source identity, retrieval time, and the claim each source supports.
 4. Compare evidence with bundle claims and expose conflicts or uncertainty.
@@ -22,7 +22,7 @@ Use this capability when bundle knowledge must be checked, expanded, or reconcil
 
 ## Artifact contract
 
-Return a `research-brief` with question, bundle claims, source inventory, claim-level citations, conflicts, freshness notes, conclusions, and unresolved questions.
+Return a `research-brief` envelope from the shared templates with `question` and `conclusion` fields, bundle claims, source inventory, claim-level citations, conflicts, freshness notes, unresolved questions, and exact bundle fingerprint.
 
 ## Stop conditions
 

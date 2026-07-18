@@ -14,7 +14,7 @@ Use this capability when the user wants a new bundle or a new bounded knowledge 
 
 ## Method
 
-1. Confirm the destination and keep examples separate from target facts.
+1. Run `okf_health_summary`, retain its exact bundle fingerprint, confirm the destination, and keep examples separate from target facts.
 2. Inventory sources, provenance, and unanswered domain questions.
 3. Propose stable concept identities, types, and links.
 4. Plan the root index and navigation paths.
@@ -22,7 +22,7 @@ Use this capability when the user wants a new bundle or a new bounded knowledge 
 
 ## Artifact contract
 
-Return a `bundle-plan` with destination, scope, proposed concept IDs, types, relationships, sources, open questions, and validation checks. Creation itself must go through a reviewed `staged-revision`.
+Return a `bundle-plan` envelope from the shared templates with `destination` and `scope` fields, proposed concept paths, types, relationships, source inventory, open questions, validation checks, and exact bundle fingerprint. Creation itself must go through a reviewed `staged-revision`.
 
 ## Stop conditions
 

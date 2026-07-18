@@ -14,7 +14,7 @@ Use this capability to answer questions about an existing bundle, explain a conc
 
 ## Method
 
-1. Inventory metadata before reading bodies.
+1. Run `okf_health_summary`, retain its exact bundle fingerprint, then inventory metadata before reading bodies.
 2. Search for the named concepts and terms.
 3. Read only the concepts needed to answer.
 4. Traverse explicit links when the question asks about lineage, dependencies, or procedures.
@@ -22,7 +22,7 @@ Use this capability to answer questions about an existing bundle, explain a conc
 
 ## Artifact contract
 
-Return a `health-report` containing the answer, inspected concept IDs, traversed links, evidence gaps, and bundle fingerprint. A short answer may be rendered as prose, but the same evidence fields remain required.
+Return a `health-report` envelope from the shared templates containing a `health-summary` field, the answer, inspected concept paths, traversed links, evidence gaps, and exact bundle fingerprint. A short answer may remain prose when a work surface would add no value.
 
 ## Stop conditions
 

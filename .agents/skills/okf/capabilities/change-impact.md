@@ -14,7 +14,7 @@ Use this capability before renaming, moving, deprecating, or materially changing
 
 ## Method
 
-1. Read the target and identify its stable identity.
+1. Run `okf_health_summary`, retain its exact bundle fingerprint, then read the target and identify its stable identity.
 2. Traverse explicit inbound and outbound links.
 3. Search for textual, schema, formula, and navigation references.
 4. Separate observed dependents from inferred consumers.
@@ -22,7 +22,7 @@ Use this capability before renaming, moving, deprecating, or materially changing
 
 ## Artifact contract
 
-Return a `change-impact-map` with target identity, proposed change, direct dependents, transitive dependents, textual references, inferred risks, affected indexes, and bundle fingerprint.
+Return a `change-impact-map` envelope from the shared templates with `target` and `proposed-change` fields, direct dependents, transitive dependents, textual references, inferred risks, affected indexes, and exact bundle fingerprint.
 
 ## Stop conditions
 

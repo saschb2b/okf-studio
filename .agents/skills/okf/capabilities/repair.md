@@ -22,7 +22,7 @@ Use this capability when deterministic findings have bounded, reviewable repairs
 
 ## Artifact contract
 
-Return a `staged-revision` linking each changed hunk to a finding ID, precondition, validation result, and rollback checkpoint.
+Return a `staged-revision` envelope from the shared templates with a `revision-summary` field linking each changed hunk to a finding ID, precondition, validation result, rollback checkpoint, and exact pre-change bundle fingerprint.
 
 ## Stop conditions
 

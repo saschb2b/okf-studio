@@ -358,18 +358,18 @@ mod tests {
 
         let capability = default_capability();
         assert_eq!(capability.id, "okf-core");
-        assert_eq!(capability.version, "0.2.0");
+        assert_eq!(capability.version, "0.3.0");
         assert_eq!(capability.resources.len(), 5);
         assert_eq!(manifest_sha256().len(), 64);
         for (capability_id, expected_version) in [
-            ("okf-inspect", "0.1.0"),
-            ("okf-create", "0.1.0"),
-            ("okf-enrich", "0.1.0"),
-            ("okf-audit", "0.2.0"),
-            ("okf-repair", "0.2.0"),
-            ("okf-research", "0.1.0"),
-            ("okf-change-impact", "0.1.0"),
-            ("okf-migrate", "0.1.0"),
+            ("okf-inspect", "0.2.0"),
+            ("okf-create", "0.2.0"),
+            ("okf-enrich", "0.2.0"),
+            ("okf-audit", "0.3.0"),
+            ("okf-repair", "0.3.0"),
+            ("okf-research", "0.2.0"),
+            ("okf-change-impact", "0.2.0"),
+            ("okf-migrate", "0.2.0"),
         ] {
             let capability = catalog
                 .capabilities
@@ -389,13 +389,13 @@ mod tests {
     fn materializes_only_declared_resources_with_versioned_identity() {
         let commands = resource("okf-core", "commands").expect("commands should be declared");
         assert_eq!(commands.capability_id, "okf-core");
-        assert_eq!(commands.capability_version, "0.2.0");
+        assert_eq!(commands.capability_version, "0.3.0");
         assert_eq!(commands.resource_id, "commands");
         assert_eq!(commands.media_type, "text/markdown");
         assert_eq!(commands.sha256.len(), 64);
         assert_eq!(
             commands.uri,
-            "okf-studio://capability/okf-core/v0.2.0/commands"
+            "okf-studio://capability/okf-core/v0.3.0/commands"
         );
         assert!(commands.contents.contains("## `init`"));
         assert!(resource("okf-core", "secrets").is_err());

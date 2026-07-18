@@ -16,5 +16,6 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Command Palette](command-palette.md) - Jump to any concept and run quick actions from the keyboard.
 * [Validation](validation.md) - Surface OKF conformance issues without refusing the bundle.
 * [Knowledge Health](knowledge-health.md) - Give agents deterministic quality evidence without treating heuristics as conformance.
+* [Structured Agent Work](structured-agent-work.md) - Keep validated OKF plans, reports, research, migrations, and staged revisions active beside the conversation.
 * [Live Reload](live-reload.md) - Watch the folder and refresh the graph as files change.
 * [Log View](log-view.md) - Render a bundle's log.md as a dated, newest-first change timeline.

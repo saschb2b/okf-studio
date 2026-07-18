@@ -7,6 +7,8 @@
 // to its file. See docs/architecture/agent-system.md for the domains.
 //
 // host — the running ACP and MCP process host.
+#[path = "agent/host/agent_artifact.rs"]
+mod agent_artifact;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_process.rs"]
@@ -166,6 +168,21 @@ fn read_bundle(
 ) -> Result<Bundle, String> {
     let root = grants.authorize_bundle(Path::new(&root))?;
     Ok(okf_core::read_bundle(&root))
+}
+
+#[tauri::command]
+async fn validate_agent_artifact(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    markdown: String,
+) -> Result<agent_artifact::AgentArtifactValidation, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_artifact::validate(&markdown, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not validate the agent artifact.".to_string())
 }
 
 #[tauri::command]
@@ -891,6 +908,7 @@ pub fn run() {
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            validate_agent_artifact,
             agent_catalog,
             okf_capability_catalog,
             agent_security_host_status,

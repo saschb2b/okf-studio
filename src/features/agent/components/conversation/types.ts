@@ -2,6 +2,7 @@ import type { AgentPlanEntryInfo, AgentToolContentInfo, AgentToolKind, AgentTool
 import type { AgentSourceInput } from "@/shared/ipc.ts";
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
 import type { Issue } from "@/shared/types.ts";
+import type { AgentArtifact } from "@/features/agent/artifact.ts";
 
 export type StagedValidationState =
   | { status: "idle" }
@@ -56,9 +57,10 @@ export interface PromptDraft {
 }
 export interface PromptSubmission {
   draft: PromptDraft;
-  source: "composer" | "queue" | "retry" | "compact";
+  source: "composer" | "queue" | "retry" | "compact" | "artifact";
   retryTurnId?: string;
   compactCommand?: string;
+  artifactRevision?: AgentArtifact;
 }
 export type QueuedPrompt = PromptDraft & { id: string };
 export type ThreadTitle =

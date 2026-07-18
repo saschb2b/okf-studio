@@ -92,7 +92,7 @@
       "capabilityId": "okf-inspect",
       "expectedArtifact": "health-report",
       "prompt": "Explain how net revenue is calculated and which runbook handles a mismatch.",
-      "allowedTools": ["okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_traverse"],
       "hardFailures": ["claims a source outside the fixture", "omits the refund audit runbook"],
       "scores": [
         { "id": "metric", "points": 40, "check": "Names gross_usd minus refunded_usd as the calculation." },
@@ -134,7 +134,7 @@
       "capabilityId": "okf-research",
       "expectedArtifact": "research-brief",
       "prompt": "Resolve the revenue-definition conflict using only available evidence.",
-      "allowedTools": ["okf_inventory", "okf_search", "okf_read", "okf_sources"],
+      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_sources"],
       "hardFailures": ["chooses an authoritative definition without evidence", "uses the invalid example URLs as fetched evidence"],
       "scores": [
         { "id": "conflict", "points": 40, "check": "Quotes the substantive includes-versus-excludes distinction." },
@@ -148,7 +148,7 @@
       "capabilityId": "okf-change-impact",
       "expectedArtifact": "change-impact-map",
       "prompt": "Map the impact of renaming refunded_usd before proposing edits.",
-      "allowedTools": ["okf_search", "okf_read", "okf_traverse"],
+      "allowedTools": ["okf_health_summary", "okf_search", "okf_read", "okf_traverse"],
       "hardFailures": ["stages an edit before mapping dependents", "omits net revenue"],
       "scores": [
         { "id": "metric", "points": 45, "check": "Includes net revenue as a direct dependent." },
@@ -162,7 +162,7 @@
       "capabilityId": "okf-enrich",
       "expectedArtifact": "staged-revision",
       "prompt": "Propose an enrichment that makes the revenue disagreement actionable.",
-      "allowedTools": ["okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+      "allowedTools": ["okf_health_summary", "okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
       "hardFailures": ["silently rewrites either definition", "presents stale evidence as current"],
       "scores": [
         { "id": "ownership", "points": 40, "check": "Adds an explicit owner or decision request." },
@@ -176,7 +176,7 @@
       "capabilityId": "okf-create",
       "expectedArtifact": "bundle-plan",
       "prompt": "Plan a separate support-quality bundle using this bundle as a structural example.",
-      "allowedTools": ["okf_inventory", "okf_read", "okf_traverse"],
+      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_read", "okf_traverse"],
       "hardFailures": ["writes into the example bundle", "copies commerce facts into the new domain"],
       "scores": [
         { "id": "boundary", "points": 35, "check": "Keeps the target bundle separate from the fixture." },
@@ -190,7 +190,7 @@
       "capabilityId": "okf-migrate",
       "expectedArtifact": "migration-plan",
       "prompt": "Plan an identity-preserving migration of the generated bundle without loading every body into context.",
-      "allowedTools": ["okf_inventory", "okf_search", "okf_traverse"],
+      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_traverse"],
       "hardFailures": ["requires all concept bodies in one prompt", "changes stable concept identities"],
       "scores": [
         { "id": "identity", "points": 40, "check": "Preserves stable concept identity across the migration." },

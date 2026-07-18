@@ -136,9 +136,9 @@ mod tests {
     fn builds_a_progressive_catalog_from_the_versioned_capability() {
         let message = native_system_message();
         assert_eq!(message.role, "system");
-        assert!(message.content.contains("- okf-core@0.2.0 [okf_inventory"));
-        assert!(message.content.contains("- okf-inspect@0.1.0"));
-        assert!(message.content.contains("- okf-migrate@0.1.0"));
+        assert!(message.content.contains("- okf-core@0.3.0 [okf_inventory"));
+        assert!(message.content.contains("- okf-inspect@0.2.0"));
+        assert!(message.content.contains("- okf-migrate@0.2.0"));
         assert!(message.content.contains("Select the narrowest capability"));
         assert!(message
             .content
@@ -181,8 +181,8 @@ mod tests {
             }),
         };
         let result = execute_skill_tool(&call).expect("load commands");
-        assert!(result.contains("Capability: okf-core@0.2.0"));
-        assert!(result.contains("okf-studio://capability/okf-core/v0.2.0/commands"));
+        assert!(result.contains("Capability: okf-core@0.3.0"));
+        assert!(result.contains("okf-studio://capability/okf-core/v0.3.0/commands"));
         assert!(result.contains("SHA-256: d0b7d596d5"));
         assert!(result.contains("## `init`"));
         assert!(!result.contains("The one rule"));
@@ -191,7 +191,7 @@ mod tests {
             capability_resource_identity(&call).expect("resource identity"),
             (
                 "okf-core".to_string(),
-                "0.2.0".to_string(),
+                "0.3.0".to_string(),
                 "commands".to_string()
             )
         );

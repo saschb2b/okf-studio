@@ -26,6 +26,7 @@ export const Catalog: Story = {
     await expect(await canvas.findByText("okf-inspect")).toBeVisible();
     await userEvent.click(canvas.getByText("okf-inspect"));
     await expect(canvas.getByText("capabilities/inspect.md")).toBeVisible();
-    await expect(canvas.getAllByText("v0.1.0").length).toBeGreaterThan(1);
+    await expect(canvas.getAllByText("v0.3.0").length).toBeGreaterThan(1);
+    await expect(canvas.getAllByText("v0.2.0").length).toBeGreaterThan(1);
   },
 };

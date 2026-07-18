@@ -9,7 +9,7 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, CircleAlert, FileText, History, ImageIcon, RotateCcw, Send, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
@@ -27,6 +27,12 @@ import { QueuedPromptCard } from "@/features/agent/components/conversation/Queue
 import { AgentSessionHistory } from "@/features/agent/components/conversation/AgentSessionHistory.tsx";
 import { WriteGrantControl } from "@/features/agent/components/conversation/WriteGrantControl.tsx";
 import { OkfContextPlanCard } from "@/features/agent/components/conversation/OkfContextPlanCard.tsx";
+import { AgentArtifactWorkspace } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
+import type { AgentArtifactWorkspaceState } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
+import {
+  agentArtifactEnvelopeText,
+  artifactRevisionPrompt,
+} from "@/features/agent/artifact.ts";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
 import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
@@ -110,6 +116,14 @@ export function AgentConversation({
     () => new Set(),
   );
   const [messages, setMessages] = useState<ConversationItem[]>([]);
+  const [artifactWorkspace, setArtifactWorkspace] = useState<AgentArtifactWorkspaceState>({
+    status: "empty",
+  });
+  const artifactWorkspaceRef = useRef<AgentArtifactWorkspaceState>(artifactWorkspace);
+  const artifactOriginMessageRef = useRef<string | null>(null);
+  const artifactValidationRequestRef = useRef(0);
+  const [artifactValidationAttempt, setArtifactValidationAttempt] = useState(0);
+  const [artifactOpen, setArtifactOpen] = useState(false);
   const [markdownViewOpen, setMarkdownViewOpen] = useState(false);
   const [activeTurn, setActiveTurn] = useState<AgentTurnInfo | null>(null);
   const [pendingPermissions, setPendingPermissions] = useState<PendingPermission[]>([]);
@@ -218,6 +232,17 @@ export function AgentConversation({
   const notificationStatusRef = useRef<AgentThreadStatus>("idle");
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
   const initialSessionLoadStartedRef = useRef(false);
+  let artifactMessageId: string | null = null;
+  let artifactEnvelope: string | null = null;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const item = messages[index];
+    if (item.role !== "agent") continue;
+    const envelope = agentArtifactEnvelopeText(item.text);
+    if (!envelope) continue;
+    artifactMessageId = item.id;
+    artifactEnvelope = envelope;
+    break;
+  }
 
   bundleRootRef.current = bundleRoot;
   connectionIdRef.current = connection.connectionId;
@@ -269,7 +294,101 @@ export function AgentConversation({
     setThreadTaskId(null);
     setAcceptedContextManifest(null);
     setRemovedContextIds(new Set());
+    const emptyArtifact: AgentArtifactWorkspaceState = { status: "empty" };
+    artifactWorkspaceRef.current = emptyArtifact;
+    artifactOriginMessageRef.current = null;
+    artifactValidationRequestRef.current += 1;
+    setArtifactWorkspace(emptyArtifact);
+    setArtifactOpen(false);
   }, [bundleRoot, connection.connectionId]);
+
+  useEffect(() => {
+    if (!bundleRoot || !artifactMessageId || !artifactEnvelope) {
+      if (messages.length === 0) {
+        const emptyArtifact: AgentArtifactWorkspaceState = { status: "empty" };
+        artifactWorkspaceRef.current = emptyArtifact;
+        artifactOriginMessageRef.current = null;
+        setArtifactWorkspace(emptyArtifact);
+        setArtifactOpen(false);
+      }
+      return;
+    }
+    const requestId = ++artifactValidationRequestRef.current;
+    const current = artifactWorkspaceRef.current;
+    if (current.status === "empty" || current.status === "invalid" || current.status === "loading") {
+      const loading: AgentArtifactWorkspaceState = { status: "loading" };
+      artifactWorkspaceRef.current = loading;
+      setArtifactWorkspace(loading);
+    }
+    void validateAgentArtifact(bundleRoot, artifactEnvelope).then(
+      (result) => {
+        if (artifactValidationRequestRef.current !== requestId) return;
+        const previous = artifactWorkspaceRef.current;
+        if (result.status === "none") return;
+        if (result.status === "invalid") {
+          const next: AgentArtifactWorkspaceState =
+            previous.status === "ready" || previous.status === "stale"
+              ? {
+                  status: "stale",
+                  artifact: previous.artifact,
+                  sentRevision: previous.sentRevision,
+                  message: `${result.message} The new output remains labelled prose in the conversation.`,
+                }
+              : { status: "invalid", message: result.message };
+          artifactWorkspaceRef.current = next;
+          setArtifactWorkspace(next);
+          setArtifactOpen(true);
+          return;
+        }
+        const previousArtifact = previous.status === "ready" || previous.status === "stale"
+          ? previous.artifact
+          : null;
+        const sentRevision = previous.status === "ready" || previous.status === "stale"
+          ? previous.sentRevision
+          : null;
+        const fromNewMessage = artifactOriginMessageRef.current !== null &&
+          artifactOriginMessageRef.current !== artifactMessageId;
+        const olderThanCurrent = previousArtifact?.artifactId === result.artifact.artifactId &&
+          fromNewMessage && result.artifact.revision <= previousArtifact.revision;
+        const missesSentRevision = previousArtifact?.artifactId === result.artifact.artifactId &&
+          sentRevision !== null && result.artifact.revision > previousArtifact.revision &&
+          result.artifact.parentRevision !== sentRevision;
+        if (previousArtifact && (olderThanCurrent || missesSentRevision)) {
+          const stale: AgentArtifactWorkspaceState = {
+            status: "stale",
+            artifact: previousArtifact,
+            sentRevision,
+            message: olderThanCurrent
+              ? `The agent returned revision ${result.artifact.revision} after revision ${previousArtifact.revision}.`
+              : `The agent update does not continue from sent revision ${sentRevision}.`,
+          };
+          artifactWorkspaceRef.current = stale;
+          setArtifactWorkspace(stale);
+          setArtifactOpen(true);
+          return;
+        }
+        const ready: AgentArtifactWorkspaceState = {
+          status: "ready",
+          artifact: result.artifact,
+          sentRevision,
+        };
+        artifactOriginMessageRef.current = artifactMessageId;
+        artifactWorkspaceRef.current = ready;
+        setArtifactWorkspace(ready);
+        setArtifactOpen(true);
+      },
+      (error: unknown) => {
+        if (artifactValidationRequestRef.current !== requestId) return;
+        const invalid: AgentArtifactWorkspaceState = {
+          status: "invalid",
+          message: `Studio could not validate this artifact. ${errorMessage(error)}`,
+        };
+        artifactWorkspaceRef.current = invalid;
+        setArtifactWorkspace(invalid);
+        setArtifactOpen(true);
+      },
+    );
+  }, [artifactEnvelope, artifactMessageId, artifactValidationAttempt, bundleRoot, messages.length]);
 
   function persistThreadMetadata(
     session: AgentSessionInfo,
@@ -440,7 +559,7 @@ export function AgentConversation({
   }
 
   const [composerState, submitPrompt, isSubmitting] = useActionState<ComposerState, PromptSubmission>(
-    async (_previous, { draft, source, retryTurnId, compactCommand }) => {
+    async (_previous, { draft, source, retryTurnId, compactCommand, artifactRevision }) => {
       const { text, concepts: draftConcepts, sources: draftSources } = draft;
       if (!text) return { status: "error", message: "Enter a message." };
       if (!bundleRoot) return { status: "error", message: "Open an OKF bundle first." };
@@ -556,6 +675,15 @@ export function AgentConversation({
           onThreadTitleChange(nextTitle);
         }
         if (acceptedPlan) setAcceptedContextManifest(acceptedPlan);
+        if (source === "artifact" && artifactRevision) {
+          const sent: AgentArtifactWorkspaceState = {
+            status: "ready",
+            artifact: artifactRevision,
+            sentRevision: artifactRevision.revision,
+          };
+          artifactWorkspaceRef.current = sent;
+          setArtifactWorkspace(sent);
+        }
         void persistThreadMetadata(session, nextTitle, false, threadTaskId, acceptedPlan);
         resetExport();
         if (source === "composer") {
@@ -608,6 +736,26 @@ export function AgentConversation({
       return;
     }
     startTransition(() => submitPrompt({ draft, source: "composer" }));
+  }
+
+  function sendArtifactRevision(
+    artifact: Extract<AgentArtifactWorkspaceState, { status: "ready" | "stale" }>["artifact"],
+    intent: "continue" | "export",
+  ) {
+    if (isSubmitting || activeTurn !== null) return;
+    const exportInstruction = intent === "export"
+      ? "\n\nExport this artifact as a conformant Markdown concept through reviewed staging. Do not write directly to the bundle."
+      : "";
+    const draft: PromptDraft = {
+      text: `${artifactRevisionPrompt(artifact)}${exportInstruction}`,
+      concepts: [],
+      sources: [],
+    };
+    startTransition(() => submitPrompt({
+      draft,
+      source: "artifact",
+      artifactRevision: artifact,
+    }));
   }
 
   const applyTerminalTurnEvent = useEffectEvent((event: AgentTurnEvent) => {
@@ -1661,6 +1809,19 @@ export function AgentConversation({
             title={threadTitle.value}
             onTitleChange={changeThreadTitle}
           />
+          {artifactWorkspace.status !== "empty" && (
+            <button
+              type="button"
+              className="btn ghost"
+              aria-pressed={artifactOpen}
+              onClick={() => setArtifactOpen((open) => !open)}
+            >
+              <FileText size={14} aria-hidden="true" />
+              <span className="agent-conversation__action-label">
+                {artifactOpen ? "Conversation" : "Work artifact"}
+              </span>
+            </button>
+          )}
           <ThreadSecurityScope bundleName={bundleName} scope={connection.securityScope} />
           {bundleRoot && !requiresAuthentication && showWriteGrant && (
             <WriteGrantControl
@@ -1845,12 +2006,23 @@ export function AgentConversation({
 
       {bundleRoot && !requiresAuthentication && history.status === "closed" && (
         <>
-          <TranscriptSurface
-            key={messages.find((item) => item.role === "user")?.id ?? "new-thread"}
-            hasItems={messages.length > 0}
-            hasUserMessage={hasSession}
-            contentVersion={messages}
-          >
+          {artifactOpen ? (
+            <AgentArtifactWorkspace
+              state={artifactWorkspace}
+              selectedConceptId={activeConcept?.id}
+              sending={isSubmitting || activeTurn !== null}
+              onShowConversation={() => setArtifactOpen(false)}
+              onRetry={() => setArtifactValidationAttempt((attempt) => attempt + 1)}
+              onOpenConcept={onOpenConcept}
+              onSendRevision={sendArtifactRevision}
+            />
+          ) : (
+            <TranscriptSurface
+              key={messages.find((item) => item.role === "user")?.id ?? "new-thread"}
+              hasItems={messages.length > 0}
+              hasUserMessage={hasSession}
+              contentVersion={messages}
+            >
             {messages.length === 0 && pendingPermissions.length === 0 ? (
               <div className="agent-conversation__welcome">
                 {savedThread.status === "none" ? (
@@ -1920,8 +2092,9 @@ export function AgentConversation({
                 })}
               </>
             )}
-          </TranscriptSurface>
-          {hasLiveWork && (
+            </TranscriptSurface>
+          )}
+          {!artifactOpen && hasLiveWork && (
             <AgentLiveWorkShelf
               summary={liveWorkSummary}
               collapsible={hasCollapsibleLiveWork}

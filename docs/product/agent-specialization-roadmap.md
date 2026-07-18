@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T05:00:00Z
+timestamp: 2026-07-18T05:45:00Z
 ---
 
 # Outcome
@@ -137,13 +137,13 @@ Gate: the fixture corpus produces stable findings with no model call, no network
 
 ## SP5: Structured OKF work surfaces
 
-- [ ] Define typed artifacts for source inventory, bundle plan, health report, research brief, change-impact map, migration plan, and staged revision.
-- [ ] Validate artifact identities, bounds, citations, concept paths, source references, and revision links in Rust before rendering them as trusted structure.
-- [ ] Put current artifacts beside the graph and reader with bidirectional concept selection; keep transcript chronology and raw agent prose separate.
-- [ ] Let users correct editable planning fields directly and send the revision back as explicit context.
-- [ ] Export artifacts as conformant Markdown concepts only through reviewed staging when they belong in the bundle.
-- [ ] Apply the common artifact lifecycle contract and retain invalid agent output as labelled prose with a recovery action instead of dropping it or rendering it as structured work.
-- [ ] Keep artifact edits local until the user explicitly sends them; show the sent revision and reject late agent updates for an older artifact revision.
+- [x] Define typed artifacts for source inventory, bundle plan, health report, research brief, change-impact map, migration plan, and staged revision.
+- [x] Validate artifact identities, bounds, citations, concept paths, source references, and revision links in Rust before rendering them as trusted structure.
+- [x] Put current artifacts beside the graph and reader with bidirectional concept selection; keep transcript chronology and raw agent prose separate.
+- [x] Let users correct editable planning fields directly and send the revision back as explicit context.
+- [x] Export artifacts as conformant Markdown concepts only through reviewed staging when they belong in the bundle.
+- [x] Apply the common artifact lifecycle contract and retain invalid agent output as labelled prose with a recovery action instead of dropping it or rendering it as structured work.
+- [x] Keep artifact edits local until the user explicitly sends them; show the sent revision and reject late agent updates for an older artifact revision.
 
 Gate: every artifact has loading, empty, partial, invalid, stale, and large states in Storybook and passes keyboard, focus, overflow, and narrow-width checks.
 

@@ -14,7 +14,7 @@ Use this capability to add missing context, provenance, links, examples, ownersh
 
 ## Method
 
-1. Read the target concepts and their direct graph neighborhood.
+1. Run `okf_health_summary`, retain its exact bundle fingerprint, then read the target concepts and their direct graph neighborhood.
 2. Inventory current claims and provenance.
 3. Compare proposed evidence with existing facts and flag conflicts.
 4. Draft the smallest additive change that makes the requested knowledge usable.
@@ -22,7 +22,7 @@ Use this capability to add missing context, provenance, links, examples, ownersh
 
 ## Artifact contract
 
-Return a `staged-revision` linked to the source inventory, affected concept IDs, citations, unresolved conflicts, and pre-change bundle fingerprint.
+Return a `staged-revision` envelope from the shared templates with a `revision-summary` field, affected concept paths, source inventory, claim-level citations, unresolved conflicts, and exact pre-change bundle fingerprint.
 
 ## Stop conditions
 

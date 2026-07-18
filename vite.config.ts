@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
+import { playwright } from "@vitest/browser-playwright";
 
 const host = process.env.TAURI_DEV_HOST;
 const srcRoot = fileURLToPath(new URL("./src", import.meta.url));
@@ -111,13 +112,15 @@ export default defineConfig({
           name: "storybook",
           browser: {
             enabled: true,
-            provider: "playwright",
+            provider: playwright(),
             headless: true,
             connectTimeout: 90_000,
             instances: [{ browser: "chromium" }],
           },
           slowTestThreshold: 1_000,
-          maxWorkers: 4,
+          // A single browser keeps the embedded Storybook/MCP runner below its
+          // startup timeout on Windows and avoids four competing Chromium boots.
+          maxWorkers: 1,
           testTimeout: 30_000,
           sequence: { shuffle: true },
         },

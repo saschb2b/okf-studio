@@ -2,6 +2,86 @@
 
 Copy, fill, validate. Every example uses bundle-absolute links (beginning with `/`) because the spec recommends them for stability. Relative links like `customers.md` are equally valid. Rules behind these shapes are in [spec.md](./spec.md); the form-per-fact table they follow (diagrams for topology, TeX for formulas, definition lists for terms, task lists for stateful checklists, footnotes for caveats) is in [SKILL.md](./SKILL.md).
 
+## Structured work artifact envelope
+
+When a capability names an artifact contract, end the response with one fenced `okf-artifact` JSON object. Studio validates this object in Rust before rendering it as trusted work. Prose outside the fence remains conversation text. Invalid artifact JSON also remains prose, so do not describe an unvalidated object as a Studio work surface.
+
+Call `okf_health_summary` immediately before emitting the artifact and copy its exact `bundleFingerprint`. Keep the same portable `artifactId` across revisions. Start at revision 1 with a null `parentRevision`; each continuation increments `revision` and names the previous revision as its parent. A revision sent back by Studio is explicit context: continue from it, never replace it with an older update.
+
+```okf-artifact
+{
+  "schemaVersion": 1,
+  "artifactId": "impact-agent-panel",
+  "kind": "change-impact-map",
+  "revision": 1,
+  "parentRevision": null,
+  "bundleFingerprint": "<exact value from okf_health_summary>",
+  "title": "Agent Panel change impact",
+  "status": "complete",
+  "summary": "The panel contract affects its host boundary and reviewed staging.",
+  "conceptPaths": ["features/agent-panel.md", "architecture/agent-system.md"],
+  "sources": [
+    {
+      "id": "agent-panel",
+      "label": "Agent Panel",
+      "kind": "bundle",
+      "reference": "features/agent-panel.md"
+    }
+  ],
+  "citations": [
+    {
+      "sourceId": "agent-panel",
+      "claim": "The Agent Panel keeps writes behind reviewed staging."
+    }
+  ],
+  "fields": [
+    {
+      "id": "target",
+      "label": "Target",
+      "value": "features/agent-panel.md",
+      "editable": true
+    },
+    {
+      "id": "proposed-change",
+      "label": "Proposed change",
+      "value": "Add a persistent structured-work surface.",
+      "editable": true
+    }
+  ],
+  "items": [
+    {
+      "id": "inspect-host",
+      "label": "Inspect the host contract",
+      "detail": "Trace direct links before proposing edits.",
+      "status": "complete",
+      "conceptPath": "features/agent-panel.md",
+      "sourceIds": ["agent-panel"]
+    }
+  ]
+}
+```
+
+The closed values are:
+
+- `kind`: `source-inventory`, `bundle-plan`, `health-report`, `research-brief`, `change-impact-map`, `migration-plan`, or `staged-revision`.
+- `status`: `partial` or `complete`.
+- source `kind`: `bundle`, `attachment`, or `external`. Bundle references are current bundle-relative concept paths, attachment references are portable attachment IDs, and external references are HTTPS URLs.
+- item `status`: `pending`, `in-progress`, `complete`, `blocked`, or `advisory`.
+
+Use bundle-relative Markdown concept paths without a leading slash. Paths may name proposed concepts in `conceptPaths` and `items[].conceptPath`, but a `bundle` source must name a current concept. Every citation and item source ID must resolve within the same object. External research evidence requires claim-level citations.
+
+Each complete artifact has required field IDs:
+
+- `source-inventory`: `scope`
+- `bundle-plan`: `destination`, `scope`
+- `health-report`: `health-summary`
+- `research-brief`: `question`, `conclusion`
+- `change-impact-map`: `target`, `proposed-change`
+- `migration-plan`: `source-version`, `target-version`, `rollback`
+- `staged-revision`: `revision-summary`
+
+Use `partial` when a required field is not yet known. Only planning artifacts (`source-inventory`, `bundle-plan`, `research-brief`, `change-impact-map`, and `migration-plan`) may set `editable: true`; those edits remain local until the user explicitly sends a new revision. A `staged-revision` describes reviewed work but does not apply it. Export to conformant Markdown only through reviewed staging.
+
 ## Coverage inventory (the export/enrich work-list)
 
 Before writing a single concept when producing from a source (`export`, `enrich`), enumerate the *whole* surface into a checklist and burn it down. This is the artifact that stops a producer at the front door. Enumerate the way the source lets you: a database's table list, an OpenAPI spec's `paths`, a wiki's page tree, a website's `sitemap.xml` plus its section and listing pages. One discovered unit is one row; keep the list (in scratch, or as a `log.md` note) until every row is a concept or a recorded skip.

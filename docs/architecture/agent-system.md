@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-18T05:00:00Z
+timestamp: 2026-07-18T05:45:00Z
 ---
 
 # Decision
@@ -30,6 +30,8 @@ ACP standardizes capability negotiation, agent-owned auth, sessions, streaming, 
 ACP does not replace an external agent's system prompt. The native Studio Agent guarantees the packaged [OKF capability resources](../../.agents/skills/okf/capabilities.json), system prompt, scoped tools, validation, and staged writes. External agents receive bundle cwd, explicit resources, client permissions, and Studio OKF tools over MCP where supported. Studio labels first-turn capability material as client context and never claims it changed the external agent's system instructions.
 
 The packaged catalog keeps invariant trust rules in the native boundary and task method in versioned resources. `okf-core` owns the shared specification, command reference, templates, and changelog. Eight narrow capabilities own inspect, create, enrich, audit, repair, cited research, change-impact, and migration methods. Each declares one risk class, exact tool set, artifact kinds, required inputs, ordered method, stop conditions, completion checks, and worked and adversarial examples. The benchmark gate requires one task contract per narrow capability and rejects tool or artifact drift. Removing a capability removes its task entry point without changing the native safety boundary. Settings exposes metadata and digests, never resource bodies or an enablement claim. Guided task selection crosses IPC as a stable task ID plus an accepted bounded context manifest. Rust rejects unknown IDs, oversized manifests, task mismatches, and capability routes that differ from the curated task table. The host then attaches the selected narrow instruction resources in addition to the shared kernel and records them in the turn receipt.
+
+Capability artifact contracts use one `okf-artifact` envelope documented in the shared templates. Before trusted rendering, Rust validates the schema, closed artifact and status kinds, exact current bundle fingerprint, revision ancestry, identifiers, field and item bounds, bundle-relative concept paths, source references, and citations. The webview receives typed structure only after that check. It retains invalid output as transcript prose, keeps local planning edits unsent, rejects older continuations, and routes any Markdown export through the existing reviewed stage. The resulting [Structured Agent Work](../features/structured-agent-work.md) is presentation over the same security boundary, not a new write path.
 
 Studio advertises ACP v1 session configuration support for select and boolean options. New and loaded session responses cross Rust as a complete ordered snapshot after reduction. Rust accepts at most 64 options, 64 groups per selector, and 512 values per selector; IDs, names, descriptions, categories, group labels, and value labels are non-empty where required, control-safe, and capped at 512 characters. Duplicate option and value IDs keep their first occurrence. A select is omitted when its confirmed current value is absent from the accepted values, and a future unknown option kind is omitted without hiding other usable options. Unknown semantic categories lose only their category when unsafe; they do not change provider behavior.
 

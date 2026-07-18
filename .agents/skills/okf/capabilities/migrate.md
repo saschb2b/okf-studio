@@ -14,7 +14,7 @@ Use this capability for a versioned schema, convention, layout, or identity migr
 
 ## Method
 
-1. Establish source-version evidence and target rules.
+1. Run `okf_health_summary`, retain its exact bundle fingerprint, then establish source-version evidence and target rules.
 2. Inventory affected concepts without loading every body.
 3. Define identity-preserving transformations and explicit exceptions.
 4. Plan bounded batches, checkpoints, validation, and parity measures.
@@ -22,7 +22,7 @@ Use this capability for a versioned schema, convention, layout, or identity migr
 
 ## Artifact contract
 
-Return a `migration-plan` with source and target versions, affected population, identity map, batch plan, preflight, validation and parity checks, rollback, exceptions, and context budget.
+Return a `migration-plan` envelope from the shared templates with `source-version`, `target-version`, and `rollback` fields, affected population, identity map, batch plan, preflight, validation and parity checks, exceptions, context budget, and exact bundle fingerprint.
 
 ## Stop conditions
 

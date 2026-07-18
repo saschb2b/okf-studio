@@ -57,6 +57,7 @@ import {
 } from "@/features/agent/threadMetadata.ts";
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
 import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
+import type { AgentArtifactValidation } from "@/features/agent/artifact.ts";
 import { OKF_TASKS } from "@/features/agent/taskContext.ts";
 import {
   MOCK_ASSETS,
@@ -148,35 +149,47 @@ const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number]
   "okf-migrate": "analyze",
 };
 
+const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string> = {
+  "okf-core": "0.3.0",
+  "okf-inspect": "0.2.0",
+  "okf-create": "0.2.0",
+  "okf-enrich": "0.2.0",
+  "okf-audit": "0.3.0",
+  "okf-repair": "0.3.0",
+  "okf-research": "0.2.0",
+  "okf-change-impact": "0.2.0",
+  "okf-migrate": "0.2.0",
+};
+
 const MOCK_OKF_CAPABILITY_ARTIFACTS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
-  "okf-core": ["bundle-plan", "health-report", "research-brief", "staged-revision"],
+  "okf-core": ["source-inventory", "bundle-plan", "health-report", "research-brief", "change-impact-map", "migration-plan", "staged-revision"],
   "okf-inspect": ["health-report"],
-  "okf-create": ["bundle-plan"],
-  "okf-enrich": ["staged-revision"],
+  "okf-create": ["source-inventory", "bundle-plan"],
+  "okf-enrich": ["source-inventory", "staged-revision"],
   "okf-audit": ["health-report"],
   "okf-repair": ["staged-revision"],
-  "okf-research": ["research-brief"],
+  "okf-research": ["source-inventory", "research-brief"],
   "okf-change-impact": ["change-impact-map"],
   "okf-migrate": ["migration-plan"],
 };
 
 const MOCK_OKF_CAPABILITY_TOOLS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string[]> = {
-  "okf-core": ["okf_inventory", "okf_read", "okf_search", "okf_sources", "okf_traverse", "okf_validate"],
-  "okf-inspect": ["okf_inventory", "okf_search", "okf_read", "okf_traverse"],
-  "okf-create": ["okf_inventory", "okf_read", "okf_traverse"],
-  "okf-enrich": ["okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
-  "okf-audit": ["okf_inventory", "okf_validate", "okf_traverse", "okf_read"],
-  "okf-repair": ["okf_inventory", "okf_validate", "okf_read", "studio_stage_propose", "studio_stage_validate"],
-  "okf-research": ["okf_inventory", "okf_search", "okf_read", "okf_sources"],
-  "okf-change-impact": ["okf_search", "okf_read", "okf_traverse"],
-  "okf-migrate": ["okf_inventory", "okf_search", "okf_traverse"],
+  "okf-core": ["okf_inventory", "okf_read", "okf_search", "okf_sources", "okf_traverse", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair"],
+  "okf-inspect": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+  "okf-create": ["okf_health_summary", "okf_inventory", "okf_read", "okf_traverse"],
+  "okf-enrich": ["okf_health_summary", "okf_search", "okf_read", "okf_sources", "studio_stage_propose", "studio_stage_validate"],
+  "okf-audit": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_affected", "okf_health_repair", "okf_read"],
+  "okf-repair": ["okf_inventory", "okf_validate", "okf_health_summary", "okf_health_finding", "okf_health_repair", "okf_read", "studio_stage_propose", "studio_stage_validate"],
+  "okf-research": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_sources"],
+  "okf-change-impact": ["okf_health_summary", "okf_search", "okf_read", "okf_traverse"],
+  "okf-migrate": ["okf_health_summary", "okf_inventory", "okf_search", "okf_traverse"],
 };
 
 function mockCapability(id: (typeof MOCK_OKF_CAPABILITY_IDS)[number]): OkfCapabilityInfo {
   const name = id.replace("okf-", "");
   return {
     id,
-    version: "0.1.0",
+    version: MOCK_OKF_CAPABILITY_VERSIONS[id],
     description: id === "okf-core"
       ? "Shared OKF specification, commands, templates, and invariant guidance."
       : `Built-in ${name} method for bounded OKF work.`,
@@ -204,6 +217,22 @@ export async function okfCapabilityCatalog(): Promise<OkfCapabilityCatalogInfo> 
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<OkfCapabilityCatalogInfo>("okf_capability_catalog");
+}
+
+export async function validateAgentArtifact(
+  root: string,
+  markdown: string,
+): Promise<AgentArtifactValidation> {
+  if (!isTauri()) {
+    return markdown.includes("```okf-artifact")
+      ? {
+          status: "invalid",
+          message: "The desktop host is required to validate structured artifacts.",
+        }
+      : { status: "none" };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentArtifactValidation>("validate_agent_artifact", { root, markdown });
 }
 
 function browserSecurityPlatform(): AgentSecurityHostStatus["platform"] {

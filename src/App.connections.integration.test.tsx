@@ -354,7 +354,9 @@ describe("OKF Studio agent connections", () => {
       expect(screen.queryByRole("button", {
         name: /^Switch to Thread 2: Review the evidence in parallel, /,
       })).not.toBeInTheDocument();
-      await waitFor(() => expect(firstThreadTab).toHaveFocus(), { timeout: 3_000 });
+      await waitFor(() => expect(screen.getByRole("button", {
+        name: /^Switch to Thread 1: Run a long investigation, /,
+      })).toHaveFocus(), { timeout: 3_000 });
 
       await user.click(within(firstConversation).getByRole("button", { name: "Stop" }));
       expect(await within(firstConversation).findByText("Turn cancelled.")).toBeInTheDocument();

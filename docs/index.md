@@ -55,7 +55,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Keyboard Shortcuts](ux/keyboard-shortcuts.md) - Keys for power users.
 * [Theming](ux/theming.md) - Light/dark and the type-color palette.
 * [Accessibility](ux/accessibility.md) - Keyboard operability, focus, screen-reader semantics, contrast, and motion.
-* [Settings & Preferences](ux/settings.md) - Theme, recent folders, scan tuning, motion, and reset.
+* [Settings and preferences](ux/settings.md) - Searchable categories for local, reader, agent, bundle, and update controls.
 
 # Architecture
 

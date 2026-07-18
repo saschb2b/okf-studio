@@ -9,4 +9,4 @@ How OKF Studio looks and feels: the flows, the workspace layout, shortcuts, them
 * [Keyboard Shortcuts](keyboard-shortcuts.md) - Keys for power users.
 * [Theming](theming.md) - Light/dark and the deterministic type-color palette.
 * [Accessibility](accessibility.md) - Keyboard operability, focus, screen-reader semantics, contrast, and motion.
-* [Settings & Preferences](settings.md) - Theme, reader text size, scan tuning, motion, and reset.
+* [Settings and preferences](settings.md) - Searchable categories for local, reader, agent, bundle, and update controls.

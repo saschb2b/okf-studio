@@ -4,7 +4,6 @@ import { OkfCapabilitySettingsView } from "./OkfCapabilitySettings.tsx";
 import type { OkfCapabilityCatalogInfo } from "@/shared/ipc.ts";
 import "@/shared/styles/baseui.css";
 import "@/shared/styles/chrome.css";
-import "./Settings.css";
 
 const catalog: OkfCapabilityCatalogInfo = {
   manifestSha256: "918d9b0905d2a29632dcc800cfc285d53b62dd37e15f4013aa81e514e6a4f535",
@@ -88,7 +87,17 @@ const meta = {
   component: OkfCapabilitySettingsView,
   decorators: [
     (Story) => (
-      <div className="ui-dialog settings-dialog">
+      <div
+        style={{
+          boxSizing: "border-box",
+          width: "min(720px, 100%)",
+          margin: "0 auto",
+          padding: "var(--space-24)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          background: "var(--bg-elev)",
+        }}
+      >
         <Story />
       </div>
     ),

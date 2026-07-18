@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T10:15:00Z
+timestamp: 2026-07-18T13:30:00Z
 ---
 
 # Outcome
@@ -221,13 +221,13 @@ Gate: a scheduled routine cannot fetch, prompt, or stage beyond its saved scope,
 
 ## SP12: OS and agent ecosystem wiring
 
-- [ ] Add a guarded `okf-studio://` scheme for opening a bundle, selecting a concept, and prefilling a named task.
-- [ ] Add a CLI for open, inspect, validate, and visible task kickoff using the same typed payloads.
-- [ ] Require a Rust-owned existing grant or a native confirmation dialog before an external path becomes active.
-- [ ] Productize the bounded OKF MCP server for other local agents through an explicit one-shot grant handshake.
-- [ ] Add platform entry points only where the installer can remove them cleanly and the operating system preserves user intent.
-- [ ] Separate parse and confirmation from execution so a visible preview shows the decoded target, task, attachments, and omitted unsupported fields.
-- [ ] Rate-limit duplicate launches, cap payloads before allocation, and keep untrusted prompt text inert until the user submits it.
+- [x] Add a guarded `okf-studio://` scheme for opening a bundle, selecting a concept, and prefilling a named task.
+- [x] Add a CLI for open, inspect, validate, and visible task kickoff using the same typed payloads.
+- [x] Require a Rust-owned existing grant or a native confirmation dialog before an external path becomes active.
+- [x] Productize the bounded OKF MCP server for other local agents through an explicit one-shot grant handshake.
+- [x] Add platform entry points only where the installer can remove them cleanly and the operating system preserves user intent.
+- [x] Separate parse and confirmation from execution so a visible preview shows the decoded target, task, attachments, and omitted unsupported fields.
+- [x] Rate-limit duplicate launches, cap payloads before allocation, and keep untrusted prompt text inert until the user submits it.
 
 Gate: hostile deep links, shell arguments, encoded traversal, stale grants, and duplicate launches cannot start an agent or broaden filesystem access.
 

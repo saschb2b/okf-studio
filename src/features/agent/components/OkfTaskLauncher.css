@@ -107,6 +107,41 @@
   margin: 0 var(--space-16) var(--space-16);
 }
 
+.okf-task-launcher__draft {
+  display: grid;
+  gap: var(--space-6);
+  margin: 0 var(--space-16) var(--space-16);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.okf-task-launcher__draft textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+  line-height: var(--lh-normal);
+}
+
+.okf-task-launcher__draft textarea:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.okf-task-launcher__draft small {
+  color: var(--text-dim);
+  font-weight: 400;
+  line-height: var(--lh-normal);
+}
+
 .okf-task-launcher__actions {
   display: flex;
   gap: var(--space-8);

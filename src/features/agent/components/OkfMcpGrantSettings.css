@@ -1,0 +1,77 @@
+.okf-mcp-grant {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-8);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border);
+}
+
+.okf-mcp-grant > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+}
+
+.okf-mcp-grant h2,
+.okf-mcp-grant p {
+  margin: 0;
+}
+
+.okf-mcp-grant header p,
+.okf-mcp-grant__ready label {
+  margin-top: var(--space-2);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-mcp-grant__mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--accent);
+}
+
+.okf-mcp-grant__ready {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+
+.okf-mcp-grant__ready textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-mcp-grant__ready textarea:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.okf-mcp-grant .btn {
+  justify-self: start;
+}
+
+.okf-mcp-grant__error {
+  color: var(--error);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}

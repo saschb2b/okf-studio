@@ -22,6 +22,7 @@ interface FederatedOkfTaskLauncherProps {
   status: OkfTaskLauncherStatus;
   tasks: readonly OkfTaskId[];
   selectedTaskId: OkfTaskId;
+  promptDraft?: string;
   plan?: OkfContextPlan;
   connectionName?: string;
   onTaskChange: (taskId: OkfTaskId) => void;
@@ -48,6 +49,7 @@ export function FederatedOkfTaskLauncher({
   status,
   tasks,
   selectedTaskId,
+  promptDraft: initialPromptDraft,
   plan,
   connectionName,
   onTaskChange,
@@ -64,6 +66,7 @@ export function FederatedOkfTaskLauncher({
     && status !== "unsupported"
     && status !== "stale";
   const [reloadToken, setReloadToken] = useState(0);
+  const [promptDraft, setPromptDraft] = useState(initialPromptDraft ?? "");
   const [bundleSet, setBundleSet] = useState<FederatedBundleSetData | null>(null);
   const previewSequence = useRef(0);
   const loadSequence = useRef(0);
@@ -137,7 +140,13 @@ export function FederatedOkfTaskLauncher({
   }
 
   async function startTask() {
-    const kickoff = kickoffForOkfOrigin(selectedTaskId, origin);
+    const baseKickoff = kickoffForOkfOrigin(selectedTaskId, origin);
+    const kickoff = initialPromptDraft === undefined || !promptDraft.trim()
+      ? baseKickoff
+      : {
+          ...baseKickoff,
+          prompt: `${baseKickoff.prompt}\n\nAdditional user-approved draft:\n${promptDraft.trim()}`,
+        };
     if (!supportsFederation || !bundleSet || bundleSet.selectedIds.length < 2) {
       onStart(kickoff);
       return;
@@ -190,6 +199,8 @@ export function FederatedOkfTaskLauncher({
       status={status}
       tasks={tasks}
       selectedTaskId={selectedTaskId}
+      promptDraft={initialPromptDraft === undefined ? undefined : promptDraft}
+      onPromptDraftChange={setPromptDraft}
       plan={plan}
       connectionName={connectionName}
       bundleSet={showFederation && currentBundleSet ? (

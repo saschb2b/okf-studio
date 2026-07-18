@@ -3,7 +3,7 @@ type: Migration Guide
 title: OKF Viewer to OKF Studio
 description: What changes, including bundle-folder grants, and what stays compatible when OKF Viewer upgrades to OKF Studio.
 tags: [product, migration, upgrade, compatibility, credentials]
-timestamp: 2026-07-13T19:56:13Z
+timestamp: 2026-07-18T13:30:00Z
 ---
 
 # Upgrade in place
@@ -36,6 +36,10 @@ An in-place upgrade continues to use:
 The stored ACP pointers contain no transcript, prompts, attachments, tool activity, permissions, usage, or credentials. Agent-owned conversation history remains with the connected agent. Live conversation state, staged drafts, thread write grants, attachment contents, and one-turn permission choices are memory-only and do not survive a restart.
 
 OKF bundles need no content migration. Opening a bundle remains read-only. Files change only through a separately granted, reviewed, validated Apply action.
+
+Installed Studio builds add the `okf-studio://` scheme through the ordinary application installer. It is an entry to a visible request preview, not stored user data or standing authority. Upgrade adds no background process, startup item, global shortcut, file association, or content index. Uninstalling through the platform package removes the scheme registration with the application.
+
+One-shot MCP launch records are temporary, expire after 60 seconds, and are deleted when consumed. They are not profiles and do not need migration or rollback. Existing agent profiles, session pointers, staged checkpoints, settings, and bundle grants keep their current storage and meaning.
 
 # Bundle folder grants
 

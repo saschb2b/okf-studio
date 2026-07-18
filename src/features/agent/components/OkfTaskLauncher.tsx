@@ -25,11 +25,13 @@ interface OkfTaskLauncherProps {
   status: OkfTaskLauncherStatus;
   tasks: readonly OkfTaskId[];
   selectedTaskId: OkfTaskId;
+  promptDraft?: string;
   plan?: OkfContextPlan;
   bundleSet?: ReactNode;
   startDisabled?: boolean;
   connectionName?: string;
   onTaskChange: (taskId: OkfTaskId) => void;
+  onPromptDraftChange?: (value: string) => void;
   onClose: () => void;
   onConnect: () => void;
   onAuthenticate: () => void;
@@ -43,11 +45,13 @@ export function OkfTaskLauncher({
   status,
   tasks,
   selectedTaskId,
+  promptDraft,
   plan,
   bundleSet,
   startDisabled = false,
   connectionName,
   onTaskChange,
+  onPromptDraftChange,
   onClose,
   onConnect,
   onAuthenticate,
@@ -110,6 +114,22 @@ export function OkfTaskLauncher({
                 <p>{state.description}</p>
               </div>
               </section>
+            )}
+
+            {promptDraft !== undefined && (
+              <label className="okf-task-launcher__draft" htmlFor="okf-task-launcher-draft">
+                <span>Prompt draft from external request</span>
+                <textarea
+                  id="okf-task-launcher-draft"
+                  value={promptDraft}
+                  maxLength={4096}
+                  rows={4}
+                  onChange={(event) => onPromptDraftChange?.(event.target.value)}
+                />
+                <small>
+                  Edit or remove this untrusted text. It is sent only when you choose Start task.
+                </small>
+              </label>
             )}
 
             {bundleSet}

@@ -3412,14 +3412,9 @@ fn optional_history_field(value: &str) -> Option<String> {
 }
 
 fn okf_mcp_server(bundle_root: &std::path::Path) -> Result<McpServer, String> {
-    let executable = std::env::current_exe()
-        .map_err(|_| "OKF Studio could not locate its MCP executable.".to_string())?;
-    let root = bundle_root
-        .to_str()
-        .ok_or_else(|| "OKF Studio MCP requires a Unicode bundle path.".to_string())?;
+    let grant = crate::agent_mcp_grant::create(bundle_root)?;
     Ok(McpServer::Stdio(
-        McpServerStdio::new("OKF Studio", executable)
-            .args(vec!["--okf-mcp".to_string(), root.to_string()]),
+        McpServerStdio::new("OKF Studio", grant.command).args(grant.args),
     ))
 }
 
@@ -4712,8 +4707,8 @@ mod tests {
                     };
                     assert_eq!(server.name, "OKF Studio");
                     assert!(server.command.is_absolute());
-                    assert_eq!(server.args[0], "--okf-mcp");
-                    assert_eq!(server.args[1], request.cwd.to_string_lossy());
+                    assert_eq!(server.args[0], "--okf-mcp-grant");
+                    assert_eq!(server.args.len(), 3);
                     assert!(server.env.is_empty());
                     responder.respond(NewSessionResponse::new("session-1"))
                 },

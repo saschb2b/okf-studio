@@ -27,12 +27,19 @@ export type OkfTaskOrigin =
       id: string;
       title: string;
       source: AgentSourceInput;
+    }
+  | {
+      kind: "external";
+      id: string;
+      title: string;
+      conceptId: string;
     };
 
 export interface OkfTaskLaunchRequest {
   requestId: string;
   origin: OkfTaskOrigin;
   preferredTaskId?: OkfTaskId;
+  promptDraft?: string;
   returnFocusId?: string;
   openedBundleFingerprint: string;
 }
@@ -44,6 +51,15 @@ const ORIGIN_TASKS: Readonly<Record<OkfTaskOrigin["kind"], readonly OkfTaskId[]>
   "validation-finding": ["okf-repair", "okf-audit", "okf-research"],
   citation: ["okf-research", "okf-enrich", "okf-change-impact"],
   source: ["okf-enrich", "okf-research", "okf-create"],
+  external: [
+    "okf-create",
+    "okf-enrich",
+    "okf-audit",
+    "okf-repair",
+    "okf-research",
+    "okf-change-impact",
+    "okf-migrate",
+  ],
 };
 
 export function tasksForOkfOrigin(origin: OkfTaskOrigin): readonly OkfTaskId[] {
@@ -107,6 +123,7 @@ export function okfTaskOriginLabel(origin: OkfTaskOrigin): string {
     "validation-finding": "Validation finding",
     citation: "Citation",
     source: "Source",
+    external: "External request",
   };
   return labels[origin.kind];
 }

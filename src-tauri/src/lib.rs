@@ -13,6 +13,8 @@ mod agent_artifact;
 mod agent_critic;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
+#[path = "agent/host/agent_mcp_grant.rs"]
+mod agent_mcp_grant;
 #[path = "agent/host/agent_process.rs"]
 mod agent_process;
 #[path = "agent/host/agent_protocol.rs"]
@@ -67,6 +69,7 @@ mod agent_stage;
 mod bundle_create;
 mod bundle_grant;
 mod bundle_library;
+mod external_entry;
 mod remote;
 mod watch;
 
@@ -125,8 +128,43 @@ fn run_due_okf_routines(
     routines.run_due(&grants, agent_routines::current_time_ms())
 }
 
-pub fn run_agent_mcp(bundle_root: std::path::PathBuf) -> Result<(), String> {
+pub fn run_agent_mcp_grant(grant_file: std::path::PathBuf, token: String) -> Result<(), String> {
+    let bundle_root = agent_mcp_grant::consume(&grant_file, &token)?;
     agent_mcp::run(bundle_root)
+}
+
+#[tauri::command]
+fn create_okf_mcp_grant(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<agent_mcp_grant::McpLaunchGrant, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    agent_mcp_grant::create(&root)
+}
+
+#[tauri::command]
+fn pending_external_entries(
+    state: State<'_, external_entry::ExternalEntryState>,
+) -> Result<Vec<external_entry::ExternalEntryPreview>, String> {
+    external_entry::pending(&state)
+}
+
+#[tauri::command]
+async fn accept_external_entry(
+    app: AppHandle,
+    state: State<'_, external_entry::ExternalEntryState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    request_id: String,
+) -> Result<Option<external_entry::ExternalEntryPreview>, String> {
+    external_entry::accept(app, &state, &grants, &request_id).await
+}
+
+#[tauri::command]
+fn dismiss_external_entry(
+    state: State<'_, external_entry::ExternalEntryState>,
+    request_id: String,
+) -> Result<bool, String> {
+    external_entry::dismiss(&state, &request_id)
 }
 
 pub fn run_pdf_extractor() -> Result<(), String> {
@@ -975,7 +1013,25 @@ fn can_self_update() -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Single-instance must be the first plugin. On Windows/Linux the deep-link
+    // plugin forwards registered URLs through it; ordinary CLI entry points
+    // use the same parser and preview queue.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        let args = argv
+            .into_iter()
+            .skip(1)
+            .map(std::ffi::OsString::from)
+            .collect();
+        if let Err(error) = external_entry::queue_cli(app, args) {
+            eprintln!("[external-entry] {error}");
+        }
+    }));
+
+    let builder = builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -1006,6 +1062,7 @@ pub fn run() {
 
     builder
         .setup(|app| {
+            app.manage(external_entry::ExternalEntryState::default());
             app.manage(
                 bundle_grant::BundleGrantState::load(app.handle()).map_err(|error| {
                     std::io::Error::other(format!("could not load bundle grants: {error}"))
@@ -1024,6 +1081,33 @@ pub fn run() {
                     std::io::Error::other(format!("could not load OKF routines: {error}"))
                 })?,
             );
+
+            // Deep links and CLI requests only enter the bounded preview queue.
+            // Filesystem confirmation and activation are separate commands.
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Some(urls) = app.deep_link().get_current()? {
+                    for url in urls {
+                        if let Err(error) =
+                            external_entry::queue_deep_link(app.handle(), url.as_str())
+                        {
+                            eprintln!("[external-entry] {error}");
+                        }
+                    }
+                }
+                let handle = app.handle().clone();
+                app.deep_link().on_open_url(move |event| {
+                    for url in event.urls() {
+                        if let Err(error) = external_entry::queue_deep_link(&handle, url.as_str()) {
+                            eprintln!("[external-entry] {error}");
+                        }
+                    }
+                });
+                let cli_args = std::env::args_os().skip(1).collect();
+                if let Err(error) = external_entry::queue_cli(app.handle(), cli_args) {
+                    eprintln!("[external-entry] {error}");
+                }
+            }
 
             // Show-on-ready watchdog. The main window starts hidden and the
             // frontend reveals it after its first painted frame (src/App.tsx),
@@ -1100,6 +1184,10 @@ pub fn run() {
             remove_okf_routine,
             run_okf_routine,
             run_due_okf_routines,
+            create_okf_mcp_grant,
+            pending_external_entries,
+            accept_external_entry,
+            dismiss_external_entry,
             agent_security_host_status,
             custom_agents,
             save_custom_agent,

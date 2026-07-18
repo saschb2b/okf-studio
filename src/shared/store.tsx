@@ -722,7 +722,7 @@ function reducer(s: State, m: Msg): State {
 
 export interface Actions {
   openFolder(): Promise<void>;
-  openFolderPath(folder: string, remote?: RemoteSource): Promise<void>;
+  openFolderPath(folder: string, remote?: RemoteSource): Promise<Bundle | null>;
   /** Fetch a remote bundle and report the outcome (see RemoteOpenOutcome);
    *  throws on fetch failure. A single bundle opens directly; several defer to
    *  the caller's picker via `openRemoteChoice`. */
@@ -735,7 +735,7 @@ export interface Actions {
     source: RemoteSource,
   ): Promise<void>;
   refreshRemote(entry: RecentBundle): Promise<void>;
-  selectBundle(root: string, folder?: string, remote?: RemoteSource): Promise<void>;
+  selectBundle(root: string, folder?: string, remote?: RemoteSource): Promise<Bundle | null>;
   openRecentBundle(entry: RecentBundle): Promise<void>;
   pinBundle(root: string): Promise<void>;
   forgetBundle(root: string): Promise<void>;
@@ -785,7 +785,7 @@ export interface Actions {
   setPalette(open: boolean, seed?: string): void;
   openOkfTaskLauncher(
     origin: OkfTaskOrigin,
-    options?: { preferredTaskId?: OkfTaskId; returnFocusId?: string },
+    options?: { preferredTaskId?: OkfTaskId; promptDraft?: string; returnFocusId?: string },
   ): void;
   closeOkfTaskLauncher(options?: { restoreFocus?: boolean }): void;
   setSettingsOpen(open: boolean): void;
@@ -831,11 +831,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         dispatch({ t: "openFolder", folder, bundles });
         if (bundles.length >= 1)
-          await a.selectBundle(bundles[0].root, folder, remote);
-        else dispatch({ t: "loading", v: false });
+          return await a.selectBundle(bundles[0].root, folder, remote);
+        dispatch({ t: "loading", v: false });
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
       }
+      return null;
     },
     async openRemote(source) {
       // The detector runs in two phases, both surfaced by the dialog, and
@@ -899,8 +900,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
           dispatch({ t: "recents", v: recents });
         }
+        return bundle;
       } catch (e) {
         dispatch({ t: "error", v: String(e) });
+        return null;
       }
     },
     async openRecentBundle(entry) {
@@ -1076,6 +1079,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         origin,
         ...(options?.preferredTaskId
           ? { preferredTaskId: options.preferredTaskId }
+          : {}),
+        ...(options?.promptDraft
+          ? { promptDraft: options.promptDraft }
           : {}),
         ...(options?.returnFocusId
           ? { returnFocusId: options.returnFocusId }

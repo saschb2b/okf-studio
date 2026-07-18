@@ -25,6 +25,7 @@ import { attentionRuns } from "@/features/agent/routines.ts";
 import { OkfCapabilitySettings } from "./OkfCapabilitySettings.tsx";
 import { WorkspaceMemorySettings } from "@/features/agent/components/WorkspaceMemorySettings.tsx";
 import { OkfRoutineSettings } from "@/features/agent/components/OkfRoutineSettings.tsx";
+import { OkfMcpGrantSettings } from "@/features/agent/components/OkfMcpGrantSettings.tsx";
 import { bundleContextFingerprint } from "@/features/agent/taskContext.ts";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
@@ -330,6 +331,7 @@ export function Settings() {
                 bundleRoot={state.activeRoot}
                 bundleName={state.bundle.name}
               />
+              <OkfMcpGrantSettings bundleRoot={state.activeRoot} />
             </>
           )}
 

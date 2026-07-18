@@ -391,12 +391,14 @@ export function AgentPanel() {
         && !launcherHidden
         && (
         <FederatedOkfTaskLauncher
+          key={launcherRequest.requestId}
           requestId={launcherRequest.requestId}
           activeRoot={state.activeRoot}
           origin={launcherRequest.origin}
           status={launcherStatus}
           tasks={launcherTasks}
           selectedTaskId={launcherTaskId}
+          promptDraft={launcherRequest.promptDraft}
           plan={launcherPlan}
           connectionName={selectedConnection ? connectionLabel(selectedConnection) : undefined}
           onTaskChange={(taskId) => setLauncherSelection({
@@ -426,6 +428,7 @@ export function AgentPanel() {
           }}
           onRefresh={() => actions.openOkfTaskLauncher(launcherRequest.origin, {
             preferredTaskId: launcherTaskId,
+            promptDraft: launcherRequest.promptDraft,
             returnFocusId: launcherRequest.returnFocusId,
           })}
           onStart={(kickoff) => {

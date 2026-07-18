@@ -3,7 +3,7 @@ type: Reference
 title: Settings & Preferences
 description: The local preferences surface for theme, reading, scan tuning, agent notifications, workspace memory, local routines, motion, updates, and reset.
 tags: [ux, settings, preferences]
-timestamp: 2026-07-18T10:15:00Z
+timestamp: 2026-07-18T13:30:00Z
 ---
 
 # Opening Settings
@@ -19,6 +19,7 @@ Settings open from the **⚙ at the foot of the [Activity Bar](browsing-layout.m
 - **Built-in OKF capabilities.** An inspectable catalog lists every shipped capability's exact version, risk class, required tools, artifact kinds, resource paths, and SHA-256 digests. The manifest digest identifies the complete installed set. This is disclosure, not a claim that an external agent followed delivered guidance; see [Agent System](../architecture/agent-system.md).
 - **Workspace memory.** For the active bundle, an inspectable list shows every bounded local preference and deterministic task record with origin, owner, current or stale validation, last use, retention, exact context effect, and deletion. Memory stores no conversation or knowledge bodies; see [Inspectable Workspace Memory](../features/workspace-memory.md).
 - **Local routines.** For the active bundle, save a named manual or daily deterministic health rescan or source-fingerprint check. The form discloses the effective offline, agent-free, tool-free, non-staging scope before save. Each routine shows its schedule, timeout, catch-up policy, next run, exact scope, Run now, and Delete. Non-healthy, skipped, blocked, interrupted, and failed receipts appear in the local attention inbox; see [Local OKF Routines and Attention Inbox](../features/local-routines.md).
+- **One-shot OKF MCP grant.** For the active bundle, **Use this bundle from another agent** creates a copyable standard MCP descriptor. The descriptor expires after 60 seconds, works once, exposes only Studio's bounded read-only OKF tools, and carries no bundle path. Creating or copying it does not connect or prompt an agent; see [Guarded External Entry Points](../features/external-entry-points.md).
 - **Agent notifications.** Disabled by default. Enabling them explicitly requests operating-system notification permission. Studio then alerts only when an unfocused background thread completes, fails, or waits for permission, using a generic state plus a bounded thread title and agent name. Routine alerts carry only a generic attention state and bounded result count. Prompt, response, source, concept, finding, path, permission, and staged content are excluded. The operating system's focus and per-app settings remain authoritative.
 - **Agent notification sound.** A separate preference, available only after notifications are enabled. Studio asks for sound when allowed; the operating system decides whether and how it plays.
 - **Reduce motion.** Override the OS reduce-motion setting honored in [Accessibility](accessibility.md).

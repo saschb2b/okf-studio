@@ -38,6 +38,7 @@ This bundle is the product's source of truth: what it does ([features](features/
 * [Artifact Verification and Critic Passes](features/artifact-verification.md) - Compare deterministic checks with an optional isolated critic whose findings cannot approve or apply work.
 * [Inspectable Workspace Memory](features/workspace-memory.md) - Apply only current, bundle-scoped local preferences to context plans and keep every item inspectable and deletable.
 * [Local OKF Routines and Attention Inbox](features/local-routines.md) - Schedule deterministic offline maintenance with a Rust-owned recovery ledger and visible attention results.
+* [Guarded External Entry Points](features/external-entry-points.md) - Review deep-link and CLI handoffs and issue one-shot read-only MCP grants without silently starting an agent.
 * [Native OKF Tasks](features/native-okf-tasks.md) - Start bounded curated work from the OKF object already in view.
 * [Live Reload](features/live-reload.md) - Watch the folder and refresh the graph as files change.
 * [Log View](features/log-view.md) - Render a bundle's log.md as a dated, newest-first change timeline.

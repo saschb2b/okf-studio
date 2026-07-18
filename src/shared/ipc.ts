@@ -124,6 +124,68 @@ export async function agentCatalog(): Promise<AgentCatalogDocument> {
   return invoke<AgentCatalogDocument>("agent_catalog");
 }
 
+export type ExternalEntryAction = "open" | "inspect" | "validate" | "task";
+export type ExternalEntrySource = "deepLink" | "cli";
+
+export interface ExternalEntryPreview {
+  requestId: string;
+  source: ExternalEntrySource;
+  action: ExternalEntryAction;
+  bundleRoot: string;
+  conceptId?: string;
+  taskId?: OkfTaskId;
+  promptDraft?: string;
+  omittedFields: string[];
+}
+
+export interface OkfMcpLaunchGrant {
+  command: string;
+  args: string[];
+  expiresAt: number;
+}
+
+export async function pendingExternalEntries(): Promise<ExternalEntryPreview[]> {
+  if (!isTauri()) return [];
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ExternalEntryPreview[]>("pending_external_entries");
+}
+
+export async function acceptExternalEntry(
+  requestId: string,
+): Promise<ExternalEntryPreview | null> {
+  if (!isTauri()) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ExternalEntryPreview | null>("accept_external_entry", { requestId });
+}
+
+export async function dismissExternalEntry(requestId: string): Promise<boolean> {
+  if (!isTauri()) return true;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<boolean>("dismiss_external_entry", { requestId });
+}
+
+export async function onExternalEntryRequested(
+  handler: (entry: ExternalEntryPreview) => void,
+): Promise<() => void> {
+  if (!isTauri()) return () => undefined;
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<ExternalEntryPreview>("external-entry-requested", (event) => {
+    handler(event.payload);
+  });
+}
+
+export async function createOkfMcpGrant(bundleRoot: string): Promise<OkfMcpLaunchGrant> {
+  if (!isTauri()) {
+    return {
+      command: "okf-studio",
+      args: ["--okf-mcp-grant", "<one-shot-grant>", "<one-shot-token>"],
+      expiresAt: Date.now() + 60_000,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<OkfMcpLaunchGrant>("create_okf_mcp_grant", { bundleRoot });
+}
+
 const MOCK_OKF_ROUTINES_KEY = "okf-studio:routines-v1";
 const MOCK_OKF_ROUTINE_RUNS_KEY = "okf-studio:routine-runs-v1";
 const OKF_ROUTINES_CHANGED_EVENT = "okf:routines-changed";

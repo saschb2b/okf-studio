@@ -4,7 +4,7 @@ title: Specialized Agent Systems Research
 description: Primary-source findings that inform the transformation from a general agent panel into an OKF-specialized knowledge workspace.
 resource: https://docs.github.com/en/copilot/concepts/agents/github-copilot-app
 tags: [reference, agents, skills, specialization, copilot, okf]
-timestamp: 2026-07-18T00:05:58Z
+timestamp: 2026-07-18T13:30:00Z
 ---
 
 # Research question
@@ -88,7 +88,7 @@ GitHub deep links can open a specific repository, session, or automation and can
 - a CLI can open, validate, inspect, or start the same visible workflow.
 - opening a link or CLI task never authenticates an agent, sends a prompt, fetches a source, grants edits, or applies a change.
 
-The existing internal `--okf-mcp` helper proves that Studio can serve bounded OKF tools over stdio. Productizing that boundary for other local agents requires a grant handshake or an explicit one-shot bundle selection. Accepting an arbitrary path from command-line arguments would undo the Rust-owned grant model.
+The earlier internal helper proved that Studio could serve bounded OKF tools over stdio, but its bundle-path argument was not a product boundary. The shipped handoff now requires an explicit one-shot grant and gives the helper an opaque record and nonce instead of a bundle path. Accepting an arbitrary path from command-line arguments would undo the Rust-owned grant model.
 
 # Decisions
 

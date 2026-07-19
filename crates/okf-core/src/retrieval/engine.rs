@@ -327,9 +327,9 @@ fn provider_receipts(request: &RetrievalRequest, class: QueryClass) -> Vec<Provi
         Some(provider_id) if request.allow_remote_text => ProviderReceipt {
             capability: "dense-retrieval".to_string(),
             provider_id: Some(provider_id.to_string()),
-            state: ProviderState::Configured,
-            remote_text_shared: true,
-            detail: "A configured dense adapter may add candidates; the local route remains authoritative for fallback.".to_string(),
+            state: ProviderState::Degraded,
+            remote_text_shared: false,
+            detail: "Dense adapter activation is unavailable in this build; Studio used exact, lexical, and graph retrieval without sharing text.".to_string(),
         },
         Some(provider_id) => ProviderReceipt {
             capability: "dense-retrieval".to_string(),
@@ -357,10 +357,9 @@ fn provider_receipts(request: &RetrievalRequest, class: QueryClass) -> Vec<Provi
         Some(provider_id) if request.allow_remote_text => ProviderReceipt {
             capability: "reranking".to_string(),
             provider_id: Some(provider_id.to_string()),
-            state: ProviderState::Configured,
-            remote_text_shared: true,
-            detail: "Only the bounded candidate set is eligible for configured reranking."
-                .to_string(),
+            state: ProviderState::Degraded,
+            remote_text_shared: false,
+            detail: "Reranker activation is unavailable in this build; Studio retained deterministic local order without sharing text.".to_string(),
         },
         Some(provider_id) => ProviderReceipt {
             capability: "reranking".to_string(),
@@ -1101,6 +1100,33 @@ mod tests {
                 && provider.state == ProviderState::Unavailable
                 && !provider.remote_text_shared
         }));
+    }
+
+    #[test]
+    fn provider_ids_do_not_claim_unperformed_remote_work() {
+        let result = retrieve(
+            &bundle(vec![concept(
+                "a",
+                "Alpha",
+                "Topic",
+                "# Alpha\n\nMeaning and intent.",
+            )]),
+            &RetrievalRequest {
+                query: "Discover conceptually similar meaning".to_string(),
+                dense_provider_id: Some("configured-dense".to_string()),
+                reranker_provider_id: Some("configured-reranker".to_string()),
+                allow_remote_text: true,
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert!(result.receipt.providers.iter().all(|provider| {
+            provider.state == ProviderState::Degraded && !provider.remote_text_shared
+        }));
+        assert_eq!(
+            result.diagnostic.class,
+            super::super::DiagnosticClass::ProviderFailure
+        );
     }
 
     #[test]

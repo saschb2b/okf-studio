@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T23:15:00Z
+timestamp: 2026-07-19T23:40:00Z
 ---
 
 # Decision
@@ -49,7 +49,7 @@ The rule deliberately favors silence over a speculative contradiction claim. Ret
 
 # Provider contract
 
-Dense retrieval and reranking have `local`, `configured`, `unavailable`, `degraded`, and `cancelled` states. A receipt records the provider ID, capability, disclosure state, and whether text left the device. No remote text is sent by the shipped baseline. A semantic question falls back to local lexical and graph stages.
+Dense retrieval and reranking have `local`, `configured`, `unavailable`, `degraded`, and `cancelled` states. A receipt records the provider ID, capability, disclosure state, and whether text actually left the device. Permission to share is not evidence that sharing happened. Because the shipped baseline has no activated dense or reranker adapter, even a supplied provider ID remains degraded, records `remoteTextShared: false`, and uses the local fallback. A future adapter may report `configured` and remote sharing only after its bounded call runs. A semantic question therefore falls back to local lexical and graph stages today.
 
 Full-context eligibility considers canonical snapshot size, declared provider window, scope, cache capability, and privacy. Cache creation remains unavailable when a provider does not advertise an exact, fingerprint-bound prefix or KV contract. The receipt names that state and falls back without rewriting the query.
 

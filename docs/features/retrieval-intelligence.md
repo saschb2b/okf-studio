@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T23:15:00Z
+timestamp: 2026-07-19T23:40:00Z
 ---
 
 # What it does
@@ -22,7 +22,7 @@ The separate **Evidence Lab** is available from the thread actions menu. It stat
 
 Before this feature, Studio exposed search, graph traversal, and concept reads, but left each agent to decide how to combine them. Two agents could receive different evidence for the same question, and a confident wrong answer gave the user no way to tell whether retrieval, filtering, context assembly, or generation had failed. Adding a vector database alone would not solve that trust gap and would make an optional provider part of the product's foundation.
 
-Retrieval Intelligence makes evidence selection a Studio contract. Exact identities remain stronger than similar prose, authored links can supply bounded relationship context, tables stay intact, conflicts remain visible, and every omitted candidate has a reason. The result is useful offline and reproducible across agents. Optional dense, reranking, long-context, and provider-cache capabilities are represented honestly as configured, degraded, or unavailable; their absence never disables the local path.
+Retrieval Intelligence makes evidence selection a Studio contract. Exact identities remain stronger than similar prose, authored links can supply bounded relationship context, tables stay intact, conflicts remain visible, and every omitted candidate has a reason. The result is useful offline and reproducible across agents. Optional dense, reranking, long-context, and provider-cache capabilities are represented honestly as configured, degraded, or unavailable; their absence never disables the local path. Granting remote disclosure does not mark text as shared: the receipt does so only after provider work actually runs.
 
 # Routes
 

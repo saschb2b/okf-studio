@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Fix**: Make provider receipts report actual execution rather than permission. Supplying a dense or reranker ID can no longer mark text as remotely shared while those adapters remain inactive; Studio records a degraded capability, local fallback, and `remoteTextShared: false` until provider work really runs.
+
 * **Update**: Expanded deterministic routing around natural user questions and measured each new case for both route choice and evidence recall. Repository overviews and bundle summaries now use coverage, direct definitions and explanations use exact wording, change questions use the temporal route, and the remaining hybrid method is named **Text and related concepts** instead of the vague “Broader local search”.
 
 * **Fix**: Stop treating different excerpts under a reused generic heading as conflicting evidence. Studio now raises a conflict only for independently sourced, distinct concepts that share the same subject and section, so unrelated `Why`, `Overview`, or `Decision` sections do not create false warnings.

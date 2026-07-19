@@ -3961,6 +3961,39 @@ export interface BundleChanged {
   conceptIds: string[];
 }
 
+export interface GitStateChanged {
+  bundleRoot: string;
+}
+
+/** Watch the active authorized repository and emit coalesced invalidations. */
+export async function startGitWatch(
+  bundleRoot: string,
+  onChanged: (event: GitStateChanged) => void,
+): Promise<() => void> {
+  if (!isTauri()) {
+    return () => {
+      /* browser fixtures have no repository process to watch */
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const { listen } = await import("@tauri-apps/api/event");
+  const unlisten = await listen<GitStateChanged>("git-state-changed", (event) =>
+    onChanged(event.payload),
+  );
+  try {
+    await invoke("git_start_watch", { bundleRoot });
+  } catch (error) {
+    unlisten();
+    throw error;
+  }
+  return () => {
+    unlisten();
+    void invoke("git_stop_watch").catch(() => {
+      /* best-effort cleanup */
+    });
+  };
+}
+
 /** Begin watching a folder. Returns a disposer that stops the watch. */
 export async function startWatch(
   folder: string,

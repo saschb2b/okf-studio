@@ -20,6 +20,7 @@ import {
   gitRepositoryHistory,
   gitStageAll,
   gitStagePaths,
+  startGitWatch,
   gitUndoCommit,
   gitUnstageAll,
   gitUnstagePaths,
@@ -89,12 +90,26 @@ export function GitPanel() {
 
   useEffect(() => {
     if (!open || !root) return;
-    const refresh = () => void refreshGitRepository(root, true);
-    const interval = window.setInterval(refresh, 2500);
-    window.addEventListener("focus", refresh);
+    let stopped = false;
+    let dispose = () => {
+      /* assigned when the native watcher is ready */
+    };
+    void startGitWatch(root, (event) => {
+      if (event.bundleRoot === root) void refreshGitRepository(root, true);
+    }).then((stop) => {
+      if (stopped) stop();
+      else dispose = stop;
+    }).catch((error: unknown) => {
+      if (!stopped) {
+        setFeedback({
+          tone: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
     return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
+      stopped = true;
+      dispose();
     };
   }, [open, root]);
 

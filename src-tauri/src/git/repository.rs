@@ -112,6 +112,7 @@ pub enum GitRemoteOperation {
 #[derive(Clone, Debug)]
 pub struct RepositoryScope {
     root: PathBuf,
+    metadata_roots: Vec<PathBuf>,
 }
 
 pub fn snapshot(bundle_root: &Path, folder_grant: &Path) -> Result<GitRepositorySnapshot, String> {
@@ -165,10 +166,18 @@ pub fn discover(
                 .to_string(),
         );
     }
-    Ok(Some(RepositoryScope { root }))
+    let metadata_roots = discover_metadata_roots(&root, &folder_grant);
+    Ok(Some(RepositoryScope {
+        root,
+        metadata_roots,
+    }))
 }
 
 impl RepositoryScope {
+    pub fn watch_roots(&self) -> (PathBuf, Vec<PathBuf>) {
+        (self.root.clone(), self.metadata_roots.clone())
+    }
+
     pub fn snapshot(&self) -> Result<GitRepositorySnapshot, String> {
         let branch =
             optional_git_text(&self.root, &["symbolic-ref", "--quiet", "--short", "HEAD"])?;
@@ -457,6 +466,33 @@ impl RepositoryScope {
         };
         run_git(&self.root, args, false).map(|_| ())
     }
+}
+
+fn discover_metadata_roots(repository_root: &Path, folder_grant: &Path) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    for args in [
+        ["rev-parse", "--absolute-git-dir"].as_slice(),
+        ["rev-parse", "--git-common-dir"].as_slice(),
+    ] {
+        let Some(path) = optional_git_text(repository_root, args).ok().flatten() else {
+            continue;
+        };
+        let path = Path::new(&path);
+        let candidate = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            repository_root.join(path)
+        };
+        let Ok(candidate) = dunce::canonicalize(candidate) else {
+            continue;
+        };
+        if (candidate == folder_grant || candidate.starts_with(folder_grant))
+            && !roots.contains(&candidate)
+        {
+            roots.push(candidate);
+        }
+    }
+    roots
 }
 
 fn git_is_available() -> bool {

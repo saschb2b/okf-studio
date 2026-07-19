@@ -72,6 +72,8 @@ mod bundle_library;
 mod external_entry;
 #[path = "git/repository.rs"]
 mod git_repository;
+#[path = "git/watch.rs"]
+mod git_watch;
 mod remote;
 mod retrieval;
 mod watch;
@@ -233,6 +235,29 @@ async fn git_remote_operation(
     })
     .await
     .map_err(|_| "The Git remote task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+fn git_start_watch(
+    app: AppHandle,
+    watch: State<'_, git_watch::GitWatchState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<(), String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    let (repository_root, metadata_roots) = scope.watch_roots();
+    git_watch::start(
+        app,
+        watch.inner(),
+        bundle_root,
+        repository_root,
+        metadata_roots,
+    )
+}
+
+#[tauri::command]
+fn git_stop_watch(watch: State<'_, git_watch::GitWatchState>) {
+    git_watch::stop(watch.inner());
 }
 
 #[tauri::command]
@@ -1283,6 +1308,7 @@ pub fn run() {
                 })?,
             );
             app.manage(WatchState::default());
+            app.manage(git_watch::GitWatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
             app.manage(
@@ -1387,6 +1413,8 @@ pub fn run() {
             git_commit,
             git_undo_commit,
             git_remote_operation,
+            git_start_watch,
+            git_stop_watch,
             retrieve_okf_context,
             diff_okf_retrieval_receipts,
             bundle_library,

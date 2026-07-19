@@ -3,7 +3,7 @@ type: UX Contract
 title: Git Experience Contract
 description: Surface ownership, interaction rules, pressure states, and safety boundaries for integrated Git support.
 tags: [product, git, ux, quality-gate]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-19T17:15:00Z
 ---
 
 # User job
@@ -70,7 +70,7 @@ Fetch, pull, and push are explicit. The panel never fetches at startup or on a t
 
 # Repository scope and trust
 
-The active bundle first proves a Rust-owned folder grant. Studio then discovers the enclosing repository and accepts it only when the repository root remains within that persisted folder grant. A bundle opened from a downloaded cache can show local Git state only when that cache itself is a repository; remote-cache opening does not manufacture a clone.
+The active bundle first proves a Rust-owned folder grant. Studio then discovers the enclosing repository and accepts it only when its root remains within one persisted grant that also contains the bundle. If the bundle was opened as a repository subfolder, the panel may ask the user to confirm the exact enclosing repository root in a native folder dialog. It cannot grant that parent silently or accept a different selected folder. A bundle opened from a downloaded cache can show local Git state only when that cache itself is a repository; remote-cache opening does not manufacture a clone.
 
 Every Git command is a fixed Rust operation invoked without a shell. User-controlled paths are validated as repository-relative and passed after `--`. Local operations disable hooks, pagers, and external diff programs. Remote operations are non-interactive and run only from the named button. The frontend receives display names and repository-relative paths, never absolute roots or `.git` content.
 

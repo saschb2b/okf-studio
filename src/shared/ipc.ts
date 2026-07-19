@@ -3245,6 +3245,12 @@ export async function readBundle(root: string): Promise<Bundle> {
   return invoke<Bundle>("read_bundle", { root });
 }
 
+export async function pickGitRepositoryFolder(bundleRoot: string): Promise<string | null> {
+  if (!isTauri()) return MOCK_FOLDER;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("pick_git_repository_folder", { bundleRoot });
+}
+
 export async function gitRepositorySnapshot(
   bundleRoot: string,
 ): Promise<GitRepositorySnapshot> {

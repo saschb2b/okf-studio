@@ -16,6 +16,7 @@ import {
 import { useApp } from "@/shared/store.tsx";
 import {
   gitCommit,
+  pickGitRepositoryFolder,
   gitRemoteOperation,
   gitRepositoryHistory,
   gitStageAll,
@@ -73,6 +74,7 @@ export interface GitPanelViewProps {
   onCommit: (includeTracked: boolean) => void;
   onUndo: (head: string) => void;
   onRemote: (operation: GitRemoteOperation) => void;
+  onAuthorizeRepository: () => void;
 }
 
 export function GitPanel() {
@@ -248,6 +250,22 @@ export function GitPanel() {
         });
       });
     },
+    onAuthorizeRepository: () => {
+      if (!root) return;
+      setPending("authorize-repository");
+      setFeedback(null);
+      void pickGitRepositoryFolder(root)
+        .then((folder) => {
+          if (folder) return refreshGitRepository(root, true);
+        })
+        .catch((error: unknown) => {
+          setFeedback({
+            tone: "error",
+            message: error instanceof Error ? error.message : String(error),
+          });
+        })
+        .finally(() => setPending(null));
+    },
   };
 
   return <GitPanelView {...viewProps} />;
@@ -305,7 +323,15 @@ export function GitPanelView(props: GitPanelViewProps) {
       {props.loading && !snapshot ? <GitPanelState icon={<LoaderCircle className="spin" />} title="Reading repository" /> : null}
       {props.error && !snapshot ? <GitPanelState title="Git status unavailable" detail={props.error} action="Retry" onAction={props.onRefresh} /> : null}
       {snapshot && snapshot.availability !== "ready" ? (
-        <GitPanelState title={availabilityTitle(snapshot.availability)} detail={snapshot.message ?? undefined} />
+        <GitPanelState
+          title={availabilityTitle(snapshot.availability)}
+          detail={props.feedback?.tone === "error" ? props.feedback.message : (snapshot.message ?? undefined)}
+          action={snapshot.availability === "scopeDenied"
+            ? (props.pending === "authorize-repository" ? "Waiting for folder…" : "Allow repository")
+            : undefined}
+          onAction={snapshot.availability === "scopeDenied" ? props.onAuthorizeRepository : undefined}
+          actionDisabled={props.pending === "authorize-repository"}
+        />
       ) : null}
 
       {snapshot?.availability === "ready" && props.tab === "changes" ? (
@@ -554,19 +580,21 @@ function GitPanelState({
   detail,
   action,
   onAction,
+  actionDisabled = false,
 }: {
   icon?: ReactNode;
   title: string;
   detail?: string;
   action?: string;
   onAction?: () => void;
+  actionDisabled?: boolean;
 }) {
   return (
     <div className="git-panel-state">
       {icon ? <span aria-hidden="true">{icon}</span> : null}
       <strong>{title}</strong>
       {detail ? <p>{detail}</p> : null}
-      {action && onAction ? <button type="button" onClick={onAction}>{action}</button> : null}
+      {action && onAction ? <button type="button" onClick={onAction} disabled={actionDisabled}>{action}</button> : null}
     </div>
   );
 }
@@ -575,7 +603,7 @@ function availabilityTitle(availability: GitRepositorySnapshot["availability"]):
   switch (availability) {
     case "notRepository": return "No Git repository";
     case "gitUnavailable": return "Git is not installed";
-    case "scopeDenied": return "Open the repository folder";
+    case "scopeDenied": return "Connect the enclosing repository";
     case "ready": return "Repository ready";
   }
 }

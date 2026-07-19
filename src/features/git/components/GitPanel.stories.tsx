@@ -36,6 +36,7 @@ const callbacks = {
   onCommit: fn(),
   onUndo: fn(),
   onRemote: fn(),
+  onAuthorizeRepository: fn(),
 };
 
 const meta = {
@@ -126,7 +127,7 @@ export const RepositoryOutsideGrant: Story = {
   args: {
     snapshot: {
       availability: "scopeDenied",
-      message: "Open the repository folder to use Git here.",
+      message: "The bundle is inside a larger Git repository. Allow that repository to use Git here.",
       repositoryName: null,
       branch: null,
       upstream: null,
@@ -136,10 +137,11 @@ export const RepositoryOutsideGrant: Story = {
       changes: [],
     },
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("Open the repository folder")).toBeVisible();
-    await expect(canvas.getByText("Open the repository folder to use Git here.")).toBeVisible();
+    await expect(canvas.getByText("Connect the enclosing repository")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Allow repository" }));
+    await expect(args.onAuthorizeRepository).toHaveBeenCalledOnce();
   },
 };
 

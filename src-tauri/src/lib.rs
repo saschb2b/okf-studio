@@ -88,8 +88,8 @@ fn authorized_git_scope(
     grants: &bundle_grant::BundleGrantState,
     bundle_root: &str,
 ) -> Result<git_repository::RepositoryScope, String> {
-    let (bundle, folder) = grants.authorize_bundle_with_folder(Path::new(bundle_root))?;
-    git_repository::discover(&bundle, &folder)?
+    let (bundle, folders) = grants.authorize_bundle_with_folders(Path::new(bundle_root))?;
+    git_repository::discover(&bundle, &folders)?
         .ok_or_else(|| "The active bundle is not inside a Git repository.".to_string())
 }
 
@@ -98,8 +98,8 @@ async fn git_repository_snapshot(
     grants: State<'_, bundle_grant::BundleGrantState>,
     bundle_root: String,
 ) -> Result<git_repository::GitRepositorySnapshot, String> {
-    let (bundle, folder) = grants.authorize_bundle_with_folder(Path::new(&bundle_root))?;
-    tauri::async_runtime::spawn_blocking(move || git_repository::snapshot(&bundle, &folder))
+    let (bundle, folders) = grants.authorize_bundle_with_folders(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || git_repository::snapshot(&bundle, &folders))
         .await
         .map_err(|_| "The Git status task stopped unexpectedly.".to_string())?
 }
@@ -389,6 +389,41 @@ fn pick_bundle_folder(
         .map_err(|_| "The selected bundle folder is not available on this platform.".to_string())?;
     grants
         .grant(&folder, bundle_grant::BundleGrantKind::LocalFolder)
+        .map(Some)
+}
+
+#[tauri::command]
+async fn pick_git_repository_folder(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<Option<String>, String> {
+    let bundle = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let repository_root =
+        tauri::async_runtime::spawn_blocking(move || git_repository::enclosing_root(&bundle))
+            .await
+            .map_err(|_| "Git repository discovery stopped unexpectedly.".to_string())??
+            .ok_or_else(|| "The active bundle is not inside a Git repository.".to_string())?;
+
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_title("Allow Git for this repository")
+        .set_directory(&repository_root)
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+    let selected = selected
+        .into_path()
+        .map_err(|_| "The selected repository folder is not available.".to_string())?;
+    let selected = dunce::canonicalize(selected)
+        .map_err(|_| "The selected repository folder is no longer available.".to_string())?;
+    if selected != repository_root {
+        return Err("Choose the enclosing Git repository folder shown by Studio.".to_string());
+    }
+    grants
+        .grant(&repository_root, bundle_grant::BundleGrantKind::LocalFolder)
         .map(Some)
 }
 
@@ -1399,6 +1434,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             pick_bundle_folder,
+            pick_git_repository_folder,
             create_bundle,
             revoke_bundle_grant,
             scan_bundles,

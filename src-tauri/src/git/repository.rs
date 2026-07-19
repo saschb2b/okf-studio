@@ -15,6 +15,8 @@ const MAX_DIFF_CHARS: usize = 512 * 1024;
 const MAX_HISTORY_PAGE: usize = 100;
 const MAX_PATHS_PER_ACTION: usize = 512;
 const MAX_COMMIT_MESSAGE_CHARS: usize = 16 * 1024;
+const REPOSITORY_SCOPE_DENIED: &str =
+    "The bundle is inside a larger Git repository. Allow that repository to use Git here.";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -115,14 +117,17 @@ pub struct RepositoryScope {
     metadata_roots: Vec<PathBuf>,
 }
 
-pub fn snapshot(bundle_root: &Path, folder_grant: &Path) -> Result<GitRepositorySnapshot, String> {
+pub fn snapshot(
+    bundle_root: &Path,
+    folder_grants: &[PathBuf],
+) -> Result<GitRepositorySnapshot, String> {
     if !git_is_available() {
         return Ok(GitRepositorySnapshot::unavailable(
             GitAvailability::GitUnavailable,
             "Install Git and restart Studio to use repository tools.",
         ));
     }
-    let scope = match discover(bundle_root, folder_grant) {
+    let scope = match discover(bundle_root, folder_grants) {
         Ok(Some(scope)) => scope,
         Ok(None) => {
             return Ok(GitRepositorySnapshot::unavailable(
@@ -130,7 +135,7 @@ pub fn snapshot(bundle_root: &Path, folder_grant: &Path) -> Result<GitRepository
                 "The active bundle is not inside a Git repository.",
             ));
         }
-        Err(error) if error.starts_with("The enclosing Git repository") => {
+        Err(error) if error == REPOSITORY_SCOPE_DENIED => {
             return Ok(GitRepositorySnapshot::unavailable(
                 GitAvailability::ScopeDenied,
                 error,
@@ -143,8 +148,25 @@ pub fn snapshot(bundle_root: &Path, folder_grant: &Path) -> Result<GitRepository
 
 pub fn discover(
     bundle_root: &Path,
-    folder_grant: &Path,
+    folder_grants: &[PathBuf],
 ) -> Result<Option<RepositoryScope>, String> {
+    let Some(root) = enclosing_root(bundle_root)? else {
+        return Ok(None);
+    };
+    let folder_grant = folder_grants
+        .iter()
+        .filter_map(|grant| dunce::canonicalize(grant).ok())
+        .filter(|grant| root == *grant || root.starts_with(grant))
+        .max_by_key(|grant| grant.components().count())
+        .ok_or_else(|| REPOSITORY_SCOPE_DENIED.to_string())?;
+    let metadata_roots = discover_metadata_roots(&root, &folder_grant);
+    Ok(Some(RepositoryScope {
+        root,
+        metadata_roots,
+    }))
+}
+
+pub fn enclosing_root(bundle_root: &Path) -> Result<Option<PathBuf>, String> {
     if !git_is_available() {
         return Err("Git is not installed or is not available on PATH.".to_string());
     }
@@ -158,19 +180,7 @@ pub fn discover(
     let root_text = bounded_utf8(&output.stdout, "Git repository root")?;
     let root = dunce::canonicalize(root_text.trim())
         .map_err(|_| "The Git repository root is no longer available.".to_string())?;
-    let folder_grant = dunce::canonicalize(folder_grant)
-        .map_err(|_| "The folder grant is no longer available.".to_string())?;
-    if root != folder_grant && !root.starts_with(&folder_grant) {
-        return Err(
-            "The enclosing Git repository is outside the folder opened in Studio. Open the repository folder to use Git here."
-                .to_string(),
-        );
-    }
-    let metadata_roots = discover_metadata_roots(&root, &folder_grant);
-    Ok(Some(RepositoryScope {
-        root,
-        metadata_roots,
-    }))
+    Ok(Some(root))
 }
 
 impl RepositoryScope {
@@ -865,9 +875,12 @@ mod tests {
         fixture.write("docs/index.md", "# Updated bundle\n");
         fixture.write("docs/new.md", "---\ntype: Guide\n---\n");
 
-        let scope = discover(&fixture.root.join("docs"), &fixture.root)
-            .expect("discover repository")
-            .expect("repository scope");
+        let scope = discover(
+            &fixture.root.join("docs"),
+            std::slice::from_ref(&fixture.root),
+        )
+        .expect("discover repository")
+        .expect("repository scope");
         let before = scope.snapshot().expect("read status");
         assert_eq!(before.availability, GitAvailability::Ready);
         assert_eq!(before.changes.len(), 2);
@@ -923,9 +936,12 @@ mod tests {
         fixture.commit_all("Initial bundle");
         fixture.git(&["mv", "docs/old.md", "docs/new.md"]);
 
-        let scope = discover(&fixture.root.join("docs"), &fixture.root)
-            .expect("discover repository")
-            .expect("repository scope");
+        let scope = discover(
+            &fixture.root.join("docs"),
+            std::slice::from_ref(&fixture.root),
+        )
+        .expect("discover repository")
+        .expect("repository scope");
         let snapshot = scope.snapshot().expect("read renamed status");
         assert_eq!(snapshot.changes.len(), 1);
         assert_eq!(snapshot.changes[0].path, "docs/new.md");
@@ -938,8 +954,14 @@ mod tests {
         fixture.write("docs/index.md", "# Bundle\n");
         fixture.commit_all("Initial bundle");
         let bundle = fixture.root.join("docs");
-        let error = discover(&bundle, &bundle).expect_err("repository must exceed grant");
-        assert!(error.contains("outside the folder opened in Studio"));
+        let error = discover(&bundle, std::slice::from_ref(&bundle))
+            .expect_err("repository must exceed grant");
+        assert!(error.contains("inside a larger Git repository"));
+
+        let scope = discover(&bundle, &[bundle.clone(), fixture.root.clone()])
+            .expect("discover with repository grant")
+            .expect("repository scope");
+        assert_eq!(scope.root, fixture.root);
     }
 
     #[test]
@@ -950,7 +972,8 @@ mod tests {
             .as_nanos();
         let root = std::env::temp_dir().join(format!("okf-studio-git-plain-{nonce}"));
         fs::create_dir_all(&root).expect("create plain directory");
-        let result = snapshot(Path::new(&root), Path::new(&root)).expect("read plain folder");
+        let result =
+            snapshot(Path::new(&root), std::slice::from_ref(&root)).expect("read plain folder");
         assert_eq!(result.availability, GitAvailability::NotRepository);
         fs::remove_dir_all(&root).expect("remove plain directory");
     }

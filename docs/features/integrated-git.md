@@ -3,7 +3,7 @@ type: Feature
 title: Integrated Git
 description: Review, stage, commit, inspect history, and explicitly synchronize the repository around an OKF bundle.
 tags: [feature, git, repository, review]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-19T17:15:00Z
 ---
 
 # Why this exists
@@ -31,6 +31,6 @@ The panel opens from the status bar, the command palette, or `Ctrl/Cmd + Shift +
 
 # Boundaries
 
-Repository discovery cannot widen the folder grant that opened the bundle. Rust accepts an enclosing repository only when its work tree remains inside a persisted granted folder. Commands use fixed arguments without a shell; paths are validated as repository-relative; hooks, pagers, external diffs, optional locks, and interactive prompts are disabled. Absolute paths and Git metadata never cross IPC.
+Repository discovery cannot silently widen the folder grant that opened the bundle. When a bundle such as `repo/docs/` was opened directly, the panel offers **Allow repository**. Studio opens a native folder confirmation at the enclosing repository root and accepts only that exact folder. After confirmation, the existing bundle stays active and Git refreshes against the broader, now explicit grant. Commands use fixed arguments without a shell; paths are validated as repository-relative; hooks, pagers, external diffs, optional locks, and interactive prompts are disabled. Absolute paths and Git metadata never cross IPC.
 
 The detailed command and trust rules live in [Git Integration Architecture](../architecture/git-integration.md). The interaction contract is [Git Workflow](../ux/git-workflow.md), and the source research and package history are in the [Integrated Git Support roadmap](../product/git-integration/).

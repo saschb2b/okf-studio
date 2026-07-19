@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Git Integration Architecture
 description: A bounded installed-Git service, repository watcher, and typed frontend state for integrated Git support.
 tags: [architecture, git, tauri, security]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-19T17:15:00Z
 ---
 
 # Decision
@@ -18,7 +18,9 @@ The implementation has three parts:
 
 # Authorization and process boundary
 
-Repository discovery starts from an exact detected bundle root. The service may walk upward only until the deepest persisted folder grant that contains that root. A discovered work tree outside that grant returns a closed `scopeDenied` state. Linked worktree metadata may live outside the work tree only when Git identifies it during discovery from the already authorized repository; the watcher treats that metadata root as an internal implementation detail and never exposes it.
+Repository discovery starts from an exact detected bundle root. Rust checks every persisted folder grant containing that bundle and chooses the narrowest one that also contains the discovered work tree. This matters because an OKF bundle will often be `repo/docs/` while the original folder grant is only `docs/`.
+
+When no existing grant contains the repository, the snapshot returns a closed `scopeDenied` state. `pick_git_repository_folder` then discovers the enclosing root without returning it to the webview, opens a native folder confirmation at that location, and accepts only the exact discovered root. Cancellation changes nothing. Confirmation persists the repository folder grant, after which the same active bundle snapshot succeeds. Linked worktree metadata may live outside the work tree only when Git identifies it from the authorized repository; the watcher treats that metadata root as an internal implementation detail and never exposes it.
 
 Every operation runs `git` directly, never through a shell. The command environment disables terminal prompts, pagers, credential prompts, optional locks, hooks, and external diff programs. User paths must be normalized repository-relative paths, cannot target `.git`, and follow `--` in path-taking commands. Revision input accepts only a narrow hexadecimal form. Remote failures are reduced to bounded display text; command lines, environment values, credentials, and absolute roots stay in Rust.
 

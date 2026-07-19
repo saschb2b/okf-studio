@@ -3,7 +3,7 @@ type: UX Flow
 title: Git Workflow
 description: The repository review and commit loop inside the OKF workspace.
 tags: [ux, git, staging, commit]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-19T17:15:00Z
 ---
 
 # Why the workflow stays compact
@@ -23,6 +23,10 @@ Changes begin with **View diff**, Refresh, and either **Stage all** or **Unstage
 Selecting a path opens its diff in the main workspace. The diff has one clear route back and presents loading, failure, no-text, and truncated states without nesting another scrollable panel inside Changes.
 
 Conflicts sort first. A short notice explains that Studio does not edit merge conflicts: resolve the file in an editor or terminal, then stage it here. Commit remains disabled until conflicts are resolved.
+
+# Bundle in a repository subfolder
+
+Opening `docs/` directly grants Studio that bundle folder, not its unknown parent. If Git discovers that the repository starts above the granted folder, the panel explains the boundary and offers **Allow repository**. The operating-system folder dialog opens at the enclosing repository root. Confirming that exact folder authorizes repository-wide status and mutations while keeping the current bundle open; canceling leaves the narrower grant unchanged.
 
 # Commit and recover
 

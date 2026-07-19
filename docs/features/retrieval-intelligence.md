@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T22:40:00Z
+timestamp: 2026-07-19T23:15:00Z
 ---
 
 # What it does
@@ -34,9 +34,9 @@ Retrieval Intelligence makes evidence selection a Studio contract. Exact identit
 | Current and conflicting claims | Current-state, changed-since, ownership, and competing claims | Applies supported metadata filters and retains unresolved conflicts |
 | Tables and fields | Tables, fields, schemas, and numeric evidence | Keeps table headers and rows together |
 | Full bundle | Small granted bundles that fit the declared context window | Uses one canonical, fingerprinted manifest snapshot |
-| Broader local search | Semantic or mixed questions without an optional provider | Combines deterministic lexical and graph evidence and names the fallback |
+| Text and related concepts | Semantic or mixed questions without an optional provider | Combines deterministic lexical and graph evidence and names the fallback |
 
-Route selection never changes the bundle grant. A remote provider may receive text only after explicit configuration and disclosure. The shipped baseline makes no remote retrieval call.
+Studio, not the selected agent, chooses the automatic route before sending the prompt. Natural overview, summary, definition, explanation, and change questions have labeled benchmark cases; the receipt explains the resulting method. Questions that match no narrower intent use **Text and related concepts** instead of presenting the vague label “Broader local search”. Route selection never changes the bundle grant. A remote provider may receive text only after explicit configuration and disclosure. The shipped baseline makes no remote retrieval call.
 
 # Evidence and receipts
 

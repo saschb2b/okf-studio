@@ -10,6 +10,12 @@ const readyResult = mockRetrieval(MOCK_BUNDLE, {
   contextBudgetTokens: 4096,
 });
 
+const fallbackResult = mockRetrieval(MOCK_BUNDLE, {
+  query: "Compare how concepts are described across several sections",
+  route: "hybrid-fallback",
+  contextBudgetTokens: 4096,
+});
+
 const meta = {
   title: "Agent/Retrieval/RetrievalEvidenceSummary",
   component: RetrievalEvidenceSummary,
@@ -67,6 +73,15 @@ export const ConflictingEvidence: Story = {
     await expect(trigger).toHaveTextContent("Conflicting evidence");
     await expect(trigger).toHaveAccessibleName(/selected sources disagree/i);
     await expect(canvas.queryByText(/Answer must qualify uncertainty/i)).not.toBeInTheDocument();
+  },
+};
+
+export const TextAndRelatedConcepts: Story = {
+  args: { result: fallbackResult },
+  play: async ({ canvas }) => {
+    const trigger = canvas.getByRole("button", { name: /Inspect evidence/i });
+    await expect(trigger).toHaveTextContent("Text and related concepts");
+    await expect(trigger).not.toHaveTextContent("Broader local search");
   },
 };
 

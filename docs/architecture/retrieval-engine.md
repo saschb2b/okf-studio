@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T22:40:00Z
+timestamp: 2026-07-19T23:15:00Z
 ---
 
 # Decision
@@ -28,6 +28,12 @@ A shared Rust pipeline makes exact ranking, grant enforcement, source identity, 
 6. The compiler deduplicates overlap, retains distinct conflicts, orders defining evidence before dependent context, and keeps whole units within the token budget.
 7. Diagnostics classify the result and may produce advisory, review-only repair proposals.
 8. Tauri persists the manifest as JSON and provider-neutral JSONL under a safe bundle and fingerprint identity in app cache.
+
+# Routing boundary
+
+The agent does not choose the search method. `okf-core` classifies the question before any prompt is sent and records the reason in the receipt. Exact identities win first, followed by relationship, time, structured-data, full-bundle, overview, semantic, and direct factual intents; only a question that fits none of those stable classes uses the local text-and-links fallback. An explicit method selected in Evidence Lab overrides classification for that diagnostic run only.
+
+The frozen corpus includes ordinary phrasing such as “What is this repository about?”, “Give me a summary of this bundle”, “What is the Revenue metric?”, and “What changed in the retention policy?”. Each case asserts both the chosen route and minimum evidence recall. This keeps routing deterministic while preventing most everyday questions from collapsing into one vague fallback. It does not claim that the classifier is perfect: new rules need a labeled case and a retrieval result before they ship.
 
 # Identity and invalidation
 

@@ -204,5 +204,5 @@ export const RETRIEVAL_ROUTES: readonly { id: RetrievalRoute; label: string; des
   { id: "temporal-conflict", label: "Current and conflicting claims", description: "Keeps competing time or authority claims visible." },
   { id: "structured", label: "Tables and fields", description: "Prioritizes tables, fields, and exact numeric cells." },
   { id: "full-context", label: "Full bundle", description: "Uses the canonical snapshot only when it fits." },
-  { id: "hybrid-fallback", label: "Broader local search", description: "Combines local text and relationship signals to widen the search." },
+  { id: "hybrid-fallback", label: "Text and related concepts", description: "Combines local text matches with authored links when no more specific method fits." },
 ];

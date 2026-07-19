@@ -158,10 +158,10 @@ export function mockReceiptDiff(
 
 function mockRoute(query: string): RetrievalRoute {
   const normalized = query.toLowerCase();
-  if (/related|depends|path|impact/.test(normalized)) return "lexical-graph";
-  if (/across|overview|all concepts/.test(normalized)) return "coverage";
-  if (/current|as of|changed since/.test(normalized)) return "temporal-conflict";
-  if (/table|row|column|field|metric/.test(normalized)) return "structured";
+  if (/related|depends|path|impact|connected|affect|relies on|used by/.test(normalized)) return "lexical-graph";
+  if (/across|overview|summary|all concepts|what (?:is|does) this (?:repo|repository|project|bundle)/.test(normalized)) return "coverage";
+  if (/current|as of|changed since|what (?:has )?changed|recent changes/.test(normalized)) return "temporal-conflict";
+  if (/table|row|column|field|schema|how many|number of/.test(normalized)) return "structured";
   if (/entire bundle|full context/.test(normalized)) return "full-context";
   if (/similar|conceptually|discover/.test(normalized)) return "hybrid-fallback";
   return "exact-lexical";

@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Retrieval Intelligence
 description: Sequenced research, experience gates, and work packages for turning connected OKF bundles into inspectable, routed, and provider-neutral model context.
 tags: [product, roadmap, rag, retrieval, context, search, agents, ux, storybook]
-timestamp: 2026-07-19T22:30:00Z
+timestamp: 2026-07-19T23:15:00Z
 ---
 
 # Outcome
@@ -36,7 +36,7 @@ The local-first transformation was implemented on 2026-07-19. The record below d
 | RI2 | Complete | Exact field lookup and deterministic BM25 run offline, fuse scores, apply filters before context assembly, and retain score components and exclusion reasons. |
 | RI3 | Complete | Authored links, backlinks, index ancestry, bounded paths, graph expansion, and coverage balancing feed the same receipt without presenting inferred relationships as authored facts. |
 | RI4 | Complete, provider activation withheld | Typed local, configured, unavailable, degraded, and cancelled provider states are wired into routing and receipts. No embedding or reranker is bundled because this branch has no measured provider result that clears the activation gate. The offline hybrid fallback remains complete. |
-| RI5 | Complete | Stable deterministic query classes choose exact, graph, coverage, temporal, structured, full-context, or hybrid routes. The inspector can rerun a retained query on another available route without changing its grant. |
+| RI5 | Complete | Stable deterministic query classes choose exact, graph, coverage, temporal, structured, full-context, or hybrid routes. Natural overview, summary, definition, explanation, and change questions are frozen with route and evidence-recall assertions. The inspector can rerun a retained query on another available route without changing its grant. |
 | RI6 | Complete | The context compiler keeps structural units intact, retains citations and relationship paths, budgets by token estimate and bytes, records omissions, and produces versioned evidence packets and receipts. |
 | RI7 | Complete | Source class, owner, effective time, supersession, conflict, freshness, and authority gaps remain distinct signals. Unresolved conflicts are retained and can require abstention. |
 | RI8 | Complete, provider cache activation withheld | Canonical snapshots, eligibility, cache identity, scope fingerprint, invalidation, provider state, and local fallback are implemented. No provider KV cache is advertised without a measured cost or latency win. |

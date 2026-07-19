@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Update**: Expanded deterministic routing around natural user questions and measured each new case for both route choice and evidence recall. Repository overviews and bundle summaries now use coverage, direct definitions and explanations use exact wording, change questions use the temporal route, and the remaining hybrid method is named **Text and related concepts** instead of the vague “Broader local search”.
+
 * **Fix**: Stop treating different excerpts under a reused generic heading as conflicting evidence. Studio now raises a conflict only for independently sourced, distinct concepts that share the same subject and section, so unrelated `Why`, `Overview`, or `Decision` sections do not create false warnings.
 
 * **Update**: Added a frozen conflict-retrieval task for the curated `okf-retrieve` capability and classified its support across every provider row. The benchmark now rejects a retrieval capability that is shipped without its own scored evidence-selection contract.

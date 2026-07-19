@@ -182,6 +182,12 @@ fn classify_query(query: &str, manifest: &RetrievalManifest) -> QueryClass {
             "downstream",
             "path between",
             "impact",
+            "connected",
+            "connect ",
+            "affect",
+            "relies on",
+            "used by",
+            "uses ",
         ],
     ) {
         QueryClass::Relationship
@@ -194,13 +200,27 @@ fn classify_query(query: &str, manifest: &RetrievalManifest) -> QueryClass {
             "latest",
             "superseded",
             "history",
+            "what changed",
+            "what has changed",
+            "recent changes",
+            "previous version",
+            "used to",
+            "before and after",
         ],
     ) {
         QueryClass::Temporal
     } else if contains_any(
         &normalized,
         &[
-            "table", "row", "column", "schema", "field", "metric", "count",
+            "table",
+            "row",
+            "column",
+            "schema",
+            "field",
+            "how many",
+            "count",
+            "numeric",
+            "number of",
         ],
     ) {
         QueryClass::Structured
@@ -220,19 +240,51 @@ fn classify_query(query: &str, manifest: &RetrievalManifest) -> QueryClass {
             "across",
             "overview",
             "summarize",
+            "summary",
             "themes",
             "coverage",
             "all concepts",
+            "main topics",
+            "main features",
+            "main capabilities",
+            "what is this repo",
+            "what is this repository",
+            "what is this project",
+            "what is this bundle",
+            "what does this repo",
+            "what does this repository",
+            "what does this project",
+            "what does this bundle",
+            "tell me about this repo",
+            "tell me about this repository",
+            "tell me about this project",
+            "tell me about this bundle",
         ],
     ) {
         QueryClass::Global
-    } else if words.len() <= 3 {
-        QueryClass::Lexical
     } else if contains_any(
         &normalized,
         &["similar", "meaning", "conceptually", "discover"],
     ) {
         QueryClass::Semantic
+    } else if words.len() <= 3
+        || starts_with_any(
+            &normalized,
+            &[
+                "what is ",
+                "what does ",
+                "how does ",
+                "why is ",
+                "why does ",
+                "where is ",
+                "explain ",
+                "describe ",
+                "define ",
+                "tell me about ",
+            ],
+        )
+    {
+        QueryClass::Lexical
     } else {
         QueryClass::Mixed
     }
@@ -258,14 +310,14 @@ fn route_reason(class: QueryClass, overridden: bool) -> &'static str {
         QueryClass::Exact => "The query names an exact OKF identity or title.",
         QueryClass::Lexical => "The query is a short local lookup.",
         QueryClass::Semantic => {
-            "No dense provider is required; Studio combined local lexical and graph evidence."
+            "The question asks for conceptual similarity, so Studio combined local text matches with related concepts."
         }
         QueryClass::Relationship => "The query asks how concepts connect.",
         QueryClass::Global => "The query asks for evidence across the bundle.",
         QueryClass::Temporal => "The query contains a current-state or change constraint.",
         QueryClass::Structured => "The query targets structured or tabular knowledge.",
         QueryClass::FullContext => "The query explicitly requests the whole granted bundle.",
-        QueryClass::Mixed => "The query needs more than one local candidate generator.",
+        QueryClass::Mixed => "No more specific question type matched, so Studio combined local text matches with related concepts.",
     }
 }
 
@@ -919,6 +971,10 @@ fn tokenize(text: &str) -> Vec<String> {
 
 fn contains_any(haystack: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| haystack.contains(needle))
+}
+
+fn starts_with_any(haystack: &str, prefixes: &[&str]) -> bool {
+    prefixes.iter().any(|prefix| haystack.starts_with(prefix))
 }
 
 fn route_label(route: RetrievalRoute) -> &'static str {

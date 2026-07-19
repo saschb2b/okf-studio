@@ -3,7 +3,7 @@ type: Product Strategy
 title: OKF Retrieval Thesis
 description: Position OKF Studio as an inspectable context engine that compiles connected bundle knowledge for agents, models, and external retrieval systems.
 tags: [product, strategy, rag, retrieval, context, okf]
-timestamp: 2026-07-18T21:39:16Z
+timestamp: 2026-07-19T23:15:00Z
 ---
 
 # Product position
@@ -54,7 +54,7 @@ The bundle remains the authority. The manifest can be deleted and rebuilt. Embed
 
 ## Query router
 
-The router selects a mode from the query class, available indexes, bundle scale, provider capabilities, privacy settings, and context budget. Routine local selection appears in the compact evidence summary and can be inspected afterward. A preflight asks for attention only when scope, network use, expected cost, or available capability changes materially.
+The router selects a stable local mode from the query class. Route execution then applies available indexes, bundle scale, provider capabilities, privacy settings, and context budget without silently changing the question's intent. Routine local selection appears in the compact evidence summary and can be inspected afterward. A preflight asks for attention only when scope, network use, expected cost, or available capability changes materially.
 
 | Query class | Default evidence path | Example |
 | --- | --- | --- |

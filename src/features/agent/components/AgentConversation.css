@@ -1,4 +1,5 @@
 .agent-conversation {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
@@ -32,8 +33,18 @@
 }
 
 .agent-conversation__toolbar--with-navigation .agent-conversation__toolbar-actions {
-  min-width: min(calc(3 * 32px + 2 * var(--space-4)), 55%);
-  max-width: 55%;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  overflow: visible;
+}
+
+.agent-conversation__toolbar--with-navigation .agent-conversation__toolbar-actions .btn {
+  padding-inline: var(--space-8);
+}
+
+.agent-conversation__toolbar--with-navigation .agent-conversation__action-label {
+  display: none;
 }
 
 .agent-conversation__toolbar-actions .btn {
@@ -522,6 +533,17 @@
   flex: 1 1 auto;
   min-height: 0;
   flex-direction: column;
+}
+
+.agent-conversation__transcript-owner {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.agent-conversation__transcript-owner[hidden] {
+  display: none;
 }
 
 .agent-conversation__messages {

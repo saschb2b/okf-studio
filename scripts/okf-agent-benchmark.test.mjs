@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -9,6 +9,7 @@ import {
   defaultJourneyPath,
   defaultProviderMatrixPath,
   defaultWritingCorpusPath,
+  fingerprintDirectory,
   loadCapabilityManifest,
   loadManifest,
   scoreArtifact,
@@ -22,12 +23,26 @@ import {
   writeProviderReport,
 } from "./okf-agent-benchmark.mjs";
 
+test("keeps text fixture fingerprints stable across line-ending conventions", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "okf-agent-fingerprint-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const lfDirectory = join(root, "lf");
+  const crlfDirectory = join(root, "crlf");
+  mkdirSync(lfDirectory);
+  mkdirSync(crlfDirectory);
+
+  writeFileSync(join(lfDirectory, "concept.md"), "# Title\n\nBody\n");
+  writeFileSync(join(crlfDirectory, "concept.md"), "# Title\r\n\r\nBody\r\n");
+
+  assert.equal(fingerprintDirectory(crlfDirectory), fingerprintDirectory(lfDirectory));
+});
+
 test("accepts the frozen OKF task and fixture contract", () => {
   const summary = checkCorpus();
 
   assert.equal(summary.fixtureCount, 6);
-  assert.equal(summary.taskCount, 10);
-  assert.equal(summary.curatedCapabilityCount, 10);
+  assert.equal(summary.taskCount, 11);
+  assert.equal(summary.curatedCapabilityCount, 11);
   assert.equal(summary.criticCaseCount, 2);
   assert.equal(summary.providerCount, 4);
   assert.equal(summary.journeyCount, 7);
@@ -38,6 +53,7 @@ test("accepts the frozen OKF task and fixture contract", () => {
     "okf-create",
     "okf-enrich",
     "okf-inspect",
+    "okf-retrieve",
     "okf-migrate",
     "okf-repair",
     "okf-research",

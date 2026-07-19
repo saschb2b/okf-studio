@@ -3,7 +3,7 @@ type: Architecture Decision
 title: OKF Agent Benchmarking
 description: The frozen corpus, task contracts, deterministic merge gate, and opt-in provider evaluation for OKF-specialized agents.
 tags: [architecture, agents, benchmarks, testing, evaluation]
-timestamp: 2026-07-18T18:20:00Z
+timestamp: 2026-07-19T22:15:00Z
 ---
 
 # Decision
@@ -40,7 +40,7 @@ Directory fingerprints hash sorted bundle-relative paths and bytes. The generate
 
 # Task contract
 
-The task contracts cover inspect, create, enrich, audit, repair, cited research, change impact, migration, concept authoring, and meaning-preserving writing revision. A task declaration contains:
+The task contracts cover inspect, retrieval, create, enrich, audit, repair, cited research, change impact, migration, concept authoring, and meaning-preserving writing revision. Retrieval has its own conflict fixture contract, so adding `okf_retrieve` to adjacent capabilities cannot pass while the retrieval method itself remains unevaluated. A task declaration contains:
 
 - one stable task and capability ID;
 - one fixture revision;
@@ -55,7 +55,7 @@ The manifest checker rejects duplicate IDs, unknown fixtures, path traversal, sy
 
 Provider reports belong in app data, not in the source tree or the user's bundle. A report records app and benchmark versions, capability-pack identity and digest, capability versions, fixture fingerprints, provider-reported agent and model identity, delivered resources, observed tools, artifact validation, hard failures, deterministic scores, timing, context volume, tool-call and invalid-claim counts, and cost when reported. The report writer validates that every task and frozen fixture is present, publishes a new JSON file without overwriting an earlier run, and records unavailable work with zero measurements and no invented score. Studio does not upload evaluation data.
 
-The provider matrix covers Studio Agent, Codex ACP, Claude ACP, and a local model. Each row classifies all ten OKF tasks as supported, degraded, or unavailable, names integration-specific limitations, and records the clean repository environment as unavailable when no endpoint, installation, or authentication exists. Missing credentials, adapter support, or model output never become a pass.
+The provider matrix covers Studio Agent, Codex ACP, Claude ACP, and a local model. Each row classifies all eleven OKF tasks as supported, degraded, or unavailable, names integration-specific limitations, and records the clean repository environment as unavailable when no endpoint, installation, or authentication exists. Missing credentials, adapter support, or model output never become a pass.
 
 # Writing evaluation
 

@@ -15,7 +15,7 @@ Use this capability before renaming, moving, deprecating, or materially changing
 ## Method
 
 1. Run `okf_health_summary`, retain its exact bundle fingerprint, then read the target and identify its stable identity.
-2. Traverse explicit inbound and outbound links.
+2. Call `okf_retrieve` with the relationship route, then traverse explicit inbound and outbound links needed to verify its paths.
 3. Search for textual, schema, formula, and navigation references.
 4. Separate observed dependents from inferred consumers.
 5. Order required follow-up changes without staging them.

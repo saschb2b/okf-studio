@@ -9,6 +9,7 @@
       "availability": "configuration-required",
       "taskSupport": {
         "okf-inspect": "supported",
+        "okf-retrieve": "supported",
         "okf-create": "supported",
         "okf-enrich": "supported",
         "okf-audit": "supported",
@@ -33,6 +34,7 @@
       "availability": "installation-and-authentication-required",
       "taskSupport": {
         "okf-inspect": "supported",
+        "okf-retrieve": "supported",
         "okf-create": "supported",
         "okf-enrich": "supported",
         "okf-audit": "supported",
@@ -57,6 +59,7 @@
       "availability": "installation-and-authentication-required",
       "taskSupport": {
         "okf-inspect": "supported",
+        "okf-retrieve": "supported",
         "okf-create": "supported",
         "okf-enrich": "supported",
         "okf-audit": "supported",
@@ -81,6 +84,7 @@
       "availability": "local-endpoint-required",
       "taskSupport": {
         "okf-inspect": "supported",
+        "okf-retrieve": "supported",
         "okf-create": "degraded",
         "okf-enrich": "degraded",
         "okf-audit": "supported",

@@ -14,6 +14,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Studio Transformation](product/studio-roadmap.md) - Sequenced work packages for creation, curation, querying, reviewed writes, and external-agent isolation.
 * [OKF Agent Specialization](product/agent-specialization-roadmap.md) - Sequenced work packages for specialized OKF skills, artifacts, routines, and entry points.
 * [OKF Writing Quality](product/okf-writing-quality-roadmap.md) - Sequenced work for evidence-preserving authoring, prose revision, advisory diagnostics, and measurable provider quality.
+* [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) - The next research branch for routed retrieval, coherent context, diagnostics, and reviewed corpus repair.
 * [OKF Viewer to OKF Studio](product/migration-notes.md) - How existing local data, credentials, and compatibility identifiers behave on upgrade.
 * [Personas & Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
 * [How It Compares](product/comparison.md) - OKF Studio vs. the reference visualizer, PKM tools, static-site generators, editors, and agent chat surfaces.

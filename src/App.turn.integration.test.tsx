@@ -9,6 +9,17 @@ import {
 } from "@/test/appHarness.tsx";
 
 describe("OKF Studio agent turns", () => {
+  it("opens Evidence Lab from secondary thread actions", async () => {
+    const { user } = await openAgentThread("Evidence Lab harness");
+
+    await chooseThreadAction(user, "Evidence Lab");
+    expect(await screen.findByRole("heading", { name: /Evidence Lab/i })).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Conversation" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "More thread actions" }))
+      .toHaveFocus());
+  });
+
   it("shows native source provenance before sending it to the agent", async () => {
     const promptSpy = vi.spyOn(ipc, "promptAgent");
     const { user } = await openAgentThread("Source provenance harness");
@@ -36,6 +47,11 @@ describe("OKF Studio agent turns", () => {
           discovery: "file",
           trust: "untrusted",
         }),
+      }), expect.objectContaining({
+        title: "OKF retrieval evidence: exact-lexical",
+        content: expect.stringContaining("Query: Use the attached evidence"),
+        mediaType: "text/markdown",
+        sourceDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
       })],
     ));
   });
@@ -62,7 +78,12 @@ describe("OKF Studio agent turns", () => {
       expect.any(String),
       "Summarize the **bundle**",
       ["product/overview.md"],
-      [],
+      [expect.objectContaining({
+        title: "OKF retrieval evidence: exact-lexical",
+        content: expect.stringContaining("Query: Summarize the **bundle**"),
+        mediaType: "text/markdown",
+        sourceDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      })],
     ));
     const plan = await screen.findByLabelText("Agent plan");
     expect(plan).not.toHaveAttribute("open");
@@ -79,6 +100,23 @@ describe("OKF Studio agent turns", () => {
     expect(screen.getByRole("heading", { name: "Summarize the bundle" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Overview from context" }))
       .not.toBeInTheDocument();
+
+    const transcriptOwner = document.querySelector<HTMLElement>(
+      ".agent-conversation__transcript-owner",
+    );
+    if (!transcriptOwner) throw new Error("The transcript owner was not rendered.");
+    await user.click(screen.getByRole("button", { name: /Inspect evidence/i }));
+    expect(await screen.findByRole("heading", { name: "Evidence behind this answer" }))
+      .toBeVisible();
+    expect(getComputedStyle(transcriptOwner).display).toBe("none");
+    await user.click(screen.getByRole("button", { name: "Conversation" }));
+    expect(screen.queryByRole("heading", { name: "Evidence behind this answer" }))
+      .not.toBeInTheDocument();
+    const restoredTranscriptOwner = document.querySelector<HTMLElement>(
+      ".agent-conversation__transcript-owner",
+    );
+    if (!restoredTranscriptOwner) throw new Error("The transcript owner was not restored.");
+    expect(restoredTranscriptOwner).not.toHaveAttribute("hidden");
 
     await user.click(screen.getByRole("button", { name: "Rename thread: Summarize the bundle" }));
     await fillText(user, screen.getByLabelText("Thread title"), "Bundle research");
@@ -142,6 +180,12 @@ describe("OKF Studio agent turns", () => {
           title: "Interview notes",
           content: "The owner confirmed the definition.",
         },
+        expect.objectContaining({
+          title: "OKF retrieval evidence: exact-lexical",
+          content: expect.stringContaining("Query: Summarize the evidence"),
+          mediaType: "text/markdown",
+          sourceDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
+        }),
       ],
     ));
     expect(await screen.findByText("Browser ACP received: Summarize the evidence"))

@@ -144,7 +144,12 @@ describe("OKF Studio knowledge-work exports", () => {
         content: selectedText,
         origin: "product/overview.md#reader-selection",
         mediaType: "text/plain",
-      }],
+      }, expect.objectContaining({
+        title: "OKF retrieval evidence: exact-lexical",
+        content: expect.stringContaining("Query: Assess this excerpt"),
+        mediaType: "text/markdown",
+        sourceDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
+      })],
     );
     await screen.findByText(/Browser ACP received:.*Assess this excerpt/);
   });

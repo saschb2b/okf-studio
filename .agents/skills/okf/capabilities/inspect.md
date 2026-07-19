@@ -15,7 +15,7 @@ Use this capability to answer questions about an existing bundle, explain a conc
 ## Method
 
 1. Run `okf_health_summary`, retain its exact bundle fingerprint, then inventory metadata before reading bodies.
-2. Search for the named concepts and terms.
+2. Call `okf_retrieve` when the answer needs selected evidence or a route decision; use `okf_search` for a simple concept locator.
 3. Read only the concepts needed to answer.
 4. Traverse explicit links when the question asks about lineage, dependencies, or procedures.
 5. Separate observed facts from inference and name missing evidence.

@@ -1,6 +1,48 @@
 # Update Log
 
+## 2026-07-19
+
+* **Fix**: Updated `okf-core` to `0.5.1`, `okf-retrieve` to `0.1.1`, and `okf-foundation` to `1.3.1` so retrieval provenance stays out of ordinary answer prose. Agent instructions now use concept identities internally without appending an Evidence, Sources, internal-path, or receipt-ID footer. The compact turn receipt and Inspect surface remain the single provenance owner, while useful concept names and external citations can still appear inline.
+
+* **Update**: Corrected the retrieval implementation record to separate observable local failures from reserved evaluation states. Studio does not claim low recall, candidate noise, stale replay, or generation non-use without the ground truth or answer telemetry those judgments require, and the roadmap no longer counts unused diagnostic or repair enum values as shipped behavior.
+
+* **Fix**: Bind retrieval receipt IDs to every material bounded request input. Filters, result limit, provider IDs, provider window, and disclosure now change the identity; an identical request remains stable. Different evidence searches can no longer alias in diagnostics or comparisons.
+
+* **Fix**: Apply time metadata only where it matters. Ordinary evidence no longer looks incomplete because an optional timestamp is absent, while temporal questions now require qualification when no timestamp, effective time, or supersession signal can establish chronology. Full-bundle compilation now preserves conflict abstention instead of bypassing it.
+
+* **Fix**: Keep Evidence Lab repairs tied to an observed retrieval cause. Healthy unsourced evidence no longer produces a wall of speculative “add citation” proposals; the shipped repair list is limited to diagnosed missing descriptions and directly observed broken links.
+
+* **Fix**: Make provider receipts report actual execution rather than permission. Supplying a dense or reranker ID can no longer mark text as remotely shared while those adapters remain inactive; Studio records a degraded capability, local fallback, and `remoteTextShared: false` until provider work really runs.
+
+* **Update**: Expanded deterministic routing around natural user questions and measured each new case for both route choice and evidence recall. Repository overviews and bundle summaries now use coverage, direct definitions and explanations use exact wording, change questions use the temporal route, and the remaining hybrid method is named **Text and related concepts** instead of the vague “Broader local search”.
+
+* **Fix**: Stop treating different excerpts under a reused generic heading as conflicting evidence. Studio now raises a conflict only for independently sourced, distinct concepts that share the same subject and section, so unrelated `Why`, `Overview`, or `Decision` sections do not create false warnings.
+
+* **Update**: Added a frozen conflict-retrieval task for the curated `okf-retrieve` capability and classified its support across every provider row. The benchmark now rejects a retrieval capability that is shipped without its own scored evidence-selection contract.
+
+* **Update**: Reworked evidence inspection around user decisions instead of retrieval telemetry. The inspector now explains whether sources support the answer, marks conflicting excerpts, cleans Markdown from previews, and keeps candidates, scores, capabilities, and receipts under Technical details. The renamed Evidence Lab states what it does not change, leads with a trust outcome and source review, compares search methods in plain language, and keeps export mechanics secondary.
+
+* **Update**: Replaced the post-answer evidence card with a compact receipt row for excerpt count, route, and inspection. Retrieval uncertainty now appears only when material and uses plain statuses such as **Conflicting evidence** or **Evidence is incomplete**; the internal abstention instruction no longer leaks into the conversation.
+
+* **Update**: Move Retrieval Lab into the thread actions menu and keep the visible thread toolbar as a fixed icon rail. Thread tabs now own the remaining scrollable width instead of competing with a large diagnostic action.
+
+* **Fix**: Keep the retained conversation transcript out of layout while the retrieval inspector is open, and size the inspector within the conversation's available flex space. The inspector no longer overlaps the answer, response actions, or composer.
+
+* **Fix**: Bound automatic retrieval attachments to the lowercase SHA-256 digest of their exact Markdown content. The first implementation passed the prefixed retrieval receipt ID as a source digest, so the prompt boundary correctly rejected every ordinary message that included retrieved evidence.
+
+* **Update**: Closed the [Retrieval Intelligence roadmap](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) with an implementation record for every work package. Optional dense, reranking, and provider-cache adapters remain deliberately unavailable because no measured provider result cleared their activation gates. Storybook MCP passed the complete story and accessibility run, including deterministic cancellation; whole-panel dogfood keeps the composer reachable without another persistent shelf. The Windows release binary and MSI/NSIS packages build locally, while protected release signing remains unavailable without the private key.
+
+* **Creation**: Shipped [Retrieval Intelligence](features/retrieval-intelligence.md) and its shared [Retrieval Engine](architecture/retrieval-engine.md). Ordinary Agent Panel questions now receive coherent, revision-bound local evidence before the selected agent runs. Exact, lexical, graph, coverage, temporal-conflict, structured, full-context, and provider-free hybrid routes emit source identities, whole-unit budget decisions, provider disclosure, abstention signals, diagnostics, and diffable receipts. Each turn keeps one compact summary; detailed inspection replaces the transcript viewport; Retrieval Lab compares routes, exports a source-text-redacted diagnostic, and sends advisory repairs into existing reviewed staging.
+
+* **Update**: Upgraded the built-in capability pack to `okf-foundation@1.3.0` and `okf-core@0.5.0`. The new `okf-retrieve@0.1.0` method and bounded `okf_retrieve` tool are shared by Studio Agent and granted MCP clients. Inspect, research, and change-impact methods now request coherent evidence before broad concept reads. Dense, reranking, and provider-cache paths remain explicit unavailable states until a configured provider proves value; the offline local route remains complete.
+
+* **Creation**: Added [Retrieval Operations](product/retrieval-intelligence/retrieval-operations.md) for cache rebuild, stale receipts, degraded sends, provider removal, redacted exports, reviewed repair, migration, and rollback. Retrieval state stays disposable in app cache and never becomes bundle knowledge.
+
 ## 2026-07-18
+* **Update**: Added the [Retrieval Experience Contract](product/retrieval-intelligence/retrieval-experience-contract.md) and made it a prerequisite throughout the retrieval roadmap. User jobs now have one surface owner; ordinary turns keep one compact evidence summary; detailed receipts replace the flexible transcript viewport; and the Retrieval Lab remains a separate diagnostic workspace. RI0A freezes the first exact-query composition, pressure states, focus, scroll, and narrow behavior through Storybook MCP before production retrieval wiring begins.
+
+* **Creation**: Added the [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) research branch. Its evidence review separates community signals from primary-source findings, identifies the retrieval primitives OKF already owns and the ones Studio still lacks, and sequences a local-first context engine across exact, lexical, graph, optional dense, long-context, cached, temporal, diagnostic, ecosystem, and reviewed-repair work. The direction keeps indexes disposable, grants ahead of relevance, and retrieval receipts separate from claims about model use.
+
 * **Fix**: Made capability-pack digests stable across Git checkout line endings. Windows CI converted a mixed-line-ending `SKILL.md` to CRLF and rejected the unchanged resource before native-host tests could start. Build-time and runtime validation now share one canonical text-resource digest for Markdown, JSON, and JSON Schema, while unknown binary media remains byte-exact. A fresh uncached native-host clippy run covers the former failure path.
 
 * **Update**: Reworked the agent transcript around conversation turns instead of raw ACP segments. One prompt now owns its ordered prose, tool activity, plan, and one response footer; successful detailed activity and completed plans collapse while running or failed work stays open. Thread navigation and actions share one toolbar, prompt reuse starts a new draft without rewriting history, `@` offers bounded OKF context shortcuts, and opt-in follow mode connects exact tool locations to the Reader. This closes the gap where protocol detail looked like several replies and pushed the result out of view.

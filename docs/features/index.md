@@ -12,6 +12,7 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Concept Reader](concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
 * [Design-System Rendering](design-system-rendering.md) - Render an ODSF bundle's tokens (swatches, specimens, scales) and example assets natively.
 * [Search & Filter](search-and-filter.md) - Full-text search, type filters, and tag browsing.
+* [Retrieval Intelligence](retrieval-intelligence.md) - Route agent questions through coherent local evidence and inspect every selection through a receipt.
 * [Navigation](navigation.md) - Progressive disclosure from index.md, link following, and history.
 * [Command Palette](command-palette.md) - Jump to any concept and run quick actions from the keyboard.
 * [Validation](validation.md) - Surface OKF conformance issues without refusing the bundle.

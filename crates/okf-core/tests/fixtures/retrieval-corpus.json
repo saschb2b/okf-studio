@@ -1,0 +1,17 @@
+[
+  {"id":"exact-id","query":"metrics/revenue","relevantConceptIds":["metrics/revenue"],"expectedRoute":"exact-lexical","abstain":false},
+  {"id":"lexical-definition","query":"recognized subscription revenue","relevantConceptIds":["metrics/revenue"],"expectedRoute":"exact-lexical","abstain":false},
+  {"id":"relationship-impact","query":"What depends on revenue?","relevantConceptIds":["metrics/revenue","reports/board"],"expectedRoute":"lexical-graph","abstain":false},
+  {"id":"global-coverage","query":"Summarize themes across all concepts","relevantConceptIds":["metrics/revenue","reports/board","policies/current"],"expectedRoute":"coverage","abstain":false},
+  {"id":"temporal-current","query":"What is the current policy as of 2026?","relevantConceptIds":["policies/current","policies/old"],"expectedRoute":"temporal-conflict","abstain":false},
+  {"id":"resolved-current-definition","query":"current retention definition","relevantConceptIds":["policies/current","policies/old"],"expectedRoute":"temporal-conflict","abstain":false},
+  {"id":"structured-table","query":"Which table row contains 42 USDC?","relevantConceptIds":["tables/targets"],"expectedRoute":"structured","abstain":false},
+  {"id":"semantic-fallback","query":"Discover conceptually similar income knowledge","relevantConceptIds":["metrics/revenue"],"expectedRoute":"hybrid-fallback","abstain":false},
+  {"id":"missing-authority","query":"Who officially owns lunar policy?","relevantConceptIds":[],"expectedRoute":"hybrid-fallback","abstain":true},
+  {"id":"full-context","query":"Use the entire bundle as full context","relevantConceptIds":["metrics/revenue","reports/board","policies/current","policies/old","tables/targets"],"expectedRoute":"full-context","abstain":false},
+  {"id":"natural-repository-overview","query":"What is this repository about?","relevantConceptIds":["metrics/revenue","reports/board","policies/current"],"expectedRoute":"coverage","abstain":false},
+  {"id":"natural-bundle-summary","query":"Give me a summary of this bundle","relevantConceptIds":["metrics/revenue","reports/board","policies/current"],"expectedRoute":"coverage","abstain":false},
+  {"id":"natural-definition","query":"What is the Revenue metric?","relevantConceptIds":["metrics/revenue"],"expectedRoute":"exact-lexical","abstain":false},
+  {"id":"natural-change","query":"What changed in the retention policy?","relevantConceptIds":["policies/current","policies/old"],"expectedRoute":"temporal-conflict","abstain":false},
+  {"id":"natural-explanation","query":"How does Revenue work?","relevantConceptIds":["metrics/revenue"],"expectedRoute":"exact-lexical","abstain":false}
+]

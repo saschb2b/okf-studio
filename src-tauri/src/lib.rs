@@ -71,6 +71,7 @@ mod bundle_grant;
 mod bundle_library;
 mod external_entry;
 mod remote;
+mod retrieval;
 mod watch;
 
 use okf_core::{Bundle, BundleRoot};
@@ -276,6 +277,36 @@ fn read_bundle(
     let bundle = okf_core::read_bundle(&root);
     library.update_snapshot(&root, &bundle)?;
     Ok(bundle)
+}
+
+#[tauri::command]
+async fn retrieve_okf_context(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    request: okf_core::retrieval::RetrievalRequest,
+) -> Result<okf_core::retrieval::RetrievalResult, String> {
+    let authorized_root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let request_for_task = request.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&authorized_root);
+        let manifest = okf_core::retrieval::build_manifest(&bundle);
+        let _cache_persisted = retrieval::persist_authorized_manifest(&app, &manifest).is_ok();
+        Ok(okf_core::retrieval::retrieve_manifest(
+            manifest,
+            &request_for_task,
+        ))
+    })
+    .await
+    .map_err(|_| "Studio could not complete the retrieval task.".to_string())?
+}
+
+#[tauri::command]
+fn diff_okf_retrieval_receipts(
+    left: okf_core::retrieval::RetrievalReceipt,
+    right: okf_core::retrieval::RetrievalReceipt,
+) -> okf_core::retrieval::ReceiptDiff {
+    retrieval::diff(&left, &right)
 }
 
 #[tauri::command]
@@ -643,6 +674,15 @@ async fn export_agent_transcript(
     markdown: String,
 ) -> Result<Option<String>, String> {
     agent_transcript::export(&app, suggested_name, markdown).await
+}
+
+#[tauri::command]
+async fn export_retrieval_diagnostics(
+    app: AppHandle,
+    suggested_name: String,
+    payload: String,
+) -> Result<Option<String>, String> {
+    retrieval::export_diagnostics(&app, suggested_name, payload).await
 }
 
 #[tauri::command]
@@ -1182,6 +1222,8 @@ pub fn run() {
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            retrieve_okf_context,
+            diff_okf_retrieval_receipts,
             bundle_library,
             preview_federated_bundles,
             federated_inventory,
@@ -1228,6 +1270,7 @@ pub fn run() {
             pick_agent_image_sources,
             fetch_agent_source_url,
             export_agent_transcript,
+            export_retrieval_diagnostics,
             cancel_agent_turn,
             respond_agent_permission,
             set_agent_write_grant,

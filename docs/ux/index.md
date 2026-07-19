@@ -10,3 +10,4 @@ How OKF Studio looks and feels: the flows, the workspace layout, shortcuts, them
 * [Theming](theming.md) - Light/dark and the deterministic type-color palette.
 * [Accessibility](accessibility.md) - Keyboard operability, focus, screen-reader semantics, contrast, and motion.
 * [Settings and preferences](settings.md) - Searchable categories for local, reader, agent, bundle, and update controls.
+* [Retrieval experience contract](../product/retrieval-intelligence/retrieval-experience-contract.md) - Surface ownership and UX gates for retrieval intelligence before implementation.

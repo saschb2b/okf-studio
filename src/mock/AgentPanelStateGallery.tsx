@@ -24,7 +24,18 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { ConversationToolbar } from "@/features/agent/components/conversation/ConversationToolbar.tsx";
 import { ThreadSwitcher } from "@/features/agent/components/conversation/ThreadSwitcher.tsx";
+import { RetrievalEvidenceSummary } from "@/features/agent/components/retrieval/RetrievalEvidenceSummary.tsx";
+import { RetrievalInspector } from "@/features/agent/components/retrieval/RetrievalInspector.tsx";
+import { RetrievalLab } from "@/features/agent/components/retrieval/RetrievalLab.tsx";
+import { mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
+import { MOCK_BUNDLE, MOCK_FOLDER } from "@/mock/fixture.ts";
 import "./AgentPanelStateGallery.css";
+
+const GALLERY_RETRIEVAL = mockRetrieval(MOCK_BUNDLE, {
+  query: "How does the concept reader connect to the data model?",
+  route: "lexical-graph",
+  contextBudgetTokens: 4096,
+});
 
 const SCENARIOS = [
   { id: "first-use", label: "First use" },
@@ -41,6 +52,9 @@ const SCENARIOS = [
   { id: "active-queue", label: "Active turn and queue" },
   { id: "permission", label: "Permission request" },
   { id: "staged", label: "Staged changes" },
+  { id: "retrieval-turn", label: "Retrieval turn" },
+  { id: "retrieval-inspector", label: "Retrieval inspector" },
+  { id: "retrieval-lab", label: "Evidence Lab" },
   { id: "disconnected", label: "Disconnected process" },
 ] as const;
 
@@ -315,7 +329,51 @@ function ScenarioBody({ scenario }: { scenario: Exclude<ScenarioId, "first-use" 
   if (scenario === "live-work-max") return <AllLiveWork />;
   if (scenario === "active-queue") return <ActiveQueue />;
   if (scenario === "permission") return <PermissionRequest />;
+  if (scenario === "retrieval-turn") return <RetrievalTurn />;
+  if (scenario === "retrieval-inspector") return <RetrievalInspectorFixture />;
+  if (scenario === "retrieval-lab") return <RetrievalLabFixture />;
   return <StagedChanges />;
+}
+
+function RetrievalTurn() {
+  return (
+    <ConversationLayout>
+      <article className="agent-message agent-message--user">
+        <p>How does the concept reader connect to the data model?</p>
+      </article>
+      <article className="agent-message agent-message--agent">
+        <p>The reader renders parsed concepts while the shared data model preserves their identities, links, and backlinks.</p>
+      </article>
+      <RetrievalEvidenceSummary result={GALLERY_RETRIEVAL} onInspect={() => undefined} />
+    </ConversationLayout>
+  );
+}
+
+function RetrievalInspectorFixture() {
+  return (
+    <>
+      <RetrievalInspector
+        result={GALLERY_RETRIEVAL}
+        onClose={() => undefined}
+        onOpenConcept={() => undefined}
+        onRerun={() => undefined}
+      />
+      <Composer />
+    </>
+  );
+}
+
+function RetrievalLabFixture() {
+  return (
+    <RetrievalLab
+      bundleRoot={MOCK_FOLDER}
+      bundleName={MOCK_BUNDLE.name}
+      initialResult={GALLERY_RETRIEVAL}
+      onClose={() => undefined}
+      onOpenConcept={() => undefined}
+      onReviewRepair={() => undefined}
+    />
+  );
 }
 
 function ConversationLayout({ children, composer }: { children: ReactNode; composer?: ReactNode }) {

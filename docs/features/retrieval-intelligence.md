@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T23:40:00Z
+timestamp: 2026-07-19T23:55:00Z
 ---
 
 # What it does
@@ -61,6 +61,6 @@ When required authority or current evidence is absent, or independently sourced 
 
 # Reviewed repair
 
-Retrieval diagnostics can propose a clearer title or description, an authored link, an index entry, a citation, a concept split, or another bounded knowledge repair. The proposal includes its evidence sections, triggering query, held-out queries, and expected improvement. Selecting it only prepares an author or enrich request. Existing claim-ledger, staging, validation, hunk review, Apply, restore, and before-and-after receipt comparison remain authoritative; retrieval state cannot write to the bundle.
+Retrieval diagnostics currently propose only a missing description or directly observed broken link. They do not ask every unsourced concept for a citation merely because it appeared in an answer. The proposal includes its evidence sections, triggering query, held-out queries, and expected improvement. Selecting it only prepares an author or enrich request. Existing claim-ledger, staging, validation, hunk review, Apply, restore, and before-and-after receipt comparison remain authoritative; retrieval state cannot write to the bundle.
 
 Related contracts: [Retrieval Engine](../architecture/retrieval-engine.md), [Retrieval Experience Contract](../product/retrieval-intelligence/retrieval-experience-contract.md), and [Retrieval Operations](../product/retrieval-intelligence/retrieval-operations.md).

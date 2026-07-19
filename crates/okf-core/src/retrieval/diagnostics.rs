@@ -105,7 +105,9 @@ pub fn propose_repairs(
         })
         .collect::<Vec<_>>();
     for unit in affected {
-        if unit.health.missing_description {
+        if diagnostic.class == DiagnosticClass::MissingMetadata
+            && unit.health.missing_description
+        {
             proposals.push(repair(
                 receipt,
                 unit,
@@ -119,14 +121,6 @@ pub fn propose_repairs(
                 unit,
                 RepairKind::RepairLink,
                 "Repair unresolved bundle links so relationship routes can follow authored connections.",
-            ));
-        }
-        if unit.citations.is_empty() && unit.resource.is_none() {
-            proposals.push(repair(
-                receipt,
-                unit,
-                RepairKind::AddCitation,
-                "Add a source only when reviewed evidence supports the claim; retrieval diagnostics cannot invent one.",
             ));
         }
     }
@@ -287,6 +281,30 @@ mod tests {
             .iter()
             .all(|proposal| !proposal.held_out_queries.is_empty()
                 && !proposal.expected_improvement.is_empty()));
+        assert!(result
+            .repairs
+            .iter()
+            .all(|proposal| proposal.kind != RepairKind::AddCitation));
+    }
+
+    #[test]
+    fn healthy_unsourced_evidence_does_not_create_speculative_repairs() {
+        let mut healthy = fixture_bundle();
+        let concept = &mut healthy.concepts[0];
+        concept.description = "A complete local concept.".to_string();
+        concept.timestamp = Some("2026-07-19T00:00:00Z".to_string());
+        concept.broken_links.clear();
+
+        let result = retrieve(
+            &healthy,
+            &RetrievalRequest {
+                query: "alpha".to_string(),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert_eq!(result.diagnostic.class, DiagnosticClass::Ready);
+        assert!(result.repairs.is_empty());
     }
 
     fn fixture_bundle() -> Bundle {

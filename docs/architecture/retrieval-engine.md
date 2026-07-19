@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T23:40:00Z
+timestamp: 2026-07-19T23:55:00Z
 ---
 
 # Decision
@@ -26,7 +26,7 @@ A shared Rust pipeline makes exact ranking, grant enforcement, source identity, 
 4. Candidate generators score exact fields, deterministic BM25 terms, authored graph context, coverage, and supported authority signals.
 5. Filters run before final ranking. Every rejected or budget-omitted unit receives a stable reason.
 6. The compiler deduplicates overlap, retains distinct conflicts, orders defining evidence before dependent context, and keeps whole units within the token budget.
-7. Diagnostics classify the result and may produce advisory, review-only repair proposals.
+7. Diagnostics classify the result and may produce advisory, review-only repair proposals tied to an observed cause. Missing descriptions and broken links can produce suggestions; merely selecting an unsourced concept cannot invent a citation chore.
 8. Tauri persists the manifest as JSON and provider-neutral JSONL under a safe bundle and fingerprint identity in app cache.
 
 # Routing boundary

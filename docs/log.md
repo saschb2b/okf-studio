@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Fix**: Keep Evidence Lab repairs tied to an observed retrieval cause. Healthy unsourced evidence no longer produces a wall of speculative “add citation” proposals; the shipped repair list is limited to diagnosed missing descriptions and directly observed broken links.
+
 * **Fix**: Make provider receipts report actual execution rather than permission. Supplying a dense or reranker ID can no longer mark text as remotely shared while those adapters remain inactive; Studio records a degraded capability, local fallback, and `remoteTextShared: false` until provider work really runs.
 
 * **Update**: Expanded deterministic routing around natural user questions and measured each new case for both route choice and evidence recall. Repository overviews and bundle summaries now use coverage, direct definitions and explanations use exact wording, change questions use the temporal route, and the remaining hybrid method is named **Text and related concepts** instead of the vague “Broader local search”.

@@ -9,15 +9,17 @@
 // Colour and weight are reserved for the exception: amber for warnings, red for
 // errors, where they actually draw the eye. See docs/features/validation.md.
 
-import { Check, History, Sparkles, TriangleAlert, Waypoints, X as XIcon } from "lucide-react";
+import { Check, GitBranch, History, Sparkles, TriangleAlert, Waypoints, X as XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useApp } from "@/shared/store.tsx";
 import { AGENT_PANEL_OPENER_ID } from "@/features/agent/agentPanelFocus.ts";
+import { useGitRepository } from "@/features/git/gitRepositoryStore.ts";
 import "./StatusBar.css";
 
 export function StatusBar() {
   const { state, actions } = useApp();
   const bundle = state.bundle;
+  const git = useGitRepository(state.activeRoot);
 
   const errors = bundle?.issues.filter((i) => i.level === "error").length ?? 0;
   const warns = bundle?.issues.filter((i) => i.level === "warning").length ?? 0;
@@ -79,6 +81,27 @@ export function StatusBar() {
         )}
       </div>
       <div className="status-region">
+        {bundle && (
+          <button
+            type="button"
+            className={`status-item status-toggle${state.panels.git ? " is-active" : ""}`}
+            aria-label="Toggle Git panel"
+            aria-pressed={state.panels.git}
+            title={git.snapshot?.message ?? "Git repository"}
+            onClick={() => actions.togglePanel("git")}
+          >
+            <span className="status-icon" aria-hidden="true">
+              <GitBranch size={14} />
+            </span>
+            <span>{git.snapshot?.availability === "ready" ? (git.snapshot.branch ?? "Git") : "Git"}</span>
+            {git.snapshot?.availability === "ready" && (git.snapshot.ahead > 0 || git.snapshot.behind > 0) ? (
+              <span className="status-git-counts" aria-label={`${git.snapshot.ahead} ahead, ${git.snapshot.behind} behind`}>
+                {git.snapshot.ahead > 0 ? `↑${git.snapshot.ahead}` : ""}
+                {git.snapshot.behind > 0 ? `↓${git.snapshot.behind}` : ""}
+              </span>
+            ) : null}
+          </button>
+        )}
         {bundle && (
           <button
             type="button"

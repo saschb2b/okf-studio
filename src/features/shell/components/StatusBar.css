@@ -70,6 +70,12 @@ button.status-item:focus-visible {
   color: var(--text-dim);
 }
 
+.status-git-counts {
+  display: inline-flex;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Hairline between the conformance verdict and the read-only bundle facts —
    the quiet boundary that lets the left region scan as two groups. */
 .status-sep {

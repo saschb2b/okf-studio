@@ -9,6 +9,12 @@ import type {
   RemoteSource,
   Settings,
 } from "@/shared/types.ts";
+import type {
+  GitDiff,
+  GitHistoryPage,
+  GitRemoteOperation,
+  GitRepositorySnapshot,
+} from "@/features/git/types.ts";
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
 import type {
@@ -102,6 +108,74 @@ import {
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
+
+let MOCK_GIT_SNAPSHOT: GitRepositorySnapshot = {
+  availability: "ready",
+  message: null,
+  repositoryName: "okf-viewer",
+  branch: "feat/integrated-git-support",
+  upstream: "origin/feat/integrated-git-support",
+  ahead: 2,
+  behind: 0,
+  headSha: "972bdb14a0b8468df0106f639691a24e0ba9ee31",
+  changes: [
+    {
+      path: "docs/features/integrated-git.md",
+      kind: "added",
+      staged: true,
+      unstaged: false,
+    },
+    {
+      path: "src/features/git/components/GitPanel.tsx",
+      kind: "modified",
+      staged: false,
+      unstaged: true,
+    },
+    {
+      path: "notes/review.md",
+      kind: "untracked",
+      staged: false,
+      unstaged: true,
+    },
+  ],
+};
+
+const MOCK_GIT_HISTORY: GitHistoryPage = {
+  hasMore: false,
+  commits: [
+    {
+      sha: "972bdb14a0b8468df0106f639691a24e0ba9ee31",
+      shortSha: "972bdb1",
+      subject: "Add bounded Git repository operations",
+      authorName: "Sascha Becker",
+      authorEmail: "sascha@example.invalid",
+      timestamp: 1_774_110_000,
+    },
+    {
+      sha: "610fb6aa3cfa8f7d69064cecd9bd25fa8f0c9124",
+      shortSha: "610fb6a",
+      subject: "Plan integrated Git support",
+      authorName: "Sascha Becker",
+      authorEmail: "sascha@example.invalid",
+      timestamp: 1_774_106_400,
+    },
+  ],
+};
+
+const MOCK_GIT_DIFF: GitDiff = {
+  title: "src/features/git/components/GitPanel.tsx",
+  truncated: false,
+  text: [
+    "diff --git a/src/features/git/components/GitPanel.tsx b/src/features/git/components/GitPanel.tsx",
+    "--- a/src/features/git/components/GitPanel.tsx",
+    "+++ b/src/features/git/components/GitPanel.tsx",
+    "@@ -1,3 +1,4 @@",
+    " import { GitBranch } from \"lucide-react\";",
+    "+import { GitChanges } from \"./GitChanges.tsx\";",
+    " ",
+    " export function GitPanel() {",
+  ].join("\n"),
+};
 
 /** Keep browser demos legible without charging their presentation latency to tests. */
 function browserMockDelay(milliseconds: number): Promise<void> {
@@ -3169,6 +3243,175 @@ export async function readBundle(root: string): Promise<Bundle> {
   if (!isTauri()) return MOCK_BUNDLE;
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<Bundle>("read_bundle", { root });
+}
+
+export async function gitRepositorySnapshot(
+  bundleRoot: string,
+): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return structuredClone(MOCK_GIT_SNAPSHOT);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_repository_snapshot", { bundleRoot });
+}
+
+export async function gitRepositoryHistory(
+  bundleRoot: string,
+  skip: number,
+  limit: number,
+): Promise<GitHistoryPage> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return {
+      commits: MOCK_GIT_HISTORY.commits.slice(skip, skip + limit),
+      hasMore: skip + limit < MOCK_GIT_HISTORY.commits.length,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitHistoryPage>("git_repository_history", {
+    bundleRoot,
+    skip,
+    limit,
+  });
+}
+
+export async function gitRepositoryDiff(
+  bundleRoot: string,
+  options: { path?: string; staged?: boolean; commit?: string },
+): Promise<GitDiff> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return {
+      ...MOCK_GIT_DIFF,
+      title: options.path ?? (options.commit ? `Commit ${options.commit.slice(0, 7)}` : MOCK_GIT_DIFF.title),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitDiff>("git_repository_diff", {
+    bundleRoot,
+    path: options.path ?? null,
+    staged: options.staged ?? false,
+    commit: options.commit ?? null,
+  });
+}
+
+function mockGitChanges(
+  update: (change: GitRepositorySnapshot["changes"][number]) => GitRepositorySnapshot["changes"][number] | null,
+): GitRepositorySnapshot {
+  MOCK_GIT_SNAPSHOT = {
+    ...MOCK_GIT_SNAPSHOT,
+    changes: MOCK_GIT_SNAPSHOT.changes.flatMap((change) => {
+      const next = update(change);
+      return next ? [next] : [];
+    }),
+  };
+  return structuredClone(MOCK_GIT_SNAPSHOT);
+}
+
+export async function gitStagePaths(
+  bundleRoot: string,
+  paths: string[],
+): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    return mockGitChanges((change) =>
+      paths.includes(change.path) ? { ...change, staged: true, unstaged: false } : change
+    );
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_stage_paths", { bundleRoot, paths });
+}
+
+export async function gitUnstagePaths(
+  bundleRoot: string,
+  paths: string[],
+): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    return mockGitChanges((change) =>
+      paths.includes(change.path) ? { ...change, staged: false, unstaged: true } : change
+    );
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_unstage_paths", { bundleRoot, paths });
+}
+
+export async function gitStageAll(bundleRoot: string): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    return mockGitChanges((change) => ({ ...change, staged: true, unstaged: false }));
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_stage_all", { bundleRoot });
+}
+
+export async function gitUnstageAll(bundleRoot: string): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    return mockGitChanges((change) => ({ ...change, staged: false, unstaged: true }));
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_unstage_all", { bundleRoot });
+}
+
+export async function gitCommit(
+  bundleRoot: string,
+  message: string,
+  includeTracked: boolean,
+): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    const headSha = "a17c0de64b8cc0bbf352b82baeea804dde48a449";
+    const snapshot = mockGitChanges((change) => {
+      const included = change.staged || (includeTracked && change.kind !== "untracked");
+      return included ? null : change;
+    });
+    MOCK_GIT_SNAPSHOT = { ...snapshot, headSha, ahead: snapshot.ahead + 1 };
+    MOCK_GIT_HISTORY.commits.unshift({
+      sha: headSha,
+      shortSha: headSha.slice(0, 7),
+      subject: message.split("\n", 1)[0],
+      authorName: "Studio User",
+      authorEmail: "user@example.invalid",
+      timestamp: Math.floor(Date.now() / 1000),
+    });
+    return structuredClone(MOCK_GIT_SNAPSHOT);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_commit", {
+    bundleRoot,
+    message,
+    includeTracked,
+  });
+}
+
+export async function gitUndoCommit(
+  bundleRoot: string,
+  expectedHead: string,
+): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    MOCK_GIT_SNAPSHOT = {
+      ...MOCK_GIT_SNAPSHOT,
+      headSha: "972bdb14a0b8468df0106f639691a24e0ba9ee31",
+      ahead: Math.max(0, MOCK_GIT_SNAPSHOT.ahead - 1),
+      changes: [
+        ...MOCK_GIT_SNAPSHOT.changes,
+        { path: "docs/log.md", kind: "modified", staged: true, unstaged: false },
+      ],
+    };
+    return structuredClone(MOCK_GIT_SNAPSHOT);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_undo_commit", { bundleRoot, expectedHead });
+}
+
+export async function gitRemoteOperation(
+  bundleRoot: string,
+  operation: GitRemoteOperation,
+): Promise<GitRepositorySnapshot> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return structuredClone(MOCK_GIT_SNAPSHOT);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<GitRepositorySnapshot>("git_remote_operation", { bundleRoot, operation });
 }
 
 export async function exportRetrievalDiagnostics(

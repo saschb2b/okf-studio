@@ -26,8 +26,8 @@ describe("AgentPanelStateGallery", () => {
     ["permission", "Allow Read generated report?"],
     ["staged", "Enhancement draft"],
     ["retrieval-turn", "Related concepts"],
-    ["retrieval-inspector", "Evidence for this answer"],
-    ["retrieval-lab", "Retrieval Lab"],
+    ["retrieval-inspector", "Evidence behind this answer"],
+    ["retrieval-lab", "Evidence Lab"],
     ["disconnected", "Your bundle is still open"],
   ])("renders the %s fixture", (scenario, expectedText) => {
     window.history.replaceState(null, "", `/?agent-gallery=${scenario}&width=440`);

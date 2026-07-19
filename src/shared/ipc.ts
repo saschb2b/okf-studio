@@ -2819,14 +2819,14 @@ async function emitMockLocalTurn(
   }
   const responseText = generation.response ?? (guidedWorkflow
     ? mockAgentResponse(text, taskContext.taskId)
-    : sources.length > 0
-    ? `Inspected ${sources.length} attached source${sources.length === 1 ? "" : "s"}, including ${sources[0]?.title ?? "the supplied evidence"}.`
     : loadsSkill && searchesBundle
     ? "Loaded packaged OKF instructions and found the Agent Panel concept at `features/agent-panel`."
     : loadsSkill
       ? "Loaded packaged OKF instructions."
       : searchesBundle
         ? "Found the Agent Panel concept at `features/agent-panel`."
+        : sources.length > 0
+          ? `Inspected ${sources.length} attached source${sources.length === 1 ? "" : "s"}, including ${sources[0]?.title ?? "the supplied evidence"}.`
         : mockAgentResponse(text));
   emitAgentTurn({
     ...info,

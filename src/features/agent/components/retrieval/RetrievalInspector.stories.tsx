@@ -4,6 +4,7 @@ import { MOCK_BUNDLE } from "@/mock/fixture.ts";
 import { mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
 import type { RetrievalResult } from "@/features/agent/retrieval/types.ts";
 import { RetrievalInspector } from "./RetrievalInspector.tsx";
+import "../AgentConversation.css";
 
 const ready = mockRetrieval(MOCK_BUNDLE, {
   query: "concept reader",
@@ -35,19 +36,25 @@ type Story = StoryObj<typeof meta>;
 
 export const Ready: Story = {
   play: async ({ args, canvas }) => {
-    await expect(canvas.getByRole("heading", { name: "Evidence for this answer" })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Evidence behind this answer" })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Evidence is available" })).toBeVisible();
     const source = canvas.getByRole("button", { name: /Concept Reader/i });
     await userEvent.click(source);
     await expect(args.onOpenConcept).toHaveBeenCalledWith("features/concept-reader");
-    await userEvent.selectOptions(canvas.getByLabelText("Route"), "lexical-graph");
+    await userEvent.selectOptions(canvas.getByLabelText("Search method"), "lexical-graph");
+    await userEvent.click(canvas.getByRole("button", { name: "Search evidence again" }));
     await expect(args.onRerun).toHaveBeenCalledWith("lexical-graph");
+    await userEvent.click(canvas.getByText("Technical details"));
+    await expect(canvas.getByRole("heading", { name: "Candidates considered" })).toBeVisible();
+    await expect(canvas.getByRole("columnheader", { name: "Decision" })).toBeVisible();
+    await userEvent.click(canvas.getByText("Technical details"));
   },
 };
 
 export const Empty: Story = {
   args: { result: emptyResult(ready) },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole("heading", { name: "No evidence matched" })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "No supporting evidence found" })).toBeVisible();
     await expect(canvas.getByText(/Check the query/i)).toBeVisible();
   },
 };
@@ -61,9 +68,8 @@ export const PartialAndOversized: Story = {
     }),
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText(
-      "Relevant evidence was omitted because it did not fit the context budget.",
-    )).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "The evidence may be incomplete" }))
+      .toBeVisible();
   },
 };
 
@@ -76,17 +82,22 @@ export const Conflict: Story = {
         requiresAbstention: true,
         caveats: [{
           kind: "conflict",
-          conceptIds: ["policies/current", "policies/old"],
+          conceptIds: ready.evidence.items.slice(0, 2).map((item) => item.conceptId),
           message: "Two reviewed sources make different current-state claims.",
         }],
       },
       diagnostic: {
         class: "conflicting-evidence",
         summary: "Selected sources make competing claims.",
-        affectedConceptIds: ["policies/current", "policies/old"],
+        affectedConceptIds: ready.evidence.items.slice(0, 2).map((item) => item.conceptId),
         suggestedAction: "Inspect both sources before answering.",
       },
     },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("heading", { name: "Sources disagree" })).toBeVisible();
+    await expect(canvas.getByText(/not an app error/i)).toBeVisible();
+    await expect(canvas.getAllByText("May conflict").length).toBeGreaterThan(0);
   },
 };
 
@@ -105,6 +116,15 @@ export const ProviderUnavailable: Story = {
         }],
       },
     },
+  },
+  play: async ({ canvas }) => {
+    const capability = canvas.getByRole("heading", { name: "Search capabilities" });
+    await expect(capability).not.toBeVisible();
+    await userEvent.click(canvas.getByText("Technical details"));
+    await expect(capability).toBeVisible();
+    await expect(canvas.getByText("Semantic matching")).toBeVisible();
+    await expect(canvas.getByText("Not configured")).toBeVisible();
+    await userEvent.click(canvas.getByText("Technical details"));
   },
 };
 
@@ -133,7 +153,8 @@ export const Stale: Story = {
 export const Rerunning: Story = {
   args: { rerunning: true },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole("button", { name: "Rerunning…" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Searching…" })).toBeDisabled();
+    await expect(canvas.getByText(/Searching the bundle/i)).toBeVisible();
   },
 };
 
@@ -145,16 +166,54 @@ export const RerunFailed: Story = {
 };
 
 export const Narrow360: Story = {
-  decorators: [(Story) => <div style={{ width: 360, maxWidth: "100%", height: 720 }}><Story /></div>],
+  decorators: [(Story) => <div style={{ width: 360, maxWidth: "100%", height: 720, containerType: "inline-size" }}><Story /></div>],
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getByRole("heading", { name: "Evidence behind this answer" })).toBeVisible();
+    await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+  },
 };
 
 export const Narrow440: Story = {
-  decorators: [(Story) => <div style={{ width: 440, maxWidth: "100%", height: 720 }}><Story /></div>],
+  decorators: [(Story) => <div style={{ width: 440, maxWidth: "100%", height: 720, containerType: "inline-size" }}><Story /></div>],
 };
 
 export const Narrow560LongContent: Story = {
-  decorators: [(Story) => <div style={{ width: 560, maxWidth: "100%", height: 720 }}><Story /></div>],
+  decorators: [(Story) => <div style={{ width: 560, maxWidth: "100%", height: 720, containerType: "inline-size" }}><Story /></div>],
   args: { result: longResult(ready) },
+};
+
+export const ConversationReplacement: Story = {
+  decorators: [
+    (Story) => (
+      <div className="agent-conversation" style={{ height: 720 }}>
+        <div
+          className="agent-conversation__transcript-owner"
+          data-testid="retained-transcript"
+          hidden
+        >
+          Retained conversation
+        </div>
+        <Story />
+        <div
+          data-testid="composer-boundary"
+          style={{ flex: "0 0 96px", padding: "var(--space-12)", borderTop: "1px solid var(--border)" }}
+        >
+          Composer
+        </div>
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const transcript = canvas.getByTestId("retained-transcript");
+    const composer = canvas.getByTestId("composer-boundary");
+    const heading = canvas.getByRole("heading", { name: "Evidence behind this answer" });
+    const inspector = heading.closest<HTMLElement>(".retrieval-inspector");
+    if (!inspector) throw new Error("The retrieval inspector was not rendered.");
+
+    await expect(getComputedStyle(transcript).display).toBe("none");
+    await expect(inspector.getBoundingClientRect().bottom)
+      .toBeLessThanOrEqual(composer.getBoundingClientRect().top);
+  },
 };
 
 function emptyResult(result: RetrievalResult): RetrievalResult {

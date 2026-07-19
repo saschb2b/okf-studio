@@ -127,6 +127,7 @@ const REQUIRED_JOURNEY_IDS = [
 ];
 const REQUIRED_TASK_CAPABILITY_IDS = [
   "okf-inspect",
+  "okf-retrieve",
   "okf-create",
   "okf-enrich",
   "okf-audit",

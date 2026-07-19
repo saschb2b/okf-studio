@@ -198,11 +198,11 @@ export interface ReceiptDiff {
 }
 
 export const RETRIEVAL_ROUTES: readonly { id: RetrievalRoute; label: string; description: string }[] = [
-  { id: "exact-lexical", label: "Exact and lexical", description: "Best for names, IDs, headings, and exact wording." },
+  { id: "exact-lexical", label: "Exact wording", description: "Best for names, IDs, headings, and phrases that should appear in the bundle." },
   { id: "lexical-graph", label: "Related concepts", description: "Adds bounded authored links and backlinks." },
-  { id: "coverage", label: "Bundle coverage", description: "Balances evidence across concepts and types." },
-  { id: "temporal-conflict", label: "Current and conflicting", description: "Keeps competing time or authority claims visible." },
-  { id: "structured", label: "Structured evidence", description: "Prioritizes tables, fields, and exact numeric cells." },
+  { id: "coverage", label: "Across the bundle", description: "Looks across concepts and types for overview questions." },
+  { id: "temporal-conflict", label: "Current and conflicting claims", description: "Keeps competing time or authority claims visible." },
+  { id: "structured", label: "Tables and fields", description: "Prioritizes tables, fields, and exact numeric cells." },
   { id: "full-context", label: "Full bundle", description: "Uses the canonical snapshot only when it fits." },
-  { id: "hybrid-fallback", label: "Local hybrid", description: "Combines local stages when optional providers are absent." },
+  { id: "hybrid-fallback", label: "Broader local search", description: "Combines local text and relationship signals to widen the search." },
 ];

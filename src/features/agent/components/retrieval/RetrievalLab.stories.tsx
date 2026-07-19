@@ -37,31 +37,35 @@ type Story = StoryObj<typeof meta>;
 
 export const Ready: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole("heading", { name: /Retrieval Lab/i })).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: "Inspect evidence" }));
-    await expect(canvas.getByRole("heading", { name: "Evidence for this answer" })).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: /Evidence Lab/i })).toBeVisible();
+    await expect(canvas.getByText(/does not contact an agent/i)).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Review sources" }));
+    await expect(canvas.getByRole("heading", { name: "Evidence behind this answer" })).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "Conversation" }));
-    await expect(canvas.getByRole("heading", { name: /Retrieval Lab/i })).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: "Export diagnostic" }));
+    await expect(canvas.getByRole("heading", { name: /Evidence Lab/i })).toBeVisible();
+    await userEvent.click(canvas.getByText("Technical report"));
+    await userEvent.click(canvas.getByRole("button", { name: "Export technical report" }));
     await expect(canvas.findByText(/Saved retrieval-/i)).resolves.toBeVisible();
+    await userEvent.click(canvas.getByText("Technical report"));
   },
 };
 
 export const CompareRoutes: Story = {
   play: async ({ canvas }) => {
     await userEvent.selectOptions(canvas.getByLabelText("Compare with"), "coverage");
-    await userEvent.click(canvas.getByRole("button", { name: "Compare routes" }));
-    await expect(canvas.findByLabelText("Route comparison result")).resolves.toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Compare evidence" }));
+    await expect(canvas.findByLabelText("Evidence comparison result")).resolves.toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Use this evidence set" })).toBeVisible();
   },
 };
 
 export const EmptyStart: Story = {
   args: { initialResult: undefined },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText(/Compare evidence paths/i)).toBeVisible();
-    await userEvent.type(canvas.getByLabelText("Query"), "graph reader");
-    await userEvent.click(canvas.getByRole("button", { name: "Run" }));
-    await expect(canvas.findByText(/local route produced bounded evidence/i)).resolves.toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Investigate a question" })).toBeVisible();
+    await userEvent.type(canvas.getByLabelText("Question to investigate"), "graph reader");
+    await userEvent.click(canvas.getByRole("button", { name: "Find evidence" }));
+    await expect(canvas.findByRole("heading", { name: "Evidence is available" })).resolves.toBeVisible();
   },
 };
 
@@ -71,12 +75,12 @@ export const CancelledRun: Story = {
     retrieve: async () => new Promise<RetrievalResult>(() => undefined),
   },
   play: async ({ canvas }) => {
-    await userEvent.type(canvas.getByLabelText("Query"), "a retained query");
-    await userEvent.click(canvas.getByRole("button", { name: "Run" }));
-    await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
-    await expect(canvas.getByRole("status")).toHaveTextContent("Retrieval cancelled");
-    await expect(canvas.getByLabelText("Query")).toHaveValue("a retained query");
-    await expect(canvas.getByRole("button", { name: "Run" })).toBeEnabled();
+    await userEvent.type(canvas.getByLabelText("Question to investigate"), "a retained query");
+    await userEvent.click(canvas.getByRole("button", { name: "Find evidence" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Stop" }));
+    await expect(canvas.getByRole("status")).toHaveTextContent("Search stopped");
+    await expect(canvas.getByLabelText("Question to investigate")).toHaveValue("a retained query");
+    await expect(canvas.getByRole("button", { name: "Find evidence" })).toBeEnabled();
   },
 };
 
@@ -100,7 +104,7 @@ export const ReviewOnlyRepair: Story = {
     },
   },
   play: async ({ args, canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Review proposal" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Review change" }));
     await expect(args.onReviewRepair).toHaveBeenCalledWith(
       expect.objectContaining({ conceptId: "features/concept-reader" }),
     );
@@ -108,13 +112,17 @@ export const ReviewOnlyRepair: Story = {
 };
 
 export const Narrow360: Story = {
-  decorators: [(Story) => <div style={{ width: 360, maxWidth: "100%", height: 760 }}><Story /></div>],
+  decorators: [(Story) => <div style={{ width: 360, maxWidth: "100%", height: 760, containerType: "inline-size" }}><Story /></div>],
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getByRole("heading", { name: /Evidence Lab/i })).toBeVisible();
+    await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+  },
 };
 
 export const Narrow440: Story = {
-  decorators: [(Story) => <div style={{ width: 440, maxWidth: "100%", height: 760 }}><Story /></div>],
+  decorators: [(Story) => <div style={{ width: 440, maxWidth: "100%", height: 760, containerType: "inline-size" }}><Story /></div>],
 };
 
 export const Narrow560: Story = {
-  decorators: [(Story) => <div style={{ width: 560, maxWidth: "100%", height: 760 }}><Story /></div>],
+  decorators: [(Story) => <div style={{ width: 560, maxWidth: "100%", height: 760, containerType: "inline-size" }}><Story /></div>],
 };

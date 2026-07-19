@@ -27,7 +27,7 @@ Removing or disabling an embedding, reranking, long-context, or cache provider i
 # Diagnose a miss
 
 1. Open the turn's evidence summary and confirm the bundle fingerprint, route, filters, selected sections, and omissions.
-2. Open Retrieval Lab and run the retained query through a second route.
+2. Open Evidence Lab and compare the retained question with another search method.
 3. Compare added and removed sections, exclusion changes, and token use.
 4. Export the redacted diagnostic if the failure must be shared. Retrieved section text is omitted.
 5. If the bundle itself is hard to retrieve, review an advisory repair. Do not edit merely to increase keyword count.

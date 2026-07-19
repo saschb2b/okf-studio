@@ -2,6 +2,18 @@
 
 ## 2026-07-19
 
+* **Update**: Added a frozen conflict-retrieval task for the curated `okf-retrieve` capability and classified its support across every provider row. The benchmark now rejects a retrieval capability that is shipped without its own scored evidence-selection contract.
+
+* **Update**: Reworked evidence inspection around user decisions instead of retrieval telemetry. The inspector now explains whether sources support the answer, marks conflicting excerpts, cleans Markdown from previews, and keeps candidates, scores, capabilities, and receipts under Technical details. The renamed Evidence Lab states what it does not change, leads with a trust outcome and source review, compares search methods in plain language, and keeps export mechanics secondary.
+
+* **Update**: Replaced the post-answer evidence card with a compact receipt row for excerpt count, route, and inspection. Retrieval uncertainty now appears only when material and uses plain statuses such as **Conflicting evidence** or **Evidence is incomplete**; the internal abstention instruction no longer leaks into the conversation.
+
+* **Update**: Move Retrieval Lab into the thread actions menu and keep the visible thread toolbar as a fixed icon rail. Thread tabs now own the remaining scrollable width instead of competing with a large diagnostic action.
+
+* **Fix**: Keep the retained conversation transcript out of layout while the retrieval inspector is open, and size the inspector within the conversation's available flex space. The inspector no longer overlaps the answer, response actions, or composer.
+
+* **Fix**: Bound automatic retrieval attachments to the lowercase SHA-256 digest of their exact Markdown content. The first implementation passed the prefixed retrieval receipt ID as a source digest, so the prompt boundary correctly rejected every ordinary message that included retrieved evidence.
+
 * **Update**: Closed the [Retrieval Intelligence roadmap](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) with an implementation record for every work package. Optional dense, reranking, and provider-cache adapters remain deliberately unavailable because no measured provider result cleared their activation gates. Storybook MCP passed the complete story and accessibility run, including deterministic cancellation; whole-panel dogfood keeps the composer reachable without another persistent shelf. The Windows release binary and MSI/NSIS packages build locally, while protected release signing remains unavailable without the private key.
 
 * **Creation**: Shipped [Retrieval Intelligence](features/retrieval-intelligence.md) and its shared [Retrieval Engine](architecture/retrieval-engine.md). Ordinary Agent Panel questions now receive coherent, revision-bound local evidence before the selected agent runs. Exact, lexical, graph, coverage, temporal-conflict, structured, full-context, and provider-free hybrid routes emit source identities, whole-unit budget decisions, provider disclosure, abstention signals, diagnostics, and diffable receipts. Each turn keeps one compact summary; detailed inspection replaces the transcript viewport; Retrieval Lab compares routes, exports a source-text-redacted diagnostic, and sends advisory repairs into existing reviewed staging.

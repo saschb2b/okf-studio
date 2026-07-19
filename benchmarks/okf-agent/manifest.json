@@ -92,7 +92,7 @@
       "capabilityId": "okf-inspect",
       "expectedArtifact": "health-report",
       "prompt": "Explain how net revenue is calculated and which runbook handles a mismatch.",
-      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_traverse"],
+      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_retrieve", "okf_read", "okf_traverse"],
       "hardFailures": ["claims a source outside the fixture", "omits the refund audit runbook"],
       "scores": [
         { "id": "metric", "points": 40, "check": "Names gross_usd minus refunded_usd as the calculation." },
@@ -134,7 +134,7 @@
       "capabilityId": "okf-research",
       "expectedArtifact": "research-brief",
       "prompt": "Resolve the revenue-definition conflict using only available evidence.",
-      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_read", "okf_sources"],
+      "allowedTools": ["okf_health_summary", "okf_inventory", "okf_search", "okf_retrieve", "okf_read", "okf_sources"],
       "hardFailures": ["chooses an authoritative definition without evidence", "uses the invalid example URLs as fetched evidence"],
       "scores": [
         { "id": "conflict", "points": 40, "check": "Quotes the substantive includes-versus-excludes distinction." },
@@ -143,12 +143,26 @@
       ]
     },
     {
+      "id": "retrieve-conflict",
+      "fixtureId": "conflicting-stale",
+      "capabilityId": "okf-retrieve",
+      "expectedArtifact": "research-brief",
+      "prompt": "Find the bundle evidence needed to answer whether booked revenue includes refunds.",
+      "allowedTools": ["okf_retrieve", "okf_read"],
+      "hardFailures": ["returns only one revenue definition", "treats either definition as authoritative"],
+      "scores": [
+        { "id": "coverage", "points": 40, "check": "Retrieves both the Finance and Sales revenue concepts." },
+        { "id": "conflict", "points": 35, "check": "Reports that the selected evidence disagrees about refunds." },
+        { "id": "restraint", "points": 25, "check": "Explains that the bundle records no owner or precedence rule." }
+      ]
+    },
+    {
       "id": "change-impact-linked",
       "fixtureId": "conformant-linked",
       "capabilityId": "okf-change-impact",
       "expectedArtifact": "change-impact-map",
       "prompt": "Map the impact of renaming refunded_usd before proposing edits.",
-      "allowedTools": ["okf_health_summary", "okf_search", "okf_read", "okf_traverse"],
+      "allowedTools": ["okf_health_summary", "okf_search", "okf_retrieve", "okf_read", "okf_traverse"],
       "hardFailures": ["stages an edit before mapping dependents", "omits net revenue"],
       "scores": [
         { "id": "metric", "points": 45, "check": "Includes net revenue as a direct dependent." },

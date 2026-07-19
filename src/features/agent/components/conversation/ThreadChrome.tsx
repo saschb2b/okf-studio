@@ -2,7 +2,7 @@ import type { AgentSecurityScopeInfo } from "@/features/agent/connection.ts";
 import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
 import type { OkfTaskKickoff } from "@/features/agent/taskContext.ts";
 import type { RefObject, SubmitEvent } from "react";
-import { Archive as ArchiveIcon, Bot, CircleAlert, Ellipsis, FileDown, FileText, History, Pencil, ShieldQuestion, X } from "lucide-react";
+import { Archive as ArchiveIcon, Bot, CircleAlert, Ellipsis, FileDown, FileText, FlaskConical, History, Pencil, ShieldQuestion, X } from "lucide-react";
 import { Menu } from "@base-ui/react/menu";
 import { Popover } from "@base-ui/react/popover";
 import { useId, useRef, useState } from "react";
@@ -441,6 +441,7 @@ export function ThreadSurfaceClose({
 }
 
 export interface ThreadActionsMenuProps {
+  triggerRef?: RefObject<HTMLButtonElement | null>;
   historyAvailable: boolean;
   historyDisabled: boolean;
   exportAvailable: boolean;
@@ -451,15 +452,18 @@ export interface ThreadActionsMenuProps {
   archiveAvailable: boolean;
   archiveDisabled: boolean;
   archiveTitle: string;
+  retrievalLabAvailable: boolean;
   changeDisabled: boolean;
   onOpenHistory: () => void;
   onOpenMarkdown: () => void;
   onExport: () => void;
   onArchive: () => void;
+  onOpenRetrievalLab: () => void;
   onChangeAgent: () => void;
 }
 
 export function ThreadActionsMenu({
+  triggerRef,
   historyAvailable,
   historyDisabled,
   exportAvailable,
@@ -470,16 +474,19 @@ export function ThreadActionsMenu({
   archiveAvailable,
   archiveDisabled,
   archiveTitle,
+  retrievalLabAvailable,
   changeDisabled,
   onOpenHistory,
   onOpenMarkdown,
   onExport,
   onArchive,
+  onOpenRetrievalLab,
   onChangeAgent,
 }: ThreadActionsMenuProps) {
   return (
     <Menu.Root>
       <Menu.Trigger
+        ref={triggerRef}
         className="btn ghost icon"
         data-agent-initial-focus
         aria-label="More thread actions"
@@ -503,6 +510,15 @@ export function ThreadActionsMenu({
               >
                 <History aria-hidden="true" size={14} />
                 <span>History</span>
+              </Menu.Item>
+            )}
+            {retrievalLabAvailable && (
+              <Menu.Item
+                className="agent-thread-actions__item"
+                onClick={onOpenRetrievalLab}
+              >
+                <FlaskConical aria-hidden="true" size={14} />
+                <span>Evidence Lab</span>
               </Menu.Item>
             )}
             {exportAvailable && (

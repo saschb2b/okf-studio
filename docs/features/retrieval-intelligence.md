@@ -3,14 +3,20 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T18:30:00Z
+timestamp: 2026-07-19T22:15:00Z
 ---
 
 # What it does
 
 Every ordinary Agent Panel question can use a Rust-owned retrieval pass over the active granted bundle before it reaches the selected agent. Studio classifies the question, chooses a local route, compiles coherent sections into a bounded evidence packet, and attaches that packet with stable concept and section identities. The agent does not need its own chunker or unrestricted filesystem access.
 
-The answer turn shows one compact evidence summary. Opening it replaces the conversation viewport with an inspector that explains the route, selected sections, scores, relationship paths, omissions, provider state, context budget, and exact bundle fingerprint. Closing the inspector restores the conversation, draft, scroll position, and focus. The separate Retrieval Lab compares routes, diagnoses misses, exports a redacted receipt, and can hand an advisory repair to the existing reviewed-write workflow.
+The generated attachment carries the lowercase SHA-256 digest of the exact Markdown sent through the prompt boundary. The retrieval receipt remains a separate identity and is never substituted for this content digest.
+
+The answer turn shows one compact evidence receipt with the excerpt count, search method, and an Inspect action. It adds a plain status only when the evidence is incomplete, conflicting, stale, unavailable, or shared remotely. Internal generation instructions such as the abstention flag never appear in the conversation.
+
+Opening the receipt replaces the conversation viewport with an inspector organized around three user questions: whether the evidence supports the answer, which sources were used, and what to do when those sources disagree. Conflicting sources are marked directly. Raw ranking, optional provider state, receipt identity, and other implementation detail stay collapsed under **Technical details**. **Search evidence again** states that it updates the evidence view without resending the prompt or rewriting the answer. The retained transcript is removed from layout while the inspector is open, so the two surfaces cannot overlap. Closing the inspector restores the conversation, draft, scroll position, and focus.
+
+The separate **Evidence Lab** is available from the thread actions menu. It states that it does not contact an agent, rewrite an answer, or change the bundle. The primary flow is question, trust outcome, and source review. Search-method options, comparisons, technical export, and advisory bundle improvements appear progressively. A compared evidence set can become the Lab's current result, but only the existing reviewed-write workflow can apply a proposed knowledge change.
 
 # Why this exists
 
@@ -22,13 +28,13 @@ Retrieval Intelligence makes evidence selection a Studio contract. Exact identit
 
 | Route | Best fit | Local behavior |
 | --- | --- | --- |
-| Exact and lexical | IDs, titles, headings, tags, types, citations, short factual lookups | Field-weighted exact scoring followed by deterministic BM25 |
+| Exact wording | IDs, titles, headings, tags, types, citations, short factual lookups | Field-weighted exact scoring followed by deterministic BM25 |
 | Related concepts | Dependency, impact, neighborhood, and path questions | Exact and lexical candidates plus bounded links and backlinks |
-| Bundle coverage | Themes and corpus-wide questions | Balances direct evidence across concepts and types |
-| Current and conflicting | Current-state, changed-since, ownership, and competing claims | Applies supported metadata filters and retains unresolved conflicts |
-| Structured evidence | Tables, fields, schemas, and numeric evidence | Keeps table headers and rows together |
+| Across the bundle | Themes and corpus-wide questions | Balances direct evidence across concepts and types |
+| Current and conflicting claims | Current-state, changed-since, ownership, and competing claims | Applies supported metadata filters and retains unresolved conflicts |
+| Tables and fields | Tables, fields, schemas, and numeric evidence | Keeps table headers and rows together |
 | Full bundle | Small granted bundles that fit the declared context window | Uses one canonical, fingerprinted manifest snapshot |
-| Local hybrid | Semantic or mixed questions without an optional provider | Combines deterministic lexical and graph evidence and names the fallback |
+| Broader local search | Semantic or mixed questions without an optional provider | Combines deterministic lexical and graph evidence and names the fallback |
 
 Route selection never changes the bundle grant. A remote provider may receive text only after explicit configuration and disclosure. The shipped baseline makes no remote retrieval call.
 
@@ -51,7 +57,7 @@ The inspector opens a concept at its visible source identity. The redacted diagn
 
 Studio distinguishes empty results, low recall, noisy candidates, filter mismatch, stale manifests, missing metadata, conflicting evidence, budget omissions, provider failure, and evidence that an answer did not use. A missing local retrieval result does not block the user's message: Studio names the degraded send and continues without automatic bundle evidence.
 
-When required authority or current evidence is absent, or selected sources conflict without a supported rule, the evidence packet requires abstention. A rank or file timestamp never silently becomes authority.
+When required authority or current evidence is absent, or selected sources conflict without a supported rule, the evidence packet requires abstention. That flag instructs the agent not to present an unsupported claim as settled; it is not a user error. The conversation translates it into a status such as **Conflicting evidence** or **No supporting evidence**, while the inspector owns the full reason and recovery detail. A rank or file timestamp never silently becomes authority.
 
 # Reviewed repair
 

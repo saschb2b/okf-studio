@@ -41,8 +41,8 @@ test("accepts the frozen OKF task and fixture contract", () => {
   const summary = checkCorpus();
 
   assert.equal(summary.fixtureCount, 6);
-  assert.equal(summary.taskCount, 10);
-  assert.equal(summary.curatedCapabilityCount, 10);
+  assert.equal(summary.taskCount, 11);
+  assert.equal(summary.curatedCapabilityCount, 11);
   assert.equal(summary.criticCaseCount, 2);
   assert.equal(summary.providerCount, 4);
   assert.equal(summary.journeyCount, 7);
@@ -53,6 +53,7 @@ test("accepts the frozen OKF task and fixture contract", () => {
     "okf-create",
     "okf-enrich",
     "okf-inspect",
+    "okf-retrieve",
     "okf-migrate",
     "okf-repair",
     "okf-research",

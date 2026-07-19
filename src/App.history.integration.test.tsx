@@ -235,6 +235,11 @@ describe("OKF Studio agent history", () => {
         origin: "Previous thread",
         mediaType: "text/markdown",
         content: expect.stringContaining("## You\n\n> Summarize the bundle"),
+      }), expect.objectContaining({
+        title: "OKF retrieval evidence: exact-lexical",
+        content: expect.stringContaining("Query: Continue from the earlier thread"),
+        mediaType: "text/markdown",
+        sourceDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
       })],
     );
     expect(screen.queryByText("Thread: Summarize the bundle")).not.toBeInTheDocument();

@@ -54,7 +54,7 @@ const SCENARIOS = [
   { id: "staged", label: "Staged changes" },
   { id: "retrieval-turn", label: "Retrieval turn" },
   { id: "retrieval-inspector", label: "Retrieval inspector" },
-  { id: "retrieval-lab", label: "Retrieval Lab" },
+  { id: "retrieval-lab", label: "Evidence Lab" },
   { id: "disconnected", label: "Disconnected process" },
 ] as const;
 

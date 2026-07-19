@@ -10,7 +10,7 @@ timestamp: 2026-07-18T21:39:16Z
 
 OKF Studio should not ship a generic vector database beside the graph. It should turn an OKF bundle into inspectable, revision-bound model context and let each query use the evidence path that fits it.
 
-The retrieval system should remain quiet during ordinary use. The conversation shows an answer, citations, and one compact evidence summary. Route internals, candidate lists, scores, filters, and diagnostics appear only when the user opens the retrieval inspector or separate Retrieval Lab. The [retrieval experience contract](retrieval-experience-contract.md) fixes that hierarchy before implementation.
+The retrieval system should remain quiet during ordinary use. The conversation shows an answer, citations, and one compact evidence summary. The evidence inspector leads with trust and source review; route internals, candidate lists, scores, filters, and diagnostics stay under technical disclosure or in the separate Evidence Lab. The [retrieval experience contract](retrieval-experience-contract.md) fixes that hierarchy before implementation.
 
 The product is an OKF context engine:
 
@@ -83,7 +83,7 @@ Retrieval receipt
 
 The receipt is the retrieval equivalent of Studio's capability and tool evidence. It proves what Studio selected and delivered. It does not prove that the model used every item correctly.
 
-The compact summary belongs to the completed conversation turn. Opening its detail replaces the flexible transcript viewport and restores the previous scroll, draft, selection, and focus state when closed. The full Retrieval Lab remains a separate diagnostic workspace. Neither surface adds another persistent band above the composer.
+The compact summary belongs to the completed conversation turn. Opening its detail replaces the flexible transcript viewport and restores the previous scroll, draft, selection, and focus state when closed. The full Evidence Lab remains a separate troubleshooting workspace. Neither surface adds another persistent band above the composer.
 
 # OKF advantages and honest limits
 

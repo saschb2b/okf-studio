@@ -3,7 +3,7 @@ type: UX Contract
 title: Retrieval Experience Contract
 description: Defines the surface ownership, disclosure levels, layout invariants, state coverage, and prototype gates for retrieval intelligence.
 tags: [product, ux, retrieval, context, agents, storybook]
-timestamp: 2026-07-19T18:30:00Z
+timestamp: 2026-07-19T22:15:00Z
 ---
 
 # Decision
@@ -20,7 +20,7 @@ This contract governs the [retrieval-intelligence roadmap](retrieval-intelligenc
 | Confirm scope before work | Existing task launcher or context plan | Bundles, grants, network use, exceptional cost, and material route changes | Routine local retrieval adds another confirmation step |
 | Inspect selected evidence | Reader, graph, and a retrieval inspector opened from the compact summary | Exact concepts, sections, paths, omissions, and bundle revision | Source bodies are copied into a second transcript-like region |
 | Change the evidence route | Retrieval inspector | Available routes, consequences, and rerun action | Route controls remain visible for every ordinary question |
-| Diagnose a retrieval failure | Separate Retrieval Lab workspace | Route comparison, stage results, timings, and redacted diagnostic export | Diagnostic tables stack above the composer or become general Settings |
+| Diagnose weak or confusing evidence | Separate Evidence Lab workspace | Plain trust outcome, source review, optional search-method comparison, and a collapsed technical report | The user must understand routes, scores, providers, or receipts before they can act |
 | Repair bundle knowledge | Existing structured work and reviewed staging | Evidence-backed proposal, held-out effect, validation, and review | An index, receipt, or diagnostic writes directly to the bundle |
 
 Settings owns persistent defaults and provider configuration. It does not own per-query route selection or diagnostic state. Notifications may report bounded background completion or failure, but they do not duplicate recovery actions already owned by the active surface.
@@ -30,16 +30,16 @@ Settings owns persistent defaults and provider configuration. It does not own pe
 Level 0, answer
 : The conversation shows the user prompt, answer, citations, and blocking safety or scope failures. Retrieval machinery stays out of the reading path.
 
-Level 1, evidence summary
-: One compact turn-owned summary states the route in user terms, bundle count, included evidence count, important omissions or conflicts, and whether a remote provider received text.
+Level 1, evidence receipt
+: One compact turn-owned row states the included excerpt count and route in user terms. It adds status text only for incomplete, conflicting, stale, unavailable, or remotely shared evidence. It never exposes an instruction written for the agent as user-facing copy.
 
-Level 2, retrieval inspector
-: A deliberate action opens candidates, paths, filters, scores, budgets, and exclusions. The inspector replaces the flexible transcript viewport while open. It restores transcript scroll, draft state, and focus when closed.
+Level 2, evidence inspector
+: A deliberate action explains whether the sources support the answer, marks conflicting sources, and opens each excerpt in its full concept. Search method, candidates, paths, filters, scores, budgets, capabilities, and receipt identity stay under a collapsed technical disclosure. The inspector replaces the flexible transcript viewport while open. It restores transcript scroll, draft state, and focus when closed.
 
-Level 3, Retrieval Lab
-: A separate diagnostic workspace compares routes or configurations. It is opened from a receipt, command, or named diagnostic task and never appears as a persistent band in an ordinary conversation.
+Level 3, Evidence Lab
+: A separate troubleshooting workspace tests what Studio can find without contacting an agent, rewriting an answer, or changing the bundle. Its default path is question, trust outcome, and source review. Search-method comparison, technical export, and advisory bundle improvements are secondary actions. It never appears as a persistent band in an ordinary conversation.
 
-The default view uses user language such as "Exact match", "Related concepts", "Current sources", and "3 items omitted for context size". Internal route IDs, rank-fusion terms, model dimensions, and raw score components stay in the inspector or lab.
+The default view uses user language such as "Exact and lexical", "Related concepts", "Conflicting evidence", and "Evidence is incomplete". Internal route IDs, abstention instructions, rank-fusion terms, model dimensions, and raw score components stay in the inspector or lab.
 
 # Layout invariants
 
@@ -109,6 +109,6 @@ An interface-changing package is complete when:
 
 # First vertical slice
 
-The first shipped slice contains one exact or lexical question, one local route, one compact evidence summary, one retrieval inspector, and source opening in the Reader. It includes empty, stale, partial, cancelled, and long-content states. It does not include dense retrieval, global synthesis, cached context, automatic repair, or the full Retrieval Lab.
+The first shipped slice contains one exact or lexical question, one local route, one compact evidence summary, one retrieval inspector, and source opening in the Reader. It includes empty, stale, partial, cancelled, and long-content states. It does not include dense retrieval, global synthesis, cached context, automatic repair, or the full Evidence Lab.
 
 This slice must prove that retrieval explanation can fit the current workspace without another persistent band. Later routes reuse the same surface owners and disclosure levels.

@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Fix**: Stop treating different excerpts under a reused generic heading as conflicting evidence. Studio now raises a conflict only for independently sourced, distinct concepts that share the same subject and section, so unrelated `Why`, `Overview`, or `Decision` sections do not create false warnings.
+
 * **Update**: Added a frozen conflict-retrieval task for the curated `okf-retrieve` capability and classified its support across every provider row. The benchmark now rejects a retrieval capability that is shipped without its own scored evidence-selection contract.
 
 * **Update**: Reworked evidence inspection around user decisions instead of retrieval telemetry. The inspector now explains whether sources support the answer, marks conflicting excerpts, cleans Markdown from previews, and keeps candidates, scores, capabilities, and receipts under Technical details. The renamed Evidence Lab states what it does not change, leads with a trust outcome and source review, compares search methods in plain language, and keeps export mechanics secondary.

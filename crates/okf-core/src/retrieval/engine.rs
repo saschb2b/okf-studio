@@ -779,15 +779,13 @@ fn caveats_for(items: &[EvidenceItem], manifest: &RetrievalManifest) -> Vec<Evid
                 .find(|unit| unit.section_id == item.section_id)
         })
         .collect::<Vec<_>>();
-    let mut by_heading = BTreeMap::<String, Vec<&super::RetrievalUnit>>::new();
+    let mut by_subject_section =
+        BTreeMap::<(String, String), Vec<&super::RetrievalUnit>>::new();
     for unit in &included {
-        let key = unit
-            .heading_path
-            .last()
-            .cloned()
-            .unwrap_or_else(|| unit.concept_title.clone())
-            .to_lowercase();
-        by_heading.entry(key).or_default().push(unit);
+        by_subject_section
+            .entry(conflict_subject_section(unit))
+            .or_default()
+            .push(unit);
         if unit.health.broken_link_count > 0 {
             caveats.push(EvidenceCaveat {
                 kind: EvidenceCaveatKind::BrokenLink,
@@ -806,16 +804,41 @@ fn caveats_for(items: &[EvidenceItem], manifest: &RetrievalManifest) -> Vec<Evid
             });
         }
     }
-    for units in by_heading.values().filter(|units| units.len() > 1) {
+    for units in by_subject_section.values().filter(|units| units.len() > 1) {
+        let concept_ids = units
+            .iter()
+            .map(|unit| unit.concept_id.as_str())
+            .collect::<HashSet<_>>();
         let hashes = units
             .iter()
             .map(|unit| unit.content_hash.as_str())
             .collect::<HashSet<_>>();
-        if hashes.len() > 1 {
+        let source_identities = units
+            .iter()
+            .flat_map(|unit| {
+                unit.resource
+                    .iter()
+                    .chain(unit.citations.iter())
+                    .map(String::as_str)
+            })
+            .collect::<HashSet<_>>();
+        let every_concept_has_a_source = units
+            .iter()
+            .all(|unit| unit.resource.is_some() || !unit.citations.is_empty());
+        if concept_ids.len() > 1
+            && hashes.len() > 1
+            && every_concept_has_a_source
+            && source_identities.len() > 1
+        {
+            let mut concept_ids = concept_ids
+                .into_iter()
+                .map(str::to_string)
+                .collect::<Vec<_>>();
+            concept_ids.sort();
             caveats.push(EvidenceCaveat {
                 kind: EvidenceCaveatKind::Conflict,
-                concept_ids: units.iter().map(|unit| unit.concept_id.clone()).collect(),
-                message: "Multiple sources make different claims under the same heading; no silent authority decision was made.".to_string(),
+                concept_ids,
+                message: "Independently sourced concepts make different claims about the same subject and section. Studio did not choose one as authoritative.".to_string(),
             });
         }
     }
@@ -826,6 +849,17 @@ fn caveats_for(items: &[EvidenceItem], manifest: &RetrievalManifest) -> Vec<Evid
     });
     caveats.dedup();
     caveats
+}
+
+fn conflict_subject_section(unit: &super::RetrievalUnit) -> (String, String) {
+    let subject = unit.concept_title.trim().to_lowercase();
+    let section = unit
+        .heading_path
+        .last()
+        .map_or(subject.as_str(), String::as_str)
+        .trim()
+        .to_lowercase();
+    (subject, section)
 }
 
 fn omission(
@@ -1032,6 +1066,77 @@ mod tests {
         assert_eq!(
             result.diagnostic.class,
             super::super::DiagnosticClass::FilterMismatch
+        );
+    }
+
+    #[test]
+    fn shared_generic_headings_do_not_create_false_conflicts() {
+        let mut alpha = concept(
+            "features/alpha",
+            "Alpha",
+            "Feature",
+            "# Why\n\nAlpha exists to solve one problem.",
+        );
+        alpha.resource = Some("https://example.com/alpha".to_string());
+        let mut beta = concept(
+            "features/beta",
+            "Beta",
+            "Feature",
+            "# Why\n\nBeta exists to solve another problem.",
+        );
+        beta.resource = Some("https://example.com/beta".to_string());
+
+        let result = retrieve(
+            &bundle(vec![alpha, beta]),
+            &RetrievalRequest {
+                query: "full context".to_string(),
+                route: Some(RetrievalRoute::FullContext),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert!(!result
+            .evidence
+            .caveats
+            .iter()
+            .any(|caveat| caveat.kind == EvidenceCaveatKind::Conflict));
+    }
+
+    #[test]
+    fn independently_sourced_claims_about_the_same_subject_raise_a_conflict() {
+        let mut finance = concept(
+            "metrics/finance-revenue",
+            "Revenue",
+            "Metric",
+            "# Definition\n\nFinance revenue includes refunds.",
+        );
+        finance.resource = Some("https://example.com/finance".to_string());
+        let mut sales = concept(
+            "metrics/sales-revenue",
+            "Revenue",
+            "Metric",
+            "# Definition\n\nSales revenue excludes refunds.",
+        );
+        sales.resource = Some("https://example.com/sales".to_string());
+
+        let result = retrieve(
+            &bundle(vec![finance, sales]),
+            &RetrievalRequest {
+                query: "full context".to_string(),
+                route: Some(RetrievalRoute::FullContext),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        let conflict = result
+            .evidence
+            .caveats
+            .iter()
+            .find(|caveat| caveat.kind == EvidenceCaveatKind::Conflict)
+            .expect("independent claims about Revenue/Definition should conflict");
+        assert_eq!(
+            conflict.concept_ids,
+            ["metrics/finance-revenue", "metrics/sales-revenue"]
         );
     }
 

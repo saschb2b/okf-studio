@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T14:00:00Z
+timestamp: 2026-07-19T22:40:00Z
 ---
 
 # Decision
@@ -34,6 +34,12 @@ A shared Rust pipeline makes exact ranking, grant enforcement, source identity, 
 A section ID derives from concept ID, heading ancestry, structural ordinal, and content hash. The bundle fingerprint binds the complete ordered manifest. A content change therefore creates a new revision identity without mutating authored files. Cache and snapshot scope include the manifest fingerprint and bundle grant set; a different revision or scope cannot reuse them.
 
 The cache is disposable. Failure to publish it does not block retrieval or ordinary reading. Reopening or changing a bundle rebuilds from source, and removing the cache cannot remove knowledge.
+
+# Conflict boundary
+
+Studio raises a conflict caveat conservatively. Different text under a generic heading such as `Why`, `Overview`, or `Decision` is not enough: those sections may describe unrelated concepts. A conflict requires different content from distinct concepts with the same normalized concept title and section heading, and every participating concept must carry an independent resource or citation identity. This catches separately sourced definitions of the same subject without presenting ordinary variation across the bundle as an error.
+
+The rule deliberately favors silence over a speculative contradiction claim. Retrieval retains all selected excerpts either way; the caveat only changes when Studio may tell the user that sources disagree and require the answer to remain unsettled.
 
 # Provider contract
 

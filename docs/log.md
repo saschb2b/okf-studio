@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Fix**: Prevented Integrated Git from opening Windows console windows during repository discovery and refresh. Every production Git invocation now uses one command constructor that applies `CREATE_NO_WINDOW` on Windows, including the availability check that runs before repository inspection.
+
 * **Update**: Prepared OKF Studio 0.4.0. This release makes agent work OKF-native through versioned capability packs, typed work artifacts, writing review, workspace memory, local routines, and cross-bundle evidence; adds deterministic retrieval with inspectable receipts, diagnostics, and explicit provider boundaries; replaces the crowded Settings dialog with a searchable workspace; and brings repository status, diffs, staging, commits, history, and explicit remotes into Studio without weakening folder grants.
 
 * **Fix**: Made the common repository-subfolder case recoverable. Opening `repo/docs/` still grants only `docs/`, but Integrated Git now explains why repository-wide access needs confirmation and offers **Allow repository**. Rust discovers the parent without exposing it to the webview, opens a native folder dialog at that root, accepts only that exact choice, persists the grant, and refreshes the same active bundle. Existing grants are evaluated together, so the new repository grant authorizes Git without replacing or silently widening the original bundle grant.

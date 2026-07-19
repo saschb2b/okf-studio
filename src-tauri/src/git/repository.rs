@@ -506,14 +506,26 @@ fn discover_metadata_roots(repository_root: &Path, folder_grant: &Path) -> Vec<P
 }
 
 fn git_is_available() -> bool {
-    Command::new("git")
+    git_command()
         .arg("--version")
         .output()
         .is_ok_and(|output| output.status.success())
 }
 
-fn base_command(directory: &Path) -> Command {
+fn git_command() -> Command {
     let mut command = Command::new("git");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
+}
+
+fn base_command(directory: &Path) -> Command {
+    let mut command = git_command();
     command
         .current_dir(directory)
         .args(["-c", "core.fsmonitor=false"])

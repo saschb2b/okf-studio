@@ -117,6 +117,22 @@ describe("OKF Studio shell", () => {
       .toHaveTextContent("GitChanges");
   });
 
+  it("moves focus into and out of the Git panel with its shortcut", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.keyboard("{Control>}{Shift>}g{/Shift}{/Control}");
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Changes 3" })).toHaveFocus(),
+    );
+
+    await user.keyboard("{Control>}{Shift>}g{/Shift}{/Control}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Toggle Git panel" })).toHaveFocus(),
+    );
+  });
+
   it("moves focus into and out of the agent panel with its shortcut", async () => {
     const user = userEvent.setup();
     renderApp();

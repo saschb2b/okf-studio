@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import { useApp } from "@/shared/store.tsx";
 import { AGENT_PANEL_OPENER_ID } from "@/features/agent/agentPanelFocus.ts";
 import { useGitRepository } from "@/features/git/gitRepositoryStore.ts";
+import { GIT_PANEL_OPENER_ID } from "@/features/git/gitPanelFocus.ts";
 import "./StatusBar.css";
 
 export function StatusBar() {
@@ -83,11 +84,12 @@ export function StatusBar() {
       <div className="status-region">
         {bundle && (
           <button
+            id={GIT_PANEL_OPENER_ID}
             type="button"
             className={`status-item status-toggle${state.panels.git ? " is-active" : ""}`}
             aria-label="Toggle Git panel"
             aria-pressed={state.panels.git}
-            title={git.snapshot?.message ?? "Git repository"}
+            title={git.snapshot?.message ?? "Git repository (Ctrl+Shift+G)"}
             onClick={() => actions.togglePanel("git")}
           >
             <span className="status-icon" aria-hidden="true">

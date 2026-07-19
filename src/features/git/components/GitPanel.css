@@ -137,6 +137,15 @@
   list-style: none;
 }
 
+.git-conflict-notice {
+  margin: var(--space-8);
+  padding: var(--space-8);
+  border-left: 2px solid var(--error);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
 .git-change-list li {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);

@@ -54,3 +54,31 @@ export const Error: Story = {
     await expect(canvas.getByText("The file changed before its diff could be read.")).toBeVisible();
   },
 };
+
+export const BinaryFile: Story = {
+  args: {
+    diff: {
+      title: "site/public/studio-git.png",
+      truncated: false,
+      text: "",
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("No diff to show")).toBeVisible();
+    await expect(canvas.getByText("The selected change has no text diff.")).toBeVisible();
+  },
+};
+
+export const TruncatedDiff: Story = {
+  args: {
+    diff: {
+      title: "docs/product/large-generated-index.md",
+      truncated: true,
+      text: "@@ -1,2 +1,2 @@\n-old bounded preview\n+new bounded preview",
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Preview truncated")).toBeVisible();
+  },
+};

@@ -282,6 +282,7 @@ export function GitPanelView(props: GitPanelViewProps) {
 
       <div className="git-panel__tabs" role="tablist" aria-label="Git views">
         <button
+          data-git-initial-focus
           type="button"
           role="tab"
           aria-selected={props.tab === "changes"}
@@ -349,6 +350,12 @@ export function GitPanelView(props: GitPanelViewProps) {
             <textarea
               value={props.message}
               onChange={(event) => props.onMessageChange(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && canCommit) {
+                  event.preventDefault();
+                  props.onCommit(includeTracked);
+                }
+              }}
               placeholder="Enter commit message"
               rows={3}
               disabled={Boolean(props.pending)}
@@ -392,6 +399,12 @@ function ChangesView({
 }) {
   const hasUnstaged = changes.some((change) => change.unstaged);
   const hasStaged = changes.some((change) => change.staged);
+  const orderedChanges = changes.toSorted((left, right) => {
+    const leftConflict = left.kind === "conflict" ? 0 : 1;
+    const rightConflict = right.kind === "conflict" ? 0 : 1;
+    return leftConflict - rightConflict;
+  });
+  const hasConflicts = orderedChanges.some((change) => change.kind === "conflict");
   return (
     <section className="git-panel__body" aria-label="Repository changes">
       <div className="git-panel__toolbar">
@@ -408,17 +421,30 @@ function ChangesView({
       {changes.length === 0 ? (
         <GitPanelState icon={<Check />} title="No changes to commit" detail="Your working tree is up to date." />
       ) : (
-        <ul className="git-change-list">
-          {changes.map((change) => (
-            <li key={change.path}>
-              <StageCheckbox change={change} disabled={Boolean(pending)} onToggle={() => onToggle(change)} />
-              <button type="button" className="git-change-row" onClick={() => onOpen(change)}>
-                <span className="git-change-path" title={change.path}>{change.path}</span>
-                <span className={`git-change-kind is-${change.kind}`}>{changeCode(change.kind)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          {hasConflicts ? (
+            <p className="git-conflict-notice" role="status">
+              Resolve conflicted files in an editor or terminal, then stage them here.
+            </p>
+          ) : null}
+          <ul className="git-change-list">
+            {orderedChanges.map((change) => (
+              <li key={change.path}>
+                <StageCheckbox change={change} disabled={Boolean(pending)} onToggle={() => onToggle(change)} />
+                <button type="button" className="git-change-row" onClick={() => onOpen(change)}>
+                  <span className="git-change-path" title={change.path}>{change.path}</span>
+                  <span
+                    className={`git-change-kind is-${change.kind}`}
+                    title={changeLabel(change.kind)}
+                    aria-label={changeLabel(change.kind)}
+                  >
+                    {changeCode(change.kind)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
@@ -466,6 +492,7 @@ function HistoryView({
   onLoadMore: () => void;
   onRetry: () => void;
 }) {
+  const [renderedAt] = useState(() => Date.now());
   return (
     <section className="git-panel__body" aria-label="Commit history">
       {loading && !page ? <GitPanelState icon={<LoaderCircle className="spin" />} title="Loading history" /> : null}
@@ -478,7 +505,7 @@ function HistoryView({
               <button type="button" onClick={() => onOpen(commit.sha)}>
                 <span className="git-history-subject">{commit.subject}</span>
                 <span className="git-history-meta">
-                  {commit.authorName} · {formatCommitTime(commit.timestamp)} · <code>{commit.shortSha}</code>
+                  {commit.authorName} · <time dateTime={new Date(commit.timestamp * 1000).toISOString()} title={formatCommitTime(commit.timestamp)}>{formatRelativeCommitTime(commit.timestamp, renderedAt)}</time> · <code>{commit.shortSha}</code>
                 </span>
               </button>
             </li>
@@ -564,9 +591,32 @@ function changeCode(kind: GitChange["kind"]): string {
   }
 }
 
+function changeLabel(kind: GitChange["kind"]): string {
+  switch (kind) {
+    case "conflict": return "Conflict";
+    case "modified": return "Modified";
+    case "added": return "Added";
+    case "deleted": return "Deleted";
+    case "renamed": return "Renamed";
+    case "untracked": return "Untracked";
+  }
+}
+
 function formatCommitTime(timestamp: number): string {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(timestamp * 1000));
+}
+
+function formatRelativeCommitTime(timestamp: number, now: number): string {
+  const deltaSeconds = Math.round(timestamp - now / 1000);
+  const absoluteSeconds = Math.abs(deltaSeconds);
+  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  if (absoluteSeconds < 60) return formatter.format(deltaSeconds, "second");
+  if (absoluteSeconds < 3_600) return formatter.format(Math.round(deltaSeconds / 60), "minute");
+  if (absoluteSeconds < 86_400) return formatter.format(Math.round(deltaSeconds / 3_600), "hour");
+  if (absoluteSeconds < 2_592_000) return formatter.format(Math.round(deltaSeconds / 86_400), "day");
+  if (absoluteSeconds < 31_536_000) return formatter.format(Math.round(deltaSeconds / 2_592_000), "month");
+  return formatter.format(Math.round(deltaSeconds / 31_536_000), "year");
 }

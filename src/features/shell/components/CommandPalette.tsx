@@ -18,6 +18,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { useApp } from "@/shared/store.tsx";
 import { focusAgentPanel, focusAgentPanelOpener } from "@/features/agent/agentPanelFocus.ts";
+import { focusGitPanel, focusGitPanelOpener } from "@/features/git/gitPanelFocus.ts";
 import type { Concept } from "@/shared/types.ts";
 import { OKF_TASKS } from "@/features/agent/taskContext.ts";
 import { tasksForOkfOrigin, type OkfTaskOrigin } from "@/features/agent/taskLauncher.ts";
@@ -231,6 +232,17 @@ export function CommandPalette() {
         actions.togglePanel("agent");
         if (state.panels.agent) focusAgentPanelOpener();
         else focusAgentPanel();
+      },
+    },
+    {
+      kind: "action",
+      id: "act:git",
+      label: "Toggle Git panel",
+      hint: "Action",
+      run: () => {
+        actions.togglePanel("git");
+        if (state.panels.git) focusGitPanelOpener();
+        else focusGitPanel();
       },
     },
     {

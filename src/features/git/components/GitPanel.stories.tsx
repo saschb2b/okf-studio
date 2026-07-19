@@ -142,3 +142,114 @@ export const RepositoryOutsideGrant: Story = {
     await expect(canvas.getByText("Open the repository folder to use Git here.")).toBeVisible();
   },
 };
+
+export const ConflictAndLongPaths: Story = {
+  args: {
+    snapshot: {
+      ...readyRepository,
+      branch: "feat/knowledge-workflows-with-an-intentionally-long-branch-name",
+      changes: [
+        {
+          path: "docs/product/a-very-long-concept-directory/knowledge-that-needs-manual-conflict-resolution.md",
+          kind: "conflict",
+          staged: true,
+          unstaged: true,
+        },
+        ...readyRepository.changes,
+        { path: "docs/archive/retired.md", kind: "deleted", staged: false, unstaged: true },
+        { path: "docs/features/renamed-concept.md", kind: "renamed", staged: true, unstaged: false },
+      ],
+    },
+    message: "Resolve the knowledge conflict",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/Resolve conflicted files/)).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Commit staged" })).toBeDisabled();
+    await expect(canvas.getByLabelText("Conflict")).toBeVisible();
+  },
+};
+
+export const TrackedOnlyCommit: Story = {
+  args: {
+    snapshot: {
+      ...readyRepository,
+      changes: [
+        { path: "docs/features/integrated-git.md", kind: "modified", staged: false, unstaged: true },
+        { path: "notes/new-source.md", kind: "untracked", staged: false, unstaged: true },
+      ],
+    },
+    message: "Document Git support",
+    onCommit: fn(),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Untracked files stay out of this commit.")).toBeVisible();
+    const composer = canvas.getByRole("textbox", { name: "Commit message" });
+    await userEvent.type(composer, "{Control>}{Enter}{/Control}");
+    await expect(args.onCommit).toHaveBeenCalledWith(true);
+  },
+};
+
+export const RemoteOperationFailed: Story = {
+  args: {
+    pending: "fetch",
+    feedback: {
+      tone: "error",
+      message: "Fetch failed. Sign in with Git, then try Fetch again.",
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("alert")).toHaveTextContent("Fetch failed");
+    await expect(canvas.getByRole("button", { name: "Fetch" })).toBeDisabled();
+  },
+};
+
+export const NoRepository: Story = {
+  args: {
+    snapshot: {
+      availability: "notRepository",
+      message: "The active bundle is not inside a Git repository.",
+      repositoryName: null,
+      branch: null,
+      upstream: null,
+      ahead: 0,
+      behind: 0,
+      headSha: null,
+      changes: [],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("No Git repository")).toBeVisible();
+  },
+};
+
+export const GitUnavailable: Story = {
+  args: {
+    snapshot: {
+      availability: "gitUnavailable",
+      message: "Install Git and reopen the panel.",
+      repositoryName: null,
+      branch: null,
+      upstream: null,
+      ahead: 0,
+      behind: 0,
+      headSha: null,
+      changes: [],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Git is not installed")).toBeVisible();
+  },
+};
+
+export const EmptyHistory: Story = {
+  args: {
+    tab: "history",
+    history: { commits: [], hasMore: false },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("No commits yet")).toBeVisible();
+  },
+};

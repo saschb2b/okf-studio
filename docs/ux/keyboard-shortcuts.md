@@ -17,6 +17,7 @@ timestamp: 2026-07-17T10:39:43Z
 | `Ctrl/Cmd + P` | Open the [Bundle Switcher](../features/bundle-switcher.md) — switch bundle, reopen a recent, or open a folder |
 | `Ctrl/Cmd + K` or `/` | Open the global search [launcher](../features/command-palette.md) — jump to a concept, full-text search, or run a command |
 | `Ctrl/Cmd + Shift + A` | Toggle the [Agent Panel](../features/agent-panel.md) |
+| `Ctrl/Cmd + Shift + G` | Toggle [Integrated Git](git-workflow.md) and move focus between its active tab and status-bar opener |
 | `Ctrl/Cmd + PageUp` / `Ctrl/Cmd + PageDown` | Previous / next live Agent thread while a thread switcher item is focused |
 | `Esc` | Close the launcher / dialog / deselect |
 | `↑` `↓` | Move through results / the sidebar |
@@ -39,6 +40,7 @@ timestamp: 2026-07-17T10:39:43Z
 | `L` | Toggle the `log.md` view |
 | `R` | Re-scan the folder |
 | `Ctrl/Cmd + ,` | [Settings](settings.md) (theme, reader text size, scan) |
+| `Ctrl/Cmd + Enter` | Commit the current staged or tracked scope while the [Git](git-workflow.md) message field is focused |
 | `?` | Show the keyboard-shortcuts overlay |
 
 # Notes

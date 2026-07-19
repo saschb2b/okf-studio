@@ -139,7 +139,7 @@ export function GitPanel() {
     } catch (error) {
       setFeedback({
         tone: "error",
-        message: error instanceof Error ? error.message : String(error),
+        message: operationFailureMessage(name, error),
       });
     }
     setPending(null);
@@ -619,4 +619,17 @@ function formatRelativeCommitTime(timestamp: number, now: number): string {
   if (absoluteSeconds < 2_592_000) return formatter.format(Math.round(deltaSeconds / 86_400), "day");
   if (absoluteSeconds < 31_536_000) return formatter.format(Math.round(deltaSeconds / 2_592_000), "month");
   return formatter.format(Math.round(deltaSeconds / 31_536_000), "year");
+}
+
+function operationFailureMessage(operation: string, error: unknown): string {
+  if (operation === "fetch") {
+    return "Fetch failed. Check the remote and Git sign-in, then try again.";
+  }
+  if (operation === "pull") {
+    return "Pull failed. Fetch first, resolve any divergence in Git, then try again.";
+  }
+  if (operation === "push") {
+    return "Push failed. Check the remote, Git sign-in, and branch permissions, then try again.";
+  }
+  return error instanceof Error ? error.message : String(error);
 }

@@ -31,6 +31,7 @@ Components mirror the three panes: a **sidebar** (indexes, concept list, search 
 The frontend is organized **domain-first**: `src/features/<domain>/` is the top-level unit, and each domain holds its own `components/` folder beside the logic (hooks, model derivations, ACP calls) that belongs to it. This keeps a feature's UI and its supporting code colocated rather than scattering them across a global `components/` tree and a parallel utilities tree. The domains are:
 
 - **`agent/`** — the ACP client: connection, catalog, install, threads, local models, custom profiles, plus the agent-panel components and the staged-write review previews.
+- **`git/`** — repository snapshot and diff stores, the Git panel, its focus contract, and the dedicated read-only diff workspace.
 - **`viz/`** — visualization: the graph engine (`graph/` — backbone, community, force simulation, render model), the chart helpers (hierarchy, labels, Nivo theme), and every graph/chart component.
 - **`reader/`** — the concept reader, reader preferences, lineage panel, and peek card, plus lineage derivation.
 - **`bundle/`** — bundle browsing and the open-from-URL flow (with its network-free `remoteSource` URL parser).
@@ -44,6 +45,8 @@ Imports use the **`@/` path alias** (`@/*` → `src/*`, configured in `tsconfig.
 # In-place patching on bundle-changed
 
 When a `bundle-changed` event arrives ([Live Reload](../features/live-reload.md)), the frontend **patches state in place** rather than rebuilding the bundle from scratch. The changed concept's record is replaced, derived stores update for just the affected entries, and the graph keeps existing node positions — only affected nodes resettle, so the layout does not jump. Selection and scroll are retained when the active concept still exists.
+
+Git state follows the same invalidation principle without sharing the bundle model. `git-state-changed` identifies the active bundle whose repository may have changed; the external Git store requests a fresh Rust-owned snapshot while the panel preserves its tab, draft, and scroll. The diff store replaces the main workspace only for a selected file, all-changes view, or commit, then returns to the existing workspace without changing concept selection. See [Git Integration Architecture](git-integration.md).
 
 # Built on React 19 + TypeScript
 

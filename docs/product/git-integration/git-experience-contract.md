@@ -3,7 +3,7 @@ type: UX Contract
 title: Git Experience Contract
 description: Surface ownership, interaction rules, pressure states, and safety boundaries for integrated Git support.
 tags: [product, git, ux, quality-gate]
-timestamp: 2026-07-19T12:30:00Z
+timestamp: 2026-07-19T13:15:00Z
 ---
 
 # User job
@@ -46,7 +46,7 @@ Each changed path appears once. Its control has three truthful states:
 - checked: all changes for the path are staged;
 - mixed: staged and unstaged changes both exist.
 
-The row shows a plain status label such as Modified, Added, Deleted, Renamed, Untracked, or Conflict. Selecting the row opens the relevant diff. The stage control changes only that path and remains disabled while its operation is pending.
+The row shows a compact status code so paths retain space at narrow widths. Its full label, such as Modified, Added, Deleted, Renamed, Untracked, or Conflict, remains available to assistive technology and on hover. Selecting the row opens the relevant diff. The stage control changes only that path and remains disabled while its operation is pending.
 
 Unresolved conflicts remain visible at the top and block commit while any conflict has unstaged content. Studio does not offer merge-resolution editing in the first release; the notice says to resolve the file in an editor or terminal, then stage it here.
 

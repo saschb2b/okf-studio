@@ -534,10 +534,16 @@ fn run_git_owned(root: &Path, args: Vec<String>, allow_diff_exit: bool) -> Resul
         output,
         allow_diff_exit,
         args.first().map(String::as_str).unwrap_or("operation"),
+        root,
     )
 }
 
-fn parse_output(output: Output, allow_diff_exit: bool, operation: &str) -> Result<String, String> {
+fn parse_output(
+    output: Output,
+    allow_diff_exit: bool,
+    operation: &str,
+    root: &Path,
+) -> Result<String, String> {
     let accepted = output.status.success()
         || (allow_diff_exit && output.status.code().is_some_and(|code| code == 1));
     if !accepted {
@@ -549,7 +555,7 @@ fn parse_output(output: Output, allow_diff_exit: bool, operation: &str) -> Resul
         return Err(if detail.is_empty() {
             format!("Git {operation} failed.")
         } else {
-            format!("Git {operation} failed: {}", sanitize_line(detail))
+            format!("Git {operation} failed: {}", sanitize_line(detail, root))
         });
     }
     bounded_utf8(&output.stdout, "Git output")
@@ -697,8 +703,12 @@ fn short_sha(sha: &str) -> String {
     sha.chars().take(7).collect()
 }
 
-fn sanitize_line(line: &str) -> String {
-    line.chars()
+fn sanitize_line(line: &str, root: &Path) -> String {
+    let bounded = line
+        .replace(&root.to_string_lossy().to_string(), "[repository]")
+        .replace(&root.to_string_lossy().replace('\\', "/"), "[repository]");
+    bounded
+        .chars()
         .filter(|character| !character.is_control())
         .take(512)
         .collect::<String>()
@@ -721,7 +731,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        discover, parse_ahead_behind, parse_history, parse_porcelain_v1, snapshot,
+        discover, parse_ahead_behind, parse_history, parse_porcelain_v1, sanitize_line, snapshot,
         validate_relative_path, validate_revision, GitAvailability, GitChangeKind,
     };
 
@@ -827,6 +837,18 @@ mod tests {
         assert!(validate_relative_path("concepts/overview.md").is_ok());
         assert!(validate_revision("abcdef1").is_ok());
         assert!(validate_revision("HEAD~1").is_err());
+    }
+
+    #[test]
+    fn redacts_the_repository_root_from_git_diagnostics() {
+        let root = Path::new("C:\\Users\\person\\private-repository");
+        assert_eq!(
+            sanitize_line(
+                "fatal: cannot open C:\\Users\\person\\private-repository\\.git\\index",
+                root,
+            ),
+            "fatal: cannot open [repository]\\.git\\index",
+        );
     }
 
     #[test]

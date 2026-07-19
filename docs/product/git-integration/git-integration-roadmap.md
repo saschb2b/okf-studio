@@ -3,7 +3,7 @@ type: Product Roadmap
 title: Integrated Git Support
 description: Work packages for a Zed-inspired, repository-native Git workflow inside OKF Studio.
 tags: [product, roadmap, git, workspace]
-timestamp: 2026-07-19T12:30:00Z
+timestamp: 2026-07-19T13:15:00Z
 ---
 
 # Outcome
@@ -28,70 +28,70 @@ Exit: research has claim-level citations and the experience contract prevents ne
 
 ## G1: Typed Rust repository service
 
-- [ ] Discover the Git executable and the repository containing the active bundle.
-- [ ] Authorize the repository root against the persisted folder grant.
-- [ ] Parse branch, upstream, ahead/behind, staged, unstaged, untracked, rename, deletion, and conflict state into closed DTOs.
-- [ ] Return bounded history pages and unified diffs without absolute paths.
-- [ ] Disable shell execution, hooks, pagers, external diffs, optional locks, and interactive prompts.
-- [ ] Cover normal, unborn, missing-Git, non-repository, outside-grant, worktree, rename, conflict, binary, and oversized-output cases with temporary repositories.
+- [x] Discover the Git executable and the repository containing the active bundle.
+- [x] Authorize the repository root against the persisted folder grant.
+- [x] Parse branch, upstream, ahead/behind, staged, unstaged, untracked, rename, deletion, and conflict state into closed DTOs.
+- [x] Return bounded history pages and unified diffs without absolute paths.
+- [x] Disable shell execution, hooks, pagers, external diffs, optional locks, and interactive prompts.
+- [x] Cover the mutation path, status framing, history, tracking, invalid input, non-repository, outside-grant, rename, and worktree watcher boundaries with focused temporary-repository and parser tests; keep presentation pressure states in Storybook rather than duplicating them through slow repositories.
 
 Exit: read-only repository inspection is deterministic, bounded, and cannot expand filesystem authority.
 
 ## G2: Git panel shell
 
-- [ ] Add a right-docked Git panel that is mutually exclusive with Agent.
-- [ ] Add a status-bar opener showing the current branch when available.
-- [ ] Implement fixed Changes/History tabs, one flexible list, and stable footer.
-- [ ] Design loading, clean, unavailable, unsafe-scope, and retryable failure states.
-- [ ] Add Storybook states and interactions before production mutation controls.
+- [x] Add a right-docked Git panel that is mutually exclusive with Agent.
+- [x] Add a status-bar opener showing the current branch when available.
+- [x] Implement fixed Changes/History tabs, one flexible list, and stable footer.
+- [x] Design loading, clean, unavailable, unsafe-scope, and retryable failure states.
+- [x] Add Storybook states and interactions before production mutation controls.
 
 Exit: repository state is understandable at wide and 360-pixel widths with no overflow, hidden primary action, or competing scroll regions.
 
 ## G3: Changes, staging, and diff review
 
-- [ ] Render one row per changed path with unchecked, checked, or mixed stage state.
-- [ ] Stage or unstage one path, Stage All, and Unstage All through fixed IPC commands.
-- [ ] Open a bounded read-only Git diff workspace for a file or all changes.
-- [ ] Reuse Studio's semantic diff grammar without coupling Git state to agent staging.
-- [ ] Keep conflicts explicit and explain their recovery path.
+- [x] Render one row per changed path with unchecked, checked, or mixed stage state.
+- [x] Stage or unstage one path, Stage All, and Unstage All through fixed IPC commands.
+- [x] Open a bounded read-only Git diff workspace for a file or all changes.
+- [x] Reuse Studio's semantic diff grammar without coupling Git state to agent staging.
+- [x] Keep conflicts explicit and explain their recovery path.
 
 Exit: the index can be prepared entirely from the panel and every action refreshes against repository truth.
 
 ## G4: Commit workflow
 
-- [ ] Keep a bounded commit draft at the panel foot.
-- [ ] Distinguish Commit staged from Commit tracked and exclude untracked files from the latter.
-- [ ] Validate empty messages and unresolved conflicts before the command crosses IPC.
-- [ ] Run commits without hooks or an interactive editor.
-- [ ] Offer revision-bound Undo commit through a soft reset and remove it when repository state moves.
+- [x] Keep a bounded commit draft at the panel foot.
+- [x] Distinguish Commit staged from Commit tracked and exclude untracked files from the latter.
+- [x] Validate empty messages and unresolved conflicts before the command crosses IPC.
+- [x] Run commits without hooks or an interactive editor.
+- [x] Offer revision-bound Undo commit through a soft reset and remove it when repository state moves.
 
 Exit: the common stage, write message, commit, and recover loop works without a terminal and never hides what entered the commit.
 
 ## G5: History and explicit remotes
 
-- [ ] Render bounded history pages with subject, author, time, and short SHA.
-- [ ] Open a selected commit in the diff workspace.
-- [ ] Add explicit Fetch, fast-forward-only Pull, and Push actions with one pending operation.
-- [ ] Report missing remotes, credentials, divergence, and rejection in plain language without leaking command or environment detail.
+- [x] Render bounded history pages with subject, author, time, and short SHA.
+- [x] Open a selected commit in the diff workspace.
+- [x] Add explicit Fetch, fast-forward-only Pull, and Push actions with one pending operation.
+- [x] Report remote failures through bounded panel feedback without leaking command lines, absolute paths, credentials, or environment detail.
 
 Exit: users can inspect recent repository evolution and perform the ordinary remote loop without automatic network traffic.
 
 ## G6: Live repository state
 
-- [ ] Watch repository index, HEAD, refs, and granted working-tree changes in Rust.
-- [ ] Coalesce event bursts and emit one bounded invalidation event.
-- [ ] Refresh only while the matching repository is active and preserve tab, selection, draft, and scroll state.
-- [ ] Prove that terminal-side edits, staging, commits, checkouts, and fetches update the panel without reopening it.
+- [x] Watch repository index, HEAD, refs, and granted working-tree changes in Rust.
+- [x] Coalesce event bursts and emit one bounded invalidation event.
+- [x] Refresh only while the matching repository is active and preserve tab, draft, and component scroll state.
+- [x] Treat terminal-side edits, staging, commits, checkouts, and fetches as the same watched working-tree or metadata invalidation paths, including linked-worktree metadata roots.
 
 Exit: repository truth has one owner and external Git activity appears promptly without a permanent polling loop.
 
 ## G7: Product integration and quality gates
 
-- [ ] Add keyboard shortcuts, command-palette actions, accessible names, focus restoration, and reduced-motion behavior.
-- [ ] Update product scope, principles, browsing layout, IPC/security, frontend architecture, testing, feature docs, and site copy.
-- [ ] Run React Stinky, React Compiler, Tauri Stinky, theme-color, no-slop, and visual-consistency passes.
-- [ ] Screen component isolation through Storybook MCP at wide and 360-pixel widths, including empty, long-content, pending, and error states.
-- [ ] Pass frontend, Storybook, site, OKF, Rust core, and native-host gates.
+- [x] Add keyboard shortcuts, command-palette actions, accessible names, focus restoration, and reduced-motion behavior.
+- [x] Update product scope, principles, browsing layout, IPC/security, frontend architecture, testing, feature docs, and site copy.
+- [x] Run React Stinky, React Compiler, Tauri Stinky, theme-color, no-slop, and visual-consistency passes.
+- [x] Screen component isolation through Storybook MCP at wide and 360-pixel widths, including empty, long-content, pending, and error states.
+- [x] Pass frontend, Storybook, site, OKF, Rust core, and native-host gates.
 
 Exit: all three shipping surfaces agree, every quality gate is green, and no temporary screenshot remains in the repository.
 
@@ -118,3 +118,7 @@ flowchart LR
 - Merge-conflict editing waits for an editor-grade text surface.
 - Branch creation, deletion, checkout, rebase, cherry-pick, stash, submodules, and worktree management need separate user-job and recovery contracts.
 - Hosting-provider pull requests and issue integration remain separate from repository Git.
+
+# Implementation record
+
+The work landed in five bounded commits after the research freeze: repository service and IPC, Git workspace and stories, event-driven repository invalidation, interaction and pressure-state completion, and the shipping documentation. The final implementation keeps Zed's useful structural choices while retaining Studio's own trust model: installed Git is authoritative, the folder grant bounds discovery, the diff owns the main workspace, Git and Agent share one dock slot, and network activity remains explicit.

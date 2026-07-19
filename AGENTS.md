@@ -34,6 +34,7 @@ Both the frontend and the agent backend are organized **domain-first**: the doma
 **Frontend (`src/`).** Domains live under `src/features/<domain>/`, each owning a `components/` folder beside its own logic:
 
 - `agent/` — ACP client (connection, catalog, install, threads, local models, custom profiles) + agent-panel components + staged-write review previews
+- `git/` — repository snapshot and diff state + Git panel, focus contract, and dedicated diff workspace
 - `viz/` — the graph engine (`graph/`), chart helpers, and every graph/chart component
 - `reader/` — concept reader, prefs, lineage panel, peek card + lineage derivation
 - `bundle/` — bundle browsing and open-from-URL (`remoteSource` parser)

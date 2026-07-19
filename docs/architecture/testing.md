@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-18T19:54:10Z
+timestamp: 2026-07-19T13:15:00Z
 ---
 
 # Decision
@@ -81,6 +81,12 @@ The app's broad Vite warmup remains enabled for development because it shortens 
 **Stories are tests.** The `storybook` Vitest project runs headless in Playwright Chromium via `@storybook/addon-vitest`: every story renders, and every `play` function executes its interactions and assertions (typed searches, spied callbacks, disabled-state checks). Interactive stories carry `play` functions per the MCP addon's authoring instructions, so a story is simultaneously the visual state and its regression test.
 
 Coverage spans the agent conversation items (tool rows and cards across every status, including collapsed successful details and open running output; messages; plans; grouped turns with one response footer; the combined thread toolbar; OKF mention suggestions; and a full Thread composition at 440px and the 360px floor), the attachment picker and session-configuration rail, the live-work shelf and permission card, the staging previews (okf-proposal through the real parser, the staged-graph thumbnail), the three hierarchy visualizations on the real type palette, and — through a `WithStore` harness that boots the real `AppProvider` over the browser mock — the store-bound shell surfaces (status bar, top bar, empty state, sidebar).
+
+# Integrated Git gate
+
+Integrated Git uses real temporary repositories for its Rust tests instead of mocking command output at the mutation boundary. The focused sequence initializes a repository, writes and stages files, reads status and diffs, commits, and performs the revision-bound soft undo. Separate parser and scope cases cover two-dimensional status, renames, history framing, tracking distance, invalid path and revision input, a repository outside the grant, and an ordinary non-repository. Watcher tests cover working-tree, index, HEAD, refs, and linked-worktree metadata relevance without accepting Git object or build-directory noise.
+
+The frontend mock supplies a deterministic repository snapshot, history page, and unified diff. Full-app integration proves that Git and Agent remain mutually exclusive, changed paths open the dedicated diff workspace, and `Ctrl/Cmd + Shift + G` moves focus into and back out of the panel. Storybook is the pressure-state matrix for clean, mixed, conflicted, long-path, unavailable, pending-failure, empty-history, tracked-only commit, binary/no-text, truncated, loading, and error states. Its play functions cover staging-adjacent actions, diff routing, commit scope, the commit keyboard action, history selection, pending disablement, and accessibility.
 
 # Native host gate
 

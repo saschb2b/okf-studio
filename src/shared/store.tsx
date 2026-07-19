@@ -35,7 +35,7 @@ import type {
   OkfTaskOrigin,
 } from "@/features/agent/taskLauncher.ts";
 
-export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage" | "agent";
+export type PanelName = "sidebar" | "reader" | "log" | "validation" | "lineage" | "agent" | "git";
 
 /**
  * One open concept in the reader — a browser-style tab with its own
@@ -365,6 +365,7 @@ function makeInitialState(): State {
     validation: false,
     lineage: false,
     agent: persistedAgentPanel.open,
+    git: false,
   },
   palette: false,
   paletteSeed: null,
@@ -698,12 +699,16 @@ function reducer(s: State, m: Msg): State {
       const open = m.v ?? !s.panels[m.name];
       if (m.name === "agent") {
         saveAgentPanelLayout({ open, width: s.agentPanelWidth });
+      } else if (m.name === "git" && open && s.panels.agent) {
+        saveAgentPanelLayout({ open: false, width: s.agentPanelWidth });
       }
       return {
         ...s,
         panels: {
           ...s.panels,
           [m.name]: open,
+          ...(open && m.name === "agent" ? { git: false } : {}),
+          ...(open && m.name === "git" ? { agent: false } : {}),
         },
       };
     }

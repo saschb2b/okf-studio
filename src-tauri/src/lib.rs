@@ -70,6 +70,10 @@ mod bundle_create;
 mod bundle_grant;
 mod bundle_library;
 mod external_entry;
+#[path = "git/repository.rs"]
+mod git_repository;
+#[path = "git/watch.rs"]
+mod git_watch;
 mod remote;
 mod retrieval;
 mod watch;
@@ -79,6 +83,182 @@ use std::path::Path;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use watch::WatchState;
+
+fn authorized_git_scope(
+    grants: &bundle_grant::BundleGrantState,
+    bundle_root: &str,
+) -> Result<git_repository::RepositoryScope, String> {
+    let (bundle, folders) = grants.authorize_bundle_with_folders(Path::new(bundle_root))?;
+    git_repository::discover(&bundle, &folders)?
+        .ok_or_else(|| "The active bundle is not inside a Git repository.".to_string())
+}
+
+#[tauri::command]
+async fn git_repository_snapshot(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let (bundle, folders) = grants.authorize_bundle_with_folders(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || git_repository::snapshot(&bundle, &folders))
+        .await
+        .map_err(|_| "The Git status task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_repository_history(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    skip: usize,
+    limit: usize,
+) -> Result<git_repository::GitHistoryPage, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || scope.history(skip, limit))
+        .await
+        .map_err(|_| "The Git history task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_repository_diff(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    path: Option<String>,
+    staged: bool,
+    commit: Option<String>,
+) -> Result<git_repository::GitDiff, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.diff(path.as_deref(), staged, commit.as_deref())
+    })
+    .await
+    .map_err(|_| "The Git diff task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_stage_paths(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    paths: Vec<String>,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.stage(&paths)?;
+        scope.snapshot()
+    })
+    .await
+    .map_err(|_| "The Git stage task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_unstage_paths(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    paths: Vec<String>,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.unstage(&paths)?;
+        scope.snapshot()
+    })
+    .await
+    .map_err(|_| "The Git unstage task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_stage_all(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.stage_all()?;
+        scope.snapshot()
+    })
+    .await
+    .map_err(|_| "The Git stage task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_unstage_all(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.unstage_all()?;
+        scope.snapshot()
+    })
+    .await
+    .map_err(|_| "The Git unstage task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_commit(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    message: String,
+    include_tracked: bool,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.commit(&message, include_tracked)?;
+        scope.snapshot()
+    })
+    .await
+    .map_err(|_| "The Git commit task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_undo_commit(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    expected_head: String,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.undo_commit(&expected_head)?;
+        scope.snapshot()
+    })
+    .await
+    .map_err(|_| "The Git recovery task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn git_remote_operation(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    operation: git_repository::GitRemoteOperation,
+) -> Result<git_repository::GitRepositorySnapshot, String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        scope.remote(operation)?;
+        scope.snapshot()
+    })
+    .await
+    .map_err(|_| "The Git remote task stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+fn git_start_watch(
+    app: AppHandle,
+    watch: State<'_, git_watch::GitWatchState>,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<(), String> {
+    let scope = authorized_git_scope(&grants, &bundle_root)?;
+    let (repository_root, metadata_roots) = scope.watch_roots();
+    git_watch::start(
+        app,
+        watch.inner(),
+        bundle_root,
+        repository_root,
+        metadata_roots,
+    )
+}
+
+#[tauri::command]
+fn git_stop_watch(watch: State<'_, git_watch::GitWatchState>) {
+    git_watch::stop(watch.inner());
+}
 
 #[tauri::command]
 fn okf_capability_catalog() -> agent_capabilities::CapabilityCatalogInfo {
@@ -209,6 +389,41 @@ fn pick_bundle_folder(
         .map_err(|_| "The selected bundle folder is not available on this platform.".to_string())?;
     grants
         .grant(&folder, bundle_grant::BundleGrantKind::LocalFolder)
+        .map(Some)
+}
+
+#[tauri::command]
+async fn pick_git_repository_folder(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<Option<String>, String> {
+    let bundle = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let repository_root =
+        tauri::async_runtime::spawn_blocking(move || git_repository::enclosing_root(&bundle))
+            .await
+            .map_err(|_| "Git repository discovery stopped unexpectedly.".to_string())??
+            .ok_or_else(|| "The active bundle is not inside a Git repository.".to_string())?;
+
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_title("Allow Git for this repository")
+        .set_directory(&repository_root)
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+    let selected = selected
+        .into_path()
+        .map_err(|_| "The selected repository folder is not available.".to_string())?;
+    let selected = dunce::canonicalize(selected)
+        .map_err(|_| "The selected repository folder is no longer available.".to_string())?;
+    if selected != repository_root {
+        return Err("Choose the enclosing Git repository folder shown by Studio.".to_string());
+    }
+    grants
+        .grant(&repository_root, bundle_grant::BundleGrantKind::LocalFolder)
         .map(Some)
 }
 
@@ -1128,6 +1343,7 @@ pub fn run() {
                 })?,
             );
             app.manage(WatchState::default());
+            app.manage(git_watch::GitWatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
             app.manage(
@@ -1218,10 +1434,23 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             pick_bundle_folder,
+            pick_git_repository_folder,
             create_bundle,
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            git_repository_snapshot,
+            git_repository_history,
+            git_repository_diff,
+            git_stage_paths,
+            git_unstage_paths,
+            git_stage_all,
+            git_unstage_all,
+            git_commit,
+            git_undo_commit,
+            git_remote_operation,
+            git_start_watch,
+            git_stop_watch,
             retrieve_okf_context,
             diff_okf_retrieval_receipts,
             bundle_library,

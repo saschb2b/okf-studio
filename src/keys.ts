@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import { useApp } from "@/shared/store.tsx";
 import { focusAgentPanel, focusAgentPanelOpener } from "@/features/agent/agentPanelFocus.ts";
+import { focusGitPanel, focusGitPanelOpener } from "@/features/git/gitPanelFocus.ts";
 
 export function useGlobalKeys() {
   const { state, actions } = useApp();
@@ -44,6 +45,11 @@ export function useGlobalKeys() {
         actions.togglePanel("agent");
         if (state.panels.agent) focusAgentPanelOpener();
         else focusAgentPanel();
+      } else if (mod && e.shiftKey && k === "g") {
+        e.preventDefault();
+        actions.togglePanel("git");
+        if (state.panels.git) focusGitPanelOpener();
+        else focusGitPanel();
       } else if (mod && e.shiftKey && k === "o") {
         // Open from URL (remote bundle). Shift distinguishes it from the local
         // folder picker on Ctrl/Cmd+O.

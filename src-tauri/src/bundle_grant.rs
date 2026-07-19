@@ -211,6 +211,31 @@ impl BundleGrantState {
         }
     }
 
+    /// Authorize an active bundle and return every persisted folder grant that
+    /// contains it. Repository-scoped services choose the narrowest grant that
+    /// also contains the discovered repository, so a separately confirmed
+    /// repository parent can authorize Git without weakening the bundle grant.
+    pub fn authorize_bundle_with_folders(
+        &self,
+        requested: &Path,
+    ) -> Result<(PathBuf, Vec<PathBuf>), String> {
+        let bundle = self.authorize_bundle(requested)?;
+        let registry = self
+            .registry
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let folders = registry
+            .grants
+            .iter()
+            .map(|grant| PathBuf::from(&grant.root))
+            .filter(|root| bundle == *root || bundle.starts_with(root))
+            .collect::<Vec<_>>();
+        if folders.is_empty() {
+            return Err(ACCESS_DENIED.to_string());
+        }
+        Ok((bundle, folders))
+    }
+
     /// Revoke one exact remembered scope. Descendant request paths cannot
     /// revoke their parent grant.
     pub fn revoke(&self, root: &str) -> Result<bool, String> {

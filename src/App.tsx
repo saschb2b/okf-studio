@@ -22,6 +22,9 @@ import { OverviewView } from "@/features/viz/components/OverviewView.tsx";
 import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "@/features/shell/components/ShortcutsHelp.tsx";
 import { AgentPanel } from "@/features/agent/components/AgentPanel.tsx";
+import { GitPanel } from "@/features/git/components/GitPanel.tsx";
+import { GitDiffWorkspace } from "@/features/git/components/GitDiffWorkspace.tsx";
+import { closeGitDiff, useGitDiff } from "@/features/git/gitRepositoryStore.ts";
 import { AgentPanelStateGallery } from "@/mock/AgentPanelStateGallery.tsx";
 import { showWindowWhenPainted } from "@/shared/platform/window.ts";
 
@@ -32,6 +35,7 @@ function subscribeWindowResize(onChange: () => void): () => void {
 
 export function App() {
   const { state } = useApp();
+  const gitDiff = useGitDiff();
   useGlobalKeys();
   const windowWidth = useSyncExternalStore(
     subscribeWindowResize,
@@ -51,6 +55,10 @@ export function App() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  useEffect(() => {
+    closeGitDiff();
+  }, [state.activeRoot]);
+
   if (
     import.meta.env.DEV &&
     new URLSearchParams(window.location.search).has("agent-gallery")
@@ -67,6 +75,8 @@ export function App() {
     Math.min(440, Math.max(320, Math.round(windowWidth * 0.3)));
   const agentTakeover = state.panels.agent &&
     windowWidth - 48 - agentPanelWidth < workspaceFloor(state);
+  const gitTakeover = state.panels.git &&
+    windowWidth - 48 - Math.min(440, Math.max(320, Math.round(windowWidth * 0.3))) < workspaceFloor(state);
 
   return (
     <div className="app" data-maximized={state.maximized || undefined}>
@@ -74,10 +84,16 @@ export function App() {
       <div
         className="app-main"
         data-agent-takeover={agentTakeover || undefined}
+        data-git-takeover={gitTakeover || undefined}
       >
         <ActivityBar />
-        {state.bundle ? <Workspace /> : <EmptyState />}
+        {state.bundle
+          ? gitDiff.open
+            ? <GitDiffWorkspace />
+            : <Workspace />
+          : <EmptyState />}
         <AgentPanel />
+        <GitPanel />
       </div>
       <StatusBar />
 

@@ -89,6 +89,50 @@ describe("OKF Studio shell", () => {
       .toBeInTheDocument();
   });
 
+  it("keeps the Git and Agent docks mutually exclusive", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.click(screen.getByRole("button", { name: "Toggle Git panel" }));
+    expect(await screen.findByRole("complementary", { name: "Git" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Changes 3" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Toggle agent panel" }));
+    expect(screen.queryByRole("complementary", { name: "Git" })).not.toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
+  });
+
+  it("opens a repository change in the dedicated diff workspace", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+    await user.click(screen.getByRole("button", { name: "Toggle Git panel" }));
+
+    await user.click(await screen.findByRole("button", { name: /GitPanel\.tsx/ }));
+
+    expect(await screen.findByRole("main", { name: "Git diff" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to workspace" })).toBeInTheDocument();
+    expect(screen.getByLabelText("src/features/git/components/GitPanel.tsx"))
+      .toHaveTextContent("GitChanges");
+  });
+
+  it("moves focus into and out of the Git panel with its shortcut", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+
+    await user.keyboard("{Control>}{Shift>}g{/Shift}{/Control}");
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Changes 3" })).toHaveFocus(),
+    );
+
+    await user.keyboard("{Control>}{Shift>}g{/Shift}{/Control}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Toggle Git panel" })).toHaveFocus(),
+    );
+  });
+
   it("moves focus into and out of the agent panel with its shortcut", async () => {
     const user = userEvent.setup();
     renderApp();

@@ -1,0 +1,144 @@
+.git-diff-workspace {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.git-diff-header {
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+.git-diff-header > button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 0 var(--space-8);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.git-diff-header > button:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.git-diff-header > button:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -2px;
+}
+
+.git-diff-header > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+
+.git-diff-header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+
+.git-diff-header span {
+  flex: 0 0 auto;
+  color: var(--warn);
+  font-size: var(--fs-xs);
+}
+
+.git-diff-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.git-diff-code {
+  min-width: max-content;
+  margin: 0;
+  padding: var(--space-8) 0 var(--space-24);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  tab-size: 4;
+}
+
+.git-diff-code > span {
+  display: grid;
+  grid-template-columns: 56px minmax(max-content, 1fr);
+  min-height: 20px;
+  padding-right: var(--space-16);
+  white-space: pre;
+}
+
+.git-diff-line-number {
+  margin-right: var(--space-12);
+  padding-right: var(--space-8);
+  color: var(--text-dim);
+  border-right: 1px solid var(--border);
+  text-align: right;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.git-diff-code > span.is-addition {
+  background: color-mix(in srgb, var(--ok) 13%, transparent);
+}
+
+.git-diff-code > span.is-deletion {
+  background: color-mix(in srgb, var(--error) 13%, transparent);
+}
+
+.git-diff-code > span.is-hunk {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.git-diff-code > span.is-file {
+  color: var(--text-dim);
+}
+
+.git-diff-state {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-8);
+  padding: var(--space-24);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.git-diff-state svg {
+  width: 26px;
+  height: 26px;
+}
+
+.git-diff-state strong {
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.git-diff-state p {
+  max-width: 44ch;
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}

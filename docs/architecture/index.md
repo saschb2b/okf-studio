@@ -2,6 +2,7 @@
 
 * [Agent System](agent-system.md) - ACP agents, the native Studio Agent, credentials, scoped tools, permissions, and reviewed writes.
 * [Retrieval Engine](retrieval-engine.md) - Revision-bound local retrieval, coherent evidence packets, receipts, optional providers, and the granted MCP boundary.
+* [Git Integration](git-integration.md) - A bounded installed-Git service, repository watcher, and typed frontend state.
 
 How OKF Studio is built. Enough decisions and contracts to start implementing without re-deriving them.
 

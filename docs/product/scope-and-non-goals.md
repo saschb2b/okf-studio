@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What OKF Studio ships now, what is deferred, and what it deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-18T20:00:00Z
+timestamp: 2026-07-19T13:15:00Z
 ---
 
 # Current scope
@@ -15,6 +15,7 @@ Studio covers the complete local knowledge loop:
 - **Curate:** attach selected concepts, reader text, prior threads, local files, folders, pasted text, images where supported, or an explicit public HTTPS source. Context stays bounded and visible.
 - **Create and enhance:** use guided threads to create a fresh bundle from sources or enrich the active bundle. Proposals enter staging, validation, graph preview, destination selection, and reviewed apply rather than writing directly.
 - **Query and change:** run cited deep research or request a dataset change through ordinary inspectable threads with plans, tool activity, and exported Markdown.
+- **Version:** inspect the repository around the active bundle, review and stage changes, commit a named scope, browse bounded history, and explicitly fetch, fast-forward pull, or push. See [Integrated Git](../features/integrated-git.md).
 - **Ship:** packaged installers for Windows (`.msi`/`.exe`) and Ubuntu (`.deb`/AppImage); macOS builds from source. See [Build & Release](../architecture/build-and-release.md).
 
 # Deferred
@@ -34,7 +35,7 @@ Studio covers the complete local knowledge loop:
 - **Not an unreviewed editor.** Opening a bundle remains read-only. Studio authoring happens only through an explicit thread write grant, staged changes, conformance validation, diff review, and atomic apply. See [Agent System](../architecture/agent-system.md).
 - **Not a general markdown wiki.** It renders markdown and organizes it around OKF concepts, types, and links. It does not provide arbitrary note-taking.
 - **Not a cloud / sync product.** No Studio backend, account, telemetry, or bundle synchronization exists. Optional providers and remote sources are explicit connections, not a Studio cloud.
-- **Not a git client.** [Open-from-URL](../features/bundle-switcher.md) fetches a GitHub repo tarball or a direct archive as a one-shot download. It does not clone, pull, push, branch, or merge. Git metadata is protected from staged writes.
+- **Not a general Git or hosting client.** [Integrated Git](../features/integrated-git.md) covers the repository review, stage, commit, history, and explicit remote loop around an open bundle. It does not clone from [Open-from-URL](../features/bundle-switcher.md), edit conflicts, manage branches or worktrees, rewrite history, or provide pull-request and issue workflows. Git metadata remains protected from agent staging and bundle writes.
 - **Not a general autonomous computer operator.** Studio tools are closed and bundle-scoped. External ACP processes retain normal operating-system access until a verified isolation host exists, so they remain interactive and ineligible for unattended writes.
 - **Not a headless validator CLI.** The `validate` desktop command opens the granted bundle and its visible Validation surface. Machine-readable conformance remains the standalone `scripts/okf-validate.mjs`.
 - **Not a capability marketplace.** Studio 0.3 ships one build-verified declarative OKF pack. It does not import third-party packs, executable skills, hooks, binaries, or MCP servers.

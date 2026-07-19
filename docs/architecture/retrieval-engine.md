@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T23:59:00Z
+timestamp: 2026-07-19T23:59:30Z
 ---
 
 # Decision
@@ -37,7 +37,7 @@ The frozen corpus includes ordinary phrasing such as “What is this repository 
 
 # Identity and invalidation
 
-A section ID derives from concept ID, heading ancestry, structural ordinal, and content hash. The bundle fingerprint binds the complete ordered manifest. A content change therefore creates a new revision identity without mutating authored files. Cache and snapshot scope include the manifest fingerprint and bundle grant set; a different revision or scope cannot reuse them.
+A section ID derives from concept ID, heading ancestry, structural ordinal, and content hash. The bundle fingerprint binds the complete ordered manifest. A content change therefore creates a new revision identity without mutating authored files. Cache and snapshot scope include the manifest fingerprint and bundle grant set; a different revision or scope cannot reuse them. A receipt ID additionally binds the normalized query, resolved route, bounded limit and context budget, filters, provider identifiers, provider window, and disclosure choice. Repeating the same request is stable, while changing any material search or provider input creates another receipt identity.
 
 The cache is disposable. Failure to publish it does not block retrieval or ordinary reading. Reopening or changing a bundle rebuilds from source, and removing the cache cannot remove knowledge.
 

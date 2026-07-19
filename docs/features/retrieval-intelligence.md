@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T23:59:00Z
+timestamp: 2026-07-19T23:59:30Z
 ---
 
 # What it does
@@ -40,7 +40,7 @@ Studio, not the selected agent, chooses the automatic route before sending the p
 
 # Evidence and receipts
 
-A retrieval unit carries the bundle fingerprint, concept ID, deterministic section ID, heading path, source-line range, content hash, type, tags, links, backlinks, citations, timestamp signals, token estimate, and health caveats. Context compilation keeps units intact instead of cutting them at arbitrary token boundaries.
+A retrieval unit carries the bundle fingerprint, concept ID, deterministic section ID, heading path, source-line range, content hash, type, tags, links, backlinks, citations, timestamp signals, token estimate, and health caveats. Context compilation keeps units intact instead of cutting them at arbitrary token boundaries. The receipt identity binds filters, limits, provider choices, provider window, and disclosure as well as query, route, budget, and bundle revision, so two materially different searches cannot appear to be the same run.
 
 The versioned receipt records:
 

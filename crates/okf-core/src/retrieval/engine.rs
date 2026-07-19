@@ -112,12 +112,26 @@ pub fn retrieve_manifest(
         .collect::<Vec<_>>();
     let snapshot = canonical_snapshot(&manifest);
     let cache = cache_receipt(request, route, &snapshot);
+    let filter_identity = serde_json::to_string(&request.filters)
+        .expect("retrieval filters contain only serializable bounded values");
+    let request_identity = format!(
+        "limit={limit};filters={filter_identity};dense={};reranker={};cache={};window={};remote={}",
+        request.dense_provider_id.as_deref().unwrap_or_default(),
+        request.reranker_provider_id.as_deref().unwrap_or_default(),
+        request.cache_provider_id.as_deref().unwrap_or_default(),
+        request
+            .provider_window_tokens
+            .map_or_else(String::new, |value| value.to_string()),
+        request.allow_remote_text,
+    );
+    let context_budget_identity = context_budget.to_string();
     let receipt_id = stable_hash(&[
         "okf-retrieval-receipt-v1",
         manifest.bundle_fingerprint.as_str(),
         query,
         route_label(route),
-        context_budget.to_string().as_str(),
+        context_budget_identity.as_str(),
+        request_identity.as_str(),
     ]);
     let receipt = RetrievalReceipt {
         schema_version: RETRIEVAL_SCHEMA_VERSION,
@@ -1182,6 +1196,54 @@ mod tests {
         assert!(result.evidence.caveats.iter().any(|caveat| {
             caveat.kind == EvidenceCaveatKind::AuthorityUnknown
         }));
+    }
+
+    #[test]
+    fn receipt_identity_binds_filters_providers_and_disclosure() {
+        let fixture = bundle(vec![concept(
+            "a",
+            "Alpha",
+            "Topic",
+            "# Alpha\n\nAlpha evidence.",
+        )]);
+        let base = retrieve(
+            &fixture,
+            &RetrievalRequest {
+                query: "alpha".to_string(),
+                ..RetrievalRequest::default()
+            },
+        );
+        let repeated = retrieve(
+            &fixture,
+            &RetrievalRequest {
+                query: "alpha".to_string(),
+                ..RetrievalRequest::default()
+            },
+        );
+        let filtered = retrieve(
+            &fixture,
+            &RetrievalRequest {
+                query: "alpha".to_string(),
+                filters: RetrievalFilters {
+                    tag: Some("topic".to_string()),
+                    ..RetrievalFilters::default()
+                },
+                ..RetrievalRequest::default()
+            },
+        );
+        let provider_requested = retrieve(
+            &fixture,
+            &RetrievalRequest {
+                query: "alpha".to_string(),
+                dense_provider_id: Some("dense-a".to_string()),
+                allow_remote_text: true,
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert_eq!(base.receipt.receipt_id, repeated.receipt.receipt_id);
+        assert_ne!(base.receipt.receipt_id, filtered.receipt.receipt_id);
+        assert_ne!(base.receipt.receipt_id, provider_requested.receipt.receipt_id);
     }
 
     #[test]

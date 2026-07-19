@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Creation**: Added the [Integrated Git Support roadmap](product/git-integration/git-integration-roadmap.md), [Git Experience Contract](product/git-integration/git-experience-contract.md), and [Zed Git Research](product/git-integration/zed-git-research.md). The plan adopts Zed's typed Git-binary boundary, two-dimensional stage state, Changes and History split, stable commit footer, explicit remotes, and separate diff workspace while preserving Studio's folder grants, protected agent boundary, and user-initiated network rule.
+
 * **Fix**: Updated `okf-core` to `0.5.1`, `okf-retrieve` to `0.1.1`, and `okf-foundation` to `1.3.1` so retrieval provenance stays out of ordinary answer prose. Agent instructions now use concept identities internally without appending an Evidence, Sources, internal-path, or receipt-ID footer. The compact turn receipt and Inspect surface remain the single provenance owner, while useful concept names and external citations can still appear inline.
 
 * **Update**: Corrected the retrieval implementation record to separate observable local failures from reserved evaluation states. Studio does not claim low recall, candidate noise, stale replay, or generation non-use without the ground truth or answer telemetry those judgments require, and the roadmap no longer counts unused diagnostic or repair enum values as shipped behavior.

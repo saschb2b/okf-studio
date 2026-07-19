@@ -4,6 +4,8 @@
 * [OKF Agent Specialization](agent-specialization-roadmap.md) - The next transformation from an agent-capable workspace into a domain-specialized OKF agent system.
 * [OKF Writing Quality](okf-writing-quality-roadmap.md) - The work packages for reader-led, claim-preserving OKF authoring and revision.
 * [OKF Retrieval Intelligence](retrieval-intelligence/retrieval-intelligence-roadmap.md) - Research and work packages for routed, inspectable, provider-neutral context over connected bundles.
+* [Integrated Git Support](git-integration/git-integration-roadmap.md) - Zed-inspired work packages for repository state, staging, commits, history, and explicit remotes.
+* [Zed Git Research](git-integration/zed-git-research.md) - Source-level findings behind Studio's Git architecture and experience contract.
 * [State of RAG Systems](retrieval-intelligence/rag-state-and-failures.md) - Evidence review of retrieval failures, alternatives, and the openings they create for OKF Studio.
 * [OKF Retrieval Thesis](retrieval-intelligence/okf-retrieval-thesis.md) - Why Studio should become a context engine rather than another vector-search wrapper.
 * [OKF Writing Quality Dogfood](okf-writing-quality-dogfood.md) - Retained component, provider, test, and packaging evidence for the first writing release.

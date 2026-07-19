@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T23:55:00Z
+timestamp: 2026-07-19T23:59:00Z
 ---
 
 # What it does
@@ -57,7 +57,7 @@ The inspector opens a concept at its visible source identity. The redacted diagn
 
 Studio distinguishes empty results, low recall, noisy candidates, filter mismatch, stale manifests, missing metadata, conflicting evidence, budget omissions, provider failure, and evidence that an answer did not use. A missing local retrieval result does not block the user's message: Studio names the degraded send and continues without automatic bundle evidence.
 
-When required authority or current evidence is absent, or independently sourced concepts make different claims about the same subject and section without a supported rule, the evidence packet requires abstention. A reused generic heading on unrelated concepts is not treated as a conflict. The flag instructs the agent not to present an unsupported claim as settled; it is not a user error. The conversation translates it into a status such as **Conflicting evidence** or **No supporting evidence**, while the inspector owns the full reason and recovery detail. A rank or file timestamp never silently becomes authority.
+When required authority or current evidence is absent, or independently sourced concepts make different claims about the same subject and section without a supported rule, the evidence packet requires abstention. A missing optional timestamp does not affect an ordinary lookup, but a time-sensitive answer stays qualified when its concepts provide no timestamp, effective time, or supersession signal. A reused generic heading on unrelated concepts is not treated as a conflict. The flag instructs the agent not to present an unsupported claim as settled; it is not a user error. The conversation translates it into a status such as **Conflicting evidence** or **No supporting evidence**, while the inspector owns the full reason and recovery detail. A rank or file timestamp never silently becomes authority.
 
 # Reviewed repair
 

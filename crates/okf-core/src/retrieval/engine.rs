@@ -730,6 +730,8 @@ fn compile_context(
             .map(|unit| evidence_item(unit, Vec::new()))
             .collect::<Vec<_>>();
         let ids = items.iter().map(|item| item.section_id.clone()).collect();
+        let caveats = caveats_for(&items, manifest, route);
+        let requires_abstention = caveats_require_abstention(&caveats);
         return (
             EvidencePacket {
                 schema_version: RETRIEVAL_SCHEMA_VERSION,
@@ -737,9 +739,9 @@ fn compile_context(
                 query: query.to_string(),
                 estimated_tokens: snapshot.estimated_tokens,
                 bytes: snapshot.bytes,
-                caveats: caveats_for(&items, manifest),
+                caveats,
                 items,
-                requires_abstention: false,
+                requires_abstention,
             },
             Vec::new(),
             ids,
@@ -775,11 +777,9 @@ fn compile_context(
             candidate.relationship_path.clone(),
         ));
     }
-    let caveats = caveats_for(&items, manifest);
+    let caveats = caveats_for(&items, manifest, route);
     let requires_abstention = items.is_empty()
-        || caveats
-            .iter()
-            .any(|caveat| caveat.kind == EvidenceCaveatKind::Conflict)
+        || caveats_require_abstention(&caveats)
         || ((request.filters.source_class.is_some() || request.filters.owner.is_some())
             && items.iter().all(|item| {
                 manifest
@@ -819,7 +819,11 @@ fn evidence_item(unit: &super::RetrievalUnit, relationship_path: Vec<String>) ->
     }
 }
 
-fn caveats_for(items: &[EvidenceItem], manifest: &RetrievalManifest) -> Vec<EvidenceCaveat> {
+fn caveats_for(
+    items: &[EvidenceItem],
+    manifest: &RetrievalManifest,
+    route: RetrievalRoute,
+) -> Vec<EvidenceCaveat> {
     let mut caveats = Vec::new();
     let included = items
         .iter()
@@ -893,6 +897,26 @@ fn caveats_for(items: &[EvidenceItem], manifest: &RetrievalManifest) -> Vec<Evid
             });
         }
     }
+    if matches!(route, RetrievalRoute::TemporalConflict) {
+        let concept_ids = included
+            .iter()
+            .filter(|unit| {
+                unit.timestamp.is_none()
+                    && unit.effective_time.is_none()
+                    && unit.supersedes.is_empty()
+            })
+            .map(|unit| unit.concept_id.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        if !concept_ids.is_empty() {
+            caveats.push(EvidenceCaveat {
+                kind: EvidenceCaveatKind::AuthorityUnknown,
+                concept_ids,
+                message: "Some selected concepts have no timestamp, effective time, or supersession signal, so Studio cannot determine which claim is current.".to_string(),
+            });
+        }
+    }
     caveats.sort_by(|left, right| {
         format!("{:?}", left.kind)
             .cmp(&format!("{:?}", right.kind))
@@ -900,6 +924,15 @@ fn caveats_for(items: &[EvidenceItem], manifest: &RetrievalManifest) -> Vec<Evid
     });
     caveats.dedup();
     caveats
+}
+
+fn caveats_require_abstention(caveats: &[EvidenceCaveat]) -> bool {
+    caveats.iter().any(|caveat| {
+        matches!(
+            caveat.kind,
+            EvidenceCaveatKind::Conflict | EvidenceCaveatKind::AuthorityUnknown
+        )
+    })
 }
 
 fn conflict_subject_section(unit: &super::RetrievalUnit) -> (String, String) {
@@ -1130,6 +1163,28 @@ mod tests {
     }
 
     #[test]
+    fn temporal_questions_abstain_without_time_or_supersession_evidence() {
+        let result = retrieve(
+            &bundle(vec![concept(
+                "policies/alpha",
+                "Alpha policy",
+                "Policy",
+                "# Alpha policy\n\nThe current rule is described here.",
+            )]),
+            &RetrievalRequest {
+                query: "What changed in the Alpha policy?".to_string(),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert_eq!(result.receipt.route, RetrievalRoute::TemporalConflict);
+        assert!(result.evidence.requires_abstention);
+        assert!(result.evidence.caveats.iter().any(|caveat| {
+            caveat.kind == EvidenceCaveatKind::AuthorityUnknown
+        }));
+    }
+
+    #[test]
     fn authority_filter_abstains_when_required_metadata_is_absent() {
         let result = retrieve(
             &bundle(vec![concept("a", "Alpha", "Topic", "# Alpha\n\nA claim.")]),
@@ -1216,6 +1271,7 @@ mod tests {
             .iter()
             .find(|caveat| caveat.kind == EvidenceCaveatKind::Conflict)
             .expect("independent claims about Revenue/Definition should conflict");
+        assert!(result.evidence.requires_abstention);
         assert_eq!(
             conflict.concept_ids,
             ["metrics/finance-revenue", "metrics/sales-revenue"]

@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Fix**: Apply time metadata only where it matters. Ordinary evidence no longer looks incomplete because an optional timestamp is absent, while temporal questions now require qualification when no timestamp, effective time, or supersession signal can establish chronology. Full-bundle compilation now preserves conflict abstention instead of bypassing it.
+
 * **Fix**: Keep Evidence Lab repairs tied to an observed retrieval cause. Healthy unsourced evidence no longer produces a wall of speculative “add citation” proposals; the shipped repair list is limited to diagnosed missing descriptions and directly observed broken links.
 
 * **Fix**: Make provider receipts report actual execution rather than permission. Supplying a dense or reranker ID can no longer mark text as remotely shared while those adapters remain inactive; Studio records a degraded capability, local fallback, and `remoteTextShared: false` until provider work really runs.

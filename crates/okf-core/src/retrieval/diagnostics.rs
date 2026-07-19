@@ -42,7 +42,11 @@ pub fn diagnose(
             .units
             .iter()
             .find(|unit| unit.section_id == item.section_id)
-            .is_some_and(|unit| unit.health.missing_description || unit.health.missing_timestamp)
+            .is_some_and(|unit| {
+                unit.health.missing_description
+                    || (receipt.route == super::RetrievalRoute::TemporalConflict
+                        && unit.health.missing_timestamp)
+            })
     }) {
         DiagnosticClass::MissingMetadata
     } else {
@@ -292,7 +296,6 @@ mod tests {
         let mut healthy = fixture_bundle();
         let concept = &mut healthy.concepts[0];
         concept.description = "A complete local concept.".to_string();
-        concept.timestamp = Some("2026-07-19T00:00:00Z".to_string());
         concept.broken_links.clear();
 
         let result = retrieve(

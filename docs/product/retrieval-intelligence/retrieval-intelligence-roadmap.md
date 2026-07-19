@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Retrieval Intelligence
 description: Sequenced research, experience gates, and work packages for turning connected OKF bundles into inspectable, routed, and provider-neutral model context.
 tags: [product, roadmap, rag, retrieval, context, search, agents, ux, storybook]
-timestamp: 2026-07-19T23:15:00Z
+timestamp: 2026-07-19T23:59:45Z
 ---
 
 # Outcome
@@ -40,12 +40,12 @@ The local-first transformation was implemented on 2026-07-19. The record below d
 | RI6 | Complete | The context compiler keeps structural units intact, retains citations and relationship paths, budgets by token estimate and bytes, records omissions, and produces versioned evidence packets and receipts. |
 | RI7 | Complete | Source class, owner, effective time, supersession, conflict, freshness, and authority gaps remain distinct signals. Unresolved conflicts are retained and can require abstention. |
 | RI8 | Complete, provider cache activation withheld | Canonical snapshots, eligibility, cache identity, scope fingerprint, invalidation, provider state, and local fallback are implemented. No provider KV cache is advertised without a measured cost or latency win. |
-| RI9 | Complete | Diagnostics classify retrieval stages separately, receipts have stable diffs, and the Evidence Lab compares search methods, explains outcomes, exports redacted JSON, and hands advisory repairs to review. |
+| RI9 | Complete for observable local failures | The local pass classifies ready, empty, filter, metadata, conflict, budget, and requested-provider outcomes. Low-recall, noise, stale-replay, and generation-use states remain representable but are not auto-emitted without ground truth or answer telemetry. Receipts have stable diffs, and Evidence Lab compares methods, explains outcomes, and exports redacted JSON. |
 | RI10 | Complete | Normal Agent Panel prompts use local retrieval. The Studio Agent, one-shot MCP server, and `okf-foundation@1.3.0` pack expose bounded `okf_retrieve` behavior. Published schema adapters cover the local engine and an external Qdrant-style mapping without enabling remote access. |
-| RI11 | Complete | Repair proposals include evidence sections, triggering and held-out queries, and expected improvement. Review prepares the existing author or enrich workflow; claim review, staging, validation, Apply, checkpoint restore, and before-and-after receipt comparison remain mandatory. Retrieval code has no direct write path. |
+| RI11 | Complete for evidence-bound repairs | Missing-description and broken-link proposals include evidence sections, triggering and held-out queries, and expected improvement. Review prepares the existing author or enrich workflow; claim review, staging, validation, Apply, and checkpoint restore remain mandatory. Broader citation, title, split, and index repairs stay reserved until a diagnostic can justify them. Retrieval code has no direct write path. |
 | RI12 | Complete for the available environment | The local engine, Studio wiring, MCP contract, docs bundle, site, capability pack, component states, and whole-panel composition use the same contract. The release binary and MSI/NSIS packages build locally; release signing remains unavailable without the protected private key. Optional live providers remain explicitly unavailable rather than receiving fabricated green results. |
 
-This record closes the work packages without weakening their gates. Dense retrieval and provider KV caching can be activated later only by adding a measured implementation that beats the frozen local baseline. Concept-level ACLs, learned routing, hosted indexes, and background services remain deferred product decisions.
+This record closes the local-first slice without counting reserved schema states as shipped behavior. Dense retrieval and provider KV caching can be activated later only by adding a measured implementation that beats the frozen local baseline. Evaluation-only diagnostics, broader repair types, concept-level ACLs, learned routing, hosted indexes, and background services remain deferred product decisions with explicit activation evidence.
 
 # Product stance
 
@@ -252,7 +252,7 @@ Gate: cached mode produces the same evidence scope as its canonical snapshot, in
 
 ## RI9: Retrieval diagnostics and lab UX
 
-- Classify empty results, low recall, noisy candidates, filter mismatch, stale manifest, missing metadata, conflicting evidence, budget omission, provider failure, and generation non-use as separate failures.
+- Classify locally observable ready, empty, filter, metadata, conflict, budget, and requested-provider outcomes. Preserve low-recall, noisy-candidate, stale-replay, and generation-use classes for measured evaluation inputs instead of inferring them without evidence.
 - Add a diffable diagnostic bundle containing query, route, candidate lists before and after each stage, context packet, receipt, answer citations, and corpus health scoped to involved concepts.
 - Build a separate Evidence Lab workspace that can compare two search methods on one question without changing default settings or reducing the ordinary conversation viewport.
 - Show score components, graph paths, exact matches, provider involvement, latency, and omissions in a scan-friendly layout.
@@ -278,7 +278,7 @@ Gate: an external agent can retrieve and explain bounded OKF context without imp
 
 ## RI11: Reviewed knowledge repair loop
 
-- Turn retrieval failures into candidate repairs for titles, descriptions, links, index entries, citations, source mappings, concept splits, and optional metadata.
+- Turn retrieval failures into candidate repairs only when the failure establishes a cause. The shipped baseline covers missing descriptions and broken links; titles, index entries, citations, source mappings, concept splits, and optional metadata remain reserved until a diagnostic can justify them.
 - Require the diagnostic bundle, affected held-out queries, expected improvement, and evidence source for every repair proposal.
 - Keep suggestions advisory and separate from OKF conformance.
 - Send accepted repairs through the existing author or enrich capability, claim ledger, staged revision, validation, diff review, and Apply.

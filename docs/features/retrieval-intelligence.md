@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T23:59:30Z
+timestamp: 2026-07-19T23:59:45Z
 ---
 
 # What it does
@@ -55,7 +55,7 @@ The inspector opens a concept at its visible source identity. The redacted diagn
 
 # Failures and abstention
 
-Studio distinguishes empty results, low recall, noisy candidates, filter mismatch, stale manifests, missing metadata, conflicting evidence, budget omissions, provider failure, and evidence that an answer did not use. A missing local retrieval result does not block the user's message: Studio names the degraded send and continues without automatic bundle evidence.
+The shipped local pass distinguishes ready evidence, empty results, filter mismatch, route-relevant missing metadata, independently sourced conflicts, budget omissions, and requested provider failure. Low recall and noisy candidates require task-specific ground truth; stale evidence requires a retained receipt from an older fingerprint; generation non-use requires answer-citation telemetry. The schema and UI can represent those evaluation states, but the local pass does not fabricate them from an arbitrary score threshold. A missing local retrieval result does not block the user's message: Studio names the degraded send and continues without automatic bundle evidence.
 
 When required authority or current evidence is absent, or independently sourced concepts make different claims about the same subject and section without a supported rule, the evidence packet requires abstention. A missing optional timestamp does not affect an ordinary lookup, but a time-sensitive answer stays qualified when its concepts provide no timestamp, effective time, or supersession signal. A reused generic heading on unrelated concepts is not treated as a conflict. The flag instructs the agent not to present an unsupported claim as settled; it is not a user error. The conversation translates it into a status such as **Conflicting evidence** or **No supporting evidence**, while the inspector owns the full reason and recovery detail. A rank or file timestamp never silently becomes authority.
 

@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T23:59:30Z
+timestamp: 2026-07-19T23:59:45Z
 ---
 
 # Decision
@@ -34,6 +34,12 @@ A shared Rust pipeline makes exact ranking, grant enforcement, source identity, 
 The agent does not choose the search method. `okf-core` classifies the question before any prompt is sent and records the reason in the receipt. Exact identities win first, followed by relationship, time, structured-data, full-bundle, overview, semantic, and direct factual intents; only a question that fits none of those stable classes uses the local text-and-links fallback. An explicit method selected in Evidence Lab overrides classification for that diagnostic run only.
 
 The frozen corpus includes ordinary phrasing such as “What is this repository about?”, “Give me a summary of this bundle”, “What is the Revenue metric?”, and “What changed in the retention policy?”. Each case asserts both the chosen route and minimum evidence recall. This keeps routing deterministic while preventing most everyday questions from collapsing into one vague fallback. It does not claim that the classifier is perfect: new rules need a labeled case and a retrieval result before they ship.
+
+# Diagnostic boundary
+
+The shipped local call can observe ready evidence, empty results, filter mismatch, route-relevant missing metadata, independently sourced conflicts, context-budget omissions, and requested provider failure. It does not label low recall or noisy candidates without query-specific ground truth, and it cannot label generation non-use before an answer and its citations exist. Stale-manifest comparison belongs to retained-receipt replay against a newer fingerprint, not a fresh retrieval over the current manifest.
+
+Those additional classes remain in the versioned schema so imported evaluations and retained UI states can represent them, but enum presence is not an implementation claim. Studio must not turn an unmeasured score threshold into a user warning merely to populate every class.
 
 # Identity and invalidation
 

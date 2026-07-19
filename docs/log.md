@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Update**: Corrected the retrieval implementation record to separate observable local failures from reserved evaluation states. Studio does not claim low recall, candidate noise, stale replay, or generation non-use without the ground truth or answer telemetry those judgments require, and the roadmap no longer counts unused diagnostic or repair enum values as shipped behavior.
+
 * **Fix**: Bind retrieval receipt IDs to every material bounded request input. Filters, result limit, provider IDs, provider window, and disclosure now change the identity; an identical request remains stable. Different evidence searches can no longer alias in diagnostics or comparisons.
 
 * **Fix**: Apply time metadata only where it matters. Ordinary evidence no longer looks incomplete because an optional timestamp is absent, while temporal questions now require qualification when no timestamp, effective time, or supersession signal can establish chronology. Full-bundle compilation now preserves conflict abstention instead of bypassing it.

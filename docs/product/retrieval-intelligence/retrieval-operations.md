@@ -3,7 +3,7 @@ type: Runbook
 title: Retrieval Operations
 description: Rebuild, diagnosis, provider removal, cache cleanup, migration, and rollback behavior for Retrieval Intelligence.
 tags: [retrieval, operations, support, migration, cache, rollback]
-timestamp: 2026-07-19T14:00:00Z
+timestamp: 2026-07-19T23:59:45Z
 ---
 
 # What is stored
@@ -32,7 +32,7 @@ Removing or disabling an embedding, reranking, long-context, or cache provider i
 4. Export the redacted diagnostic if the failure must be shared. Retrieved section text is omitted.
 5. If the bundle itself is hard to retrieve, review an advisory repair. Do not edit merely to increase keyword count.
 
-Empty results, filter mismatch, budget omission, conflict, stale manifest, and provider failure have separate recovery paths. If automatic retrieval itself fails, Studio sends the user message without the evidence attachment and states that degradation beside the composer.
+Empty results, filter mismatch, budget omission, conflict, and requested-provider failure have separate local recovery paths. A retained receipt becomes stale only when replay compares its fingerprint with a newer bundle revision; a fresh retrieval does not diagnose its own current manifest as stale. If automatic retrieval itself fails, Studio sends the user message without the evidence attachment and states that degradation beside the composer.
 
 # Repair and rollback
 

@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Update**: Prepared OKF Studio 0.4.1 as a Windows hotfix for Integrated Git's visible child-process consoles.
+
 * **Fix**: Prevented Integrated Git from opening Windows console windows during repository discovery and refresh. Every production Git invocation now uses one command constructor that applies `CREATE_NO_WINDOW` on Windows, including the availability check that runs before repository inspection.
 
 * **Update**: Prepared OKF Studio 0.4.0. This release makes agent work OKF-native through versioned capability packs, typed work artifacts, writing review, workspace memory, local routines, and cross-bundle evidence; adds deterministic retrieval with inspectable receipts, diagnostics, and explicit provider boundaries; replaces the crowded Settings dialog with a searchable workspace; and brings repository status, diffs, staging, commits, history, and explicit remotes into Studio without weakening folder grants.

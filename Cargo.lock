@@ -2894,7 +2894,7 @@ dependencies = [
 
 [[package]]
 name = "okf-core"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "regex",
  "serde",
@@ -2905,7 +2905,7 @@ dependencies = [
 
 [[package]]
 name = "okf-viewer"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "agent-client-protocol",
  "base64 0.22.1",

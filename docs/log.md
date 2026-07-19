@@ -2,6 +2,10 @@
 
 ## 2026-07-19
 
+* **Update**: Implemented the [Site Experience Contract](product/site-evolution/site-experience-contract.md) in `site/`. The homepage now follows the Understand/Ask/Improve/Keep loop and routes detail to Product, Workflows, OKF/ODSF, Download, and project destinations. Typed data modules own product copy and navigation. The pill nav adds a keyboard-operated Product disclosure and a mobile menu, while every route has its own canonical URL and sitemap entry. The review and Git story uses a labelled flow diagram until the staged-review surface has a current capture.
+
+* **Creation**: Added [Site Experience Research](product/site-evolution/site-experience-research.md) and the [Site Experience Contract](product/site-evolution/site-experience-contract.md). The research finds that the single 29-card homepage now obscures Studio's complete knowledge-work loop and removes navigation on narrow screens. The contract replaces the catalogue with a small multi-page structure, task-led routes, a real mobile menu, canonical content ownership, current product proof, and a gated implementation sequence.
+
 * **Update**: Prepared OKF Studio 0.4.1 as a Windows hotfix for Integrated Git's visible child-process consoles.
 
 * **Fix**: Prevented Integrated Git from opening Windows console windows during repository discovery and refresh. Every production Git invocation now uses one command constructor that applies `CREATE_NO_WINDOW` on Windows, including the availability check that runs before repository inspection.

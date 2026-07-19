@@ -1,240 +1,32 @@
 ---
-import Base from "../layouts/Base.astro";
+// Home: one product story, not a feature catalogue. Hero, the knowledge-work
+// loop, selected product proof, the trust model, the format bridge, and the
+// download close. Capability depth lives on the Product routes.
+import Shell from "../components/Shell.astro";
+import LoopGrid from "../components/LoopGrid.astro";
+import { routes } from "../data/routes";
+import { trustClaims } from "../data/trust";
+import { version, repo, releases, migrationNotes, downloads } from "../data/site";
 
 const base = import.meta.env.BASE_URL;
-const icon = `${base}icon.svg`;
 const shotGraph = `${base}screenshot-graph.webp`;
 const shotReader = `${base}screenshot-reader.webp`;
-const shotDs = `${base}screenshot-ds.webp`;
 
-const repo = "https://github.com/saschb2b/okf-viewer";
-const releasesLatest = `${repo}/releases/latest`;
-const releases = `${repo}/releases`;
-const migrationNotes = `${repo}/blob/main/docs/product/migration-notes.md`;
-const version = "v0.4.1";
-
-const okfSpec = "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf";
-const odsfSpec = "https://saschb2b.github.io/Open-Design-System-Format/";
-
-const features = [
-  {
-    glyph: "✦",
-    title: "Agent workspace",
-    body: "Chat with Claude, Codex, Cursor, or a local model right beside the graph and reader. Context goes in explicitly, and every proposed change is reviewed before it touches your files.",
-  },
-  {
-    glyph: "◫",
-    title: "Agents with an OKF method",
-    body: "Studio ships a versioned OKF capability pack for retrieval, inspection, creation, authoring, revision, enrichment, audit, repair, cited research, change impact, and migration. Named tasks and ordinary chat use the same catalog, and Settings shows the exact methods, tools, writing rules, schemas, and digests.",
-  },
-  {
-    glyph: "◱",
-    title: "Knowledge as a graph",
-    body: "Explore concepts, links, and structure visually, not a wall of files: a force-directed graph, a zoomable treemap, a sunburst, or nested circles. Your pick is remembered.",
-  },
-  {
-    glyph: "⑂",
-    title: "Git beside the bundle",
-    body: "Finish knowledge work without losing its context. Review repository changes, choose what enters the index, commit staged or tracked files, inspect recent history, and explicitly fetch, fast-forward pull, or push. A bundle inside a repository subfolder gets a one-time native repository confirmation. Studio never runs a remote operation on its own.",
-  },
-  {
-    glyph: "⬡",
-    title: "Any conformant bundle",
-    body: "Reads Open Knowledge Format & ODSF bundles from any producer. Open a local folder, or explicitly download and cache a GitHub URL on your machine. Rust records that choice and limits readers, assets, watchers, and agents to bundle roots found by its scan.",
-  },
-  {
-    glyph: "✚",
-    title: "Start from zero",
-    body: "No bundle yet? A short form creates one: name it, name its first concept, pick a folder. Studio writes a conformant OKF starter, checks it against the spec, and opens it. No agent involved.",
-  },
-  {
-    glyph: "⧉",
-    title: "Tabs & windows",
-    body: "Ctrl+click opens a concept in a new tab with its own history. Drag to reorder, or tear one off into its own window.",
-  },
-  {
-    glyph: "◎",
-    title: "Peek before you open",
-    body: "Hover any concept link for an instant preview of its type, title, and first lines, before deciding it's worth a tab.",
-  },
-  {
-    glyph: "⌕",
-    title: "Built for the deep dive",
-    body: "An overview page to orient, faceted queries like type:Table degree>5, and a lineage panel that traces dependencies across hops.",
-  },
-  {
-    glyph: "⚡",
-    title: "Native & fast",
-    body: "A small Tauri desktop app for Windows, macOS, and Linux, with searchable settings that stay usable at desktop and narrow widths.",
-  },
-  {
-    glyph: "✓",
-    title: "Conformance built in",
-    body: "Validation surfaces issues inline; a tolerant reader never rejects a sloppy bundle.",
-  },
-  {
-    glyph: "◐",
-    title: "Design-system aware",
-    body: "Renders ODSF design tokens and live HTML/CSS examples right in the reader.",
-  },
-  {
-    glyph: "❯",
-    title: "A real reader",
-    body: "The whole extended markdown set: highlighted code, math, Mermaid diagrams, footnotes, task lists, emoji, embedded HTML. Plus zoomable images, live reload, and keyboard-first navigation.",
-  },
-];
-
-// The agent workspace, split into digestible pieces. One idea per card;
-// the feature card above stays a one-glance summary.
-const agentCards = [
-  {
-    glyph: "✦",
-    title: "OKF methods built in",
-    body: "Studio ships twelve focused methods, including retrieval, authoring, and meaning-preserving revision. Ordinary chat selects one from the same catalog as named tasks instead of receiving every workflow at once. Versions, tools, resources, and checksums remain visible in Settings.",
-  },
-  {
-    glyph: "R",
-    title: "Evidence you can inspect",
-    body: "Each bundle question uses a local structural search before it reaches the agent. Studio distinguishes direct lookups, overviews, relationships, changes, and structured data before it sends the prompt. The answer stays readable while the compact receipt keeps excerpts, source conflicts, and missing chronology behind Inspect. Evidence Lab tests another method and suggests only repairs tied to an observed problem.",
-  },
-  {
-    glyph: "⇅",
-    title: "Bring the agent you already use",
-    body: "Install Claude Agent, Codex, Cursor, Gemini CLI, GitHub Copilot, Qwen Code, Cline, Auggie CLI, or Factory Droid from a searchable registry. Every build is pinned and checksum-verified, and your login and billing stay with the agent.",
-  },
-  {
-    glyph: "⌂",
-    title: "Or keep it fully local",
-    body: "Run Studio Agent against Ollama, LM Studio, llama.cpp, or any OpenAI-compatible endpoint. API keys live in your operating system's credential store, never in the app.",
-  },
-  {
-    glyph: "↻",
-    title: "Threads that come back",
-    body: "Run parallel threads per agent and switch by keyboard without interrupting work. Reopen Studio to reconnect the last agent and resume its bundle-scoped transcript and session choices after agent-owned sign-in. Studio keeps that connection attached to the reopened bundle, so you can continue without reconnecting it by hand.",
-  },
-  {
-    glyph: "⊕",
-    title: "Context on your terms",
-    body: "Choose an OKF task, then inspect its capabilities, tools, concept neighborhood, validation state, sources, and context budget before the first prompt. Add previously granted bundles as exact read-only evidence while the open bundle stays the only write destination. Remove optional context yourself, and refresh it when a bundle changes.",
-  },
-  {
-    glyph: "≡",
-    title: "Sources with receipts",
-    body: "Files, folders, images, and public pages show their adapter, origin, evidence fingerprint, refresh identity, and warnings before send. OpenAPI, dbt, and BigQuery exports become stable inventories, while every source stays untrusted evidence.",
-  },
-  {
-    glyph: "↗",
-    title: "Start from the object in view",
-    body: "Open authoring, writing improvement, audit, repair, research, enrichment, or change-impact work from a concept, graph selection, validation finding, citation, search result, or attached source. One launcher keeps the object and context plan visible before the agent starts.",
-  },
-  {
-    glyph: "↗",
-    title: "Hand work to Studio safely",
-    body: "Open a bundle, concept, validation view, or named OKF task from an installed Studio link or desktop command. Studio previews the decoded request and asks before granting a new folder. Other local agents can receive a one-shot read-only OKF MCP descriptor from Settings.",
-  },
-  {
-    glyph: "◎",
-    title: "Health findings with evidence",
-    body: "Agents can audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Writing clues stay advisory, point to the passage, and never make a valid bundle fail.",
-  },
-  {
-    glyph: "✎",
-    title: "Writing that keeps the knowledge",
-    body: "Name the reader's question, then write a concept or improve an existing one with the same versioned method across agents. The review shows each claim before and after, and Rust rejects a style-only rewrite that drops protected numbers, qualifiers, citations, links, formulas, or code.",
-  },
-  {
-    glyph: "▦",
-    title: "Plans and reports that stay usable",
-    body: "Bundle plans, source inventories, health reports, research briefs, impact maps, migrations, writing revisions, and staged revisions open as validated work beside the conversation. Edit planning fields locally, send a numbered revision when ready, and keep every bundle write behind staging and review.",
-  },
-  {
-    glyph: "✓",
-    title: "A second pass without write authority",
-    body: "Studio checks each structured result deterministically first. Studio Agent can then review general work for evidence gaps or writing revisions for clarity, structure, voice fit, and claim preservation in a separate no-tool session. A critic can never approve or apply a change.",
-  },
-  {
-    glyph: "◇",
-    title: "Memory you can inspect and delete",
-    body: "Remember a task-specific context choice only after seeing its exact effect. Studio keeps bounded metadata outside the bundle, revalidates it when the bundle changes, and shows its owner, origin, retention, use, stale state, and delete action in Settings. Prompt and response bodies, facts, citations, staged files, and credentials stay out.",
-  },
-  {
-    glyph: "⟳",
-    title: "Routine checks that fail closed",
-    body: "Run or schedule offline bundle-health and source-fingerprint checks without an agent. Studio rechecks the bundle grant and saved scope every time, records interrupted work instead of assuming success, and keeps non-healthy results in a local attention inbox. Routines cannot fetch, prompt, stage, or apply changes.",
-  },
-  {
-    glyph: "✎",
-    title: "Writes you review, always",
-    body: "Proposed changes land in a staged tree first. Review each diff hunk, validate against the OKF spec, then apply in one transaction you can restore. A verified Linux or Windows Restricted offline agent can stage for 30 minutes unattended, but it still cannot apply changes.",
-  },
-  {
-    glyph: "⊘",
-    title: "Nothing happens without you",
-    body: "Each prompt and its ordered agent work read as one turn. Completed details fold away, active work stays visible, and exact concept reads can follow in the Reader when you opt in. Every thread keeps its visible status and file, network, credential, and process scope.",
-  },
-];
-
-// The four visualizations of one bundle (Studio's own docs, as shipped).
-const vizzes = [
-  {
-    src: `${base}screenshot-viz-graph.webp`,
-    title: "Graph",
-    body: "The force-directed network: what cites what, hubs and clusters at a glance. Double-click a node to expand its neighborhood.",
-    alt: "OKF Studio's force-directed graph of a documentation bundle, nodes colored by concept type",
-  },
-  {
-    src: `${base}screenshot-viz-treemap.webp`,
-    title: "Treemap",
-    body: "Nested rectangles sized by how much is written: what's big, what's inside what. Click a group to drill in.",
-    alt: "OKF Studio's treemap view: nested rectangles grouped by section, sized by content",
-  },
-  {
-    src: `${base}screenshot-viz-sunburst.webp`,
-    title: "Sunburst",
-    body: "The whole hierarchy as concentric rings. Click a sector to re-root on it; the center takes you back up.",
-    alt: "OKF Studio's sunburst view: the bundle hierarchy as labeled concentric rings",
-  },
-  {
-    src: `${base}screenshot-viz-pack.webp`,
-    title: "Circle packing",
-    body: "Groups within groups as nested circles, with a smooth zoom as you drill down and out.",
-    alt: "OKF Studio's circle-packing view: concepts as nested circles grouped by section",
-  },
-];
-
-const downloads = [
-  { glyph: "⊞", os: "Windows", meta: ".msi · .exe · x64", href: releasesLatest },
-  { glyph: "◈", os: "Linux", meta: ".deb · AppImage", href: releasesLatest },
+// The reviewed-write pipeline, drawn honestly as a diagram. It stands in for
+// a screenshot until the review/Git surfaces have their own captures; it must
+// never pretend to be one.
+const reviewFlow = [
+  { title: "The agent proposes", body: "Changes land in a staged tree, never directly on your files." },
+  { title: "You review", body: "Each diff hunk, and each claim before and after." },
+  { title: "Studio validates", body: "Deterministic checks against the OKF spec." },
+  { title: "Apply and keep", body: "One restorable transaction, committed to Git when you say so." },
 ];
 ---
 
-<Base>
-  <a class="skip-link" href="#main">Skip to content</a>
-
-  {/* The nav is a floating pill: sticky above the canvas, translucent, so the
-      primary Download action stays reachable while scrolling — without going
-      back to a page-wide bordered strip. See design-system/components/nav.md. */}
-  <header class="topbar">
-    <nav class="site-nav topbar__inner" aria-label="Primary">
-      <a class="site-nav__brand" href={base}>
-        <img class="site-nav__logo" src={icon} alt="" width="28" height="28" />
-        OKF Studio
-      </a>
-      <div class="site-nav__links">
-        <a class="site-nav__link" href="#formats">What is OKF?</a>
-        <a class="site-nav__link" href="#features">Features</a>
-        <a class="site-nav__link" href="#agents">Agents</a>
-        <a class="site-nav__link" href="#download">Download</a>
-        <a class="site-nav__link" href={repo}>GitHub</a>
-        <a class="btn btn--primary" href="#download">↓ Download</a>
-      </div>
-    </nav>
-  </header>
-
+<Shell path="">
   {/* The opening canvas: headline and product shot share one rounded, tinted
-      surface (Gestalt common region) so the above-the-fold reads as a single
-      object; the pill nav floats just above it. The download band at the page
-      foot mirrors it. See design-system/patterns/hero.md. */}
+      surface (Gestalt common region); the pill nav floats just above it. The
+      download band at the page foot mirrors it. See design-system/patterns/hero.md. */}
   <div class="canvas">
     <section class="hero">
       <div class="container">
@@ -243,12 +35,12 @@ const downloads = [
           Explore connected knowledge<br /><span class="hero__grad">with your agents.</span>
         </h1>
         <p class="hero__sub">
-          Open an OKF bundle as a graph and reader, then choose the agent you want
-          to work with in the same workspace.
+          A local-first desktop workspace: open an Open Knowledge Format bundle
+          as a graph and reader, then work on it with the agent you choose.
         </p>
         <div class="hero__cta">
-          <a class="btn btn--primary" href="#download">↓ Download for free</a>
-          <a class="btn btn--secondary" href={repo}>View on GitHub</a>
+          <a class="btn btn--primary" href={routes.download}>↓ Download for free</a>
+          <a class="btn btn--secondary" href="#loop">See how it works</a>
         </div>
         <p class="hero__meta">Free & open source · Windows · macOS · Linux</p>
         <figure class="hero__art">
@@ -269,142 +61,32 @@ const downloads = [
   </div>
 
   <main id="main">
-    <section class="section" id="formats">
+    <section class="section" id="loop">
       <div class="container">
         <div class="section__head">
-          <span class="eyebrow">New here?</span>
-          <h2 class="section__title">What's OKF? What's ODSF?</h2>
+          <span class="eyebrow">Knowledge work</span>
+          <h2 class="section__title">Understand. Ask. Improve. Keep.</h2>
           <p class="section__sub">
-            OKF Studio reads two open, vendor-neutral formats. Here's the short
-            version.
+            Studio keeps reading, asking, revising, and versioning in the same
+            workspace. Open any area for the details.
           </p>
         </div>
-        <div class="specs">
-          <article class="spec-card">
-            <span class="spec-card__kicker">Open Knowledge Format</span>
-            <h3 class="spec-card__title">Knowledge an agent can read</h3>
-            <p class="spec-card__body">
-              Google's open spec for packaging knowledge as plain markdown files
-              with YAML frontmatter, organized into a portable bundle. No SDK, no
-              database, no lock-in. Table docs, runbooks, API references, concept
-              graphs: anything an agent or a human should be able to read.
-            </p>
-            <a class="spec-card__link" href={okfSpec}>Read the OKF spec →</a>
-          </article>
-          <article class="spec-card">
-            <span class="spec-card__kicker">Open Design System Format</span>
-            <h3 class="spec-card__title">A design system an agent can build from</h3>
-            <p class="spec-card__body">
-              A profile of OKF for design systems: it adds machine-readable design
-              tokens and runnable HTML/CSS examples, so an agent produces UI that
-              matches your system. This very site was built from an ODSF bundle,
-              which OKF Studio can open and preview.
-            </p>
-            <a class="spec-card__link" href={odsfSpec}>Read the ODSF spec →</a>
-          </article>
-        </div>
+        <LoopGrid />
       </div>
     </section>
 
-    <section class="section" id="features">
-      <div class="container">
-        <div class="section__head">
-          <span class="eyebrow">Why OKF Studio</span>
-          <h2 class="section__title">Built to explore knowledge with agents.</h2>
-          <p class="section__sub">
-            Read the Open Knowledge Format directly, then bring the active bundle
-            into an agent thread without moving it to another workspace.
-          </p>
-        </div>
-        <div class="features">
-          {
-            features.map((f) => (
-              <article class="feature-card">
-                <span class="feature-card__glyph" aria-hidden="true">{f.glyph}</span>
-                <h3 class="feature-card__title">{f.title}</h3>
-                <p class="feature-card__body">{f.body}</p>
-              </article>
-            ))
-          }
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="agents">
-      <div class="container">
-        <div class="section__head">
-          <span class="eyebrow">The agent workspace</span>
-          <h2 class="section__title">Your agent, your bundle, one panel.</h2>
-          <p class="section__sub">
-            Pick an agent, ask about the open bundle, and review every proposed
-            change before it lands. Here is how that breaks down.
-          </p>
-        </div>
-        <div class="features">
-          {
-            agentCards.map((c) => (
-              <article class="feature-card">
-                <span class="feature-card__glyph" aria-hidden="true">{c.glyph}</span>
-                <h3 class="feature-card__title">{c.title}</h3>
-                <p class="feature-card__body">{c.body}</p>
-              </article>
-            ))
-          }
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="visualizations">
-      <div class="container">
-        <div class="section__head">
-          <span class="eyebrow">Four ways to see it</span>
-          <h2 class="section__title">Pick the view that fits the question.</h2>
-          <p class="section__sub">
-            The same bundle as a network, a treemap, a sunburst, or nested
-            circles. Switch with one click, and it opens that way next time.
-          </p>
-        </div>
-        <div class="vizzes">
-          {
-            vizzes.map((v) => (
-              <article class="viz-card">
-                <figure class="viz-card__media">
-                  <img
-                    class="zoomable"
-                    data-spotlight
-                    role="button"
-                    tabindex="0"
-                    src={v.src}
-                    alt={v.alt}
-                    width="1760"
-                    height="1117"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </figure>
-                <div class="viz-card__text">
-                  <h3 class="viz-card__title">{v.title}</h3>
-                  <p class="viz-card__body">{v.body}</p>
-                </div>
-              </article>
-            ))
-          }
-        </div>
-      </div>
-    </section>
-
-    <section class="section showcase">
+    <section class="section showcase" aria-label="Product proof">
       <div class="container">
         <div class="showcase__row">
           <div class="showcase__text">
-            <span class="eyebrow showcase__eyebrow">The reader</span>
+            <span class="eyebrow showcase__eyebrow">Understand</span>
             <h2 class="showcase__title">Every concept, its links, and where it's cited.</h2>
             <p class="showcase__body">
-              A distraction-free reader with a live index, syntax-highlighted code,
-              zoomable images, and the relationship panel. Hover a link to peek at
-              its target, open side quests in tabs that keep their own back/forward
-              history, and undock a tab into its own window for a second monitor.
+              A distraction-free reader with a live index, syntax-highlighted
+              code, and the relationship panel. Hover a link to peek at its
+              target, and open side quests in tabs that keep their own history.
             </p>
+            <a class="showcase__link" href={routes.explore}>Explore knowledge →</a>
           </div>
           <figure class="showcase__media">
             <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotReader} alt="OKF Studio's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" decoding="async" />
@@ -413,17 +95,87 @@ const downloads = [
 
         <div class="showcase__row showcase__row--reverse">
           <div class="showcase__text">
-            <span class="eyebrow showcase__eyebrow">Design-system aware</span>
-            <h2 class="showcase__title">It reads design systems, too.</h2>
+            <span class="eyebrow showcase__eyebrow">Ask</span>
+            <h2 class="showcase__title">Ask the bundle, beside the bundle.</h2>
             <p class="showcase__body">
-              Open an ODSF bundle and OKF Studio renders its design tokens and
-              live HTML/CSS examples inline. Inspect resolved values, switch
-              between preview and source, and stay inside the reader.
+              An agent thread runs next to the graph and reader, answering from
+              the open bundle. Context goes in explicitly, and each answer keeps
+              a receipt of excerpts and conflicts you can open under Inspect.
             </p>
+            <a class="showcase__link" href={routes.agents}>Work with agents →</a>
           </div>
           <figure class="showcase__media">
-            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotDs} alt="OKF Studio rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" decoding="async" />
+            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotGraph} alt="An agent thread in OKF Studio answering a question about the open bundle, beside the concept graph and reader" width="1760" height="1051" loading="lazy" decoding="async" />
           </figure>
+        </div>
+
+        <div class="showcase__row">
+          <div class="showcase__text">
+            <span class="eyebrow showcase__eyebrow">Improve & keep</span>
+            <h2 class="showcase__title">Review every change, then keep it.</h2>
+            <p class="showcase__body">
+              No agent writes to your files. Proposed changes wait in a staged
+              tree for your review, pass deterministic validation, and land in
+              one restorable transaction with Git history right beside them.
+            </p>
+            <a class="showcase__link" href={routes.review}>Review and improve →</a>
+          </div>
+          <div class="showcase__media">
+            <div class="flow" role="img" aria-label="The reviewed-write pipeline: the agent proposes into a staged tree, you review each diff, Studio validates against the spec, and the change is applied in one restorable transaction and kept in Git">
+              {reviewFlow.map((s, i) => (
+                <div class="flow__step">
+                  <span class="flow__marker" aria-hidden="true">{i + 1}</span>
+                  <div>
+                    <p class="flow__title">{s.title}</p>
+                    <p class="flow__body">{s.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="trust">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">Trust model</span>
+          <h2 class="section__title">You can tell exactly what it does.</h2>
+          <p class="section__sub">
+            Local files, explicit external activity, user-chosen agents,
+            reviewed writes. These are product boundaries, not settings.
+          </p>
+        </div>
+        <div class="trust">
+          {
+            trustClaims.map((c) => (
+              <article class="trust-item">
+                <h3 class="trust-item__title">{c.title}</h3>
+                <p class="trust-item__body">{c.body}</p>
+                <a class="trust-item__link" href={c.href}>{c.linkLabel} →</a>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="format">
+      <div class="container">
+        <div class="section__head">
+          <span class="eyebrow">The format underneath</span>
+          <h2 class="section__title">Plain Markdown, connected.</h2>
+          <p class="section__sub">
+            Studio works on Open Knowledge Format bundles: portable folders of
+            Markdown with structured frontmatter that agents and humans read the
+            same way. The bundle needs no database or SDK and remains portable
+            between tools. Design systems get the same treatment through ODSF.
+          </p>
+        </div>
+        <div class="hero__cta">
+          <a class="btn btn--secondary" href={routes.okf}>What is OKF?</a>
+          <a class="btn btn--ghost" href={routes.odsf}>ODSF for design systems →</a>
         </div>
       </div>
     </section>
@@ -458,61 +210,10 @@ const downloads = [
             {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases</a> · macOS: <a href={repo}>build from source</a>
           </p>
           <p class="download__note">
-            Upgrading from OKF Viewer? Settings and agent profiles stay in place; open retained local folders once to grant them to Rust. <a href={migrationNotes}>Migration notes</a>
+            Upgrading from OKF Viewer? <a href={migrationNotes}>Migration notes</a> · Requirements and details on the <a href={routes.download}>download page</a>
           </p>
         </div>
       </div>
     </section>
   </main>
-
-  <footer class="footer">
-    <div class="container footer__inner">
-      <span>OKF Studio, open source. Explore connected knowledge with your agents.</span>
-      <div class="footer__links">
-        <a href={repo}>GitHub</a>
-        <a href={releases}>Releases</a>
-        <a href={okfSpec}>OKF</a>
-        <a href={odsfSpec}>ODSF</a>
-      </div>
-    </div>
-  </footer>
-
-  <div class="spotlight" data-open="false" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
-    <img alt="" />
-  </div>
-
-  <script>
-    const overlay = document.querySelector<HTMLElement>(".spotlight");
-    const overlayImg = overlay?.querySelector("img");
-
-    function openSpotlight(src: string | null, alt: string | null) {
-      if (!overlay || !overlayImg || !src) return;
-      overlayImg.src = src;
-      overlayImg.alt = alt ?? "";
-      overlay.dataset.open = "true";
-      overlay.setAttribute("aria-hidden", "false");
-      document.body.style.overflow = "hidden";
-    }
-    function closeSpotlight() {
-      if (!overlay) return;
-      overlay.dataset.open = "false";
-      overlay.setAttribute("aria-hidden", "true");
-      document.body.style.overflow = "";
-      overlayImg?.removeAttribute("src");
-    }
-
-    for (const el of document.querySelectorAll<HTMLImageElement>("[data-spotlight]")) {
-      el.addEventListener("click", () => openSpotlight(el.getAttribute("src"), el.getAttribute("alt")));
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openSpotlight(el.getAttribute("src"), el.getAttribute("alt"));
-        }
-      });
-    }
-    overlay?.addEventListener("click", closeSpotlight);
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeSpotlight();
-    });
-  </script>
-</Base>
+</Shell>

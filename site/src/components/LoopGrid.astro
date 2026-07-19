@@ -1,0 +1,29 @@
+---
+// LoopGrid.astro: the knowledge-work loop on one contained surface, split by
+// hairlines. The labels carry the sequence, so the cells need no counters.
+import { families } from "../data/families";
+
+interface Props {
+  /** Heading level of each step, matching the page's outline. */
+  headingLevel?: "h2" | "h3";
+}
+
+const { headingLevel = "h3" } = Astro.props;
+const Heading = headingLevel;
+
+const ordered = (["Understand", "Ask", "Improve", "Keep"] as const).map(
+  (step) => families.find((f) => f.step === step)!,
+);
+---
+
+<div class="loop">
+  {
+    ordered.map((f) => (
+      <article class="loop__step">
+        <Heading class="loop__title">{f.step}</Heading>
+        <p class="loop__body">{f.outcome}</p>
+        <a class="loop__link" href={f.href}>{f.title} →</a>
+      </article>
+    ))
+  }
+</div>

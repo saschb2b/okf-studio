@@ -6,6 +6,8 @@
 * [OKF Retrieval Intelligence](retrieval-intelligence/retrieval-intelligence-roadmap.md) - Research and work packages for routed, inspectable, provider-neutral context over connected bundles.
 * [Integrated Git Support](git-integration/git-integration-roadmap.md) - Zed-inspired work packages for repository state, staging, commits, history, and explicit remotes.
 * [Zed Git Research](git-integration/zed-git-research.md) - Source-level findings behind Studio's Git architecture and experience contract.
+* [Site Experience Research](site-evolution/site-experience-research.md) - Evidence behind replacing the one-page feature catalogue with a scalable product site.
+* [Site Experience Contract](site-evolution/site-experience-contract.md) - Target site map, navigation, homepage story, content ownership, and implementation sequence.
 * [State of RAG Systems](retrieval-intelligence/rag-state-and-failures.md) - Evidence review of retrieval failures, alternatives, and the openings they create for OKF Studio.
 * [OKF Retrieval Thesis](retrieval-intelligence/okf-retrieval-thesis.md) - Why Studio should become a context engine rather than another vector-search wrapper.
 * [OKF Writing Quality Dogfood](okf-writing-quality-dogfood.md) - Retained component, provider, test, and packaging evidence for the first writing release.

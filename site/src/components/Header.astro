@@ -1,0 +1,125 @@
+---
+// Header.astro: the floating pill nav (design-system nav component) plus its
+// Product disclosure and mobile menu. The active route comes from the page's
+// `path` prop, so it is computed at build time, not sniffed in the browser.
+import { routes } from "../data/routes";
+import { productMenu, primaryLinks } from "../data/nav";
+
+interface Props {
+  /** Route path relative to the site base, e.g. "product/explore/". */
+  path?: string;
+}
+
+const { path = "" } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const icon = `${base}icon.svg`;
+const current = `${base}${path}`;
+
+const isCurrent = (href: string) => (href === current ? "page" : undefined);
+const productActive = current.startsWith(routes.product);
+---
+
+<header class="topbar" data-header>
+  <nav class="site-nav topbar__inner" aria-label="Primary">
+    <a class="site-nav__brand" href={routes.home}>
+      <img class="site-nav__logo" src={icon} alt="" width="28" height="28" />
+      OKF Studio
+    </a>
+
+    <div class="site-nav__links site-nav__links--desktop">
+      <div class="nav-menu" data-nav-menu>
+        <button
+          class="nav-menu__trigger"
+          type="button"
+          aria-expanded="false"
+          aria-controls="product-menu"
+          data-active={productActive ? "true" : undefined}
+        >
+          Product <span class="nav-menu__chevron" aria-hidden="true">▼</span>
+        </button>
+        <div class="nav-menu__panel" id="product-menu" hidden>
+          {productMenu.map((l) => (
+            <a class="nav-menu__item" href={l.href} aria-current={isCurrent(l.href)}>{l.label}</a>
+          ))}
+        </div>
+      </div>
+      {primaryLinks.map((l) => (
+        <a class="site-nav__link" href={l.href} aria-current={isCurrent(l.href)}>
+          {l.label}{l.external && <span class="sr-only"> (external)</span>}
+        </a>
+      ))}
+      <a class="btn btn--primary" href={routes.download}>↓ Download</a>
+    </div>
+
+    <div class="site-nav__links site-nav__links--mobile">
+      <a class="btn btn--primary" href={routes.download}>↓ Download</a>
+      <button
+        class="btn btn--secondary"
+        type="button"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+        data-menu-toggle
+      >
+        Menu
+      </button>
+    </div>
+  </nav>
+
+  <div class="mobile-menu topbar__menu" id="mobile-menu" hidden>
+    <div class="mobile-menu__group">
+      <span class="mobile-menu__label" id="mobile-menu-product">Product</span>
+      {productMenu.map((l) => (
+        <a class="mobile-menu__link" href={l.href} aria-current={isCurrent(l.href)}>{l.label}</a>
+      ))}
+    </div>
+    {primaryLinks.map((l) => (
+      <a class="mobile-menu__link" href={l.href} aria-current={isCurrent(l.href)}>
+        {l.label}{l.external && <span class="sr-only"> (external)</span>}
+      </a>
+    ))}
+    <a class="mobile-menu__link" href={routes.download}>Download</a>
+  </div>
+</header>
+
+<script>
+  // Disclosure behavior shared by the Product menu and the mobile menu:
+  // open on click or keyboard, close on Escape (focus returns to the trigger)
+  // and on outside interaction. No hover triggers, no focus trap.
+  function wire(trigger: HTMLButtonElement, panel: HTMLElement) {
+    const setOpen = (open: boolean) => {
+      trigger.setAttribute("aria-expanded", String(open));
+      panel.hidden = !open;
+    };
+    trigger.addEventListener("click", () => {
+      setOpen(trigger.getAttribute("aria-expanded") !== "true");
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && trigger.getAttribute("aria-expanded") === "true") {
+        setOpen(false);
+        trigger.focus();
+      }
+    });
+    document.addEventListener("pointerdown", (e) => {
+      if (
+        trigger.getAttribute("aria-expanded") === "true" &&
+        e.target instanceof Node &&
+        !panel.contains(e.target) &&
+        !trigger.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    });
+  }
+
+  const header = document.querySelector<HTMLElement>("[data-header]");
+  if (header) {
+    const navMenu = header.querySelector<HTMLElement>("[data-nav-menu]");
+    const navTrigger = navMenu?.querySelector<HTMLButtonElement>("button");
+    const navPanel = navMenu?.querySelector<HTMLElement>(".nav-menu__panel");
+    if (navTrigger && navPanel) wire(navTrigger, navPanel);
+
+    const menuToggle = header.querySelector<HTMLButtonElement>("[data-menu-toggle]");
+    const mobileMenu = header.querySelector<HTMLElement>(".mobile-menu");
+    if (menuToggle && mobileMenu) wire(menuToggle, mobileMenu);
+  }
+</script>

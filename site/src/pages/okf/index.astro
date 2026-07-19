@@ -1,0 +1,99 @@
+---
+// OKF: the format explanation, after the product has made its case.
+// Format semantics stay in the specifications; this page gives the
+// plain-language reason and routes onward.
+import Shell from "../../components/Shell.astro";
+import CtaBand from "../../components/CtaBand.astro";
+import { routes } from "../../data/routes";
+import { okfSpec, odsfSpec } from "../../data/site";
+
+const base = import.meta.env.BASE_URL;
+const shotDs = `${base}screenshot-ds.webp`;
+---
+
+<Shell
+  title="What is OKF? The open knowledge format behind OKF Studio"
+  description="OKF packages knowledge as portable, connected Markdown bundles that agents and humans read the same way. ODSF profiles it for design systems. Both are open, vendor-neutral specs."
+  path="okf/"
+>
+  <main id="main">
+    <section class="section">
+      <div class="container">
+        <header class="page-head">
+          <span class="eyebrow">The format</span>
+          <h1 class="page-head__title">Knowledge an agent can read.</h1>
+          <p class="page-head__lede">
+            The Open Knowledge Format is Google's open, vendor-neutral spec for
+            packaging knowledge as plain Markdown files with YAML frontmatter,
+            organized into a portable bundle. No SDK, no database, no lock-in.
+          </p>
+        </header>
+
+        <div class="cap-group">
+          <h2 class="cap-group__title">Why portable, connected Markdown matters</h2>
+          <p class="cap-group__lede">
+            A proprietary tool decides how knowledge can be exported and which
+            agents can read it. An OKF bundle stays useful outside its authoring
+            tool.
+          </p>
+          <div class="features">
+            <article class="feature-card">
+              <h3 class="feature-card__title">Portable</h3>
+              <p class="feature-card__body">
+                A bundle is a folder. Copy it, version it in Git, hand it to a
+                teammate or an agent. Table docs, runbooks, API references,
+                concept graphs: anything a human or an agent should read.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3 class="feature-card__title">Connected</h3>
+              <p class="feature-card__body">
+                Concepts link to concepts, so the bundle is a graph, not a pile
+                of files. That structure is what makes overviews, lineage, and
+                evidence-backed answers possible.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3 class="feature-card__title">Checkable</h3>
+              <p class="feature-card__body">
+                Frontmatter gives every concept a type, so a bundle can be
+                validated against the spec instead of trusted on faith.
+              </p>
+            </article>
+          </div>
+          {/* One line: JSX collapses whitespace around newline-separated
+              inline children, which would glue the links to their neighbors. */}
+          <p class="cap-group__lede cap-group__lede--after">
+            The details live in the specification: <a href={okfSpec}>read the OKF spec<span class="sr-only"> (external)</span></a>. Studio reads any conformant bundle from any producer; see <a href={routes.explore}>Explore knowledge</a> for how.
+          </p>
+        </div>
+
+        <div class="cap-group" id="odsf">
+          <h2 class="cap-group__title">ODSF: design systems as knowledge</h2>
+          <p class="cap-group__lede">
+            The Open Design System Format is a profile of OKF for design
+            systems. It adds machine-readable design tokens and runnable
+            HTML/CSS examples so an agent can follow the system. This site's
+            design system is an ODSF bundle that Studio can open and preview.
+          </p>
+          <div class="showcase__row">
+            <div class="showcase__text">
+              <span class="eyebrow showcase__eyebrow">In the reader</span>
+              <h3 class="showcase__title">Tokens and live examples, inline.</h3>
+              <p class="showcase__body">
+                Open an ODSF bundle and Studio renders its design tokens and
+                live HTML/CSS examples in the reader. Inspect resolved values
+                and switch between preview and source.
+              </p>
+              <a class="showcase__link" href={odsfSpec}>Read the ODSF spec<span class="sr-only"> (external)</span> →</a>
+            </div>
+            <figure class="showcase__media">
+              <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotDs} alt="OKF Studio rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" decoding="async" />
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+    <CtaBand />
+  </main>
+</Shell>

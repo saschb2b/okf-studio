@@ -1,0 +1,25 @@
+---
+// 404: GitHub Pages serves this for unknown routes under the base path.
+import Shell from "../components/Shell.astro";
+import { routes } from "../data/routes";
+---
+
+<Shell title="Page not found · OKF Studio" description="This page does not exist." path="404.html">
+  <main id="main">
+    <section class="section">
+      <div class="container">
+        <header class="page-head">
+          <span class="eyebrow">404</span>
+          <h1 class="page-head__title">There is no concept here.</h1>
+          <p class="page-head__lede">
+            The address does not match any page on this site.
+          </p>
+        </header>
+        <div class="hero__cta">
+          <a class="btn btn--primary" href={routes.home}>Back to the homepage</a>
+          <a class="btn btn--secondary" href={routes.product}>Product overview</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</Shell>

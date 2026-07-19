@@ -127,8 +127,119 @@
   color: var(--colors-text-muted);
   text-decoration: none;
   font-size: var(--text-sm);
+  /* Comfortable click/tap area inside the pill without growing its height. */
+  padding: var(--space-8) var(--space-4);
 }
 .site-nav__link:hover { color: var(--colors-text); }
+/* The active route stays visible: full text color plus a brand underline. */
+.site-nav__link[aria-current="page"] {
+  color: var(--colors-text);
+  text-decoration: underline;
+  text-decoration-color: var(--colors-primary);
+  text-underline-offset: 6px;
+}
+
+/* --- Nav disclosure: the Product menu inside the pill. A button (not a hover
+   target) opens a small floating panel of routes; the page script owns
+   aria-expanded, Escape, and outside-click behavior. --- */
+.nav-menu { position: relative; }
+.nav-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-4);
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--colors-text-muted);
+  cursor: pointer;
+}
+.nav-menu__trigger:hover,
+.nav-menu__trigger[aria-expanded="true"] { color: var(--colors-text); }
+.nav-menu__trigger[data-active="true"] {
+  color: var(--colors-text);
+  text-decoration: underline;
+  text-decoration-color: var(--colors-primary);
+  text-underline-offset: 6px;
+}
+/* The chevron flips while open; instant under reduced motion (global rule). */
+.nav-menu__chevron {
+  font-size: 0.625em;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+.nav-menu__trigger[aria-expanded="true"] .nav-menu__chevron { transform: rotate(180deg); }
+.nav-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-12));
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-8);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--colors-surface) 94%, transparent);
+  backdrop-filter: saturate(140%) blur(14px);
+  box-shadow: var(--shadow-md);
+}
+.nav-menu__panel[hidden] { display: none; }
+.nav-menu__item {
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-sm);
+  color: var(--colors-text-muted);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+.nav-menu__item:hover {
+  background: var(--colors-surface-2);
+  color: var(--colors-text);
+}
+.nav-menu__item[aria-current="page"] { color: var(--colors-text); }
+
+/* --- Mobile menu: the same destinations as the desktop bar, presented as a
+   panel below the pill at narrow widths. Product expands inline as a labelled
+   group; no focus trap; the page script restores focus to the Menu button. --- */
+.mobile-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--colors-surface) 96%, transparent);
+  backdrop-filter: saturate(140%) blur(14px);
+  box-shadow: var(--shadow-md);
+}
+.mobile-menu[hidden] { display: none; }
+.mobile-menu__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-8);
+  padding: 0 0 var(--space-8);
+  border-bottom: var(--border-width) solid var(--colors-border);
+}
+.mobile-menu__label {
+  padding: var(--space-8) var(--space-12) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--colors-text-dim);
+}
+.mobile-menu__link {
+  padding: var(--space-12);
+  border-radius: var(--radius-sm);
+  color: var(--colors-text-muted);
+  text-decoration: none;
+}
+.mobile-menu__link:hover {
+  background: var(--colors-surface-2);
+  color: var(--colors-text);
+}
+.mobile-menu__link[aria-current="page"] { color: var(--colors-text); }
 
 /* --- Feature card --- */
 .feature-card {
@@ -163,6 +274,16 @@
   color: var(--colors-text-muted);
   line-height: var(--leading-normal);
 }
+/* Optional trailing route link: a card may point at its detail page. One link
+   at most; it stays a quiet text affordance, not a second button. */
+.feature-card__link {
+  display: inline-block;
+  margin-top: var(--space-16);
+  color: var(--colors-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+}
+.feature-card__link:hover { text-decoration: underline; }
 
 /* --- Viz card --- */
 /* A screenshot with its caption on one surface: media bleeds to the card's

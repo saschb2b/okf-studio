@@ -1,0 +1,71 @@
+---
+// Download: the canonical download surface. Platforms, version, requirements,
+// and release links come from src/data/site.ts; nothing is duplicated here.
+import Shell from "../components/Shell.astro";
+import { version, repo, releases, migrationNotes, downloads } from "../data/site";
+---
+
+<Shell
+  title="Download OKF Studio for Windows and Linux"
+  description="Get the current OKF Studio release for Windows (.msi, .exe) or Linux (.deb, AppImage), free and open source. macOS builds from source."
+  path="download/"
+>
+  <main id="main">
+    <section class="section">
+      <div class="container">
+        <header class="page-head">
+          <span class="eyebrow">Download · {version}</span>
+          <h1 class="page-head__title">Get OKF Studio</h1>
+          <p class="page-head__lede">Free and open source. Pick your platform.</p>
+        </header>
+
+        <div class="band">
+          <div class="download__row">
+            {
+              downloads.map((d) => (
+                <a class="dl-btn" href={d.href}>
+                  <span class="dl-btn__glyph" aria-hidden="true">{d.glyph}</span>
+                  <span class="dl-btn__text">
+                    <span class="dl-btn__os">{d.os}</span>
+                    <span class="dl-btn__meta">{d.meta}</span>
+                  </span>
+                  <span class="dl-btn__arrow" aria-hidden="true">↓</span>
+                </a>
+              ))
+            }
+          </div>
+          <p class="download__note">
+            {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases and notes</a>
+          </p>
+        </div>
+
+        <div class="cap-group">
+          <h2 class="cap-group__title">Good to know</h2>
+          <div class="features">
+            <article class="feature-card">
+              <h3 class="feature-card__title">Requirements</h3>
+              <p class="feature-card__body">
+                A small native Tauri app: Windows x64 (.msi or .exe) and Linux
+                (.deb or AppImage). No account, no telemetry, no background
+                services.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3 class="feature-card__title">macOS</h3>
+              <p class="feature-card__body">
+                No signed macOS build yet; <a href={repo}>build from source</a> with the instructions in the repository.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3 class="feature-card__title">Upgrading from OKF Viewer?</h3>
+              <p class="feature-card__body">
+                Settings and agent profiles stay in place; open retained local
+                folders once to grant them to Rust. See the <a href={migrationNotes}>migration notes</a>.
+              </p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</Shell>

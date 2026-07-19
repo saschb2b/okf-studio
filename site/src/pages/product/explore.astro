@@ -1,0 +1,63 @@
+---
+// Explore knowledge: reader, graph views, search, lineage.
+import FamilyPage from "../../components/FamilyPage.astro";
+import { familyById, vizzes } from "../../data/families";
+
+const base = import.meta.env.BASE_URL;
+const shotReader = `${base}screenshot-reader.webp`;
+---
+
+<FamilyPage
+  family={familyById.explore}
+  title="Explore knowledge: OKF Studio's reader, graph views, search, and lineage"
+  description="Open any conformant OKF bundle in a reader, switch among graph views, search by text and structure, preview links, and trace lineage across hops."
+  path="product/explore/"
+>
+  <div class="showcase__row">
+    <div class="showcase__text">
+      <span class="eyebrow showcase__eyebrow">The reader</span>
+      <h2 class="showcase__title">Every concept, its links, and where it's cited.</h2>
+      <p class="showcase__body">
+        A live index, syntax-highlighted code, zoomable images, and the
+        relationship panel, with keyboard-first navigation throughout.
+      </p>
+    </div>
+    <figure class="showcase__media">
+      <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotReader} alt="OKF Studio's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" decoding="async" />
+    </figure>
+  </div>
+
+  <div class="cap-group">
+    <h2 class="cap-group__title">See the bundle from different angles</h2>
+    <p class="cap-group__lede">
+      The same bundle as a network, a treemap, a sunburst, or nested circles.
+      Switch with one click, and it opens that way next time.
+    </p>
+    <div class="vizzes">
+      {
+        vizzes.map((v) => (
+          <article class="viz-card">
+            <figure class="viz-card__media">
+              <img
+                class="zoomable"
+                data-spotlight
+                role="button"
+                tabindex="0"
+                src={v.src}
+                alt={v.alt}
+                width="1760"
+                height="1117"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+            <div class="viz-card__text">
+              <h3 class="viz-card__title">{v.title}</h3>
+              <p class="viz-card__body">{v.body}</p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</FamilyPage>

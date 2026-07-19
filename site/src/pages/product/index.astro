@@ -1,0 +1,52 @@
+---
+// Product overview: the capability families and how they connect.
+import Shell from "../../components/Shell.astro";
+import CtaBand from "../../components/CtaBand.astro";
+import { families } from "../../data/families";
+import { routes } from "../../data/routes";
+---
+
+<Shell
+  title="OKF Studio product overview: work with the whole bundle"
+  description="What OKF Studio does and where its boundaries are: explore knowledge, work with agents, review and improve, and version with Git inside a local-first desktop workspace."
+  path="product/"
+>
+  <main id="main">
+    <section class="section">
+      <div class="container">
+        <header class="page-head">
+          <span class="eyebrow">Product</span>
+          <h1 class="page-head__title">Work with the whole bundle.</h1>
+          <p class="page-head__lede">
+            OKF Studio is a Tauri desktop app for Windows, macOS, and Linux.
+            Its product areas follow the work from understanding a bundle to
+            keeping reviewed changes.
+          </p>
+        </header>
+
+        <div class="features features--product">
+          {
+            families.map((f) => (
+              <article class="feature-card">
+                <h2 class="feature-card__title">{f.title}</h2>
+                <p class="feature-card__body">{f.outcome}</p>
+                <a class="feature-card__link" href={f.href} aria-label={`Read about ${f.title}`}>Read the details →</a>
+              </article>
+            ))
+          }
+        </div>
+
+        <div class="cap-group">
+          <h2 class="cap-group__title">What Studio is not</h2>
+          <p class="cap-group__lede">
+            Studio focuses on OKF knowledge work. General text editing, cloud
+            sync, autonomous operation, and full Git-client behavior stay
+            outside its scope. For a task-led route through the product, begin
+            with the <a href={routes.workflows}>workflows</a>.
+          </p>
+        </div>
+      </div>
+    </section>
+    <CtaBand />
+  </main>
+</Shell>

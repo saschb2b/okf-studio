@@ -1,0 +1,81 @@
+---
+// FamilyPage.astro: the shared shape of a capability-family page. Renders the
+// family record from src/data/families.ts; the page contributes only its
+// proof media through the default slot.
+import Shell from "./Shell.astro";
+import CtaBand from "./CtaBand.astro";
+import { routes } from "../data/routes";
+import { workflows } from "../data/workflows";
+import type { Family } from "../data/families";
+
+interface Props {
+  family: Family;
+  title: string;
+  description: string;
+  path: string;
+}
+
+const { family, title, description, path } = Astro.props;
+const related = workflows.filter((w) => family.workflows.includes(w.id));
+---
+
+<Shell title={title} description={description} path={path}>
+  <main id="main">
+    <section class="section">
+      <div class="container">
+        <header class="page-head">
+          <span class="eyebrow">Product · {family.step}</span>
+          <h1 class="page-head__title">{family.title}</h1>
+          <p class="page-head__lede">{family.summary}</p>
+        </header>
+
+        <slot />
+
+        {
+          family.groups.map((g) => (
+            <div class="cap-group">
+              <h2 class="cap-group__title">{g.title}</h2>
+              <p class="cap-group__lede">{g.lede}</p>
+              <div class="features">
+                {g.items.map((c) => (
+                  <article class="feature-card">
+                    <h3 class="feature-card__title">{c.title}</h3>
+                    <p class="feature-card__body">{c.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ))
+        }
+
+        <div class="cap-group">
+          <h2 class="cap-group__title">Go deeper</h2>
+          <p class="cap-group__lede">
+            Setup, keyboard, and reference material live in the documentation;
+            these pages stay descriptive.
+          </p>
+          <div class="doc-links">
+            {family.docs.map((d) => (
+              <a href={d.href}>{d.label}<span class="sr-only"> (external)</span></a>
+            ))}
+          </div>
+        </div>
+
+        {
+          related.length > 0 && (
+            <div class="cap-group">
+              <h2 class="cap-group__title">Where this shows up</h2>
+              <p class="cap-group__lede">Task-first paths that lean on this area.</p>
+              <div class="doc-links">
+                {related.map((w) => (
+                  <a href={`${routes.workflows}#${w.id}`}>{w.title}</a>
+                ))}
+              </div>
+            </div>
+          )
+        }
+      </div>
+    </section>
+    <CtaBand />
+  </main>
+</Shell>

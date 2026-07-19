@@ -1,3 +1,7 @@
+## 2026-07-19
+* **Update**: The [site nav](components/nav.md) now supports the multi-page product site. Product routes sit in a click and keyboard disclosure, narrow screens retain every destination in a mobile menu, and the active route stays visible. Escape and outside interaction close open panels, and focus returns to the trigger. The runnable examples and `styles/components.css` cover both layouts.
+* **Update**: [Feature card](components/feature-card.md) now treats its glyph and detail link as optional. The body remains a concise value statement, and a card may link to one detail route without adding another button.
+
 ## 2026-07-16
 * **Creation**: A [function-first](guidelines/function-first.md) guideline capturing the Zed power-tool stance: docked surfaces (composer, shelves, status strips) run edge-to-edge behind a single hairline; radius and enclosing borders are reserved for floating surfaces (popovers, dialogs) and blocks inside a scrolling document; keyboard focus on an edge-to-edge editor tints the hairline instead of drawing a ring. The desktop app's agent composer is the worked case and was reworked to match. Overview gains the matching principle; indexed.
 

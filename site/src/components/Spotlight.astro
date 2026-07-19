@@ -1,0 +1,50 @@
+---
+// Spotlight.astro: click a [data-spotlight] screenshot to enlarge it.
+// One overlay per page; Escape or any click closes it.
+---
+
+<div
+  class="spotlight"
+  data-open="false"
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Enlarged screenshot"
+>
+  <img alt="" />
+</div>
+
+<script>
+  const overlay = document.querySelector<HTMLElement>(".spotlight");
+  const overlayImg = overlay?.querySelector("img");
+
+  function openSpotlight(src: string | null, alt: string | null) {
+    if (!overlay || !overlayImg || !src) return;
+    overlayImg.src = src;
+    overlayImg.alt = alt ?? "";
+    overlay.dataset.open = "true";
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+  function closeSpotlight() {
+    if (!overlay) return;
+    overlay.dataset.open = "false";
+    overlay.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    overlayImg?.removeAttribute("src");
+  }
+
+  for (const el of document.querySelectorAll<HTMLImageElement>("[data-spotlight]")) {
+    el.addEventListener("click", () => openSpotlight(el.getAttribute("src"), el.getAttribute("alt")));
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openSpotlight(el.getAttribute("src"), el.getAttribute("alt"));
+      }
+    });
+  }
+  overlay?.addEventListener("click", closeSpotlight);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeSpotlight();
+  });
+</script>

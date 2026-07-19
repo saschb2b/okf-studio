@@ -1,0 +1,21 @@
+---
+// CtaBand.astro: the closing surface of a route page. Every detail page
+// routes back to Download and the documentation.
+import { routes } from "../data/routes";
+import { docsUrl } from "../data/site";
+---
+
+<section class="section">
+  <div class="container">
+    <div class="band">
+      <div class="section__head">
+        <h2 class="section__title">Get OKF Studio</h2>
+        <p class="section__sub">Free and open source for Windows, macOS, and Linux.</p>
+      </div>
+      <div class="hero__cta">
+        <a class="btn btn--primary" href={routes.download}>↓ Download</a>
+        <a class="btn btn--secondary" href={docsUrl}>Read the docs<span class="sr-only"> (external)</span></a>
+      </div>
+    </div>
+  </div>
+</section>

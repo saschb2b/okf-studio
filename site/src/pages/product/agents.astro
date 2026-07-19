@@ -1,0 +1,30 @@
+---
+// Work with agents: choose an agent, ask with evidence, stay in control.
+import FamilyPage from "../../components/FamilyPage.astro";
+import { familyById } from "../../data/families";
+
+const base = import.meta.env.BASE_URL;
+const shotGraph = `${base}screenshot-graph.webp`;
+---
+
+<FamilyPage
+  family={familyById.agents}
+  title="Work with agents in OKF Studio: your agent, your bundle, one panel"
+  description="Chat with Claude, Codex, Cursor, or a local model beside the graph and reader. Context goes in explicitly, answers keep inspectable evidence, and every write stays behind review."
+  path="product/agents/"
+>
+  <figure class="showcase__media showcase__media--standalone">
+    <img
+      class="zoomable"
+      data-spotlight
+      role="button"
+      tabindex="0"
+      src={shotGraph}
+      alt="An agent thread in OKF Studio answering a question about the open bundle, beside the concept graph and reader"
+      width="1760"
+      height="1051"
+      loading="lazy"
+      decoding="async"
+    />
+  </figure>
+</FamilyPage>

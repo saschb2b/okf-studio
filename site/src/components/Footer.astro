@@ -1,0 +1,29 @@
+---
+// Footer.astro: a durable directory of the whole site, grouped by intent.
+// The groups live in src/data/nav.ts; the footer never invents destinations.
+import { footerGroups } from "../data/nav";
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__about">
+        <span class="footer__brand">OKF Studio</span>
+        <p class="footer__tagline">
+          A local-first desktop workspace for connected knowledge and the agents
+          you choose. Free and open source.
+        </p>
+      </div>
+      {footerGroups.map((group) => (
+        <nav class="footer__group" aria-label={group.label}>
+          <span class="footer__label">{group.label}</span>
+          {group.links.map((l) => (
+            <a href={l.href}>
+              {l.label}{l.external && <span class="sr-only"> (external)</span>}
+            </a>
+          ))}
+        </nav>
+      ))}
+    </div>
+  </div>
+</footer>

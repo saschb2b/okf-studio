@@ -1,0 +1,45 @@
+---
+// Review and improve: create, check, and review every change.
+import FamilyPage from "../../components/FamilyPage.astro";
+import { familyById } from "../../data/families";
+
+// The reviewed-write pipeline as an honest diagram; see the homepage note.
+const reviewFlow = [
+  { title: "The agent proposes", body: "Changes land in a staged tree, never directly on your files." },
+  { title: "You review", body: "Each diff hunk, and each claim before and after." },
+  { title: "Studio validates", body: "Deterministic checks against the OKF spec." },
+  { title: "Apply and keep", body: "One restorable transaction, committed to Git when you say so." },
+];
+---
+
+<FamilyPage
+  family={familyById.review}
+  title="Review and improve knowledge in OKF Studio: checked writing, staged changes"
+  description="Create knowledge from zero or improve what exists. Writing is checked deterministically, changes land in a staged tree, and you review, validate, and apply in one restorable transaction."
+  path="product/review/"
+>
+  <div class="showcase__row">
+    <div class="showcase__text">
+      <span class="eyebrow showcase__eyebrow">The gate</span>
+      <h2 class="showcase__title">Every change passes the same review.</h2>
+      <p class="showcase__body">
+        It does not matter whether a change came from an agent, a named task,
+        or a repair suggestion: it waits in the same staged tree for the same
+        review.
+      </p>
+    </div>
+    <div class="showcase__media">
+      <div class="flow" role="img" aria-label="The reviewed-write pipeline: the agent proposes into a staged tree, you review each diff, Studio validates against the spec, and the change is applied in one restorable transaction and kept in Git">
+        {reviewFlow.map((s, i) => (
+          <div class="flow__step">
+            <span class="flow__marker" aria-hidden="true">{i + 1}</span>
+            <div>
+              <p class="flow__title">{s.title}</p>
+              <p class="flow__body">{s.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</FamilyPage>

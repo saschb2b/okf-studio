@@ -17,6 +17,8 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) - The next research branch for routed retrieval, coherent context, diagnostics, and reviewed corpus repair.
 * [Integrated Git Support](product/git-integration/git-integration-roadmap.md) - Sequenced work for repository status, staging, commits, history, and explicit remote operations.
 * [Zed Git Research](product/git-integration/zed-git-research.md) - The source-level architecture and UX findings used for Studio's Git direction.
+* [Site Experience Research](product/site-evolution/site-experience-research.md) - Evidence behind replacing the one-page feature catalogue with a scalable product site.
+* [Site Experience Contract](product/site-evolution/site-experience-contract.md) - Target site map, navigation, homepage story, content ownership, and implementation sequence.
 * [OKF Viewer to OKF Studio](product/migration-notes.md) - How existing local data, credentials, and compatibility identifiers behave on upgrade.
 * [Personas & Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
 * [How It Compares](product/comparison.md) - OKF Studio vs. the reference visualizer, PKM tools, static-site generators, editors, and agent chat surfaces.

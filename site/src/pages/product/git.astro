@@ -1,0 +1,12 @@
+---
+// Version with Git: keep reviewed knowledge in history, explicitly.
+import FamilyPage from "../../components/FamilyPage.astro";
+import { familyById } from "../../data/families";
+---
+
+<FamilyPage
+  family={familyById.git}
+  title="Version with Git in OKF Studio: reviewed changes, kept in history"
+  description="Review repository changes, choose what enters the index, commit, and inspect history without leaving the workspace. Remote operations run only when you trigger them."
+  path="product/git/"
+/>

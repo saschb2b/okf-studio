@@ -1,0 +1,25 @@
+---
+// Shell.astro: the shared page frame. Base document + skip link + header +
+// page content + footer + screenshot spotlight. Pages own their <main id="main">.
+import Base from "../layouts/Base.astro";
+import Header from "./Header.astro";
+import Footer from "./Footer.astro";
+import Spotlight from "./Spotlight.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Route path relative to the site base, e.g. "product/explore/". "" is home. */
+  path?: string;
+}
+
+const { title, description, path = "" } = Astro.props;
+---
+
+<Base title={title} description={description} path={path}>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <Header path={path} />
+  <slot />
+  <Footer />
+  <Spotlight />
+</Base>

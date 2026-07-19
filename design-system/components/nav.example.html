@@ -6,19 +6,65 @@
   <title>OKF Studio DS · Nav</title>
   <link rel="stylesheet" href="../styles/tokens.css">
   <link rel="stylesheet" href="../styles/components.css">
-  <style>body{background:var(--colors-bg);color:var(--colors-text);font-family:var(--font-sans);margin:0;padding:var(--space-16)}</style>
+  <style>body{background:var(--colors-bg);color:var(--colors-text);font-family:var(--font-sans);margin:0;padding:var(--space-16);display:flex;flex-direction:column;gap:var(--space-48)}h2{font-size:var(--text-sm);color:var(--colors-text-muted);font-weight:var(--font-weight-medium);margin:0 0 var(--space-12)}.mobile-frame{max-width:390px}.mobile-frame .site-nav{padding:var(--space-8);gap:var(--space-12)}.mobile-frame .site-nav__brand{gap:var(--space-8);font-size:var(--text-sm);white-space:nowrap}.mobile-frame .site-nav__links{gap:var(--space-8)}.mobile-frame .btn{padding:var(--space-8) var(--space-12);font-size:var(--text-sm);white-space:nowrap}</style>
 </head>
 <body>
-  <nav class="site-nav" aria-label="Primary">
-    <a class="site-nav__brand" href="#">
-      <span class="site-nav__logo" style="background:var(--colors-gradient-brand)"></span>
-      OKF Studio
-    </a>
-    <div class="site-nav__links">
-      <a class="site-nav__link" href="#">Features</a>
-      <a class="site-nav__link" href="#">Download</a>
-      <a class="btn btn--primary" href="#">↓ Get it</a>
+  <section>
+    <h2>Desktop pill with a Product disclosure (open) and an active route</h2>
+    <nav class="site-nav" aria-label="Primary">
+      <a class="site-nav__brand" href="#">
+        <span class="site-nav__logo" style="background:var(--colors-gradient-brand)"></span>
+        OKF Studio
+      </a>
+      <div class="site-nav__links">
+        <div class="nav-menu">
+          <button class="nav-menu__trigger" type="button" aria-expanded="true" aria-controls="product-menu">
+            Product <span class="nav-menu__chevron" aria-hidden="true">▼</span>
+          </button>
+          <div class="nav-menu__panel" id="product-menu">
+            <a class="nav-menu__item" href="#">Overview</a>
+            <a class="nav-menu__item" href="#">Explore knowledge</a>
+            <a class="nav-menu__item" href="#">Work with agents</a>
+            <a class="nav-menu__item" href="#">Review and improve</a>
+            <a class="nav-menu__item" href="#">Version with Git</a>
+          </div>
+        </div>
+        <a class="site-nav__link" aria-current="page" href="#">Workflows</a>
+        <a class="site-nav__link" href="#">OKF</a>
+        <a class="site-nav__link" href="#">Docs</a>
+        <a class="site-nav__link" href="#">GitHub</a>
+        <a class="btn btn--primary" href="#">↓ Download</a>
+      </div>
+    </nav>
+    <div style="height:200px"></div>
+  </section>
+
+  <section class="mobile-frame">
+    <h2>Narrow pill with its mobile menu (open)</h2>
+    <nav class="site-nav" aria-label="Primary">
+      <a class="site-nav__brand" href="#">
+        <span class="site-nav__logo" style="background:var(--colors-gradient-brand)"></span>
+        OKF Studio
+      </a>
+      <div class="site-nav__links">
+        <a class="btn btn--primary" href="#">↓ Download</a>
+        <button class="btn btn--secondary" type="button" aria-expanded="true" aria-controls="mobile-menu">Menu</button>
+      </div>
+    </nav>
+    <div class="mobile-menu" id="mobile-menu" style="margin-top:var(--space-8)">
+      <div class="mobile-menu__group">
+        <span class="mobile-menu__label">Product</span>
+        <a class="mobile-menu__link" href="#">Overview</a>
+        <a class="mobile-menu__link" href="#">Explore knowledge</a>
+        <a class="mobile-menu__link" href="#">Work with agents</a>
+        <a class="mobile-menu__link" href="#">Review and improve</a>
+        <a class="mobile-menu__link" href="#">Version with Git</a>
+      </div>
+      <a class="mobile-menu__link" aria-current="page" href="#">Workflows</a>
+      <a class="mobile-menu__link" href="#">OKF</a>
+      <a class="mobile-menu__link" href="#">Docs</a>
+      <a class="mobile-menu__link" href="#">GitHub</a>
     </div>
-  </nav>
+  </section>
 </body>
 </html>

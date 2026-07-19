@@ -5,27 +5,33 @@ import "../styles/design-system/tokens.css";
 import "../styles/design-system/components.css";
 import "../styles/site.css";
 
+import { repo, releasesLatest, license, softwareVersion } from "../data/site";
+
 interface Props {
   title?: string;
   description?: string;
+  /** Route path relative to the site base, e.g. "product/explore/". "" is home. */
+  path?: string;
 }
 
 const {
   title = "OKF Studio: explore connected knowledge with your agents",
   description =
     "A local-first desktop workspace for exploring connected Open Knowledge Format bundles with the agents you already use. Free and open source for Windows, macOS, and Linux.",
+  path = "",
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL;
 const site = Astro.site;
-const abs = (path: string) => (site ? new URL(path, site).href : path);
+const abs = (p: string) => (site ? new URL(p, site).href : p);
 
-const canonical = abs(base);
+const canonical = abs(`${base}${path}`);
 const ogImage = abs(`${base}og.png`);
 const siteName = "OKF Studio";
-const repo = "https://github.com/saschb2b/okf-viewer";
+const isHome = path === "";
 
-// Structured data for richer search results.
+// Structured data for richer search results; the product record lives on the
+// homepage only, so route pages don't duplicate the claim.
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -35,11 +41,11 @@ const jsonLd = {
   description,
   url: canonical,
   image: ogImage,
-  downloadUrl: `${repo}/releases/latest`,
-  softwareVersion: "0.4.1",
+  downloadUrl: releasesLatest,
+  softwareVersion,
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   author: { "@type": "Person", name: "Sascha Becker" },
-  license: `${repo}/blob/main/LICENSE`,
+  license,
 };
 ---
 
@@ -78,7 +84,7 @@ const jsonLd = {
     <meta name="twitter:image" content={ogImage} />
     <meta name="twitter:image:alt" content="OKF Studio showing a knowledge bundle as a concept graph beside the reader" />
 
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    {isHome && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   </head>
   <body>
     <slot />

@@ -1,0 +1,52 @@
+---
+// Workflows: task-first entries into the product. Thin leaves live as
+// sections here until search intent or content depth justifies child routes.
+import Shell from "../../components/Shell.astro";
+import CtaBand from "../../components/CtaBand.astro";
+import { workflows } from "../../data/workflows";
+import { familyById } from "../../data/families";
+---
+
+<Shell
+  title="OKF Studio workflows: from unfamiliar bundle to shipped knowledge"
+  description="Task-first paths through OKF Studio: understand an unfamiliar bundle, ask with inspectable evidence, create or improve knowledge, and check and ship the result."
+  path="workflows/"
+>
+  <main id="main">
+    <section class="section">
+      <div class="container">
+        <header class="page-head">
+          <span class="eyebrow">Workflows</span>
+          <h1 class="page-head__title">Start with the work.</h1>
+          <p class="page-head__lede">
+            Choose the job that matches what you need from the bundle. Each
+            path names the work in order and links to the relevant product areas.
+          </p>
+        </header>
+
+        <div class="workflows-list">
+          {
+            workflows.map((w) => (
+              <article class="workflow" id={w.id}>
+                <h2 class="workflow__title">{w.title}</h2>
+                <p class="workflow__question">{w.question}</p>
+                <ol class="steps">
+                  {w.steps.map((s) => (
+                    <li>{s}</li>
+                  ))}
+                </ol>
+                <p class="workflow__families">
+                  Built on:
+                  {w.families.map((id) => (
+                    <a href={familyById[id].href}>{familyById[id].title}</a>
+                  ))}
+                </p>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+    <CtaBand />
+  </main>
+</Shell>

@@ -961,7 +961,10 @@ mod tests {
         let scope = discover(&bundle, &[bundle.clone(), fixture.root.clone()])
             .expect("discover with repository grant")
             .expect("repository scope");
-        assert_eq!(scope.root, fixture.root);
+        assert_eq!(
+            scope.root,
+            dunce::canonicalize(&fixture.root).expect("canonical repository root")
+        );
     }
 
     #[test]

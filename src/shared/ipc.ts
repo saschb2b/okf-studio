@@ -393,9 +393,9 @@ const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number]
 };
 
 const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string> = {
-  "okf-core": "0.5.0",
+  "okf-core": "0.5.1",
   "okf-inspect": "0.3.0",
-  "okf-retrieve": "0.1.0",
+  "okf-retrieve": "0.1.1",
   "okf-create": "0.3.0",
   "okf-enrich": "0.2.0",
   "okf-audit": "0.3.0",
@@ -507,7 +507,7 @@ export async function onOkfCapabilityPackChanged(
 function mockCapabilityPackInfo(active: boolean): OkfCapabilityPackInfo {
   return {
     id: "okf-foundation",
-    version: "1.3.0",
+    version: "1.3.1",
     name: "OKF Foundation",
     description: "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
     publisher: "OKF Studio",

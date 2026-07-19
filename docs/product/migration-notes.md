@@ -3,7 +3,7 @@ type: Migration Guide
 title: OKF Viewer to OKF Studio
 description: What changes, including bundle-folder grants, and what stays compatible when OKF Viewer upgrades to OKF Studio.
 tags: [product, migration, upgrade, compatibility, credentials]
-timestamp: 2026-07-19T14:00:00Z
+timestamp: 2026-07-19T11:22:06Z
 ---
 
 # Upgrade in place
@@ -41,7 +41,7 @@ Installed Studio builds add the `okf-studio://` scheme through the ordinary appl
 
 One-shot MCP launch records are temporary, expire after 60 seconds, and are deleted when consumed. They are not profiles and do not need migration or rollback. Existing agent profiles, session pointers, staged checkpoints, settings, and bundle grants keep their current storage and meaning.
 
-The curated OKF methods now belong to the built-in `okf-foundation@1.3.0` pack. The update adds the focused retrieval method and `okf_retrieve` tool while retaining the writing resource, author and revise capabilities, writing-revision schema, and generic-chat discovery of every active method. It does not rewrite an existing concept or bundle. First launch creates `agents/capability-pack-state.json` with the verified pack identity and digest. **Use Legacy 0.4.0** rolls routing back to the retained single-capability baseline; **Restore OKF Foundation** re-enables the curated methods. This receipt is independent. Neither migration nor rollback rewrites custom profiles, endpoint profiles, agent-owned session pointers, Apply checkpoints, the preference store, credentials, workspace memory, routines, or bundle grants. Removing the application may leave this ordinary app-data receipt for a later reinstall, like the other local settings.
+The curated OKF methods now belong to the built-in `okf-foundation@1.3.1` pack. The update adds the focused retrieval method and `okf_retrieve` tool while retaining the writing resource, author and revise capabilities, writing-revision schema, and generic-chat discovery of every active method. It does not rewrite an existing concept or bundle. First launch creates `agents/capability-pack-state.json` with the verified pack identity and digest. **Use Legacy 0.4.0** rolls routing back to the retained single-capability baseline; **Restore OKF Foundation** re-enables the curated methods. This receipt is independent. Neither migration nor rollback rewrites custom profiles, endpoint profiles, agent-owned session pointers, Apply checkpoints, the preference store, credentials, workspace memory, routines, or bundle grants. Removing the application may leave this ordinary app-data receipt for a later reinstall, like the other local settings.
 
 Retrieval manifests are created lazily after the first bundle question and live only in the application cache under `retrieval-v1`. No bundle migration is required. Rolling back Studio may leave those disposable files; deleting that directory forces a rebuild and does not remove conversation pointers, credentials, grants, or bundle knowledge. See [Retrieval Operations](retrieval-intelligence/retrieval-operations.md).
 

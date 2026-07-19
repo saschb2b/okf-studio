@@ -848,8 +848,7 @@ fn caveats_for(
                 .find(|unit| unit.section_id == item.section_id)
         })
         .collect::<Vec<_>>();
-    let mut by_subject_section =
-        BTreeMap::<(String, String), Vec<&super::RetrievalUnit>>::new();
+    let mut by_subject_section = BTreeMap::<(String, String), Vec<&super::RetrievalUnit>>::new();
     for unit in &included {
         by_subject_section
             .entry(conflict_subject_section(unit))
@@ -1193,9 +1192,11 @@ mod tests {
 
         assert_eq!(result.receipt.route, RetrievalRoute::TemporalConflict);
         assert!(result.evidence.requires_abstention);
-        assert!(result.evidence.caveats.iter().any(|caveat| {
-            caveat.kind == EvidenceCaveatKind::AuthorityUnknown
-        }));
+        assert!(result
+            .evidence
+            .caveats
+            .iter()
+            .any(|caveat| { caveat.kind == EvidenceCaveatKind::AuthorityUnknown }));
     }
 
     #[test]
@@ -1243,7 +1244,10 @@ mod tests {
 
         assert_eq!(base.receipt.receipt_id, repeated.receipt.receipt_id);
         assert_ne!(base.receipt.receipt_id, filtered.receipt.receipt_id);
-        assert_ne!(base.receipt.receipt_id, provider_requested.receipt.receipt_id);
+        assert_ne!(
+            base.receipt.receipt_id,
+            provider_requested.receipt.receipt_id
+        );
     }
 
     #[test]

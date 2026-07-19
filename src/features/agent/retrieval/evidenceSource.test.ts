@@ -15,6 +15,7 @@ describe("retrieval evidence source", () => {
     expect(source.sourceDigest).toMatch(/^[0-9a-f]{64}$/);
     expect(source.sourceDigest).toBe(await sha256Text(source.content));
     expect(source.sourceDigest).not.toBe(result.receipt.receiptId);
+    expect(source.warning).not.toMatch(/cite|receipt footer|concept ID/i);
   });
 
   it("matches the standard SHA-256 test vector", async () => {

@@ -16,14 +16,14 @@ Use this capability when an answer needs selected bundle evidence, a route decis
 
 1. Call `okf_retrieve` with the question and no route override first.
 2. Check the receipt route, bundle fingerprint, provider disclosure, omissions, and `requiresAbstention` before using the evidence.
-3. Cite the returned concept and section identities. Read a full concept only when the selected section is insufficient.
+3. Bind bundle claims to the returned concept and section identities internally. In an ordinary Studio conversation, do not append an `Evidence`, `Sources`, or retrieval-receipt footer and do not expose internal IDs or paths as a provenance list. Studio already renders the turn receipt and its **Inspect** action. Name a concept inline only when it helps the user distinguish claims. Read a full concept only when the selected section is insufficient.
 4. For relationship questions, keep authored links distinct from what the surrounding prose claims the relationship means.
 5. If evidence is empty, filtered, conflicting, or budget-limited, report that class. Do not fill the gap from model memory.
 6. Override the route only to test a named alternative; retain both receipt IDs when comparing results.
 
 ## Artifact contract
 
-Short answers may remain prose with citations and the receipt ID. Diagnostic or cross-bundle work returns a `research-brief` containing the query, route, bundle fingerprint, evidence identities, omissions, provider states, conflicts, and abstention decision.
+Short answers remain prose. Studio owns the compact receipt and inspection surface, so the answer does not repeat the receipt ID or an evidence inventory. Preserve useful external citations inline. Diagnostic or cross-bundle work returns a `research-brief` containing the query, route, bundle fingerprint, evidence identities, omissions, provider states, conflicts, and abstention decision.
 
 ## Stop conditions
 
@@ -31,7 +31,7 @@ Stop when required authority is absent, the granted bundle changes, filters remo
 
 ## Completion checks
 
-- Every bundle claim points to a returned evidence identity.
+- Every bundle claim is grounded in a returned evidence identity without adding a provenance footer to an ordinary answer.
 - Omitted evidence and unresolved conflicts remain visible.
 - Provider unavailability is not presented as successful dense retrieval.
 - No index, receipt, or repair suggestion writes to the bundle.

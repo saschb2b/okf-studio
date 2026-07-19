@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T23:59:45Z
+timestamp: 2026-07-19T11:22:06Z
 ---
 
 # Decision
@@ -65,7 +65,7 @@ Full-context eligibility considers canonical snapshot size, declared provider wi
 
 `retrieve_okf_context` accepts a typed request and returns the manifest summary, evidence packet, receipt, diagnostic, and repair proposals. `diff_okf_retrieval_receipts` compares two receipts without source access. `export_retrieval_diagnostics` writes a user-selected redacted JSON file after validating its basename, size, and JSON structure.
 
-`okf_retrieve` exposes the same local engine through Studio Agent and the one-shot granted MCP server. Its output is bounded, contains no absolute path or credential, and never shares text remotely. The `okf-foundation@1.3.0` pack adds a focused retrieval method and makes inspect, research, and change-impact methods use coherent retrieval before broader reads.
+`okf_retrieve` exposes the same local engine through Studio Agent and the one-shot granted MCP server. Its output is bounded, contains no absolute path or credential, and never shares text remotely. The `okf-foundation@1.3.1` pack adds a focused retrieval method and makes inspect, research, and change-impact methods use coherent retrieval before broader reads.
 
 # Security and trust
 

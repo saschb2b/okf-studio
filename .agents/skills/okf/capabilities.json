@@ -4,7 +4,7 @@
   "capabilities": [
     {
       "id": "okf-core",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "description": "Inspect, author, validate, and maintain conformant Open Knowledge Format bundles.",
       "riskClass": "stage",
       "requiredTools": [
@@ -64,7 +64,7 @@
           "label": "capability changelog",
           "path": "capabilities/CHANGELOG.md",
           "mediaType": "text/markdown",
-          "sha256": "19e7c2d1c6297cd1908e86b152afa9f28e9e818cd1f6310e4ea5c22ea5f7bddb"
+          "sha256": "d6a7055bd011ad250b97d98292a4859ae21fd816430cfbd07bae553396e9ce55"
         },
         {
           "id": "writing",
@@ -92,7 +92,7 @@
     },
     {
       "id": "okf-retrieve",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Select coherent bundle evidence, explain routing and omissions, and diagnose retrieval misses without writing.",
       "riskClass": "analyze",
       "requiredTools": ["okf_retrieve", "okf_read"],
@@ -102,7 +102,7 @@
         "label": "retrieval method",
         "path": "capabilities/retrieve.md",
         "mediaType": "text/markdown",
-        "sha256": "6a86aac67ec2c9843877f11e9b5a1d42334298e5b16e7a5ab8cd3462b6f0741e"
+        "sha256": "207252ea046fe3db4876652ed0222dba650c35e176151e1d869a817430cad3c4"
       }]
     },
     {

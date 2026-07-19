@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T23:59:45Z
+timestamp: 2026-07-19T11:22:06Z
 ---
 
 # What it does
@@ -12,7 +12,7 @@ Every ordinary Agent Panel question can use a Rust-owned retrieval pass over the
 
 The generated attachment carries the lowercase SHA-256 digest of the exact Markdown sent through the prompt boundary. The retrieval receipt remains a separate identity and is never substituted for this content digest.
 
-The answer turn shows one compact evidence receipt with the excerpt count, search method, and an Inspect action. It adds a plain status only when the evidence is incomplete, conflicting, stale, unavailable, or shared remotely. Internal generation instructions such as the abstention flag never appear in the conversation.
+The answer turn shows one compact evidence receipt with the excerpt count, search method, and an Inspect action. It adds a plain status only when the evidence is incomplete, conflicting, stale, unavailable, or shared remotely. The answer does not append an `Evidence`, `Sources`, concept-path, or receipt-ID footer because Inspect already owns that provenance. A concept or external citation may still appear inline when it helps the reader understand a claim. Internal generation instructions such as the abstention flag never appear in the conversation.
 
 Opening the receipt replaces the conversation viewport with an inspector organized around three user questions: whether the evidence supports the answer, which sources were used, and what to do when those sources disagree. Conflicting sources are marked directly. Raw ranking, optional provider state, receipt identity, and other implementation detail stay collapsed under **Technical details**. **Search evidence again** states that it updates the evidence view without resending the prompt or rewriting the answer. The retained transcript is removed from layout while the inspector is open, so the two surfaces cannot overlap. Closing the inspector restores the conversation, draft, scroll position, and focus.
 

@@ -2,6 +2,8 @@
 
 ## 2026-07-19
 
+* **Fix**: Updated `okf-core` to `0.5.1`, `okf-retrieve` to `0.1.1`, and `okf-foundation` to `1.3.1` so retrieval provenance stays out of ordinary answer prose. Agent instructions now use concept identities internally without appending an Evidence, Sources, internal-path, or receipt-ID footer. The compact turn receipt and Inspect surface remain the single provenance owner, while useful concept names and external citations can still appear inline.
+
 * **Update**: Corrected the retrieval implementation record to separate observable local failures from reserved evaluation states. Studio does not claim low recall, candidate noise, stale replay, or generation non-use without the ground truth or answer telemetry those judgments require, and the roadmap no longer counts unused diagnostic or repair enum values as shipped behavior.
 
 * **Fix**: Bind retrieval receipt IDs to every material bounded request input. Filters, result limit, provider IDs, provider window, and disclosure now change the identity; an identical request remains stable. Different evidence searches can no longer alias in diagnostics or comparisons.

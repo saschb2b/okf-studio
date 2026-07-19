@@ -3,7 +3,7 @@ type: UX Contract
 title: Retrieval Experience Contract
 description: Defines the surface ownership, disclosure levels, layout invariants, state coverage, and prototype gates for retrieval intelligence.
 tags: [product, ux, retrieval, context, agents, storybook]
-timestamp: 2026-07-19T22:15:00Z
+timestamp: 2026-07-19T11:22:06Z
 ---
 
 # Decision
@@ -16,7 +16,7 @@ This contract governs the [retrieval-intelligence roadmap](retrieval-intelligenc
 
 | User job | Surface owner | Default presentation | Must not happen |
 | --- | --- | --- | --- |
-| Ask a bundle question | Composer and conversation | Prompt, answer, citations, and one compact evidence summary | Raw routes, scores, or candidate lists become permanent transcript chrome |
+| Ask a bundle question | Composer and conversation | Prompt, readable answer, useful inline citations, and one compact evidence summary | The answer repeats an Evidence, Sources, internal-path, or receipt-ID footer already owned by Inspect; raw routes, scores, or candidate lists become permanent transcript chrome |
 | Confirm scope before work | Existing task launcher or context plan | Bundles, grants, network use, exceptional cost, and material route changes | Routine local retrieval adds another confirmation step |
 | Inspect selected evidence | Reader, graph, and a retrieval inspector opened from the compact summary | Exact concepts, sections, paths, omissions, and bundle revision | Source bodies are copied into a second transcript-like region |
 | Change the evidence route | Retrieval inspector | Available routes, consequences, and rerun action | Route controls remain visible for every ordinary question |
@@ -28,7 +28,7 @@ Settings owns persistent defaults and provider configuration. It does not own pe
 # Progressive disclosure
 
 Level 0, answer
-: The conversation shows the user prompt, answer, citations, and blocking safety or scope failures. Retrieval machinery stays out of the reading path.
+: The conversation shows the user prompt, readable answer, useful inline citations, and blocking safety or scope failures. It does not append an evidence inventory or receipt identity. Retrieval machinery stays out of the reading path.
 
 Level 1, evidence receipt
 : One compact turn-owned row states the included excerpt count and route in user terms. It adds status text only for incomplete, conflicting, stale, unavailable, or remotely shared evidence. It never exposes an instruction written for the agent as user-facing copy.

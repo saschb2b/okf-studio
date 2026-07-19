@@ -2,6 +2,10 @@
 
 Capability changes are benchmarked and reviewed like tool changes. Versions are independent; changing one capability does not imply that every capability changed.
 
+## 2026-07-19
+
+- Updated `okf-core` to `0.5.1`, `okf-retrieve` to `0.1.1`, and `okf-foundation` to `1.3.1`. Ordinary Studio answers now keep retrieval identities internal and leave the evidence inventory to the compact receipt and Inspect surface. Diagnostic artifacts retain the complete identities and receipt.
+
 ## 2026-07-18
 
 - Updated `okf-core` to `0.5.0` and `okf-foundation` to `1.3.0`. Added `okf-retrieve@0.1.0`, the provider-neutral `okf_retrieve` tool, stable section evidence, retrieval receipts, routing and omission disclosure, and abstention guidance. Inspect, research, and change-impact methods now use coherent retrieval before reading whole concepts.

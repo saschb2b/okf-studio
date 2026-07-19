@@ -109,9 +109,7 @@ pub fn propose_repairs(
         })
         .collect::<Vec<_>>();
     for unit in affected {
-        if diagnostic.class == DiagnosticClass::MissingMetadata
-            && unit.health.missing_description
-        {
+        if diagnostic.class == DiagnosticClass::MissingMetadata && unit.health.missing_description {
             proposals.push(repair(
                 receipt,
                 unit,

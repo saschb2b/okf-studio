@@ -3,7 +3,7 @@ type: Runbook
 title: Retrieval Operations
 description: Rebuild, diagnosis, provider removal, cache cleanup, migration, and rollback behavior for Retrieval Intelligence.
 tags: [retrieval, operations, support, migration, cache, rollback]
-timestamp: 2026-07-19T23:59:45Z
+timestamp: 2026-07-19T11:22:06Z
 ---
 
 # What is stored
@@ -42,4 +42,4 @@ Reject or restore a staged change when it adds unsupported claims, duplicates al
 
 # Upgrade behavior
 
-The feature needs no bundle migration. Existing bundles acquire manifests only after a question is asked. Older app versions ignore the cache directory and the `okf-foundation@1.3.0` capability receipt. Rolling back the application may leave harmless derived cache files, which can be deleted as described above.
+The feature needs no bundle migration. Existing bundles acquire manifests only after a question is asked. Older app versions ignore the cache directory and the `okf-foundation@1.3.1` capability receipt. Rolling back the application may leave harmless derived cache files, which can be deleted as described above.

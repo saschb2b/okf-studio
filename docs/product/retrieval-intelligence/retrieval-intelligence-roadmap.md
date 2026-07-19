@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Retrieval Intelligence
 description: Sequenced research, experience gates, and work packages for turning connected OKF bundles into inspectable, routed, and provider-neutral model context.
 tags: [product, roadmap, rag, retrieval, context, search, agents, ux, storybook]
-timestamp: 2026-07-19T23:59:45Z
+timestamp: 2026-07-19T11:22:06Z
 ---
 
 # Outcome
@@ -41,7 +41,7 @@ The local-first transformation was implemented on 2026-07-19. The record below d
 | RI7 | Complete | Source class, owner, effective time, supersession, conflict, freshness, and authority gaps remain distinct signals. Unresolved conflicts are retained and can require abstention. |
 | RI8 | Complete, provider cache activation withheld | Canonical snapshots, eligibility, cache identity, scope fingerprint, invalidation, provider state, and local fallback are implemented. No provider KV cache is advertised without a measured cost or latency win. |
 | RI9 | Complete for observable local failures | The local pass classifies ready, empty, filter, metadata, conflict, budget, and requested-provider outcomes. Low-recall, noise, stale-replay, and generation-use states remain representable but are not auto-emitted without ground truth or answer telemetry. Receipts have stable diffs, and Evidence Lab compares methods, explains outcomes, and exports redacted JSON. |
-| RI10 | Complete | Normal Agent Panel prompts use local retrieval. The Studio Agent, one-shot MCP server, and `okf-foundation@1.3.0` pack expose bounded `okf_retrieve` behavior. Published schema adapters cover the local engine and an external Qdrant-style mapping without enabling remote access. |
+| RI10 | Complete | Normal Agent Panel prompts use local retrieval. The Studio Agent, one-shot MCP server, and `okf-foundation@1.3.1` pack expose bounded `okf_retrieve` behavior. Published schema adapters cover the local engine and an external Qdrant-style mapping without enabling remote access. |
 | RI11 | Complete for evidence-bound repairs | Missing-description and broken-link proposals include evidence sections, triggering and held-out queries, and expected improvement. Review prepares the existing author or enrich workflow; claim review, staging, validation, Apply, and checkpoint restore remain mandatory. Broader citation, title, split, and index repairs stay reserved until a diagnostic can justify them. Retrieval code has no direct write path. |
 | RI12 | Complete for the available environment | The local engine, Studio wiring, MCP contract, docs bundle, site, capability pack, component states, and whole-panel composition use the same contract. The release binary and MSI/NSIS packages build locally; release signing remains unavailable without the protected private key. Optional live providers remain explicitly unavailable rather than receiving fabricated green results. |
 

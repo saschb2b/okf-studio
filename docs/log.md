@@ -2,6 +2,8 @@
 
 ## 2026-07-20
 
+* **Update**: Prepared OKF Studio 0.4.2 with the Linux folder-picker fix contributed in pull request #9.
+
 * **Fix**: Stopped the folder picker from freezing the whole app on Linux. `pick_bundle_folder` and `create_bundle` were synchronous commands calling a blocking dialog; WebKitGTK services synchronous commands on the GTK main thread, so the parked main loop could never create the dialog. Both commands are now async like every other dialog-opening command, moving the blocking picker onto the async runtime.
 
 ## 2026-07-19

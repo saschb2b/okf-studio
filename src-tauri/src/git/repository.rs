@@ -513,7 +513,9 @@ fn git_is_available() -> bool {
 }
 
 fn git_command() -> Command {
-    let mut command = Command::new("git");
+    let command = Command::new("git");
+    #[cfg(windows)]
+    let mut command = command;
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

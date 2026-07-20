@@ -888,7 +888,7 @@ mod tests {
             info["capabilities"][1]["resources"][0]["path"],
             "capabilities/inspect.md"
         );
-        assert!(info.to_string().find("## Trigger").is_none());
+        assert!(!info.to_string().contains("## Trigger"));
     }
 
     #[test]

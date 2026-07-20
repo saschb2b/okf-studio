@@ -1204,7 +1204,7 @@ export async function connectLocalModel(
     agent: {
       name: "okf-studio-local",
       title: `${profile.name} · ${model}`,
-      version: "0.4.1-dev",
+      version: "0.4.2-dev",
     },
     authMethods: [],
     authenticated: true,

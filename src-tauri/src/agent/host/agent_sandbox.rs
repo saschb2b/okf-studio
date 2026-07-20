@@ -361,7 +361,10 @@ enum AgentSecurityBackend {
 enum AgentSecurityHostState {
     #[cfg(any(target_os = "linux", target_os = "windows"))]
     Ready,
-    #[cfg(any(test, not(any(target_os = "linux", target_os = "windows"))))]
+    #[cfg(any(
+        not(any(target_os = "linux", target_os = "windows")),
+        all(test, target_os = "windows")
+    ))]
     UnsupportedPlatform,
     #[cfg(target_os = "linux")]
     NotFound,

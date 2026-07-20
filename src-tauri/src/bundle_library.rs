@@ -929,6 +929,7 @@ fn write_library(file: &Path, bundles: &[KnownBundle]) -> Result<(), String> {
 mod tests {
     use super::{BundleLibraryState, FederatedBundleSelection, LibraryGrantState};
     use crate::bundle_grant::{BundleGrantKind, BundleGrantState};
+    use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
 
@@ -1019,7 +1020,7 @@ mod tests {
             .entries(&fixture.grants, None)
             .into_iter()
             .map(|entry| (entry.title, entry.bundle_id))
-            .collect::<Vec<_>>();
+            .collect::<BTreeMap<_, _>>();
 
         for root in [&fixture.left, &fixture.right] {
             let detected = okf_core::scan_bundles_with_depth(root, 0);
@@ -1033,10 +1034,10 @@ mod tests {
             .entries(&fixture.grants, None)
             .into_iter()
             .map(|entry| (entry.title, entry.bundle_id))
-            .collect::<Vec<_>>();
+            .collect::<BTreeMap<_, _>>();
 
         assert_eq!(before, after);
-        assert_ne!(before[0].1, before[1].1);
+        assert_ne!(before["Left knowledge"], before["Right knowledge"]);
     }
 
     #[test]

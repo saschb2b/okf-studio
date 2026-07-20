@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-19T17:15:00Z
+timestamp: 2026-07-20T12:58:00Z
 ---
 
 # Command & event surface
@@ -56,6 +56,8 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `start_watch(folder)` / `stop_watch()` | Begin/end [file watching](../features/live-reload.md). |
 | `can_self_update()` | Report whether the current package can be replaced by the updater; it performs no update check. |
 | `frontend_log(message)` | Mirror one frontend diagnostic to the host terminal during development as a control-free line capped at 16,384 characters. It does not persist a transcript. |
+
+Every command that opens a native dialog — the folder pickers, source pickers, save dialog, and confirmation prompts — is `async`, so its blocking dialog call runs on the async runtime rather than the thread that services IPC. This is required on Linux: WebKitGTK dispatches synchronous commands on the GTK main thread, and a blocking picker there parks the main loop before the dialog can be created, freezing the whole window.
 
 | Event | Payload |
 |-------|---------|

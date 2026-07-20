@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-07-20
+
+* **Fix**: Stopped the folder picker from freezing the whole app on Linux. `pick_bundle_folder` and `create_bundle` were synchronous commands calling a blocking dialog; WebKitGTK services synchronous commands on the GTK main thread, so the parked main loop could never create the dialog. Both commands are now async like every other dialog-opening command, moving the blocking picker onto the async runtime.
+
 ## 2026-07-19
 
 * **Update**: Implemented the [Site Experience Contract](product/site-evolution/site-experience-contract.md) in `site/`. The homepage now follows the Understand/Ask/Improve/Keep loop and routes detail to Product, Workflows, OKF/ODSF, Download, and project destinations. Typed data modules own product copy and navigation. The pill nav adds a keyboard-operated Product disclosure and a mobile menu, while every route has its own canonical URL and sitemap entry. The review and Git story uses a labelled flow diagram until the staged-review surface has a current capture.

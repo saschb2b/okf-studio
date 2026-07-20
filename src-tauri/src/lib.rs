@@ -372,7 +372,7 @@ pub fn run_windows_agent_sandbox(
 }
 
 #[tauri::command]
-fn pick_bundle_folder(
+async fn pick_bundle_folder(
     app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
 ) -> Result<Option<String>, String> {
@@ -432,7 +432,7 @@ async fn pick_git_repository_folder(
 /// bundle_create.rs), and the result is granted like any picked folder so the
 /// frontend can open it. Returns None when the picker is cancelled.
 #[tauri::command]
-fn create_bundle(
+async fn create_bundle(
     app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
     input: bundle_create::CreateBundleInput,

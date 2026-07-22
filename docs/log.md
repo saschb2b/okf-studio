@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added the pure compatibility-report contract behind the planned Compatibility Clinic. It groups parser, link, index, and extension findings while keeping OKF conformance, portability advice, and preservation information distinct. Resolved bundle-absolute links receive deterministic relative-target proposals, but the core performs no writes.
+
 * **Creation**: Added a deterministic producer compatibility corpus to `okf-core`. Reduced, licensed excerpts from Google's pinned GA4, Bitcoin, and Stack Overflow sample bundles now freeze concept, edge, broken-link, validation, and foreign-type behavior; an adversarial fixture freezes nested extension preservation and encoded UTF-8 link resolution. The ordinary gate is network-free.
 
 * **Fix**: Parse graph links with `pulldown-cmark` instead of an inline-link regex. Reference links, angle destinations, balanced parentheses, autolinks, footnote definitions, and escaped punctuation now produce the same targets the reader renders; link-shaped code examples no longer create false edges. Rust and the sanitized `marked` reader share one eleven-case compatibility corpus, including percent-encoded paths.

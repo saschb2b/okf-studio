@@ -3,7 +3,7 @@ type: Reference
 title: OKF Parsing
 description: How a bundle root is turned into concepts, resolved links, backlinks, and an index tree.
 tags: [architecture, parsing, links]
-timestamp: 2026-07-22T23:30:48Z
+timestamp: 2026-07-22T23:58:00Z
 ---
 
 # Pipeline
@@ -24,6 +24,12 @@ For each [detected bundle root](bundle-detection.md), the [Rust core](tech-stack
 6. **Backlinks.** Invert the edge set so each concept knows who [cites it](../features/concept-reader.md).
 7. **Index tree.** Parse each `index.md` into sections and links for the [navigation](../features/navigation.md) sidebar; synthesize one for any directory lacking an `index.md`.
 8. **Log.** Parse `log.md` (if present) into dated entries for the log view.
+
+# Compatibility report
+
+After parsing, the same pure core can derive a bounded compatibility report without changing the bundle. Each finding carries a stable rule ID, parser/link/index/extension category, exact file, level, and basis. OKF conformance errors and warnings retain their validator meaning. Portability advice, such as replacing a resolved bundle-absolute link with a relative target, remains advisory. Preserved producer fields are informational and include no repair.
+
+A safe normalization names both the authored target and its relative replacement. The report does not write either value. The native host must pass any proposed replacement through [reviewed staging](../features/agent-panel.md#context-tools-and-writes) before Apply.
 
 # Tolerance contract
 

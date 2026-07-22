@@ -30,12 +30,8 @@ pub fn classify(body: &str, concept_id: &str, ids: &HashSet<String>) -> Classifi
     let (mut seen_links, mut seen_ext, mut seen_broken) =
         (HashSet::new(), HashSet::new(), HashSet::new());
 
-    let options = Options::ENABLE_FOOTNOTES;
-    for event in Parser::new_ext(body, options) {
-        let Event::Start(Tag::Link { dest_url, .. }) = event else {
-            continue;
-        };
-        let href = dest_url.as_ref();
+    for href in targets(body) {
+        let href = href.as_str();
 
         if is_external(href) {
             if seen_ext.insert(href.to_string()) {
@@ -76,6 +72,19 @@ pub fn classify(body: &str, concept_id: &str, ids: &HashSet<String>) -> Classifi
     }
 
     out
+}
+
+/// Return every authored CommonMark link destination in document order.
+/// Compatibility analysis uses this lower-level view to report portable
+/// replacements without changing the graph classifier's de-duplicated shape.
+pub(crate) fn targets(body: &str) -> Vec<String> {
+    let options = Options::ENABLE_FOOTNOTES;
+    Parser::new_ext(body, options)
+        .filter_map(|event| match event {
+            Event::Start(Tag::Link { dest_url, .. }) => Some(dest_url.into_string()),
+            _ => None,
+        })
+        .collect()
 }
 
 /// True for `http://`, `https://`, `mailto:`, or any other `scheme:` URL.

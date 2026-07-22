@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What OKF Studio ships now, what is deferred, and what it deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-22T23:10:18Z
 ---
 
 # Current scope
@@ -19,6 +19,8 @@ Studio covers the complete local knowledge loop:
 - **Ship:** packaged installers for Windows (`.msi`/`.exe`) and Ubuntu (`.deb`/AppImage); macOS builds from source. See [Build & Release](../architecture/build-and-release.md).
 
 # Deferred
+
+The [OKF Ecosystem Response](okf-ecosystem-response-roadmap.md) sequences compatibility, profile, provenance, lifecycle, projection, and interoperability work. Its packages remain deferred unless its implementation record marks them as shipped.
 
 - Enforcement-backed external-agent isolation profiles, including a tested Windows path, before unattended writes.
 - Cross-session permission rules after ACP supplies a stable tool identity that Studio can display and match.

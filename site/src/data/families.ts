@@ -90,7 +90,7 @@ export const families: Family[] = [
           },
           {
             title: "A tolerant reader",
-            body: "Validation surfaces issues inline; the reader never rejects a sloppy bundle.",
+            body: "Validation surfaces issues inline; the reader never rejects a sloppy bundle. Links to filenames with spaces or non-ASCII characters stay connected in the graph.",
           },
           {
             title: "Design-system aware",

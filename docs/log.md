@@ -1,5 +1,11 @@
 # Update Log
 
+## 2026-07-23
+
+* **Creation**: Added the [OKF Ecosystem Response](product/okf-ecosystem-response-roadmap.md), converting public implementation problems into value-led packages for compatibility, advisory profiles, living knowledge, provenance, recipient projections, and bounded interoperability experiments. The roadmap keeps core conformance small, treats metadata as hints rather than authority, and gives every package dependencies and measurable completion gates.
+
+* **Fix**: Decode percent-encoded Markdown link paths before graph resolution and its scheme, bundle-boundary, and traversal checks. Concepts with spaces or non-ASCII filenames now retain their edges, while malformed sequences remain tolerant and encoded traversal cannot escape the bundle root.
+
 ## 2026-07-20
 
 * **Update**: Prepared OKF Studio 0.4.2 with the Linux folder-picker fix contributed in pull request #9.

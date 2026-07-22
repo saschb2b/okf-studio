@@ -3,8 +3,9 @@
 //! Implements step 4–5 of `docs/architecture/okf-parsing.md`: pull `[text](href)`
 //! links out of a body, split external (`http(s)`/`mailto`) from intra-bundle
 //! `.md` links, resolve the latter to Concept IDs (bundle-absolute or relative,
-//! normalizing `.`/`..` and stripping a trailing `#anchor`), and route each to
-//! resolved `links` or `broken_links` against the known concept set.
+//! percent-decoding the path, normalizing `.`/`..`, and stripping a trailing
+//! `#anchor`), and route each to resolved `links` or `broken_links` against the
+//! known concept set.
 
 use regex::Regex;
 use std::collections::HashSet;
@@ -48,11 +49,22 @@ pub fn classify(body: &str, concept_id: &str, ids: &HashSet<String>) -> Classifi
 
         // Only `.md` (optionally with `#anchor`) links are intra-bundle edges.
         let without_anchor = href.split('#').next().unwrap_or(href);
-        if !ends_with_md(without_anchor) {
+        let decoded = percent_decode(without_anchor);
+
+        // Classify again after decoding so an encoded scheme or bundle-absolute
+        // path cannot bypass the same guards applied to an ordinary href.
+        if is_external(&decoded) {
+            if seen_ext.insert(href.to_string()) {
+                out.external_links.push(href.to_string());
+            }
             continue;
         }
 
-        match resolve(without_anchor, concept_id) {
+        if !ends_with_md(&decoded) {
+            continue;
+        }
+
+        match resolve_decoded(&decoded, concept_id) {
             Some(target) if ids.contains(&target) => {
                 if seen_links.insert(target.clone()) {
                     out.links.push(target);
@@ -90,6 +102,11 @@ fn ends_with_md(href: &str) -> bool {
 /// or `None` if it escapes the bundle root. Bundle-absolute hrefs (`/a/b.md`)
 /// are taken from the root; relative hrefs from the source concept's directory.
 pub fn resolve(href: &str, concept_id: &str) -> Option<String> {
+    let decoded = percent_decode(href);
+    resolve_decoded(&decoded, concept_id)
+}
+
+fn resolve_decoded(href: &str, concept_id: &str) -> Option<String> {
     let mut segments: Vec<&str> = Vec::new();
 
     if let Some(abs) = href.strip_prefix('/') {
@@ -108,6 +125,40 @@ pub fn resolve(href: &str, concept_id: &str) -> Option<String> {
 
     let joined = segments.join("/");
     Some(drop_md(&joined))
+}
+
+/// Decode valid `%HH` byte sequences without applying form-encoding rules.
+/// Invalid sequences remain literal, and invalid UTF-8 cannot panic the parser.
+fn percent_decode(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if bytes[index] == b'%' && index + 2 < bytes.len() {
+            if let (Some(high), Some(low)) =
+                (hex_value(bytes[index + 1]), hex_value(bytes[index + 2]))
+            {
+                decoded.push((high << 4) | low);
+                index += 3;
+                continue;
+            }
+        }
+
+        decoded.push(bytes[index]);
+        index += 1;
+    }
+
+    String::from_utf8_lossy(&decoded).into_owned()
+}
+
+fn hex_value(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
 }
 
 /// Apply each path segment of `path` onto `segments`, normalizing `.` and `..`.
@@ -173,6 +224,47 @@ mod tests {
             resolve("data-model.md", "architecture/okf-parsing"),
             Some("architecture/data-model".to_string())
         );
+    }
+
+    #[test]
+    fn resolves_percent_encoded_space() {
+        let set = ids(&["concepts/My Concept"]);
+        let c = classify("[concept](concepts/My%20Concept.md)", "overview", &set);
+
+        assert_eq!(c.links, vec!["concepts/My Concept"]);
+        assert!(c.broken_links.is_empty());
+    }
+
+    #[test]
+    fn resolves_percent_encoded_utf8() {
+        assert_eq!(
+            resolve("caf%C3%A9.md", "examples/source"),
+            Some("examples/café".to_string())
+        );
+    }
+
+    #[test]
+    fn encoded_parent_segments_cannot_escape_bundle() {
+        assert_eq!(resolve("%2E%2E/%2E%2E/secret.md", "a"), None);
+    }
+
+    #[test]
+    fn encoded_external_scheme_remains_external() {
+        let c = classify(
+            "[external](https%3A//example.com/concept.md)",
+            "overview",
+            &ids(&[]),
+        );
+
+        assert_eq!(c.external_links, vec!["https%3A//example.com/concept.md"]);
+        assert!(c.broken_links.is_empty());
+    }
+
+    #[test]
+    fn malformed_percent_sequence_is_tolerated() {
+        let c = classify("[bad](concept%ZZ.md)", "overview", &ids(&[]));
+
+        assert_eq!(c.broken_links, vec!["concept%ZZ.md"]);
     }
 
     #[test]

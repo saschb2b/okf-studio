@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-22T23:10:18Z
 ---
 
 # Decision
@@ -28,6 +28,8 @@ Link resolution is the subtlest part of [OKF parsing](okf-parsing.md), so it is 
 
 - bundle-absolute hrefs (`/section/file.md`) resolved from the root,
 - relative hrefs (`file.md`, `../section/file.md`) resolved from the concept's directory,
+- percent-encoded spaces and UTF-8 decoded before target lookup,
+- encoded schemes and `..` segments checked after decoding so encoding cannot bypass classification or the bundle boundary,
 - `.`/`..` normalization,
 - trailing `#anchor` stripping,
 - **broken-link tolerance** — a link to a non-existent target is preserved for display but produces no edge,

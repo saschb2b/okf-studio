@@ -16,6 +16,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Writing Quality](product/okf-writing-quality-roadmap.md) - Sequenced work for evidence-preserving authoring, prose revision, advisory diagnostics, and measurable provider quality.
 * [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) - The next research branch for routed retrieval, coherent context, diagnostics, and reviewed corpus repair.
 * [Integrated Git Support](product/git-integration/git-integration-roadmap.md) - Sequenced work for repository status, staging, commits, history, and explicit remote operations.
+* [OKF Ecosystem Response](product/okf-ecosystem-response-roadmap.md) - Value-led work packages for compatibility, profiles, living knowledge, provenance, projections, and interoperability experiments.
 * [Zed Git Research](product/git-integration/zed-git-research.md) - The source-level architecture and UX findings used for Studio's Git direction.
 * [Site Experience Research](product/site-evolution/site-experience-research.md) - Evidence behind replacing the one-page feature catalogue with a scalable product site.
 * [Site Experience Contract](product/site-evolution/site-experience-contract.md) - Target site map, navigation, homepage story, content ownership, and implementation sequence.

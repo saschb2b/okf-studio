@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-22T23:30:48Z
+timestamp: 2026-07-22T23:58:00Z
 ---
 
 # Outcome
@@ -141,6 +141,7 @@ A package is complete only when all applicable conditions hold:
 | --- | --- | --- |
 | EC1 Encoded Markdown paths | Shipped | `okf-core` decodes link paths before classification and resolution, with regression cases for spaces, UTF-8, encoded traversal, encoded schemes, and malformed sequences. |
 | EC2 CommonMark link coverage | Shipped | Rust uses `pulldown-cmark` instead of an inline-link regex. Rust and the sanitized `marked` reader pass one shared eleven-case target corpus, including references, footnotes, code, autolinks, spaces, and UTF-8. |
-| EC3 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
+| EC3 Producer compatibility corpus | Shipped | A network-free `okf-core` lane reads reduced Apache-2.0 excerpts from Google's pinned GA4, Bitcoin, and Stack Overflow bundles plus an adversarial extension fixture. Its manifest freezes concepts, edges, broken targets, issue levels, producer types, and preserved nested fields. |
+| EC4 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
 
 Related product boundaries: [Design Principles](principles.md), [Scope & Non-Goals](scope-and-non-goals.md), [Validation](../features/validation.md), [Knowledge Health](../features/knowledge-health.md), [Source Adapters and Provenance](../features/source-adapters.md), and [OKF Parsing](../architecture/okf-parsing.md).

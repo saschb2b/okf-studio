@@ -495,6 +495,19 @@ fn read_bundle(
 }
 
 #[tauri::command]
+async fn okf_compatibility_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::compatibility::CompatibilityReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        okf_core::compatibility::analyze(&okf_core::read_bundle(&root))
+    })
+    .await
+    .map_err(|_| "Studio could not build the compatibility report.".to_string())
+}
+
+#[tauri::command]
 async fn retrieve_okf_context(
     app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
@@ -893,6 +906,15 @@ async fn export_agent_transcript(
 
 #[tauri::command]
 async fn export_retrieval_diagnostics(
+    app: AppHandle,
+    suggested_name: String,
+    payload: String,
+) -> Result<Option<String>, String> {
+    retrieval::export_diagnostics(&app, suggested_name, payload).await
+}
+
+#[tauri::command]
+async fn export_compatibility_diagnostic(
     app: AppHandle,
     suggested_name: String,
     payload: String,
@@ -1439,6 +1461,7 @@ pub fn run() {
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            okf_compatibility_report,
             git_repository_snapshot,
             git_repository_history,
             git_repository_diff,
@@ -1500,6 +1523,7 @@ pub fn run() {
             fetch_agent_source_url,
             export_agent_transcript,
             export_retrieval_diagnostics,
+            export_compatibility_diagnostic,
             cancel_agent_turn,
             respond_agent_permission,
             set_agent_write_grant,

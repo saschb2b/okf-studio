@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added the Compatibility Clinic to the existing validation panel. It groups parser, link, index, and extension behavior; labels conformance, portability, and preservation separately; names each file and rule; shows deterministic relative-link proposals; and exports a source-text-redacted JSON diagnostic through the native save dialog.
+
 * **Creation**: Added the pure compatibility-report contract behind the planned Compatibility Clinic. It groups parser, link, index, and extension findings while keeping OKF conformance, portability advice, and preservation information distinct. Resolved bundle-absolute links receive deterministic relative-target proposals, but the core performs no writes.
 
 * **Creation**: Added a deterministic producer compatibility corpus to `okf-core`. Reduced, licensed excerpts from Google's pinned GA4, Bitcoin, and Stack Overflow sample bundles now freeze concept, edge, broken-link, validation, and foreign-type behavior; an adversarial fixture freezes nested extension preservation and encoded UTF-8 link resolution. The ordinary gate is network-free.

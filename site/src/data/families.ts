@@ -90,7 +90,7 @@ export const families: Family[] = [
           },
           {
             title: "Links match the reader",
-            body: "Validation surfaces issues inline; a sloppy bundle still opens. CommonMark inline and reference links stay connected, while link-shaped code examples remain inert.",
+            body: "The Compatibility Clinic groups parser, link, index, and extension findings by file and rule. A sloppy bundle still opens, and a source-text-redacted JSON report makes producer problems reproducible.",
           },
           {
             title: "Design-system aware",
@@ -232,8 +232,8 @@ export const families: Family[] = [
         lede: "Deterministic checks first, advisory judgment second.",
         items: [
           {
-            title: "Conformance built in",
-            body: "Validation surfaces issues inline against the OKF spec; a tolerant reader still opens a sloppy bundle so you can fix it.",
+            title: "Conformance and portability",
+            body: "The Compatibility Clinic keeps OKF errors separate from optional portability advice and preserved producer fields. Safe link replacements are shown as proposals; the tolerant reader still opens the bundle.",
           },
           {
             title: "Health findings with evidence",
@@ -261,6 +261,7 @@ export const families: Family[] = [
       },
     ],
     docs: [
+      { label: "Compatibility Clinic", href: doc("features/compatibility-clinic.md"), external: true },
       { label: "Validation", href: doc("features/validation.md"), external: true },
       { label: "OKF writing", href: doc("features/okf-writing.md"), external: true },
       { label: "Knowledge health", href: doc("features/knowledge-health.md"), external: true },

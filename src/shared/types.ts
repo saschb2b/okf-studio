@@ -66,6 +66,33 @@ export interface Issue {
   message: string;
 }
 
+export type CompatibilityCategory = "parser" | "link" | "index" | "extension";
+export type CompatibilityLevel = "error" | "warning" | "advice" | "information";
+export type CompatibilityBasis = "okf-conformance" | "portability" | "preservation";
+
+export interface CompatibilityRepair {
+  kind: "replace-markdown-target";
+  authored: string;
+  replacement: string;
+}
+
+export interface CompatibilityFinding {
+  ruleId: string;
+  category: CompatibilityCategory;
+  level: CompatibilityLevel;
+  basis: CompatibilityBasis;
+  file: string;
+  conceptId: string | null;
+  message: string;
+  repair: CompatibilityRepair | null;
+}
+
+export interface CompatibilityReport {
+  schemaVersion: 1;
+  findings: CompatibilityFinding[];
+  truncated: boolean;
+}
+
 export interface Bundle {
   root: string;
   name: string;

@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-20T12:58:00Z
+timestamp: 2026-07-22T23:58:00Z
 ---
 
 # Command & event surface
@@ -14,6 +14,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 |---------|---------|
 | `pick_bundle_folder()` / `revoke_bundle_grant(folder)` | Open the Rust-owned native folder dialog and register its canonical result, or remove one exact remembered scope. The frontend cannot add a grant. |
 | `scan_bundles(folder, max_depth)` / `read_bundle(root)` | Require an exact Rust folder grant, register the roots detected below it for this run, then parse only an exact detected root into a full [`Bundle`](data-model.md). |
+| `okf_compatibility_report(bundle_root)` / `export_compatibility_diagnostic(suggested_name, payload)` | Analyze one exact granted bundle off the UI thread, then optionally save a bounded JSON report through a user-chosen native destination. The report contains relative files and rules, not the absolute root, concept bodies, or frontmatter values. |
 | `git_repository_snapshot(bundle_root)` / `git_repository_history(bundle_root, skip, limit)` / `git_repository_diff(bundle_root, path, staged, commit)` | Discover only an enclosing repository inside the persisted folder grant, then return bounded status, history, or unified-diff DTOs without absolute paths. |
 | `pick_git_repository_folder(bundle_root)` | When the active bundle's enclosing repository is above its current grant, open a native confirmation at the discovered root and grant only that exact selected folder. The root does not cross IPC before confirmation. |
 | `git_stage_paths(...)` / `git_unstage_paths(...)` / `git_stage_all(...)` / `git_unstage_all(...)` | Mutate the index through validated repository-relative paths and return a fresh snapshot. |

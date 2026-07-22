@@ -20,7 +20,7 @@ const raw: RawConcept[] = [
     extra: {},
     body:
       "## What it is\n\n" +
-      "A local-first desktop workspace that renders [OKF](../reference/glossary.md) bundles as a [graph](../features/graph-view.md) and reader, with optional agent assistance for researching the active bundle.\n\n" +
+      "A local-first desktop workspace that renders [OKF](../reference/glossary.md) bundles as a [graph](/features/graph-view.md) and reader, with optional agent assistance for researching the active bundle.\n\n" +
       "> [!NOTE]\n> Studio requires no account. Opening a folder stays read-only; agent processes and network actions start only when you choose them.\n\n" +
       "## How it works\n\n" +
       "Open a folder to find every bundle inside and render each as an interactive graph alongside this reader. Connect an agent only when you want to research the active bundle with explicit context.\n\n" +

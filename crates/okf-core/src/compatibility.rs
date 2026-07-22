@@ -108,8 +108,9 @@ pub fn analyze(bundle: &Bundle) -> CompatibilityReport {
 
     for concept in &bundle.concepts {
         let file = format!("{}.md", concept.id);
+        let mut seen_portable_links = HashSet::new();
         for href in links::targets(&concept.body) {
-            if !href.starts_with('/') {
+            if !href.starts_with('/') || !seen_portable_links.insert(href.clone()) {
                 continue;
             }
             let without_anchor = href.split('#').next().unwrap_or(&href);

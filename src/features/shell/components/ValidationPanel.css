@@ -22,6 +22,46 @@
   flex: 0 0 auto;
 }
 
+.vp-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.vp-intro {
+  flex: 0 0 auto;
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.vp-intro p {
+  margin: 0;
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.vp-summary {
+  font-size: var(--fs-xs);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.vp-export-status {
+  color: var(--text);
+}
+
+.vp-state {
+  margin: 0;
+  padding: var(--space-16);
+  color: var(--text-dim);
+}
+
+.vp-state.error {
+  color: var(--error);
+}
+
 /* The ScrollArea fills the space below the header. */
 .vp-scroll {
   flex: 1 1 auto;
@@ -46,13 +86,6 @@
   letter-spacing: 0.05em;
   color: var(--text-dim);
 }
-.vp-group-head.error {
-  color: var(--error);
-}
-.vp-group-head.warning {
-  color: var(--warn);
-}
-
 /* Plain count after the group label — no pill chrome. */
 .vp-count {
   font-size: var(--fs-xs);
@@ -138,17 +171,54 @@
 .vp-issue-dot.warning {
   background: var(--warn);
 }
+.vp-issue-dot.advice {
+  background: var(--accent);
+}
+.vp-issue-dot.information {
+  background: var(--text-dim);
+}
 
 .vp-msg {
   grid-column: 2;
   line-height: var(--lh-tight);
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
-.vp-target {
+.vp-finding-meta {
   grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
   font-family: var(--mono);
   font-size: var(--fs-xs);
   color: var(--text-dim);
+  min-width: 0;
+}
+
+.vp-finding-meta code,
+.vp-repair code {
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.vp-repair {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+  padding-top: var(--space-4);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 30rem) {
+  .vp-repair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
 }
 
 .vp-conformant {

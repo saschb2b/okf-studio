@@ -5,6 +5,8 @@
 import type {
   Bundle,
   BundleRoot,
+  CompatibilityFinding,
+  CompatibilityReport,
   RecentBundle,
   RemoteSource,
   Settings,
@@ -3245,6 +3247,58 @@ export async function readBundle(root: string): Promise<Bundle> {
   return invoke<Bundle>("read_bundle", { root });
 }
 
+function mockCompatibilityReport(): CompatibilityReport {
+  const findings: CompatibilityFinding[] = MOCK_BUNDLE.issues.map((issue) => ({
+    ruleId: issue.message.includes("link target not found")
+      ? "okf.conformance.link-target"
+      : "okf.conformance.parser",
+    category: issue.message.includes("link target not found") ? "link" : "parser",
+    level: issue.level,
+    basis: "okf-conformance",
+    file: issue.message.split(":", 1)[0] || `${issue.conceptId ?? "bundle"}.md`,
+    conceptId: issue.conceptId,
+    message: issue.message,
+    repair: null,
+  }));
+  findings.push({
+    ruleId: "okf.portability.relative-link",
+    category: "link",
+    level: "advice",
+    basis: "portability",
+    file: "product/overview.md",
+    conceptId: "product/overview",
+    message: "Bundle-absolute link /features/graph-view.md resolves in Studio but a relative target travels more reliably between OKF consumers.",
+    repair: {
+      kind: "replace-markdown-target",
+      authored: "/features/graph-view.md",
+      replacement: "../features/graph-view.md",
+    },
+  });
+  const extension = MOCK_BUNDLE.concepts.find((concept) => Object.keys(concept.extra).length > 0);
+  if (extension) {
+    findings.push({
+      ruleId: "okf.extensions.preserved",
+      category: "extension",
+      level: "information",
+      basis: "preservation",
+      file: `${extension.id}.md`,
+      conceptId: extension.id,
+      message: `Studio preserved producer-defined frontmatter: ${Object.keys(extension.extra).join(", ")}.`,
+      repair: null,
+    });
+  }
+  return { schemaVersion: 1, findings, truncated: false };
+}
+
+export async function readCompatibilityReport(bundleRoot: string): Promise<CompatibilityReport> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return mockCompatibilityReport();
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<CompatibilityReport>("okf_compatibility_report", { bundleRoot });
+}
+
 export async function pickGitRepositoryFolder(bundleRoot: string): Promise<string | null> {
   if (!isTauri()) return MOCK_FOLDER;
   const { invoke } = await import("@tauri-apps/api/core");
@@ -3427,6 +3481,18 @@ export async function exportRetrievalDiagnostics(
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<string | null>("export_retrieval_diagnostics", { suggestedName, payload });
+  }
+  await browserMockDelay(80);
+  return suggestedName;
+}
+
+export async function exportCompatibilityDiagnostic(
+  suggestedName: string,
+  payload: string,
+): Promise<string | null> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<string | null>("export_compatibility_diagnostic", { suggestedName, payload });
   }
   await browserMockDelay(80);
   return suggestedName;

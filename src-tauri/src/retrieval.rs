@@ -62,8 +62,7 @@ pub async fn export_diagnostics(
         .ok_or_else(|| "The selected diagnostic filename is not valid Unicode.".to_string())?
         .to_string();
     tauri::async_runtime::spawn_blocking(move || {
-        fs::write(path, payload)
-            .map_err(|_| "Studio could not save the retrieval diagnostic.".to_string())
+        fs::write(path, payload).map_err(|_| "Studio could not save the diagnostic.".to_string())
     })
     .await
     .map_err(|error| format!("The diagnostic export task failed: {error}"))??;
@@ -81,10 +80,10 @@ fn validate_diagnostic_export(suggested_name: &str, payload: &str) -> Result<(),
         return Err("The suggested diagnostic filename must be a JSON basename.".to_string());
     }
     if payload.is_empty() || payload.len() > MAX_DIAGNOSTIC_BYTES || payload.contains('\0') {
-        return Err("The retrieval diagnostic is empty or exceeds the 2 MiB limit.".to_string());
+        return Err("The diagnostic is empty or exceeds the 2 MiB limit.".to_string());
     }
     serde_json::from_str::<serde_json::Value>(payload)
-        .map_err(|_| "The retrieval diagnostic must be valid JSON.".to_string())?;
+        .map_err(|_| "The diagnostic must be valid JSON.".to_string())?;
     Ok(())
 }
 

@@ -1,0 +1,92 @@
+{
+  "cases": [
+    {
+      "name": "inline link with title",
+      "markdown": "[target](concepts/Target.md \"Concept title\")",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/Target"],
+      "expectedConcepts": ["concepts/Target"],
+      "expectedExternal": []
+    },
+    {
+      "name": "full collapsed and shortcut references",
+      "markdown": "[full][target] [target][] [target]\n\n[target]: concepts/Target.md \"Concept title\"",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/Target"],
+      "expectedConcepts": ["concepts/Target"],
+      "expectedExternal": []
+    },
+    {
+      "name": "angle destination with spaces",
+      "markdown": "[concept](<concepts/My Concept.md> \"Concept title\")",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/My Concept"],
+      "expectedConcepts": ["concepts/My Concept"],
+      "expectedExternal": []
+    },
+    {
+      "name": "balanced parentheses in destination",
+      "markdown": "[concept](concepts/Function_(one).md)",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/Function_(one)"],
+      "expectedConcepts": ["concepts/Function_(one)"],
+      "expectedExternal": []
+    },
+    {
+      "name": "link syntax inside code",
+      "markdown": "`[inline](concepts/Fake.md)`\n\n```markdown\n[block](concepts/Fake.md)\n```",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/Fake"],
+      "expectedConcepts": [],
+      "expectedExternal": []
+    },
+    {
+      "name": "CommonMark external autolink",
+      "markdown": "See <https://example.com/concept.md>.",
+      "sourceId": "overview",
+      "conceptIds": [],
+      "expectedConcepts": [],
+      "expectedExternal": ["https://example.com/concept.md"]
+    },
+    {
+      "name": "percent-encoded UTF-8 and space",
+      "markdown": "[concept](concepts/caf%C3%A9%20plan.md)",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/café plan"],
+      "expectedConcepts": ["concepts/café plan"],
+      "expectedExternal": []
+    },
+    {
+      "name": "percent-encoded external scheme",
+      "markdown": "[external](https%3A//example.com/concept.md)",
+      "sourceId": "overview",
+      "conceptIds": [],
+      "expectedConcepts": [],
+      "expectedExternal": ["https%3A//example.com/concept.md"]
+    },
+    {
+      "name": "link inside footnote definition",
+      "markdown": "Claim[^evidence]\n\n[^evidence]: See [source](concepts/Target.md).",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/Target"],
+      "expectedConcepts": ["concepts/Target"],
+      "expectedExternal": []
+    },
+    {
+      "name": "fragment on concept target",
+      "markdown": "[section](concepts/Target.md#details)",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/Target"],
+      "expectedConcepts": ["concepts/Target"],
+      "expectedExternal": []
+    },
+    {
+      "name": "escaped punctuation in destination",
+      "markdown": "[concept](concepts/My\\_Concept.md)",
+      "sourceId": "overview",
+      "conceptIds": ["concepts/My_Concept"],
+      "expectedConcepts": ["concepts/My_Concept"],
+      "expectedExternal": []
+    }
+  ]
+}

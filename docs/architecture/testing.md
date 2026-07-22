@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-22T23:10:18Z
+timestamp: 2026-07-22T23:30:48Z
 ---
 
 # Decision
@@ -34,6 +34,8 @@ Link resolution is the subtlest part of [OKF parsing](okf-parsing.md), so it is 
 - trailing `#anchor` stripping,
 - **broken-link tolerance** — a link to a non-existent target is preserved for display but produces no edge,
 - backlink inversion — each `citedBy` list is the exact reverse of the edge set.
+
+The core and rendered reader share `src/test/fixtures/markdown-link-corpus.json`. Rust asserts the graph targets produced by `pulldown-cmark`; Vitest renders the same cases through `marked`, reads the sanitized anchors, and asserts the reader resolves the same concept and external targets. The corpus covers reference links, angle destinations, balanced parentheses, code spans and fences, autolinks, percent encoding, footnote definitions, fragments, and escaped punctuation.
 
 # Validator parity
 

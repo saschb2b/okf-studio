@@ -89,8 +89,8 @@ export const families: Family[] = [
             body: "Open a folder on disk, or explicitly download and cache a GitHub URL on your machine. Rust records that choice and limits readers, assets, watchers, and agents to bundle roots found by its scan.",
           },
           {
-            title: "A tolerant reader",
-            body: "Validation surfaces issues inline; the reader never rejects a sloppy bundle. Links to filenames with spaces or non-ASCII characters stay connected in the graph.",
+            title: "Links match the reader",
+            body: "Validation surfaces issues inline; a sloppy bundle still opens. CommonMark inline and reference links stay connected, while link-shaped code examples remain inert.",
           },
           {
             title: "Design-system aware",

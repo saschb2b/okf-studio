@@ -1,15 +1,14 @@
 //! Markdown link extraction, classification, and intra-bundle resolution.
 //!
-//! Implements step 4–5 of `docs/architecture/okf-parsing.md`: pull `[text](href)`
-//! links out of a body, split external (`http(s)`/`mailto`) from intra-bundle
-//! `.md` links, resolve the latter to Concept IDs (bundle-absolute or relative,
+//! Implements step 4–5 of `docs/architecture/okf-parsing.md`: parse CommonMark
+//! links from a body, split external links from intra-bundle `.md` links,
+//! resolve the latter to Concept IDs (bundle-absolute or relative,
 //! percent-decoding the path, normalizing `.`/`..`, and stripping a trailing
 //! `#anchor`), and route each to resolved `links` or `broken_links` against the
 //! known concept set.
 
-use regex::Regex;
+use pulldown_cmark::{Event, Options, Parser, Tag};
 use std::collections::HashSet;
-use std::sync::OnceLock;
 
 /// The classified link sets for one concept body.
 #[derive(Debug, Default)]
@@ -22,12 +21,6 @@ pub struct Classified {
     pub broken_links: Vec<String>,
 }
 
-/// `[text](href)` — captures the href, allowing an optional title we ignore.
-fn link_re() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)").unwrap())
-}
-
 /// Classify every link in `body`. `concept_id` is the source concept's ID (its
 /// directory anchors relative links); `ids` is the set of all existing IDs.
 ///
@@ -37,8 +30,12 @@ pub fn classify(body: &str, concept_id: &str, ids: &HashSet<String>) -> Classifi
     let (mut seen_links, mut seen_ext, mut seen_broken) =
         (HashSet::new(), HashSet::new(), HashSet::new());
 
-    for cap in link_re().captures_iter(body) {
-        let href = &cap[1];
+    let options = Options::ENABLE_FOOTNOTES;
+    for event in Parser::new_ext(body, options) {
+        let Event::Start(Tag::Link { dest_url, .. }) = event else {
+            continue;
+        };
+        let href = dest_url.as_ref();
 
         if is_external(href) {
             if seen_ext.insert(href.to_string()) {
@@ -188,6 +185,26 @@ fn drop_md(path: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Deserialize;
+
+    const LINK_CORPUS: &str = include_str!("../../../src/test/fixtures/markdown-link-corpus.json");
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Corpus {
+        cases: Vec<CorpusCase>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct CorpusCase {
+        name: String,
+        markdown: String,
+        source_id: String,
+        concept_ids: Vec<String>,
+        expected_concepts: Vec<String>,
+        expected_external: Vec<String>,
+    }
 
     fn ids(items: &[&str]) -> HashSet<String> {
         items.iter().map(|s| s.to_string()).collect()
@@ -265,6 +282,24 @@ mod tests {
         let c = classify("[bad](concept%ZZ.md)", "overview", &ids(&[]));
 
         assert_eq!(c.broken_links, vec!["concept%ZZ.md"]);
+    }
+
+    #[test]
+    fn commonmark_corpus_matches_expected_edges() {
+        let corpus: Corpus = serde_json::from_str(LINK_CORPUS).expect("valid link corpus");
+
+        for case in corpus.cases {
+            let known_ids = case.concept_ids.into_iter().collect();
+            let classified = classify(&case.markdown, &case.source_id, &known_ids);
+
+            assert_eq!(classified.links, case.expected_concepts, "{}", case.name);
+            assert_eq!(
+                classified.external_links, case.expected_external,
+                "{}",
+                case.name
+            );
+            assert!(classified.broken_links.is_empty(), "{}", case.name);
+        }
     }
 
     #[test]

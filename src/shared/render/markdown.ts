@@ -499,6 +499,20 @@ export type ResolvedHref =
   | { kind: "external"; url: string }
   | { kind: "broken"; href: string };
 
+const PERCENT_BYTE_RUN = /(?:%[0-9a-f]{2})+/gi;
+
+/** Decode valid percent-byte runs while leaving malformed sequences literal. */
+function percentDecodePath(value: string): string {
+  return value.replace(PERCENT_BYTE_RUN, (run) => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      const bytes = run.match(/[0-9a-f]{2}/gi)?.map((pair) => Number.parseInt(pair, 16)) ?? [];
+      return new TextDecoder().decode(Uint8Array.from(bytes));
+    }
+  });
+}
+
 /** The directory portion of a concept id (path), or "" for a root-level id. */
 function dirOf(conceptId: string): string {
   const slash = conceptId.lastIndexOf("/");
@@ -547,8 +561,13 @@ export function resolveHref(href: string, fromConceptId: string): ResolvedHref {
   if (raw.startsWith("#")) return { kind: "broken", href };
 
   // Strip any query/fragment; concept targets are file paths, not anchors.
-  const path = raw.split("#")[0].split("?")[0];
-  if (!path) return { kind: "broken", href };
+  const authoredPath = raw.split("#")[0].split("?")[0];
+  if (!authoredPath) return { kind: "broken", href };
+  const path = percentDecodePath(authoredPath);
+
+  if (/^(https?:|mailto:|tel:)/i.test(path) || path.startsWith("//")) {
+    return { kind: "external", url: raw };
+  }
 
   // Resolve against the bundle root (absolute) or the linking concept's dir.
   let combined: string;
@@ -587,8 +606,9 @@ export function resolveAssetHref(href: string, fromId: string): string | null {
   if (!raw) return null;
   if (/^(https?:|mailto:|tel:|data:)/i.test(raw) || raw.startsWith("//")) return null;
 
-  const path = raw.split("#")[0].split("?")[0];
-  if (!path) return null;
+  const authoredPath = raw.split("#")[0].split("?")[0];
+  if (!authoredPath) return null;
+  const path = percentDecodePath(authoredPath);
 
   let combined: string;
   if (path.startsWith("/")) {

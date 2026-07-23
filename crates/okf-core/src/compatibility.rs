@@ -9,6 +9,7 @@ use crate::links;
 use crate::model::{Bundle, Issue, IssueLevel};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::ops::Range;
 
 const MAX_FINDINGS: usize = 4_096;
 
@@ -109,18 +110,28 @@ pub fn analyze(bundle: &Bundle) -> CompatibilityReport {
     for concept in &bundle.concepts {
         let file = format!("{}.md", concept.id);
         let mut seen_portable_links = HashSet::new();
-        for href in links::targets(&concept.body) {
+        for target in links::targets_with_ranges(&concept.body) {
+            let href = target.href;
             if !href.starts_with('/') || !seen_portable_links.insert(href.clone()) {
                 continue;
             }
             let without_anchor = href.split('#').next().unwrap_or(&href);
-            let Some(target) = links::resolve(without_anchor, &concept.id) else {
+            let Some(target_id) = links::resolve(without_anchor, &concept.id) else {
                 continue;
             };
-            if !ids.contains(&target) {
+            if !ids.contains(&target_id) {
                 continue;
             }
             let replacement = relative_target(&concept.id, &href);
+            let repair = target
+                .inline
+                .then(|| inline_destination_span(&concept.body, &target.source_range, &href))
+                .flatten()
+                .map(|_| CompatibilityRepair {
+                    kind: "replace-markdown-target".to_string(),
+                    authored: href.clone(),
+                    replacement,
+                });
             findings.push(CompatibilityFinding {
                 rule_id: "okf.portability.relative-link".to_string(),
                 category: CompatibilityCategory::Link,
@@ -131,11 +142,7 @@ pub fn analyze(bundle: &Bundle) -> CompatibilityReport {
                 message: format!(
                     "Bundle-absolute link {href} resolves in Studio but a relative target travels more reliably between OKF consumers."
                 ),
-                repair: Some(CompatibilityRepair {
-                    kind: "replace-markdown-target".to_string(),
-                    authored: href,
-                    replacement,
-                }),
+                repair,
             });
         }
 
@@ -170,6 +177,93 @@ pub fn analyze(bundle: &Bundle) -> CompatibilityReport {
         findings,
         truncated,
     }
+}
+
+/// Apply only parser-confirmed inline-link destination replacements. The same
+/// bytes elsewhere in prose, code, titles, or reference definitions remain
+/// untouched. Every declared repair must match at least one live link.
+pub fn apply_repairs(body: &str, repairs: &[CompatibilityRepair]) -> Result<String, String> {
+    if repairs.is_empty() {
+        return Err("No compatibility repairs were selected.".to_string());
+    }
+
+    let targets = links::targets_with_ranges(body);
+    let mut replacements = Vec::<(Range<usize>, String)>::new();
+    for repair in repairs {
+        validate_repair(repair)?;
+        let mut matched = false;
+        for target in targets
+            .iter()
+            .filter(|target| target.inline && target.href == repair.authored)
+        {
+            if let Some(range) = inline_destination_span(body, &target.source_range, &target.href) {
+                replacements.push((range, repair.replacement.clone()));
+                matched = true;
+            }
+        }
+        if !matched {
+            return Err(format!(
+                "The proposed target {} is no longer an inline Markdown link.",
+                repair.authored
+            ));
+        }
+    }
+
+    replacements.sort_by(|left, right| right.0.start.cmp(&left.0.start));
+    replacements.dedup_by(|left, right| left.0 == right.0);
+    let mut normalized = body.to_string();
+    for (range, replacement) in replacements {
+        normalized.replace_range(range, &replacement);
+    }
+    Ok(normalized)
+}
+
+fn validate_repair(repair: &CompatibilityRepair) -> Result<(), String> {
+    if repair.kind != "replace-markdown-target" {
+        return Err("This compatibility repair kind is not supported.".to_string());
+    }
+    if !repair.authored.starts_with('/')
+        || repair.replacement.starts_with('/')
+        || links::is_external(&repair.replacement)
+        || repair.replacement.is_empty()
+    {
+        return Err("The compatibility replacement is not a safe relative target.".to_string());
+    }
+    Ok(())
+}
+
+fn inline_destination_span(
+    body: &str,
+    source_range: &Range<usize>,
+    href: &str,
+) -> Option<Range<usize>> {
+    let source = body.get(source_range.clone())?;
+    let opener = source.rfind("](")? + 2;
+    let mut destination = opener;
+    while source
+        .as_bytes()
+        .get(destination)
+        .is_some_and(u8::is_ascii_whitespace)
+    {
+        destination += 1;
+    }
+
+    if source.as_bytes().get(destination) == Some(&b'<') {
+        destination += 1;
+        let end = destination.checked_add(href.len())?;
+        if source.get(destination..end) == Some(href) && source.as_bytes().get(end) == Some(&b'>') {
+            return Some(source_range.start + destination..source_range.start + end);
+        }
+        return None;
+    }
+
+    let end = destination.checked_add(href.len())?;
+    if source.get(destination..end) != Some(href) {
+        return None;
+    }
+    let boundary = source.as_bytes().get(end).copied()?;
+    (boundary == b')' || boundary.is_ascii_whitespace())
+        .then_some(source_range.start + destination..source_range.start + end)
 }
 
 fn finding_from_issue(issue: &Issue) -> CompatibilityFinding {
@@ -316,5 +410,69 @@ mod tests {
             .expect("extension finding");
         assert_eq!(extension.file, "nested/source.md");
         assert!(extension.message.contains("producer"));
+    }
+
+    #[test]
+    fn repairs_only_inline_destination_bytes() {
+        let body = concat!(
+            "Mention /target.md in prose.\n\n",
+            "`[code](/target.md)`\n\n",
+            "[one](/target.md \"Title\") and [two](</target.md>).\n",
+            "[ref][target]\n\n[target]: /target.md \"Reference\"\n",
+        );
+        let repair = CompatibilityRepair {
+            kind: "replace-markdown-target".to_string(),
+            authored: "/target.md".to_string(),
+            replacement: "target.md".to_string(),
+        };
+
+        let repaired = apply_repairs(body, &[repair]).expect("safe repair");
+
+        assert!(repaired.contains("Mention /target.md in prose."));
+        assert!(repaired.contains("`[code](/target.md)`"));
+        assert!(repaired.contains("[one](target.md \"Title\")"));
+        assert!(repaired.contains("[two](<target.md>)"));
+        assert!(repaired.contains("[target]: /target.md \"Reference\""));
+    }
+
+    #[test]
+    fn reference_style_portability_finding_has_no_automatic_repair() {
+        let fixture = Fixture::new();
+        fixture.write("index.md", "# Fixture\n");
+        fixture.write("target.md", "---\ntype: Reference\n---\nTarget.\n");
+        fixture.write(
+            "nested/source.md",
+            "---\ntype: Guide\n---\n[Target][target]\n\n[target]: /target.md\n",
+        );
+
+        let report = analyze(&read_bundle(&fixture.0));
+        let portable = report
+            .findings
+            .iter()
+            .find(|finding| finding.rule_id == "okf.portability.relative-link")
+            .expect("portable link finding");
+
+        assert!(portable.repair.is_none());
+    }
+
+    #[test]
+    fn rejects_stale_or_unsafe_repair_declarations() {
+        let stale = CompatibilityRepair {
+            kind: "replace-markdown-target".to_string(),
+            authored: "/missing.md".to_string(),
+            replacement: "missing.md".to_string(),
+        };
+        assert!(apply_repairs("[Target](/target.md)", &[stale])
+            .expect_err("stale repair")
+            .contains("no longer"));
+
+        let external = CompatibilityRepair {
+            kind: "replace-markdown-target".to_string(),
+            authored: "/target.md".to_string(),
+            replacement: "https://example.com".to_string(),
+        };
+        assert!(apply_repairs("[Target](/target.md)", &[external])
+            .expect_err("external replacement")
+            .contains("safe relative"));
     }
 }

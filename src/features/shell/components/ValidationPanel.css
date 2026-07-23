@@ -129,6 +129,36 @@
   outline-offset: -2px;
 }
 
+.vp-issue-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+.vp-review-trigger {
+  min-height: 28px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vp-review-trigger:hover {
+  color: var(--text);
+  background: var(--bg-sunken);
+}
+
+.vp-review-trigger:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Flat problems-list rows (the VS Code pattern): a severity dot, the message,
    and the dim concept id beneath — no card fill, no borders, no per-row
    severity word repeating the group heading right above it. Hover carries the
@@ -214,10 +244,124 @@
   font-size: var(--fs-xs);
 }
 
+.vp-review-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  color: var(--text);
+}
+
+.vp-review-message .btn {
+  flex: 0 0 auto;
+}
+
+.vp-review {
+  flex: 0 0 auto;
+  max-height: 58%;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.vp-review-head,
+.vp-review-footer,
+.vp-hunk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.vp-review-head > div {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.vp-review-head code,
+.vp-hunk-header {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.vp-review-alert,
+.vp-review-issues {
+  color: var(--error);
+}
+
+.vp-hunks {
+  display: grid;
+  gap: var(--space-8);
+  margin: var(--space-12) 0;
+}
+
+.vp-hunk {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.vp-hunk pre {
+  max-height: 12rem;
+  margin: 0;
+  overflow: auto;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  white-space: pre;
+}
+
+.vp-hunk-actions {
+  justify-content: flex-end;
+}
+
+.vp-hunk-actions .btn[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.vp-review-issues {
+  margin: 0 0 var(--space-12);
+  padding-left: var(--space-16);
+}
+
+.vp-review-footer {
+  justify-content: flex-end;
+}
+
 @media (max-width: 30rem) {
   .vp-repair {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
+  }
+
+  .vp-issue {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vp-issue-actions {
+    justify-content: flex-end;
+    padding: 0 var(--space-8) var(--space-6);
+  }
+
+  .vp-review {
+    max-height: 62%;
+    padding: var(--space-12);
+  }
+
+  .vp-review-footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

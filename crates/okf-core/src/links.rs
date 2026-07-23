@@ -7,8 +7,16 @@
 //! `#anchor`), and route each to resolved `links` or `broken_links` against the
 //! known concept set.
 
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, LinkType, Options, Parser, Tag};
 use std::collections::HashSet;
+use std::ops::Range;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct MarkdownTarget {
+    pub href: String,
+    pub source_range: Range<usize>,
+    pub inline: bool,
+}
 
 /// The classified link sets for one concept body.
 #[derive(Debug, Default)]
@@ -78,10 +86,29 @@ pub fn classify(body: &str, concept_id: &str, ids: &HashSet<String>) -> Classifi
 /// Compatibility analysis uses this lower-level view to report portable
 /// replacements without changing the graph classifier's de-duplicated shape.
 pub(crate) fn targets(body: &str) -> Vec<String> {
+    targets_with_ranges(body)
+        .into_iter()
+        .map(|target| target.href)
+        .collect()
+}
+
+/// Return authored destinations together with the parser-confirmed source
+/// range for their link. Ranges let compatibility repairs edit link syntax
+/// without touching the same text in prose or code blocks.
+pub(crate) fn targets_with_ranges(body: &str) -> Vec<MarkdownTarget> {
     let options = Options::ENABLE_FOOTNOTES;
     Parser::new_ext(body, options)
-        .filter_map(|event| match event {
-            Event::Start(Tag::Link { dest_url, .. }) => Some(dest_url.into_string()),
+        .into_offset_iter()
+        .filter_map(|(event, source_range)| match event {
+            Event::Start(Tag::Link {
+                link_type,
+                dest_url,
+                ..
+            }) => Some(MarkdownTarget {
+                href: dest_url.into_string(),
+                source_range,
+                inline: link_type == LinkType::Inline,
+            }),
             _ => None,
         })
         .collect()

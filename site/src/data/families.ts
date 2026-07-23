@@ -90,7 +90,7 @@ export const families: Family[] = [
           },
           {
             title: "Links match the reader",
-            body: "The Compatibility Clinic groups parser, link, index, and extension findings by file and rule. A sloppy bundle still opens, and a source-text-redacted JSON report makes producer problems reproducible.",
+            body: "The Compatibility Clinic groups parser, link, index, and extension findings by file and rule. Review safe link normalizations as a diff, validate the exact revision, apply it atomically, or restore the last change.",
           },
           {
             title: "Design-system aware",
@@ -233,7 +233,7 @@ export const families: Family[] = [
         items: [
           {
             title: "Conformance and portability",
-            body: "The Compatibility Clinic keeps OKF errors separate from optional portability advice and preserved producer fields. Safe link replacements are shown as proposals; the tolerant reader still opens the bundle.",
+            body: "The Compatibility Clinic keeps OKF errors separate from optional portability advice and preserved producer fields. Safe link replacements require hunk review and validation before Apply, while the tolerant reader still opens the bundle.",
           },
           {
             title: "Health findings with evidence",

@@ -29,7 +29,7 @@ For each [detected bundle root](bundle-detection.md), the [Rust core](tech-stack
 
 After parsing, the same pure core can derive a bounded compatibility report without changing the bundle. Each finding carries a stable rule ID, parser/link/index/extension category, exact file, level, and basis. OKF conformance errors and warnings retain their validator meaning. Portability advice, such as replacing a resolved bundle-absolute link with a relative target, remains advisory. Preserved producer fields are informational and include no repair.
 
-A safe normalization names both the authored target and its relative replacement. The report does not write either value. The native host must pass any proposed replacement through [reviewed staging](../features/agent-panel.md#context-tools-and-writes) before Apply.
+A safe normalization names both the authored target and its relative replacement. The core exposes a repair function that accepts only supported relative-link declarations and matches them back to parser-confirmed inline-link source ranges. It replaces destination bytes in descending source order, so identical text in prose, code, titles, and reference definitions is not changed. Reference-style destinations remain reportable but are not automatically repairable. The native host passes the resulting complete file through [reviewed staging](../features/compatibility-clinic.md#reviewed-normalization) before Apply.
 
 # Tolerance contract
 

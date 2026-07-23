@@ -69,6 +69,7 @@ mod agent_stage;
 mod bundle_create;
 mod bundle_grant;
 mod bundle_library;
+mod compatibility_stage;
 mod external_entry;
 #[path = "git/repository.rs"]
 mod git_repository;
@@ -505,6 +506,96 @@ async fn okf_compatibility_report(
     })
     .await
     .map_err(|_| "Studio could not build the compatibility report.".to_string())
+}
+
+#[tauri::command]
+async fn stage_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    file: String,
+    rule_id: String,
+    authored: String,
+) -> Result<compatibility_stage::CompatibilityReview, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.stage_normalization(&root, &file, &rule_id, &authored)
+    })
+    .await
+    .map_err(|_| "Studio could not stage the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn select_compatibility_hunk(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    path: String,
+    revision: String,
+    hunk_index: usize,
+    selected: bool,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.select_hunk(&root, &path, &revision, hunk_index, selected)
+    })
+    .await
+    .map_err(|_| "Studio could not update the compatibility review.".to_string())?
+}
+
+#[tauri::command]
+async fn validate_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedValidationInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.validate(&root))
+        .await
+        .map_err(|_| "Studio could not validate the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn apply_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    revision: String,
+) -> Result<agent_stage::AgentStagedApplyInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.apply(&root, &revision))
+        .await
+        .map_err(|_| "Studio could not apply the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn discard_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.discard(&root))
+        .await
+        .map_err(|_| "Studio could not discard the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn restore_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentCheckpointRestoreInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.restore(&root))
+        .await
+        .map_err(|_| "Studio could not restore the compatibility normalization.".to_string())?
 }
 
 #[tauri::command]
@@ -1368,6 +1459,12 @@ pub fn run() {
             app.manage(git_watch::GitWatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
+            app.manage(compatibility_stage::CompatibilityStageState::persistent(
+                app.path()
+                    .app_data_dir()?
+                    .join("compatibility")
+                    .join("apply-checkpoints"),
+            ));
             app.manage(
                 agent_routines::RoutineState::load(app.handle()).map_err(|error| {
                     std::io::Error::other(format!("could not load OKF routines: {error}"))
@@ -1462,6 +1559,12 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             okf_compatibility_report,
+            stage_compatibility_normalization,
+            select_compatibility_hunk,
+            validate_compatibility_normalization,
+            apply_compatibility_normalization,
+            discard_compatibility_normalization,
+            restore_compatibility_normalization,
             git_repository_snapshot,
             git_repository_history,
             git_repository_diff,

@@ -3299,6 +3299,160 @@ export async function readCompatibilityReport(bundleRoot: string): Promise<Compa
   return invoke<CompatibilityReport>("okf_compatibility_report", { bundleRoot });
 }
 
+export interface CompatibilityReview {
+  staged: AgentStagedChangesInfo;
+  diff: AgentStagedFileDiff;
+}
+
+let mockCompatibilityDiff: AgentStagedFileDiff | null = null;
+let mockCompatibilityCanRestore = false;
+
+export async function stageCompatibilityNormalization(
+  bundleRoot: string,
+  finding: CompatibilityFinding,
+): Promise<CompatibilityReview> {
+  if (!finding.repair) throw new Error("This compatibility finding has no safe normalization.");
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    mockCompatibilityDiff = {
+      path: finding.file,
+      kind: "modify",
+      revision: "mock-compatibility-diff-1",
+      hunks: [{
+        index: 0,
+        header: "@@ -12,1 +12,1 @@",
+        unified: `-[Graph](${finding.repair.authored})\n+[Graph](${finding.repair.replacement})`,
+        selected: true,
+        reviewed: false,
+      }],
+      truncated: false,
+    };
+    return {
+      staged: mockCompatibilityChanges(false),
+      diff: structuredClone(mockCompatibilityDiff),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<CompatibilityReview>("stage_compatibility_normalization", {
+    bundleRoot,
+    file: finding.file,
+    ruleId: finding.ruleId,
+    authored: finding.repair.authored,
+  });
+}
+
+export async function selectCompatibilityHunk(
+  bundleRoot: string,
+  path: string,
+  revision: string,
+  hunkIndex: number,
+  selected: boolean,
+): Promise<AgentStagedFileDiff> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    if (mockCompatibilityDiff?.revision !== revision) {
+      throw new Error("The staged diff changed. Review the file again.");
+    }
+    mockCompatibilityDiff = {
+      ...mockCompatibilityDiff,
+      hunks: mockCompatibilityDiff.hunks.map((hunk) => hunk.index === hunkIndex
+        ? { ...hunk, selected, reviewed: true }
+        : hunk),
+    };
+    return structuredClone(mockCompatibilityDiff);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedFileDiff>("select_compatibility_hunk", {
+    bundleRoot,
+    path,
+    revision,
+    hunkIndex,
+    selected,
+  });
+}
+
+export async function validateCompatibilityNormalization(
+  bundleRoot: string,
+): Promise<AgentStagedValidationInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    if (!mockCompatibilityDiff?.hunks.every((hunk) => hunk.reviewed)) {
+      throw new Error("Review every staged hunk before validation.");
+    }
+    return {
+      sessionId: "compatibility-clinic-mock",
+      revision: "mock-compatibility-selected-1",
+      errors: 0,
+      warnings: 0,
+      issues: [],
+      truncated: false,
+      preview: { nodes: [], edges: [], totalNodes: 0, totalEdges: 0, truncated: false },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedValidationInfo>("validate_compatibility_normalization", { bundleRoot });
+}
+
+export async function applyCompatibilityNormalization(
+  bundleRoot: string,
+  revision: string,
+): Promise<AgentStagedApplyInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    mockCompatibilityDiff = null;
+    mockCompatibilityCanRestore = true;
+    return {
+      sessionId: "compatibility-clinic-mock",
+      revision,
+      appliedFiles: 1,
+      changes: mockCompatibilityChanges(true),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedApplyInfo>("apply_compatibility_normalization", { bundleRoot, revision });
+}
+
+export async function discardCompatibilityNormalization(
+  bundleRoot: string,
+): Promise<AgentStagedChangesInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    mockCompatibilityDiff = null;
+    return mockCompatibilityChanges(mockCompatibilityCanRestore);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedChangesInfo>("discard_compatibility_normalization", { bundleRoot });
+}
+
+export async function restoreCompatibilityNormalization(
+  bundleRoot: string,
+): Promise<AgentCheckpointRestoreInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    mockCompatibilityCanRestore = false;
+    return {
+      sessionId: "compatibility-clinic-mock",
+      restoredFiles: 1,
+      changes: mockCompatibilityChanges(false),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCheckpointRestoreInfo>("restore_compatibility_normalization", { bundleRoot });
+}
+
+function mockCompatibilityChanges(canRestore: boolean): AgentStagedChangesInfo {
+  return {
+    sessionId: "compatibility-clinic-mock",
+    granted: true,
+    grantMode: "interactive",
+    mode: "enhance",
+    canRestore,
+    files: mockCompatibilityDiff
+      ? [{ path: mockCompatibilityDiff.path, bytes: 128, kind: "modify" }]
+      : [],
+  };
+}
+
 export async function pickGitRepositoryFolder(bundleRoot: string): Promise<string | null> {
   if (!isTauri()) return MOCK_FOLDER;
   const { invoke } = await import("@tauri-apps/api/core");

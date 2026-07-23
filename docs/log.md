@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Completed Compatibility Clinic normalization review. Rust regenerates a live safe-link finding and changes only parser-confirmed inline destinations, then uses the existing in-memory stage, per-hunk decisions, isolated validation, revision-bound atomic Apply, and conditional Restore. Forged findings, stale disk bases, reference definitions, code, prose, and unreviewed changes cannot enter the apply path.
+
 * **Creation**: Added the Compatibility Clinic to the existing validation panel. It groups parser, link, index, and extension behavior; labels conformance, portability, and preservation separately; names each file and rule; shows deterministic relative-link proposals; and exports a source-text-redacted JSON diagnostic through the native save dialog.
 
 * **Creation**: Added the pure compatibility-report contract behind the planned Compatibility Clinic. It groups parser, link, index, and extension findings while keeping OKF conformance, portability advice, and preservation information distinct. Resolved bundle-absolute links receive deterministic relative-target proposals, but the core performs no writes.

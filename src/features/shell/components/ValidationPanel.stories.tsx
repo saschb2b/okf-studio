@@ -52,3 +52,19 @@ export const Narrow: Story = {
     await expect(page.getByText("../features/graph-view.md")).toBeVisible();
   },
 };
+
+export const ReviewedNormalization: Story = {
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await page.findByRole("button", { name: "Review normalization" }));
+    await expect(await page.findByLabelText(/Review normalization for/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply reviewed revision" })).toBeDisabled();
+    await userEvent.click(page.getByRole("button", { name: "Keep" }));
+    await userEvent.click(page.getByRole("button", { name: "Validate" }));
+    await expect(await page.findByText("Validation passed for this exact staged revision.")).toBeVisible();
+    await userEvent.click(page.getByRole("button", { name: "Apply reviewed revision" }));
+    await expect(await page.findByText("Applied 1 normalized file.")).toBeVisible();
+    await userEvent.click(page.getByRole("button", { name: "Restore" }));
+    await expect(await page.findByText("Restored 1 file.")).toBeVisible();
+  },
+};

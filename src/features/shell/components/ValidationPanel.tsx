@@ -2,11 +2,22 @@
 // index, and extension behavior. OKF conformance remains distinct from
 // portability advice. Safe repairs are only proposals until reviewed staging.
 
-import { Download, Sparkles, X } from "lucide-react";
+import { Check, Download, RotateCcw, Sparkles, X } from "lucide-react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
-import { useEffect, useState } from "react";
-import { exportCompatibilityDiagnostic, readCompatibilityReport } from "@/shared/ipc.ts";
+import { useEffect, useRef, useState } from "react";
+import {
+  applyCompatibilityNormalization,
+  discardCompatibilityNormalization,
+  exportCompatibilityDiagnostic,
+  readCompatibilityReport,
+  restoreCompatibilityNormalization,
+  selectCompatibilityHunk,
+  stageCompatibilityNormalization,
+  validateCompatibilityNormalization,
+} from "@/shared/ipc.ts";
+import type { CompatibilityReview } from "@/shared/ipc.ts";
+import type { AgentStagedValidationInfo } from "@/features/agent/connection.ts";
 import { useApp } from "@/shared/store.tsx";
 import type {
   CompatibilityCategory,
@@ -61,11 +72,13 @@ function FindingGroup({
   findings,
   onJump,
   onTask,
+  onReview,
 }: {
   category: CompatibilityCategory;
   findings: CompatibilityFinding[];
   onJump: (conceptId: string) => void;
   onTask: (finding: CompatibilityFinding, issue: Issue, focusId: string) => void;
+  onReview: (finding: CompatibilityFinding) => void;
 }) {
   if (findings.length === 0) return null;
   const heading = CATEGORY_LABELS[category];
@@ -114,16 +127,25 @@ function FindingGroup({
               ) : (
                 <div className="vp-issue-body">{body}</div>
               )}
-              {issue ? (
-                <button
-                  id={taskId}
-                  type="button"
-                  className="vp-issue-agent"
-                  aria-label={`Work on ${finding.file} with an OKF agent`}
-                  onClick={() => onTask(finding, issue, taskId)}
-                >
-                  <Sparkles size={14} aria-hidden="true" />
-                </button>
+              {finding.repair || issue ? (
+                <div className="vp-issue-actions">
+                  {finding.repair ? (
+                    <button type="button" className="vp-review-trigger" onClick={() => onReview(finding)}>
+                      Review normalization
+                    </button>
+                  ) : null}
+                  {issue ? (
+                    <button
+                      id={taskId}
+                      type="button"
+                      className="vp-issue-agent"
+                      aria-label={`Work on ${finding.file} with an OKF agent`}
+                      onClick={() => onTask(finding, issue, taskId)}
+                    >
+                      <Sparkles size={14} aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
             </li>
           );
@@ -140,6 +162,13 @@ export function ValidationPanel() {
   const bundle = state.bundle;
   const [reportState, setReportState] = useState<ReportState>({ status: "idle" });
   const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
+  const [reportRevision, setReportRevision] = useState(0);
+  const [review, setReview] = useState<CompatibilityReview | null>(null);
+  const [validation, setValidation] = useState<AgentStagedValidationInfo | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState<string | null>(null);
+  const [canRestore, setCanRestore] = useState(false);
+  const reviewRoot = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !bundleRoot || !bundle) return;
@@ -147,12 +176,26 @@ export function ValidationPanel() {
     void readCompatibilityReport(bundleRoot).then(
       (report) => {
         if (!ignore) {
+          if (reviewRoot.current !== bundleRoot) {
+            reviewRoot.current = bundleRoot;
+            setReview(null);
+            setValidation(null);
+            setReviewMessage(null);
+            setCanRestore(false);
+          }
           setReportState({ status: "ready", bundleRoot, report });
           setExportState({ status: "idle" });
         }
       },
       (error: unknown) => {
         if (ignore) return;
+        if (reviewRoot.current !== bundleRoot) {
+          reviewRoot.current = bundleRoot;
+          setReview(null);
+          setValidation(null);
+          setReviewMessage(null);
+          setCanRestore(false);
+        }
         setReportState({
           status: "error",
           bundleRoot,
@@ -163,7 +206,7 @@ export function ValidationPanel() {
     return () => {
       ignore = true;
     };
-  }, [isOpen, bundleRoot, bundle]);
+  }, [isOpen, bundleRoot, bundle, reportRevision]);
 
   const report = reportState.status === "ready" && reportState.bundleRoot === bundleRoot
     ? reportState.report
@@ -205,6 +248,100 @@ export function ValidationPanel() {
     }
   }
 
+  async function openReview(finding: CompatibilityFinding) {
+    if (!bundleRoot || !finding.repair) return;
+    setReviewBusy(true);
+    setReviewMessage(null);
+    setValidation(null);
+    try {
+      setReview(await stageCompatibilityNormalization(bundleRoot, finding));
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : "Studio could not stage the normalization.");
+    }
+    setReviewBusy(false);
+  }
+
+  async function chooseHunk(hunkIndex: number, selected: boolean) {
+    if (!bundleRoot || !review) return;
+    setReviewBusy(true);
+    setReviewMessage(null);
+    setValidation(null);
+    try {
+      const diff = await selectCompatibilityHunk(
+        bundleRoot,
+        review.diff.path,
+        review.diff.revision,
+        hunkIndex,
+        selected,
+      );
+      setReview({ ...review, diff });
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : "Studio could not update the review.");
+    }
+    setReviewBusy(false);
+  }
+
+  async function validateReview() {
+    if (!bundleRoot || !review) return;
+    setReviewBusy(true);
+    setReviewMessage(null);
+    try {
+      const result = await validateCompatibilityNormalization(bundleRoot);
+      setValidation(result);
+      setReviewMessage(result.errors === 0
+        ? "Validation passed for this exact staged revision."
+        : `Validation found ${result.errors} error${result.errors === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : "Studio could not validate the normalization.");
+    }
+    setReviewBusy(false);
+  }
+
+  async function applyReview() {
+    if (!bundleRoot || !validation || validation.errors > 0) return;
+    setReviewBusy(true);
+    setReviewMessage(null);
+    try {
+      const applied = await applyCompatibilityNormalization(bundleRoot, validation.revision);
+      setReview(null);
+      setValidation(null);
+      setCanRestore(applied.changes.canRestore);
+      setReviewMessage(`Applied ${applied.appliedFiles} normalized file${applied.appliedFiles === 1 ? "" : "s"}.`);
+      setReportRevision((current) => current + 1);
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : "Studio could not apply the normalization.");
+    }
+    setReviewBusy(false);
+  }
+
+  async function discardReview() {
+    if (!bundleRoot) return;
+    setReviewBusy(true);
+    try {
+      await discardCompatibilityNormalization(bundleRoot);
+      setReview(null);
+      setValidation(null);
+      setReviewMessage("Normalization discarded. No bundle file changed.");
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : "Studio could not discard the normalization.");
+    }
+    setReviewBusy(false);
+  }
+
+  async function restoreApply() {
+    if (!bundleRoot) return;
+    setReviewBusy(true);
+    try {
+      const restored = await restoreCompatibilityNormalization(bundleRoot);
+      setCanRestore(false);
+      setReviewMessage(`Restored ${restored.restoredFiles} file${restored.restoredFiles === 1 ? "" : "s"}.`);
+      setReportRevision((current) => current + 1);
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : "Studio could not restore the normalization.");
+    }
+    setReviewBusy(false);
+  }
+
   return (
     <Dialog.Root
       modal={false}
@@ -242,7 +379,72 @@ export function ValidationPanel() {
               </p>
             ) : null}
             {exportState.status === "message" ? <p className="vp-export-status" role="status">{exportState.message}</p> : null}
+            {reviewBusy && !review ? <p className="vp-export-status" role="status">Preparing normalization review…</p> : null}
+            {reviewMessage ? (
+              <div className="vp-review-message" role="status">
+                <span>{reviewMessage}</span>
+                {canRestore ? (
+                  <button type="button" className="btn ghost" disabled={reviewBusy} onClick={() => void restoreApply()}>
+                    <RotateCcw size={14} aria-hidden="true" /> Restore
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
+
+          {review ? (
+            <section className="vp-review" aria-label={`Review normalization for ${review.diff.path}`}>
+              <div className="vp-review-head">
+                <div>
+                  <b>Review normalization</b>
+                  <code>{review.diff.path}</code>
+                </div>
+                <button type="button" className="btn ghost icon" aria-label="Discard normalization" disabled={reviewBusy} onClick={() => void discardReview()}>
+                  <X size={15} aria-hidden="true" />
+                </button>
+              </div>
+              {review.diff.truncated ? <p className="vp-review-alert" role="alert">This diff exceeds the review limit and cannot be applied here.</p> : null}
+              <div className="vp-hunks">
+                {review.diff.hunks.map((hunk) => (
+                  <article className="vp-hunk" key={hunk.index}>
+                    <code className="vp-hunk-header">{hunk.header}</code>
+                    <pre>{hunk.unified}</pre>
+                    <div className="vp-hunk-actions" aria-label={`Decision for change ${hunk.index + 1}`}>
+                      <button type="button" className="btn ghost" aria-pressed={hunk.reviewed && hunk.selected} disabled={reviewBusy} onClick={() => void chooseHunk(hunk.index, true)}>
+                        <Check size={14} aria-hidden="true" /> Keep
+                      </button>
+                      <button type="button" className="btn ghost" aria-pressed={hunk.reviewed && !hunk.selected} disabled={reviewBusy} onClick={() => void chooseHunk(hunk.index, false)}>
+                        <X size={14} aria-hidden="true" /> Reject
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {validation?.issues.length ? (
+                <ul className="vp-review-issues">
+                  {validation.issues.map((issue) => <li key={`${issue.path}:${issue.message}`}>{issue.message}</li>)}
+                </ul>
+              ) : null}
+              <div className="vp-review-footer">
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={reviewBusy || review.diff.truncated || review.diff.hunks.some((hunk) => !hunk.reviewed)}
+                  onClick={() => void validateReview()}
+                >
+                  Validate
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={reviewBusy || !validation || validation.errors > 0}
+                  onClick={() => void applyReview()}
+                >
+                  Apply reviewed revision
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           {!report && !reportError ? (
             <p className="vp-state" role="status">Checking parser and portability behavior…</p>
@@ -272,6 +474,7 @@ export function ValidationPanel() {
                         title: finding.file,
                         issue,
                       }, { preferredTaskId: "okf-repair", returnFocusId: focusId })}
+                      onReview={(finding) => void openReview(finding)}
                     />
                   ))}
                 </div>

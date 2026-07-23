@@ -176,6 +176,20 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:bundle-connections",
+      label: "Manage bundle connections",
+      hint: "Action",
+      run: () => actions.setConnectionsOpen(true),
+    },
+    {
+      kind: "action",
+      id: "act:relationship-exchange",
+      label: "Exchange JSON-LD relationships",
+      hint: "Action",
+      run: () => actions.setConnectionsOpen(true),
+    },
+    {
+      kind: "action",
       id: "act:share-bundle",
       label: "Create shareable bundle",
       hint: "Action",

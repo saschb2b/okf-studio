@@ -34,6 +34,9 @@ export const Populated: Story = {
     })).toBeVisible();
     await expect(canvas.getByRole("heading", { name: "Bundle metadata" })).toBeVisible();
     await expect(canvas.queryByRole("heading", { name: "Ignore rules" })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("tab", { name: "Connections" }));
+    await expect(await canvas.findByRole("heading", { name: "Connections" })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Open connections" })).toBeVisible();
     await userEvent.click(canvas.getByRole("tab", { name: "Ignore rules" }));
     await expect(await canvas.findByRole("heading", { name: "Ignore rules" })).toBeVisible();
     await userEvent.click(canvas.getByRole("tab", { name: "Profiles" }));

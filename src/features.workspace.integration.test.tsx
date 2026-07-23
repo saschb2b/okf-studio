@@ -1,8 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
 import { fillText, openBundle, renderApp } from "@/test/appHarness.tsx";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("OKF Studio workspace features", () => {
   it("uses Bundle Home to resume work, review activity, and handle attention", async () => {
@@ -29,6 +33,43 @@ describe("OKF Studio workspace features", () => {
     }));
     expect(await screen.findByRole("dialog", { name: "Compatibility Clinic" }))
       .toBeVisible();
+  });
+
+  it("keeps Home lightweight and opens connection work on demand", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    await user.click(screen.getByRole("button", { name: "Bundle home" }));
+    const home = await screen.findByRole("region", { name: "Bundle home" });
+    expect(within(home).queryByText(/checking connections/i))
+      .not.toBeInTheDocument();
+    expect(within(home).queryByText(/external source/i))
+      .not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    await fillText(user, await screen.findByRole("combobox"), "manage connections");
+    await user.click(await screen.findByRole("option", {
+      name: /manage bundle connections/i,
+    }));
+    const dialog = await screen.findByRole("dialog", { name: "Bundle connections" });
+    expect(await within(dialog).findByRole("heading", { name: "External sources" }))
+      .toBeVisible();
+    expect(within(dialog).getByText("upstream")).toBeVisible();
+  });
+
+  it("gives Bundle Home the workspace at a compact width", async () => {
+    vi.stubGlobal("innerWidth", 360);
+    window.dispatchEvent(new Event("resize"));
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    await user.click(screen.getByRole("button", { name: "Bundle home" }));
+
+    expect(await screen.findByRole("region", { name: "Bundle home" }))
+      .toBeVisible();
+    expect(container.querySelector(".workspace > .sidebar")).toBeNull();
   });
 
   it("creates a new bundle from the first-run empty state", async () => {
@@ -153,6 +194,11 @@ describe("OKF Studio workspace features", () => {
       name: /open validation report: conformant with warnings, 1 warning/i,
     })).toBeInTheDocument();
     expect(within(dialog).getByText("OKF Studio fixture")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("tab", { name: "Connections" }));
+    expect(await within(dialog).findByRole("heading", { name: "Connections" }))
+      .toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Open connections" }))
+      .toBeInTheDocument();
     await user.click(within(dialog).getByRole("tab", { name: "Ignore rules" }));
     expect(await within(dialog).findByRole("heading", { name: "Ignore rules" }))
       .toBeInTheDocument();
@@ -190,6 +236,11 @@ describe("OKF Studio workspace features", () => {
     expect(
       within(reader).getByRole("navigation", { name: /on this page/i }),
     ).toBeInTheDocument();
+    expect(within(reader).getByRole("combobox", { name: "Concept language" }))
+      .toHaveValue("product/overview");
+    expect(within(reader).getByRole("heading", { name: /resources/i }))
+      .toBeInTheDocument();
+    expect(within(reader).getByText("assets/example.notebook")).toBeInTheDocument();
   });
 
   it("opens the keyboard-shortcuts overlay with ?", async () => {

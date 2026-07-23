@@ -19,6 +19,7 @@ import { OpenRemoteDialog } from "@/features/bundle/components/OpenRemoteDialog.
 import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDialog.tsx";
 import { RecipientProjectionDialog } from "@/features/bundle/components/RecipientProjectionDialog.tsx";
 import { BundleDetailsDialog } from "@/features/bundle/components/BundleDetailsDialog.tsx";
+import { ConnectionsDialog } from "@/features/bundle/components/ConnectionsDialog.tsx";
 import { ExternalEntryDialog } from "@/features/bundle/components/ExternalEntryDialog.tsx";
 import { BundleHome } from "@/features/bundle/components/BundleHome.tsx";
 import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
@@ -29,6 +30,8 @@ import { GitDiffWorkspace } from "@/features/git/components/GitDiffWorkspace.tsx
 import { closeGitDiff, useGitDiff } from "@/features/git/gitRepositoryStore.ts";
 import { AgentPanelStateGallery } from "@/mock/AgentPanelStateGallery.tsx";
 import { showWindowWhenPainted } from "@/shared/platform/window.ts";
+
+const OVERVIEW_WITH_SIDEBAR_MIN_WIDTH = 704;
 
 function subscribeWindowResize(onChange: () => void): () => void {
   window.addEventListener("resize", onChange);
@@ -92,7 +95,7 @@ export function App() {
         {state.bundle
           ? gitDiff.open
             ? <GitDiffWorkspace />
-            : <Workspace />
+            : <Workspace windowWidth={windowWidth} />
           : <EmptyState />}
         <AgentPanel />
         <GitPanel />
@@ -118,6 +121,11 @@ export function App() {
             bundle={state.bundle}
             onOpenChange={(open) => actions.setBundleDetailsOpen(open)}
           />
+          <ConnectionsDialog
+            open={state.connectionsOpen}
+            bundle={state.bundle}
+            onOpenChange={(open) => actions.setConnectionsOpen(open)}
+          />
         </>
       )}
       {/* Settings, the shortcuts overlay, and Open-from-URL work without a
@@ -140,7 +148,7 @@ export function App() {
  * `state.paneSizes` (px when the user has dragged, otherwise a CSS default).
  * See docs/proposals/reader-first-layout.md.
  */
-function Workspace() {
+function Workspace({ windowWidth }: { windowWidth: number }) {
   const { state } = useApp();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -149,10 +157,15 @@ function Workspace() {
   // Overview takes over the content area: sidebar (if open) + the overview,
   // which scrolls its own content. Selecting any concept dismisses it.
   if (state.overview) {
+    // Reserve enough room for both a useful navigation column and a readable
+    // Home canvas. The stored sidebar preference remains unchanged, so it
+    // returns when the window grows or the user opens a concept.
+    const showOverviewSidebar =
+      showSidebar && windowWidth >= OVERVIEW_WITH_SIDEBAR_MIN_WIDTH;
     const sidebarTrack =
-      showSidebar && state.paneSizes.sidebar !== null
+      showOverviewSidebar && state.paneSizes.sidebar !== null
         ? `minmax(160px, ${state.paneSizes.sidebar}px)`
-        : showSidebar
+        : showOverviewSidebar
           ? "minmax(160px, var(--sidebar-default))"
           : null;
     return (
@@ -166,7 +179,7 @@ function Workspace() {
             .join(" "),
         }}
       >
-        {showSidebar && (
+        {showOverviewSidebar && (
           <aside className="pane sidebar">
             <Sidebar />
           </aside>

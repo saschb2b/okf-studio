@@ -264,7 +264,6 @@ export type GraphMode = "focus" | "overview";
 /** How aggressively the graph prunes edges to a readable backbone (see
  *  src/graph/backbone.ts). "all" draws every cross-link (the raw, dense graph). */
 export type LinkDensity = "sparse" | "balanced" | "all";
-
 export interface State {
   folder: string | null;
   bundles: BundleRoot[];
@@ -282,6 +281,8 @@ export interface State {
   projectionOpen: boolean;
   /** Bundle-level format, metadata, ignore rules, and advisory profiles. */
   bundleDetailsOpen: boolean;
+  /** External sources, relationship exchange, and interoperability diagnostics. */
+  connectionsOpen: boolean;
   maximized: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
@@ -339,6 +340,7 @@ function makeInitialState(): State {
   createOpen: false,
   projectionOpen: false,
   bundleDetailsOpen: false,
+  connectionsOpen: false,
   maximized: false,
   activeRoot: null,
   bundle: null,
@@ -394,6 +396,7 @@ type Msg =
   | { t: "createOpen"; v: boolean }
   | { t: "projectionOpen"; v: boolean }
   | { t: "bundleDetailsOpen"; v: boolean }
+  | { t: "connectionsOpen"; v: boolean }
   | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
@@ -493,6 +496,8 @@ function reducer(s: State, m: Msg): State {
       return { ...s, projectionOpen: m.v };
     case "bundleDetailsOpen":
       return { ...s, bundleDetailsOpen: m.v };
+    case "connectionsOpen":
+      return { ...s, connectionsOpen: m.v };
     case "maximized":
       return { ...s, maximized: m.v };
     case "setBundle": {
@@ -763,6 +768,7 @@ export interface Actions {
   setCreateOpen(open: boolean): void;
   setProjectionOpen(open: boolean): void;
   setBundleDetailsOpen(open: boolean): void;
+  setConnectionsOpen(open: boolean): void;
   /** Static new-bundle generation (see docs/features/create-bundle.md):
    *  Rust shows the parent-folder picker, writes the conformant starter, and
    *  the result opens like any picked folder. Resolves false when the user
@@ -993,6 +999,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setBundleDetailsOpen(open) {
       dispatch({ t: "bundleDetailsOpen", v: open });
+    },
+    setConnectionsOpen(open) {
+      dispatch({ t: "connectionsOpen", v: open });
     },
     async createBundle(input) {
       const folder = await ipc.createBundle(input);

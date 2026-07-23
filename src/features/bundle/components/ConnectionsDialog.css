@@ -1,0 +1,72 @@
+.connections-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  top: 50%;
+  width: min(920px, calc(100vw - 2 * var(--space-16)));
+  height: min(720px, calc(100vh - 2 * var(--space-16)));
+  max-height: calc(100vh - 2 * var(--space-16));
+  padding: var(--space-20);
+  gap: var(--space-16);
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+}
+
+.connections-dialog[data-starting-style],
+.connections-dialog[data-ending-style] {
+  transform: translate(-50%, calc(-50% - var(--space-6)));
+}
+
+.connections-dialog__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-10);
+}
+
+.connections-dialog__icon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+
+.connections-dialog__description {
+  max-width: 66ch;
+  margin: var(--space-4) 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.connections-dialog__body {
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.connections-dialog__body > .connections-workspace {
+  height: 100%;
+}
+
+.connections-dialog__body > .bundle-connections--status {
+  padding: var(--space-16);
+}
+
+@media (max-width: 36rem) {
+  .connections-dialog {
+    width: calc(100vw - 2 * var(--space-8));
+    height: calc(100vh - 2 * var(--space-8));
+    padding: var(--space-16);
+  }
+
+  .connections-dialog__head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .connections-dialog__icon {
+    display: none;
+  }
+}

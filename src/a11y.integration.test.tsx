@@ -124,10 +124,20 @@ describe("accessibility (axe-core)", () => {
     await openBundle(user);
     await user.click(screen.getByRole("button", { name: /open bundle details/i }));
     const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
-    await user.click(within(dialog).getByRole("tab", { name: "Ignore rules" }));
-    await within(dialog).findByRole("heading", { name: "Ignore rules" });
-    await user.click(within(dialog).getByRole("tab", { name: "Profiles" }));
-    await within(dialog).findByRole("heading", { name: "Advisory profiles" });
+    await user.click(within(dialog).getByRole("tab", { name: "Connections" }));
+    await within(dialog).findByRole("heading", { name: "Connections" });
+    await user.click(within(dialog).getByRole("button", { name: "Open connections" }));
+    const connections = await screen.findByRole("dialog", { name: "Bundle connections" });
+    await within(connections).findByRole("heading", { name: "External sources" });
+    await user.click(within(connections).getByRole("tab", { name: /diagnostics/i }));
+    await within(connections).findByRole("heading", { name: "Interoperability diagnostics" });
+    await user.click(within(connections).getByRole("button", { name: "Close bundle connections" }));
+    await user.click(screen.getByRole("button", { name: /open bundle details/i }));
+    const reopenedDialog = await screen.findByRole("dialog", { name: "Bundle details" });
+    await user.click(within(reopenedDialog).getByRole("tab", { name: "Ignore rules" }));
+    await within(reopenedDialog).findByRole("heading", { name: "Ignore rules" });
+    await user.click(within(reopenedDialog).getByRole("tab", { name: "Profiles" }));
+    await within(reopenedDialog).findByRole("heading", { name: "Advisory profiles" });
     await expectNoViolations(container);
   });
 

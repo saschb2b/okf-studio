@@ -3,7 +3,13 @@
 // needs attention, and where the user can resume. Every item opens the concept
 // or workspace surface that can move the work forward.
 
-import { ArrowRight, Check, GitBranch, History, TriangleAlert } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  GitBranch,
+  History,
+  TriangleAlert,
+} from "lucide-react";
 import type { MouseEvent, ReactNode } from "react";
 import { useApp } from "@/shared/store.tsx";
 import { orphanIds } from "@/shared/selectors.ts";
@@ -107,7 +113,10 @@ export function BundleHome() {
       orphanSet.has(concept.id) && !brokenIds.has(concept.id),
   );
   const hasAttention =
-    errors > 0 || warnings > 0 || broken.length > 0 || disconnected.length > 0;
+    errors > 0 ||
+    warnings > 0 ||
+    broken.length > 0 ||
+    disconnected.length > 0;
 
   const git = repository.snapshot?.availability === "ready"
     ? repository.snapshot
@@ -288,13 +297,14 @@ export function BundleHome() {
                       ) : null}
                     </AttentionGroup>
                   ) : null}
+
                 </div>
               ) : (
                 <div className="ov-clear">
                   <Check size={16} aria-hidden="true" />
                   <span>
                     <strong>No immediate maintenance</strong>
-                    <small>No validation, broken-link, or connectivity issues.</small>
+                    <small>No validation or link issues need attention.</small>
                   </span>
                 </div>
               )}

@@ -5,6 +5,7 @@ import {
   EyeOff,
   FileText,
   FolderOpen,
+  Link2,
   ListChecks,
   TriangleAlert,
   X,
@@ -14,6 +15,7 @@ import type { Bundle } from "@/shared/types.ts";
 import { MetadataInspector } from "@/features/reader/components/MetadataInspector.tsx";
 import { AdvisoryProfiles } from "./AdvisoryProfiles.tsx";
 import { IgnoreRules } from "./IgnoreRules.tsx";
+import { BundleConnectionsSummary } from "./BundleConnections.tsx";
 import { getBundleConformance } from "@/features/bundle/bundleConformance.ts";
 import { BUNDLE_DETAILS_OPENER_ID } from "@/features/bundle/bundleDetailsFocus.ts";
 import "@/shared/styles/baseui.css";
@@ -59,7 +61,7 @@ export function BundleDetailsDialog({
             <div>
               <Dialog.Title className="ui-dialog-title">Bundle details</Dialog.Title>
               <Dialog.Description className="bundle-details-dialog__description">
-                Identity, health, metadata, and rules for {bundle.name}.
+                Identity, health, connections, metadata, and rules for {bundle.name}.
               </Dialog.Description>
             </div>
             <Dialog.Close className="btn ghost icon" aria-label="Close bundle details">
@@ -121,6 +123,10 @@ export function BundleDetailsDialog({
                   <FileText size={15} aria-hidden="true" />
                   Metadata
                 </Tabs.Tab>
+                <Tabs.Tab className="bundle-details-tabs__tab" value="connections">
+                  <Link2 size={15} aria-hidden="true" />
+                  Connections
+                </Tabs.Tab>
                 <Tabs.Tab className="bundle-details-tabs__tab" value="ignore">
                   <EyeOff size={15} aria-hidden="true" />
                   Ignore rules
@@ -150,6 +156,16 @@ export function BundleDetailsDialog({
                     <p className="bundle-details-empty">No additional bundle metadata is declared.</p>
                   )}
                 </section>
+              </Tabs.Panel>
+
+              <Tabs.Panel className="bundle-details-panel" value="connections">
+                <BundleConnectionsSummary
+                  bundle={bundle}
+                  onOpen={() => {
+                    onOpenChange(false);
+                    actions.setConnectionsOpen(true);
+                  }}
+                />
               </Tabs.Panel>
 
               <Tabs.Panel className="bundle-details-panel" value="ignore">

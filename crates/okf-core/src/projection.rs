@@ -929,10 +929,7 @@ mod tests {
             timestamp: None,
             resource: None,
             extra: BTreeMap::from([
-                (
-                    "audience".to_string(),
-                    serde_json::json!(["partners"]),
-                ),
+                ("audience".to_string(), serde_json::json!(["partners"])),
                 ("sensitivity".to_string(), serde_json::json!("public")),
             ]),
             body: String::new(),

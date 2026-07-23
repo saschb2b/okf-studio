@@ -287,15 +287,21 @@ describe("OKF Studio shell", () => {
     ).toBeInTheDocument();
   });
 
-  it("surfaces the fixture's broken-link warning in the validation badge", async () => {
+  it("surfaces the fixture's broken-link warning through Bundle details", async () => {
     const user = userEvent.setup();
     renderApp();
     await openFolder(user);
-    // The mock bundle carries one broken cross-link, which validation reports
-    // as a warning (amber), not the quiet conformant baseline.
-    const badge = screen.getByRole("button", { name: /validation/i });
-    expect(badge).toHaveTextContent(/1 warning/i);
-    await user.click(badge);
+    // The mock bundle carries one broken cross-link. The title-bar Info action
+    // marks that warning; Bundle details explains it and routes to the report.
+    const details = screen.getByRole("button", {
+      name: /open bundle details.*conformant with warnings/i,
+    });
+    await user.click(details);
+    const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
+    const status = within(dialog).getByRole("button", {
+      name: /open validation report.*1 warning/i,
+    });
+    await user.click(status);
     expect(
       await screen.findByText(/link target not found/i),
     ).toBeInTheDocument();

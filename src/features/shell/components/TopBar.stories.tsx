@@ -28,6 +28,11 @@ export const BundleOpen: Story = {
     await expect(
       canvas.getByRole("button", { name: /create shareable bundle/i }),
     ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", {
+        name: /open bundle details for OKF Studio.*conformant with warnings/i,
+      }),
+    ).toBeVisible();
   },
 };
 

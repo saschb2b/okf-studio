@@ -1,10 +1,20 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { FileText, FolderOpen, X } from "lucide-react";
+import { Tabs } from "@base-ui/react/tabs";
+import {
+  Check,
+  EyeOff,
+  FileText,
+  FolderOpen,
+  ListChecks,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import { useApp } from "@/shared/store.tsx";
 import type { Bundle } from "@/shared/types.ts";
 import { MetadataInspector } from "@/features/reader/components/MetadataInspector.tsx";
 import { AdvisoryProfiles } from "./AdvisoryProfiles.tsx";
 import { IgnoreRules } from "./IgnoreRules.tsx";
+import { getBundleConformance } from "@/features/bundle/bundleConformance.ts";
 import { BUNDLE_DETAILS_OPENER_ID } from "@/features/bundle/bundleDetailsFocus.ts";
 import "@/shared/styles/baseui.css";
 import "@/shared/styles/chrome.css";
@@ -28,10 +38,16 @@ export function BundleDetailsDialog({
   ].filter((version): version is string => version !== null);
   const hasMetadata = Object.keys(bundle.extra).length > 0;
   const hasProfiles = Object.hasOwn(bundle.extra, "profiles");
+  const conformance = getBundleConformance(bundle.issues);
 
   function openConcept(conceptId: string) {
     onOpenChange(false);
     actions.selectConcept(conceptId);
+  }
+
+  function openValidationReport() {
+    onOpenChange(false);
+    actions.togglePanel("validation", true);
   }
 
   return (
@@ -43,7 +59,7 @@ export function BundleDetailsDialog({
             <div>
               <Dialog.Title className="ui-dialog-title">Bundle details</Dialog.Title>
               <Dialog.Description className="bundle-details-dialog__description">
-                Format, metadata, and rules for {bundle.name}.
+                Identity, health, metadata, and rules for {bundle.name}.
               </Dialog.Description>
             </div>
             <Dialog.Close className="btn ghost icon" aria-label="Close bundle details">
@@ -71,60 +87,108 @@ export function BundleDetailsDialog({
                   <dt>Contents</dt>
                   <dd>{bundle.concepts.length} concept{bundle.concepts.length === 1 ? "" : "s"}</dd>
                 </div>
+                <div className="bundle-details-summary__status">
+                  <dt>OKF status</dt>
+                  <dd>
+                    <button
+                      type="button"
+                      className={`bundle-details-summary__health is-${conformance.kind}`}
+                      aria-label={`Open validation report: ${conformance.label}, ${conformance.detail}`}
+                      onClick={openValidationReport}
+                    >
+                      <span aria-hidden="true">
+                        {conformance.kind === "error" ? (
+                          <X size={14} />
+                        ) : conformance.kind === "warning" ? (
+                          <TriangleAlert size={14} />
+                        ) : (
+                          <Check size={14} />
+                        )}
+                      </span>
+                      <span>
+                        <strong>{conformance.label}</strong>
+                        <small>{conformance.detail} · View report</small>
+                      </span>
+                    </button>
+                  </dd>
+                </div>
               </dl>
             </section>
 
-            <section className="bundle-details-section" aria-labelledby="bundle-metadata-title">
-              <header>
-                <span aria-hidden="true"><FileText size={16} /></span>
-                <div>
-                  <h2 id="bundle-metadata-title">Bundle metadata</h2>
-                  <p>Additional fields authored in the root <code>index.md</code>.</p>
-                </div>
-              </header>
-              {hasMetadata ? (
-                <MetadataInspector
-                  title="Fields"
-                  source="index.md"
-                  values={bundle.extra}
-                />
-              ) : (
-                <p className="bundle-details-empty">No additional bundle metadata is declared.</p>
-              )}
-            </section>
+            <Tabs.Root defaultValue="metadata" className="bundle-details-tabs">
+              <Tabs.List className="bundle-details-tabs__list" activateOnFocus>
+                <Tabs.Tab className="bundle-details-tabs__tab" value="metadata">
+                  <FileText size={15} aria-hidden="true" />
+                  Metadata
+                </Tabs.Tab>
+                <Tabs.Tab className="bundle-details-tabs__tab" value="ignore">
+                  <EyeOff size={15} aria-hidden="true" />
+                  Ignore rules
+                </Tabs.Tab>
+                <Tabs.Tab className="bundle-details-tabs__tab" value="profiles">
+                  <ListChecks size={15} aria-hidden="true" />
+                  Profiles
+                </Tabs.Tab>
+              </Tabs.List>
 
-            <IgnoreRules bundleRoot={bundle.root} />
+              <Tabs.Panel className="bundle-details-panel" value="metadata">
+                <section className="bundle-details-section" aria-labelledby="bundle-metadata-title">
+                  <header className="bundle-details-section__head">
+                    <div>
+                      <h2 id="bundle-metadata-title">Bundle metadata</h2>
+                      <p>Additional fields authored in the root <code>index.md</code>.</p>
+                    </div>
+                    <code>index.md</code>
+                  </header>
+                  {hasMetadata ? (
+                    <MetadataInspector
+                      title="Root fields"
+                      source="index.md"
+                      values={bundle.extra}
+                    />
+                  ) : (
+                    <p className="bundle-details-empty">No additional bundle metadata is declared.</p>
+                  )}
+                </section>
+              </Tabs.Panel>
 
-            {hasProfiles ? (
-              <AdvisoryProfiles
-                bundleRoot={bundle.root}
-                onOpenConcept={openConcept}
-                onReviewMigration={(diagnostic) => {
-                  onOpenChange(false);
-                  actions.openOkfTaskLauncher({
-                    kind: "profile-finding",
-                    id: `${diagnostic.namespace}:${diagnostic.ruleId}:${diagnostic.file}`,
-                    title: diagnostic.message,
-                    conceptId: diagnostic.conceptId,
-                    diagnostic,
-                  }, {
-                    preferredTaskId: "okf-migrate",
-                    returnFocusId: BUNDLE_DETAILS_OPENER_ID,
-                  });
-                }}
-              />
-            ) : (
-              <section className="bundle-details-section" aria-labelledby="bundle-profiles-title">
-                <header>
-                  <div>
-                    <h2 id="bundle-profiles-title">Advisory profiles</h2>
-                    <p>Optional, version-pinned team conventions.</p>
-                  </div>
-                  <span className="bundle-details-boundary">Not OKF validation</span>
-                </header>
-                <p className="bundle-details-empty">No advisory profiles are declared.</p>
-              </section>
-            )}
+              <Tabs.Panel className="bundle-details-panel" value="ignore">
+                <IgnoreRules bundleRoot={bundle.root} />
+              </Tabs.Panel>
+
+              <Tabs.Panel className="bundle-details-panel" value="profiles">
+                {hasProfiles ? (
+                  <AdvisoryProfiles
+                    bundleRoot={bundle.root}
+                    onOpenConcept={openConcept}
+                    onReviewMigration={(diagnostic) => {
+                      onOpenChange(false);
+                      actions.openOkfTaskLauncher({
+                        kind: "profile-finding",
+                        id: `${diagnostic.namespace}:${diagnostic.ruleId}:${diagnostic.file}`,
+                        title: diagnostic.message,
+                        conceptId: diagnostic.conceptId,
+                        diagnostic,
+                      }, {
+                        preferredTaskId: "okf-migrate",
+                        returnFocusId: BUNDLE_DETAILS_OPENER_ID,
+                      });
+                    }}
+                  />
+                ) : (
+                  <section className="bundle-details-section" aria-labelledby="bundle-profiles-title">
+                    <header className="bundle-details-section__head">
+                      <div>
+                        <h2 id="bundle-profiles-title">Advisory profiles</h2>
+                        <p>Optional, version-pinned team conventions.</p>
+                      </div>
+                      <span className="bundle-details-boundary">Not OKF validation</span>
+                    </header>
+                    <p className="bundle-details-empty">No advisory profiles are declared.</p>
+                  </section>
+                )}
+              </Tabs.Panel>
+            </Tabs.Root>
           </div>
         </Dialog.Popup>
       </Dialog.Portal>

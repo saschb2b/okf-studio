@@ -3,7 +3,7 @@ type: Reference
 title: Settings and preferences
 description: The searchable local settings workspace for appearance, reading, agents, bundle knowledge, discovery, updates, and reset.
 tags: [ux, settings, preferences]
-timestamp: 2026-07-18T20:31:00Z
+timestamp: 2026-07-24T12:00:00Z
 ---
 
 # Why Settings is a workspace
@@ -27,7 +27,7 @@ Preferences take effect immediately and persist on this device. The fixed footer
 | Reading | Control concept prose | Reader text size |
 | Agents | Control agent attention and inspect supplied methods | Background notifications, notification sound, OKF capability pack |
 | Knowledge | Manage state and access for the open bundle | Workspace memory, local routines, one-shot OKF MCP grant |
-| Updates | Perform an explicit release check | Check, install and restart, or download |
+| Updates | Notice and apply a new release | New release badge, check, install and restart, or download |
 
 These categories describe tasks that Studio supports. The workspace does not show account scopes, project overrides, or a settings file because Studio has no account, cloud preference layer, or editable settings document.
 
@@ -77,7 +77,9 @@ Use this bundle from another agent creates a copyable standard MCP descriptor. T
 
 ## Updates
 
-Check for updates is an explicit network action. Studio checks the latest GitHub release only after the user selects it. A newer AppImage or Windows build can install and restart in place. A `.deb` installation offers the same version notice and a Download action because the operating-system package manager owns replacement. Development and web builds report that updates are unavailable; see [Build and release](../architecture/build-and-release.md).
+Installing or downloading a release is always an explicit user action. Once shortly after launch, Studio quietly reads GitHub's release manifest to learn whether a newer version exists. The only surface of that check is a small warning-colored dot on the Settings icon in the [Activity Bar](browsing-layout.md) and on the Updates category inside this workspace, so a new release gets noticed without a dialog, toast, or sound. The dot animates once on arrival and then rests still; reduce motion removes the animation. A failed or offline check reports nothing, so an offline launch looks identical to an up-to-date one. The New release badge setting turns the launch check off entirely, restoring strictly on-demand checking.
+
+Opening the Updates category acknowledges the release: the dots disappear and stay away for that version across launches, returning only for a newer release. Check for updates remains available as an explicit action. A newer AppImage or Windows build can install and restart in place. A `.deb` installation offers the same version notice and a Download action because the operating-system package manager owns replacement. Development and web builds report that updates are unavailable and never run the launch check; see [Build and release](../architecture/build-and-release.md).
 
 # States and accessibility
 
@@ -89,7 +91,7 @@ Loading, empty, and error states remain inside the category that owns them. Capa
 
 Preferences persist through Tauri's local store plugin; see [IPC and security](../architecture/ipc-and-security.md) and [Tauri 2](../reference/tauri-2.md). No account or cloud sync exists, following the [local-first principle](../product/principles.md).
 
-Reset to defaults restores the shipped preference values, including System theme, default reader size, scan depth 8, motion enabled, and agent notifications and sound off. It does not delete bundle memory, routines, profiles, sessions, credentials, checkpoints, or grants.
+Reset to defaults restores the shipped preference values, including System theme, default reader size, scan depth 8, motion enabled, the new release badge on, and agent notifications and sound off. It does not delete bundle memory, routines, profiles, sessions, credentials, checkpoints, or grants.
 
 # Out of scope
 

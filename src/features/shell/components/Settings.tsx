@@ -4,7 +4,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Select } from "@base-ui/react/select";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { NumberField } from "@base-ui/react/number-field";
-import { useApp } from "@/shared/store.tsx";
+import { hasUnseenUpdate, useApp } from "@/shared/store.tsx";
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import type { Bundle, Settings as SettingsModel, ThemeMode } from "@/shared/types.ts";
 import { ZOOM_EVENT } from "@/shared/platform/native.ts";
@@ -87,7 +87,7 @@ const SETTINGS_SECTIONS = [
   {
     id: "updates",
     label: "Updates",
-    description: "Check for a new Studio release only when you ask.",
+    description: "See the release you are on and choose when a new one installs.",
     icon: Download,
   },
 ] as const satisfies readonly SettingsNavigationItem[];
@@ -178,6 +178,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     description: "Check the latest release and install or download it explicitly.",
     keywords: "version release install restart download github",
   },
+  {
+    id: "update-notify",
+    section: "updates",
+    title: "New release badge",
+    description: "Show a quiet dot on the settings icon when a new version exists.",
+    keywords: "notify automatic launch check version dot indicator badge",
+  },
 ];
 
 function clampScale(value: number): number {
@@ -192,7 +199,7 @@ function scaleLabel(value: number): string {
   return SCALE_LABELS[String(value)] ?? `${Math.round(value * 100)}%`;
 }
 
-function updateHint(status: UpdateStatus): string {
+function updateHint(status: UpdateStatus, updateNotify: boolean): string {
   switch (status.kind) {
     case "checking":
       return "Checking the latest release...";
@@ -207,7 +214,9 @@ function updateHint(status: UpdateStatus): string {
     case "error":
       return status.message;
     case "idle":
-      return "Studio checks only when you select this action.";
+      return updateNotify
+        ? "Studio looks for a new release shortly after launch. You can also check now."
+        : "The launch check is off. Studio checks only when you select this action.";
   }
 }
 
@@ -503,11 +512,15 @@ function KnowledgeSettings({ activeRoot, bundle }: { activeRoot: string | null; 
 
 function UpdateSettings({
   status,
+  settings,
+  onUpdate,
   onCheck,
   onInstall,
   onDownload,
 }: {
   status: UpdateStatus;
+  settings: SettingsModel;
+  onUpdate: (patch: Partial<SettingsModel>) => void;
   onCheck: () => void;
   onInstall: (version: string) => void;
   onDownload: (version: string) => void;
@@ -539,13 +552,25 @@ function UpdateSettings({
   return (
     <SettingsGroup
       title="Application updates"
-      description="Studio never checks automatically. This is an explicit network action."
+      description="Installing or downloading a release is always your explicit action. The one quiet network call is the launch check below, and it can be turned off."
     >
       <SettingRow
         id="setting-application-updates"
         title="Current release"
-        description={updateHint(status)}
+        description={updateHint(status, settings.updateNotify)}
         control={control}
+      />
+      <SettingRow
+        id="setting-update-notify"
+        title="New release badge"
+        description="Look for a new release once shortly after launch and show a quiet dot on the settings icon. Nothing downloads or installs on its own."
+        control={(
+          <SettingsToggle
+            label="New release badge"
+            checked={settings.updateNotify}
+            onCheckedChange={(updateNotify) => onUpdate({ updateNotify })}
+          />
+        )}
       />
     </SettingsGroup>
   );
@@ -599,9 +624,26 @@ export function Settings({
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(initialSection);
   const [query, setQuery] = useState(initialQuery);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
-  const [update, setUpdate] = useState<UpdateStatus>({ kind: "idle" });
+  // Updater state lives in the store (fed by the quiet launch check too), so
+  // this dialog and the activity-bar badge always tell the same story.
+  const update = state.updateStatus;
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const [notificationBusy, setNotificationBusy] = useState(false);
+
+  // The badge trail continues on the Updates nav item, and viewing that
+  // section is the acknowledgment: the release counts as seen, the dots go
+  // away, and they stay away for this version.
+  const showUpdateBadge = hasUnseenUpdate(state);
+  const sections = showUpdateBadge
+    ? SETTINGS_SECTIONS.map((section) =>
+        section.id === "updates" ? { ...section, badge: true } : section)
+    : SETTINGS_SECTIONS;
+  useEffect(() => {
+    if (!state.settingsOpen || activeSection !== "updates") return;
+    if (update.kind === "available" && update.version !== state.updateSeenVersion) {
+      actions.markUpdateSeen(update.version);
+    }
+  }, [state.settingsOpen, activeSection, update, state.updateSeenVersion, actions]);
 
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const searchResults = normalizedQuery.length === 0
@@ -728,8 +770,10 @@ export function Settings({
         content = (
           <UpdateSettings
             status={update}
-            onCheck={() => void checkForUpdate(setUpdate)}
-            onInstall={(version) => void installUpdate(setUpdate, version)}
+            settings={settings}
+            onUpdate={(patch) => actions.updateSettings(patch)}
+            onCheck={() => void checkForUpdate((s) => actions.setUpdateStatus(s))}
+            onInstall={(version) => void installUpdate((s) => actions.setUpdateStatus(s), version)}
             onDownload={() => actions.openExternal(RELEASES_URL)}
           />
         );
@@ -743,7 +787,7 @@ export function Settings({
         <Dialog.Backdrop className="ui-backdrop" />
         <Dialog.Popup className="ui-dialog settings-dialog">
           <SettingsWorkspace
-            sections={SETTINGS_SECTIONS}
+            sections={sections}
             activeSection={activeSection}
             query={query}
             resultCount={searchResults.length}

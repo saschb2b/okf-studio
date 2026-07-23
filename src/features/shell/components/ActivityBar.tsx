@@ -11,7 +11,7 @@
 import { Tooltip } from "@base-ui/react/tooltip";
 import { Filter, Keyboard, LayoutDashboard, ListTree, Settings } from "lucide-react";
 import type { ReactNode } from "react";
-import { useApp } from "@/shared/store.tsx";
+import { hasUnseenUpdate, useApp } from "@/shared/store.tsx";
 import type { Lens } from "@/shared/store.tsx";
 import { modKey } from "@/shared/platform/platform.ts";
 import "@/shared/styles/baseui.css";
@@ -23,6 +23,7 @@ function ActivityButton({
   ariaLabel,
   active,
   badge,
+  badgeTone,
   onClick,
   children,
 }: {
@@ -32,6 +33,8 @@ function ActivityButton({
   /** Pressed state for view-switcher buttons; omit for plain actions. */
   active?: boolean;
   badge?: boolean;
+  /** Dot color role: accent (default) for state, warn for attention. */
+  badgeTone?: "warn";
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -49,7 +52,12 @@ function ActivityButton({
             <span className="activity-icon" aria-hidden="true">
               {children}
             </span>
-            {badge && <span className="activity-badge" aria-hidden="true" />}
+            {badge && (
+              <span
+                className={`activity-badge${badgeTone ? ` activity-badge--${badgeTone}` : ""}`}
+                aria-hidden="true"
+              />
+            )}
           </button>
         }
       />
@@ -66,6 +74,10 @@ export function ActivityBar() {
   const { state, actions } = useApp();
   const filterActive = state.hiddenTypes.length > 0 || state.activeTag !== null;
   const sidebarOpen = state.panels.sidebar;
+  // A new release the user hasn't acknowledged yet: warn dot on the gear
+  // (SteamOS-style), named in the tooltip and the accessible label. The trail
+  // continues inside Settings on the Updates nav item.
+  const updateReady = hasUnseenUpdate(state);
 
   // VS Code semantics: a view icon opens the sidebar to its lens; re-clicking the
   // already-visible view collapses the sidebar.
@@ -122,8 +134,14 @@ export function ActivityBar() {
             <Keyboard size={18} />
           </ActivityButton>
           <ActivityButton
-            label={`Settings   ${modKey} ,`}
-            ariaLabel="Open settings"
+            label={
+              updateReady
+                ? `Settings · Update available   ${modKey} ,`
+                : `Settings   ${modKey} ,`
+            }
+            ariaLabel={updateReady ? "Open settings, update available" : "Open settings"}
+            badge={updateReady}
+            badgeTone="warn"
             onClick={() => actions.setSettingsOpen(true)}
           >
             <Settings size={18} />

@@ -286,6 +286,9 @@ export interface Settings {
   readerFont: ReaderFont;
   /** Dyslexia-friendly letter/word spacing in the reader body. */
   readerAids: boolean;
+  /** Look for a new release once shortly after launch and show a quiet badge
+   *  on the settings icon when one exists. Installing stays user-initiated. */
+  updateNotify: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -299,6 +302,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readerLeading: 1.7,
   readerFont: "sans",
   readerAids: false,
+  updateNotify: true,
 };
 
 /** A directed cross-link edge in the concept graph. */

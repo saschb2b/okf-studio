@@ -3,14 +3,14 @@ type: Design Principle
 title: Design Principles
 description: The non-negotiable principles every OKF Studio feature and decision must respect.
 tags: [product, principles]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-24T12:00:00Z
 ---
 
 # Principles
 
 These are the constraints behind every [feature](../features/) and [architecture decision](../architecture/). When a trade-off is unclear, the earlier principle wins.
 
-1. **Local-first and offline-capable.** Reading, validating, searching, graphing, staging, applying, and inspecting local Git state require no Studio server or account. Opening a local folder makes no network request. Network activity is tied to a named user action such as opening a URL, checking for updates, installing or connecting an external agent, contacting a configured model endpoint, fetching an attached source, or choosing Fetch, Pull, or Push in [Integrated Git](../features/integrated-git.md). Studio does not add telemetry or silent phone-home behavior. An air-gapped workspace remains useful with local files and a local model or agent; hosted providers and remote sources are unavailable by definition.
+1. **Local-first and offline-capable.** Reading, validating, searching, graphing, staging, applying, and inspecting local Git state require no Studio server or account. Opening a local folder makes no network request. Network activity is tied to a named user action such as opening a URL, checking for updates, installing or connecting an external agent, contacting a configured model endpoint, fetching an attached source, or choosing Fetch, Pull, or Push in [Integrated Git](../features/integrated-git.md), with one disclosed exception: a quiet once-per-launch read of the public release manifest that feeds the [update badge](../ux/settings.md), carries no identity, and has an off switch. Studio does not add telemetry or silent phone-home behavior. An air-gapped workspace remains useful with local files and a local model or agent; hosted providers and remote sources are unavailable by definition.
 
 2. **Vendor-neutral.** Studio reads and curates conformant OKF bundles from any producer. It targets the [format](../reference/okf-spec-summary.md), independent of a specific tool or schema. Agent connections are replaceable: ACP, a local endpoint, or an API-key-backed compatible endpoint can drive the same reviewed workspace.
 

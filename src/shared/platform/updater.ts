@@ -1,8 +1,11 @@
-// Opt-in update flow. The app never checks on its own — this runs only when the
-// user clicks "Check for updates" in Settings, keeping the local-first,
-// offline-by-default stance (the one user-initiated network path). It's a two
-// step flow: check, then (on confirm) install. How the install resolves depends
-// on the running package:
+// Update flow. Installing is always an explicit user action; checking has two
+// paths. The quiet path runs once shortly after launch (gated by the
+// `updateNotify` setting, on by default, with an off switch in Settings) and
+// only feeds the update badge — it never surfaces progress or errors, so an
+// offline launch looks identical to an up-to-date one. The loud path is the
+// "Check for updates" button in Settings. Either way it's a two step flow:
+// check, then (on confirm) install. How the install resolves depends on the
+// running package:
 //   - AppImage / Windows  → download, verify the signature, install, relaunch.
 //   - .deb (or any non-AppImage Linux) → the Tauri updater can't replace the
 //     install in place, so we surface the new version and a Download link to the
@@ -31,6 +34,25 @@ async function canSelfUpdate(): Promise<boolean> {
     return await invoke<boolean>("can_self_update");
   } catch {
     return true; // command unavailable → assume installable, fail loudly on install
+  }
+}
+
+/**
+ * The quiet once-per-launch check behind the update badge. Resolves only to a
+ * definite answer (`available` / `uptodate`); everything else — web builds,
+ * offline, endpoint errors — resolves `null` so a failed background check
+ * never produces UI. Never throws.
+ */
+export async function checkForUpdateQuietly(): Promise<UpdateStatus | null> {
+  if (!isTauri()) return null;
+  try {
+    const canInstall = await canSelfUpdate();
+    const { check } = await import("@tauri-apps/plugin-updater");
+    const update = await check();
+    if (!update) return { kind: "uptodate" };
+    return { kind: "available", version: update.version, canInstall };
+  } catch {
+    return null;
   }
 }
 

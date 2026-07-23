@@ -92,6 +92,10 @@
   min-height: 36px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  /* Extra children (the Updates attention dot) join as trailing columns
+     instead of wrapping to an implicit row under the label. */
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
   align-items: center;
   gap: var(--space-10);
   padding: 0 var(--space-10);
@@ -102,6 +106,16 @@
   font: inherit;
   text-align: start;
   cursor: pointer;
+}
+
+/* Attention dot on a nav item (Updates): same quiet warn dot as the activity
+   bar, resting flush right so the rail stays scannable. */
+.settings-nav__badge {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+  justify-self: end;
 }
 
 .settings-nav button:hover {

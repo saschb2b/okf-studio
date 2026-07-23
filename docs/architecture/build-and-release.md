@@ -1,14 +1,14 @@
 ---
 type: Architecture Decision
 title: Build & Release
-description: How the app is versioned, packaged per OS, released, and updated without automatic network requests.
+description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check and user-initiated installs.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-07-15T12:20:00Z
+timestamp: 2026-07-24T12:00:00Z
 ---
 
 # Decision
 
-The app ships as native installers per platform, built by `tauri build` on a per-OS CI matrix. No OS code signing for v1 (users see an "unverified publisher" prompt). Updates are **opt-in** — a user-initiated "Check for updates" via Tauri's signed updater — so the build still honors the offline principle: it phones home neither at build time nor automatically at runtime.
+The app ships as native installers per platform, built by `tauri build` on a per-OS CI matrix. No OS code signing for v1 (users see an "unverified publisher" prompt). Installing updates is always **user-initiated**, via Tauri's signed updater. The one automatic network call the shipped binary makes is a single quiet release check shortly after launch that feeds the update badge; it is disclosed in [Settings](../ux/settings.md), carries no identity or telemetry, and has an off switch that restores strictly on-demand checking.
 
 # Packaging
 
@@ -46,12 +46,17 @@ Two version numbers stay deliberately distinct:
 
 # Updates
 
-Updates are **opt-in**, via Tauri's updater plugin: the user clicks "Check for updates" in [Settings](../ux/settings.md) — the app never checks on its own, so the offline-by-default stance holds (see [Design Principles](../product/principles.md)). The check hits a single stable endpoint, GitHub's `releases/latest/download/latest.json`, which always serves the newest release's updater manifest; `tauri-action` generates and uploads that manifest (`includeUpdaterJson`).
+Installing updates is **user-initiated**, via Tauri's updater plugin. Checking has two paths, both hitting the same single stable endpoint, GitHub's `releases/latest/download/latest.json`, which always serves the newest release's updater manifest (`tauri-action` generates and uploads it via `includeUpdaterJson`):
+
+- a **quiet launch check** (once per launch, main window only, gated by the on-by-default "New release badge" setting) whose only output is the badge on the Settings icon; failures and offline launches surface nothing, and pop-out windows and web/dev builds never check;
+- the explicit **"Check for updates"** action in [Settings](../ux/settings.md).
+
+The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)): a version-file read with no identity attached, added because releases went unnoticed when discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.
 
 - **Signing is mandatory.** The updater verifies a **minisign** signature on each artifact (it cannot be disabled). The public key lives in `tauri.conf.json`; the private key + password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing (which is still not done — see above).
 - **Update vehicles:** the **AppImage** (Linux) and **NSIS** (Windows) self-install in place. A **`.deb` install can't self-replace** (the OS package manager owns it), so it is detected (a small `can_self_update` command checks for the AppImage runtime) and given the **same in-app "version X available" hint plus a Download link** to the releases page — rather than a failing in-app install. So `.deb` users still find out about updates; they just install by downloading the new package.
 
-Silent/automatic updates remain out of scope — the network call only ever happens on an explicit user action.
+Silent/automatic **installs** remain out of scope: bytes only ever download and apply on an explicit user action. The automatic part stops at "a newer version exists", rendered as a quiet badge.
 
 # Install & uninstall
 
@@ -61,4 +66,4 @@ Following platform install best practices, installers target a **per-user instal
 
 # Offline build, no phone-home
 
-The [local-first / offline principle](../product/principles.md) extends to the build. The shipped binary sends **no telemetry**, makes **no automatic network calls**, and has no license call. The one network path is the **user-initiated** update check above — never automatic — so the app is still air-gapped by default; an offline user simply never clicks "Check for updates" and nothing reaches out.
+The [local-first / offline principle](../product/principles.md) extends to the build. The shipped binary sends **no telemetry** and has no license call. Its one automatic network path is the quiet launch release check above: a read of a public static version file, carrying no identity, disabled by one setting. Everything else that touches the network is user-initiated. An air-gapped install stays fully functional; the failed launch check is silent, and turning the badge setting off means nothing reaches out at all.

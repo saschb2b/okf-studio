@@ -29,6 +29,8 @@ import {
   onWindowResized,
   openConceptWindow,
 } from "@/shared/platform/window.ts";
+import { checkForUpdateQuietly } from "@/shared/platform/updater.ts";
+import type { UpdateStatus } from "@/shared/platform/updater.ts";
 import { bundleContextFingerprint, type OkfTaskId } from "@/features/agent/taskContext.ts";
 import type {
   OkfTaskLaunchRequest,
@@ -198,6 +200,36 @@ function saveAgentPanelLayout(layout: AgentPanelLayout): void {
   }
 }
 
+// The newest release version the user has already seen in Settings → Updates.
+// Persisting it is what keeps the update badge one-shot per release: it shows
+// until the user visits the Updates section once, then stays away for that
+// version across launches and only re-arms for a newer release.
+const UPDATE_SEEN_KEY = "okf-viewer:update-seen";
+
+function loadUpdateSeenVersion(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    return localStorage.getItem(UPDATE_SEEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveUpdateSeenVersion(version: string): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(UPDATE_SEEN_KEY, version);
+  } catch {
+    // Persistence is best-effort; ignore quota/serialization errors.
+  }
+}
+
+/** Whether the update badge should show: a release is available and the user
+ *  has not yet acknowledged that version by visiting Settings → Updates. */
+export function hasUnseenUpdate(s: Pick<State, "updateStatus" | "updateSeenVersion">): boolean {
+  return s.updateStatus.kind === "available" && s.updateStatus.version !== s.updateSeenVersion;
+}
+
 /**
  * Which visualization the graph pane renders. "graph" is the force-directed
  * network (the default); the rest are space-filling hierarchy views built from
@@ -320,6 +352,11 @@ export interface State {
   settingsOpen: boolean;
   help: boolean;
   settings: Settings;
+  /** Shared updater state: fed by the quiet launch check and by the explicit
+   *  actions in Settings → Updates, read by the settings-icon badge. */
+  updateStatus: UpdateStatus;
+  /** Last release version acknowledged in Settings → Updates (persisted). */
+  updateSeenVersion: string | null;
 }
 
 // Built per AppProvider mount (useReducer's lazy initializer) rather than at
@@ -381,6 +418,8 @@ function makeInitialState(): State {
   settingsOpen: false,
   help: false,
   settings: DEFAULT_SETTINGS,
+  updateStatus: { kind: "idle" },
+  updateSeenVersion: loadUpdateSeenVersion(),
   };
 }
 
@@ -426,7 +465,9 @@ type Msg =
   | { t: "okfTaskLauncher"; v: OkfTaskLaunchRequest | null }
   | { t: "settingsOpen"; v: boolean }
   | { t: "help"; v: boolean }
-  | { t: "settings"; v: Settings };
+  | { t: "settings"; v: Settings }
+  | { t: "updateStatus"; v: UpdateStatus }
+  | { t: "updateSeen"; v: string };
 
 /**
  * Re-derive the selection mirrors (`activeConceptId`/`back`/`fwd`) from the
@@ -739,6 +780,10 @@ function reducer(s: State, m: Msg): State {
       return { ...s, help: m.v };
     case "settings":
       return { ...s, settings: m.v };
+    case "updateStatus":
+      return { ...s, updateStatus: m.v };
+    case "updateSeen":
+      return { ...s, updateSeenVersion: m.v };
   }
 }
 
@@ -816,6 +861,10 @@ export interface Actions {
   setSettingsOpen(open: boolean): void;
   setHelp(open: boolean): void;
   updateSettings(patch: Partial<Settings>): void;
+  /** Report an updater result (from the explicit check/install flow). */
+  setUpdateStatus(status: UpdateStatus): void;
+  /** Acknowledge an available release: hides the badge for that version. */
+  markUpdateSeen(version: string): void;
   openExternal(url: string): void;
 }
 
@@ -1147,6 +1196,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ t: "settings", v: next });
       void ipc.saveSettings(next);
     },
+    setUpdateStatus(status) {
+      dispatch({ t: "updateStatus", v: status });
+    },
+    markUpdateSeen(version) {
+      dispatch({ t: "updateSeen", v: version });
+      saveUpdateSeenVersion(version);
+    },
     openExternal(url) {
       void ipc.openExternal(url);
     },
@@ -1185,6 +1241,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ t: "recents", v: recents });
       if (recents.length > 0 && ipc.isTauri()) {
         await actions.openRecentBundle(recents[0]);
+      }
+      // The quiet update check behind the settings-icon badge: once per launch,
+      // after boot has settled, main window only (the bootTarget path above
+      // returns early, so pop-outs never phone out). Silent by design — only a
+      // definite answer lands in the store; see updater.ts.
+      if (s.updateNotify) {
+        const status = await checkForUpdateQuietly();
+        if (status) dispatch({ t: "updateStatus", v: status });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

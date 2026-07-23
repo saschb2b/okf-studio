@@ -17,6 +17,9 @@ export interface SettingsNavigationItem {
   label: string;
   description: string;
   icon: LucideIcon;
+  /** Attention dot on the nav item (e.g. Updates when a release is available),
+   *  continuing the trail from the activity-bar settings badge. */
+  badge?: boolean;
 }
 
 interface SettingsWorkspaceProps {
@@ -80,6 +83,12 @@ export function SettingsWorkspace({
                 >
                   <Icon size={16} aria-hidden="true" />
                   <span>{section.label}</span>
+                  {section.badge && (
+                    <>
+                      <span className="settings-nav__badge" aria-hidden="true" />
+                      <span className="sr-only">, update available</span>
+                    </>
+                  )}
                 </button>
               );
             })}

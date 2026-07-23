@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-07-24
+
+* **Update**: Added a quiet **update badge** so new releases stop going unnoticed. Once shortly after launch (main window only, never pop-outs or web builds), Studio reads the public release manifest; if a newer version exists, a small warning-colored dot appears on the Settings gear in the [Activity Bar](ux/browsing-layout.md), springs in once with two soft sonar rings, then rests still (reduce motion keeps only the resting dot). The trail continues on the Updates item inside [Settings](ux/settings.md); visiting that category acknowledges the release, and the dot stays away for that version across launches. Failures and offline launches surface nothing. Installing stays an explicit action, and the on-by-default **New release badge** setting removes the automatic check entirely; [principles](product/principles.md), [build-and-release](architecture/build-and-release.md), and [IPC & Security](architecture/ipc-and-security.md) now document this one disclosed exception to user-initiated networking.
+
 ## 2026-07-23
 
 * **Update**: Prepared OKF Studio 0.5.0. Bundle Home now brings recent work, knowledge health, and repository activity together; bundle information and optional connections have focused workspaces; sharing and knowledge maintenance use reviewed, source-preserving flows; advisory profiles, provenance, lineage, reliability, and compatibility findings are available where they help a decision; and authored hierarchy now guides both navigation and visualizations while wide tables remain readable.

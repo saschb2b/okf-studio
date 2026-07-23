@@ -78,3 +78,38 @@
   border-radius: 50%;
   background: var(--accent);
 }
+
+/* Update-available dot on the Settings gear: warn tone, and announced exactly
+   once — the dot springs in, sends two soft sonar rings, then rests perfectly
+   still. A looping pulse in a persistent rail would nag; all the motion is in
+   the arrival. Under reduce-motion the global duration kill switch collapses
+   both animations, leaving the plain resting dot. */
+.activity-badge--warn {
+  background: var(--warn);
+  animation: activity-badge-enter 260ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+.activity-badge--warn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--warn);
+  opacity: 0;
+  animation: activity-badge-ping 900ms ease-out 2;
+  animation-delay: 260ms;
+}
+@keyframes activity-badge-enter {
+  from {
+    transform: scale(0);
+  }
+}
+@keyframes activity-badge-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}

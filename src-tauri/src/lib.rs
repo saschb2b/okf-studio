@@ -629,6 +629,39 @@ async fn stage_concept_move(
     .map_err(|_| "Studio could not stage the concept move.".to_string())?
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ConceptRetirementRequest {
+    source_id: String,
+    action: String,
+    replacement_id: Option<String>,
+    reason: String,
+    decision_date: String,
+}
+
+#[tauri::command]
+async fn stage_concept_retirement(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    request: ConceptRetirementRequest,
+) -> Result<compatibility_stage::ConceptRetirementReview, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.stage_concept_retirement(
+            &root,
+            &request.source_id,
+            &request.action,
+            request.replacement_id.as_deref(),
+            &request.reason,
+            &request.decision_date,
+        )
+    })
+    .await
+    .map_err(|_| "Studio could not stage the retirement decision.".to_string())?
+}
+
 #[tauri::command]
 async fn concept_move_diff(
     grants: State<'_, bundle_grant::BundleGrantState>,
@@ -1684,6 +1717,7 @@ pub fn run() {
             discard_compatibility_normalization,
             restore_compatibility_normalization,
             stage_concept_move,
+            stage_concept_retirement,
             concept_move_diff,
             select_concept_move_hunk,
             validate_concept_move,

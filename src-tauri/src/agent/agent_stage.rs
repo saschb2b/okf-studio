@@ -256,7 +256,7 @@ struct CheckpointFile {
     target: PathBuf,
     backup: Option<PathBuf>,
     original_content: Option<String>,
-    applied_content: String,
+    applied_content: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -274,7 +274,7 @@ struct PersistedCheckpoint {
 struct PersistedCheckpointFile {
     path: String,
     original_content: Option<String>,
-    applied_content: String,
+    applied_content: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -570,6 +570,53 @@ impl SessionStages {
             stage_write_into(&mut candidate, &path, content)?;
         }
         *stage = candidate;
+        Ok(snapshot(session_id, stage))
+    }
+
+    /// Stage deletion of one existing regular text file. Deletion stays in the
+    /// same bounded review, validation, revision, apply, and restore path as
+    /// writes.
+    pub fn stage_delete(
+        &self,
+        session_id: &str,
+        path: &Path,
+    ) -> Result<AgentStagedChangesInfo, String> {
+        let mut sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| "Agent staging state is unavailable.".to_string())?;
+        let stage = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| "Bundle write denied: the ACP session is not active.".to_string())?;
+        if stage.grant.active_mode().is_none() {
+            return Err(WRITE_GRANT_MESSAGE.to_string());
+        }
+        if stage.mode == AgentStageMode::Create {
+            return Err("Fresh bundle drafts cannot stage deletions.".to_string());
+        }
+        let relative = bundle_relative_write_path(&stage.bundle_root, path)?;
+        let metadata = path
+            .symlink_metadata()
+            .map_err(|_| "Bundle delete denied: the file is not available.".to_string())?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err("Bundle delete denied: only regular files can be staged.".to_string());
+        }
+        if metadata.len() > MAX_STAGED_FILE_BYTES as u64 {
+            return Err("Bundle delete denied: the file exceeds the review limit.".to_string());
+        }
+        if !stage.files.contains_key(&relative) && stage.files.len() >= MAX_STAGED_FILES {
+            return Err(format!(
+                "Bundle delete denied: staged changes are limited to {MAX_STAGED_FILES} files."
+            ));
+        }
+        stage.files.insert(
+            relative,
+            StagedFile {
+                content: String::new(),
+                kind: "delete",
+                selection: None,
+            },
+        );
         Ok(snapshot(session_id, stage))
     }
 
@@ -1407,7 +1454,7 @@ fn selected_staged_content(
             output.push_str(line);
         }
     }
-    let content = if file.kind == "create" && output.is_empty() {
+    let content = if matches!(file.kind, "create" | "delete") && output.is_empty() {
         None
     } else {
         Some(output)
@@ -1445,6 +1492,11 @@ fn prepare_selected_stage(
                     "Staged apply needs a fresh review of {path}; the file now exists."
                 ));
             }
+            if file.kind == "delete" && !target.is_file() {
+                return Err(format!(
+                    "Staged apply needs a fresh review of {path}; the file is no longer available."
+                ));
+            }
             let original = read_original(bundle_root, path, file.kind)?;
             let (effective, diff_revision) = selected_staged_content(path, file, &original)?;
             Ok(PreparedStagedFile {
@@ -1462,7 +1514,10 @@ fn require_explicit_enhance_reviews(
     bundle_root: &Path,
     files: &BTreeMap<String, StagedFile>,
 ) -> Result<(), String> {
-    for (path, file) in files.iter().filter(|(_, file)| file.kind == "modify") {
+    for (path, file) in files
+        .iter()
+        .filter(|(_, file)| matches!(file.kind, "modify" | "delete"))
+    {
         let original = read_original(bundle_root, path, file.kind)?;
         let selection = file.selection.as_ref().map(|selection| {
             (
@@ -1837,7 +1892,7 @@ struct PendingReplacement {
     backup: Option<PathBuf>,
     kind: &'static str,
     original: String,
-    applied_content: String,
+    applied_content: Option<String>,
 }
 
 struct AppliedReplacement {
@@ -1854,13 +1909,11 @@ struct ApplyTransaction {
 fn validate_checkpoint_size(prepared: &[PreparedStagedFile]) -> Result<(), String> {
     let mut bytes = 0usize;
     for file in prepared {
-        let Some(effective) = &file.effective else {
-            continue;
-        };
+        let effective_bytes = file.effective.as_ref().map_or(0, String::len);
         bytes = bytes
-            .checked_add(effective.len())
+            .checked_add(effective_bytes)
             .and_then(|total| {
-                total.checked_add(if file.kind == "modify" {
+                total.checked_add(if matches!(file.kind, "modify" | "delete") {
                     file.original.len()
                 } else {
                     0
@@ -1893,9 +1946,9 @@ fn plan_apply_transaction(
     let mut pending = Vec::new();
     let mut created_directories = Vec::new();
     for file in prepared {
-        let Some(content) = &file.effective else {
+        if file.effective.is_none() && file.kind != "delete" {
             continue;
-        };
+        }
         let target = bundle_root.join(Path::new(&file.path));
         verify_prepared_base(bundle_root, file, &target)?;
         let Some(parent) = target.parent() else {
@@ -1909,7 +1962,7 @@ fn plan_apply_transaction(
 
         let transaction_id = uuid::Uuid::new_v4();
         let temporary = parent.join(format!(".okf-studio-{transaction_id}.tmp"));
-        let backup = (file.kind == "modify")
+        let backup = matches!(file.kind, "modify" | "delete")
             .then(|| parent.join(format!(".okf-studio-{transaction_id}.bak")));
         pending.push(PendingReplacement {
             target,
@@ -1917,7 +1970,7 @@ fn plan_apply_transaction(
             backup,
             kind: file.kind,
             original: file.original.clone(),
-            applied_content: content.clone(),
+            applied_content: file.effective.clone(),
         });
     }
 
@@ -1928,7 +1981,7 @@ fn plan_apply_transaction(
             .map(|replacement| CheckpointFile {
                 target: replacement.target.clone(),
                 backup: replacement.backup.clone(),
-                original_content: (replacement.kind == "modify")
+                original_content: matches!(replacement.kind, "modify" | "delete")
                     .then(|| replacement.original.clone()),
                 applied_content: replacement.applied_content.clone(),
             })
@@ -1966,16 +2019,19 @@ fn execute_apply_transaction(
             return Err(error);
         }
         let write_result = (|| -> Result<(), String> {
+            let Some(applied_content) = &replacement.applied_content else {
+                return Ok(());
+            };
             let mut output = OpenOptions::new()
                 .write(true)
                 .create_new(true)
                 .open(&replacement.temporary)
                 .map_err(|_| "A staged transaction file could not be created.".to_string())?;
             output
-                .write_all(replacement.applied_content.as_bytes())
+                .write_all(applied_content.as_bytes())
                 .and_then(|()| output.sync_all())
                 .map_err(|_| "A staged transaction file could not be written.".to_string())?;
-            if replacement.kind == "modify" {
+            if matches!(replacement.kind, "modify" | "delete") {
                 let permissions = std::fs::metadata(&replacement.target)
                     .map_err(|_| "A staged file's permissions could not be read.".to_string())?
                     .permissions();
@@ -2015,7 +2071,9 @@ fn execute_apply_transaction(
                 return Err("A bundle file could not enter the apply transaction.".to_string());
             }
         }
-        if std::fs::rename(&replacement.temporary, &replacement.target).is_err() {
+        if replacement.applied_content.is_some()
+            && std::fs::rename(&replacement.temporary, &replacement.target).is_err()
+        {
             if let Some(backup) = &replacement.backup {
                 let _ = std::fs::rename(backup, &replacement.target);
             }
@@ -2139,22 +2197,20 @@ fn cleanup_directories(created: &[PathBuf]) {
 struct RestoredReplacement {
     target: PathBuf,
     applied_temporary: PathBuf,
+    had_applied_file: bool,
 }
 
 fn recover_committed_apply(transaction: &ApplyTransaction) -> Result<(), String> {
     for file in &transaction.pending {
         let target = recovery_text(&file.target, "applied file")?;
-        if target.as_deref() != Some(file.applied_content.as_str()) {
+        if target.as_deref() != file.applied_content.as_deref() {
             return Err(
                 "Interrupted apply recovery stopped because an applied file changed. No recovery files were overwritten."
                     .to_string(),
             );
         }
         let temporary = recovery_text(&file.temporary, "apply transaction file")?;
-        if temporary
-            .as_deref()
-            .is_some_and(|content| content != file.applied_content)
-        {
+        if temporary.is_some() && temporary.as_deref() != file.applied_content.as_deref() {
             return Err(
                 "Interrupted apply recovery found a changed transaction file. No recovery files were overwritten."
                     .to_string(),
@@ -2186,14 +2242,11 @@ fn recover_committed_apply(transaction: &ApplyTransaction) -> Result<(), String>
 fn recover_uncommitted_apply(transaction: &ApplyTransaction) -> Result<(), String> {
     for file in &transaction.pending {
         let target = recovery_text(&file.target, "bundle file")?;
-        let target_is_expected = if file.kind == "modify" {
-            target
-                .as_deref()
-                .is_none_or(|content| content == file.original || content == file.applied_content)
+        let target_is_expected = if matches!(file.kind, "modify" | "delete") {
+            target.as_deref() == Some(file.original.as_str())
+                || target.as_deref() == file.applied_content.as_deref()
         } else {
-            target
-                .as_deref()
-                .is_none_or(|content| content == file.applied_content)
+            target.is_none() || target.as_deref() == file.applied_content.as_deref()
         };
         if !target_is_expected {
             return Err(
@@ -2202,10 +2255,7 @@ fn recover_uncommitted_apply(transaction: &ApplyTransaction) -> Result<(), Strin
             );
         }
         let temporary = recovery_text(&file.temporary, "apply transaction file")?;
-        if temporary
-            .as_deref()
-            .is_some_and(|content| content != file.applied_content)
-        {
+        if temporary.is_some() && temporary.as_deref() != file.applied_content.as_deref() {
             return Err(
                 "Interrupted apply recovery found a changed transaction file. No recovery files were overwritten."
                     .to_string(),
@@ -2226,7 +2276,7 @@ fn recover_uncommitted_apply(transaction: &ApplyTransaction) -> Result<(), Strin
     }
 
     for file in &transaction.pending {
-        if file.kind == "modify" {
+        if matches!(file.kind, "modify" | "delete") {
             let target = recovery_text(&file.target, "bundle file")?;
             if target.as_deref() != Some(file.original.as_str()) {
                 write_recovery_text(
@@ -2271,18 +2321,18 @@ fn recover_interrupted_restore(transaction: &RestoreTransaction) -> Result<(), S
             .as_deref()
             .zip(file.original_content.as_deref())
             .is_some_and(|(actual, expected)| actual != expected)
-            || applied_temporary
-                .as_deref()
-                .is_some_and(|content| content != file.applied_content)
+            || (applied_temporary.is_some()
+                && applied_temporary.as_deref() != file.applied_content.as_deref())
         {
             return Err(
                 "Interrupted restore recovery found a changed transaction file. No recovery files were overwritten."
                     .to_string(),
             );
         }
-        let expected_target = target.as_deref().is_some_and(|content| {
-            content == file.applied_content || file.original_content.as_deref() == Some(content)
-        });
+        let expected_target = target.as_deref() == file.applied_content.as_deref()
+            || target
+                .as_deref()
+                .is_some_and(|content| file.original_content.as_deref() == Some(content));
         let completed_creation = file.original_content.is_none() && target.is_none();
         let interrupted_gap =
             target.is_none() && (applied_temporary.is_some() || original_temporary.is_some());
@@ -2429,7 +2479,7 @@ struct PendingCheckpointRestore {
     original_temporary: Option<PathBuf>,
     applied_temporary: PathBuf,
     original_content: Option<String>,
-    applied_content: String,
+    applied_content: Option<String>,
 }
 
 struct RestoreTransaction {
@@ -2453,10 +2503,8 @@ fn plan_restore_transaction(
                 "Checkpoint restore blocked: an applied path is now a symbolic link.".to_string(),
             );
         }
-        let current = std::fs::read_to_string(&file.target).map_err(|_| {
-            "Checkpoint restore blocked: an applied file could not be read.".to_string()
-        })?;
-        if current != file.applied_content {
+        let current = recovery_text(&file.target, "applied file")?;
+        if current.as_deref() != file.applied_content.as_deref() {
             return Err(
                 "Checkpoint restore blocked: an applied file changed after apply.".to_string(),
             );
@@ -2507,14 +2555,17 @@ fn execute_restore_transaction(
                     .map_err(|_| {
                         "Checkpoint restore could not write an original file.".to_string()
                     })?;
-                let permissions = std::fs::metadata(&file.target)
-                    .map_err(|_| {
-                        "Checkpoint restore could not inspect an applied file.".to_string()
-                    })?
-                    .permissions();
-                std::fs::set_permissions(temporary, permissions).map_err(|_| {
-                    "Checkpoint restore could not preserve file permissions.".to_string()
-                })
+                if file.target.exists() {
+                    let permissions = std::fs::metadata(&file.target)
+                        .map_err(|_| {
+                            "Checkpoint restore could not inspect an applied file.".to_string()
+                        })?
+                        .permissions();
+                    std::fs::set_permissions(temporary, permissions).map_err(|_| {
+                        "Checkpoint restore could not preserve file permissions.".to_string()
+                    })?;
+                }
+                Ok(())
             })();
             if let Err(error) = write_result {
                 let _ = std::fs::remove_file(temporary);
@@ -2531,32 +2582,33 @@ fn execute_restore_transaction(
             cleanup_checkpoint_restore(&transaction.pending);
             return Err("The checkpoint restore transaction was interrupted.".to_string());
         }
-        let current = match std::fs::read_to_string(&file.target) {
+        let current = match recovery_text(&file.target, "applied file") {
             Ok(current) => current,
-            Err(_) => {
+            Err(error) => {
                 rollback_checkpoint_restore(&restored);
                 cleanup_checkpoint_restore(&transaction.pending);
-                return Err(
-                    "Checkpoint restore blocked: an applied file could not be rechecked."
-                        .to_string(),
-                );
+                return Err(error);
             }
         };
-        if current != file.applied_content {
+        if current.as_deref() != file.applied_content.as_deref() {
             rollback_checkpoint_restore(&restored);
             cleanup_checkpoint_restore(&transaction.pending);
             return Err(
                 "Checkpoint restore blocked: an applied file changed during restore.".to_string(),
             );
         }
-        if std::fs::rename(&file.target, &file.applied_temporary).is_err() {
+        if file.applied_content.is_some()
+            && std::fs::rename(&file.target, &file.applied_temporary).is_err()
+        {
             rollback_checkpoint_restore(&restored);
             cleanup_checkpoint_restore(&transaction.pending);
             return Err("Checkpoint restore could not move an applied file.".to_string());
         }
         if let Some(original) = &file.original_temporary {
             if std::fs::rename(original, &file.target).is_err() {
-                let _ = std::fs::rename(&file.applied_temporary, &file.target);
+                if file.applied_content.is_some() {
+                    let _ = std::fs::rename(&file.applied_temporary, &file.target);
+                }
                 rollback_checkpoint_restore(&restored);
                 cleanup_checkpoint_restore(&transaction.pending);
                 return Err("Checkpoint restore could not replace an applied file.".to_string());
@@ -2565,6 +2617,7 @@ fn execute_restore_transaction(
         restored.push(RestoredReplacement {
             target: file.target.clone(),
             applied_temporary: file.applied_temporary.clone(),
+            had_applied_file: file.applied_content.is_some(),
         });
     }
 
@@ -2591,7 +2644,9 @@ fn cleanup_checkpoint_restore(pending: &[PendingCheckpointRestore]) {
 fn rollback_checkpoint_restore(restored: &[RestoredReplacement]) {
     for file in restored.iter().rev() {
         let _ = std::fs::remove_file(&file.target);
-        let _ = std::fs::rename(&file.applied_temporary, &file.target);
+        if file.had_applied_file {
+            let _ = std::fs::rename(&file.applied_temporary, &file.target);
+        }
     }
 }
 
@@ -2720,7 +2775,11 @@ fn persisted_apply_transaction(
             temporary,
             backup,
             kind: if file.original_content.is_some() {
-                "modify"
+                if file.applied_content.is_some() {
+                    "modify"
+                } else {
+                    "delete"
+                }
             } else {
                 "create"
             },
@@ -2875,7 +2934,10 @@ fn persisted_checkpoint(
     let mut created_ancestors = BTreeSet::new();
     let mut files = Vec::with_capacity(persisted.files.len());
     for file in persisted.files {
-        if file.applied_content.len() > MAX_STAGED_FILE_BYTES
+        if file
+            .applied_content
+            .as_ref()
+            .is_some_and(|content| content.len() > MAX_STAGED_FILE_BYTES)
             || file
                 .original_content
                 .as_ref()
@@ -2884,7 +2946,7 @@ fn persisted_checkpoint(
             return Err("Studio's saved apply checkpoint contains an oversized file.".to_string());
         }
         total_bytes = total_bytes
-            .checked_add(file.applied_content.len())
+            .checked_add(file.applied_content.as_ref().map_or(0, String::len))
             .and_then(|total| {
                 total.checked_add(file.original_content.as_ref().map_or(0, String::len))
             })
@@ -3170,7 +3232,7 @@ fn bounded_validation_message(message: &str) -> String {
 }
 
 fn read_original(bundle_root: &Path, path: &str, kind: &str) -> Result<String, String> {
-    if kind != "modify" {
+    if !matches!(kind, "modify" | "delete") {
         return Ok(String::new());
     }
     let bytes = std::fs::read(bundle_root.join(Path::new(path)))
@@ -3541,8 +3603,9 @@ mod tests {
             std::fs::create_dir(directory).expect("create planned directory");
         }
         for file in &transaction.pending {
-            std::fs::write(&file.temporary, &file.applied_content)
-                .expect("write apply transaction file");
+            if let Some(content) = &file.applied_content {
+                std::fs::write(&file.temporary, content).expect("write apply transaction file");
+            }
         }
     }
 
@@ -4040,6 +4103,45 @@ mod tests {
             std::fs::read_to_string(root.join("existing.md")).expect("read bundle concept"),
             "---\ntype: note\n---\n# Existing\n",
             "validation must not update the bundle",
+        );
+    }
+
+    #[test]
+    fn deletion_uses_review_validation_apply_and_restore() {
+        let root = canonical_temp_dir("delete");
+        seed_valid_bundle(&root);
+        let original = std::fs::read_to_string(root.join("existing.md")).expect("original");
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .set_mode("session-1", AgentStageMode::Enhance)
+            .expect("enhance mode");
+        stages
+            .stage_delete("session-1", &root.join("existing.md"))
+            .expect("stage delete");
+        let diff = stages
+            .staged_diff("session-1", "existing.md")
+            .expect("delete diff");
+        assert_eq!(diff.kind, "delete");
+        for hunk in &diff.hunks {
+            stages
+                .set_hunk_selection("session-1", "existing.md", &diff.revision, hunk.index, true)
+                .expect("review delete hunk");
+        }
+        let validation = stages
+            .validate_staged("session-1")
+            .expect("validate delete");
+        assert_eq!(validation.errors, 0);
+        stages
+            .apply_staged("session-1", &validation.revision)
+            .expect("apply delete");
+        assert!(!root.join("existing.md").exists());
+        stages
+            .restore_checkpoint("session-1")
+            .expect("restore delete");
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("restored"),
+            original
         );
     }
 
@@ -4653,6 +4755,65 @@ mod tests {
     }
 
     #[test]
+    fn restores_a_persisted_deletion_after_the_staging_service_restarts() {
+        let root = canonical_temp_dir("restore-persisted-deletion");
+        let checkpoint_directory = canonical_temp_dir("deletion-checkpoint-storage");
+        seed_valid_bundle(&root);
+        let original = std::fs::read_to_string(root.join("existing.md")).expect("original");
+        {
+            let stages = SessionStages::persistent(checkpoint_directory.clone());
+            stages
+                .register_session("session-1", &root)
+                .expect("register session");
+            stages.set_grant("session-1", true).expect("grant");
+            stages
+                .set_mode("session-1", AgentStageMode::Enhance)
+                .expect("enhance mode");
+            stages
+                .stage_delete("session-1", &root.join("existing.md"))
+                .expect("stage deletion");
+            let diff = stages
+                .staged_diff("session-1", "existing.md")
+                .expect("deletion diff");
+            for hunk in diff.hunks {
+                stages
+                    .set_hunk_selection(
+                        "session-1",
+                        "existing.md",
+                        &diff.revision,
+                        hunk.index,
+                        true,
+                    )
+                    .expect("review deletion hunk");
+            }
+            let validation = stages.validate_staged("session-1").expect("validate");
+            stages
+                .apply_staged("session-1", &validation.revision)
+                .expect("apply");
+            assert!(!root.join("existing.md").exists());
+        }
+
+        let resumed = SessionStages::persistent(checkpoint_directory.clone());
+        let changes = resumed
+            .register_session("session-2", &root)
+            .expect("load checkpoint");
+        assert!(changes.can_restore);
+        resumed
+            .restore_checkpoint("session-2")
+            .expect("restore persisted deletion");
+        assert_eq!(
+            std::fs::read_to_string(root.join("existing.md")).expect("restored"),
+            original
+        );
+        assert_eq!(
+            std::fs::read_dir(checkpoint_directory)
+                .expect("read checkpoint directory")
+                .count(),
+            0
+        );
+    }
+
+    #[test]
     fn rolls_back_an_apply_interrupted_before_its_commit_point() {
         let root = canonical_temp_dir("recover-interrupted-apply");
         let checkpoint_directory = canonical_temp_dir("recover-apply-storage");
@@ -4988,7 +5149,7 @@ mod tests {
                 files: vec![PersistedCheckpointFile {
                     path: "../outside.md".to_string(),
                     original_content: None,
-                    applied_content: "outside".to_string(),
+                    applied_content: Some("outside".to_string()),
                 }],
                 created_directories: Vec::new(),
             },

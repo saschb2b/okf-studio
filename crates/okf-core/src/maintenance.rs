@@ -37,6 +37,332 @@ pub struct ConceptMoveChange {
     pub content: String,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum RetirementAction {
+    Deprecate,
+    Redirect,
+    Tombstone,
+    Delete,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConceptRetirementPlan {
+    pub schema_version: u8,
+    pub source_id: String,
+    pub action: RetirementAction,
+    pub replacement_id: Option<String>,
+    pub affected_links: usize,
+    pub affected_indexes: usize,
+    pub retrieval_consequence: String,
+    pub warnings: Vec<String>,
+    pub changes: Vec<ConceptMoveChange>,
+}
+
+/// Plan one explicit retirement decision plus its rationale-trail log entry.
+///
+/// Delete is allowed only when every inbound Markdown link can be redirected,
+/// or when there are no inbound links. The plan remains pure; callers stage
+/// complete files and a deletion marker through the reviewed transaction.
+pub fn plan_concept_retirement(
+    bundle: &Bundle,
+    markdown: &BTreeMap<String, String>,
+    source_id: &str,
+    action: RetirementAction,
+    replacement_id: Option<&str>,
+    reason: &str,
+    decision_date: &str,
+) -> Result<ConceptRetirementPlan, String> {
+    if markdown.len() > MAX_MOVE_FILES {
+        return Err(format!(
+            "Retirement planning is limited to {MAX_MOVE_FILES} Markdown files."
+        ));
+    }
+    let source = bundle
+        .concepts
+        .iter()
+        .find(|concept| concept.id == source_id)
+        .ok_or_else(|| "The concept is no longer available.".to_string())?;
+    let source_path = format!("{source_id}.md");
+    let source_raw = markdown
+        .get(&source_path)
+        .ok_or_else(|| "The concept file is no longer available.".to_string())?;
+    let reason = reason.trim();
+    if reason.is_empty() || reason.chars().count() > 1_024 || reason.chars().any(char::is_control) {
+        return Err("Name a bounded plain-text retirement reason.".to_string());
+    }
+    if !is_iso_day(decision_date) {
+        return Err("The retirement decision date must use YYYY-MM-DD.".to_string());
+    }
+    let replacement = replacement_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            if value == source_id {
+                return Err("A concept cannot replace itself.".to_string());
+            }
+            bundle
+                .concepts
+                .iter()
+                .find(|concept| concept.id == value)
+                .map(|_| value.to_string())
+                .ok_or_else(|| "The replacement concept is not available.".to_string())
+        })
+        .transpose()?;
+    if matches!(action, RetirementAction::Redirect) && replacement.is_none() {
+        return Err("Redirect requires a replacement concept.".to_string());
+    }
+
+    let mut writes = BTreeMap::<String, (&'static str, &'static str, String)>::new();
+    let mut affected_links = 0usize;
+    let mut affected_indexes = BTreeSet::new();
+    if matches!(
+        action,
+        RetirementAction::Redirect | RetirementAction::Delete
+    ) {
+        for (path, raw) in markdown {
+            if path == &source_path || path == "log.md" {
+                continue;
+            }
+            let context_id = path
+                .strip_suffix(".md")
+                .ok_or_else(|| "Retirement planning received a non-Markdown file.".to_string())?;
+            let (rewritten, replacements) =
+                rewrite_raw_links(raw, context_id, |target, fragment| {
+                    (target == source_id)
+                        .then_some(replacement.as_deref())
+                        .flatten()
+                        .map(|target| relative_href(context_id, target, fragment))
+                })?;
+            if replacements > 0 {
+                affected_links += replacements;
+                if path.ends_with("index.md") {
+                    affected_indexes.insert(path.clone());
+                }
+                writes.insert(
+                    path.clone(),
+                    (
+                        "modify",
+                        if path.ends_with("index.md") {
+                            "Update navigation"
+                        } else {
+                            "Update inbound links"
+                        },
+                        rewritten,
+                    ),
+                );
+            }
+        }
+    } else {
+        affected_links = source.cited_by.len();
+    }
+    if matches!(action, RetirementAction::Delete)
+        && replacement.is_none()
+        && !source.cited_by.is_empty()
+    {
+        return Err(
+            "Delete requires a replacement while inbound Markdown links still exist.".to_string(),
+        );
+    }
+    if matches!(action, RetirementAction::Delete) && replacement.is_none() {
+        affected_links = source.cited_by.len();
+    }
+
+    let replacement_field = replacement
+        .as_deref()
+        .map(|value| format!("\nsuperseded_by: [{}]", yaml_string(value)))
+        .unwrap_or_default();
+    let retrieval_consequence = match action {
+        RetirementAction::Deprecate => {
+            let fields = [
+                ("lifecycle", "deprecated".to_string()),
+                ("deprecated_on", yaml_string(decision_date)),
+                ("retirement_reason", yaml_string(reason)),
+            ];
+            let mut content = set_frontmatter_fields(source_raw, &fields)?;
+            if let Some(replacement) = replacement.as_deref() {
+                content = set_frontmatter_fields(
+                    &content,
+                    &[("superseded_by", format!("[{}]", yaml_string(replacement)))],
+                )?;
+            }
+            writes.insert(source_path.clone(), ("modify", "Mark deprecated", content));
+            "The concept remains searchable and retrieval adds a lifecycle caveat.".to_string()
+        }
+        RetirementAction::Redirect => {
+            let replacement = replacement.as_deref().expect("redirect replacement");
+            let href = relative_href(source_id, replacement, "");
+            let content = format!(
+                "---\ntype: Redirect\ntitle: {}\nredirect_to: {}\nretired_on: {}\nretirement_reason: {}\n---\n\nThis concept retired in favor of [{}]({href}).\n",
+                yaml_string(&format!("{} retired", source.title)),
+                yaml_string(replacement),
+                yaml_string(decision_date),
+                yaml_string(reason),
+                source.title,
+            );
+            writes.insert(
+                source_path.clone(),
+                ("modify", "Keep portable redirect", content),
+            );
+            "Retrieval follows rewritten links to the replacement; the old identity remains an explicit redirect.".to_string()
+        }
+        RetirementAction::Tombstone => {
+            let content = format!(
+                "---\ntype: Tombstone\ntitle: {}\nlifecycle: retired\nretired_on: {}\nretirement_reason: {}{}\n---\n\nThe former concept is intentionally unavailable. Its identity remains so inbound links explain the retirement.\n",
+                yaml_string(&format!("{} retired", source.title)),
+                yaml_string(decision_date),
+                yaml_string(reason),
+                replacement_field,
+            );
+            writes.insert(
+                source_path.clone(),
+                ("modify", "Keep retirement tombstone", content),
+            );
+            "Retrieval sees only the retirement explanation, not the former claims.".to_string()
+        }
+        RetirementAction::Delete => {
+            writes.insert(
+                source_path.clone(),
+                ("delete", "Delete concept file", String::new()),
+            );
+            "The concept leaves the active bundle; rewritten links use the replacement when one was selected.".to_string()
+        }
+    };
+
+    let action_label = match action {
+        RetirementAction::Deprecate => "Deprecated",
+        RetirementAction::Redirect => "Redirected",
+        RetirementAction::Tombstone => "Tombstoned",
+        RetirementAction::Delete => "Deleted",
+    };
+    let log = append_retirement_log(
+        markdown.get("log.md").map(String::as_str),
+        decision_date,
+        action_label,
+        source_id,
+        replacement.as_deref(),
+        reason,
+    );
+    writes.insert(
+        "log.md".to_string(),
+        (
+            if markdown.contains_key("log.md") {
+                "modify"
+            } else {
+                "create"
+            },
+            "Record retirement decision",
+            log,
+        ),
+    );
+
+    let mut warnings = Vec::new();
+    if source.extra.contains_key("relationships") {
+        warnings.push(
+            "Typed relationship annotations may still name this concept; inspect profile findings after Apply."
+                .to_string(),
+        );
+    }
+    let changes = writes
+        .into_iter()
+        .map(|(path, (kind, reason, content))| ConceptMoveChange {
+            path,
+            kind,
+            reason,
+            content,
+        })
+        .collect();
+    Ok(ConceptRetirementPlan {
+        schema_version: 1,
+        source_id: source_id.to_string(),
+        action,
+        replacement_id: replacement,
+        affected_links,
+        affected_indexes: affected_indexes.len(),
+        retrieval_consequence,
+        warnings,
+        changes,
+    })
+}
+
+fn is_iso_day(value: &str) -> bool {
+    value.len() == 10
+        && value.as_bytes()[4] == b'-'
+        && value.as_bytes()[7] == b'-'
+        && value
+            .chars()
+            .enumerate()
+            .all(|(index, character)| matches!(index, 4 | 7) || character.is_ascii_digit())
+}
+
+fn yaml_string(value: &str) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_string())
+}
+
+fn set_frontmatter_fields(raw: &str, fields: &[(&str, String)]) -> Result<String, String> {
+    if !raw.starts_with("---\n") {
+        return Err("The concept has no editable YAML frontmatter.".to_string());
+    }
+    let end = raw[4..]
+        .find("\n---")
+        .map(|offset| offset + 4)
+        .ok_or_else(|| "The concept frontmatter is not closed.".to_string())?;
+    let frontmatter = &raw[4..end];
+    let keys = fields.iter().map(|(key, _)| *key).collect::<HashSet<_>>();
+    let mut next = frontmatter
+        .lines()
+        .filter(|line| {
+            let Some((key, _)) = line.split_once(':') else {
+                return true;
+            };
+            let top_level = line
+                .chars()
+                .next()
+                .is_some_and(|character| !character.is_whitespace());
+            !top_level || !keys.contains(key.trim())
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    if !next.is_empty() {
+        next.push('\n');
+    }
+    for (key, value) in fields {
+        next.push_str(&format!("{key}: {value}\n"));
+    }
+    Ok(format!("---\n{next}{}", &raw[end..]))
+}
+
+fn append_retirement_log(
+    current: Option<&str>,
+    date: &str,
+    action: &str,
+    source_id: &str,
+    replacement: Option<&str>,
+    reason: &str,
+) -> String {
+    let replacement = replacement
+        .map(|value| format!(" Replacement: `{value}`."))
+        .unwrap_or_default();
+    let entry = format!("* **Retirement**: {action} `{source_id}`. Reason: {reason}.{replacement}");
+    let current = current.unwrap_or("# Update Log\n");
+    if let Some(position) = current.find(&format!("## {date}")) {
+        let insert = current[position..]
+            .find('\n')
+            .map(|offset| position + offset + 1)
+            .unwrap_or(current.len());
+        return format!("{}\n{entry}\n{}", &current[..insert], &current[insert..]);
+    }
+    let heading_end = current
+        .find('\n')
+        .map_or(current.len(), |position| position + 1);
+    format!(
+        "{}\n## {date}\n\n{entry}\n{}",
+        &current[..heading_end],
+        &current[heading_end..]
+    )
+}
+
 /// Plan a portable move that leaves an explicit redirect at the old path.
 ///
 /// Every parser-confirmed Markdown link that resolves to the source is
@@ -521,5 +847,88 @@ mod tests {
         .expect("move without identity");
         assert!(plan.stable_id.is_none());
         assert_eq!(plan.warnings.len(), 1);
+    }
+
+    #[test]
+    fn plans_each_retirement_choice_with_impact_and_log() {
+        let fixture = Fixture::new();
+        let bundle = read_bundle(&fixture.0);
+        let markdown = fixture.markdown();
+
+        let deprecated = plan_concept_retirement(
+            &bundle,
+            &markdown,
+            "guides/My Guide",
+            RetirementAction::Deprecate,
+            Some("related"),
+            "The related note replaces this guide",
+            "2026-07-23",
+        )
+        .expect("deprecation plan");
+        let source = deprecated
+            .changes
+            .iter()
+            .find(|change| change.path == "guides/My Guide.md")
+            .expect("deprecated source");
+        assert!(source.content.contains("lifecycle: deprecated"));
+        assert!(source.content.contains("superseded_by: [\"related\"]"));
+        assert!(deprecated
+            .changes
+            .iter()
+            .any(|change| change.path == "log.md"));
+
+        let redirected = plan_concept_retirement(
+            &bundle,
+            &markdown,
+            "guides/My Guide",
+            RetirementAction::Redirect,
+            Some("related"),
+            "The guide was consolidated",
+            "2026-07-23",
+        )
+        .expect("redirect plan");
+        assert!(redirected.affected_links >= 3);
+        assert!(redirected
+            .changes
+            .iter()
+            .find(|change| change.path == "guides/My Guide.md")
+            .is_some_and(|change| change.content.contains("type: Redirect")));
+
+        let tombstone = plan_concept_retirement(
+            &bundle,
+            &markdown,
+            "guides/My Guide",
+            RetirementAction::Tombstone,
+            None,
+            "The guidance is no longer safe",
+            "2026-07-23",
+        )
+        .expect("tombstone plan");
+        assert!(tombstone
+            .changes
+            .iter()
+            .any(|change| change.reason == "Keep retirement tombstone"));
+
+        let deleted = plan_concept_retirement(
+            &bundle,
+            &markdown,
+            "guides/My Guide",
+            RetirementAction::Delete,
+            Some("related"),
+            "The replacement is authoritative",
+            "2026-07-23",
+        )
+        .expect("delete plan");
+        assert!(deleted.changes.iter().any(|change| change.kind == "delete"));
+        assert!(plan_concept_retirement(
+            &bundle,
+            &markdown,
+            "guides/My Guide",
+            RetirementAction::Delete,
+            None,
+            "No replacement exists",
+            "2026-07-23",
+        )
+        .is_err());
     }
 }

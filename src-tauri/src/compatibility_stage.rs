@@ -124,6 +124,69 @@ impl CompatibilityStageState {
         Ok(ConceptMoveReview { plan, staged })
     }
 
+    pub fn stage_concept_retirement(
+        &self,
+        bundle_root: &Path,
+        source_id: &str,
+        action: &str,
+        replacement_id: Option<&str>,
+        reason: &str,
+        decision_date: &str,
+    ) -> Result<ConceptRetirementReview, String> {
+        let action = match action {
+            "deprecate" => okf_core::maintenance::RetirementAction::Deprecate,
+            "redirect" => okf_core::maintenance::RetirementAction::Redirect,
+            "tombstone" => okf_core::maintenance::RetirementAction::Tombstone,
+            "delete" => okf_core::maintenance::RetirementAction::Delete,
+            _ => return Err("Choose deprecate, redirect, tombstone, or delete.".to_string()),
+        };
+        let bundle = okf_core::read_bundle(bundle_root);
+        let markdown = read_move_markdown(bundle_root, &bundle)?;
+        let plan = okf_core::maintenance::plan_concept_retirement(
+            &bundle,
+            &markdown,
+            source_id,
+            action,
+            replacement_id,
+            reason,
+            decision_date,
+        )?;
+        if plan.changes.len() > MAX_STAGED_FILES {
+            return Err(format!(
+                "This retirement affects {} files; reviewed maintenance is limited to {MAX_STAGED_FILES}.",
+                plan.changes.len()
+            ));
+        }
+        let session_id = self.session_for(bundle_root)?;
+        self.inner.stages.discard(&session_id)?;
+        let writes = plan
+            .changes
+            .iter()
+            .filter(|change| change.kind != "delete")
+            .map(|change| (bundle_root.join(&change.path), change.content.clone()))
+            .collect();
+        if let Err(error) = self.inner.stages.stage_writes(&session_id, writes) {
+            let _ = self.inner.stages.discard(&session_id);
+            return Err(error);
+        }
+        for change in plan.changes.iter().filter(|change| change.kind == "delete") {
+            if let Err(error) = self
+                .inner
+                .stages
+                .stage_delete(&session_id, &bundle_root.join(&change.path))
+            {
+                let _ = self.inner.stages.discard(&session_id);
+                return Err(error);
+            }
+        }
+        let staged = self
+            .inner
+            .stages
+            .summary(&session_id)
+            .ok_or_else(|| "Retirement review state is unavailable.".to_string())?;
+        Ok(ConceptRetirementReview { plan, staged })
+    }
+
     pub fn select_hunk(
         &self,
         bundle_root: &Path,
@@ -154,9 +217,9 @@ impl CompatibilityStageState {
             .inner
             .stages
             .summary(&session_id)
-            .ok_or_else(|| "Open a concept move review first.".to_string())?;
+            .ok_or_else(|| "Open a maintenance review first.".to_string())?;
         if staged.files.is_empty() {
-            return Err("Open a concept move review first.".to_string());
+            return Err("Open a maintenance review first.".to_string());
         }
         for file in staged.files {
             let diff = self.inner.stages.staged_diff(&session_id, &file.path)?;
@@ -167,7 +230,7 @@ impl CompatibilityStageState {
                     .any(|hunk| !hunk.reviewed || !hunk.selected)
             {
                 return Err(format!(
-                    "Review and keep every move hunk in {} before validation. A concept move is one graph transaction.",
+                    "Review and keep every maintenance hunk in {} before validation. This is one graph transaction.",
                     file.path
                 ));
             }
@@ -246,6 +309,13 @@ pub struct CompatibilityReview {
 #[serde(rename_all = "camelCase")]
 pub struct ConceptMoveReview {
     pub plan: okf_core::maintenance::ConceptMovePlan,
+    pub staged: AgentStagedChangesInfo,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConceptRetirementReview {
+    pub plan: okf_core::maintenance::ConceptRetirementPlan,
     pub staged: AgentStagedChangesInfo,
 }
 
@@ -537,5 +607,92 @@ mod tests {
         assert!(fs::read_to_string(fixture.bundle.join("target.md"))
             .expect("restored source")
             .contains("reference-target"));
+    }
+
+    #[test]
+    fn stages_reviews_applies_and_restores_a_concept_deletion() {
+        let fixture = Fixture::new();
+        fs::write(
+            fixture.bundle.join("replacement.md"),
+            "---\ntype: Reference\n---\n\nReplacement.\n",
+        )
+        .expect("replacement");
+        fs::write(
+            fixture.bundle.join("index.md"),
+            "# Fixture\n\n- [Target](target.md)\n",
+        )
+        .expect("index link");
+        let original_target = fs::read_to_string(fixture.bundle.join("target.md")).expect("target");
+        let original_index = fs::read_to_string(fixture.bundle.join("index.md")).expect("index");
+        let original_source = fixture.source();
+        let state = fixture.state();
+
+        let review = state
+            .stage_concept_retirement(
+                &fixture.bundle,
+                "target",
+                "delete",
+                Some("replacement"),
+                "The replacement now owns this guidance",
+                "2026-07-23",
+            )
+            .expect("stage retirement");
+        assert_eq!(review.plan.affected_links, 2);
+        assert_eq!(review.plan.affected_indexes, 1);
+        assert!(review
+            .staged
+            .files
+            .iter()
+            .any(|file| file.path == "target.md" && file.kind == "delete"));
+        assert!(
+            state.validate_move(&fixture.bundle).is_err(),
+            "review is required"
+        );
+
+        for file in &review.staged.files {
+            let mut diff = state
+                .diff(&fixture.bundle, &file.path)
+                .expect("retirement diff");
+            for hunk in diff.hunks.clone() {
+                diff = state
+                    .select_hunk(
+                        &fixture.bundle,
+                        &file.path,
+                        &diff.revision,
+                        hunk.index,
+                        true,
+                    )
+                    .expect("review retirement hunk");
+            }
+        }
+        let validation = state
+            .validate_move(&fixture.bundle)
+            .expect("validate retirement");
+        assert_eq!(validation.errors, 0);
+        let applied = state
+            .apply(&fixture.bundle, &validation.revision)
+            .expect("apply retirement");
+        assert_eq!(applied.applied_files, 4);
+        assert!(!fixture.bundle.join("target.md").exists());
+        assert!(fixture.source().contains("../replacement.md"));
+        assert!(fs::read_to_string(fixture.bundle.join("index.md"))
+            .expect("updated index")
+            .contains("(replacement.md)"));
+        assert!(fs::read_to_string(fixture.bundle.join("log.md"))
+            .expect("retirement log")
+            .contains("Deleted `target`"));
+
+        let restored = state.restore(&fixture.bundle).expect("restore retirement");
+        assert_eq!(restored.restored_files, 4);
+        assert_eq!(
+            fs::read_to_string(fixture.bundle.join("target.md")).expect("restored target"),
+            original_target
+        );
+        assert_eq!(
+            fs::read_to_string(fixture.bundle.join("index.md")).expect("restored index"),
+            original_index
+        );
+        assert_eq!(fixture.source(), original_source);
+        assert!(!fixture.bundle.join("log.md").exists());
     }
 }

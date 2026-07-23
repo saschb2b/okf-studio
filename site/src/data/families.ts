@@ -78,6 +78,10 @@ export const families: Family[] = [
             title: "Lineage across hops",
             body: "A lineage panel traces dependencies through the graph, several links deep.",
           },
+          {
+            title: "Meaning on portable links",
+            body: "Optional team profiles can label a Markdown link as evidence, dependency, ownership, supersession, or a producer-defined relation. The reader shows known and unknown types, and the graph filters each type without changing OKF validation.",
+          },
         ],
       },
       {

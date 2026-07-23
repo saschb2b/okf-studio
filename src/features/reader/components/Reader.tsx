@@ -18,6 +18,7 @@ import { highlightCodeBlocks } from "@/shared/render/highlight.ts";
 import { renderMathBlocks } from "@/shared/render/math.ts";
 import { renderMermaidBlocks } from "@/shared/render/mermaid.ts";
 import type { Bundle, Concept } from "@/shared/types.ts";
+import { useProfileReport } from "@/shared/useProfileReport.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "@/shared/odsf.ts";
 import { ReaderPrefs } from "@/features/reader/components/ReaderPrefs.tsx";
 import { TokenViz } from "@/features/viz/components/TokenViz.tsx";
@@ -29,6 +30,7 @@ import {
   ODSF_METADATA_KEYS,
 } from "@/features/reader/components/MetadataInspector.tsx";
 import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
+import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough
@@ -256,6 +258,7 @@ export function Reader() {
   const c = useActiveConcept();
   const { state, actions } = useApp();
   const bundle = state.bundle;
+  const profileReport = useProfileReport(bundle);
   const readerScale = state.settings.readerScale;
   const reduceMotion = state.settings.reduceMotion;
 
@@ -515,6 +518,7 @@ export function Reader() {
   );
   const typeColor = palette.color(c.type);
   const related = relatedByTag(bundle, c);
+  const hasRelationshipMetadata = Object.hasOwn(c.extra, "relationships");
   // Design-system (ODSF) extras, feature-detected — null/empty on plain OKF.
   const status = conceptStatus(c);
   const appliesTo = conceptAppliesTo(c);
@@ -788,6 +792,18 @@ export function Reader() {
             </ul>
           </nav>
         )}
+
+        <TypedRelationships
+          bundle={bundle}
+          conceptId={c.id}
+          hasMetadata={hasRelationshipMetadata}
+          status={profileReport.status}
+          report={profileReport.report}
+          message={profileReport.message}
+          onSelect={select}
+          onPeek={peekStart}
+          onPeekEnd={hidePeek}
+        />
 
         {c.citedBy.length > 0 && (
           <RailModule title="Cited by" count={c.citedBy.length}>

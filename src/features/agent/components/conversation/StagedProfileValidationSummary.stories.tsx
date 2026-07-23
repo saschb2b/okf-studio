@@ -29,6 +29,7 @@ const profileContext: OkfProfileTaskContext = {
     relationships: [],
   }],
   diagnostics: [],
+  edges: [],
   truncated: false,
 };
 

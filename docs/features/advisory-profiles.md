@@ -3,7 +3,7 @@ type: Feature
 title: Advisory Profiles
 description: Resolve optional team conventions from local version-pinned descriptors without changing OKF conformance.
 tags: [feature, profiles, metadata, diagnostics, authoring]
-timestamp: 2026-07-23T13:55:00Z
+timestamp: 2026-07-23T14:55:00Z
 ---
 
 # User job
@@ -34,6 +34,10 @@ Profile resolution itself can also fail at the grant or task boundary. That stat
 The [Advisory Profile Contract](../reference/advisory-profile-contract.md) defines the root declaration, descriptor schema, limits, and closed check kinds. Rust authorizes the exact open bundle, reads only a bounded JSON path inside it, and produces one typed report. Browser mock data exercises the same active and advice states.
 
 Resolution runs no network request, registry search, code, hook, or expression. Unknown descriptor keys are retained for inspection but have no behavior. Profile diagnostics remain a separate collection from `Bundle.issues`, so no profile can weaken, strengthen, or hide core OKF validation.
+
+# Relationships
+
+An active descriptor can name a relationship vocabulary. Concepts opt in with bounded namespaced annotations over ordinary Markdown links; Studio then resolves labels and inverses for [Typed Relationships](typed-relationships.md). Unknown namespaces and types remain visible, while missing targets and missing prose links produce profile advice rather than OKF errors.
 
 # Authoring
 

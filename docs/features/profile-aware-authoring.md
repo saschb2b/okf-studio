@@ -3,7 +3,7 @@ type: Feature
 title: Profile-Aware Authoring
 description: Carry selected advisory conventions into bounded agent tasks and check staged drafts without changing OKF conformance.
 tags: [feature, profiles, agents, authoring, validation, staging]
-timestamp: 2026-07-23T13:55:00Z
+timestamp: 2026-07-23T15:15:00Z
 ---
 
 # User job
@@ -12,9 +12,9 @@ A maintainer who chose an [advisory profile](advisory-profiles.md) wants Create,
 
 # Accepted context
 
-Only Create, Revise, Audit, and migration tasks receive profile context. Studio projects active and unavailable profile identities, field guidance, examples, relationships, and current diagnostics into a closed, bounded manifest. It labels every field as **OKF-required**, **Profile-required**, or **Recommended** and includes the fixed statement **Profile advice does not change OKF validation.**
+Only Create, Revise, Audit, and migration tasks receive profile context. Studio projects active and unavailable profile identities, field guidance, examples, relationship vocabulary, authored [typed relationships](typed-relationships.md), and current diagnostics into a closed, bounded manifest. It labels every field as **OKF-required**, **Profile-required**, or **Recommended**, states how many authored edges are included, and includes the fixed statement **Profile advice does not change OKF validation.**
 
-The manifest is capped before it reaches an agent and validated again at the native session boundary. It becomes part of the bundle fingerprint, so a changed profile declaration or descriptor makes an accepted context plan stale. Research, repair, enrichment, change-impact, and ordinary authoring tasks do not receive this profile projection.
+The manifest is capped before it reaches an agent and validated again at the native session boundary. Typed edges are capped at 128 per task and preserve their resolution and portability status. The manifest becomes part of the bundle fingerprint, so a changed profile declaration, descriptor, or typed edge makes an accepted context plan stale. Research, repair, enrichment, change-impact, and ordinary authoring tasks do not receive this profile projection.
 
 # Reviewed results
 

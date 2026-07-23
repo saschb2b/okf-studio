@@ -119,6 +119,20 @@ function isProfileContext(value: unknown, taskId: OkfTaskId): boolean {
       });
       return fieldsValid && relationshipsValid;
     })) return false;
+  if (!Array.isArray(context.edges) || context.edges.length > 128 ||
+    !context.edges.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const edge = item as Record<string, unknown>;
+      return isBoundedText(edge.sourceId, 512) &&
+        isBoundedText(edge.targetId, 512) &&
+        isBoundedText(edge.namespace, 128) &&
+        isBoundedText(edge.type, 128) &&
+        isBoundedText(edge.label, 512) &&
+        isOptionalBoundedText(edge.inverse, 128) &&
+        typeof edge.recognized === "boolean" &&
+        typeof edge.targetExists === "boolean" &&
+        typeof edge.portableLink === "boolean";
+    })) return false;
   return Array.isArray(context.diagnostics) && context.diagnostics.length <= 64 &&
     context.diagnostics.every((item) => {
       if (!item || typeof item !== "object") return false;

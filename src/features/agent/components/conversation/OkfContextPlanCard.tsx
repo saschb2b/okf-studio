@@ -128,6 +128,10 @@ export function OkfContextPlanCard({
             <span>Not OKF validation</span>
           </header>
           <p>{plan.profileContext.conformanceBoundary}</p>
+          <p>
+            {plan.profileContext.edges.length} authored typed edge
+            {plan.profileContext.edges.length === 1 ? "" : "s"} included
+          </p>
           <ul>
             {plan.profileContext.profiles.map((profile) => {
               const findingCount = plan.profileContext?.diagnostics.filter(

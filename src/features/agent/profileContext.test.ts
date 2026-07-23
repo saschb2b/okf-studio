@@ -72,7 +72,17 @@ function report(): ProfileReport {
       field: "owner",
       message: "Name the responsible team.",
     }],
-    edges: [],
+    edges: [{
+      sourceId: "guide",
+      targetId: "reference",
+      namespace: "com.example.knowledge",
+      type: "supports",
+      label: "Supports",
+      inverse: "supported-by",
+      recognized: true,
+      targetExists: true,
+      portableLink: true,
+    }],
     truncated: false,
   };
 }
@@ -94,6 +104,13 @@ describe("profile task context", () => {
     ]);
     expect(context?.profiles[0].fields[2].examples[0]).toHaveLength(257);
     expect(context?.diagnostics[0]).toMatchObject({ basis: "profile-advice" });
+    expect(context?.edges[0]).toMatchObject({
+      sourceId: "guide",
+      targetId: "reference",
+      type: "supports",
+      recognized: true,
+      portableLink: true,
+    });
   });
 
   it("feeds only profile-aware tasks", () => {

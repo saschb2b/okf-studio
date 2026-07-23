@@ -139,7 +139,17 @@ export const ProfileAware: Story = {
           },
         }],
         diagnostics: [],
-        edges: [],
+        edges: [{
+          sourceId: "guide",
+          targetId: "reference",
+          namespace: "com.example.knowledge",
+          type: "supports",
+          label: "Supports",
+          inverse: "supported-by",
+          recognized: true,
+          targetExists: true,
+          portableLink: true,
+        }],
         truncated: false,
       },
     }),
@@ -149,5 +159,6 @@ export const ProfileAware: Story = {
     await expect(canvas.getByText("OKF-required")).toBeVisible();
     await expect(canvas.getByText("Profile-required")).toBeVisible();
     await expect(canvas.getByText("Not OKF validation")).toBeVisible();
+    await expect(canvas.getByText("1 authored typed edge included")).toBeVisible();
   },
 };

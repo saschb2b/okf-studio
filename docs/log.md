@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Typed Relationships](features/typed-relationships.md). Namespaced profile annotations label ordinary Markdown links without replacing them. The reader shows known, unknown, incoming, missing-target, and missing-prose-link states, while the graph filters valid participants by resolved or authored relationship type.
+
 * **Update**: Extended the [Advisory Profile Contract](reference/advisory-profile-contract.md) with bounded namespaced relationship annotations over ordinary Markdown links. The profile report resolves known labels and inverses, preserves unknown profiles and types, and reports missing targets or portable links without changing core OKF conformance.
 
 * **Creation**: Added [Safe Concept Move](features/safe-concept-move.md) to the Concept Reader. Studio creates the destination, preserves a portable redirect, rebases outgoing links, and rewrites parser-confirmed inbound links, reference definitions, and indexes as one staged graph change. Every hunk must be reviewed and kept; isolated validation, revision-bound Apply, Restore, path limits, collision checks, and stable-identity warnings keep the operation explicit.

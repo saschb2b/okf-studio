@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-07-18T06:30:00Z
+timestamp: 2026-07-23T14:55:00Z
 ---
 
 # What it does
@@ -26,6 +26,7 @@ The center of the workspace renders the active bundle as an interactive **force-
 - With a node selected, **Agent** opens [Native OKF Tasks](native-okf-tasks.md) with that graph object as the explicit starting scope. Change impact leads the task choices; the graph and reader selection remain unchanged if the launcher is cancelled.
 - **Selecting** a node keeps the whole graph bright but rings it and accents its links, so the open concept's connections stand out without hiding the rest. **Hovering** a node dims everything except it and its neighbors, to trace one neighborhood at a time. Either way structure stays readable in a dense graph.
 - Hidden types (toggled in the legend) drop out of the layout; [search](search-and-filter.md) dims non-matches.
+- A bundle with portable [typed relationships](typed-relationships.md) gets a relationship-type filter in the top-left toolbar. Selecting a known or unknown type isolates its participating concepts and names the annotation count; clearing the active chip returns to the ordinary Markdown-link graph.
 
 # Controls
 

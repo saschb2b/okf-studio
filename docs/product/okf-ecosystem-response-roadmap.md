@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-23T14:15:00Z
+timestamp: 2026-07-23T14:55:00Z
 ---
 
 # Outcome
@@ -148,6 +148,7 @@ A package is complete only when all applicable conditions hold:
 | MP3 Declarative advisory profiles | Shipped | Namespaced root declarations pin exact versions and resolve bounded JSON descriptors only from inside the granted bundle. A typed report exposes Active and Unavailable states, retained unknown values, fields, relationships, closed health checks, and file-specific advice separately from `Bundle.issues`. The root home labels the entire surface **Not OKF validation**. |
 | MP4 Profile-aware authoring | Shipped | Create, Revise, Audit, and migration tasks receive a bounded, fingerprinted projection of selected local profiles with explicit OKF-required, Profile-required, and Recommended labels. Isolated staged validation reports OKF conformance and profile checks independently, and a profile finding can start a reviewed migration. |
 | LK1 Stable identity and safe move | Shipped | Reader-initiated moves create a destination, preserve an explicit redirect, rebase outgoing links, and rewrite parser-confirmed inbound, reference, and index targets. A bounded optional `stable_id` remains advisory. Every affected file uses per-hunk review, isolated validation, revision-bound atomic Apply, and Restore. |
-| LK2 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
+| LK2 Relationship profile | Shipped | Namespaced annotations add profile labels and inverses to ordinary Markdown links. Rust preserves unknown types, bounds the report, and keeps missing targets or prose links advisory. The reader inspects incoming and outgoing edges, while the graph filters participating concepts without treating metadata as a core edge. |
+| LK3 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
 
 Related product boundaries: [Design Principles](principles.md), [Scope & Non-Goals](scope-and-non-goals.md), [Validation](../features/validation.md), [Knowledge Health](../features/knowledge-health.md), [Source Adapters and Provenance](../features/source-adapters.md), and [OKF Parsing](../architecture/okf-parsing.md).

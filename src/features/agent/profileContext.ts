@@ -2,6 +2,7 @@ import type {
   ProfileDiagnostic,
   ProfileField,
   ProfileReport,
+  ProfileRelationshipEdge,
   ProfileResolution,
 } from "@/shared/types.ts";
 import type { OkfTaskId } from "@/features/agent/taskContext.ts";
@@ -16,6 +17,7 @@ const MAX_PROFILES = 8;
 const MAX_FIELDS = 48;
 const MAX_RELATIONSHIPS = 48;
 const MAX_DIAGNOSTICS = 64;
+const MAX_EDGES = 128;
 const MAX_EXAMPLES = 4;
 const MAX_EXAMPLE_CHARS = 256;
 
@@ -58,6 +60,18 @@ export interface ProfileTaskDiagnostic {
   basis: "profile-advice";
 }
 
+export interface ProfileTaskEdge {
+  sourceId: string;
+  targetId: string;
+  namespace: string;
+  type: string;
+  label: string;
+  inverse: string | null;
+  recognized: boolean;
+  targetExists: boolean;
+  portableLink: boolean;
+}
+
 export interface ProfileTaskProfile {
   namespace: string;
   version: string | null;
@@ -76,6 +90,7 @@ export interface OkfProfileTaskContext {
   coreRequirements: [{ key: "type"; requirement: "OKF-required" }];
   profiles: ProfileTaskProfile[];
   diagnostics: ProfileTaskDiagnostic[];
+  edges: ProfileTaskEdge[];
   truncated: boolean;
 }
 
@@ -144,16 +159,34 @@ function taskDiagnostic(diagnostic: ProfileDiagnostic): ProfileTaskDiagnostic {
   };
 }
 
+function taskEdge(edge: ProfileRelationshipEdge): ProfileTaskEdge {
+  return {
+    sourceId: edge.sourceId,
+    targetId: edge.targetId,
+    namespace: edge.namespace,
+    type: edge.type,
+    label: edge.label,
+    inverse: edge.inverse,
+    recognized: edge.recognized,
+    targetExists: edge.targetExists,
+    portableLink: edge.portableLink,
+  };
+}
+
 export function profileTaskContext(
   taskId: OkfTaskId,
   report: ProfileReport | null | undefined,
 ): OkfProfileTaskContext | null {
-  if (!taskUsesAdvisoryProfiles(taskId) || !report || report.profiles.length === 0) return null;
+  if (!taskUsesAdvisoryProfiles(taskId)
+    || !report
+    || (report.profiles.length === 0 && report.edges.length === 0)) return null;
   const profiles = report.profiles.slice(0, MAX_PROFILES).map(taskProfile);
   const diagnostics = report.diagnostics.slice(0, MAX_DIAGNOSTICS).map(taskDiagnostic);
+  const edges = report.edges.slice(0, MAX_EDGES).map(taskEdge);
   const truncated = report.truncated
     || report.profiles.length > profiles.length
     || report.diagnostics.length > diagnostics.length
+    || report.edges.length > edges.length
     || report.profiles.some((profile) => {
       const descriptor = profile.descriptor;
       return descriptor !== null && (
@@ -169,6 +202,7 @@ export function profileTaskContext(
     coreRequirements: [{ key: "type", requirement: "OKF-required" }],
     profiles,
     diagnostics,
+    edges,
     truncated,
   };
 }

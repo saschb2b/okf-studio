@@ -11,6 +11,7 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Visualization Views](viz-views.md) - Treemap, sunburst, and circle packing of the bundle hierarchy, with a persisted switcher.
 * [Concept Reader](concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
 * [Metadata Inspector](metadata-inspector.md) - Inspect bounded producer-defined bundle and concept fields with their source locations.
+* [Advisory Profiles](advisory-profiles.md) - Resolve local version-pinned team conventions as advice, never as OKF conformance.
 * [Design-System Rendering](design-system-rendering.md) - Render an ODSF bundle's tokens (swatches, specimens, scales) and example assets natively.
 * [Search & Filter](search-and-filter.md) - Full-text search, type filters, and tag browsing.
 * [Retrieval Intelligence](retrieval-intelligence.md) - Route agent questions through coherent local evidence and inspect every selection through a receipt.

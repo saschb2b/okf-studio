@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Advisory Profiles](features/advisory-profiles.md) to the root folder home. Active descriptors show their exact version, local source, convention counts, and file-specific advice; unavailable declarations show the precise resolution failure while the bundle remains open. The grant-checked IPC command and interface both keep profile advice visibly separate from OKF validation.
+
 * **Creation**: Defined the [Advisory Profile Contract](reference/advisory-profile-contract.md) and implemented its pure Rust resolver. Version-pinned descriptors resolve only from bounded JSON files inside the authorized bundle, retain unknown values without interpreting them, expose active and unavailable states, and emit profile diagnostics separately from OKF conformance. Traversal, symbolic-link escape, URL-like paths, invalid identity, and unpinned versions are rejected without closing the bundle.
 
 * **Creation**: Added the [Metadata Inspector](features/metadata-inspector.md) to root folder homes and the Concept Reader rail. It renders producer-defined root and concept values as bounded text, names their source file and path, copies only a bounded representation after an explicit action, and states every display limit. ODSF-owned fields remain in their dedicated renderer.

@@ -352,15 +352,7 @@ fn valid_namespace(value: &str) -> bool {
 }
 
 fn valid_version(value: &str) -> bool {
-    if value.len() > 64 || value.contains(['<', '>', '=', '^', '~', '*', ' ']) {
-        return false;
-    }
-    let core = value.split_once('-').map_or(value, |(core, _)| core);
-    let parts: Vec<&str> = core.split('.').collect();
-    parts.len() == 3
-        && parts.iter().all(|part| {
-            !part.is_empty() && part.chars().all(|character| character.is_ascii_digit())
-        })
+    value.len() <= 64 && semver::Version::parse(value).is_ok()
 }
 
 fn read_descriptor(root: &Path, relative: &str) -> Result<ProfileDescriptor, String> {

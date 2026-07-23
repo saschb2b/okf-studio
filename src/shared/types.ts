@@ -93,6 +93,92 @@ export interface CompatibilityReport {
   truncated: boolean;
 }
 
+export type ProfileStatus = "active" | "unavailable";
+export type ProfileScope = "bundle" | "concept";
+export type ProfileValueType = "string" | "number" | "boolean" | "array" | "object";
+export type ProfileExpectation = "recommended" | "required";
+export type ProfileDiagnosticLevel = "information" | "recommendation" | "warning";
+
+export interface ProfileField {
+  id: string;
+  scope: ProfileScope;
+  key: string;
+  label: string;
+  description: string;
+  valueType: ProfileValueType;
+  expectation: ProfileExpectation;
+  conceptTypes: string[];
+  examples: unknown[];
+}
+
+export interface ProfileRelationship {
+  id: string;
+  label: string;
+  inverse: string | null;
+  description: string;
+}
+
+export type ProfileCheck =
+  | {
+      kind: "field-present";
+      id: string;
+      scope: ProfileScope;
+      field: string;
+      level: ProfileDiagnosticLevel;
+      message: string;
+      conceptTypes: string[];
+    }
+  | {
+      kind: "field-one-of";
+      id: string;
+      scope: ProfileScope;
+      field: string;
+      values: unknown[];
+      level: ProfileDiagnosticLevel;
+      message: string;
+      conceptTypes: string[];
+    };
+
+export interface ProfileDescriptor {
+  schemaVersion: 1;
+  namespace: string;
+  version: string;
+  title: string;
+  description: string;
+  fields: ProfileField[];
+  relationships: ProfileRelationship[];
+  checks: ProfileCheck[];
+  [key: string]: unknown;
+}
+
+export interface ProfileResolution {
+  namespace: string;
+  version: string | null;
+  descriptorPath: string | null;
+  status: ProfileStatus;
+  message: string;
+  descriptor: ProfileDescriptor | null;
+  extra: Record<string, unknown>;
+}
+
+export interface ProfileDiagnostic {
+  namespace: string;
+  ruleId: string;
+  level: ProfileDiagnosticLevel;
+  scope: ProfileScope;
+  file: string;
+  conceptId: string | null;
+  field: string;
+  message: string;
+}
+
+export interface ProfileReport {
+  schemaVersion: 1;
+  profiles: ProfileResolution[];
+  diagnostics: ProfileDiagnostic[];
+  truncated: boolean;
+}
+
 export interface Bundle {
   root: string;
   name: string;

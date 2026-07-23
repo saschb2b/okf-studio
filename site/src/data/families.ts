@@ -90,7 +90,7 @@ export const families: Family[] = [
           },
           {
             title: "Links match the reader",
-            body: "Producer-defined root and concept metadata remains intact. Inspect nested fields with their source file, bounded depth, and copy actions; recognized design-system fields keep their richer renderer.",
+            body: "Producer metadata remains intact and inspectable. Optional team profiles resolve from version-pinned files inside the bundle, with their advice clearly separated from OKF validation.",
           },
           {
             title: "Design-system aware",

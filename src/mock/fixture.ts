@@ -387,7 +387,11 @@ export const MOCK_BUNDLE: Bundle = {
   odsfVersion: "0.1",
   extra: {
     profiles: {
-      "com.example.knowledge": { version: "1.2.0", mode: "advisory" },
+      "com.example.knowledge": {
+        version: "1.2.0",
+        descriptor: "profiles/com.example.knowledge.json",
+        mode: "advisory",
+      },
     },
     producer: { name: "OKF Studio fixture", channel: "development" },
   },

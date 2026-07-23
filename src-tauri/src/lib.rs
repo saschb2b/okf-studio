@@ -509,6 +509,20 @@ async fn okf_compatibility_report(
 }
 
 #[tauri::command]
+async fn okf_profile_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::profile::ProfileReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        okf_core::profile::analyze(&root, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not resolve the bundle's advisory profiles.".to_string())
+}
+
+#[tauri::command]
 async fn stage_compatibility_normalization(
     grants: State<'_, bundle_grant::BundleGrantState>,
     stages: State<'_, compatibility_stage::CompatibilityStageState>,
@@ -1559,6 +1573,7 @@ pub fn run() {
             scan_bundles,
             read_bundle,
             okf_compatibility_report,
+            okf_profile_report,
             stage_compatibility_normalization,
             select_compatibility_hunk,
             validate_compatibility_normalization,

@@ -2898,6 +2898,7 @@ version = "0.4.2"
 dependencies = [
  "pulldown-cmark",
  "regex",
+ "semver",
  "serde",
  "serde_json",
  "sha2",

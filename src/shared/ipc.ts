@@ -7,6 +7,7 @@ import type {
   BundleRoot,
   CompatibilityFinding,
   CompatibilityReport,
+  ProfileReport,
   RecentBundle,
   RemoteSource,
   Settings,
@@ -3297,6 +3298,73 @@ export async function readCompatibilityReport(bundleRoot: string): Promise<Compa
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<CompatibilityReport>("okf_compatibility_report", { bundleRoot });
+}
+
+function mockProfileReport(): ProfileReport {
+  return {
+    schemaVersion: 1,
+    profiles: [{
+      namespace: "com.example.knowledge",
+      version: "1.2.0",
+      descriptorPath: "profiles/com.example.knowledge.json",
+      status: "active",
+      message: "Resolved from a version-pinned descriptor inside this bundle.",
+      extra: { mode: "advisory" },
+      descriptor: {
+        schemaVersion: 1,
+        namespace: "com.example.knowledge",
+        version: "1.2.0",
+        title: "Team knowledge",
+        description: "Shared conventions for maintained product knowledge.",
+        fields: [{
+          id: "owner",
+          scope: "concept",
+          key: "owner",
+          label: "Owner",
+          description: "The team responsible for this concept.",
+          valueType: "string",
+          expectation: "recommended",
+          conceptTypes: [],
+          examples: ["Docs"],
+        }],
+        relationships: [{
+          id: "supports",
+          label: "Supports",
+          inverse: "supported-by",
+          description: "This concept provides evidence or implementation support.",
+        }],
+        checks: [{
+          kind: "field-present",
+          id: "owner-present",
+          scope: "concept",
+          field: "owner",
+          level: "recommendation",
+          message: "Name the team responsible for this concept.",
+          conceptTypes: ["Product"],
+        }],
+      },
+    }],
+    diagnostics: [{
+      namespace: "com.example.knowledge",
+      ruleId: "owner-present",
+      level: "recommendation",
+      scope: "concept",
+      file: "product/overview.md",
+      conceptId: "product/overview",
+      field: "owner",
+      message: "Name the team responsible for this concept.",
+    }],
+    truncated: false,
+  };
+}
+
+export async function readProfileReport(bundleRoot: string): Promise<ProfileReport> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return mockProfileReport();
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ProfileReport>("okf_profile_report", { bundleRoot });
 }
 
 export interface CompatibilityReview {

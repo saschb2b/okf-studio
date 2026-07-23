@@ -20,6 +20,7 @@ import type {
   GitRepositorySnapshot,
 } from "@/features/git/types.ts";
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
+import { assessAccessHints } from "@/shared/access.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
 import type {
   ReceiptDiff,
@@ -2145,6 +2146,7 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
     conceptType: string;
     staged: boolean;
     links: string[];
+    access: import("@/shared/access.ts").AccessHints;
   }>();
   if (state.mode !== "create") {
     for (const concept of MOCK_BUNDLE.concepts) {
@@ -2154,6 +2156,7 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
         conceptType: concept.type,
         staged: false,
         links: [...concept.links],
+        access: assessAccessHints(concept),
       });
     }
   }
@@ -2169,15 +2172,19 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
     const typeMatch = /^type:\s*(.+)$/m.exec(file.content);
     const title = titleMatch?.[1]?.trim() ?? id.split("/").at(-1) ?? id;
     const conceptType = typeMatch?.[1]?.trim() ?? "";
+    const access = assessAccessHints({ extra: mockAccessFrontmatter(file.content) });
     concepts.set(id, {
       id,
       title: title.slice(0, 256),
       conceptType: conceptType.slice(0, 256),
       staged: true,
       links: mockMarkdownConceptLinks(file.path, file.content),
+      access,
     });
   }
-  const ordered = [...concepts.values()].sort((left, right) => left.id.localeCompare(right.id));
+  const ordered = [...concepts.values()].sort((left, right) =>
+    Number(right.staged) - Number(left.staged) || left.id.localeCompare(right.id)
+  );
   const includedNodes = ordered.slice(0, 128);
   const includedIds = new Set(includedNodes.map((node) => node.id));
   const allEdges = ordered.flatMap((node) => node.links.map((target) => ({
@@ -2193,12 +2200,31 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
       title: node.title,
       conceptType: node.conceptType,
       staged: node.staged,
+      access: node.access,
     })),
     edges,
     totalNodes: ordered.length,
     totalEdges: allEdges.length,
     truncated: ordered.length > includedNodes.length || allEdges.length > edges.length,
   };
+}
+
+function mockAccessFrontmatter(content: string): Record<string, unknown> {
+  const extra: Record<string, unknown> = {};
+  for (const key of ["audience", "sensitivity", "handling_notes"] as const) {
+    const match = new RegExp(`^${key}:\\s*(.+)$`, "m").exec(content);
+    if (!match?.[1]) continue;
+    const raw = match[1].trim();
+    if (raw.startsWith("[") && raw.endsWith("]")) {
+      extra[key] = raw.slice(1, -1)
+        .split(",")
+        .map((value) => value.trim().replace(/^['"]|['"]$/g, ""))
+        .filter(Boolean);
+    } else {
+      extra[key] = raw.replace(/^['"]|['"]$/g, "");
+    }
+  }
+  return extra;
 }
 
 function mockMarkdownConceptLinks(sourcePath: string, content: string): string[] {

@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Access Hints](features/access-hints.md) and the local `io.okf.access` advisory descriptor. Bounded audience, sensitivity, and handling notes now appear in the reader, accepted agent context, persisted context manifests, isolated staged validation, and staged review. Unknown values remain visible, hints never remove evidence, and every surface states that metadata does not grant access.
+
 * **Creation**: Added [Ignore Rules](features/ignore-rules.md). A bounded root `.okfignore` matcher now controls parsing, validation inventory, synthesized navigation, live reload, selected-folder source intake, retrieval's parsed concept set, and recipient projection inputs. The root home reports rule and exclusion counts, case behavior, diagnostics, and bounded paths while stating that ignore rules are neither encryption nor filesystem access control.
 
 * **Creation**: Added [Evidence and Provenance](features/evidence-and-provenance.md) and the local `io.okf.evidence` advisory descriptor. Adapter receipts now carry an observation time and project a path-redacted durable source identity into accepted agent context. Structured claim markers render as sanitized source footnotes, retrieval preserves the same source records and exact claim lines, and Knowledge Health reports dangling, changed, or unavailable evidence without treating a failed request as a truth verdict. Public source checks run only from the reader's named action through the existing bounded Rust fetch.

@@ -937,13 +937,18 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
-    fn docs_bundle_resolves_the_shipped_reliability_profile() {
+    fn docs_bundle_resolves_the_shipped_profiles() {
         let root = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs"));
         let bundle = read_bundle(root);
         let report = analyze(root, &bundle);
 
         assert!(report.profiles.iter().any(|profile| {
             profile.namespace == "io.okf.reliability"
+                && profile.version.as_deref() == Some("1.0.0")
+                && profile.status == ProfileStatus::Active
+        }));
+        assert!(report.profiles.iter().any(|profile| {
+            profile.namespace == "io.okf.access"
                 && profile.version.as_deref() == Some("1.0.0")
                 && profile.status == ProfileStatus::Active
         }));

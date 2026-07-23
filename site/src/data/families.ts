@@ -268,6 +268,10 @@ export const families: Family[] = [
             body: "Audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Missing claim sources name the exact line; changed or unavailable pages never become a truth verdict.",
           },
           {
+            title: "Handling labels without false authority",
+            body: "Optional audience, sensitivity, and handling notes stay visible while you read, choose agent context, and review staged files. Studio never treats a metadata label as filesystem permission or silently drops evidence because of it.",
+          },
+          {
             title: "A second pass without write authority",
             body: "Studio checks each structured result deterministically first. Studio Agent can then review the work for evidence gaps or clarity in a separate no-tool session. A critic can never approve or apply a change.",
           },
@@ -294,6 +298,7 @@ export const families: Family[] = [
       { label: "OKF writing", href: doc("features/okf-writing.md"), external: true },
       { label: "Retirement workflow", href: doc("features/retirement-workflow.md"), external: true },
       { label: "Knowledge health", href: doc("features/knowledge-health.md"), external: true },
+      { label: "Access hints", href: doc("features/access-hints.md"), external: true },
       { label: "Structured agent work", href: doc("features/structured-agent-work.md"), external: true },
       { label: "Create a bundle", href: doc("features/create-bundle.md"), external: true },
     ],

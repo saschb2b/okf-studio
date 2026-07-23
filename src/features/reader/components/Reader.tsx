@@ -34,7 +34,9 @@ import { ConceptRetirementDialog } from "@/features/reader/components/ConceptRet
 import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
 import { ReliabilityNotice } from "@/features/reader/components/ReliabilityNotice.tsx";
 import { EvidencePanel } from "@/features/reader/components/EvidencePanel.tsx";
+import { AccessNotice } from "@/features/reader/components/AccessNotice.tsx";
 import { assessReliability } from "@/shared/reliability.ts";
+import { assessAccessHints } from "@/shared/access.ts";
 import {
   inspectConceptEvidence,
   materializeEvidenceFootnotes,
@@ -544,6 +546,7 @@ export function Reader() {
   // Design-system (ODSF) extras, feature-detected — null/empty on plain OKF.
   const status = conceptStatus(c);
   const reliability = assessReliability(c, profileReport.report, SESSION_DAY);
+  const accessHints = assessAccessHints(c);
   const appliesTo = conceptAppliesTo(c);
   // Side rail in reader-only mode; otherwise (split / narrow) it falls below.
   const railSide = state.layout === "reader";
@@ -764,6 +767,7 @@ export function Reader() {
           <h1>{c.title}</h1>
           {c.description && <p className="desc">{c.description}</p>}
           <ReliabilityNotice assessment={reliability} />
+          <AccessNotice hints={accessHints} />
 
           {c.tags.length > 0 && (
             <ul className="tag-list" aria-label="Tags">
@@ -930,7 +934,14 @@ export function Reader() {
           title="Concept metadata"
           source={`${c.id}.md`}
           values={c.extra}
-          excludeKeys={[...ODSF_METADATA_KEYS, "evidence", "provenance"]}
+          excludeKeys={[
+            ...ODSF_METADATA_KEYS,
+            "audience",
+            "sensitivity",
+            "handling_notes",
+            "evidence",
+            "provenance",
+          ]}
         />
 
         {c.brokenLinks.length > 0 && (

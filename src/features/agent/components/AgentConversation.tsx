@@ -59,6 +59,7 @@ import {
 import { useAppActions } from "@/shared/store.tsx";
 import type { ProfileReport } from "@/shared/types.ts";
 import { StagedProfileValidationSummary } from "@/features/agent/components/conversation/StagedProfileValidationSummary.tsx";
+import { StagedAccessSummary } from "@/features/agent/components/conversation/StagedAccessSummary.tsx";
 
 
 export interface AgentConversationProps {
@@ -74,6 +75,7 @@ export interface AgentConversationProps {
     body?: string;
     links?: readonly string[];
     timestamp?: string | null;
+    extra?: Record<string, unknown>;
   }[];
   onOpenConcept: (conceptId: string) => void;
   issues: readonly Issue[];
@@ -2844,6 +2846,7 @@ export function AgentConversation({
                       ?? null
                     }
                   />
+                  <StagedAccessSummary nodes={stagedValidation.result.preview.nodes} />
                   <StagedGraphPreview preview={stagedValidation.result.preview} />
                   {stagedValidation.result.errors === 0 && stagedChanges.mode !== "create" && (
                     <div className="agent-staged__apply">

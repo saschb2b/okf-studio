@@ -6,6 +6,10 @@ import {
 import type { Issue } from "@/shared/types.ts";
 import type { ProfileReport } from "@/shared/types.ts";
 import {
+  assessAccessHints,
+  type AccessHints,
+} from "@/shared/access.ts";
+import {
   profileTaskContext,
   type OkfProfileTaskContext,
 } from "@/features/agent/profileContext.ts";
@@ -123,6 +127,7 @@ export interface OkfContextObject {
   reason: "active-concept" | "graph-neighbor" | "user-attachment" | "validation-finding";
   required: boolean;
   estimatedBytes: number;
+  access?: AccessHints;
 }
 
 export interface OkfContextSource {
@@ -178,6 +183,7 @@ interface ContextPlanInput {
     body?: string;
     links?: readonly string[];
     timestamp?: string | null;
+    extra?: Record<string, unknown>;
   }[];
   activeConcept: { id: string; title: string } | null;
   attachedConcepts: readonly { id: string; title: string; type: string }[];
@@ -214,17 +220,19 @@ export function bundleContextFingerprint(
     body?: string;
     links?: readonly string[];
     timestamp?: string | null;
+    extra?: Record<string, unknown>;
   }[],
   issues: readonly Issue[],
 ): string {
   const conceptState = concepts
-    .map(({ id, title, type, body, links, timestamp }) => [
+    .map(({ id, title, type, body, links, timestamp, extra }) => [
       id,
       title,
       type,
       timestamp ?? "",
       [...(links ?? [])].sort().join("\u001c"),
       body ?? "",
+      JSON.stringify(assessAccessHints({ extra })),
     ].join("\u001f"))
     .sort()
     .join("\u001e");
@@ -243,19 +251,36 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
   const profileContext = profileTaskContext(input.taskId, input.profileReport);
   const conceptById = new Map(input.concepts.map((concept) => [concept.id, concept]));
   const candidates = new Map<string, OkfContextObject>();
-  const objectBytes = (concept: { id: string; title: string; type: string; body?: string }) =>
-    byteLength(`${concept.id}\n${concept.title}\n${concept.type}\n${concept.body ?? ""}`);
+  const contextObject = (
+    concept: {
+      id: string;
+      title: string;
+      type: string;
+      body?: string;
+      extra?: Record<string, unknown>;
+    },
+    reason: OkfContextObject["reason"],
+    required: boolean,
+  ): OkfContextObject => {
+    const access = assessAccessHints(concept);
+    return {
+      id: concept.id,
+      title: concept.title,
+      type: concept.type,
+      path: `${concept.id}.md`,
+      reason,
+      required,
+      estimatedBytes: byteLength(
+        `${concept.id}\n${concept.title}\n${concept.type}\n${concept.body ?? ""}\n${JSON.stringify(access)}`,
+      ),
+      access,
+    };
+  };
 
   if (input.activeConcept) {
     const concept = conceptById.get(input.activeConcept.id);
     if (concept) {
-      candidates.set(concept.id, {
-        ...concept,
-        path: `${concept.id}.md`,
-        reason: "active-concept",
-        required: false,
-        estimatedBytes: objectBytes(concept),
-      });
+      candidates.set(concept.id, contextObject(concept, "active-concept", false));
       const neighborIds = new Set(concept.links ?? []);
       for (const candidate of input.concepts) {
         if (candidate.links?.includes(concept.id)) neighborIds.add(candidate.id);
@@ -263,37 +288,27 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
       for (const neighborId of [...neighborIds].sort()) {
         const neighbor = conceptById.get(neighborId);
         if (!neighbor) continue;
-        candidates.set(neighbor.id, {
-          ...neighbor,
-          path: `${neighbor.id}.md`,
-          reason: "graph-neighbor",
-          required: false,
-          estimatedBytes: objectBytes(neighbor),
-        });
+        candidates.set(neighbor.id, contextObject(neighbor, "graph-neighbor", false));
       }
     }
   }
   for (const concept of input.attachedConcepts) {
-    candidates.set(concept.id, {
-      ...concept,
-      path: `${concept.id}.md`,
-      reason: "user-attachment",
-      required: false,
-      estimatedBytes: objectBytes(concept),
-    });
+    const sourceConcept = conceptById.get(concept.id);
+    candidates.set(
+      concept.id,
+      contextObject(
+        sourceConcept ? { ...sourceConcept, ...concept } : concept,
+        "user-attachment",
+        false,
+      ),
+    );
   }
   if (input.taskId === "okf-audit" || input.taskId === "okf-repair") {
     for (const issue of input.issues) {
       if (!issue.conceptId) continue;
       const concept = conceptById.get(issue.conceptId);
       if (!concept) continue;
-      candidates.set(concept.id, {
-        ...concept,
-        path: `${concept.id}.md`,
-        reason: "validation-finding",
-        required: true,
-        estimatedBytes: objectBytes(concept),
-      });
+      candidates.set(concept.id, contextObject(concept, "validation-finding", true));
     }
   }
 

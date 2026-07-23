@@ -8,7 +8,16 @@ const plan = createOkfContextPlan({
   bundleRoot: "C:\\knowledge\\docs",
   concepts: [
     { id: "product/overview", title: "Product overview", type: "Product" },
-    { id: "features/agent-panel", title: "Agent Panel", type: "Feature" },
+    {
+      id: "features/agent-panel",
+      title: "Agent Panel",
+      type: "Feature",
+      extra: {
+        audience: ["engineering"],
+        sensitivity: "internal",
+        handling_notes: "Review before sharing outside the team.",
+      },
+    },
   ],
   activeConcept: { id: "features/agent-panel", title: "Agent Panel" },
   attachedConcepts: [
@@ -41,6 +50,7 @@ type Story = StoryObj<typeof meta>;
 export const PlannedContext: Story = {
   play: async ({ canvas, args }) => {
     await expect(canvas.getByText("Enrich this bundle")).toBeVisible();
+    await expect(canvas.getByText(/Guidance only/)).toBeVisible();
     await userEvent.click(canvas.getByRole("button", {
       name: "Remove Agent Panel from the context plan",
     }));

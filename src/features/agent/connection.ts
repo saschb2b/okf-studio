@@ -357,6 +357,7 @@ export interface AgentStagedGraphNode {
   title: string;
   conceptType: string;
   staged: boolean;
+  access?: import("@/shared/access.ts").AccessHints;
 }
 
 export interface AgentStagedGraphEdge {

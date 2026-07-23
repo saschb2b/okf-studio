@@ -61,6 +61,39 @@ describe("OKF task context", () => {
     expect(plan.budget.selectedBytes).toBeGreaterThan("Overview body".length);
   });
 
+  it("carries access hints without using them to remove context", () => {
+    const plan = createOkfContextPlan({
+      taskId: "okf-revise",
+      bundleRoot: "C:\\knowledge\\docs",
+      concepts: [{
+        ...concepts[0],
+        extra: {
+          audience: ["engineering"],
+          sensitivity: "internal",
+          handling_notes: "Review before sharing.",
+        },
+      }],
+      activeConcept: { id: "product/overview", title: "Overview" },
+      attachedConcepts: [],
+      sources: [],
+      issues: [],
+    });
+
+    expect(plan.objects).toHaveLength(1);
+    expect(plan.objects[0].access).toMatchObject({
+      audiences: ["engineering"],
+      sensitivity: "internal",
+      handlingNotes: "Review before sharing.",
+    });
+    expect(bundleContextFingerprint("C:\\knowledge\\docs", [{
+      ...concepts[0],
+      extra: { sensitivity: "internal" },
+    }], [])).not.toBe(bundleContextFingerprint("C:\\knowledge\\docs", [{
+      ...concepts[0],
+      extra: { sensitivity: "public" },
+    }], []));
+  });
+
   it("carries a redacted durable provenance projection for adapted sources", () => {
     const plan = createOkfContextPlan({
       taskId: "okf-research",

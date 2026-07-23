@@ -4,6 +4,7 @@
 //! bundle detection, OKF parsing, graph/backlink computation, and validation,
 //! producing the [`model`] types the Tauri layer serializes to the frontend.
 
+pub mod access;
 pub mod asset;
 pub mod compatibility;
 pub mod detect;

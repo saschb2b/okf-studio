@@ -22,6 +22,9 @@ const raw: RawConcept[] = [
       lifecycle: "active",
       confidence: 1,
       review_after: "2026-10-01",
+      audience: ["engineering", "release partners"],
+      sensitivity: "internal",
+      handling_notes: "Share cited measurements only after review.",
       relationships: {
         "com.example.knowledge": {
           supports: ["features/graph-view"],

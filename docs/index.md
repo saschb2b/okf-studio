@@ -1,6 +1,9 @@
 ---
 okf_version: "0.1"
 profiles:
+  io.okf.access:
+    version: "1.0.0"
+    descriptor: "profiles/io.okf.access.json"
   io.okf.evidence:
     version: "1.0.0"
     descriptor: "profiles/io.okf.evidence.json"
@@ -40,6 +43,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Evidence and Provenance](features/evidence-and-provenance.md) - Keep durable source identity with a concept, connect claims to evidence, and check public sources only after an explicit action.
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Ignore Rules](features/ignore-rules.md) - Keep selected paths out of Studio through one visible root rule file without mistaking it for access control.
+* [Access Hints](features/access-hints.md) - Show audience, sensitivity, and handling guidance without treating metadata as authorization.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.

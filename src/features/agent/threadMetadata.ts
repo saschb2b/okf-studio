@@ -64,6 +64,32 @@ function isStringList(value: unknown, limit: number): value is string[] {
     value.every((item) => isBoundedText(item, 256));
 }
 
+function isBoundedStringList(
+  value: unknown,
+  itemCount: number,
+  itemLength: number,
+): value is string[] {
+  return Array.isArray(value) && value.length <= itemCount &&
+    value.every((item) => isBoundedText(item, itemLength));
+}
+
+function isAccessHints(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!value || typeof value !== "object") return false;
+  const access = value as Record<string, unknown>;
+  return typeof access.hasMetadata === "boolean" &&
+    isBoundedStringList(access.audiences, 16, 128) &&
+    isOptionalBoundedText(access.sensitivity, 128) &&
+    (
+      access.knownSensitivity === null ||
+      typeof access.knownSensitivity === "string" &&
+      ["public", "internal", "confidential", "restricted"]
+        .includes(access.knownSensitivity)
+    ) &&
+    isOptionalBoundedText(access.handlingNotes, 512) &&
+    isBoundedStringList(access.diagnostics, 8, 512);
+}
+
 function isProfileContext(value: unknown, taskId: OkfTaskId): boolean {
   if (value === undefined || value === null) return true;
   if (!["okf-create", "okf-audit", "okf-migrate", "okf-revise"].includes(taskId) ||
@@ -174,7 +200,7 @@ function isAcceptedContextManifest(value: unknown, serializedBytes: number): val
         isBoundedText(object.type, 256) && isBoundedText(object.path, 4_096) &&
         ["active-concept", "graph-neighbor", "user-attachment", "validation-finding"]
           .includes(String(object.reason)) && typeof object.required === "boolean" &&
-        isSafeCount(object.estimatedBytes);
+        isSafeCount(object.estimatedBytes) && isAccessHints(object.access);
     })) return false;
   if (!Array.isArray(manifest.sources) || manifest.sources.length > 64 ||
     !manifest.sources.every((item) => {

@@ -87,6 +87,24 @@ export function OkfContextPlanCard({
               <span>
                 <strong>{object.title}</strong>
                 <small>{object.path} · {object.reason.replaceAll("-", " ")}</small>
+                {object.access?.hasMetadata && (
+                  <small className="okf-context-plan__access">
+                    <span>
+                      Handling hint
+                      {object.access.sensitivity ? ` · ${object.access.sensitivity}` : ""}
+                    </span>
+                    {object.access.audiences.length > 0 && (
+                      <span>Audience: {object.access.audiences.join(", ")}</span>
+                    )}
+                    {object.access.handlingNotes && <span>{object.access.handlingNotes}</span>}
+                    <span>Guidance only; does not grant or remove access.</span>
+                    {object.access.diagnostics.map((diagnostic) => (
+                      <span className="okf-context-plan__access-diagnostic" key={diagnostic}>
+                        {diagnostic}
+                      </span>
+                    ))}
+                  </small>
+                )}
               </span>
               {editable && !object.required && (
                 <button

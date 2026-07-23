@@ -106,6 +106,7 @@ pub struct AgentStagedGraphNode {
     pub title: String,
     pub concept_type: String,
     pub staged: bool,
+    pub access: okf_core::access::AccessHints,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -1595,15 +1596,23 @@ fn staged_graph_preview(
         .iter()
         .map(|concept| concept.links.len())
         .sum();
-    let nodes = bundle
-        .concepts
-        .iter()
+    let mut preview_concepts = bundle.concepts.iter().collect::<Vec<_>>();
+    preview_concepts.sort_by(|left, right| {
+        let left_staged = staged_ids.contains(&left.id);
+        let right_staged = staged_ids.contains(&right.id);
+        right_staged
+            .cmp(&left_staged)
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    let nodes = preview_concepts
+        .into_iter()
         .take(MAX_PREVIEW_NODES)
         .map(|concept| AgentStagedGraphNode {
             id: concept.id.clone(),
             title: bounded_graph_label(&concept.title),
             concept_type: bounded_graph_label(&concept.concept_type),
             staged: staged_ids.contains(&concept.id),
+            access: okf_core::access::assess(concept),
         })
         .collect::<Vec<_>>();
     let included = nodes
@@ -4229,7 +4238,7 @@ mod tests {
             .stage_write(
                 "session-1",
                 &root.join("fresh.md"),
-                "---\ntype: Note\n---\n# Fresh\n".to_string(),
+                "---\ntype: Note\naudience: [engineering]\nsensitivity: internal\nhandling_notes: Review before sharing.\n---\n# Fresh\n".to_string(),
             )
             .expect("stage fresh concept");
         assert_eq!(staged.files[0].kind, "create");
@@ -4249,6 +4258,17 @@ mod tests {
         assert_eq!(validation.preview.total_edges, 0);
         assert_eq!(validation.preview.nodes[0].id, "fresh");
         assert!(validation.preview.nodes[0].staged);
+        assert_eq!(
+            validation.preview.nodes[0].access.audiences,
+            ["engineering"]
+        );
+        assert_eq!(
+            validation.preview.nodes[0]
+                .access
+                .known_sensitivity
+                .as_deref(),
+            Some("internal")
+        );
         assert_eq!(
             stages
                 .apply_staged("session-1", &validation.revision)

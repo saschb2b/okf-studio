@@ -322,7 +322,27 @@ function decorateColorValues(html: string, tokenIndex?: Record<string, string>):
   decorateHexInText(tpl.content);
   neutralizeMedia(tpl.content);
   containInlineStyles(tpl.content);
+  containTables(tpl.content);
   return tpl.innerHTML;
+}
+
+/**
+ * Give authored tables their own horizontal overflow boundary. The table keeps
+ * native layout and semantics; the wrapper prevents a genuinely wide schema
+ * from widening the reader or forcing ordinary columns down to one character.
+ */
+function containTables(root: DocumentFragment): void {
+  for (const table of Array.from(root.querySelectorAll("table"))) {
+    if (table.parentElement?.classList.contains("markdown-table-scroll")) {
+      table.parentElement.tabIndex = 0;
+      continue;
+    }
+    const scroll = document.createElement("div");
+    scroll.className = "markdown-table-scroll";
+    scroll.tabIndex = 0;
+    table.replaceWith(scroll);
+    scroll.appendChild(table);
+  }
 }
 
 /**

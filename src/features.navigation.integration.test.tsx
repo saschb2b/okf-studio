@@ -236,6 +236,21 @@ describe("OKF Studio navigation features", () => {
     ).toBeInTheDocument();
   });
 
+  it("uses a folder index's authored groups inside the root navigation", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
+    expect(within(sidebar).getByText("Open and explore")).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole("treeitem", { name: "Graph View" }),
+    ).toHaveAttribute("aria-level", "2");
+    expect(
+      within(sidebar).getAllByRole("treeitem", { name: "Graph View" }),
+    ).toHaveLength(1);
+  });
+
   it("hides a Subdirectories listing that only duplicates folder-door headings", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();

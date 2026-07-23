@@ -3,7 +3,7 @@ type: Feature
 title: Navigation
 description: Move through a bundle by progressive disclosure — the index tree, link following, and back/forward history.
 tags: [feature, navigation]
-timestamp: 2026-07-13T19:42:50Z
+timestamp: 2026-07-23T22:37:54+02:00
 ---
 
 # What it does
@@ -13,6 +13,7 @@ Provides the ways to move through a bundle that complement the [graph](graph-vie
 # Index tree (progressive disclosure)
 
 - The sidebar's **Navigate lens** renders the bundle's `index.md` hierarchy: the root index's sections and links, descending into sub-directory `index.md` files on expand. A [lens switcher](../ux/browsing-layout.md) keeps this separate from the type/tag [filters](search-and-filter.md) so neither crowds the other at scale.
+- A root section that points into one indexed folder uses that folder's own authored sections for its visible children. The section remains a link to the folder home, while headings such as **Open and explore**, **Curate connected knowledge**, and **Work with agents** group the concept rows below it. Parent-only entries remain visible at the end. This keeps the sidebar, [treemap, sunburst, and circle packing](viz-views.md) aligned without changing concept ids or paths.
 - This mirrors OKF's intended navigation — an agent or human "decides where to descend without reading every file." When an `index.md` is missing, Studio **synthesizes** one from the directory's concepts (the spec permits this), marked with a quiet *auto* word (tooltip explains) rather than a badge.
 - A directory that holds **no concepts at all** (companion assets like `styles/*.css`, or genuinely empty) still expands — into a one-line note, "No concepts in this folder", per the [report-never-refuse stance](../ux/empty-and-error-states.md). Silently adding zero rows read as a dead click.
 - **The tree reveals the active concept**: a selection made anywhere — a graph node, the [launcher](command-palette.md), a [reader](concept-reader.md) link — expands the directory chain leading to it and scrolls its row into view, so the tree always answers "where does this live in the bundle?". It only ever expands; it never re-folds what the user collapsed.

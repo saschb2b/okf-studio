@@ -3,7 +3,7 @@ type: Feature
 title: Visualization Views
 description: The graph pane renders one of four visualizations (force-directed graph, treemap, sunburst, or circle packing) with a persisted switcher and shared drill-down.
 tags: [feature, visualization, hierarchy, graph]
-timestamp: 2026-07-08T14:30:00Z
+timestamp: 2026-07-23T22:08:44+02:00
 ---
 
 # What it does
@@ -17,7 +17,7 @@ The [graph pane](graph-view.md) is no longer one visualization. A four-way switc
 : Hierarchy in 2D. Tile area ∝ content size, so "what's big, what's inside what" reads at a glance. Click a group tile to drill into it.
 
 `Sunburst`, concentric rings
-: The same hierarchy in angles and rings: the whole bundle at once when depth is limited. Click a ring segment to re-root on it (an animated push-in); the center hole names the current root and clicks back up a level.
+: The same hierarchy in angles and rings. **All** shows every authored generation; clicking a group re-roots on it, and the center hole returns to the level above.
 
 `Circle packing`, nested circles
 : Groups-within-groups as containment. Click a group circle to zoom into it (a smooth scale transition); click it again to zoom back out a level.
@@ -28,7 +28,9 @@ The three space-filling views answer a different question than the graph: **comp
 
 All three space-filling views consume one tree, built per render from the same filtered concept set the graph shows:
 
-- **Structure** comes from concept id paths (`design/color` sits inside the `design` group), with directory labels taken from the bundle's [index nodes](../architecture/data-model.md) when present, else prettified from the path segment.
+- **Structure** starts with concept id paths (`design/color` sits inside the `design` group), with directory labels taken from the bundle's [index nodes](../architecture/data-model.md) when present. Authored index headings can add a semantic generation inside that directory, such as `Features › Open and explore › Graph View`, without changing a concept id or moving its file.
+- **Every generation must add meaning.** The index title labels its directory and never becomes a same-name child (`Features › Features`). Empty headings and headings with only one direct concept do not add a ring. Nested concepts retain their physical directory, and cross-directory entries remain references rather than being re-parented for presentation.
+- **Authored order is stable.** Semantic groups and their direct concepts follow index order; undocumented path groups and unclaimed concepts follow deterministically. This keeps the shape steady between sessions and across the treemap, sunburst, and circle-packing views.
 - **Size** is the concept body's word count (floored at 1), so tile/arc/circle area means "amount of documented knowledge".
 - **Color** is the concept `type` via the same deterministic [type palette](../ux/theming.md) as the graph and badges, so identity follows the entity everywhere. Group shapes stay neutral: structure reads from geometry, not hue.
 - **Filters compose**: hidden types and the active tag remove concepts from the tree; a [search query](search-and-filter.md) dims non-matches instead of removing them, so the bundle's shape stays stable while searching.
@@ -46,6 +48,7 @@ All three space-filling views consume one tree, built per render from the same f
 - **Click a leaf** (a concept) to open it in the [Concept Reader](concept-reader.md), the same shared selection as everywhere else; the selected concept carries an accent ring in the view.
 - **Selection focuses the view**: picking a concept anywhere (sidebar, palette, a reader link) drills the active view to that concept's parent group, the graph's recenter-on-select translated to hierarchies.
 - **Click a group** to drill in (treemap/sunburst re-root; circle packing zooms). The centered **breadcrumb** (`All › Design › Tokens`, collapsing a deep trail to `All › … › Tokens`) steps back to any ancestor, and **Alt+↑** drills up one level without reaching for it.
+- **All remains complete** in the sunburst. It does not collapse leaves into summary sectors or repeat a parent to fill a ring. Small sectors can omit text, but remain present and inspectable through hover or drill.
 - **Hover** for a tooltip card (name, type, and size as "~N words") on its own elevated surface, clamped inside the pane so it never clips at an edge.
 - Transitions animate (drill push-in, zoom glide) and respect **reduce motion** ([settings](../ux/settings.md)).
 
@@ -56,10 +59,11 @@ Nivo's built-in labels are a fixed 11px, which reads teeny on a big tile and ove
 - A name renders at the **largest font (10–18px) whose word-wrapped lines fit its shape**; a shape that can't hold its name stays quiet (the tooltip carries it, and drilling in reveals more names, the space-filling twin of the graph's level-of-detail labels).
 - **Ink is picked by fill luminance** (dark ink on light type colors, light ink on dark), so labels never wash out; label text wears ink tokens, never the series color.
 - The **sunburst rotates each label to its arc**, tangential on wide sectors and radial on thin slivers, flipped on the far half so nothing reads upside-down. Horizontal text only suits a ring near 12/6 o'clock.
+- Labels appear only when their sector can contain them. This follows the area-threshold treatment in the [D3 zoomable sunburst](https://observablehq.com/notebook-kit/ex/d3/zoomable-sunburst); unlabeled concepts remain available through the tooltip and click target.
 
 # Implementation notes
 
-- Rendered with [nivo](https://nivo.rocks) (`@nivo/treemap`, `@nivo/sunburst`, `@nivo/circle-packing`; d3-hierarchy underneath, react-spring transitions) rather than a bespoke renderer: these are solved, polished chart forms, and the interesting work is the shared tree/drill model, not rectangle math. The nivo chunk (~55 KB gzip, shared by all three) is **lazy-loaded** on first use, so the default graph path stays as lean as before, the same pattern as the on-demand GPU renderer.
+- Rendered with [nivo](https://nivo.rocks) (`@nivo/treemap`, `@nivo/sunburst`, `@nivo/circle-packing`; [d3-hierarchy partition](https://d3js.org/d3-hierarchy/partition) underneath, react-spring transitions) rather than a bespoke renderer. The partition layout assigns one annular generation per actual tree depth; Studio's job is therefore to give it an honest tree. The nivo chunk (~55 KB gzip, shared by all three) is **lazy-loaded** on first use, so the default graph path stays as lean as before, the same pattern as the on-demand GPU renderer.
 - The pane host (`VizPane`) owns the tree build, drill state, selection/dim wiring, and chrome; each view is a pure chart over that contract, which is what lets drill position survive view switches.
 - Theme colors cross into nivo as resolved values (its theme object is plain JS, not CSS-variable-aware), re-read via a `data-theme` observer on the document root so they stay in step with theme flips.
 - Two nivo quirks worth knowing: custom layers receive **un-zoomed** node positions in the circle packing (the zoom transform is re-derived from the root circle's geometry), and the themed tooltip container paints no background behind custom tooltips (hence the app-owned tooltip card).

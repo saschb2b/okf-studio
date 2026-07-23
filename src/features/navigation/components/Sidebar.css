@@ -336,17 +336,18 @@
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
-/* The trailing "open folder" cue: dim at rest so it doesn't shout, brighter on
-   hover, accent when the folder is the active view. */
-.sb-heading-go {
+/* The trailing folder cue distinguishes "open this section home" from the
+   chevrons that expand and collapse directory rows. */
+.sb-heading-folder {
+  flex: 0 0 auto;
   color: var(--text-dim);
-  opacity: 0.4;
+  opacity: 0.55;
 }
-.sb-tree-heading-link:hover .sb-heading-go {
+.sb-tree-heading-link:hover .sb-heading-folder {
   color: var(--text);
-  opacity: 0.75;
+  opacity: 0.85;
 }
-.sb-tree-heading-link.is-active .sb-heading-go {
+.sb-tree-heading-link.is-active .sb-heading-folder {
   color: var(--accent);
   opacity: 1;
 }

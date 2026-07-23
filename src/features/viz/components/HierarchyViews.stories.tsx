@@ -18,17 +18,44 @@ const tree: VizNode = {
       id: "product",
       name: "Product",
       children: [
-        { id: "product/overview", name: "Overview", type: "Product", value: 420 },
-        { id: "product/principles", name: "Principles", type: "Product", value: 380 },
+        {
+          id: "@index-section/product/1",
+          name: "Foundations",
+          children: [
+            { id: "product/overview", name: "Overview", type: "Product", value: 420 },
+            { id: "product/principles", name: "Principles", type: "Product", value: 380 },
+          ],
+        },
+        {
+          id: "@index-section/product/2",
+          name: "Roadmaps",
+          children: [
+            { id: "product/transformation", name: "Transformation", type: "Roadmap", value: 340 },
+            { id: "product/evolution", name: "Evolution", type: "Roadmap", value: 260 },
+          ],
+        },
       ],
     },
     {
       id: "architecture",
       name: "Architecture",
       children: [
-        { id: "architecture/system", name: "System", type: "Architecture", value: 640 },
-        { id: "architecture/ipc", name: "IPC & Security", type: "Architecture", value: 510 },
-        { id: "architecture/testing", name: "Testing", type: "Architecture", value: 300 },
+        {
+          id: "@index-section/architecture/1",
+          name: "Core and rendering",
+          children: [
+            { id: "architecture/system", name: "System", type: "Architecture", value: 640 },
+            { id: "architecture/model", name: "Data model", type: "Architecture", value: 420 },
+          ],
+        },
+        {
+          id: "@index-section/architecture/2",
+          name: "Safety and operations",
+          children: [
+            { id: "architecture/ipc", name: "IPC & Security", type: "Architecture", value: 510 },
+            { id: "architecture/testing", name: "Testing", type: "Architecture", value: 300 },
+          ],
+        },
       ],
     },
     {
@@ -69,7 +96,7 @@ function HierarchyView({ view, rootId, dimmed }: HierarchyStoryProps) {
   };
   const View = view === "treemap" ? TreemapView : view === "sunburst" ? SunburstView : PackView;
   return (
-    <div style={{ width: 640, height: 420 }}>
+    <div style={{ width: "100vw", height: "100vh" }}>
       <View {...props} />
     </div>
   );

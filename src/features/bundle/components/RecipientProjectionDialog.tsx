@@ -109,13 +109,12 @@ export function RecipientProjectionDialog({
       setPlan(await planProjection(bundle.root, input));
     } catch (raised: unknown) {
       setError(errorText(raised));
-    } finally {
-      setBusy(null);
     }
+    setBusy(null);
   }
 
   async function exportProjectionCopy() {
-    if (!canExport || plan === null) return;
+    if (!canExport) return;
     setBusy("export");
     setError(null);
     try {
@@ -127,9 +126,8 @@ export function RecipientProjectionDialog({
       if (exported) setResult(exported);
     } catch (raised: unknown) {
       setError(errorText(raised));
-    } finally {
-      setBusy(null);
     }
+    setBusy(null);
   }
 
   return (
@@ -163,6 +161,7 @@ export function RecipientProjectionDialog({
                 <label>
                   <span>Recipient</span>
                   <input
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- the explicit modal action should place focus in its first field
                     autoFocus
                     value={recipient}
                     disabled={busy !== null}
@@ -270,6 +269,7 @@ export function RecipientProjectionDialog({
                   <li key={concept.id}>
                     <label>
                       <input
+                        aria-label={`Select ${concept.title}`}
                         type="checkbox"
                         checked={selectedIds.has(concept.id)}
                         disabled={busy !== null}
@@ -491,7 +491,7 @@ function sentenceCase(value: string): string {
   return value.charAt(0).toLocaleUpperCase() + value.slice(1);
 }
 
-function sumOccurrences(items: ReadonlyArray<{ occurrences: number }>): number {
+function sumOccurrences(items: readonly { occurrences: number }[]): number {
   return items.reduce((sum, item) => sum + item.occurrences, 0);
 }
 

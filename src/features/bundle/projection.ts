@@ -86,11 +86,11 @@ export interface ErasureAudit {
 export interface ProjectionValidation {
   errors: number;
   warnings: number;
-  issues: Array<{
+  issues: {
     level: "error" | "warning";
     path: string | null;
     message: string;
-  }>;
+  }[];
   truncated: boolean;
 }
 
@@ -111,4 +111,3 @@ export interface ProjectionExportResult {
   sourceUnchanged: boolean;
   replacedExistingProjection: boolean;
 }
-

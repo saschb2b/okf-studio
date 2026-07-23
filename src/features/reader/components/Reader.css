@@ -771,21 +771,38 @@
   color: var(--text-dim);
 }
 
-.markdown table {
-  border-collapse: collapse;
+.markdown .markdown-table-scroll {
   width: 100%;
   margin: 1em 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.markdown .markdown-table-scroll:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
+}
+.markdown table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+  margin: 0;
   font-size: var(--fs-sm);
+  table-layout: auto;
 }
 .markdown th,
 .markdown td {
   border: 1px solid var(--border);
   padding: var(--space-6) var(--space-10);
+  max-width: min(48ch, 70vw);
   text-align: left;
+  vertical-align: top;
   font-variant-numeric: tabular-nums;
-  /* Long unbreakable values (token names, hashes) may wrap mid-token, so a
-     table can always shrink to the prose column instead of overflowing it. */
-  overflow-wrap: anywhere;
+  /* `anywhere` contributes single characters to min-content sizing and lets
+     automatic table layout crush a column. `break-word` preserves whole-word
+     column contributions; the scroll wrapper catches true token overflow. */
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .markdown th {
   background: var(--bg-sunken);

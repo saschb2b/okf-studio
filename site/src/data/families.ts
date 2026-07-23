@@ -50,7 +50,7 @@ export const families: Family[] = [
         items: [
           {
             title: "The whole extended Markdown set",
-            body: "Highlighted code, math, Mermaid diagrams, footnotes, task lists, emoji, embedded HTML. Plus zoomable images, live reload, and keyboard-first navigation.",
+            body: "Highlighted code, content-sized tables, math, Mermaid diagrams, footnotes, task lists, emoji, and contained embedded HTML. Plus zoomable images and keyboard-first navigation.",
           },
           {
             title: "Peek before you open",

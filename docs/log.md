@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Fix**: Made reader tables preserve readable columns. Native content sizing now keeps whole words in the column calculation, caps long prose at a useful reading measure, and gives every GFM or embedded HTML table its own keyboard-focusable horizontal overflow region when the content does not fit. Wide tables no longer widen the reader, while narrow panes no longer collapse labels into single-character stacks.
+
 * **Update**: Made authored index sections the shared information architecture for the treemap, sunburst, and circle-packing views. A directory title now labels only its own generation, so false repetitions such as `Features › Features` cannot appear. Meaningful headings with at least two direct concepts add one semantic level without changing concept ids or paths; nested and cross-directory entries keep their original identity. The `docs/` indexes now group product knowledge by normal Studio work rather than one long alphabetical ring, while the sunburst's **All** level continues to show every concept.
 
 * **Update**: Replaced the root-level Interoperability Lab with [Bundle Connections](features/interoperability-lab.md). Bundle details now gives a compact summary and opens a dedicated scrollable workspace for external sources, relationship exchange, and diagnostics. Language switching and companion resources moved to the active [Concept Reader](features/concept-reader.md). Bundle Home and ordinary folder or concept routes no longer run the filesystem-backed report, so the working start page opens from already-parsed bundle data.

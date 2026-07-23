@@ -284,6 +284,35 @@ describe("renderMarkdown task lists", () => {
   });
 });
 
+describe("renderMarkdown tables", () => {
+  it("contains GFM tables in a keyboard-scrollable region", () => {
+    const html = renderMarkdown(
+      "| Package | Result | Evidence and boundary |\n| --- | --- | --- |\n| RI0 | Complete | Frozen retrieval corpus. |",
+    );
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const table = template.content.querySelector("table");
+    const scroll = table?.parentElement;
+
+    expect(scroll?.className).toBe("markdown-table-scroll");
+    expect(scroll?.tabIndex).toBe(0);
+    expect(scroll?.querySelectorAll(":scope > table")).toHaveLength(1);
+  });
+
+  it("contains raw HTML tables without nesting an existing table region", () => {
+    const raw =
+      '<div class="markdown-table-scroll"><table><tbody><tr><td>Ready</td></tr></tbody></table></div>';
+    const html = renderMarkdown(raw);
+    const template = document.createElement("template");
+    template.innerHTML = html;
+
+    expect(template.content.querySelectorAll(".markdown-table-scroll")).toHaveLength(1);
+    expect(
+      template.content.querySelector<HTMLElement>(".markdown-table-scroll")?.tabIndex,
+    ).toBe(0);
+  });
+});
+
 describe("renderMarkdown footnotes", () => {
   const MD = "A claim.[^1]\n\nPlain text.\n\n[^1]: The **evidence**.";
 

@@ -96,7 +96,7 @@ function HierarchyView({ view, rootId, dimmed }: HierarchyStoryProps) {
   };
   const View = view === "treemap" ? TreemapView : view === "sunburst" ? SunburstView : PackView;
   return (
-    <div style={{ width: 640, height: 420 }}>
+    <div style={{ width: "100vw", height: "100vh" }}>
       <View {...props} />
     </div>
   );

@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => ({
     strictPort: true,
     host: host || false,
     hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
-    watch: { ignored: ["**/src-tauri/**"] },
+    watch: { ignored: ["**/src-tauri/**", "**/target/**"] },
     // Pre-transform the app's modules as soon as the server starts — i.e.
     // while cargo is still building — instead of on the webview's first
     // request, which shortens the blank gap between window creation and

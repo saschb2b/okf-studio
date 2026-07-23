@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "namespace": "io.okf.access",
+  "version": "1.0.0",
+  "title": "Audience and handling guidance",
+  "description": "Advisory audience, sensitivity, and handling labels for review and least-disclosure projections. These fields do not grant access.",
+  "fields": [
+    {
+      "id": "audience",
+      "scope": "concept",
+      "key": "audience",
+      "label": "Intended audience",
+      "description": "One or more audience labels that guide human review and recipient projections.",
+      "valueType": "array",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": [["engineering", "release-partners"]]
+    },
+    {
+      "id": "sensitivity",
+      "scope": "concept",
+      "key": "sensitivity",
+      "label": "Sensitivity",
+      "description": "An authored handling label. Studio recognizes public, internal, confidential, and restricted for projection planning while preserving every other value.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["internal"]
+    },
+    {
+      "id": "handling-notes",
+      "scope": "concept",
+      "key": "handling_notes",
+      "label": "Handling notes",
+      "description": "Short human guidance shown during reading, context review, staged review, and projection planning.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["Review before sharing outside the team."]
+    }
+  ],
+  "relationships": [],
+  "checks": []
+}

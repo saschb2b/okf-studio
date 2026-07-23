@@ -26,6 +26,7 @@ use walkdir::WalkDir;
 /// `concepts` for broken-link reporting and re-reading reserved files directly.
 pub fn validate(root: &Path, concepts: &[Concept]) -> Vec<Issue> {
     let mut issues = Vec::new();
+    let ignore = crate::ignore::IgnoreMatcher::load(root);
 
     // 1. Per-concept hard rules: every concept file must have frontmatter and a
     //    non-empty type. We re-read the raw file to distinguish "no frontmatter
@@ -74,6 +75,7 @@ pub fn validate(root: &Path, concepts: &[Concept]) -> Vec<Issue> {
         .filter_entry(|e| !crate::parse::is_ignored_dir(e.path(), root))
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
+        .filter(|e| !ignore.is_ignored(e.path(), false))
     {
         let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
         let rel = rel_path(root, entry.path());

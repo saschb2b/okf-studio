@@ -1,7 +1,9 @@
 use super::{
-    CanonicalSnapshot, RetrievalHealth, RetrievalManifest, RetrievalUnit, RetrievalUnitKind,
-    SourceRange, RETRIEVAL_PRODUCER, RETRIEVAL_SCHEMA_VERSION,
+    CanonicalSnapshot, RetrievalClaimCitation, RetrievalEvidenceSource, RetrievalHealth,
+    RetrievalManifest, RetrievalUnit, RetrievalUnitKind, SourceRange, RETRIEVAL_PRODUCER,
+    RETRIEVAL_SCHEMA_VERSION,
 };
+use crate::evidence;
 use crate::{Bundle, Concept};
 use sha2::{Digest, Sha256};
 
@@ -68,6 +70,26 @@ pub fn canonical_snapshot(manifest: &RetrievalManifest) -> CanonicalSnapshot {
 }
 
 fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
+    let authored_evidence = evidence::inspect(concept);
+    let evidence_sources = authored_evidence
+        .sources
+        .iter()
+        .map(|source| RetrievalEvidenceSource {
+            source_id: source.id.clone(),
+            title: source.title.clone(),
+            uri: source.uri.clone(),
+            locator: source.locator.clone(),
+            observed_at: source.observed_at.clone(),
+            source_digest: source.source_digest.clone(),
+            evidence_digest: source.evidence_digest.clone(),
+            adapter_id: source.adapter_id.clone(),
+            adapter_version: source.adapter_version,
+            media_type: source.media_type.clone(),
+            last_checked_at: source.last_checked_at.clone(),
+            last_status: source.last_status.clone(),
+            last_fingerprint: source.last_fingerprint.clone(),
+        })
+        .collect::<Vec<_>>();
     let sections = structural_sections(&concept.body);
     let sections = if sections.is_empty() {
         vec![SectionDraft {
@@ -98,6 +120,15 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
             } else {
                 RetrievalUnitKind::Section
             };
+            let claim_citations = authored_evidence
+                .citations
+                .iter()
+                .filter(|citation| (section.start_line..=section.end_line).contains(&citation.line))
+                .map(|citation| RetrievalClaimCitation {
+                    source_id: citation.source_id.clone(),
+                    line: citation.line,
+                })
+                .collect();
             RetrievalUnit {
                 section_id,
                 content_hash,
@@ -115,12 +146,21 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
                 text: section.text,
                 tags: concept.tags.clone(),
                 timestamp: concept.timestamp.clone(),
-                effective_time: extra_string(concept, "effective_time"),
+                effective_time: extra_string(concept, "effective_from")
+                    .or_else(|| extra_string(concept, "effective_time")),
+                effective_until: extra_string(concept, "effective_until"),
+                review_after: extra_string(concept, "review_after"),
+                lifecycle: extra_string(concept, "lifecycle"),
+                confidence: extra_confidence(concept),
                 source_class: extra_string(concept, "source_class"),
                 owner: extra_string(concept, "owner"),
                 supersedes: extra_strings(concept, "supersedes"),
+                superseded_by: extra_strings(concept, "superseded_by"),
+                contradicts: extra_strings(concept, "contradicts"),
                 resource: concept.resource.clone(),
                 citations: concept.external_links.clone(),
+                evidence_sources: evidence_sources.clone(),
+                claim_citations,
                 links: concept.links.clone(),
                 backlinks: concept.cited_by.clone(),
                 health: RetrievalHealth {
@@ -131,6 +171,17 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
             }
         })
         .collect()
+}
+
+fn extra_confidence(concept: &Concept) -> Option<String> {
+    match concept.extra.get("confidence") {
+        Some(serde_json::Value::Number(value)) => Some(value.to_string()),
+        Some(serde_json::Value::String(value)) => {
+            let trimmed = value.trim();
+            (!trimmed.is_empty()).then(|| trimmed.to_string())
+        }
+        _ => None,
+    }
 }
 
 fn extra_string(concept: &Concept, key: &str) -> Option<String> {
@@ -322,12 +373,91 @@ mod tests {
         assert!(snapshot.estimated_tokens > 0);
     }
 
+    #[test]
+    fn manifest_projects_advisory_reliability_fields() {
+        let mut bundle = bundle_with_body("# A\n\nAlpha");
+        let concept = &mut bundle.concepts[0];
+        concept
+            .extra
+            .insert("confidence".to_string(), serde_json::json!(0.8));
+        concept
+            .extra
+            .insert("lifecycle".to_string(), serde_json::json!("deprecated"));
+        concept.extra.insert(
+            "effective_from".to_string(),
+            serde_json::json!("2026-01-01"),
+        );
+        concept.extra.insert(
+            "effective_until".to_string(),
+            serde_json::json!("2026-12-31"),
+        );
+        concept
+            .extra
+            .insert("review_after".to_string(), serde_json::json!("2026-06-01"));
+        concept.extra.insert(
+            "superseded_by".to_string(),
+            serde_json::json!(["concepts/current"]),
+        );
+        concept.extra.insert(
+            "contradicts".to_string(),
+            serde_json::json!(["concepts/disputed"]),
+        );
+
+        let unit = build_manifest(&bundle).units.remove(0);
+        assert_eq!(unit.confidence.as_deref(), Some("0.8"));
+        assert_eq!(unit.lifecycle.as_deref(), Some("deprecated"));
+        assert_eq!(unit.effective_time.as_deref(), Some("2026-01-01"));
+        assert_eq!(unit.effective_until.as_deref(), Some("2026-12-31"));
+        assert_eq!(unit.review_after.as_deref(), Some("2026-06-01"));
+        assert_eq!(unit.superseded_by, ["concepts/current"]);
+        assert_eq!(unit.contradicts, ["concepts/disputed"]);
+    }
+
+    #[test]
+    fn manifest_projects_claim_level_evidence_with_its_source_identity() {
+        let mut bundle = bundle_with_body("# A\n\nSupported.[^report]\n\n## B\n\nOther");
+        let concept = &mut bundle.concepts[0];
+        concept.extra.insert(
+            "provenance".to_string(),
+            serde_json::json!({
+                "report": {
+                    "title": "Public report",
+                    "uri": "https://example.com/report",
+                    "observed_at": "2026-07-22T00:00:00Z",
+                    "source_digest": format!("sha256-{}", "a".repeat(64)),
+                    "adapter": {"id": "html", "version": 1},
+                    "media_type": "text/html"
+                }
+            }),
+        );
+        concept.extra.insert(
+            "evidence".to_string(),
+            serde_json::json!({
+                "report": {"provenance_id": "report", "locator": "Paragraph 4"}
+            }),
+        );
+
+        let manifest = build_manifest(&bundle);
+        assert_eq!(manifest.units[0].claim_citations[0].source_id, "report");
+        assert_eq!(manifest.units[0].claim_citations[0].line, 3);
+        assert_eq!(
+            manifest.units[0].evidence_sources[0].uri.as_deref(),
+            Some("https://example.com/report")
+        );
+        assert_eq!(
+            manifest.units[0].evidence_sources[0].locator.as_deref(),
+            Some("Paragraph 4")
+        );
+        assert!(manifest.units[1].claim_citations.is_empty());
+    }
+
     fn bundle_with_body(body: &str) -> Bundle {
         Bundle {
             root: "C:\\private\\bundle".to_string(),
             name: "Finance".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts: vec![Concept {
                 id: "concepts/revenue".to_string(),
                 concept_type: "Metric".to_string(),

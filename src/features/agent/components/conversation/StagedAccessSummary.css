@@ -1,0 +1,52 @@
+.staged-access-summary {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.staged-access-summary > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.staged-access-summary > header span,
+.staged-access-summary > p,
+.staged-access-summary li > span,
+.staged-access-summary li > code {
+  color: var(--text-dim);
+}
+
+.staged-access-summary p,
+.staged-access-summary ul {
+  margin: 0;
+}
+
+.staged-access-summary ul {
+  display: grid;
+  gap: var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.staged-access-summary li {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.staged-access-summary li > * {
+  overflow-wrap: anywhere;
+}
+
+.staged-access-summary .staged-access-summary__diagnostic {
+  color: var(--warn);
+}

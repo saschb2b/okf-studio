@@ -1,0 +1,203 @@
+.concept-move-dialog {
+  display: grid;
+  width: min(46rem, calc(100vw - var(--space-24)));
+  max-height: min(48rem, 76vh);
+  gap: var(--space-12);
+  overflow: auto;
+  padding: var(--space-16);
+}
+
+.concept-move-dialog__header,
+.concept-move-dialog__header > div,
+.concept-move-dialog__form,
+.concept-move-dialog__review,
+.concept-move-summary,
+.concept-move-files,
+.concept-move-files > li,
+.concept-move-diff,
+.concept-move-result {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.concept-move-dialog__header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.concept-move-dialog__header h2,
+.concept-move-dialog__header p {
+  margin: 0;
+}
+
+.concept-move-dialog__header p,
+.concept-move-dialog__form p,
+.concept-move-summary p,
+.concept-move-result p {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.concept-move-dialog__form label {
+  font-weight: var(--weight-semibold);
+}
+
+.concept-move-dialog__form input {
+  min-height: 36px;
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.concept-move-dialog__form input:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.concept-move-dialog__form .btn,
+.concept-move-dialog__review > footer .btn {
+  justify-self: end;
+}
+
+.concept-move-summary {
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.concept-move-summary > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.concept-move-summary__warning,
+.concept-move-error {
+  color: var(--warn);
+}
+
+.concept-move-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concept-move-files > li {
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.concept-move-files > li > header,
+.concept-move-diff section > header,
+.concept-move-dialog__review > footer,
+.concept-move-result > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.concept-move-files > li > header > span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.concept-move-files small {
+  color: var(--text-dim);
+}
+
+.concept-move-diff section {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.concept-move-diff section > header > span {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.concept-move-diff .btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.concept-move-diff pre {
+  max-height: 15rem;
+  margin: 0;
+  padding: var(--space-8);
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs-xs) / var(--lh-normal) var(--mono);
+  white-space: pre;
+}
+
+.concept-move-validation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.concept-move-validation svg {
+  color: var(--ok);
+}
+
+.concept-move-validation span {
+  color: var(--text-dim);
+}
+
+.concept-move-dialog__review > footer {
+  justify-content: flex-end;
+}
+
+.concept-move-result {
+  justify-items: start;
+}
+
+.concept-move-result > svg {
+  color: var(--ok);
+}
+
+.concept-move-result > div {
+  justify-content: flex-start;
+}
+
+.concept-move-error {
+  padding: var(--space-8);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 420px) {
+  .concept-move-dialog {
+    top: 6vh;
+    width: calc(100vw - var(--space-12));
+    max-height: 88vh;
+    padding: var(--space-12);
+  }
+
+  .concept-move-files > li > header,
+  .concept-move-diff section > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .concept-move-files > li > header .btn {
+    width: 100%;
+  }
+}

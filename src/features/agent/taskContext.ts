@@ -1,5 +1,18 @@
 import type { AgentSourceInput } from "@/shared/ipc.ts";
+import {
+  durableProvenanceFromSource,
+  type DurableProvenance,
+} from "@/shared/evidence.ts";
 import type { Issue } from "@/shared/types.ts";
+import type { ProfileReport } from "@/shared/types.ts";
+import {
+  assessAccessHints,
+  type AccessHints,
+} from "@/shared/access.ts";
+import {
+  profileTaskContext,
+  type OkfProfileTaskContext,
+} from "@/features/agent/profileContext.ts";
 
 export const OKF_TASK_IDS = [
   "okf-create",
@@ -114,6 +127,7 @@ export interface OkfContextObject {
   reason: "active-concept" | "graph-neighbor" | "user-attachment" | "validation-finding";
   required: boolean;
   estimatedBytes: number;
+  access?: AccessHints;
 }
 
 export interface OkfContextSource {
@@ -121,6 +135,7 @@ export interface OkfContextSource {
   title: string;
   origin: string | null;
   sourceDigest: string | null;
+  provenance: DurableProvenance | null;
   required: boolean;
   estimatedBytes: number;
 }
@@ -149,6 +164,7 @@ export interface OkfContextPlan {
   objects: readonly OkfContextObject[];
   sources: readonly OkfContextSource[];
   validation: { errors: number; warnings: number };
+  profileContext: OkfProfileTaskContext | null;
   budget: OkfContextBudget;
   omissions: readonly OkfContextOmission[];
 }
@@ -167,18 +183,13 @@ interface ContextPlanInput {
     body?: string;
     links?: readonly string[];
     timestamp?: string | null;
+    extra?: Record<string, unknown>;
   }[];
   activeConcept: { id: string; title: string } | null;
   attachedConcepts: readonly { id: string; title: string; type: string }[];
-  sources: readonly {
-    id: string;
-    title: string;
-    content: string;
-    origin?: string;
-    sourceDigest?: string;
-    imageData?: string;
-  }[];
+  sources: readonly (AgentSourceInput & { id: string })[];
   issues: readonly Issue[];
+  profileReport?: ProfileReport | null;
   removedIds?: ReadonlySet<string>;
   memoryRemovedIds?: ReadonlySet<string>;
   maxBytes?: number;
@@ -209,17 +220,19 @@ export function bundleContextFingerprint(
     body?: string;
     links?: readonly string[];
     timestamp?: string | null;
+    extra?: Record<string, unknown>;
   }[],
   issues: readonly Issue[],
 ): string {
   const conceptState = concepts
-    .map(({ id, title, type, body, links, timestamp }) => [
+    .map(({ id, title, type, body, links, timestamp, extra }) => [
       id,
       title,
       type,
       timestamp ?? "",
       [...(links ?? [])].sort().join("\u001c"),
       body ?? "",
+      JSON.stringify(assessAccessHints({ extra })),
     ].join("\u001f"))
     .sort()
     .join("\u001e");
@@ -235,21 +248,39 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
   const removed = input.removedIds ?? new Set<string>();
   const memoryRemoved = input.memoryRemovedIds ?? new Set<string>();
   const maxBytes = input.maxBytes ?? DEFAULT_CONTEXT_BYTES;
+  const profileContext = profileTaskContext(input.taskId, input.profileReport);
   const conceptById = new Map(input.concepts.map((concept) => [concept.id, concept]));
   const candidates = new Map<string, OkfContextObject>();
-  const objectBytes = (concept: { id: string; title: string; type: string; body?: string }) =>
-    byteLength(`${concept.id}\n${concept.title}\n${concept.type}\n${concept.body ?? ""}`);
+  const contextObject = (
+    concept: {
+      id: string;
+      title: string;
+      type: string;
+      body?: string;
+      extra?: Record<string, unknown>;
+    },
+    reason: OkfContextObject["reason"],
+    required: boolean,
+  ): OkfContextObject => {
+    const access = assessAccessHints(concept);
+    return {
+      id: concept.id,
+      title: concept.title,
+      type: concept.type,
+      path: `${concept.id}.md`,
+      reason,
+      required,
+      estimatedBytes: byteLength(
+        `${concept.id}\n${concept.title}\n${concept.type}\n${concept.body ?? ""}\n${JSON.stringify(access)}`,
+      ),
+      access,
+    };
+  };
 
   if (input.activeConcept) {
     const concept = conceptById.get(input.activeConcept.id);
     if (concept) {
-      candidates.set(concept.id, {
-        ...concept,
-        path: `${concept.id}.md`,
-        reason: "active-concept",
-        required: false,
-        estimatedBytes: objectBytes(concept),
-      });
+      candidates.set(concept.id, contextObject(concept, "active-concept", false));
       const neighborIds = new Set(concept.links ?? []);
       for (const candidate of input.concepts) {
         if (candidate.links?.includes(concept.id)) neighborIds.add(candidate.id);
@@ -257,37 +288,27 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
       for (const neighborId of [...neighborIds].sort()) {
         const neighbor = conceptById.get(neighborId);
         if (!neighbor) continue;
-        candidates.set(neighbor.id, {
-          ...neighbor,
-          path: `${neighbor.id}.md`,
-          reason: "graph-neighbor",
-          required: false,
-          estimatedBytes: objectBytes(neighbor),
-        });
+        candidates.set(neighbor.id, contextObject(neighbor, "graph-neighbor", false));
       }
     }
   }
   for (const concept of input.attachedConcepts) {
-    candidates.set(concept.id, {
-      ...concept,
-      path: `${concept.id}.md`,
-      reason: "user-attachment",
-      required: false,
-      estimatedBytes: objectBytes(concept),
-    });
+    const sourceConcept = conceptById.get(concept.id);
+    candidates.set(
+      concept.id,
+      contextObject(
+        sourceConcept ? { ...sourceConcept, ...concept } : concept,
+        "user-attachment",
+        false,
+      ),
+    );
   }
   if (input.taskId === "okf-audit" || input.taskId === "okf-repair") {
     for (const issue of input.issues) {
       if (!issue.conceptId) continue;
       const concept = conceptById.get(issue.conceptId);
       if (!concept) continue;
-      candidates.set(concept.id, {
-        ...concept,
-        path: `${concept.id}.md`,
-        reason: "validation-finding",
-        required: true,
-        estimatedBytes: objectBytes(concept),
-      });
+      candidates.set(concept.id, contextObject(concept, "validation-finding", true));
     }
   }
 
@@ -299,6 +320,7 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
     title: source.title,
     origin: source.origin ?? null,
     sourceDigest: source.sourceDigest ?? null,
+    provenance: durableProvenanceFromSource(source.id, source),
     required: false,
     estimatedBytes: byteLength(source.content) + byteLength(source.imageData ?? ""),
   })).sort((left, right) => left.title.localeCompare(right.title) || left.id.localeCompare(right.id));
@@ -345,13 +367,18 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
     tools: task.tools,
     network: task.network,
     writes: task.writes,
-    bundleFingerprint: bundleContextFingerprint(input.bundleRoot, input.concepts, input.issues),
+    bundleFingerprint: profileContext
+      ? fingerprint(
+          `${bundleContextFingerprint(input.bundleRoot, input.concepts, input.issues)}\u001d${JSON.stringify(profileContext)}`,
+        )
+      : bundleContextFingerprint(input.bundleRoot, input.concepts, input.issues),
     objects,
     sources,
     validation: {
       errors: input.issues.filter((issue) => issue.level === "error").length,
       warnings: input.issues.filter((issue) => issue.level === "warning").length,
     },
+    profileContext,
     budget: {
       maxBytes,
       maxEstimatedTokens: Math.ceil(maxBytes / 4),

@@ -1,0 +1,70 @@
+{
+  "source": {
+    "repository": "https://github.com/GoogleCloudPlatform/knowledge-catalog",
+    "commit": "d44368c15e38e7c92481c5992e4f9b5b421a801d",
+    "retrievedOn": "2026-07-23",
+    "license": "Apache-2.0"
+  },
+  "bundles": [
+    {
+      "id": "google-ga4-reduced",
+      "path": "google-ga4",
+      "expected": {
+        "conceptCount": 3,
+        "edgeCount": 2,
+        "brokenLinkCount": 6,
+        "errorCount": 0,
+        "warningCount": 6,
+        "types": ["BigQuery Table", "Reference"],
+        "extras": {}
+      }
+    },
+    {
+      "id": "google-bitcoin-reduced",
+      "path": "google-bitcoin",
+      "expected": {
+        "conceptCount": 3,
+        "edgeCount": 4,
+        "brokenLinkCount": 4,
+        "errorCount": 0,
+        "warningCount": 4,
+        "types": ["BigQuery Dataset", "BigQuery Table"],
+        "extras": {}
+      }
+    },
+    {
+      "id": "google-stackoverflow-reduced",
+      "path": "google-stackoverflow",
+      "expected": {
+        "conceptCount": 2,
+        "edgeCount": 2,
+        "brokenLinkCount": 7,
+        "errorCount": 0,
+        "warningCount": 7,
+        "types": ["BigQuery Dataset", "BigQuery Table"],
+        "extras": {}
+      }
+    },
+    {
+      "id": "adversarial-extensions",
+      "path": "adversarial-extensions",
+      "expected": {
+        "conceptCount": 2,
+        "edgeCount": 1,
+        "brokenLinkCount": 0,
+        "errorCount": 0,
+        "warningCount": 0,
+        "types": ["Producer Note", "Reference"],
+        "extras": {
+          "concepts/source": {
+            "producer": {
+              "name": "Foreign Catalog",
+              "quality": {"score": "0.82", "reviewed": "true"},
+              "labels": ["portable", "nested"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

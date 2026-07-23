@@ -107,6 +107,7 @@ struct ValidationNodeOutput {
     title: String,
     concept_type: String,
     staged: bool,
+    access: okf_core::access::AccessHints,
 }
 
 #[derive(Debug, Serialize)]
@@ -373,6 +374,7 @@ fn bounded_validation(validation: AgentStagedValidationInfo) -> ValidationOutput
             title: bounded_chars(&node.title, MAX_VALIDATION_FIELD_CHARS),
             concept_type: bounded_chars(&node.concept_type, MAX_VALIDATION_FIELD_CHARS),
             staged: node.staged,
+            access: node.access,
         })
         .collect();
     let edges = validation

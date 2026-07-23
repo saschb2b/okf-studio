@@ -87,8 +87,8 @@ export function ActivityBar() {
           {state.bundle && (
             <>
               <ActivityButton
-                label={`Overview   O`}
-                ariaLabel="Bundle overview"
+                label={`Bundle home   O`}
+                ariaLabel="Bundle home"
                 active={state.overview}
                 onClick={() => actions.setOverview(!state.overview)}
               >

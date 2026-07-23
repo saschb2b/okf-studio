@@ -1,10 +1,14 @@
 ---
 type: Proposal
-title: Bundle Overview & Health
-description: A landing view that orients you in a bundle before you dive — type distribution, hubs, orphans, broken links, and staleness — all from data already computed.
+title: Bundle Overview & Health (superseded)
+description: The original inventory-dashboard proposal, superseded by a working Home for activity, resumption, attention, and repository changes.
 tags: [proposal, ux, orientation, overview]
-timestamp: 2026-07-04T19:00:00Z
+timestamp: 2026-07-23T20:25:48+02:00
 ---
+
+# Status
+
+Superseded by [Bundle Home](../features/bundle-home.md). The original implementation shipped as an orientation dashboard, then became redundant as bundle identity moved to Bundle details and graph, filter, validation, and Git surfaces matured. The record below preserves the earlier rationale.
 
 # Problem
 

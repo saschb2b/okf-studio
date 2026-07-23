@@ -31,6 +31,10 @@ pub struct Bundle {
     /// The ODSF profile version a design-system bundle's root `index.md` declares
     /// (`odsf_version`), if any. A property of the data, surfaced read-only.
     pub odsf_version: Option<String>,
+    /// Producer-defined root `index.md` frontmatter after promoted bundle
+    /// keys are removed. Nested values are preserved without interpretation.
+    #[serde(default)]
+    pub extra: BTreeMap<String, serde_json::Value>,
     pub concepts: Vec<Concept>,
     pub indexes: Vec<IndexNode>,
     pub log: Vec<LogEntry>,

@@ -97,7 +97,7 @@ export function useGlobalKeys() {
         // pack). Skipped in reader-only layout where the pane is hidden.
         actions.cycleViz();
       } else if (!typing && !mod && k === "o" && state.bundle) {
-        // Toggle the bundle Overview landing (orient before you dive).
+        // Toggle Bundle Home (resume, activity, attention, work in progress).
         actions.setOverview(!state.overview);
       } else if (!typing && !mod && k === "t" && state.bundle) {
         // Toggle the Lineage panel — trace what depends on the active concept.

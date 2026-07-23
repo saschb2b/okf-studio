@@ -17,7 +17,7 @@ export const workflows: Workflow[] = [
     title: "Understand an unfamiliar bundle",
     question: "Someone handed you a bundle. What is actually in it?",
     steps: [
-      "Open the folder, or explicitly download a GitHub URL, and land on the bundle overview.",
+      "Open the folder, or explicitly download a GitHub URL, and land on Bundle Home to see recent activity and the next maintenance step.",
       "Switch among graph, treemap, sunburst, and circle packing to see shape, hubs, and clusters.",
       "Read concepts with hover previews, and branch side quests into tabs with their own history.",
       "Trace dependencies across hops in the lineage panel.",

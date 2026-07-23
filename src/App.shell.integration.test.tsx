@@ -103,6 +103,30 @@ describe("OKF Studio shell", () => {
     expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
   });
 
+  it("filters multi-hop lineage and explains a relationship path", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+    await user.click(screen.getByRole("button", {
+      name: /Overview What OKF Studio is and who it's for/i,
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Toggle lineage panel" }));
+    const panel = await screen.findByRole("dialog", { name: "Lineage" });
+    const supports = await within(panel).findByRole("option", { name: "Supports" });
+    await user.selectOptions(
+      within(panel).getByLabelText("Path target concept"),
+      "features/graph-view",
+    );
+    expect(within(panel).getByText(/Outgoing · Links to/)).toBeInTheDocument();
+
+    await user.selectOptions(within(panel).getByLabelText("Relationship"), supports);
+    expect(within(panel).getByText("Supports")).toBeInTheDocument();
+    await user.click(within(panel).getByRole("radio", { name: "Downstream" }));
+    expect(within(panel).getByText("No relationships match the current filters."))
+      .toBeInTheDocument();
+  });
+
   it("opens a repository change in the dedicated diff workspace", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -263,15 +287,21 @@ describe("OKF Studio shell", () => {
     ).toBeInTheDocument();
   });
 
-  it("surfaces the fixture's broken-link warning in the validation badge", async () => {
+  it("surfaces the fixture's broken-link warning through Bundle details", async () => {
     const user = userEvent.setup();
     renderApp();
     await openFolder(user);
-    // The mock bundle carries one broken cross-link, which validation reports
-    // as a warning (amber), not the quiet conformant baseline.
-    const badge = screen.getByRole("button", { name: /validation/i });
-    expect(badge).toHaveTextContent(/1 warning/i);
-    await user.click(badge);
+    // The mock bundle carries one broken cross-link. The title-bar Info action
+    // marks that warning; Bundle details explains it and routes to the report.
+    const details = screen.getByRole("button", {
+      name: /open bundle details.*conformant with warnings/i,
+    });
+    await user.click(details);
+    const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
+    const status = within(dialog).getByRole("button", {
+      name: /open validation report.*1 warning/i,
+    });
+    await user.click(status);
     expect(
       await screen.findByText(/link target not found/i),
     ).toBeInTheDocument();

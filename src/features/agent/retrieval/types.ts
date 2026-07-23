@@ -72,12 +72,35 @@ export interface EvidenceItem {
   sourceRange: { startLine: number; endLine: number };
   text: string;
   citations: string[];
+  evidenceSources?: {
+    sourceId: string;
+    title: string;
+    uri: string | null;
+    locator: string | null;
+    observedAt: string | null;
+    sourceDigest: string | null;
+    evidenceDigest: string | null;
+    adapterId: string | null;
+    adapterVersion: number | null;
+    mediaType: string | null;
+    lastCheckedAt: string | null;
+    lastStatus: string;
+    lastFingerprint: string | null;
+  }[];
+  claimCitations?: { sourceId: string; line: number }[];
   relationshipPath: string[];
   tokenEstimate: number;
 }
 
 export interface EvidenceCaveat {
-  kind: "stale" | "conflict" | "inferred-relationship" | "broken-link" | "authority-unknown";
+  kind:
+    | "stale"
+    | "conflict"
+    | "uncertain"
+    | "lifecycle"
+    | "inferred-relationship"
+    | "broken-link"
+    | "authority-unknown";
   conceptIds: string[];
   message: string;
 }

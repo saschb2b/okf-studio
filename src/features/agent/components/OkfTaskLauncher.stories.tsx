@@ -31,6 +31,7 @@ const plan: OkfContextPlan = {
   }],
   sources: [],
   validation: { errors: 0, warnings: 2 },
+  profileContext: null,
   budget: {
     maxBytes: 131072,
     maxEstimatedTokens: 32768,
@@ -145,6 +146,20 @@ export const FirstUse: Story = {
 
 export const Authentication: Story = {
   args: { status: "authentication", plan: undefined },
+};
+
+export const ProfileLoading: Story = {
+  args: { status: "profile-loading", plan: undefined },
+};
+
+export const ProfileUnavailable: Story = {
+  args: { status: "profile-unavailable", plan: undefined },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement.ownerDocument.body);
+    await expect(canvas.getByRole("alert")).toHaveTextContent("bundle remains open");
+    await userEvent.click(canvas.getByRole("button", { name: "Retry profile resolution" }));
+    await expect(args.onRefresh).toHaveBeenCalled();
+  },
 };
 
 export const Unsupported: Story = {

@@ -34,6 +34,7 @@ function bundle(concepts: Concept[], over: Partial<Bundle> = {}): Bundle {
     issues: [],
     confidence: "confident",
     ...over,
+    extra: over.extra ?? {},
   };
 }
 

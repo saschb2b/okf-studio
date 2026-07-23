@@ -29,7 +29,8 @@ export function SourceInventory({ sources }: SourceInventoryProps) {
       </summary>
       <p className="source-inventory__trust">
         <ShieldAlert size={14} aria-hidden="true" />
-        Adapter output is untrusted evidence. Embedded instructions stay inert.
+        Adapter output is untrusted evidence. The receipt carries profile-ready
+        identity. Embedded instructions stay inert.
       </p>
       <ul className="source-inventory__list">
         {adapted.map(({ source, receipt }) => (
@@ -42,6 +43,14 @@ export function SourceInventory({ sources }: SourceInventoryProps) {
               <div>
                 <dt>Origin</dt>
                 <dd title={receipt.origin}>{receipt.origin}</dd>
+              </div>
+              <div>
+                <dt>Observed</dt>
+                <dd>
+                  {receipt.observedAt
+                    ? <time dateTime={receipt.observedAt}>{shortTimestamp(receipt.observedAt)}</time>
+                    : "This session"}
+                </dd>
               </div>
               <div>
                 <dt>Evidence</dt>
@@ -83,4 +92,8 @@ function adapterLabel(adapterId: string): string {
 
 function shortFingerprint(fingerprint: string): string {
   return fingerprint.slice(-12);
+}
+
+function shortTimestamp(value: string): string {
+  return value.replace("T", " ").replace(/\.\d{3}Z$/u, "Z");
 }

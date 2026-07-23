@@ -66,12 +66,151 @@ export interface Issue {
   message: string;
 }
 
+export type CompatibilityCategory = "parser" | "link" | "index" | "extension";
+export type CompatibilityLevel = "error" | "warning" | "advice" | "information";
+export type CompatibilityBasis = "okf-conformance" | "portability" | "preservation";
+
+export interface CompatibilityRepair {
+  kind: "replace-markdown-target";
+  authored: string;
+  replacement: string;
+}
+
+export interface CompatibilityFinding {
+  ruleId: string;
+  category: CompatibilityCategory;
+  level: CompatibilityLevel;
+  basis: CompatibilityBasis;
+  file: string;
+  conceptId: string | null;
+  message: string;
+  repair: CompatibilityRepair | null;
+}
+
+export interface CompatibilityReport {
+  schemaVersion: 1;
+  findings: CompatibilityFinding[];
+  truncated: boolean;
+}
+
+export interface IgnoreReport {
+  schemaVersion: 1;
+  source: string | null;
+  ruleCount: number;
+  caseSensitive: boolean;
+  excludedCount: number;
+  excludedPaths: string[];
+  diagnostics: string[];
+  truncated: boolean;
+}
+
+export type ProfileStatus = "active" | "unavailable";
+export type ProfileScope = "bundle" | "concept";
+export type ProfileValueType = "string" | "number" | "boolean" | "array" | "object";
+export type ProfileExpectation = "recommended" | "required";
+export type ProfileDiagnosticLevel = "information" | "recommendation" | "warning";
+
+export interface ProfileField {
+  id: string;
+  scope: ProfileScope;
+  key: string;
+  label: string;
+  description: string;
+  valueType: ProfileValueType;
+  expectation: ProfileExpectation;
+  conceptTypes: string[];
+  examples: unknown[];
+}
+
+export interface ProfileRelationship {
+  id: string;
+  label: string;
+  inverse: string | null;
+  description: string;
+}
+
+export type ProfileCheck =
+  | {
+      kind: "field-present";
+      id: string;
+      scope: ProfileScope;
+      field: string;
+      level: ProfileDiagnosticLevel;
+      message: string;
+      conceptTypes: string[];
+    }
+  | {
+      kind: "field-one-of";
+      id: string;
+      scope: ProfileScope;
+      field: string;
+      values: unknown[];
+      level: ProfileDiagnosticLevel;
+      message: string;
+      conceptTypes: string[];
+    };
+
+export interface ProfileDescriptor {
+  schemaVersion: 1;
+  namespace: string;
+  version: string;
+  title: string;
+  description: string;
+  fields: ProfileField[];
+  relationships: ProfileRelationship[];
+  checks: ProfileCheck[];
+  [key: string]: unknown;
+}
+
+export interface ProfileResolution {
+  namespace: string;
+  version: string | null;
+  descriptorPath: string | null;
+  status: ProfileStatus;
+  message: string;
+  descriptor: ProfileDescriptor | null;
+  extra: Record<string, unknown>;
+}
+
+export interface ProfileDiagnostic {
+  namespace: string;
+  ruleId: string;
+  level: ProfileDiagnosticLevel;
+  scope: ProfileScope;
+  file: string;
+  conceptId: string | null;
+  field: string;
+  message: string;
+}
+
+export interface ProfileRelationshipEdge {
+  sourceId: string;
+  targetId: string;
+  namespace: string;
+  type: string;
+  label: string;
+  inverse: string | null;
+  recognized: boolean;
+  targetExists: boolean;
+  portableLink: boolean;
+}
+
+export interface ProfileReport {
+  schemaVersion: 1;
+  profiles: ProfileResolution[];
+  diagnostics: ProfileDiagnostic[];
+  edges: ProfileRelationshipEdge[];
+  truncated: boolean;
+}
+
 export interface Bundle {
   root: string;
   name: string;
   okfVersion: string | null;
   /** ODSF profile version from the root index, if the bundle declares one. */
   odsfVersion: string | null;
+  /** Producer-defined root index frontmatter, excluding promoted versions. */
+  extra: Record<string, unknown>;
   concepts: Concept[];
   indexes: IndexNode[];
   log: LogEntry[];

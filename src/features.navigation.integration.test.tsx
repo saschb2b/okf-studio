@@ -171,8 +171,11 @@ describe("OKF Studio navigation features", () => {
       within(home).getByRole("heading", { name: "OKF Studio (sample)", level: 1 }),
     ).toBeInTheDocument();
     expect(home).toHaveTextContent(/built-in\s+sample bundle/i);
+    expect(
+      within(home).queryByRole("heading", { name: /interoperability/i }),
+    ).not.toBeInTheDocument();
     // A card opens the concept it lists.
-    await user.click(within(home).getByRole("button", { name: /Overview/i }));
+    await user.click(within(home).getByRole("button", { name: /^Overview(?:\s|$)/i }));
     const reader = container.querySelector<HTMLElement>(".reader")!;
     expect(
       await within(reader).findByRole("heading", { name: "Overview", level: 1 }),

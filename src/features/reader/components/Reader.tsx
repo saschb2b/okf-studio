@@ -5,7 +5,7 @@
 // side in reader-only mode and falls below the article when space is tight (the
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
-import { Sparkles, X } from "lucide-react";
+import { Archive, MoveRight, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "@/shared/store.tsx";
@@ -18,18 +18,42 @@ import { highlightCodeBlocks } from "@/shared/render/highlight.ts";
 import { renderMathBlocks } from "@/shared/render/math.ts";
 import { renderMermaidBlocks } from "@/shared/render/mermaid.ts";
 import type { Bundle, Concept } from "@/shared/types.ts";
+import { useProfileReport } from "@/shared/useProfileReport.ts";
+import { useInteropReport } from "@/shared/useInteropReport.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "@/shared/odsf.ts";
 import { ReaderPrefs } from "@/features/reader/components/ReaderPrefs.tsx";
 import { TokenViz } from "@/features/viz/components/TokenViz.tsx";
 import { ExamplePreview } from "@/features/bundle/components/ExamplePreview.tsx";
 import { PeekCard } from "@/features/reader/components/PeekCard.tsx";
 import type { PeekTarget } from "@/features/reader/components/PeekCard.tsx";
+import {
+  MetadataInspector,
+  ODSF_METADATA_KEYS,
+} from "@/features/reader/components/MetadataInspector.tsx";
+import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
+import { ConceptRetirementDialog } from "@/features/reader/components/ConceptRetirementDialog.tsx";
+import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
+import { ReliabilityNotice } from "@/features/reader/components/ReliabilityNotice.tsx";
+import { EvidencePanel } from "@/features/reader/components/EvidencePanel.tsx";
+import { AccessNotice } from "@/features/reader/components/AccessNotice.tsx";
+import {
+  ConceptLanguageSelect,
+  ConceptResources,
+} from "@/features/reader/components/ConceptExtensions.tsx";
+import { conceptNeedsInteropReport } from "@/features/bundle/interop.ts";
+import { assessReliability } from "@/shared/reliability.ts";
+import { assessAccessHints } from "@/shared/access.ts";
+import {
+  inspectConceptEvidence,
+  materializeEvidenceFootnotes,
+} from "@/shared/evidence.ts";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough
  *  that scanning prose doesn't flash cards, short enough to answer "worth
  *  opening?" without a click. Wikipedia's page previews use a similar dwell. */
 const PEEK_DELAY = 450;
+const SESSION_DAY = new Date().toISOString().slice(0, 10);
 
 interface OutlineItem {
   id: string;
@@ -251,6 +275,10 @@ export function Reader() {
   const c = useActiveConcept();
   const { state, actions } = useApp();
   const bundle = state.bundle;
+  const profileReport = useProfileReport(bundle);
+  const interopReport = useInteropReport(
+    conceptNeedsInteropReport(c, bundle) ? bundle : null,
+  );
   const readerScale = state.settings.readerScale;
   const reduceMotion = state.settings.reduceMotion;
 
@@ -269,13 +297,27 @@ export function Reader() {
   // Body HTML with images resolved, paired with the source html it derives from
   // (so a concept switch never renders the previous body while the new one loads).
   const [processed, setProcessed] = useState<{ src: string; html: string } | null>(null);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [retirementOpen, setRetirementOpen] = useState(false);
 
   // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
   // the body's `{ref}` resolution and the TokenViz below.
   const tokenIndex = buildTokenIndex(bundle);
+  const conceptEvidence = c
+    ? inspectConceptEvidence(c.extra, c.body)
+    : inspectConceptEvidence({}, "");
   // Classify links in the HTML string (not by post-render DOM mutation) so the
   // routing/styling cues survive React re-applying the body's innerHTML.
-  const bodyHtml = c ? classifyBodyLinks(renderMarkdown(c.body, tokenIndex), c.id, bundle) : "";
+  const bodyHtml = c
+    ? classifyBodyLinks(
+        renderMarkdown(
+          materializeEvidenceFootnotes(c.body, conceptEvidence),
+          tokenIndex,
+        ),
+        c.id,
+        bundle,
+      )
+    : "";
   // Use the image-resolved html once it matches the current body; until then
   // (or when there are no images) render the body as-is.
   const displayHtml = processed?.src === bodyHtml ? processed.html : bodyHtml;
@@ -509,8 +551,11 @@ export function Reader() {
   );
   const typeColor = palette.color(c.type);
   const related = relatedByTag(bundle, c);
+  const hasRelationshipMetadata = Object.hasOwn(c.extra, "relationships");
   // Design-system (ODSF) extras, feature-detected — null/empty on plain OKF.
   const status = conceptStatus(c);
+  const reliability = assessReliability(c, profileReport.report, SESSION_DAY);
+  const accessHints = assessAccessHints(c);
   const appliesTo = conceptAppliesTo(c);
   // Side rail in reader-only mode; otherwise (split / narrow) it falls below.
   const railSide = state.layout === "reader";
@@ -671,6 +716,26 @@ export function Reader() {
             )}
             <div className="reader-header-actions">
               <button
+                id="reader-concept-retirement"
+                type="button"
+                className="reader-concept-retirement"
+                aria-label="Retire concept"
+                onClick={() => setRetirementOpen(true)}
+              >
+                <Archive size={14} aria-hidden="true" />
+                Retire
+              </button>
+              <button
+                id="reader-concept-move"
+                type="button"
+                className="reader-concept-move"
+                aria-label="Move concept"
+                onClick={() => setMoveOpen(true)}
+              >
+                <MoveRight size={14} aria-hidden="true" />
+                Move
+              </button>
+              <button
                 id="reader-okf-task"
                 type="button"
                 className="reader-okf-task"
@@ -707,9 +772,18 @@ export function Reader() {
             {appliesTo.length > 0 && (
               <span className="applies-label">{appliesTo.join(" · ")}</span>
             )}
+            {interopReport.status === "ready" && interopReport.report ? (
+              <ConceptLanguageSelect
+                conceptId={c.id}
+                report={interopReport.report}
+                onSelect={(conceptId) => actions.selectConcept(conceptId)}
+              />
+            ) : null}
           </div>
           <h1>{c.title}</h1>
           {c.description && <p className="desc">{c.description}</p>}
+          <ReliabilityNotice assessment={reliability} />
+          <AccessNotice hints={accessHints} />
 
           {c.tags.length > 0 && (
             <ul className="tag-list" aria-label="Tags">
@@ -772,6 +846,32 @@ export function Reader() {
             </ul>
           </nav>
         )}
+
+        <TypedRelationships
+          bundle={bundle}
+          conceptId={c.id}
+          hasMetadata={hasRelationshipMetadata}
+          status={profileReport.status}
+          report={profileReport.report}
+          message={profileReport.message}
+          onSelect={select}
+          onPeek={peekStart}
+          onPeekEnd={hidePeek}
+        />
+
+        <EvidencePanel
+          key={c.id}
+          evidence={conceptEvidence}
+          onOpenExternal={(url) => actions.openExternal(url)}
+        />
+
+        {bundle && interopReport.status === "ready" && interopReport.report ? (
+          <ConceptResources
+            bundleRoot={bundle.root}
+            conceptId={c.id}
+            report={interopReport.report}
+          />
+        ) : null}
 
         {c.citedBy.length > 0 && (
           <RailModule title="Cited by" count={c.citedBy.length}>
@@ -846,6 +946,31 @@ export function Reader() {
           </dl>
         </RailModule>
 
+        {bundle ? (
+          <MetadataInspector
+            title="Bundle metadata"
+            source="index.md"
+            values={bundle.extra}
+          />
+        ) : null}
+
+        <MetadataInspector
+          title="Concept metadata"
+          source={`${c.id}.md`}
+          values={c.extra}
+          excludeKeys={[
+            ...ODSF_METADATA_KEYS,
+            "audience",
+            "sensitivity",
+            "handling_notes",
+            "evidence",
+            "provenance",
+            "language",
+            "translation_of",
+            "sidecars",
+          ]}
+        />
+
         {c.brokenLinks.length > 0 && (
           <RailModule title="Broken links" count={c.brokenLinks.length}>
             <ul className="broken-list">
@@ -867,6 +992,32 @@ export function Reader() {
           dark={resolveDark(state.settings.theme)}
         />
       )}
+
+      {moveOpen && bundle ? (
+        <ConceptMoveDialog
+          open
+          bundleRoot={bundle.root}
+          concept={c}
+          onOpenChange={setMoveOpen}
+          onOpenMovedConcept={(conceptId) => {
+            setMoveOpen(false);
+            actions.selectConcept(conceptId);
+          }}
+        />
+      ) : null}
+
+      {retirementOpen && bundle ? (
+        <ConceptRetirementDialog
+          open
+          bundle={bundle}
+          concept={c}
+          onOpenChange={setRetirementOpen}
+          onOpenConcept={(conceptId) => {
+            setRetirementOpen(false);
+            actions.selectConcept(conceptId);
+          }}
+        />
+      ) : null}
 
       {/* Image spotlight. Click anywhere or the close button to dismiss; Escape
           is handled by an effect. Keyboard-accessible via the close button. */}

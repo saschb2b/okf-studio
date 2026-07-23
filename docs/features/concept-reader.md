@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-18T06:30:00Z
+timestamp: 2026-07-23T21:24:41+02:00
 ---
 
 # What it does
@@ -13,6 +13,16 @@ Selecting a node (in the [graph](graph-view.md) or [sidebar](navigation.md)) ope
 Selected reader text can be added explicitly to the [Agent Panel](agent-panel.md) from its compact context menu. Studio snapshots plain text only when that menu opens and only when the complete selection belongs to the currently displayed concept. The resulting source is bounded, removable, and labelled with a bundle-relative concept origin. Studio does not watch later selection changes or grant the agent file access.
 
 The header's **Work with agent** action opens [Native OKF Tasks](native-okf-tasks.md) for this concept. A `resource` citation in the Details module has the same action scoped to that URL and concept. Both routes show the bounded context plan before a prompt is prepared; cancelling returns focus to the action that opened it.
+
+The neighboring **Move** action opens [Safe Concept Move](safe-concept-move.md). Move computes the affected graph, keeps a portable redirect at the old path, and requires per-hunk review, isolated validation, and explicit Apply. It never renames or rewrites a file directly from the reader.
+
+The **Retire** action opens the [Retirement Workflow](retirement-workflow.md). A maintainer chooses deprecate, redirect, tombstone, or delete; names a reason and date; sees link, index, file, and retrieval consequences; and reviews the derived `log.md` entry with the rest of the graph transaction. Delete requires a separate acknowledgement and a replacement while inbound links remain.
+
+When a concept carries [Reliability and Lifecycle](reliability-and-lifecycle.md) metadata, the header shows one advisory status with the authored confidence, review, effective-time, contradiction, or replacement details. It explicitly says Studio has not verified the claim. Concepts without that optional metadata keep the ordinary reading surface.
+
+When a concept carries [Evidence and Provenance](evidence-and-provenance.md), the context rail shows each source's locator, observation, adapter, digest, and last authored check state. A structured `[^source-id]` claim marker renders through the same sanitized footnote path as ordinary Markdown and navigates to the mapped source. A public credential-free HTTPS source can be checked only from its named button; opening or reading the concept starts no request.
+
+When a concept participates in optional [Bundle Connections](interoperability-lab.md), the reader keeps those actions with the concept. A detected language set adds one selector to the header's meta line. Declared companion resources appear in the context rail with integrity state and an explicit Save copy action. Ordinary concepts do not start the full bundle connection report.
 
 # Composition
 
@@ -54,8 +64,12 @@ Stacked, titled modules — quiet navigation context kept beside the prose inste
 - **On this page** — an outline of the body's headings with **scroll-spy** (the current section highlights as you read, and the last section stays highlighted once you reach the end of the page); clicking jumps to the anchored heading.
 - **Cited by** — the backlinks: every concept that links *to* this one ([computed by the core](../architecture/data-model.md)). The reverse-index a flat file tree hides; listed first because it is the context the file system cannot give.
 - **Links to** — the outbound references.
+- **Typed relationships** — incoming and outgoing [profile annotations](typed-relationships.md) over portable Markdown links, with resolved labels, inverses, unknown types, and missing-target or missing-prose-link states kept visible.
+- **Handling guidance** — optional [audience, sensitivity, and handling hints](access-hints.md), visibly advisory and never treated as a filesystem permission.
+- **Lineage** — the status-bar panel traces [filtered multi-hop dependencies and downstream impact](lineage.md), exposes cycles, hubs, missing targets, reliability states, and traversal limits, and explains the labelled shortest path to another concept.
 - **Related by tag** — other concepts sharing this one's tags (synthesized from frontmatter), a relationship dimension beyond explicit links.
 - **Details** — type, Concept ID, **Updated** timestamp, and the `resource` link.
+- **Bundle and concept metadata** — the bounded, source-labelled [Metadata Inspector](metadata-inspector.md). ODSF-owned fields stay in their dedicated rendering rather than appearing twice.
 - **Broken links** — unresolved targets, de-emphasized, surfaced (never hidden) per the [tolerant-consumer principle](../product/principles.md) and [Validation](validation.md).
 
 Every relationship row is clickable and drives the **single shared selection**, so the [graph](graph-view.md), reader, and [sidebar](navigation.md) stay in sync — the rail turns the reader into a second navigator alongside the graph.

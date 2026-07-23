@@ -1,142 +1,451 @@
-// Traversal derivations for the Lineage panel — pure functions over the parsed
-// data model, bounded and cycle-safe so a dense bundle stays fast. See
-// docs/proposals/lineage-and-traversal.md.
+// Traversal derivations for the Lineage panel. Every walk is deterministic,
+// bounded, cycle-safe, and read-only. Optional profile relationships add
+// meaning to portable links without replacing the ordinary graph.
 
-import type { Bundle, Concept } from "@/shared/types.ts";
+import { assessReliability } from "@/shared/reliability.ts";
+import type { ReliabilityState } from "@/shared/reliability.ts";
+import type {
+  Bundle,
+  Concept,
+  ProfileRelationshipEdge,
+  ProfileReport,
+} from "@/shared/types.ts";
 
-/** How deep a lineage tree descends before it stops (a hop cap). */
 export const MAX_LINEAGE_DEPTH = 6;
+export const MAX_LINEAGE_NODES = 200;
+export const MAX_LINEAGE_NEIGHBORS = 40;
+export const MAX_PATH_VISITS = 1_000;
 
-/** "up" follows a concept's links (its dependencies); "down" follows citedBy
- *  (its dependents). */
 export type LineageDir = "up" | "down";
+export type LineageDirection = LineageDir | "both";
+export type LineageValidity = "all" | "current" | "caution";
+export type LineageReference = "cycle" | "seen";
+export type LineageTruncation = "depth" | "hub" | "budget";
+export type LineageState = ReliabilityState | "missing";
+
+export interface LineageRelation {
+  namespace: string | null;
+  type: string;
+  label: string;
+  inverse: string | null;
+  recognized: boolean;
+  portableLink: boolean;
+}
 
 export interface LineageNode {
   id: string;
-  /** The concept's title, or the id itself when the link is dangling. */
   title: string;
-  /** The concept's type, or "" when dangling (no concept for this id). */
   type: string;
+  state: LineageState;
+  direction: LineageDir | null;
+  relations: LineageRelation[];
   children: LineageNode[];
-  /** True when this node has further neighbors not shown (depth cap hit). */
+  reference?: LineageReference;
   truncated?: boolean;
+  truncationReason?: LineageTruncation;
+  omitted?: number;
+}
+
+export interface LineageTraversalOptions {
+  report?: ProfileReport | null;
+  relation?: string;
+  validity?: LineageValidity;
+  asOfDay?: string;
+  maxNodes?: number;
+  maxNeighbors?: number;
+}
+
+export interface ExplainedLineageStep {
+  fromId: string;
+  toId: string;
+  direction: LineageDir;
+  relations: LineageRelation[];
+}
+
+export interface ExplainedLineagePath {
+  ids: string[];
+  steps: ExplainedLineageStep[];
+  visited: number;
+  truncated: boolean;
+}
+
+interface GraphEdge {
+  sourceId: string;
+  targetId: string;
+  relation: LineageRelation;
+}
+
+interface Connection {
+  id: string;
+  direction: LineageDir;
+  relations: LineageRelation[];
+}
+
+export function profileRelationFilterKey(
+  edge: Pick<ProfileRelationshipEdge, "namespace" | "type">,
+): string {
+  return `profile:${encodeURIComponent(edge.namespace)}/${encodeURIComponent(edge.type)}`;
+}
+
+function profileRelationFilterParts(filter: string): {
+  namespace: string;
+  type: string;
+} | null {
+  if (!filter.startsWith("profile:")) return null;
+  const [namespace, type] = filter.slice("profile:".length).split("/", 2);
+  if (!namespace || !type) return null;
+  try {
+    return {
+      namespace: decodeURIComponent(namespace),
+      type: decodeURIComponent(type),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function relationFromProfile(edge: ProfileRelationshipEdge): LineageRelation {
+  return {
+    namespace: edge.namespace,
+    type: edge.type,
+    label: edge.label,
+    inverse: edge.inverse,
+    recognized: edge.recognized,
+    portableLink: edge.portableLink,
+  };
+}
+
+function graphEdges(bundle: Bundle, report: ProfileReport | null | undefined): GraphEdge[] {
+  const edges: GraphEdge[] = [];
+  for (const concept of bundle.concepts) {
+    for (const targetId of concept.links) {
+      edges.push({
+        sourceId: concept.id,
+        targetId,
+        relation: {
+          namespace: null,
+          type: "portable",
+          label: "Links to",
+          inverse: "Cited by",
+          recognized: true,
+          portableLink: true,
+        },
+      });
+    }
+  }
+  for (const edge of report?.edges ?? []) {
+    edges.push({
+      sourceId: edge.sourceId,
+      targetId: edge.targetId,
+      relation: relationFromProfile(edge),
+    });
+  }
+  return edges;
+}
+
+function relationMatches(relation: LineageRelation, filter: string): boolean {
+  if (filter === "all") return true;
+  if (filter === "portable") return relation.type === "portable";
+  const profile = profileRelationFilterParts(filter);
+  return profile !== null
+    && relation.namespace === profile.namespace
+    && relation.type === profile.type;
+}
+
+function connectionKey(connection: Pick<Connection, "id" | "direction">): string {
+  return `${connection.direction}\u0000${connection.id}`;
+}
+
+function connectionFor(
+  edges: readonly GraphEdge[],
+  id: string,
+  direction: LineageDirection,
+  relation: string,
+): Connection[] {
+  const grouped = new Map<string, Connection>();
+  const add = (
+    neighborId: string,
+    edgeDirection: LineageDir,
+    edgeRelation: LineageRelation,
+  ): void => {
+    if (!relationMatches(edgeRelation, relation)) return;
+    const next: Connection = {
+      id: neighborId,
+      direction: edgeDirection,
+      relations: [edgeRelation],
+    };
+    const key = connectionKey(next);
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, next);
+      return;
+    }
+    const relationKey = `${edgeRelation.namespace ?? ""}\u0000${edgeRelation.type}`;
+    if (!existing.relations.some((item) =>
+      `${item.namespace ?? ""}\u0000${item.type}` === relationKey
+    )) {
+      existing.relations.push(edgeRelation);
+    }
+  };
+
+  for (const edge of edges) {
+    if ((direction === "up" || direction === "both") && edge.sourceId === id) {
+      add(edge.targetId, "up", edge.relation);
+    }
+    if ((direction === "down" || direction === "both") && edge.targetId === id) {
+      add(edge.sourceId, "down", edge.relation);
+    }
+  }
+  return [...grouped.values()];
+}
+
+function stateFor(
+  concept: Concept | undefined,
+  report: ProfileReport | null | undefined,
+  asOfDay: string,
+): LineageState {
+  return concept ? assessReliability(concept, report, asOfDay).state : "missing";
+}
+
+function stateMatches(state: LineageState, validity: LineageValidity): boolean {
+  if (validity === "all") return true;
+  if (validity === "current") return state === "current";
+  return state !== "current";
 }
 
 /**
- * A spanning tree of transitive relatives of `rootId` in one direction. Each
- * concept appears once (first reached wins), so cycles and diamonds can't
- * explode it; `maxDepth` bounds the descent. Returns null if the root is absent.
+ * A bounded spanning tree of transitive relatives in one direction.
+ *
+ * Cycles and already-rendered diamond branches remain visible as labelled
+ * reference leaves. Hubs, depth, and the global node budget state how much was
+ * omitted instead of silently ending the tree.
  */
 export function lineageTree(
   bundle: Bundle | null,
   rootId: string | null,
   dir: LineageDir,
   maxDepth = MAX_LINEAGE_DEPTH,
+  options: LineageTraversalOptions = {},
 ): LineageNode | null {
   if (!bundle || !rootId) return null;
-  const byId = new Map(bundle.concepts.map((c) => [c.id, c] as const));
+  const byId = new Map(bundle.concepts.map((concept) => [concept.id, concept] as const));
   if (!byId.has(rootId)) return null;
 
+  const edges = graphEdges(bundle, options.report);
+  const relation = options.relation ?? "all";
+  const validity = options.validity ?? "all";
+  const asOfDay = options.asOfDay ?? "1970-01-01";
+  const maxNodes = Math.max(1, options.maxNodes ?? MAX_LINEAGE_NODES);
+  const maxNeighbors = Math.max(1, options.maxNeighbors ?? MAX_LINEAGE_NEIGHBORS);
   const visited = new Set<string>([rootId]);
-  const build = (id: string, depth: number): LineageNode => {
-    const c = byId.get(id);
+  let usedNodes = 1;
+
+  const makeNode = (
+    id: string,
+    depth: number,
+    direction: LineageDir | null,
+    relations: LineageRelation[],
+    ancestors: Set<string>,
+    reference?: LineageReference,
+  ): LineageNode => {
+    const concept = byId.get(id);
     const node: LineageNode = {
       id,
-      title: c?.title ?? id,
-      type: c?.type ?? "",
+      title: concept?.title ?? id,
+      type: concept?.type ?? "",
+      state: stateFor(concept, options.report, asOfDay),
+      direction,
+      relations,
       children: [],
+      ...(reference ? { reference } : {}),
     };
-    if (!c) return node;
-    const neighbors = dir === "up" ? c.links : c.citedBy;
-    const fresh = neighbors.filter((n) => !visited.has(n));
-    if (fresh.length === 0) return node;
+    if (!concept || reference) return node;
+
+    const candidates = connectionFor(edges, id, dir, relation)
+      .filter((connection) =>
+        stateMatches(
+          stateFor(byId.get(connection.id), options.report, asOfDay),
+          validity,
+        )
+      )
+      .sort((left, right) => {
+        const leftTitle = byId.get(left.id)?.title ?? left.id;
+        const rightTitle = byId.get(right.id)?.title ?? right.id;
+        return leftTitle.localeCompare(rightTitle)
+          || left.id.localeCompare(right.id)
+          || left.direction.localeCompare(right.direction);
+      });
+    if (candidates.length === 0) return node;
     if (depth >= maxDepth) {
       node.truncated = true;
+      node.truncationReason = "depth";
+      node.omitted = candidates.length;
       return node;
     }
-    for (const n of fresh) {
-      visited.add(n);
-      node.children.push(build(n, depth + 1));
+
+    const selected = candidates.slice(0, maxNeighbors);
+    if (selected.length < candidates.length) {
+      node.truncated = true;
+      node.truncationReason = "hub";
+      node.omitted = candidates.length - selected.length;
+    }
+    for (let index = 0; index < selected.length; index += 1) {
+      const connection = selected[index];
+      if (usedNodes >= maxNodes) {
+        node.truncated = true;
+        node.truncationReason = "budget";
+        node.omitted = (node.omitted ?? 0) + selected.length - index;
+        break;
+      }
+      usedNodes += 1;
+      if (ancestors.has(connection.id)) {
+        node.children.push(makeNode(
+          connection.id,
+          depth + 1,
+          connection.direction,
+          connection.relations,
+          ancestors,
+          "cycle",
+        ));
+        continue;
+      }
+      if (visited.has(connection.id)) {
+        node.children.push(makeNode(
+          connection.id,
+          depth + 1,
+          connection.direction,
+          connection.relations,
+          ancestors,
+          "seen",
+        ));
+        continue;
+      }
+      visited.add(connection.id);
+      const nextAncestors = new Set(ancestors);
+      nextAncestors.add(connection.id);
+      node.children.push(makeNode(
+        connection.id,
+        depth + 1,
+        connection.direction,
+        connection.relations,
+        nextAncestors,
+      ));
     }
     return node;
   };
-  return build(rootId, 0);
+
+  return makeNode(rootId, 0, null, [], new Set([rootId]));
 }
 
-/** Flattened count of nodes under (and including) a lineage node. */
+/** Count distinct expanded nodes; cycle and diamond reference leaves do not inflate the total. */
 export function lineageSize(node: LineageNode | null): number {
   if (!node) return 0;
-  return 1 + node.children.reduce((n, ch) => n + lineageSize(ch), 0);
+  return (node.reference ? 0 : 1)
+    + node.children.reduce((count, child) => count + lineageSize(child), 0);
 }
 
-/**
- * Shortest path between two concepts over the *undirected* link set
- * (links ∪ citedBy), as an inclusive list of ids, or null if unconnected or
- * either endpoint is missing. BFS, so the first path found is shortest.
- */
+export function explainedPathBetween(
+  bundle: Bundle | null,
+  aId: string,
+  bId: string,
+  direction: LineageDirection = "both",
+  options: LineageTraversalOptions = {},
+): ExplainedLineagePath | null {
+  if (!bundle) return null;
+  const byId = new Map(bundle.concepts.map((concept) => [concept.id, concept] as const));
+  if (!byId.has(aId) || !byId.has(bId)) return null;
+  if (aId === bId) return { ids: [aId], steps: [], visited: 1, truncated: false };
+
+  const edges = graphEdges(bundle, options.report);
+  const relation = options.relation ?? "all";
+  const validity = options.validity ?? "all";
+  const asOfDay = options.asOfDay ?? "1970-01-01";
+  const maxVisits = Math.max(1, options.maxNodes ?? MAX_PATH_VISITS);
+  const previous = new Map<string, {
+    id: string | null;
+    connection: Connection | null;
+  }>([[aId, { id: null, connection: null }]]);
+  const queue: string[] = [aId];
+  let truncated = false;
+  let cursor = 0;
+
+  while (cursor < queue.length) {
+    const current = queue[cursor];
+    cursor += 1;
+    if (current === bId) break;
+    const connections = connectionFor(edges, current, direction, relation)
+      .filter((connection) => byId.has(connection.id))
+      .filter((connection) =>
+        connection.id === bId
+        || stateMatches(
+          stateFor(byId.get(connection.id), options.report, asOfDay),
+          validity,
+        )
+      )
+      .sort((left, right) => left.id.localeCompare(right.id));
+    for (const connection of connections) {
+      if (previous.has(connection.id)) continue;
+      if (previous.size >= maxVisits) {
+        truncated = true;
+        break;
+      }
+      previous.set(connection.id, { id: current, connection });
+      queue.push(connection.id);
+    }
+    if (truncated) break;
+  }
+  if (!previous.has(bId)) {
+    return truncated
+      ? { ids: [], steps: [], visited: previous.size, truncated: true }
+      : null;
+  }
+
+  const ids: string[] = [];
+  const steps: ExplainedLineageStep[] = [];
+  let current: string | null = bId;
+  while (current !== null) {
+    ids.unshift(current);
+    const entry = previous.get(current);
+    if (entry?.id && entry.connection) {
+      steps.unshift({
+        fromId: entry.id,
+        toId: current,
+        direction: entry.connection.direction,
+        relations: entry.connection.relations,
+      });
+    }
+    current = entry?.id ?? null;
+  }
+  return { ids, steps, visited: previous.size, truncated };
+}
+
+/** Backward-compatible identity-only shortest path over the ordinary graph. */
 export function pathBetween(
   bundle: Bundle | null,
   aId: string,
   bId: string,
 ): string[] | null {
-  if (!bundle) return null;
-  const byId = new Map(bundle.concepts.map((c) => [c.id, c] as const));
-  if (!byId.has(aId) || !byId.has(bId)) return null;
-  if (aId === bId) return [aId];
-
-  const prev = new Map<string, string | null>([[aId, null]]);
-  const queue: string[] = [aId];
-  while (queue.length) {
-    const cur = queue.shift();
-    if (cur === undefined) break;
-    if (cur === bId) break;
-    const c = byId.get(cur);
-    if (!c) continue;
-    for (const nb of [...c.links, ...c.citedBy]) {
-      if (!prev.has(nb)) {
-        prev.set(nb, cur);
-        queue.push(nb);
-      }
-    }
-  }
-  if (!prev.has(bId)) return null;
-
-  const path: string[] = [];
-  let cur: string | null = bId;
-  while (cur !== null) {
-    path.unshift(cur);
-    cur = prev.get(cur) ?? null;
-  }
-  return path;
+  return explainedPathBetween(bundle, aId, bId)?.ids ?? null;
 }
 
-/** Minimum title length considered for an unlinked mention (avoids short-word noise). */
 const MIN_MENTION_LEN = 4;
 
-/** Escape a string for use as a literal inside a RegExp. */
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Concept ids whose title appears in `concept`'s description/body text but which
- * it does not link — the "unlinked mentions" discovery signal. Whole-word,
- * case-insensitive; excludes the concept itself and anything it already links.
- */
 export function unlinkedMentions(bundle: Bundle | null, concept: Concept | null): string[] {
   if (!bundle || !concept) return [];
   const text = `${concept.description} ${concept.body}`.toLowerCase();
   if (!text.trim()) return [];
   const linked = new Set(concept.links);
-  const out: string[] = [];
-  for (const c of bundle.concepts) {
-    if (c.id === concept.id || linked.has(c.id)) continue;
-    const title = c.title.trim().toLowerCase();
+  const output: string[] = [];
+  for (const candidate of bundle.concepts) {
+    if (candidate.id === concept.id || linked.has(candidate.id)) continue;
+    const title = candidate.title.trim().toLowerCase();
     if (title.length < MIN_MENTION_LEN) continue;
-    // Whole-word match: the title not flanked by alphanumerics (so "Order"
-    // doesn't match "Orders").
-    const re = new RegExp(`(?<![a-z0-9])${escapeRegExp(title)}(?![a-z0-9])`);
-    if (re.test(text)) out.push(c.id);
+    const expression = new RegExp(`(?<![a-z0-9])${escapeRegExp(title)}(?![a-z0-9])`);
+    if (expression.test(text)) output.push(candidate.id);
   }
-  return out;
+  return output;
 }

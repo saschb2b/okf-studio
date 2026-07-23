@@ -21,6 +21,8 @@ import type {
   WheelEvent as ReactWheelEvent,
 } from "react";
 import { useApp } from "@/shared/store.tsx";
+import { relationshipGroups } from "@/shared/relationships.ts";
+import { useProfileReport } from "@/shared/useProfileReport.ts";
 import {
   buildEdges,
   conceptById,
@@ -83,6 +85,7 @@ const MAX_CANVAS_PIXELS = 3_500_000;
 
 export function GraphView() {
   const { state, actions } = useApp();
+  const profileReport = useProfileReport(state.bundle);
 
   // Controls (React state drives the UI; refs feed the imperative draw/sim).
   const [forces, setForces] = useState<Forces>(() => ({ ...GRAPH_FORCES }));
@@ -100,6 +103,7 @@ export function GraphView() {
   // or the GPU cosmos.gl renderer (scales to very large graphs). See
   // docs/features/graph-view.md.
   const [renderer, setRenderer] = useState<"canvas" | "gpu">("canvas");
+  const [relationshipFilter, setRelationshipFilter] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -796,6 +800,7 @@ export function GraphView() {
   // revealed neighbors animate in from where they were rather than re-spawning.
   function expandNode(id: string) {
     setIsolate(null); // explore takes over any active isolate
+    setRelationshipFilter("");
     setExplore((cur) => {
       const grown = expandWithNeighbors(state.bundle, [id]);
       if (!cur) return grown;
@@ -958,6 +963,11 @@ export function GraphView() {
   const brokenConceptIds = (concepts ?? []).filter((c) => c.brokenLinks.length > 0).map((c) => c.id);
   const hasDefects = orphans.length > 0 || brokenConceptIds.length > 0;
   const selectedConcept = concepts?.find((concept) => concept.id === state.activeConceptId);
+  const relationshipOptions = relationshipGroups(profileReport.report)
+    .filter((group) => group.conceptIds.length > 0);
+  const activeRelationship = relationshipOptions.find(
+    (group) => group.key === relationshipFilter,
+  );
   // Focus mode is on but there is no selection (or an isolate overrides it): the
   // graph falls back to Overview, so tell the newcomer how to engage focus.
   const focusFallback =
@@ -969,7 +979,17 @@ export function GraphView() {
 
   function isolateSet(label: string, ids: string[]) {
     // Toggle: clicking the active chip clears the isolate.
+    setRelationshipFilter("");
     setIsolate((cur) => (cur?.label === label ? null : { label, ids }));
+  }
+
+  function filterRelationship(key: string) {
+    setRelationshipFilter(key);
+    setExplore(null);
+    const group = relationshipOptions.find((option) => option.key === key);
+    setIsolate(group
+      ? { label: `${group.label} · ${group.count}`, ids: group.conceptIds }
+      : null);
   }
 
   if (!state.bundle || nodeCount === 0) {
@@ -1106,6 +1126,23 @@ export function GraphView() {
           <VizSwitcher />
         </div>
       </div>
+      {relationshipOptions.length > 0 && (
+        <label className="graph-relationship-filter">
+          <span className="sr-only">Filter by relationship type</span>
+          <select
+            value={activeRelationship?.key ?? ""}
+            aria-label="Filter by relationship type"
+            onChange={(event) => filterRelationship(event.target.value)}
+          >
+            <option value="">All relationships</option>
+            {relationshipOptions.map((group) => (
+              <option key={group.key} value={group.key}>
+                {group.label}{group.recognized ? "" : " (unknown)"} · {group.count}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {renderer === "canvas" && (
         <div className="graph-chips">
           {explore ? (
@@ -1123,7 +1160,10 @@ export function GraphView() {
               type="button"
               className="graph-chip graph-chip-active"
               aria-label={`Showing isolated set: ${isolate.label}. Click to clear.`}
-              onClick={() => setIsolate(null)}
+              onClick={() => {
+                setRelationshipFilter("");
+                setIsolate(null);
+              }}
             >
               {isolate.label} &times;
             </button>

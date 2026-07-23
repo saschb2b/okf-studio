@@ -67,8 +67,8 @@ export const families: Family[] = [
         lede: "Orientation first, then precise questions.",
         items: [
           {
-            title: "An overview to orient",
-            body: "Land on a bundle overview before diving into individual concepts.",
+            title: "A home for active work",
+            body: "Resume concepts, read the bundle-authored activity stream, handle validation and link issues, and return to current Git changes without hunting through separate panels.",
           },
           {
             title: "Faceted search",
@@ -76,7 +76,19 @@ export const families: Family[] = [
           },
           {
             title: "Lineage across hops",
-            body: "A lineage panel traces dependencies through the graph, several links deep.",
+            body: "Trace upstream dependencies or downstream impact across several hops. Filter by portable or team-defined relationship and reliability state, see cycles and limits, and open a shortest path that explains every step.",
+          },
+          {
+            title: "Meaning on portable links",
+            body: "Optional team profiles can label a Markdown link as evidence, dependency, ownership, supersession, or a producer-defined relation. The reader shows known and unknown types, and the graph filters each type without changing OKF validation.",
+          },
+          {
+            title: "Know when knowledge needs caution",
+            body: "Optional lifecycle, confidence, effective-time, review, contradiction, and replacement signals qualify what readers and agents see. Missing metadata never makes a concept invalid.",
+          },
+          {
+            title: "Follow a claim to its source",
+            body: "Optional evidence markers connect a sentence to a durable source record. The reader shows its locator, observation, adapter, digest, and status, and checks a public source only when you press Check source.",
           },
         ],
       },
@@ -89,12 +101,20 @@ export const families: Family[] = [
             body: "Open a folder on disk, or explicitly download and cache a GitHub URL on your machine. Rust records that choice and limits readers, assets, watchers, and agents to bundle roots found by its scan.",
           },
           {
-            title: "A tolerant reader",
-            body: "Validation surfaces issues inline; the reader never rejects a sloppy bundle.",
+            title: "One visible ignore boundary",
+            body: "A root .okfignore keeps chosen paths out of parsing, watching, retrieval, source intake, and projections. Studio reports what it excluded and makes clear that ignore rules are not encryption or access control.",
+          },
+          {
+            title: "Bundle details stay together",
+            body: "An Info action beside Share shows bundle conformance at a glance, then opens identity, format, metadata, connections, ignore rules, and local profiles in focused views. Connection work opens in its own workspace, while the footer stays quiet.",
           },
           {
             title: "Design-system aware",
             body: "ODSF bundles render their design tokens and live HTML/CSS examples right in the reader.",
+          },
+          {
+            title: "Connections where you use them",
+            body: "Resolve external bundles and exchange portable JSON-LD relationships in a dedicated workspace. Language switching and digest-checked resources stay with the active concept. The full report loads only when one of those surfaces needs it.",
           },
         ],
       },
@@ -103,7 +123,11 @@ export const families: Family[] = [
       { label: "Concept reader", href: doc("features/concept-reader.md"), external: true },
       { label: "Graph view", href: doc("features/graph-view.md"), external: true },
       { label: "Search and filter", href: doc("features/search-and-filter.md"), external: true },
+      { label: "Lineage", href: doc("features/lineage.md"), external: true },
+      { label: "Evidence and provenance", href: doc("features/evidence-and-provenance.md"), external: true },
+      { label: "Ignore rules", href: doc("features/ignore-rules.md"), external: true },
       { label: "Visualization views", href: doc("features/viz-views.md"), external: true },
+      { label: "Bundle Connections", href: doc("features/interoperability-lab.md"), external: true },
     ],
     workflows: ["understand", "ask"],
   },
@@ -153,7 +177,7 @@ export const families: Family[] = [
           },
           {
             title: "Sources with receipts",
-            body: "Files, folders, images, and public pages show their adapter, origin, evidence fingerprint, and warnings before send. OpenAPI, dbt, and BigQuery exports become stable inventories, while every source stays untrusted evidence.",
+            body: "Files, folders, images, and public pages show their adapter, observed time, origin, fingerprints, and warnings before send. Named tasks carry a profile-ready provenance record, while absolute local paths and embedded instructions stay out.",
           },
         ],
       },
@@ -163,7 +187,7 @@ export const families: Family[] = [
         items: [
           {
             title: "One launcher, any starting point",
-            body: "Open authoring, audit, repair, research, enrichment, or change-impact work from a concept, graph selection, validation finding, citation, search result, or attached source. The object and context plan stay visible before the agent starts.",
+            body: "Open authoring, audit, repair, research, enrichment, migration, or change-impact work from the object in view. Profile findings carry the selected local conventions and say which fields OKF requires, which the profile requires, and which it only recommends.",
           },
           {
             title: "Plans and reports that stay usable",
@@ -199,6 +223,7 @@ export const families: Family[] = [
       { label: "Capability packs", href: doc("features/capability-packs.md"), external: true },
       { label: "Retrieval intelligence", href: doc("features/retrieval-intelligence.md"), external: true },
       { label: "Source adapters", href: doc("features/source-adapters.md"), external: true },
+      { label: "Evidence and provenance", href: doc("features/evidence-and-provenance.md"), external: true },
       { label: "Workspace memory", href: doc("features/workspace-memory.md"), external: true },
     ],
     workflows: ["ask", "improve"],
@@ -225,6 +250,14 @@ export const families: Family[] = [
             title: "Writing that keeps the knowledge",
             body: "Name the reader's question, then write a concept or improve an existing one with the same versioned method across agents. Rust rejects a style-only rewrite that drops protected numbers, qualifiers, citations, links, formulas, or code.",
           },
+          {
+            title: "Move a concept without breaking the graph",
+            body: "Choose a new Markdown path from the reader. Studio previews every link and index repair, keeps a portable redirect at the old path, validates the isolated result, and applies the reviewed files in one restorable transaction.",
+          },
+          {
+            title: "Retire knowledge without losing the reason",
+            body: "Choose deprecate, redirect, tombstone, or delete. Studio shows what happens to links, indexes, and retrieval, records the reason in the bundle log, and keeps deletion behind review, validation, and a restore checkpoint.",
+          },
         ],
       },
       {
@@ -232,12 +265,20 @@ export const families: Family[] = [
         lede: "Deterministic checks first, advisory judgment second.",
         items: [
           {
-            title: "Conformance built in",
-            body: "Validation surfaces issues inline against the OKF spec; a tolerant reader still opens a sloppy bundle so you can fix it.",
+            title: "Conformance and portability",
+            body: "The Compatibility Clinic and profile checks keep OKF errors separate from optional portability and team advice. Safe link replacements and profile migrations require hunk review and validation before Apply, while the tolerant reader still opens the bundle.",
           },
           {
             title: "Health findings with evidence",
-            body: "Audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Writing clues stay advisory, point to the passage, and never make a valid bundle fail.",
+            body: "Audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Missing claim sources name the exact line; changed or unavailable pages never become a truth verdict.",
+          },
+          {
+            title: "Handling labels without false authority",
+            body: "Optional audience, sensitivity, and handling notes stay visible while you read, choose agent context, and review staged files. Studio never treats a metadata label as filesystem permission or silently drops evidence because of it.",
+          },
+          {
+            title: "Create a shareable bundle",
+            body: "Name who the copy is for, choose the knowledge to share, then review what will travel and what will stay behind. Optional safeguards can filter handling labels or remove exact text. Studio checks the separate bundle for declared leaks and never edits the source.",
           },
           {
             title: "A second pass without write authority",
@@ -261,9 +302,14 @@ export const families: Family[] = [
       },
     ],
     docs: [
+      { label: "Compatibility Clinic", href: doc("features/compatibility-clinic.md"), external: true },
       { label: "Validation", href: doc("features/validation.md"), external: true },
       { label: "OKF writing", href: doc("features/okf-writing.md"), external: true },
+      { label: "Retirement workflow", href: doc("features/retirement-workflow.md"), external: true },
       { label: "Knowledge health", href: doc("features/knowledge-health.md"), external: true },
+      { label: "Access hints", href: doc("features/access-hints.md"), external: true },
+      { label: "Recipient projections", href: doc("features/recipient-projections.md"), external: true },
+      { label: "Erasure audit", href: doc("features/erasure-audit.md"), external: true },
       { label: "Structured agent work", href: doc("features/structured-agent-work.md"), external: true },
       { label: "Create a bundle", href: doc("features/create-bundle.md"), external: true },
     ],

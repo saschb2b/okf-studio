@@ -5,6 +5,10 @@
 import type {
   Bundle,
   BundleRoot,
+  CompatibilityFinding,
+  CompatibilityReport,
+  IgnoreReport,
+  ProfileReport,
   RecentBundle,
   RemoteSource,
   Settings,
@@ -15,7 +19,18 @@ import type {
   GitRemoteOperation,
   GitRepositorySnapshot,
 } from "@/features/git/types.ts";
+import type {
+  ProjectionExportInput,
+  ProjectionExportResult,
+  ProjectionInput,
+  ProjectionPlan,
+} from "@/features/bundle/projection.ts";
+import type {
+  InteropReport,
+  SemanticImportPreview,
+} from "@/features/bundle/interop.ts";
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
+import { assessAccessHints } from "@/shared/access.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
 import type {
   ReceiptDiff,
@@ -1660,6 +1675,7 @@ export interface AgentSourceAdapterReceipt {
   schemaVersion: 1;
   adapterId: string;
   adapterVersion: number;
+  observedAt?: string;
   discovery: AgentSourceDiscovery;
   origin: string;
   mediaType: string;
@@ -1683,6 +1699,7 @@ function browserSourceReceipt(
     schemaVersion: 1,
     adapterId,
     adapterVersion: 1,
+    observedAt: new Date().toISOString(),
     discovery,
     origin,
     mediaType,
@@ -2102,6 +2119,7 @@ export async function validateAgentStagedChanges(
     }];
   });
   const preview = mockStagedGraphPreview(state);
+  const profiles = mockProfileReport();
   return {
     sessionId,
     revision: `mock-${state.files.map((file) => (
@@ -2112,6 +2130,22 @@ export async function validateAgentStagedChanges(
     issues,
     truncated: false,
     preview,
+    profile: {
+      source: state.mode === "create" ? "selected-source" : "draft",
+      declared: profiles.profiles.length,
+      active: profiles.profiles.filter((profile) => profile.status === "active").length,
+      unavailable: profiles.profiles.filter((profile) => profile.status === "unavailable").length,
+      diagnostics: profiles.diagnostics.map((diagnostic) => ({
+        namespace: diagnostic.namespace,
+        ruleId: diagnostic.ruleId,
+        level: diagnostic.level,
+        path: diagnostic.file,
+        conceptId: diagnostic.conceptId,
+        field: diagnostic.field,
+        message: diagnostic.message,
+      })),
+      truncated: profiles.truncated,
+    },
   };
 }
 
@@ -2122,6 +2156,7 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
     conceptType: string;
     staged: boolean;
     links: string[];
+    access: import("@/shared/access.ts").AccessHints;
   }>();
   if (state.mode !== "create") {
     for (const concept of MOCK_BUNDLE.concepts) {
@@ -2131,6 +2166,7 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
         conceptType: concept.type,
         staged: false,
         links: [...concept.links],
+        access: assessAccessHints(concept),
       });
     }
   }
@@ -2146,15 +2182,19 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
     const typeMatch = /^type:\s*(.+)$/m.exec(file.content);
     const title = titleMatch?.[1]?.trim() ?? id.split("/").at(-1) ?? id;
     const conceptType = typeMatch?.[1]?.trim() ?? "";
+    const access = assessAccessHints({ extra: mockAccessFrontmatter(file.content) });
     concepts.set(id, {
       id,
       title: title.slice(0, 256),
       conceptType: conceptType.slice(0, 256),
       staged: true,
       links: mockMarkdownConceptLinks(file.path, file.content),
+      access,
     });
   }
-  const ordered = [...concepts.values()].sort((left, right) => left.id.localeCompare(right.id));
+  const ordered = [...concepts.values()].sort((left, right) =>
+    Number(right.staged) - Number(left.staged) || left.id.localeCompare(right.id)
+  );
   const includedNodes = ordered.slice(0, 128);
   const includedIds = new Set(includedNodes.map((node) => node.id));
   const allEdges = ordered.flatMap((node) => node.links.map((target) => ({
@@ -2170,12 +2210,31 @@ function mockStagedGraphPreview(state: ReturnType<typeof mockStageState>): Agent
       title: node.title,
       conceptType: node.conceptType,
       staged: node.staged,
+      access: node.access,
     })),
     edges,
     totalNodes: ordered.length,
     totalEdges: allEdges.length,
     truncated: ordered.length > includedNodes.length || allEdges.length > edges.length,
   };
+}
+
+function mockAccessFrontmatter(content: string): Record<string, unknown> {
+  const extra: Record<string, unknown> = {};
+  for (const key of ["audience", "sensitivity", "handling_notes"] as const) {
+    const match = new RegExp(`^${key}:\\s*(.+)$`, "m").exec(content);
+    if (!match?.[1]) continue;
+    const raw = match[1].trim();
+    if (raw.startsWith("[") && raw.endsWith("]")) {
+      extra[key] = raw.slice(1, -1)
+        .split(",")
+        .map((value) => value.trim().replace(/^['"]|['"]$/g, ""))
+        .filter(Boolean);
+    } else {
+      extra[key] = raw.replace(/^['"]|['"]$/g, "");
+    }
+  }
+  return extra;
 }
 
 function mockMarkdownConceptLinks(sourcePath: string, content: string): string[] {
@@ -3245,6 +3304,992 @@ export async function readBundle(root: string): Promise<Bundle> {
   return invoke<Bundle>("read_bundle", { root });
 }
 
+function mockCompatibilityReport(): CompatibilityReport {
+  const findings: CompatibilityFinding[] = MOCK_BUNDLE.issues.map((issue) => ({
+    ruleId: issue.message.includes("link target not found")
+      ? "okf.conformance.link-target"
+      : "okf.conformance.parser",
+    category: issue.message.includes("link target not found") ? "link" : "parser",
+    level: issue.level,
+    basis: "okf-conformance",
+    file: issue.message.split(":", 1)[0] || `${issue.conceptId ?? "bundle"}.md`,
+    conceptId: issue.conceptId,
+    message: issue.message,
+    repair: null,
+  }));
+  findings.push({
+    ruleId: "okf.portability.relative-link",
+    category: "link",
+    level: "advice",
+    basis: "portability",
+    file: "product/overview.md",
+    conceptId: "product/overview",
+    message: "Bundle-absolute link /features/graph-view.md resolves in Studio but a relative target travels more reliably between OKF consumers.",
+    repair: {
+      kind: "replace-markdown-target",
+      authored: "/features/graph-view.md",
+      replacement: "../features/graph-view.md",
+    },
+  });
+  const extension = MOCK_BUNDLE.concepts.find((concept) => Object.keys(concept.extra).length > 0);
+  if (extension) {
+    findings.push({
+      ruleId: "okf.extensions.preserved",
+      category: "extension",
+      level: "information",
+      basis: "preservation",
+      file: `${extension.id}.md`,
+      conceptId: extension.id,
+      message: `Studio preserved producer-defined frontmatter: ${Object.keys(extension.extra).join(", ")}.`,
+      repair: null,
+    });
+  }
+  return { schemaVersion: 1, findings, truncated: false };
+}
+
+export async function readCompatibilityReport(bundleRoot: string): Promise<CompatibilityReport> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return mockCompatibilityReport();
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<CompatibilityReport>("okf_compatibility_report", { bundleRoot });
+}
+
+export async function readIgnoreReport(bundleRoot: string): Promise<IgnoreReport> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return {
+      schemaVersion: 1,
+      source: ".okfignore",
+      ruleCount: 3,
+      caseSensitive: true,
+      excludedCount: 4,
+      excludedPaths: [
+        "drafts/private-notes.md",
+        "generated/cache.md",
+        "private/source-dump.json",
+        "tmp/research.md",
+      ],
+      diagnostics: [],
+      truncated: false,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<IgnoreReport>("okf_ignore_report", { bundleRoot });
+}
+
+function mockProfileReport(): ProfileReport {
+  return {
+    schemaVersion: 1,
+    profiles: [{
+      namespace: "com.example.knowledge",
+      version: "1.2.0",
+      descriptorPath: "profiles/com.example.knowledge.json",
+      status: "active",
+      message: "Resolved from a version-pinned descriptor inside this bundle.",
+      extra: { mode: "advisory" },
+      descriptor: {
+        schemaVersion: 1,
+        namespace: "com.example.knowledge",
+        version: "1.2.0",
+        title: "Team knowledge",
+        description: "Shared conventions for maintained product knowledge.",
+        fields: [{
+          id: "owner",
+          scope: "concept",
+          key: "owner",
+          label: "Owner",
+          description: "The team responsible for this concept.",
+          valueType: "string",
+          expectation: "recommended",
+          conceptTypes: [],
+          examples: ["Docs"],
+        }],
+        relationships: [{
+          id: "supports",
+          label: "Supports",
+          inverse: "supported-by",
+          description: "This concept provides evidence or implementation support.",
+        }],
+        checks: [{
+          kind: "field-present",
+          id: "owner-present",
+          scope: "concept",
+          field: "owner",
+          level: "recommendation",
+          message: "Name the team responsible for this concept.",
+          conceptTypes: ["Product"],
+        }],
+      },
+    }],
+    diagnostics: [{
+      namespace: "com.example.knowledge",
+      ruleId: "owner-present",
+      level: "recommendation",
+      scope: "concept",
+      file: "product/overview.md",
+      conceptId: "product/overview",
+      field: "owner",
+      message: "Name the team responsible for this concept.",
+    }],
+    edges: [{
+      sourceId: "product/overview",
+      targetId: "features/graph-view",
+      namespace: "com.example.knowledge",
+      type: "supports",
+      label: "Supports",
+      inverse: "supported-by",
+      recognized: true,
+      targetExists: true,
+      portableLink: true,
+    }, {
+      sourceId: "product/overview",
+      targetId: "reference/glossary",
+      namespace: "com.example.knowledge",
+      type: "producer-relation",
+      label: "producer-relation",
+      inverse: null,
+      recognized: false,
+      targetExists: true,
+      portableLink: true,
+    }],
+    truncated: false,
+  };
+}
+
+export async function readProfileReport(bundleRoot: string): Promise<ProfileReport> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return mockProfileReport();
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ProfileReport>("okf_profile_report", { bundleRoot });
+}
+
+function mockProjectionPlan(input: ProjectionInput): ProjectionPlan {
+  const byId = new Map(MOCK_BUNDLE.concepts.map((concept) => [concept.id, concept]));
+  const audiences = new Set(input.recipientAudiences.map((value) => value.toLocaleLowerCase()));
+  const maximum = ["public", "internal", "confidential", "restricted"]
+    .indexOf(input.maxSensitivity);
+  const included = new Map<string, ProjectionPlan["included"][number]>();
+  const omittedReasons = new Map<string, ProjectionPlan["omissions"][number]["reason"]>();
+  const queue = input.selectedConceptIds.map((id) => ({ id, linkedFrom: null as string | null }));
+
+  while (queue.length > 0) {
+    const next = queue.shift();
+    if (!next || included.has(next.id) || omittedReasons.has(next.id)) continue;
+    const concept = byId.get(next.id);
+    if (!concept) continue;
+    const access = assessAccessHints(concept);
+    const sensitivity = access.knownSensitivity
+      ? ["public", "internal", "confidential", "restricted"].indexOf(access.knownSensitivity)
+      : -1;
+    const audienceMismatch = audiences.size > 0 && access.audiences.length > 0 &&
+      !access.audiences.some((value) => audiences.has(value.toLocaleLowerCase()));
+    if (audienceMismatch) {
+      omittedReasons.set(concept.id, "audience-mismatch");
+      continue;
+    }
+    if (
+      access.sensitivity !== null &&
+      access.knownSensitivity === null &&
+      !input.includeUnknownSensitivity
+    ) {
+      omittedReasons.set(concept.id, "unknown-sensitivity");
+      continue;
+    }
+    if (access.sensitivity === null && !input.includeUnknownSensitivity) {
+      omittedReasons.set(concept.id, "unknown-sensitivity");
+      continue;
+    }
+    if (sensitivity > maximum) {
+      omittedReasons.set(concept.id, "sensitivity-exceeds-maximum");
+      continue;
+    }
+    included.set(concept.id, {
+      id: concept.id,
+      title: concept.title,
+      reason: next.linkedFrom === null ? "explicit" : "transitive-link",
+      linkedFrom: next.linkedFrom,
+      access,
+    });
+    for (const id of concept.links) queue.push({ id, linkedFrom: concept.id });
+  }
+  for (const concept of MOCK_BUNDLE.concepts) {
+    if (!included.has(concept.id) && !omittedReasons.has(concept.id)) {
+      omittedReasons.set(concept.id, "not-selected");
+    }
+  }
+  const omissions: ProjectionPlan["omissions"] = MOCK_BUNDLE.concepts
+    .filter((concept) => omittedReasons.has(concept.id))
+    .map((concept) => ({
+      kind: "concept",
+      id: concept.id,
+      title: concept.title,
+      reason: omittedReasons.get(concept.id) ?? "not-selected",
+    }));
+  omissions.push({
+    kind: "ignored-path",
+    id: "drafts/private-notes.md",
+    title: "drafts/private-notes.md",
+    reason: "ignored-by-rule",
+  });
+  const includedIds = new Set(included.keys());
+  const linkConsequences: ProjectionPlan["linkConsequences"] = [];
+  for (const concept of MOCK_BUNDLE.concepts.filter((item) => includedIds.has(item.id))) {
+    for (const target of concept.links.filter((id) => !includedIds.has(id))) {
+      linkConsequences.push({
+        sourceId: concept.id,
+        target,
+        outcome: "rewritten-omitted",
+        occurrences: 1,
+      });
+    }
+    for (const target of concept.brokenLinks) {
+      linkConsequences.push({
+        sourceId: concept.id,
+        target,
+        outcome: "existing-broken",
+        occurrences: 1,
+      });
+    }
+  }
+  const redactions = input.sensitiveTerms.flatMap((value) =>
+    MOCK_BUNDLE.concepts
+      .filter((concept) => includedIds.has(concept.id))
+      .map((concept) => ({
+        file: `${concept.id}.md`,
+        category: "user-sensitive-term",
+        value,
+        occurrences: concept.body.toLocaleLowerCase().split(value.toLocaleLowerCase()).length - 1,
+      }))
+      .filter((item) => item.occurrences > 0)
+  );
+  const safeRecipient = input.recipient.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "recipient";
+  const signature = [
+    input.recipient,
+    ...input.selectedConceptIds,
+    ...input.recipientAudiences,
+    input.maxSensitivity,
+    String(input.includeUnknownSensitivity),
+    ...input.sensitiveTerms,
+  ].join("|");
+  let hash = 2_166_136_261;
+  for (const character of signature) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return {
+    schemaVersion: 1,
+    revision: `okf-projection-mock-${(hash >>> 0).toString(16)}`,
+    sourceBundleFingerprint: "mock-bundle-fingerprint",
+    recipient: input.recipient,
+    recipientAudiences: input.recipientAudiences,
+    maxSensitivity: input.maxSensitivity,
+    includeUnknownSensitivity: input.includeUnknownSensitivity,
+    destinationFolderName: `${safeRecipient}-okf`,
+    included: [...included.values()],
+    omissions,
+    linkConsequences,
+    redactions,
+    ignoredRuleCount: 3,
+    ignoredPathsTruncated: false,
+    warnings: included.size === 0 ? ["No selected concept passed the reviewed constraints."] : [],
+  };
+}
+
+export async function planOkfProjection(
+  bundleRoot: string,
+  input: ProjectionInput,
+): Promise<ProjectionPlan> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return mockProjectionPlan(input);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ProjectionPlan>("okf_projection_plan", { bundleRoot, input });
+}
+
+export async function exportOkfProjection(
+  bundleRoot: string,
+  input: ProjectionExportInput,
+): Promise<ProjectionExportResult | null> {
+  if (!isTauri()) {
+    await browserMockDelay(120);
+    const plan = mockProjectionPlan(input.projection);
+    if (plan.revision !== input.planRevision) {
+      throw new Error("The source bundle or projection choices changed. Review a refreshed plan.");
+    }
+    return {
+      schemaVersion: 1,
+      status: "exported",
+      destination: `/mock/exports/${plan.destinationFolderName}`,
+      destinationFolderName: plan.destinationFolderName,
+      auditReport: `/mock/exports/${plan.destinationFolderName}.erasure-audit.json`,
+      audit: {
+        schemaVersion: 1,
+        passed: true,
+        checkedFiles: plan.included.length + 3,
+        checkedBytes: 18_640,
+        checkedTerms: plan.omissions.length + input.projection.sensitiveTerms.length,
+        findings: [],
+        truncated: false,
+        diagnostics: [],
+      },
+      validation: { errors: 0, warnings: 0, issues: [], truncated: false },
+      sourceUnchanged: true,
+      replacedExistingProjection: input.overwriteConfirmed,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ProjectionExportResult | null>("export_okf_projection", { bundleRoot, input });
+}
+
+function mockInteropReport(): InteropReport {
+  return {
+    schemaVersion: 1,
+    multilingual: {
+      groups: [{
+        identity: "product/overview",
+        variants: [{
+          conceptId: "product/overview",
+          title: "Overview",
+          language: "en",
+          convention: "frontmatter",
+          translationOf: null,
+          targetExists: true,
+        }, {
+          conceptId: "product/overview.de",
+          title: "Überblick",
+          language: "de",
+          convention: "translation-reference",
+          translationOf: "product/overview",
+          targetExists: true,
+        }],
+      }],
+      conventions: [{
+        convention: "frontmatter",
+        observed: 1,
+        strengths: ["Keeps filenames stable."],
+        gaps: ["A language field alone does not identify sibling variants."],
+      }, {
+        convention: "filename-suffix",
+        observed: 0,
+        strengths: ["Variant identity is visible without parsing frontmatter."],
+        gaps: ["Renaming the base path can split a set."],
+      }, {
+        convention: "translation-reference",
+        observed: 1,
+        strengths: ["Variants keep ordinary concept identities and an explicit base reference."],
+        gaps: ["Safe move does not rewrite the producer-defined reference yet."],
+      }],
+      adoptionReady: false,
+      message: "Variants remain an experiment until link, search, retrieval, move, and projection fixtures pass together.",
+    },
+    externalBundles: [{
+      alias: "upstream",
+      url: "https://github.com/GoogleCloudPlatform/knowledge-catalog",
+      expectedDigest: null,
+      cachePath: null,
+      status: "not-resolved",
+      cachedDigest: null,
+      identityPrefix: "external:upstream:",
+      message: "Not fetched. Resolution begins only from the named user action.",
+    }],
+    semanticWeb: {
+      exportableRelationships: 8,
+      unsupportedRelationships: 2,
+      message: "JSON-LD exchange covers typed relationships backed by portable Markdown links; every other construct is reported as loss.",
+    },
+    sidecars: [{
+      conceptId: "product/overview",
+      path: "assets/example.notebook",
+      mediaType: "application/x-ipynb+json",
+      authoredDigest: null,
+      actualDigest: "sha256:mock-sidecar",
+      size: 14_280,
+      status: "ready",
+      openPolicy: "download-only",
+      message: "The file remains exportable but Studio will not execute or render it.",
+    }],
+    diagnostics: [],
+    truncated: false,
+  };
+}
+
+export async function readInteropReport(bundleRoot: string): Promise<InteropReport> {
+  if (!isTauri()) {
+    await browserMockDelay(60);
+    return mockInteropReport();
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<InteropReport>("okf_interop_report", { bundleRoot });
+}
+
+export async function exportSemanticWeb(bundleRoot: string): Promise<string | null> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return "okf-studio-sample-relationships.jsonld";
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("export_semantic_web", { bundleRoot });
+}
+
+export async function importSemanticWeb(): Promise<SemanticImportPreview | null> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return {
+      schemaVersion: 1,
+      relationships: [{
+        sourceId: "product/overview",
+        targetId: "features/graph-view",
+        namespace: "com.example.knowledge",
+        type: "supports",
+      }],
+      losses: [{
+        path: "@graph[4]",
+        message: "An OWL restriction is outside the declared relationship subset.",
+      }],
+      truncated: false,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<SemanticImportPreview | null>("import_semantic_web");
+}
+
+export async function exportOkfSidecar(
+  bundleRoot: string,
+  conceptId: string,
+  path: string,
+): Promise<string | null> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return path.split("/").pop() ?? "sidecar";
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("export_okf_sidecar", { bundleRoot, conceptId, path });
+}
+
+export interface CompatibilityReview {
+  staged: AgentStagedChangesInfo;
+  diff: AgentStagedFileDiff;
+}
+
+export interface ConceptMoveChange {
+  path: string;
+  kind: "create" | "modify" | "delete";
+  reason: string;
+}
+
+export interface ConceptMovePlan {
+  schemaVersion: 1;
+  sourceId: string;
+  destinationId: string;
+  stableId: string | null;
+  affectedLinks: number;
+  affectedIndexes: number;
+  warnings: string[];
+  changes: ConceptMoveChange[];
+}
+
+export interface ConceptMoveReview {
+  plan: ConceptMovePlan;
+  staged: AgentStagedChangesInfo;
+}
+
+export type RetirementAction = "deprecate" | "redirect" | "tombstone" | "delete";
+
+export interface ConceptRetirementPlan {
+  schemaVersion: 1;
+  sourceId: string;
+  action: RetirementAction;
+  replacementId: string | null;
+  affectedLinks: number;
+  affectedIndexes: number;
+  retrievalConsequence: string;
+  warnings: string[];
+  changes: ConceptMoveChange[];
+}
+
+export interface ConceptRetirementReview {
+  plan: ConceptRetirementPlan;
+  staged: AgentStagedChangesInfo;
+}
+
+let mockCompatibilityDiff: AgentStagedFileDiff | null = null;
+let mockCompatibilityCanRestore = false;
+let mockConceptMoveDiffs = new Map<string, AgentStagedFileDiff>();
+let mockConceptMoveCanRestore = false;
+
+export async function stageCompatibilityNormalization(
+  bundleRoot: string,
+  finding: CompatibilityFinding,
+): Promise<CompatibilityReview> {
+  if (!finding.repair) throw new Error("This compatibility finding has no safe normalization.");
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    mockCompatibilityDiff = {
+      path: finding.file,
+      kind: "modify",
+      revision: "mock-compatibility-diff-1",
+      hunks: [{
+        index: 0,
+        header: "@@ -12,1 +12,1 @@",
+        unified: `-[Graph](${finding.repair.authored})\n+[Graph](${finding.repair.replacement})`,
+        selected: true,
+        reviewed: false,
+      }],
+      truncated: false,
+    };
+    return {
+      staged: mockCompatibilityChanges(false),
+      diff: structuredClone(mockCompatibilityDiff),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<CompatibilityReview>("stage_compatibility_normalization", {
+    bundleRoot,
+    file: finding.file,
+    ruleId: finding.ruleId,
+    authored: finding.repair.authored,
+  });
+}
+
+export async function selectCompatibilityHunk(
+  bundleRoot: string,
+  path: string,
+  revision: string,
+  hunkIndex: number,
+  selected: boolean,
+): Promise<AgentStagedFileDiff> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    if (mockCompatibilityDiff?.revision !== revision) {
+      throw new Error("The staged diff changed. Review the file again.");
+    }
+    mockCompatibilityDiff = {
+      ...mockCompatibilityDiff,
+      hunks: mockCompatibilityDiff.hunks.map((hunk) => hunk.index === hunkIndex
+        ? { ...hunk, selected, reviewed: true }
+        : hunk),
+    };
+    return structuredClone(mockCompatibilityDiff);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedFileDiff>("select_compatibility_hunk", {
+    bundleRoot,
+    path,
+    revision,
+    hunkIndex,
+    selected,
+  });
+}
+
+export async function validateCompatibilityNormalization(
+  bundleRoot: string,
+): Promise<AgentStagedValidationInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    if (!mockCompatibilityDiff?.hunks.every((hunk) => hunk.reviewed)) {
+      throw new Error("Review every staged hunk before validation.");
+    }
+    return {
+      sessionId: "compatibility-clinic-mock",
+      revision: "mock-compatibility-selected-1",
+      errors: 0,
+      warnings: 0,
+      issues: [],
+      truncated: false,
+      preview: { nodes: [], edges: [], totalNodes: 0, totalEdges: 0, truncated: false },
+      profile: {
+        source: "draft",
+        declared: 0,
+        active: 0,
+        unavailable: 0,
+        diagnostics: [],
+        truncated: false,
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedValidationInfo>("validate_compatibility_normalization", { bundleRoot });
+}
+
+export async function applyCompatibilityNormalization(
+  bundleRoot: string,
+  revision: string,
+): Promise<AgentStagedApplyInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    mockCompatibilityDiff = null;
+    mockCompatibilityCanRestore = true;
+    return {
+      sessionId: "compatibility-clinic-mock",
+      revision,
+      appliedFiles: 1,
+      changes: mockCompatibilityChanges(true),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedApplyInfo>("apply_compatibility_normalization", { bundleRoot, revision });
+}
+
+export async function discardCompatibilityNormalization(
+  bundleRoot: string,
+): Promise<AgentStagedChangesInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    mockCompatibilityDiff = null;
+    return mockCompatibilityChanges(mockCompatibilityCanRestore);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedChangesInfo>("discard_compatibility_normalization", { bundleRoot });
+}
+
+export async function restoreCompatibilityNormalization(
+  bundleRoot: string,
+): Promise<AgentCheckpointRestoreInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    mockCompatibilityCanRestore = false;
+    return {
+      sessionId: "compatibility-clinic-mock",
+      restoredFiles: 1,
+      changes: mockCompatibilityChanges(false),
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCheckpointRestoreInfo>("restore_compatibility_normalization", { bundleRoot });
+}
+
+export async function stageConceptMove(
+  bundleRoot: string,
+  sourceId: string,
+  destinationPath: string,
+): Promise<ConceptMoveReview> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    const destinationId = destinationPath.trim().replaceAll("\\", "/").replace(/\.md$/iu, "");
+    if (!destinationId || destinationId === sourceId) {
+      throw new Error("Choose a different bundle-relative .md path.");
+    }
+    const changes: ConceptMoveChange[] = [
+      { path: `${sourceId}.md`, kind: "modify", reason: "Keep portable redirect" },
+      { path: destinationPath, kind: "create", reason: "Create destination" },
+      { path: "index.md", kind: "modify", reason: "Update navigation" },
+    ];
+    mockConceptMoveDiffs = new Map(changes.map((change, index) => [
+      change.path,
+      {
+        path: change.path,
+        kind: change.kind,
+        revision: `mock-move-diff-${index}`,
+        hunks: [{
+          index: 0,
+          header: "@@ -1,1 +1,1 @@",
+          unified: change.kind === "create"
+            ? `+---\n+type: Guide\n+---\n+# Moved concept\n`
+            : `-[Old](${sourceId}.md)\n+[Moved](${destinationId}.md)\n`,
+          selected: true,
+          reviewed: false,
+        }],
+        truncated: false,
+      },
+    ]));
+    return {
+      plan: {
+        schemaVersion: 1,
+        sourceId,
+        destinationId,
+        stableId: "concept-stable-01",
+        affectedLinks: 2,
+        affectedIndexes: 1,
+        warnings: [],
+        changes,
+      },
+      staged: {
+        sessionId: "concept-move-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: mockConceptMoveCanRestore,
+        files: changes.map((change) => ({
+          path: change.path,
+          kind: change.kind,
+          bytes: 180,
+        })),
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ConceptMoveReview>("stage_concept_move", {
+    bundleRoot,
+    sourceId,
+    destinationPath,
+  });
+}
+
+export async function stageConceptRetirement(
+  bundleRoot: string,
+  request: {
+    sourceId: string;
+    action: RetirementAction;
+    replacementId: string | null;
+    reason: string;
+    decisionDate: string;
+  },
+): Promise<ConceptRetirementReview> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    const sourcePath = `${request.sourceId}.md`;
+    const requestedReplacement = request.replacementId?.trim();
+    const replacementId = requestedReplacement && requestedReplacement.length > 0
+      ? requestedReplacement
+      : null;
+    if (!request.reason.trim()) {
+      throw new Error("Name a bounded plain-text retirement reason.");
+    }
+    if (request.action === "redirect" && !replacementId) {
+      throw new Error("Redirect requires a replacement concept.");
+    }
+    const changes: ConceptMoveChange[] = [
+      {
+        path: sourcePath,
+        kind: request.action === "delete" ? "delete" : "modify",
+        reason: request.action === "deprecate"
+          ? "Mark deprecated"
+          : request.action === "redirect"
+            ? "Keep portable redirect"
+            : request.action === "tombstone"
+              ? "Keep retirement tombstone"
+              : "Delete concept file",
+      },
+      ...(request.action === "redirect" || request.action === "delete"
+        ? [{ path: "index.md", kind: "modify" as const, reason: "Update navigation" }]
+        : []),
+      { path: "log.md", kind: "modify", reason: "Record retirement decision" },
+    ];
+    const replacement = replacementId ?? "replacement-concept";
+    mockConceptMoveDiffs = new Map(changes.map((change, index) => [
+      change.path,
+      {
+        path: change.path,
+        kind: change.kind,
+        revision: `mock-retirement-diff-${index}`,
+        hunks: [{
+          index: 0,
+          header: "@@ -1,3 +1,3 @@",
+          unified: change.kind === "delete"
+            ? `----\n-type: Feature\n----\n-# Retired concept\n`
+            : change.path === "log.md"
+              ? `+* **Retirement**: ${request.action} \`${request.sourceId}\`.\n`
+              : `-[Retired](${sourcePath})\n+[Replacement](${replacement}.md)\n`,
+          selected: true,
+          reviewed: false,
+        }],
+        truncated: false,
+      },
+    ]));
+    const consequence = {
+      deprecate: "The concept remains searchable and retrieval adds a lifecycle caveat.",
+      redirect: "Retrieval follows rewritten links to the replacement; the old identity remains an explicit redirect.",
+      tombstone: "Retrieval sees only the retirement explanation, not the former claims.",
+      delete: "The concept leaves the active bundle; rewritten links use the replacement when one was selected.",
+    } satisfies Record<RetirementAction, string>;
+    return {
+      plan: {
+        schemaVersion: 1,
+        sourceId: request.sourceId,
+        action: request.action,
+        replacementId,
+        affectedLinks: request.action === "redirect" || request.action === "delete" ? 2 : 1,
+        affectedIndexes: request.action === "redirect" || request.action === "delete" ? 1 : 0,
+        retrievalConsequence: consequence[request.action],
+        warnings: [],
+        changes,
+      },
+      staged: {
+        sessionId: "concept-retirement-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: mockConceptMoveCanRestore,
+        files: changes.map((change) => ({
+          path: change.path,
+          kind: change.kind,
+          bytes: change.kind === "delete" ? 0 : 180,
+        })),
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ConceptRetirementReview>("stage_concept_retirement", {
+    bundleRoot,
+    request,
+  });
+}
+
+export async function conceptMoveDiff(
+  bundleRoot: string,
+  path: string,
+): Promise<AgentStagedFileDiff> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    const diff = mockConceptMoveDiffs.get(path);
+    if (!diff) throw new Error("This move file is no longer staged.");
+    return structuredClone(diff);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedFileDiff>("concept_move_diff", { bundleRoot, path });
+}
+
+export async function selectConceptMoveHunk(
+  bundleRoot: string,
+  path: string,
+  revision: string,
+  hunkIndex: number,
+  selected: boolean,
+): Promise<AgentStagedFileDiff> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    const diff = mockConceptMoveDiffs.get(path);
+    if (diff?.revision !== revision) {
+      throw new Error("The move diff changed. Review it again.");
+    }
+    const updated = {
+      ...diff,
+      hunks: diff.hunks.map((hunk) => hunk.index === hunkIndex
+        ? { ...hunk, selected, reviewed: true }
+        : hunk),
+    };
+    mockConceptMoveDiffs.set(path, updated);
+    return structuredClone(updated);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedFileDiff>("select_concept_move_hunk", {
+    bundleRoot,
+    path,
+    revision,
+    hunkIndex,
+    selected,
+  });
+}
+
+export async function validateConceptMove(
+  bundleRoot: string,
+): Promise<AgentStagedValidationInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(30);
+    if ([...mockConceptMoveDiffs.values()].some((diff) =>
+      diff.truncated || diff.hunks.some((hunk) => !hunk.reviewed || !hunk.selected)
+    )) {
+      throw new Error(
+        "Review and keep every move hunk before validation. A concept move is one graph transaction.",
+      );
+    }
+    return {
+      sessionId: "concept-move-mock",
+      revision: "mock-move-validation-1",
+      errors: 0,
+      warnings: 0,
+      issues: [],
+      truncated: false,
+      preview: { nodes: [], edges: [], totalNodes: 3, totalEdges: 2, truncated: false },
+      profile: {
+        source: "draft",
+        declared: 0,
+        active: 0,
+        unavailable: 0,
+        diagnostics: [],
+        truncated: false,
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedValidationInfo>("validate_concept_move", { bundleRoot });
+}
+
+export async function applyConceptMove(
+  bundleRoot: string,
+  revision: string,
+): Promise<AgentStagedApplyInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(30);
+    mockConceptMoveDiffs.clear();
+    mockConceptMoveCanRestore = true;
+    return {
+      sessionId: "concept-move-mock",
+      revision,
+      appliedFiles: 3,
+      changes: {
+        sessionId: "concept-move-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: true,
+        files: [],
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedApplyInfo>("apply_concept_move", { bundleRoot, revision });
+}
+
+export async function discardConceptMove(bundleRoot: string): Promise<AgentStagedChangesInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    mockConceptMoveDiffs.clear();
+    return {
+      sessionId: "concept-move-mock",
+      granted: true,
+      grantMode: "interactive",
+      mode: "enhance",
+      canRestore: mockConceptMoveCanRestore,
+      files: [],
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedChangesInfo>("discard_concept_move", { bundleRoot });
+}
+
+export async function restoreConceptMove(
+  bundleRoot: string,
+): Promise<AgentCheckpointRestoreInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(30);
+    mockConceptMoveCanRestore = false;
+    return {
+      sessionId: "concept-move-mock",
+      restoredFiles: 3,
+      changes: {
+        sessionId: "concept-move-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: false,
+        files: [],
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCheckpointRestoreInfo>("restore_concept_move", { bundleRoot });
+}
+
+function mockCompatibilityChanges(canRestore: boolean): AgentStagedChangesInfo {
+  return {
+    sessionId: "compatibility-clinic-mock",
+    granted: true,
+    grantMode: "interactive",
+    mode: "enhance",
+    canRestore,
+    files: mockCompatibilityDiff
+      ? [{ path: mockCompatibilityDiff.path, bytes: 128, kind: "modify" }]
+      : [],
+  };
+}
+
 export async function pickGitRepositoryFolder(bundleRoot: string): Promise<string | null> {
   if (!isTauri()) return MOCK_FOLDER;
   const { invoke } = await import("@tauri-apps/api/core");
@@ -3427,6 +4472,18 @@ export async function exportRetrievalDiagnostics(
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<string | null>("export_retrieval_diagnostics", { suggestedName, payload });
+  }
+  await browserMockDelay(80);
+  return suggestedName;
+}
+
+export async function exportCompatibilityDiagnostic(
+  suggestedName: string,
+  payload: string,
+): Promise<string | null> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<string | null>("export_compatibility_diagnostic", { suggestedName, payload });
   }
   await browserMockDelay(80);
   return suggestedName;

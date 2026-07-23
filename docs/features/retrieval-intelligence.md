@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-19T11:22:06Z
+timestamp: 2026-07-23T18:30:00Z
 ---
 
 # What it does
@@ -11,6 +11,8 @@ timestamp: 2026-07-19T11:22:06Z
 Every ordinary Agent Panel question can use a Rust-owned retrieval pass over the active granted bundle before it reaches the selected agent. Studio classifies the question, chooses a local route, compiles coherent sections into a bounded evidence packet, and attaches that packet with stable concept and section identities. The agent does not need its own chunker or unrestricted filesystem access.
 
 The generated attachment carries the lowercase SHA-256 digest of the exact Markdown sent through the prompt boundary. The retrieval receipt remains a separate identity and is never substituted for this content digest.
+
+Retrieval units also preserve the optional [Evidence and Provenance](evidence-and-provenance.md) map. Each evidence item carries the bounded source identities available to its concept and the structured claim markers whose exact body lines fall inside that section. The packet keeps source URI, locator, observation, digest, adapter, and authored liveness state separate from ordinary concept-wide external links. An agent can therefore connect an excerpt to the same evidence the reader shows without parsing frontmatter again.
 
 The answer turn shows one compact evidence receipt with the excerpt count, search method, and an Inspect action. It adds a plain status only when the evidence is incomplete, conflicting, stale, unavailable, or shared remotely. The answer does not append an `Evidence`, `Sources`, concept-path, or receipt-ID footer because Inspect already owns that provenance. A concept or external citation may still appear inline when it helps the reader understand a claim. Internal generation instructions such as the abstention flag never appear in the conversation.
 
@@ -40,7 +42,7 @@ Studio, not the selected agent, chooses the automatic route before sending the p
 
 # Evidence and receipts
 
-A retrieval unit carries the bundle fingerprint, concept ID, deterministic section ID, heading path, source-line range, content hash, type, tags, links, backlinks, citations, timestamp signals, token estimate, and health caveats. Context compilation keeps units intact instead of cutting them at arbitrary token boundaries. The receipt identity binds filters, limits, provider choices, provider window, and disclosure as well as query, route, budget, and bundle revision, so two materially different searches cannot appear to be the same run.
+A retrieval unit carries the bundle fingerprint, concept ID, deterministic section ID, heading path, source-line range, content hash, type, tags, links, backlinks, citations, timestamp and [reliability](reliability-and-lifecycle.md) signals, token estimate, and health caveats. Context compilation keeps units intact instead of cutting them at arbitrary token boundaries. The receipt identity binds filters, limits, provider choices, provider window, and disclosure as well as query, route, budget, and bundle revision, so two materially different searches cannot appear to be the same run.
 
 The versioned receipt records:
 
@@ -57,7 +59,7 @@ The inspector opens a concept at its visible source identity. The redacted diagn
 
 The shipped local pass distinguishes ready evidence, empty results, filter mismatch, route-relevant missing metadata, independently sourced conflicts, budget omissions, and requested provider failure. Low recall and noisy candidates require task-specific ground truth; stale evidence requires a retained receipt from an older fingerprint; generation non-use requires answer-citation telemetry. The schema and UI can represent those evaluation states, but the local pass does not fabricate them from an arbitrary score threshold. A missing local retrieval result does not block the user's message: Studio names the degraded send and continues without automatic bundle evidence.
 
-When required authority or current evidence is absent, or independently sourced concepts make different claims about the same subject and section without a supported rule, the evidence packet requires abstention. A missing optional timestamp does not affect an ordinary lookup, but a time-sensitive answer stays qualified when its concepts provide no timestamp, effective time, or supersession signal. A reused generic heading on unrelated concepts is not treated as a conflict. The flag instructs the agent not to present an unsupported claim as settled; it is not a user error. The conversation translates it into a status such as **Conflicting evidence** or **No supporting evidence**, while the inspector owns the full reason and recovery detail. A rank or file timestamp never silently becomes authority.
+When required authority or current evidence is absent, independently sourced concepts make different claims about the same subject and section, or included evidence declares a conflict or non-current lifecycle state, the evidence packet requires abstention. Uncertain confidence produces a caveat without claiming the assertion is objectively unreliable. A missing optional timestamp or reliability field does not affect an ordinary lookup, but a time-sensitive answer stays qualified when its concepts provide no timestamp, effective time, or supersession signal. A reused generic heading on unrelated concepts is not treated as a conflict. The flag instructs the agent not to present an unsupported claim as settled; it is not a user error. The conversation translates it into a status such as **Conflicting evidence** or **No supporting evidence**, while the inspector and native agent tool expose the bounded caveat. A rank, profile value, or file timestamp never silently becomes authority.
 
 # Reviewed repair
 

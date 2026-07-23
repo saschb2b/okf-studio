@@ -68,7 +68,10 @@ mod agent_url;
 mod agent_stage;
 mod bundle_create;
 mod bundle_grant;
+mod bundle_interop;
 mod bundle_library;
+mod bundle_projection;
+mod compatibility_stage;
 mod external_entry;
 #[path = "git/repository.rs"]
 mod git_repository;
@@ -263,6 +266,100 @@ fn git_stop_watch(watch: State<'_, git_watch::GitWatchState>) {
 #[tauri::command]
 fn okf_capability_catalog() -> agent_capabilities::CapabilityCatalogInfo {
     agent_capabilities::catalog_info()
+}
+
+#[tauri::command]
+async fn okf_projection_plan(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    input: okf_core::projection::ProjectionInput,
+) -> Result<okf_core::projection::ProjectionPlan, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        okf_core::projection::plan(&root, &bundle, &input)
+    })
+    .await
+    .map_err(|_| "The recipient projection plan stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn okf_interop_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::interop::InteropReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        Ok(okf_core::interop::analyze(&root, &bundle))
+    })
+    .await
+    .map_err(|_| "The interoperability analysis stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn export_semantic_web(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<Option<String>, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    bundle_interop::export_semantic_web(&app, root).await
+}
+
+#[tauri::command]
+async fn import_semantic_web(
+    app: AppHandle,
+) -> Result<Option<okf_core::interop::SemanticImportPreview>, String> {
+    bundle_interop::import_semantic_web(&app).await
+}
+
+#[tauri::command]
+async fn export_okf_sidecar(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    concept_id: String,
+    path: String,
+) -> Result<Option<String>, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    bundle_interop::export_sidecar(&app, root, concept_id, path).await
+}
+
+#[tauri::command]
+async fn export_okf_projection(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    input: bundle_projection::ProjectionExportInput,
+) -> Result<Option<bundle_projection::ProjectionExportResult>, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_title("Choose where to create the recipient projection")
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+    let parent = selected.into_path().map_err(|_| {
+        "The selected projection destination is not available on this platform.".to_string()
+    })?;
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        bundle_projection::export(&root, &parent, &input)
+    })
+    .await
+    .map_err(|_| "The recipient projection export stopped unexpectedly.".to_string())??;
+    if matches!(
+        result.status,
+        bundle_projection::ProjectionExportStatus::Exported
+    ) {
+        grants.grant(
+            Path::new(&result.destination),
+            bundle_grant::BundleGrantKind::LocalFolder,
+        )?;
+    }
+    Ok(Some(result))
 }
 
 #[tauri::command]
@@ -492,6 +589,268 @@ fn read_bundle(
     let bundle = okf_core::read_bundle(&root);
     library.update_snapshot(&root, &bundle)?;
     Ok(bundle)
+}
+
+#[tauri::command]
+fn okf_ignore_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::ignore::IgnoreReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    Ok(okf_core::ignore::analyze(&root))
+}
+
+#[tauri::command]
+async fn okf_compatibility_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::compatibility::CompatibilityReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        okf_core::compatibility::analyze(&okf_core::read_bundle(&root))
+    })
+    .await
+    .map_err(|_| "Studio could not build the compatibility report.".to_string())
+}
+
+#[tauri::command]
+async fn okf_profile_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::profile::ProfileReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        okf_core::profile::analyze(&root, &bundle)
+    })
+    .await
+    .map_err(|_| "Studio could not resolve the bundle's advisory profiles.".to_string())
+}
+
+#[tauri::command]
+async fn stage_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    file: String,
+    rule_id: String,
+    authored: String,
+) -> Result<compatibility_stage::CompatibilityReview, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.stage_normalization(&root, &file, &rule_id, &authored)
+    })
+    .await
+    .map_err(|_| "Studio could not stage the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn select_compatibility_hunk(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    path: String,
+    revision: String,
+    hunk_index: usize,
+    selected: bool,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.select_hunk(&root, &path, &revision, hunk_index, selected)
+    })
+    .await
+    .map_err(|_| "Studio could not update the compatibility review.".to_string())?
+}
+
+#[tauri::command]
+async fn validate_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedValidationInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.validate(&root))
+        .await
+        .map_err(|_| "Studio could not validate the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn apply_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    revision: String,
+) -> Result<agent_stage::AgentStagedApplyInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.apply(&root, &revision))
+        .await
+        .map_err(|_| "Studio could not apply the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn discard_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.discard(&root))
+        .await
+        .map_err(|_| "Studio could not discard the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn restore_compatibility_normalization(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentCheckpointRestoreInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.restore(&root))
+        .await
+        .map_err(|_| "Studio could not restore the compatibility normalization.".to_string())?
+}
+
+#[tauri::command]
+async fn stage_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    source_id: String,
+    destination_path: String,
+) -> Result<compatibility_stage::ConceptMoveReview, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.stage_concept_move(&root, &source_id, &destination_path)
+    })
+    .await
+    .map_err(|_| "Studio could not stage the concept move.".to_string())?
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ConceptRetirementRequest {
+    source_id: String,
+    action: String,
+    replacement_id: Option<String>,
+    reason: String,
+    decision_date: String,
+}
+
+#[tauri::command]
+async fn stage_concept_retirement(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    request: ConceptRetirementRequest,
+) -> Result<compatibility_stage::ConceptRetirementReview, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.stage_concept_retirement(
+            &root,
+            &request.source_id,
+            &request.action,
+            request.replacement_id.as_deref(),
+            &request.reason,
+            &request.decision_date,
+        )
+    })
+    .await
+    .map_err(|_| "Studio could not stage the retirement decision.".to_string())?
+}
+
+#[tauri::command]
+async fn concept_move_diff(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    path: String,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.diff(&root, &path))
+        .await
+        .map_err(|_| "Studio could not open the concept move diff.".to_string())?
+}
+
+#[tauri::command]
+async fn select_concept_move_hunk(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    path: String,
+    revision: String,
+    hunk_index: usize,
+    selected: bool,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.select_hunk(&root, &path, &revision, hunk_index, selected)
+    })
+    .await
+    .map_err(|_| "Studio could not update the concept move review.".to_string())?
+}
+
+#[tauri::command]
+async fn validate_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedValidationInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.validate_move(&root))
+        .await
+        .map_err(|_| "Studio could not validate the concept move.".to_string())?
+}
+
+#[tauri::command]
+async fn apply_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    revision: String,
+) -> Result<agent_stage::AgentStagedApplyInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.apply(&root, &revision))
+        .await
+        .map_err(|_| "Studio could not apply the concept move.".to_string())?
+}
+
+#[tauri::command]
+async fn discard_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.discard(&root))
+        .await
+        .map_err(|_| "Studio could not discard the concept move.".to_string())?
+}
+
+#[tauri::command]
+async fn restore_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentCheckpointRestoreInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.restore(&root))
+        .await
+        .map_err(|_| "Studio could not restore the concept move.".to_string())?
 }
 
 #[tauri::command]
@@ -893,6 +1252,15 @@ async fn export_agent_transcript(
 
 #[tauri::command]
 async fn export_retrieval_diagnostics(
+    app: AppHandle,
+    suggested_name: String,
+    payload: String,
+) -> Result<Option<String>, String> {
+    retrieval::export_diagnostics(&app, suggested_name, payload).await
+}
+
+#[tauri::command]
+async fn export_compatibility_diagnostic(
     app: AppHandle,
     suggested_name: String,
     payload: String,
@@ -1346,6 +1714,12 @@ pub fn run() {
             app.manage(git_watch::GitWatchState::default());
             app.manage(agent_install::AgentInstallState::default());
             app.manage(agent_protocol::AgentHostState::default());
+            app.manage(compatibility_stage::CompatibilityStageState::persistent(
+                app.path()
+                    .app_data_dir()?
+                    .join("compatibility")
+                    .join("apply-checkpoints"),
+            ));
             app.manage(
                 agent_routines::RoutineState::load(app.handle()).map_err(|error| {
                     std::io::Error::other(format!("could not load OKF routines: {error}"))
@@ -1439,6 +1813,29 @@ pub fn run() {
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            okf_ignore_report,
+            okf_compatibility_report,
+            okf_profile_report,
+            okf_interop_report,
+            okf_projection_plan,
+            export_okf_projection,
+            export_semantic_web,
+            import_semantic_web,
+            export_okf_sidecar,
+            stage_compatibility_normalization,
+            select_compatibility_hunk,
+            validate_compatibility_normalization,
+            apply_compatibility_normalization,
+            discard_compatibility_normalization,
+            restore_compatibility_normalization,
+            stage_concept_move,
+            stage_concept_retirement,
+            concept_move_diff,
+            select_concept_move_hunk,
+            validate_concept_move,
+            apply_concept_move,
+            discard_concept_move,
+            restore_concept_move,
             git_repository_snapshot,
             git_repository_history,
             git_repository_diff,
@@ -1500,6 +1897,7 @@ pub fn run() {
             fetch_agent_source_url,
             export_agent_transcript,
             export_retrieval_diagnostics,
+            export_compatibility_diagnostic,
             cancel_agent_turn,
             respond_agent_permission,
             set_agent_write_grant,

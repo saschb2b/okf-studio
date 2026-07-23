@@ -22,6 +22,46 @@
   flex: 0 0 auto;
 }
 
+.vp-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.vp-intro {
+  flex: 0 0 auto;
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.vp-intro p {
+  margin: 0;
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.vp-summary {
+  font-size: var(--fs-xs);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.vp-export-status {
+  color: var(--text);
+}
+
+.vp-state {
+  margin: 0;
+  padding: var(--space-16);
+  color: var(--text-dim);
+}
+
+.vp-state.error {
+  color: var(--error);
+}
+
 /* The ScrollArea fills the space below the header. */
 .vp-scroll {
   flex: 1 1 auto;
@@ -46,13 +86,6 @@
   letter-spacing: 0.05em;
   color: var(--text-dim);
 }
-.vp-group-head.error {
-  color: var(--error);
-}
-.vp-group-head.warning {
-  color: var(--warn);
-}
-
 /* Plain count after the group label — no pill chrome. */
 .vp-count {
   font-size: var(--fs-xs);
@@ -94,6 +127,36 @@
 .vp-issue-agent:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: -2px;
+}
+
+.vp-issue-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+.vp-review-trigger {
+  min-height: 28px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vp-review-trigger:hover {
+  color: var(--text);
+  background: var(--bg-sunken);
+}
+
+.vp-review-trigger:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Flat problems-list rows (the VS Code pattern): a severity dot, the message,
@@ -138,17 +201,168 @@
 .vp-issue-dot.warning {
   background: var(--warn);
 }
+.vp-issue-dot.advice {
+  background: var(--accent);
+}
+.vp-issue-dot.information {
+  background: var(--text-dim);
+}
 
 .vp-msg {
   grid-column: 2;
   line-height: var(--lh-tight);
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
-.vp-target {
+.vp-finding-meta {
   grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
   font-family: var(--mono);
   font-size: var(--fs-xs);
   color: var(--text-dim);
+  min-width: 0;
+}
+
+.vp-finding-meta code,
+.vp-repair code {
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.vp-repair {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+  padding-top: var(--space-4);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+.vp-review-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  color: var(--text);
+}
+
+.vp-review-message .btn {
+  flex: 0 0 auto;
+}
+
+.vp-review {
+  flex: 0 0 auto;
+  max-height: 58%;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.vp-review-head,
+.vp-review-footer,
+.vp-hunk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.vp-review-head > div {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.vp-review-head code,
+.vp-hunk-header {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.vp-review-alert,
+.vp-review-issues {
+  color: var(--error);
+}
+
+.vp-hunks {
+  display: grid;
+  gap: var(--space-8);
+  margin: var(--space-12) 0;
+}
+
+.vp-hunk {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.vp-hunk pre {
+  max-height: 12rem;
+  margin: 0;
+  overflow: auto;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  white-space: pre;
+}
+
+.vp-hunk-actions {
+  justify-content: flex-end;
+}
+
+.vp-hunk-actions .btn[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.vp-review-issues {
+  margin: 0 0 var(--space-12);
+  padding-left: var(--space-16);
+}
+
+.vp-review-footer {
+  justify-content: flex-end;
+}
+
+@media (max-width: 30rem) {
+  .vp-repair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .vp-issue {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vp-issue-actions {
+    justify-content: flex-end;
+    padding: 0 var(--space-8) var(--space-6);
+  }
+
+  .vp-review {
+    max-height: 62%;
+    padding: var(--space-12);
+  }
+
+  .vp-review-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 .vp-conformant {

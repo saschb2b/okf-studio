@@ -38,6 +38,54 @@ describe("OKF task launcher", () => {
     ]);
   });
 
+  it("turns advisory profile findings into reviewed migration work", () => {
+    const origin = {
+      kind: "profile-finding" as const,
+      id: "profile:owner",
+      title: "Name the responsible team.",
+      conceptId: "features/agent-panel",
+      diagnostic: {
+        namespace: "com.example.knowledge",
+        ruleId: "owner-present",
+        level: "recommendation" as const,
+        scope: "concept" as const,
+        file: "features/agent-panel.md",
+        conceptId: "features/agent-panel",
+        field: "owner",
+        message: "Name the responsible team.",
+      },
+    };
+
+    expect(tasksForOkfOrigin(origin)).toEqual(["okf-migrate", "okf-revise", "okf-audit"]);
+    const kickoff = kickoffForOkfOrigin("okf-migrate", origin);
+    expect(kickoff.contextConceptIds).toEqual(["features/agent-panel"]);
+    expect(kickoff.prompt).toContain("advisory profile finding");
+    expect(kickoff.sources?.[0]?.content).toContain(
+      "Basis: advisory profile, not OKF validation",
+    );
+  });
+
+  it("does not attach a concept when profile advice targets the bundle", () => {
+    const kickoff = kickoffForOkfOrigin("okf-migrate", {
+      kind: "profile-finding",
+      id: "profile:bundle",
+      title: "Name the bundle owner.",
+      conceptId: null,
+      diagnostic: {
+        namespace: "com.example.knowledge",
+        ruleId: "bundle-owner",
+        level: "recommendation",
+        scope: "bundle",
+        file: "index.md",
+        conceptId: null,
+        field: "owner",
+        message: "Name the bundle owner.",
+      },
+    });
+
+    expect(kickoff.contextConceptIds).toEqual([]);
+  });
+
   it("removes task entry points whose capability pack is inactive", () => {
     const origin = {
       kind: "concept" as const,

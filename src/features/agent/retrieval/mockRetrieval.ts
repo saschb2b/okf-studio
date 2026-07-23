@@ -5,6 +5,9 @@ import type {
   RetrievalResult,
   RetrievalRoute,
 } from "./types.ts";
+import { assessReliability } from "@/shared/reliability.ts";
+
+const MOCK_AS_OF_DAY = new Date().toISOString().slice(0, 10);
 
 export function mockRetrieval(bundle: Bundle, request: RetrievalRequest): RetrievalResult {
   const query = request.query.trim();
@@ -76,6 +79,19 @@ export function mockRetrieval(bundle: Bundle, request: RetrievalRequest): Retrie
     : omissions.length > 0
       ? "budget-omission"
       : "ready";
+  const caveats = ranked
+    .filter((candidate) => candidates.some((item) =>
+      item.conceptId === candidate.concept.id && item.included))
+    .flatMap((candidate) => {
+      const assessment = assessReliability(candidate.concept, null, MOCK_AS_OF_DAY);
+      if (!assessment.hasMetadata || assessment.state === "current") return [];
+      const kind = assessment.state === "uncertain" ? "uncertain" : "lifecycle";
+      return [{
+        kind,
+        conceptIds: [candidate.concept.id],
+        message: `${candidate.concept.title} is ${assessment.state.replaceAll("-", " ")} according to authored advisory metadata.`,
+      }] satisfies RetrievalResult["evidence"]["caveats"];
+    });
   const fingerprint = `mock-${bundle.concepts.length}-${bundle.issues.length}`;
   return {
     manifest: {
@@ -90,10 +106,11 @@ export function mockRetrieval(bundle: Bundle, request: RetrievalRequest): Retrie
       manifestFingerprint: fingerprint,
       query,
       items: evidence,
-      caveats: [],
+      caveats,
       estimatedTokens: used,
       bytes: evidence.reduce((total, item) => total + item.text.length, 0),
-      requiresAbstention: evidence.length === 0,
+      requiresAbstention: evidence.length === 0
+        || caveats.some((caveat) => caveat.kind === "lifecycle"),
     },
     receipt: {
       schemaVersion: 1,

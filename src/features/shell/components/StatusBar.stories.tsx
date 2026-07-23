@@ -1,6 +1,5 @@
-// The docked status strip over the real store and mock bundle: the left
-// region describes the open bundle (verdict, facts), the right holds only
-// panel toggles. Function-first: edge-to-edge behind its hairline.
+// The docked status strip over the real store and mock bundle: one compact
+// cluster of workspace-panel toggles.
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { WithStore } from "@/mock/withStore.tsx";
@@ -15,7 +14,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** With the mock bundle open: verdict + facts left, panel toggles right. */
+/** With the mock bundle open: bundle-scoped and global panel toggles. */
 export const BundleOpen: Story = {
   render: () => (
     <WithStore withBundle>
@@ -25,14 +24,15 @@ export const BundleOpen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() =>
-      expect(canvas.getByRole("button", { name: /validation/i })).toBeVisible(),
+      expect(canvas.getByRole("button", { name: "Toggle Git panel" })).toBeVisible(),
     );
     const git = canvas.getByRole("button", { name: "Toggle Git panel" });
     await expect(git).toBeVisible();
     await userEvent.click(git);
     await expect(git).toHaveAttribute("aria-pressed", "true");
     await expect(canvas.getByRole("button", { name: "Toggle agent panel" })).toBeVisible();
-    await expect(canvas.getByTitle("Concepts in this bundle")).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: /validation/i })).not.toBeInTheDocument();
+    await expect(canvas.queryByText("45 concepts")).not.toBeInTheDocument();
   },
 };
 
@@ -46,6 +46,6 @@ export const NoBundle: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: "Toggle agent panel" })).toBeVisible();
-    await expect(canvas.queryByRole("button", { name: /validation/i })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Toggle Git panel" })).not.toBeInTheDocument();
   },
 };

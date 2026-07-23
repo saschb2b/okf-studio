@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-19T13:15:00Z
+timestamp: 2026-07-22T23:58:00Z
 ---
 
 # Decision
@@ -28,10 +28,14 @@ Link resolution is the subtlest part of [OKF parsing](okf-parsing.md), so it is 
 
 - bundle-absolute hrefs (`/section/file.md`) resolved from the root,
 - relative hrefs (`file.md`, `../section/file.md`) resolved from the concept's directory,
+- percent-encoded spaces and UTF-8 decoded before target lookup,
+- encoded schemes and `..` segments checked after decoding so encoding cannot bypass classification or the bundle boundary,
 - `.`/`..` normalization,
 - trailing `#anchor` stripping,
 - **broken-link tolerance** — a link to a non-existent target is preserved for display but produces no edge,
 - backlink inversion — each `citedBy` list is the exact reverse of the edge set.
+
+The core and rendered reader share `src/test/fixtures/markdown-link-corpus.json`. Rust asserts the graph targets produced by `pulldown-cmark`; Vitest renders the same cases through `marked`, reads the sanitized anchors, and asserts the reader resolves the same concept and external targets. The corpus covers reference links, angle destinations, balanced parentheses, code spans and fences, autolinks, percent encoding, footnote definitions, fragments, and escaped punctuation.
 
 # Validator parity
 
@@ -43,7 +47,9 @@ The [tolerant-consumer principle](../product/principles.md) is a hard guarantee,
 
 # Sample bundles as fixtures
 
-Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) — GA4, Stack Overflow, Bitcoin — are used as additional fixtures. They bring **type variety** (concept types we did not author) and **scale** (more concepts and edges than our own bundle), exercising the tolerant consumer against real third-party producers, not just our own conventions.
+Reduced excerpts from Google's published [OKF sample bundles](../reference/okf-sample-bundles.md) cover GA4, Stack Overflow, and Bitcoin. The checked-in corpus pins the source commit and licence, marks every modified source file, and declares the expected concept count, directed edges, broken targets, validation levels, type vocabulary, and preserved extensions in one manifest. A separate adversarial bundle covers nested producer metadata and percent-encoded UTF-8 paths.
+
+The corpus runs entirely inside `okf-core`. Ordinary test execution does not clone, download, or regenerate a producer bundle. Updating an excerpt requires a new commit pin and a reviewed expectation change, so a remote producer cannot make the merge gate flaky or silently redefine Studio's parser contract.
 
 # Frontend and performance checks
 

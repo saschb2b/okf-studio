@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "namespace": "io.okf.interop",
+  "version": "0.1.0",
+  "title": "Interoperability experiment fields",
+  "description": "Advisory language and translation fields used only by OKF Studio's bounded interoperability experiment.",
+  "fields": [
+    {
+      "id": "language",
+      "scope": "concept",
+      "key": "language",
+      "label": "Authored language",
+      "description": "A language tag for an experimental concept variant.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["en", "de"]
+    },
+    {
+      "id": "translation-of",
+      "scope": "concept",
+      "key": "translation_of",
+      "label": "Translation base",
+      "description": "The concept identity this experimental language variant translates.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["features/interoperability-lab"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "translation-of",
+      "label": "Translation of",
+      "inverse": "translated-as",
+      "description": "This concept is a language variant of the target concept."
+    }
+  ],
+  "checks": []
+}

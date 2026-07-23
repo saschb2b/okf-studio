@@ -4,6 +4,7 @@
 //! mirror the existing validator exactly; every other category is explicitly a
 //! fact about bundle shape or a heuristic that may deserve human review.
 
+use crate::evidence;
 use crate::model::{Bundle, EntryKind, Issue, IssueLevel};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -11,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const HEALTH_SCHEMA_VERSION: u32 = 1;
 pub const MAX_HEALTH_CONCEPTS: usize = 10_000;
 pub const MAX_HEALTH_LINKS: usize = 50_000;
+const MAX_EVIDENCE_FINDINGS_PER_CONCEPT: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -155,6 +157,7 @@ pub fn analyze(bundle: &Bundle) -> Result<HealthReport, HealthLimitExceeded> {
     add_navigation_findings(bundle, &mut findings);
     add_provenance_findings(bundle, &mut findings);
     add_freshness_findings(bundle, &mut findings);
+    add_reliability_findings(bundle, &mut findings);
     add_duplication_findings(bundle, &mut findings);
     add_coverage_findings(bundle, &mut findings);
     add_writing_findings(bundle, &mut findings);
@@ -414,7 +417,9 @@ fn add_navigation_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
 
 fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
     for concept in bundle.concepts.iter().filter(|concept| {
-        concept.resource.as_deref().is_none_or(str::is_empty) && concept.external_links.is_empty()
+        concept.resource.as_deref().is_none_or(str::is_empty)
+            && concept.external_links.is_empty()
+            && !evidence::has_authored_source_signal(concept)
     }) {
         findings.push(finding(FindingInput {
             rule_id: "okf.provenance.no-source-signal",
@@ -428,6 +433,230 @@ fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
             affected: vec![concept.id.clone()],
             repairability: HealthRepairability::Guided,
         }));
+    }
+
+    for concept in &bundle.concepts {
+        let authored = evidence::inspect(concept);
+        let source_ids = authored
+            .sources
+            .iter()
+            .map(|source| source.id.as_str())
+            .collect::<BTreeSet<_>>();
+        let cited_ids = authored
+            .citations
+            .iter()
+            .map(|citation| citation.source_id.as_str())
+            .collect::<BTreeSet<_>>();
+        let path = format!("{}.md", concept.id);
+        let mut evidence_findings = 0_usize;
+        let mut omitted_evidence_findings = 0_usize;
+
+        for source_id in authored.invalid_source_ids {
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.invalid-source",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!("{} has an unreadable evidence entry", concept.title),
+                why: "The optional evidence map needs a safe source ID and object value before Studio can connect claims to it.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence("source-id", "Evidence source", &source_id),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        if authored.sources_truncated {
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.source-limit",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!("{} exceeds the evidence inspection limit", concept.title),
+                why: format!(
+                    "Studio inspected the first {} evidence sources and left the remaining producer data preserved but uninterpreted.",
+                    evidence::MAX_EVIDENCE_SOURCES
+                ),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence(
+                        "limit",
+                        "Inspected source limit",
+                        &evidence::MAX_EVIDENCE_SOURCES.to_string(),
+                    ),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        if authored.citations_truncated {
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.citation-limit",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!("{} exceeds the claim-marker inspection limit", concept.title),
+                why: format!(
+                    "Studio inspected the first {} structured claim markers and preserved the remaining body without interpreting those markers.",
+                    evidence::MAX_CLAIM_CITATIONS
+                ),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence(
+                        "limit",
+                        "Inspected claim-marker limit",
+                        &evidence::MAX_CLAIM_CITATIONS.to_string(),
+                    ),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        for citation in authored
+            .citations
+            .iter()
+            .filter(|citation| !source_ids.contains(citation.source_id.as_str()))
+        {
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.dangling-citation",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!(
+                    "{} cites missing evidence {}",
+                    concept.title, citation.source_id
+                ),
+                why: "The claim marker has no matching entry in the optional evidence map. This does not change OKF conformance.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence("line", "Body line", &citation.line.to_string()),
+                    evidence("source-id", "Missing evidence source", &citation.source_id),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        for source in authored
+            .sources
+            .iter()
+            .filter(|source| !cited_ids.contains(source.id.as_str()))
+        {
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.unused-source",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Heuristic,
+                summary: format!("{} is not connected to a claim", source.title),
+                why: "The evidence source is inspectable but no structured claim marker names it. Concept-wide evidence can be intentional, so this is a review hint.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence("source-id", "Evidence source", &source.id),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        for source in &authored.sources {
+            let (severity, summary, why) = match source.last_status.as_str() {
+                "changed" => (
+                    HealthSeverity::Warning,
+                    format!("{} changed since its authored observation", source.title),
+                    "The explicit source check returned a different content fingerprint. This proves a change in the fetched representation, not that the concept is factually wrong.",
+                ),
+                "unavailable" => (
+                    HealthSeverity::Advisory,
+                    format!("{} was unavailable at its last check", source.title),
+                    "The explicit source check could not retrieve the public evidence. Temporary failure or removal does not prove that the concept is factually wrong.",
+                ),
+                _ => continue,
+            };
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
+            let mut details = vec![
+                evidence("path", "Concept path", &path),
+                evidence("source-id", "Evidence source", &source.id),
+                evidence("last-status", "Last check status", &source.last_status),
+            ];
+            if let Some(checked_at) = &source.last_checked_at {
+                details.push(evidence("last-checked-at", "Last checked", checked_at));
+            }
+            if let Some(fingerprint) = &source.last_fingerprint {
+                details.push(evidence(
+                    "last-fingerprint",
+                    "Observed fingerprint",
+                    fingerprint,
+                ));
+            }
+            findings.push(finding(FindingInput {
+                rule_id: if source.last_status == "changed" {
+                    "okf.evidence.source-changed"
+                } else {
+                    "okf.evidence.source-unavailable"
+                },
+                rule_version: "1.0.0",
+                category: HealthCategory::Freshness,
+                severity,
+                basis: HealthBasis::Fact,
+                summary,
+                why: why.to_string(),
+                evidence: details,
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        if omitted_evidence_findings > 0 {
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.finding-limit",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!(
+                    "{} has more evidence advice than one report expands",
+                    concept.title
+                ),
+                why: "Studio bounded per-source evidence findings for this concept. Inspect or partition its evidence map before acting on the omitted entries.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence(
+                        "expanded",
+                        "Expanded evidence findings",
+                        &MAX_EVIDENCE_FINDINGS_PER_CONCEPT.to_string(),
+                    ),
+                    evidence(
+                        "omitted",
+                        "Additional evidence findings",
+                        &omitted_evidence_findings.to_string(),
+                    ),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
     }
 }
 
@@ -449,6 +678,191 @@ fn add_freshness_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
             affected: vec![concept.id.clone()],
             repairability: HealthRepairability::Guided,
         }));
+    }
+}
+
+fn add_reliability_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
+    let ids = bundle
+        .concepts
+        .iter()
+        .map(|concept| concept.id.as_str())
+        .collect::<BTreeSet<_>>();
+    let mut supersedes = BTreeMap::<String, BTreeSet<String>>::new();
+
+    for concept in &bundle.concepts {
+        let lifecycle = concept
+            .extra
+            .get("lifecycle")
+            .and_then(serde_json::Value::as_str);
+        if lifecycle.is_some_and(|value| {
+            !matches!(
+                value,
+                "draft" | "active" | "deprecated" | "superseded" | "retired"
+            )
+        }) {
+            let value = lifecycle.unwrap_or_default();
+            findings.push(finding(FindingInput {
+                rule_id: "okf.reliability.unknown-lifecycle",
+                rule_version: "1.0.0",
+                category: HealthCategory::Freshness,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!("{} has an unknown lifecycle value", concept.title),
+                why: "The advisory reliability profile cannot derive a lifecycle state from this producer-defined value.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &format!("{}.md", concept.id)),
+                    evidence("lifecycle", "Authored value", value),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        if let Some(confidence) = concept.extra.get("confidence") {
+            let valid = confidence
+                .as_f64()
+                .or_else(|| confidence.as_str().and_then(|value| value.parse().ok()))
+                .is_some_and(|value| (0.0..=1.0).contains(&value));
+            if !valid {
+                findings.push(finding(FindingInput {
+                    rule_id: "okf.reliability.invalid-confidence",
+                    rule_version: "1.0.0",
+                    category: HealthCategory::Freshness,
+                    severity: HealthSeverity::Advisory,
+                    basis: HealthBasis::Fact,
+                    summary: format!("{} has invalid authored confidence", concept.title),
+                    why: "Confidence is advisory, but Studio can qualify retrieval only when the value is a number from 0 to 1.".to_string(),
+                    evidence: vec![
+                        evidence("path", "Concept path", &format!("{}.md", concept.id)),
+                        evidence("confidence", "Authored value", &confidence.to_string()),
+                    ],
+                    affected: vec![concept.id.clone()],
+                    repairability: HealthRepairability::Guided,
+                }));
+            }
+        }
+
+        for target in extra_string_values(concept.extra.get("supersedes")) {
+            if ids.contains(target.as_str()) {
+                supersedes
+                    .entry(concept.id.clone())
+                    .or_default()
+                    .insert(target);
+            }
+        }
+        for replacement in extra_string_values(concept.extra.get("superseded_by")) {
+            if ids.contains(replacement.as_str()) {
+                supersedes
+                    .entry(replacement)
+                    .or_default()
+                    .insert(concept.id.clone());
+            }
+        }
+        if let Some(namespaces) = concept
+            .extra
+            .get("relationships")
+            .and_then(serde_json::Value::as_object)
+        {
+            for relations in namespaces.values().filter_map(serde_json::Value::as_object) {
+                for target in extra_string_values(relations.get("supersedes")) {
+                    if ids.contains(target.as_str()) {
+                        supersedes
+                            .entry(concept.id.clone())
+                            .or_default()
+                            .insert(target);
+                    }
+                }
+            }
+        }
+    }
+
+    // Repeatedly peel nodes with no incoming or no outgoing edge. What remains
+    // is the bounded cycle-affected core. This is linear in the authored graph
+    // and avoids recursive traversal on a 10,000-concept health report.
+    let mut active = supersedes
+        .iter()
+        .flat_map(|(source, targets)| {
+            std::iter::once(source.clone()).chain(targets.iter().cloned())
+        })
+        .collect::<BTreeSet<_>>();
+    let mut incoming = BTreeMap::<String, BTreeSet<String>>::new();
+    for (source, targets) in &supersedes {
+        for target in targets {
+            incoming
+                .entry(target.clone())
+                .or_default()
+                .insert(source.clone());
+        }
+    }
+    let mut indegree = active
+        .iter()
+        .map(|id| (id.clone(), incoming.get(id).map_or(0, BTreeSet::len)))
+        .collect::<BTreeMap<_, _>>();
+    let mut outdegree = active
+        .iter()
+        .map(|id| (id.clone(), supersedes.get(id).map_or(0, BTreeSet::len)))
+        .collect::<BTreeMap<_, _>>();
+    let mut queue = active
+        .iter()
+        .filter(|id| indegree[*id] == 0 || outdegree[*id] == 0)
+        .cloned()
+        .collect::<Vec<_>>();
+    while let Some(id) = queue.pop() {
+        if !active.remove(&id) {
+            continue;
+        }
+        for target in supersedes.get(&id).into_iter().flatten() {
+            if active.contains(target) {
+                let degree = indegree.entry(target.clone()).or_default();
+                *degree = degree.saturating_sub(1);
+                if *degree == 0 {
+                    queue.push(target.clone());
+                }
+            }
+        }
+        for source in incoming.get(&id).into_iter().flatten() {
+            if active.contains(source) {
+                let degree = outdegree.entry(source.clone()).or_default();
+                *degree = degree.saturating_sub(1);
+                if *degree == 0 {
+                    queue.push(source.clone());
+                }
+            }
+        }
+    }
+    if !active.is_empty() {
+        let affected = active.into_iter().collect::<Vec<_>>();
+        findings.push(finding(FindingInput {
+            rule_id: "okf.reliability.supersession-cycle",
+            rule_version: "1.0.0",
+            category: HealthCategory::Freshness,
+            severity: HealthSeverity::Warning,
+            basis: HealthBasis::Fact,
+            summary: "Supersession relationships contain a cycle".to_string(),
+            why: "A cycle makes it impossible to identify a terminal replacement. Studio reports the authored graph without choosing a current concept.".to_string(),
+            evidence: vec![evidence(
+                "cycle",
+                "Cycle-affected concepts",
+                &affected.join(" → "),
+            )],
+            affected,
+            repairability: HealthRepairability::Guided,
+        }));
+    }
+}
+
+fn extra_string_values(value: Option<&serde_json::Value>) -> Vec<String> {
+    match value {
+        Some(serde_json::Value::String(value)) if !value.trim().is_empty() => {
+            vec![value.trim().to_string()]
+        }
+        Some(serde_json::Value::Array(values)) => values
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
@@ -921,6 +1335,143 @@ mod tests {
     }
 
     #[test]
+    fn reliability_metadata_and_cycles_stay_advisory() {
+        let concept = |id: &str, target: &str, confidence: serde_json::Value| Concept {
+            id: id.to_string(),
+            concept_type: "Policy".to_string(),
+            title: id.to_string(),
+            description: "Policy fixture".to_string(),
+            tags: Vec::new(),
+            timestamp: Some("2026-07-23T00:00:00Z".to_string()),
+            resource: None,
+            extra: BTreeMap::from([
+                ("lifecycle".to_string(), serde_json::json!("active")),
+                ("confidence".to_string(), confidence),
+                ("supersedes".to_string(), serde_json::json!([target])),
+            ]),
+            body: "Policy".to_string(),
+            links: vec![target.to_string()],
+            external_links: Vec::new(),
+            broken_links: Vec::new(),
+            cited_by: vec![target.to_string()],
+            degree: 2,
+        };
+        let bundle = Bundle {
+            root: String::new(),
+            name: "Reliability".to_string(),
+            okf_version: Some("0.1".to_string()),
+            odsf_version: None,
+            extra: BTreeMap::new(),
+            concepts: vec![
+                concept("policy/a", "policy/b", serde_json::json!(0.8)),
+                concept("policy/b", "policy/a", serde_json::json!(4)),
+            ],
+            indexes: Vec::new(),
+            log: Vec::new(),
+            issues: Vec::new(),
+            confidence: Confidence::Confident,
+        };
+
+        let report = analyze(&bundle).expect("reliability report");
+        let cycle = report
+            .findings
+            .iter()
+            .find(|finding| finding.rule_id == "okf.reliability.supersession-cycle")
+            .expect("cycle finding");
+        assert_eq!(cycle.severity, HealthSeverity::Warning);
+        assert_eq!(cycle.basis, HealthBasis::Fact);
+        assert_eq!(cycle.affected_concept_ids, ["policy/a", "policy/b"]);
+        assert!(report
+            .findings
+            .iter()
+            .any(|finding| finding.rule_id == "okf.reliability.invalid-confidence"));
+        assert!(bundle.issues.is_empty());
+    }
+
+    #[test]
+    fn evidence_health_joins_claim_locations_and_source_status_without_claiming_truth() {
+        let concept = Concept {
+            id: "research/result".to_string(),
+            concept_type: "Research".to_string(),
+            title: "Research result".to_string(),
+            description: "Evidence health fixture".to_string(),
+            tags: Vec::new(),
+            timestamp: Some("2026-07-23T00:00:00Z".to_string()),
+            resource: None,
+            extra: BTreeMap::from([
+                (
+                    "provenance".to_string(),
+                    serde_json::json!({
+                        "report": {
+                            "title": "Public report",
+                            "uri": "https://example.com/report",
+                            "observed_at": "2026-07-22T00:00:00Z",
+                            "source_digest": format!("sha256-{}", "a".repeat(64)),
+                            "adapter": {"id": "html", "version": 1}
+                        }
+                    }),
+                ),
+                (
+                    "evidence".to_string(),
+                    serde_json::json!({
+                        "report": {
+                            "provenance_id": "report",
+                            "last_checked_at": "2026-07-23T00:00:00Z",
+                            "last_status": "changed",
+                            "last_fingerprint": format!("sha256-{}", "b".repeat(64))
+                        }
+                    }),
+                ),
+                ("lifecycle".to_string(), serde_json::json!("active")),
+                (
+                    "contradicts".to_string(),
+                    serde_json::json!(["research/alternate"]),
+                ),
+            ]),
+            body: "Supported claim.[^report]\n\nUnsupported claim.[^missing]".to_string(),
+            links: Vec::new(),
+            external_links: Vec::new(),
+            broken_links: Vec::new(),
+            cited_by: Vec::new(),
+            degree: 0,
+        };
+        let bundle = Bundle {
+            root: String::new(),
+            name: "Evidence".to_string(),
+            okf_version: Some("0.1".to_string()),
+            odsf_version: None,
+            extra: BTreeMap::new(),
+            concepts: vec![concept],
+            indexes: Vec::new(),
+            log: Vec::new(),
+            issues: Vec::new(),
+            confidence: Confidence::Confident,
+        };
+
+        let report = analyze(&bundle).expect("evidence report");
+        let dangling = report
+            .findings
+            .iter()
+            .find(|finding| finding.rule_id == "okf.evidence.dangling-citation")
+            .expect("dangling citation");
+        assert_eq!(evidence_value(dangling, "line"), Some("3"));
+        assert_eq!(dangling.basis, HealthBasis::Fact);
+        let changed = report
+            .findings
+            .iter()
+            .find(|finding| finding.rule_id == "okf.evidence.source-changed")
+            .expect("changed source");
+        assert_eq!(changed.severity, HealthSeverity::Warning);
+        assert!(changed
+            .why
+            .contains("not that the concept is factually wrong"));
+        assert!(!report
+            .findings
+            .iter()
+            .any(|finding| finding.rule_id == "okf.provenance.no-source-signal"));
+    }
+
+    #[test]
     fn limits_health_analysis_without_affecting_the_bundle() {
         let concept = Concept {
             id: "x".to_string(),
@@ -943,6 +1494,7 @@ mod tests {
             name: "Large".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts: vec![concept; MAX_HEALTH_CONCEPTS + 1],
             indexes: Vec::<IndexNode>::new(),
             log: Vec::new(),
@@ -981,6 +1533,7 @@ mod tests {
             name: "Scale".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts,
             indexes: Vec::new(),
             log: Vec::new(),
@@ -1023,6 +1576,7 @@ mod tests {
             name: "Writing".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts: vec![concept],
             indexes: Vec::new(),
             log: Vec::new(),
@@ -1071,6 +1625,7 @@ mod tests {
             name: "Writing exceptions".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts: vec![
                 concept(
                     "standard",

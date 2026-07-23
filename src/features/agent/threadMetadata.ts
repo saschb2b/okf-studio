@@ -37,6 +37,14 @@ function isBoundedText(value: unknown, limit: number): value is string {
     });
 }
 
+function isBoundedString(value: unknown, limit: number): value is string {
+  return typeof value === "string" && value.length <= limit &&
+    !Array.from(value).some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 31 || code === 127;
+    });
+}
+
 function isOptionalBoundedText(value: unknown, limit: number): value is string | null {
   return value === null || (
     typeof value === "string" && value.length <= limit &&
@@ -54,6 +62,116 @@ function isSafeCount(value: unknown): value is number {
 function isStringList(value: unknown, limit: number): value is string[] {
   return Array.isArray(value) && value.length <= limit &&
     value.every((item) => isBoundedText(item, 256));
+}
+
+function isBoundedStringList(
+  value: unknown,
+  itemCount: number,
+  itemLength: number,
+): value is string[] {
+  return Array.isArray(value) && value.length <= itemCount &&
+    value.every((item) => isBoundedText(item, itemLength));
+}
+
+function isAccessHints(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!value || typeof value !== "object") return false;
+  const access = value as Record<string, unknown>;
+  return typeof access.hasMetadata === "boolean" &&
+    isBoundedStringList(access.audiences, 16, 128) &&
+    isOptionalBoundedText(access.sensitivity, 128) &&
+    (
+      access.knownSensitivity === null ||
+      typeof access.knownSensitivity === "string" &&
+      ["public", "internal", "confidential", "restricted"]
+        .includes(access.knownSensitivity)
+    ) &&
+    isOptionalBoundedText(access.handlingNotes, 512) &&
+    isBoundedStringList(access.diagnostics, 8, 512);
+}
+
+function isProfileContext(value: unknown, taskId: OkfTaskId): boolean {
+  if (value === undefined || value === null) return true;
+  if (!["okf-create", "okf-audit", "okf-migrate", "okf-revise"].includes(taskId) ||
+    typeof value !== "object") return false;
+  const context = value as Record<string, unknown>;
+  if (context.schemaVersion !== 1 || context.basis !== "advisory-profile" ||
+    context.conformanceBoundary !== "Profile advice does not change OKF validation." ||
+    typeof context.truncated !== "boolean" ||
+    !Array.isArray(context.coreRequirements) || context.coreRequirements.length !== 1) {
+    return false;
+  }
+  const core = context.coreRequirements[0] as Record<string, unknown> | undefined;
+  if (core?.key !== "type" || core.requirement !== "OKF-required") return false;
+  if (!Array.isArray(context.profiles) || context.profiles.length > 8 ||
+    !context.profiles.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const profile = item as Record<string, unknown>;
+      if (!(isBoundedText(profile.namespace, 128) &&
+        isOptionalBoundedText(profile.version, 64) &&
+        isOptionalBoundedText(profile.descriptorPath, 512) &&
+        ["active", "unavailable"].includes(String(profile.status)) &&
+        isBoundedText(profile.message, 512) &&
+        isOptionalBoundedText(profile.title, 512) &&
+        Array.isArray(profile.fields) && profile.fields.length <= 48 &&
+        Array.isArray(profile.relationships) && profile.relationships.length <= 48)) {
+        return false;
+      }
+      const fieldsValid = profile.fields.every((fieldValue) => {
+        if (!fieldValue || typeof fieldValue !== "object") return false;
+        const field = fieldValue as Record<string, unknown>;
+        return isBoundedText(field.id, 128) &&
+          ["bundle", "concept"].includes(String(field.scope)) &&
+          isBoundedText(field.key, 256) &&
+          isBoundedText(field.label, 512) &&
+          isBoundedString(field.description, 512) &&
+          ["string", "number", "boolean", "array", "object"].includes(
+            String(field.valueType),
+          ) &&
+          ["OKF-required", "Profile-required", "Recommended"].includes(
+            String(field.requirement),
+          ) &&
+          isStringList(field.conceptTypes, 32) &&
+          Array.isArray(field.examples) && field.examples.length <= 4 &&
+          field.examples.every((example) => isBoundedString(example, 257));
+      });
+      const relationshipsValid = profile.relationships.every((relationshipValue) => {
+        if (!relationshipValue || typeof relationshipValue !== "object") return false;
+        const relationship = relationshipValue as Record<string, unknown>;
+        return isBoundedText(relationship.id, 128) &&
+          isBoundedText(relationship.label, 512) &&
+          isOptionalBoundedText(relationship.inverse, 128) &&
+          isBoundedString(relationship.description, 512);
+      });
+      return fieldsValid && relationshipsValid;
+    })) return false;
+  if (!Array.isArray(context.edges) || context.edges.length > 128 ||
+    !context.edges.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const edge = item as Record<string, unknown>;
+      return isBoundedText(edge.sourceId, 512) &&
+        isBoundedText(edge.targetId, 512) &&
+        isBoundedText(edge.namespace, 128) &&
+        isBoundedText(edge.type, 128) &&
+        isBoundedText(edge.label, 512) &&
+        isOptionalBoundedText(edge.inverse, 128) &&
+        typeof edge.recognized === "boolean" &&
+        typeof edge.targetExists === "boolean" &&
+        typeof edge.portableLink === "boolean";
+    })) return false;
+  return Array.isArray(context.diagnostics) && context.diagnostics.length <= 64 &&
+    context.diagnostics.every((item) => {
+      if (!item || typeof item !== "object") return false;
+      const diagnostic = item as Record<string, unknown>;
+      return isBoundedText(diagnostic.namespace, 128) &&
+        isBoundedText(diagnostic.ruleId, 128) &&
+        ["information", "recommendation", "warning"].includes(String(diagnostic.level)) &&
+        isBoundedText(diagnostic.file, 1_024) &&
+        isOptionalBoundedText(diagnostic.conceptId, 1_024) &&
+        isBoundedText(diagnostic.field, 256) &&
+        isBoundedText(diagnostic.message, 512) &&
+        diagnostic.basis === "profile-advice";
+    });
 }
 
 function isAcceptedContextManifest(value: unknown, serializedBytes: number): value is AcceptedOkfContextManifest {
@@ -82,7 +200,7 @@ function isAcceptedContextManifest(value: unknown, serializedBytes: number): val
         isBoundedText(object.type, 256) && isBoundedText(object.path, 4_096) &&
         ["active-concept", "graph-neighbor", "user-attachment", "validation-finding"]
           .includes(String(object.reason)) && typeof object.required === "boolean" &&
-        isSafeCount(object.estimatedBytes);
+        isSafeCount(object.estimatedBytes) && isAccessHints(object.access);
     })) return false;
   if (!Array.isArray(manifest.sources) || manifest.sources.length > 64 ||
     !manifest.sources.every((item) => {
@@ -99,7 +217,8 @@ function isAcceptedContextManifest(value: unknown, serializedBytes: number): val
     !isSafeCount(validation.warnings) || !isSafeCount(budget.maxBytes) ||
     !isSafeCount(budget.maxEstimatedTokens) || !isSafeCount(budget.selectedBytes) ||
     !isSafeCount(budget.selectedEstimatedTokens) || budget.selectedBytes > budget.maxBytes ||
-    budget.selectedEstimatedTokens > budget.maxEstimatedTokens) return false;
+    budget.selectedEstimatedTokens > budget.maxEstimatedTokens ||
+    !isProfileContext(manifest.profileContext, manifest.taskId)) return false;
   return Array.isArray(manifest.omissions) && manifest.omissions.length <= 128 &&
     manifest.omissions.every((item) => {
       if (!item || typeof item !== "object") return false;

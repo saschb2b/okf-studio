@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { lineageTree, pathBetween, unlinkedMentions, lineageSize } from "@/features/reader/lineage.ts";
-import type { Bundle, Concept } from "@/shared/types.ts";
+import {
+  explainedPathBetween,
+  lineageSize,
+  lineageTree,
+  pathBetween,
+  profileRelationFilterKey,
+  unlinkedMentions,
+} from "@/features/reader/lineage.ts";
+import type { Bundle, Concept, ProfileReport } from "@/shared/types.ts";
 
 function concept(partial: Partial<Concept> & { id: string }): Concept {
   return {
@@ -37,6 +44,7 @@ function bundleOf(concepts: Concept[]): Bundle {
     name: "b",
     okfVersion: "0.1",
     odsfVersion: null,
+    extra: {},
     concepts,
     indexes: [],
     log: [],
@@ -53,6 +61,18 @@ const chain = bundleOf([
   concept({ id: "d" }),
   concept({ id: "e" }),
 ]);
+
+function profileReport(
+  edges: ProfileReport["edges"],
+): ProfileReport {
+  return {
+    schemaVersion: 1,
+    profiles: [],
+    diagnostics: [],
+    edges,
+    truncated: false,
+  };
+}
 
 describe("lineage trees", () => {
   it("walks upstream (dependencies) transitively", () => {
@@ -79,6 +99,25 @@ describe("lineage trees", () => {
     ]);
     const tree = lineageTree(cyclic, "x", "up");
     expect(lineageSize(tree)).toBe(2); // x and y, no infinite loop
+    expect(tree?.children[0]?.children[0]).toMatchObject({
+      id: "x",
+      reference: "cycle",
+    });
+  });
+
+  it("marks a diamond branch already expanded elsewhere", () => {
+    const diamond = bundleOf([
+      concept({ id: "a", links: ["b", "c"] }),
+      concept({ id: "b", links: ["d"] }),
+      concept({ id: "c", links: ["d"] }),
+      concept({ id: "d" }),
+    ]);
+    const tree = lineageTree(diamond, "a", "up");
+    expect(lineageSize(tree)).toBe(4);
+    expect(tree?.children[1]?.children[0]).toMatchObject({
+      id: "d",
+      reference: "seen",
+    });
   });
 
   it("respects the depth cap and marks truncation", () => {
@@ -91,6 +130,68 @@ describe("lineage trees", () => {
 
   it("returns null for a missing root", () => {
     expect(lineageTree(chain, "nope", "up")).toBeNull();
+  });
+
+  it("states hub and global traversal limits instead of silently ending", () => {
+    const hub = bundleOf([
+      concept({ id: "root", links: ["a", "b", "c"] }),
+      concept({ id: "a" }),
+      concept({ id: "b" }),
+      concept({ id: "c" }),
+    ]);
+    const hubTree = lineageTree(hub, "root", "up", undefined, { maxNeighbors: 2 });
+    expect(hubTree).toMatchObject({
+      truncated: true,
+      truncationReason: "hub",
+      omitted: 1,
+    });
+    expect(hubTree?.children).toHaveLength(2);
+
+    const budgetTree = lineageTree(chain, "a", "up", undefined, { maxNodes: 2 });
+    expect(budgetTree?.children[0]).toMatchObject({
+      id: "b",
+      truncated: true,
+      truncationReason: "budget",
+      omitted: 1,
+    });
+  });
+
+  it("filters typed relationships and keeps missing targets explicit", () => {
+    const report = profileReport([{
+      sourceId: "a",
+      targetId: "missing",
+      namespace: "com.example.knowledge",
+      type: "supports",
+      label: "Supports",
+      inverse: "Supported by",
+      recognized: true,
+      targetExists: false,
+      portableLink: false,
+    }]);
+    const relation = profileRelationFilterKey(report.edges[0]);
+    const tree = lineageTree(chain, "a", "up", undefined, { report, relation });
+    expect(tree?.children).toEqual([
+      expect.objectContaining({
+        id: "missing",
+        state: "missing",
+        type: "",
+      }),
+    ]);
+  });
+
+  it("filters current and caution states without treating metadata as conformance", () => {
+    const reliability = bundleOf([
+      concept({ id: "root", links: ["current", "old"] }),
+      concept({ id: "current", extra: { lifecycle: "active" } }),
+      concept({ id: "old", extra: { lifecycle: "deprecated" } }),
+    ]);
+    const caution = lineageTree(reliability, "root", "up", undefined, {
+      validity: "caution",
+      asOfDay: "2026-07-23",
+    });
+    expect(caution?.children.map((node) => [node.id, node.state])).toEqual([
+      ["old", "deprecated"],
+    ]);
   });
 });
 
@@ -108,6 +209,46 @@ describe("path between", () => {
   it("returns null when disconnected", () => {
     const split = bundleOf([concept({ id: "p" }), concept({ id: "q" })]);
     expect(pathBetween(split, "p", "q")).toBeNull();
+  });
+
+  it("explains typed directed steps and preserves their labels", () => {
+    const edge = (sourceId: string, targetId: string): ProfileReport["edges"][number] => ({
+      sourceId,
+      targetId,
+      namespace: "com.example.knowledge",
+      type: "supports",
+      label: "Supports",
+      inverse: "Supported by",
+      recognized: true,
+      targetExists: true,
+      portableLink: true,
+    });
+    const report = profileReport([edge("a", "b"), edge("b", "c")]);
+    const relation = profileRelationFilterKey(report.edges[0]);
+    const path = explainedPathBetween(chain, "a", "c", "up", { report, relation });
+    expect(path?.ids).toEqual(["a", "b", "c"]);
+    expect(path?.steps).toEqual([
+      expect.objectContaining({
+        fromId: "a",
+        toId: "b",
+        direction: "up",
+        relations: [expect.objectContaining({ label: "Supports" })],
+      }),
+      expect.objectContaining({
+        fromId: "b",
+        toId: "c",
+        direction: "up",
+        relations: [expect.objectContaining({ label: "Supports" })],
+      }),
+    ]);
+  });
+
+  it("honors direction and reports an exhausted path budget", () => {
+    expect(explainedPathBetween(chain, "d", "a", "up")).toBeNull();
+    expect(explainedPathBetween(chain, "d", "a", "down")?.ids)
+      .toEqual(["d", "c", "b", "a"]);
+    expect(explainedPathBetween(chain, "a", "d", "up", { maxNodes: 2 }))
+      .toEqual({ ids: [], steps: [], visited: 2, truncated: true });
   });
 });
 

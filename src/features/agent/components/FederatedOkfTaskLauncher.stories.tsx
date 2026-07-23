@@ -22,6 +22,7 @@ const plan: OkfContextPlan = {
   }],
   sources: [],
   validation: { errors: 0, warnings: 2 },
+  profileContext: null,
   budget: {
     maxBytes: 131072,
     maxEstimatedTokens: 32768,

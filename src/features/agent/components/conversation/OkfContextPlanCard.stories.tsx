@@ -8,7 +8,16 @@ const plan = createOkfContextPlan({
   bundleRoot: "C:\\knowledge\\docs",
   concepts: [
     { id: "product/overview", title: "Product overview", type: "Product" },
-    { id: "features/agent-panel", title: "Agent Panel", type: "Feature" },
+    {
+      id: "features/agent-panel",
+      title: "Agent Panel",
+      type: "Feature",
+      extra: {
+        audience: ["engineering"],
+        sensitivity: "internal",
+        handling_notes: "Review before sharing outside the team.",
+      },
+    },
   ],
   activeConcept: { id: "features/agent-panel", title: "Agent Panel" },
   attachedConcepts: [
@@ -41,6 +50,7 @@ type Story = StoryObj<typeof meta>;
 export const PlannedContext: Story = {
   play: async ({ canvas, args }) => {
     await expect(canvas.getByText("Enrich this bundle")).toBeVisible();
+    await expect(canvas.getByText(/Guidance only/)).toBeVisible();
     await userEvent.click(canvas.getByRole("button", {
       name: "Remove Agent Panel from the context plan",
     }));
@@ -80,5 +90,85 @@ export const MemoryError: Story = {
   },
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("alert")).toHaveTextContent("could not save");
+  },
+};
+
+export const ProfileAware: Story = {
+  args: {
+    plan: createOkfContextPlan({
+      taskId: "okf-revise",
+      bundleRoot: "C:\\knowledge\\docs",
+      concepts: [
+        { id: "guides/start", title: "Getting started", type: "Guide" },
+      ],
+      activeConcept: { id: "guides/start", title: "Getting started" },
+      attachedConcepts: [],
+      sources: [],
+      issues: [],
+      profileReport: {
+        schemaVersion: 1,
+        profiles: [{
+          namespace: "com.example.knowledge",
+          version: "1.2.0",
+          descriptorPath: "profiles/knowledge.json",
+          status: "active",
+          message: "Resolved from a local descriptor.",
+          extra: {},
+          descriptor: {
+            schemaVersion: 1,
+            namespace: "com.example.knowledge",
+            version: "1.2.0",
+            title: "Team knowledge",
+            description: "",
+            fields: [
+              {
+                id: "type",
+                scope: "concept",
+                key: "type",
+                label: "Type",
+                description: "",
+                valueType: "string",
+                expectation: "required",
+                conceptTypes: [],
+                examples: ["Guide"],
+              },
+              {
+                id: "owner",
+                scope: "concept",
+                key: "owner",
+                label: "Owner",
+                description: "",
+                valueType: "string",
+                expectation: "required",
+                conceptTypes: ["Guide"],
+                examples: ["Docs"],
+              },
+            ],
+            relationships: [],
+            checks: [],
+          },
+        }],
+        diagnostics: [],
+        edges: [{
+          sourceId: "guide",
+          targetId: "reference",
+          namespace: "com.example.knowledge",
+          type: "supports",
+          label: "Supports",
+          inverse: "supported-by",
+          recognized: true,
+          targetExists: true,
+          portableLink: true,
+        }],
+        truncated: false,
+      },
+    }),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByText("com.example.knowledge"));
+    await expect(canvas.getByText("OKF-required")).toBeVisible();
+    await expect(canvas.getByText("Profile-required")).toBeVisible();
+    await expect(canvas.getByText("Not OKF validation")).toBeVisible();
+    await expect(canvas.getByText("1 authored typed edge included")).toBeVisible();
   },
 };

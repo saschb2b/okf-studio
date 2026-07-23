@@ -1,0 +1,117 @@
+.ignore-rules {
+  display: grid;
+  max-width: 60rem;
+  margin: 0 auto var(--space-24);
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.ignore-rules > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.ignore-rules h2,
+.ignore-rules header p,
+.ignore-rules__boundary,
+.ignore-rules__error,
+.ignore-rules details p {
+  margin: 0;
+}
+
+.ignore-rules h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.ignore-rules header p,
+.ignore-rules__source,
+.ignore-rules__boundary,
+.ignore-rules details,
+.ignore-rules__error {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.ignore-rules header p,
+.ignore-rules__source,
+.ignore-rules__boundary,
+.ignore-rules details {
+  color: var(--text-dim);
+}
+
+.ignore-rules__source {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+}
+
+.ignore-rules__boundary,
+.ignore-rules__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.ignore-rules__boundary svg,
+.ignore-rules__error svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.ignore-rules__error,
+.ignore-rules__diagnostic {
+  color: var(--warn);
+}
+
+.ignore-rules details {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-8);
+}
+
+.ignore-rules summary {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  cursor: pointer;
+}
+
+.ignore-rules summary:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.ignore-rules ul {
+  display: grid;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  gap: var(--space-4);
+  list-style: none;
+}
+
+.ignore-rules li {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ignore-rules code {
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 520px) {
+  .ignore-rules > header {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+}

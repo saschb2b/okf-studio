@@ -163,9 +163,37 @@ export function CommandPalette() {
     {
       kind: "action",
       id: "act:overview",
-      label: "Bundle overview",
+      label: "Bundle home",
       hint: "Action",
       run: () => actions.setOverview(true),
+    },
+    {
+      kind: "action",
+      id: "act:bundle-details",
+      label: "Open bundle details",
+      hint: "Action",
+      run: () => actions.setBundleDetailsOpen(true),
+    },
+    {
+      kind: "action",
+      id: "act:bundle-connections",
+      label: "Manage bundle connections",
+      hint: "Action",
+      run: () => actions.setConnectionsOpen(true),
+    },
+    {
+      kind: "action",
+      id: "act:relationship-exchange",
+      label: "Exchange JSON-LD relationships",
+      hint: "Action",
+      run: () => actions.setConnectionsOpen(true),
+    },
+    {
+      kind: "action",
+      id: "act:share-bundle",
+      label: "Create shareable bundle",
+      hint: "Action",
+      run: () => actions.setProjectionOpen(true),
     },
     {
       kind: "action",

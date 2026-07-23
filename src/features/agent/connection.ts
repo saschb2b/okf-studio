@@ -273,7 +273,7 @@ export interface AgentTurnEvent {
 export interface AgentStagedFileInfo {
   path: string;
   bytes: number;
-  kind: "create" | "modify";
+  kind: "create" | "modify" | "delete";
 }
 
 export type AgentWriteGrantMode = "interactive" | "unattended";
@@ -294,7 +294,7 @@ export interface AgentStageEvent {
 
 export interface AgentStagedFileDiff {
   path: string;
-  kind: "create" | "modify";
+  kind: "create" | "modify" | "delete";
   revision: string;
   hunks: readonly AgentStagedDiffHunk[];
   truncated: boolean;
@@ -322,6 +322,26 @@ export interface AgentStagedValidationInfo {
   issues: readonly AgentStagedValidationIssue[];
   truncated: boolean;
   preview: AgentStagedGraphPreview;
+  profile: AgentStagedProfileValidation;
+}
+
+export interface AgentStagedProfileValidation {
+  source: "draft" | "selected-source";
+  declared: number;
+  active: number;
+  unavailable: number;
+  diagnostics: readonly AgentStagedProfileIssue[];
+  truncated: boolean;
+}
+
+export interface AgentStagedProfileIssue {
+  namespace: string;
+  ruleId: string;
+  level: "information" | "recommendation" | "warning";
+  path: string;
+  conceptId: string | null;
+  field: string;
+  message: string;
 }
 
 export interface AgentStagedGraphPreview {
@@ -337,6 +357,7 @@ export interface AgentStagedGraphNode {
   title: string;
   conceptType: string;
   staged: boolean;
+  access?: import("@/shared/access.ts").AccessHints;
 }
 
 export interface AgentStagedGraphEdge {

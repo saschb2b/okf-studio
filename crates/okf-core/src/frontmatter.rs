@@ -59,6 +59,18 @@ impl ParsedFrontmatter {
             _ => Vec::new(),
         }
     }
+
+    /// Return every parsed top-level value, regardless of whether it is a
+    /// recognized concept key. Bundle-root metadata has a different promoted
+    /// key set, so callers must be able to preserve concept-shaped keys there
+    /// instead of losing them inside this parser's private fields map.
+    pub fn all_values(&self) -> BTreeMap<String, Value> {
+        self.fields
+            .iter()
+            .chain(self.extra.iter())
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect()
+    }
 }
 
 /// Split a leading `---\n…\n---` frontmatter block from the body. Returns

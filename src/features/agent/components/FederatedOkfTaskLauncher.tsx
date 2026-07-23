@@ -63,6 +63,8 @@ export function FederatedOkfTaskLauncher({
   const showFederation = supportsFederation
     && status !== "first-use"
     && status !== "authentication"
+    && status !== "profile-loading"
+    && status !== "profile-unavailable"
     && status !== "unsupported"
     && status !== "stale";
   const [reloadToken, setReloadToken] = useState(0);

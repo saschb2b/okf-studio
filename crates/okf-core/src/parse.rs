@@ -61,6 +61,12 @@ pub fn read_bundle(root: &Path) -> Bundle {
         .as_ref()
         .and_then(|fm| fm.scalar("odsf_version"))
         .map(str::to_owned);
+    let mut extra = root_fm
+        .as_ref()
+        .map(ParsedFrontmatter::all_values)
+        .unwrap_or_default();
+    extra.remove("okf_version");
+    extra.remove("odsf_version");
     let name = read_bundle_name(root);
     let confidence = if okf_version.is_some() {
         Confidence::Confident
@@ -73,6 +79,7 @@ pub fn read_bundle(root: &Path) -> Bundle {
         name,
         okf_version,
         odsf_version,
+        extra,
         concepts,
         indexes,
         log,
@@ -84,12 +91,14 @@ pub fn read_bundle(root: &Path) -> Bundle {
 /// Enumerate every non-reserved `.md` file under `root` as a (link-unresolved)
 /// [`Concept`]. Results are sorted by id for stable output.
 pub fn read_concepts(root: &Path) -> Vec<Concept> {
+    let ignore = crate::ignore::IgnoreMatcher::load(root);
     let mut concepts: Vec<Concept> = WalkDir::new(root)
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| !is_ignored_dir(e.path(), root))
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
+        .filter(|e| !ignore.is_ignored(e.path(), false))
         .filter(|e| {
             e.path()
                 .extension()
@@ -205,7 +214,9 @@ pub fn first_h1(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn concept_id_strips_md_and_root() {
@@ -226,5 +237,44 @@ mod tests {
             first_h1("---\nokf_version: \"0.1\"\n---\n# Title Here\n"),
             Some("Title Here".to_string())
         );
+    }
+
+    #[test]
+    fn bundle_read_applies_okfignore_without_hiding_a_negated_concept() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("okf-parse-ignore-{nonce}"));
+        fs::create_dir_all(root.join("private")).expect("private directory");
+        fs::write(
+            root.join("index.md"),
+            "---\nokf_version: \"0.1\"\n---\n# Fixture\n",
+        )
+        .expect("index");
+        fs::write(root.join(".okfignore"), "private/**\n!private/public.md\n").expect("ignore");
+        fs::write(
+            root.join("private/secret.md"),
+            "---\ntype: Note\n---\n# Secret\n",
+        )
+        .expect("secret");
+        fs::write(
+            root.join("private/public.md"),
+            "---\ntype: Note\n---\n# Public\n",
+        )
+        .expect("public");
+
+        let bundle = read_bundle(&root);
+        assert_eq!(
+            bundle
+                .concepts
+                .iter()
+                .map(|concept| concept.id.as_str())
+                .collect::<Vec<_>>(),
+            ["private/public"]
+        );
+        assert!(bundle.issues.is_empty());
+        assert!(bundle.indexes.iter().any(|index| index.dir == "private"));
+        fs::remove_dir_all(root).expect("cleanup");
     }
 }

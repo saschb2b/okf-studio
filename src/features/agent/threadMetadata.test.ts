@@ -132,4 +132,57 @@ describe("agent thread metadata", () => {
       },
     }])).toEqual([]);
   });
+
+  it("persists only closed profile context on profile-aware tasks", () => {
+    const contextManifest = acceptOkfContextPlan(createOkfContextPlan({
+      taskId: "okf-audit",
+      bundleRoot: BASE.bundleRoot,
+      concepts: [],
+      activeConcept: null,
+      attachedConcepts: [],
+      sources: [],
+      issues: [],
+      profileReport: {
+        schemaVersion: 1,
+        profiles: [{
+          namespace: "com.example.knowledge",
+          version: "1.2.0",
+          descriptorPath: "profiles/team.json",
+          status: "active",
+          message: "Resolved locally.",
+          descriptor: {
+            schemaVersion: 1,
+            namespace: "com.example.knowledge",
+            version: "1.2.0",
+            title: "Team knowledge",
+            description: "",
+            fields: [],
+            relationships: [],
+            checks: [],
+          },
+          extra: {},
+        }],
+        diagnostics: [],
+        edges: [],
+        truncated: false,
+      },
+    }));
+    const metadata = createAgentThreadMetadata({
+      ...BASE,
+      taskId: "okf-audit",
+      contextManifest,
+    }, 42);
+
+    expect(parseAgentThreadMetadata([metadata])).toEqual([metadata]);
+    expect(parseAgentThreadMetadata([{
+      ...metadata,
+      contextManifest: {
+        ...contextManifest,
+        profileContext: {
+          ...contextManifest.profileContext,
+          basis: "okf-validation",
+        },
+      },
+    }])).toEqual([]);
+  });
 });

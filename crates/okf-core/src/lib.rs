@@ -4,16 +4,24 @@
 //! bundle detection, OKF parsing, graph/backlink computation, and validation,
 //! producing the [`model`] types the Tauri layer serializes to the frontend.
 
+pub mod access;
 pub mod asset;
+pub mod compatibility;
 pub mod detect;
+mod evidence;
 pub mod frontmatter;
 pub mod graph;
 pub mod health;
+pub mod ignore;
 pub mod index_tree;
+pub mod interop;
 pub mod links;
 pub mod logfile;
+pub mod maintenance;
 pub mod model;
 pub mod parse;
+pub mod profile;
+pub mod projection;
 pub mod query;
 pub mod retrieval;
 pub mod validate;

@@ -58,7 +58,7 @@ describe("OKF Studio reviewed writes", () => {
 
     await user.click(screen.getByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("status", { name: "Staged validation result" }))
-      .toHaveTextContent("Validation passed");
+      .toHaveTextContent("OKF validation passed");
     const graph = screen.getByRole("region", { name: "Staged graph preview" });
     expect(graph).toHaveTextContent("2 concepts · 1 link");
     expect(graph).toHaveTextContent("Product overview, Product, staged");
@@ -114,7 +114,7 @@ describe("OKF Studio reviewed writes", () => {
 
     await user.click(screen.getByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("status", { name: "Staged validation result" }))
-      .toHaveTextContent("Validation passed");
+      .toHaveTextContent("OKF validation passed");
     expect(screen.getByRole("button", { name: "Apply changes" })).toBeInTheDocument();
 
   });
@@ -171,7 +171,7 @@ describe("OKF Studio reviewed writes", () => {
 
     await user.click(screen.getByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("alert", { name: "Staged validation result" }))
-      .toHaveTextContent("Validation found errors");
+      .toHaveTextContent("OKF validation found errors");
     expect(screen.getByText(/1 error · 0 warnings/)).toBeInTheDocument();
     await user.click(screen.getByText("Review validation issues"));
     expect(screen.getByText(/Missing required frontmatter field: type/)).toBeInTheDocument();
@@ -196,10 +196,10 @@ describe("OKF Studio reviewed writes", () => {
     await user.click(rejectHunk);
     await waitFor(() => expect(rejectHunk).toHaveAttribute("aria-pressed", "true"));
     expect(keepHunk).toHaveAttribute("aria-pressed", "false");
-    expect(screen.queryByText("Validation found errors")).not.toBeInTheDocument();
+    expect(screen.queryByText("OKF validation found errors")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("status", { name: "Staged validation result" }))
-      .toHaveTextContent("Validation passed");
+      .toHaveTextContent("OKF validation passed");
 
     // The Rust-owned choice survives closing and reopening the review.
     expect(screen.getByRole("button", {
@@ -275,7 +275,7 @@ describe("OKF Studio reviewed writes", () => {
     await stageFile(user, "proposals/valid.md");
     await user.click(await screen.findByRole("button", { name: "Validate" }));
     expect(await screen.findByRole("status", { name: "Staged validation result" }))
-      .toHaveTextContent("Validation passed");
+      .toHaveTextContent("OKF validation passed");
     await user.click(screen.getByRole("button", { name: "Apply changes" }));
     expect(await screen.findByText("Applied 1 file to the bundle."))
       .toBeInTheDocument();

@@ -37,7 +37,7 @@ Both the frontend and the agent backend are organized **domain-first**: the doma
 - `git/` — repository snapshot and diff state + Git panel, focus contract, and dedicated diff workspace
 - `viz/` — the graph engine (`graph/`), chart helpers, and every graph/chart component
 - `reader/` — concept reader, prefs, lineage panel, peek card + lineage derivation
-- `bundle/` — bundle browsing and open-from-URL (`remoteSource` parser)
+- `bundle/` — Bundle Home, bundle details and sharing, bundle browsing, and open-from-URL (`remoteSource` parser)
 - `navigation/` — sidebar, index tree, tag browser, type filters
 - `shell/` — window frame and global overlays (top/status/activity bar, tabs, command palette, settings, validation/log panels)
 

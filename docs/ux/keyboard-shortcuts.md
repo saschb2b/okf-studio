@@ -3,7 +3,7 @@ type: Reference
 title: Keyboard Shortcuts
 description: The default keybindings; every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
-timestamp: 2026-07-17T10:39:43Z
+timestamp: 2026-07-23T20:25:48+02:00
 ---
 
 # Defaults
@@ -35,7 +35,7 @@ timestamp: 2026-07-17T10:39:43Z
 | `F` | Fit graph to view |
 | `Ctrl/Cmd + +` `-` `0` | Reader text size: bigger / smaller / reset (content zoom, not page zoom) |
 | `[` `]` | Collapse / expand the sidebar and reader |
-| `O` | Toggle the [bundle overview](../proposals/bundle-overview.md) landing |
+| `O` | Toggle [Bundle Home](../features/bundle-home.md) |
 | `T` | Toggle the [lineage](../proposals/lineage-and-traversal.md) panel — trace the active concept |
 | `L` | Toggle the `log.md` view |
 | `R` | Re-scan the folder |

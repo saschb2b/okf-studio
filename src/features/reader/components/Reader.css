@@ -50,7 +50,8 @@
 /* Top row: breadcrumb (left) and the "Aa" reading-preferences control (right). */
 .reader-header-top {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-8);
 }
@@ -140,6 +141,58 @@
   font-size: calc(var(--fs-sm) * var(--reader-scale, 1));
 }
 
+.reliability-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+  padding: var(--space-12);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+.reliability-notice[data-state="current"] {
+  border-inline-start-color: var(--success);
+}
+
+.reliability-notice[data-state="retired"],
+.reliability-notice[data-state="superseded"],
+.reliability-notice[data-state="contradicted"] {
+  border-inline-start-color: var(--error);
+}
+
+.reliability-notice header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-8);
+  color: var(--text);
+}
+
+.reliability-notice header span {
+  color: var(--text-dim);
+}
+
+.reliability-notice ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-16);
+  margin: 0;
+  padding-inline-start: var(--space-16);
+}
+
+.reliability-notice p {
+  margin: 0;
+}
+
+.reliability-notice__diagnostic {
+  color: var(--warn);
+}
+
 /* Tags as quiet #text — they are labels, not buttons, so no pill chrome
    suggesting a click that goes nowhere. */
 .tag-list {
@@ -188,11 +241,19 @@
 .reader-header-actions,
 .reader-resource-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-8);
   align-items: center;
 }
 
+.reader-header-actions {
+  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+
 .reader-okf-task,
+.reader-concept-move,
+.reader-concept-retirement,
 .reader-resource-agent {
   display: inline-flex;
   gap: var(--space-6);
@@ -207,12 +268,16 @@
 }
 
 .reader-okf-task:hover,
+.reader-concept-move:hover,
+.reader-concept-retirement:hover,
 .reader-resource-agent:hover {
   color: var(--text);
   background: var(--bg-sunken);
 }
 
 .reader-okf-task:focus-visible,
+.reader-concept-move:focus-visible,
+.reader-concept-retirement:focus-visible,
 .reader-resource-agent:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
@@ -939,6 +1004,82 @@
 .rel-link:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: -2px;
+}
+
+.typed-rel-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.typed-rel-link {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+button.typed-rel-link {
+  cursor: pointer;
+}
+
+button.typed-rel-link:hover {
+  background: var(--bg-sunken);
+}
+
+button.typed-rel-link:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.typed-rel-link.is-missing {
+  border-style: dashed;
+}
+
+.typed-rel-kind,
+.typed-rel-flags {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.typed-rel-kind,
+.typed-rel-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typed-rel-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.typed-rel-flags small {
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+
+.typed-rel-state {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.typed-rel-state.is-warning {
+  color: var(--warn);
+}
+
+.typed-relationships-story {
+  width: min(292px, calc(100vw - var(--space-24)));
+  padding: var(--space-12);
 }
 
 .broken-list .broken-link {

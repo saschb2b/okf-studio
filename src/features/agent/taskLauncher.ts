@@ -1,5 +1,5 @@
 import type { AgentSourceInput } from "@/shared/ipc.ts";
-import type { Issue } from "@/shared/types.ts";
+import type { Issue, ProfileDiagnostic } from "@/shared/types.ts";
 import type { OkfTaskId, OkfTaskKickoff } from "@/features/agent/taskContext.ts";
 
 export type OkfTaskOrigin =
@@ -14,6 +14,13 @@ export type OkfTaskOrigin =
       id: string;
       title: string;
       issue: Issue;
+    }
+  | {
+      kind: "profile-finding";
+      id: string;
+      title: string;
+      conceptId: string | null;
+      diagnostic: ProfileDiagnostic;
     }
   | {
       kind: "citation";
@@ -49,6 +56,7 @@ const ORIGIN_TASKS: Readonly<Record<OkfTaskOrigin["kind"], readonly OkfTaskId[]>
   "graph-selection": ["okf-change-impact", "okf-audit", "okf-enrich"],
   "search-result": ["okf-research", "okf-change-impact", "okf-enrich"],
   "validation-finding": ["okf-repair", "okf-audit", "okf-research"],
+  "profile-finding": ["okf-migrate", "okf-revise", "okf-audit"],
   citation: ["okf-research", "okf-enrich", "okf-change-impact"],
   source: ["okf-author", "okf-enrich", "okf-research", "okf-create"],
   external: [
@@ -78,7 +86,9 @@ export function kickoffForOkfOrigin(
   taskId: OkfTaskId,
   origin: OkfTaskOrigin,
 ): OkfTaskKickoff {
-  const contextConceptIds = "conceptId" in origin ? [origin.conceptId] : [];
+  const contextConceptIds = "conceptId" in origin && origin.conceptId
+    ? [origin.conceptId]
+    : [];
   const sources: AgentSourceInput[] = [];
   let object = origin.title;
 
@@ -88,6 +98,21 @@ export function kickoffForOkfOrigin(
       title: `${origin.issue.level === "error" ? "Error" : "Warning"}: ${origin.issue.conceptId ?? "bundle"}`,
       content: origin.issue.message,
       origin: origin.issue.conceptId ? `${origin.issue.conceptId}.md` : "Bundle validation",
+      mediaType: "text/plain",
+    });
+  } else if (origin.kind === "profile-finding") {
+    object = `advisory profile finding: ${origin.diagnostic.message}`;
+    sources.push({
+      title: `Profile advice: ${origin.diagnostic.ruleId}`,
+      content: [
+        "Basis: advisory profile, not OKF validation",
+        `Namespace: ${origin.diagnostic.namespace}`,
+        `Rule: ${origin.diagnostic.ruleId}`,
+        `Field: ${origin.diagnostic.field}`,
+        `Level: ${origin.diagnostic.level}`,
+        `Message: ${origin.diagnostic.message}`,
+      ].join("\n"),
+      origin: origin.diagnostic.file,
       mediaType: "text/plain",
     });
   } else if (origin.kind === "citation") {
@@ -131,6 +156,7 @@ export function okfTaskOriginLabel(origin: OkfTaskOrigin): string {
     "graph-selection": "Graph selection",
     "search-result": "Search result",
     "validation-finding": "Validation finding",
+    "profile-finding": "Profile finding",
     citation: "Citation",
     source: "Source",
     external: "External request",

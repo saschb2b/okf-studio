@@ -91,7 +91,7 @@ export function FolderHome({ node }: { node: IndexNode }) {
         <h1 className="fh-title">
           {node.title}
           {node.synthesized && (
-            <span className="fh-synth" title="No index.md in this folder — this listing is synthesized">
+            <span className="fh-synth" title="No index.md in this folder; this listing is synthesized">
               auto
             </span>
           )}

@@ -1,13 +1,21 @@
 // The top chrome bar: Open Folder, back/forward history, the current bundle
-// name, and the right-side cluster (layout switch · window controls). App-level
-// actions (Settings, shortcuts) live in the [ActivityBar]; the validation issue
-// indicator and Log toggle in the [StatusBar]; reading prefs ("Aa") with the
-// content in the [Reader]. The title bar holds only frequent, primary controls.
+// name with bundle-level actions, and the right-side cluster (layout switch ·
+// window controls). App-level actions (Settings, shortcuts) live in the
+// [ActivityBar]; reading prefs ("Aa") live with content in the [Reader].
 // See docs/ux/browsing-layout.md.
 
 import { useRef } from "react";
 import type { CSSProperties, MouseEvent, ReactElement } from "react";
-import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Info,
+  Search,
+  Share2,
+  TriangleAlert,
+  X as XIcon,
+} from "lucide-react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "@/shared/store.tsx";
@@ -15,6 +23,8 @@ import type { LayoutMode } from "@/shared/store.tsx";
 import { isMac, modKey } from "@/shared/platform/platform.ts";
 import { startWindowDrag, toggleMaximizeWindow } from "@/shared/platform/window.ts";
 import { BundleSwitcher } from "@/features/bundle/components/BundleSwitcher.tsx";
+import { getBundleConformance } from "@/features/bundle/bundleConformance.ts";
+import { BUNDLE_DETAILS_OPENER_ID } from "@/features/bundle/bundleDetailsFocus.ts";
 import { WindowControls } from "@/features/shell/components/WindowControls.tsx";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
@@ -109,6 +119,9 @@ export function TopBar() {
 
   const canBack = state.back.length > 0;
   const canForward = state.fwd.length > 0;
+  const conformance = state.bundle
+    ? getBundleConformance(state.bundle.issues)
+    : null;
 
   return (
     <Tooltip.Provider delay={400}>
@@ -125,6 +138,65 @@ export function TopBar() {
       >
         <div className="topbar-left">
           <BundleSwitcher />
+          {state.bundle && (
+            <Toolbar.Group className="topbar-bundle-actions">
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <Toolbar.Button
+                      className="btn ghost icon topbar-bundle-action"
+                      aria-label="Create shareable bundle"
+                      onClick={() => actions.setProjectionOpen(true)}
+                    >
+                      <Share2 size={16} aria-hidden="true" />
+                    </Toolbar.Button>
+                  }
+                />
+                <Tooltip.Portal>
+                  <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                    <Tooltip.Popup className="ui-tooltip">
+                      Create shareable bundle
+                    </Tooltip.Popup>
+                  </Tooltip.Positioner>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <Toolbar.Button
+                      id={BUNDLE_DETAILS_OPENER_ID}
+                      className="btn ghost icon topbar-bundle-action topbar-bundle-details"
+                      aria-label={`Open bundle details for ${state.bundle.name}: ${conformance?.label ?? "status unavailable"}`}
+                      aria-haspopup="dialog"
+                      onClick={() => actions.setBundleDetailsOpen(true)}
+                    >
+                      <Info size={16} aria-hidden="true" />
+                      <span
+                        className={`topbar-bundle-health is-${conformance?.kind ?? "ok"}`}
+                        aria-hidden="true"
+                      >
+                        {conformance?.kind === "error" ? (
+                          <XIcon size={8} />
+                        ) : conformance?.kind === "warning" ? (
+                          <TriangleAlert size={8} />
+                        ) : (
+                          <Check size={8} />
+                        )}
+                      </span>
+                    </Toolbar.Button>
+                  }
+                />
+                <Tooltip.Portal>
+                  <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                    <Tooltip.Popup className="ui-tooltip">
+                      Bundle details · {conformance?.label}
+                    </Tooltip.Popup>
+                  </Tooltip.Positioner>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Toolbar.Group>
+          )}
         </div>
 
         {/* Window-centered command center: back/forward immediately left of the

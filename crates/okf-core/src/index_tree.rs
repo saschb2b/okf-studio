@@ -24,6 +24,7 @@ use walkdir::WalkDir;
 /// Build the index-tree for a bundle, one node per directory, sorted by `dir`.
 pub fn build(root: &Path, concepts: &[Concept]) -> Vec<IndexNode> {
     let ids: HashSet<String> = concepts.iter().map(|c| c.id.clone()).collect();
+    let ignore = crate::ignore::IgnoreMatcher::load(root);
 
     // Every directory under the root (including the root itself, dir = "").
     let mut dirs: BTreeSet<String> = BTreeSet::new();
@@ -34,6 +35,15 @@ pub fn build(root: &Path, concepts: &[Concept]) -> Vec<IndexNode> {
         .filter_entry(|e| !crate::parse::is_ignored_dir(e.path(), root))
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_dir())
+        .filter(|entry| {
+            if !ignore.is_ignored(entry.path(), true) {
+                return true;
+            }
+            let relative = rel_dir(root, entry.path());
+            concepts.iter().any(|concept| {
+                concept.id == relative || concept.id.starts_with(&format!("{relative}/"))
+            })
+        })
     {
         dirs.insert(rel_dir(root, entry.path()));
     }

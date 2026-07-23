@@ -3,7 +3,7 @@ type: Reference
 title: Data Model
 description: The Bundle, Concept, graph, index, and log shapes the Rust core computes and the frontend renders.
 tags: [architecture, data-model, schema]
-timestamp: 2026-06-30T12:00:00Z
+timestamp: 2026-07-23T00:28:00Z
 ---
 
 # Shapes
@@ -16,6 +16,7 @@ interface Bundle {
   name: string;            // from root index.md H1, else dir name
   okfVersion: string | null;
   odsfVersion: string | null;  // ODSF profile version, if the root declares one
+  extra: Record<string, unknown>;  // other root index frontmatter, preserved
   concepts: Concept[];
   indexes: IndexNode[];    // parsed/synthesized index.md tree (navigation)
   log: LogEntry[];         // parsed log.md, newest first
@@ -67,7 +68,7 @@ interface LogEntry {
 
 # Notes
 
-- **`extra` preserves unknown keys** rather than dropping them, per the spec's extension contract — including **nested maps and lists in author order** (an [ODSF](../reference/okf-spec-summary.md) `tokens:` tree arrives as an ordered object), which is what a design-aware consumer surfaces. The [parser](okf-parsing.md) is indentation-aware for exactly this.
+- **`extra` preserves producer keys** rather than dropping them, per the spec's extension contract. `Bundle.extra` contains every parsed root `index.md` field except the promoted `okf_version` and `odsf_version`; `Concept.extra` contains every field except the promoted concept keys. Nested maps and lists retain their parsed order. This distinction matters because a field such as `title` is recognized on a concept but remains producer metadata at the bundle root.
 - The frontend derives the **edge list** and the **type → color** map from `concepts`; the core does not dictate presentation (see [Frontend Architecture](frontend-architecture.md) for these derived/computed stores).
 - IDs are the join key everywhere: links, backlinks, selection, and [navigation history](../features/navigation.md) all reference Concept IDs.
 - **`indexes` carry `synthesized`** so the [navigation](../features/navigation.md) sidebar can mark which listings the core built for directories that lacked an `index.md` — the spec permits synthesizing one on the fly.

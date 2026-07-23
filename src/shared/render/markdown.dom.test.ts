@@ -1,5 +1,40 @@
 import { describe, it, expect } from "vitest";
-import { plainExcerpt, renderMarkdown, resolveAssetHref } from "@/shared/render/markdown.ts";
+import linkCorpusJson from "@/test/fixtures/markdown-link-corpus.json?raw";
+import { plainExcerpt, renderMarkdown, resolveAssetHref, resolveHref } from "@/shared/render/markdown.ts";
+
+interface LinkCorpusCase {
+  name: string;
+  markdown: string;
+  sourceId: string;
+  conceptIds: string[];
+  expectedConcepts: string[];
+  expectedExternal: string[];
+}
+
+const linkCorpus = JSON.parse(linkCorpusJson) as { cases: LinkCorpusCase[] };
+
+describe("Markdown link compatibility corpus", () => {
+  it.each(linkCorpus.cases)("matches Rust targets for $name", (testCase) => {
+    const template = document.createElement("template");
+    template.innerHTML = renderMarkdown(testCase.markdown);
+    const concepts = new Set<string>();
+    const external = new Set<string>();
+
+    for (const anchor of template.content.querySelectorAll("a")) {
+      const href = anchor.getAttribute("href");
+      if (!href) continue;
+      const resolved = resolveHref(href, testCase.sourceId);
+      if (resolved.kind === "concept" && testCase.conceptIds.includes(resolved.id)) {
+        concepts.add(resolved.id);
+      } else if (resolved.kind === "external") {
+        external.add(resolved.url);
+      }
+    }
+
+    expect([...concepts]).toEqual(testCase.expectedConcepts);
+    expect([...external]).toEqual(testCase.expectedExternal);
+  });
+});
 
 describe("plainExcerpt", () => {
   it("strips markdown syntax down to readable prose", () => {

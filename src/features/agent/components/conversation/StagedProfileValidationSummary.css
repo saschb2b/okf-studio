@@ -1,0 +1,80 @@
+.staged-profile-validation {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.staged-profile-validation > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.staged-profile-validation > header span,
+.staged-profile-validation > p,
+.staged-profile-validation small {
+  color: var(--text-dim);
+}
+
+.staged-profile-validation li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.staged-profile-validation li > span:last-child {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.staged-profile-validation__requirement {
+  justify-self: start;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.staged-profile-validation details {
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.staged-profile-validation summary {
+  width: fit-content;
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.staged-profile-validation ul {
+  display: grid;
+  max-height: 160px;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.staged-profile-validation-story {
+  width: min(100%, 38rem);
+  padding: var(--space-12);
+}
+
+@media (max-width: 420px) {
+  .staged-profile-validation li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

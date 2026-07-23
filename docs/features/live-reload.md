@@ -3,7 +3,7 @@ type: Feature
 title: Live Reload
 description: Watch the opened folder and refresh the graph and reader in place as bundle files are added, changed, or removed.
 tags: [feature, live, filesystem]
-timestamp: 2026-07-13T19:42:50Z
+timestamp: 2026-07-23T20:30:00Z
 ---
 
 # What it does
@@ -21,4 +21,5 @@ While a folder is open, the app watches it for filesystem changes and updates th
 
 - Backed by a filesystem watcher in the [Rust core](../architecture/tech-stack.md) (e.g. the `notify` crate, exposed through a Tauri event channel — see [IPC & Security](../architecture/ipc-and-security.md)).
 - Changes are debounced so a burst of writes (a bulk edit, a git checkout) produces one coherent update — see [Performance & Scale](../architecture/performance.md) for the incremental re-parse and backlink strategy.
+- The root [`.okfignore`](ignore-rules.md) matcher suppresses events for excluded paths. A rule-file change always triggers a refresh so a new exclusion or negation takes effect immediately.
 - Watching is read-only and scoped to the chosen folder, consistent with the [security model](../architecture/ipc-and-security.md).

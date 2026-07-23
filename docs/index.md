@@ -1,5 +1,21 @@
 ---
 okf_version: "0.1"
+profiles:
+  io.okf.access:
+    version: "1.0.0"
+    descriptor: "profiles/io.okf.access.json"
+  io.okf.evidence:
+    version: "1.0.0"
+    descriptor: "profiles/io.okf.evidence.json"
+  io.okf.reliability:
+    version: "1.0.0"
+    descriptor: "profiles/io.okf.reliability.json"
+  io.okf.interop:
+    version: "0.1.0"
+    descriptor: "profiles/io.okf.interop.json"
+external_bundles:
+  google-okf:
+    url: "https://github.com/GoogleCloudPlatform/knowledge-catalog"
 ---
 
 # OKF Studio product knowledge
@@ -16,6 +32,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Writing Quality](product/okf-writing-quality-roadmap.md) - Sequenced work for evidence-preserving authoring, prose revision, advisory diagnostics, and measurable provider quality.
 * [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) - The next research branch for routed retrieval, coherent context, diagnostics, and reviewed corpus repair.
 * [Integrated Git Support](product/git-integration/git-integration-roadmap.md) - Sequenced work for repository status, staging, commits, history, and explicit remote operations.
+* [OKF Ecosystem Response](product/okf-ecosystem-response-roadmap.md) - Value-led work packages for compatibility, profiles, living knowledge, provenance, projections, and interoperability experiments.
 * [Zed Git Research](product/git-integration/zed-git-research.md) - The source-level architecture and UX findings used for Studio's Git direction.
 * [Site Experience Research](product/site-evolution/site-experience-research.md) - Evidence behind replacing the one-page feature catalogue with a scalable product site.
 * [Site Experience Contract](product/site-evolution/site-experience-contract.md) - Target site map, navigation, homepage story, content ownership, and implementation sequence.
@@ -29,11 +46,19 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 
 * [Agent Panel](features/agent-panel.md) - Run parallel agent threads, attach OKF context, approve tools, and review proposed knowledge changes.
 * [Source Adapters and Provenance](features/source-adapters.md) - Turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible versioned provenance.
+* [Evidence and Provenance](features/evidence-and-provenance.md) - Keep durable source identity with a concept, connect claims to evidence, and check public sources only after an explicit action.
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
+* [Ignore Rules](features/ignore-rules.md) - Keep selected paths out of Studio through one visible root rule file without mistaking it for access control.
+* [Access Hints](features/access-hints.md) - Show audience, sensitivity, and handling guidance without treating metadata as authorization.
+* [Recipient Projections](features/recipient-projections.md) - Choose knowledge, review what will travel, and save a separate shareable bundle.
+* [Erasure Audit](features/erasure-audit.md) - Block a projection when declared excluded material remains in its generated output.
+* [Bundle Connections](features/interoperability-lab.md) - Resolve external knowledge, exchange relationships, and use optional language and resource conventions where each task belongs.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
+* [Bundle Home](features/bundle-home.md) - Resume active concepts, review authored activity, handle deterministic attention items, and return to repository work.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.
 * [Concept Reader](features/concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
+* [Reliability and Lifecycle](features/reliability-and-lifecycle.md) - Qualify optional lifecycle, confidence, review, contradiction, and replacement signals without changing OKF conformance.
 * [Design-System Rendering](features/design-system-rendering.md) - Native ODSF token visualizations and sandboxed example previews.
 * [Search & Filter](features/search-and-filter.md) - Full-text search, type filters, and tag browsing.
 * [Navigation](features/navigation.md) - Progressive disclosure from index.md, link following, and history.
@@ -83,13 +108,17 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Spec Summary](reference/okf-spec-summary.md) - The v0.1 rules Studio must honor.
 * [OKF Reference HTML Visualizer](reference/okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.
 * [OKF Sample Bundles](reference/okf-sample-bundles.md) - The GA4, Stack Overflow, and Bitcoin bundles used as additional fixtures.
+* [Multilingual Variants Experiment](reference/multilingual-variants-experiment.md) - Compare language conventions without selecting a core format.
+* [External Bundle References Experiment](reference/external-bundle-references-experiment.md) - Test explicit read-only resolution with namespaced identity.
+* [Semantic-Web Exchange Experiment](reference/semantic-web-exchange-experiment.md) - Round-trip a declared JSON-LD relationship subset with loss accounting.
+* [Sidecar Resources Experiment](reference/sidecar-resources-experiment.md) - Inventory and export digest-checked companion files without execution.
 * [Tauri 2.0](reference/tauri-2.md) - Key facts about the framework and its plugins.
 * [Glossary](reference/glossary.md) - Terms used across this bundle.
 
 # Proposals
 
 * [Deep Knowledge Diving](proposals/deep-knowledge-diving.md) - Where the viewer is thin for going deep, and the big-data patterns worth borrowing.
-* [Bundle Overview & Health](proposals/bundle-overview.md) - A landing view that orients you in a bundle before you dive.
+* [Bundle Overview & Health (superseded)](proposals/bundle-overview.md) - The original inventory-dashboard proposal, superseded by a working Home for activity, resumption, attention, and repository changes.
 * [Faceted Query Bar](proposals/faceted-search.md) - Structured field queries and facet rails that filter the workspace live.
 * [Lineage & Traversal](proposals/lineage-and-traversal.md) - Expand-on-click, upstream/downstream lineage, path-between, and unlinked mentions.
 * [Multi-View — Tabs & Windows](proposals/multi-view.md) - Reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own window.

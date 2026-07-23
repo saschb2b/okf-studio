@@ -3,7 +3,7 @@ type: Feature
 title: Validation
 description: Surface OKF conformance — errors and warnings — in the UI without ever refusing to render the bundle.
 tags: [feature, validation, conformance]
-timestamp: 2026-07-18T06:30:00Z
+timestamp: 2026-07-23T20:15:52+02:00
 ---
 
 # What it does
@@ -17,11 +17,12 @@ Runs the [OKF conformance check](../reference/okf-spec-summary.md) over each bun
 
 # How it surfaces
 
-- An **issue indicator** at the left of the [status bar](../ux/browsing-layout.md). Its urgency is **inverted from a badge**: conformance is the baseline, so it reads *quietly* (a dim "✓ Conformant", never a green splash) — colour is reserved for the exception (amber "⚠ N warnings", red "✕ N errors"), so the eye is only drawn when there is something to act on. Clicking it opens the validation panel.
+- The title bar's **Bundle details** Info action carries a small status mark: pass, warning, or error. Its accessible name and tooltip state the result without relying on colour. The dialog expands that mark into **Conformant**, **Conformant with warnings**, or **Not conformant**, gives the exact issue counts, and opens the full validation report. Core status therefore stays with the bundle's identity, format, and size instead of being split across the footer.
 - A **validation panel** listing each issue with its file and a one-line explanation; clicking an issue jumps to the concept. Issues render as **flat problems-list rows** (the VS Code pattern): a severity dot, the message, the concept id dimmed beneath — grouped under an Errors/Warnings heading that carries the severity color once, with no per-row severity word repeating it and no card chrome around what is a list.
 - Inline cues: a concept with an error gets a marked node in the [graph](graph-view.md); a [broken link](concept-reader.md) renders but is styled as unresolved.
 - The [Agent Panel](agent-panel.md) can attach a chosen issue as visible, removable source evidence. Its exact message and concept provenance reach the agent through the bounded source path without granting edits.
 - Each finding also has a [Native OKF Tasks](native-okf-tasks.md) action. It carries the exact finding as bounded evidence, prioritizes the curated repair capability, and keeps any proposed edit behind reviewed staging.
+- The [Compatibility Clinic](compatibility-clinic.md) includes these same findings beside separate portability and extension groups. Its machine-readable export retains the distinction instead of promoting advice into an OKF error.
 
 # Relationship to the CLI
 

@@ -322,6 +322,26 @@ export interface AgentStagedValidationInfo {
   issues: readonly AgentStagedValidationIssue[];
   truncated: boolean;
   preview: AgentStagedGraphPreview;
+  profile: AgentStagedProfileValidation;
+}
+
+export interface AgentStagedProfileValidation {
+  source: "draft" | "selected-source";
+  declared: number;
+  active: number;
+  unavailable: number;
+  diagnostics: readonly AgentStagedProfileIssue[];
+  truncated: boolean;
+}
+
+export interface AgentStagedProfileIssue {
+  namespace: string;
+  ruleId: string;
+  level: "information" | "recommendation" | "warning";
+  path: string;
+  conceptId: string | null;
+  field: string;
+  message: string;
 }
 
 export interface AgentStagedGraphPreview {

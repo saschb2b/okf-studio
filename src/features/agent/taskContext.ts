@@ -1,5 +1,10 @@
 import type { AgentSourceInput } from "@/shared/ipc.ts";
 import type { Issue } from "@/shared/types.ts";
+import type { ProfileReport } from "@/shared/types.ts";
+import {
+  profileTaskContext,
+  type OkfProfileTaskContext,
+} from "@/features/agent/profileContext.ts";
 
 export const OKF_TASK_IDS = [
   "okf-create",
@@ -149,6 +154,7 @@ export interface OkfContextPlan {
   objects: readonly OkfContextObject[];
   sources: readonly OkfContextSource[];
   validation: { errors: number; warnings: number };
+  profileContext: OkfProfileTaskContext | null;
   budget: OkfContextBudget;
   omissions: readonly OkfContextOmission[];
 }
@@ -179,6 +185,7 @@ interface ContextPlanInput {
     imageData?: string;
   }[];
   issues: readonly Issue[];
+  profileReport?: ProfileReport | null;
   removedIds?: ReadonlySet<string>;
   memoryRemovedIds?: ReadonlySet<string>;
   maxBytes?: number;
@@ -235,6 +242,7 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
   const removed = input.removedIds ?? new Set<string>();
   const memoryRemoved = input.memoryRemovedIds ?? new Set<string>();
   const maxBytes = input.maxBytes ?? DEFAULT_CONTEXT_BYTES;
+  const profileContext = profileTaskContext(input.taskId, input.profileReport);
   const conceptById = new Map(input.concepts.map((concept) => [concept.id, concept]));
   const candidates = new Map<string, OkfContextObject>();
   const objectBytes = (concept: { id: string; title: string; type: string; body?: string }) =>
@@ -345,13 +353,18 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
     tools: task.tools,
     network: task.network,
     writes: task.writes,
-    bundleFingerprint: bundleContextFingerprint(input.bundleRoot, input.concepts, input.issues),
+    bundleFingerprint: profileContext
+      ? fingerprint(
+          `${bundleContextFingerprint(input.bundleRoot, input.concepts, input.issues)}\u001d${JSON.stringify(profileContext)}`,
+        )
+      : bundleContextFingerprint(input.bundleRoot, input.concepts, input.issues),
     objects,
     sources,
     validation: {
       errors: input.issues.filter((issue) => issue.level === "error").length,
       warnings: input.issues.filter((issue) => issue.level === "warning").length,
     },
+    profileContext,
     budget: {
       maxBytes,
       maxEstimatedTokens: Math.ceil(maxBytes / 4),

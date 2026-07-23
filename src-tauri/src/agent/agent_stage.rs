@@ -127,6 +127,29 @@ pub struct AgentStagedGraphPreview {
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct AgentStagedProfileIssue {
+    pub namespace: String,
+    pub rule_id: String,
+    pub level: &'static str,
+    pub path: String,
+    pub concept_id: Option<String>,
+    pub field: String,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentStagedProfileValidation {
+    pub source: &'static str,
+    pub declared: usize,
+    pub active: usize,
+    pub unavailable: usize,
+    pub diagnostics: Vec<AgentStagedProfileIssue>,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentStagedValidationInfo {
     pub session_id: String,
     pub revision: String,
@@ -135,6 +158,7 @@ pub struct AgentStagedValidationInfo {
     pub issues: Vec<AgentStagedValidationIssue>,
     pub truncated: bool,
     pub preview: AgentStagedGraphPreview,
+    pub profile: AgentStagedProfileValidation,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -1675,13 +1699,13 @@ fn validate_prepared(
     mode: AgentStageMode,
 ) -> Result<AgentStagedValidationInfo, String> {
     let mirror = ValidationMirror::create()?;
+    let source_bundle = okf_core::read_bundle(bundle_root);
+    let source_profiles = okf_core::profile::analyze(bundle_root, &source_bundle);
     if mode != AgentStageMode::Create {
         copy_markdown_tree(bundle_root, &mirror.path)?;
+        copy_profile_descriptors(bundle_root, &mirror.path, &source_profiles)?;
     }
     for file in prepared {
-        if !file.path.to_ascii_lowercase().ends_with(".md") {
-            continue;
-        }
         let target = mirror.path.join(Path::new(&file.path));
         if let Some(content) = &file.effective {
             if let Some(parent) = target.parent() {
@@ -1698,6 +1722,17 @@ fn validate_prepared(
     }
 
     let bundle = okf_core::read_bundle(&mirror.path);
+    let declared_profiles = okf_core::profile::analyze(&mirror.path, &bundle);
+    let (profile_report, profile_source) =
+        if mode == AgentStageMode::Create && declared_profiles.profiles.is_empty() {
+            (
+                okf_core::profile::reevaluate(&source_profiles, &bundle),
+                "selected-source",
+            )
+        } else {
+            (declared_profiles, "draft")
+        };
+    let profile = staged_profile_validation(&profile_report, profile_source);
     let preview = staged_graph_preview(&bundle, prepared);
     let errors = bundle
         .issues
@@ -1727,7 +1762,73 @@ fn validate_prepared(
         issues,
         truncated,
         preview,
+        profile,
     })
+}
+
+fn copy_profile_descriptors(
+    source: &Path,
+    destination: &Path,
+    report: &okf_core::profile::ProfileReport,
+) -> Result<(), String> {
+    for profile in &report.profiles {
+        if profile.descriptor.is_none() {
+            continue;
+        }
+        let Some(relative) = profile.descriptor_path.as_deref() else {
+            continue;
+        };
+        let target = destination.join(relative);
+        let Some(parent) = target.parent() else {
+            return Err("Staged profile validation could not prepare its descriptor.".to_string());
+        };
+        std::fs::create_dir_all(parent).map_err(|_| {
+            "Staged profile validation could not prepare its descriptor.".to_string()
+        })?;
+        std::fs::copy(source.join(relative), target).map_err(|_| {
+            "Staged profile validation could not copy its local descriptor.".to_string()
+        })?;
+    }
+    Ok(())
+}
+
+fn staged_profile_validation(
+    report: &okf_core::profile::ProfileReport,
+    source: &'static str,
+) -> AgentStagedProfileValidation {
+    let active = report
+        .profiles
+        .iter()
+        .filter(|profile| profile.status == okf_core::profile::ProfileStatus::Active)
+        .count();
+    let unavailable = report.profiles.len().saturating_sub(active);
+    let truncated = report.truncated || report.diagnostics.len() > MAX_VALIDATION_ISSUES;
+    let diagnostics = report
+        .diagnostics
+        .iter()
+        .take(MAX_VALIDATION_ISSUES)
+        .map(|diagnostic| AgentStagedProfileIssue {
+            namespace: diagnostic.namespace.clone(),
+            rule_id: diagnostic.rule_id.clone(),
+            level: match diagnostic.level {
+                okf_core::profile::ProfileDiagnosticLevel::Information => "information",
+                okf_core::profile::ProfileDiagnosticLevel::Recommendation => "recommendation",
+                okf_core::profile::ProfileDiagnosticLevel::Warning => "warning",
+            },
+            path: diagnostic.file.clone(),
+            concept_id: diagnostic.concept_id.clone(),
+            field: diagnostic.field.clone(),
+            message: bounded_validation_message(&diagnostic.message),
+        })
+        .collect();
+    AgentStagedProfileValidation {
+        source,
+        declared: report.profiles.len(),
+        active,
+        unavailable,
+        diagnostics,
+        truncated,
+    }
 }
 
 struct PendingReplacement {
@@ -3356,6 +3457,46 @@ mod tests {
         .expect("seed valid concept");
     }
 
+    fn seed_profile_bundle(root: &Path) {
+        std::fs::create_dir_all(root.join("profiles")).expect("create profile directory");
+        std::fs::write(
+            root.join("index.md"),
+            "---\nokf_version: 0.1\nprofiles:\n  com.example.knowledge:\n    version: \"1.2.0\"\n    descriptor: profiles/team.json\n---\n# Test bundle\n",
+        )
+        .expect("seed profiled index");
+        std::fs::write(
+            root.join("profiles/team.json"),
+            r#"{
+  "schemaVersion": 1,
+  "namespace": "com.example.knowledge",
+  "version": "1.2.0",
+  "title": "Team knowledge",
+  "fields": [{
+    "id": "owner",
+    "scope": "concept",
+    "key": "owner",
+    "label": "Owner",
+    "valueType": "string",
+    "expectation": "required"
+  }],
+  "checks": [{
+    "kind": "field-present",
+    "id": "owner-present",
+    "scope": "concept",
+    "field": "owner",
+    "level": "recommendation",
+    "message": "Name the responsible team."
+  }]
+}"#,
+        )
+        .expect("seed profile descriptor");
+        std::fs::write(
+            root.join("existing.md"),
+            "---\ntype: note\n---\n# Existing\n",
+        )
+        .expect("seed concept without profile field");
+    }
+
     fn copy_directory(source: &Path, destination: &Path) {
         for entry in std::fs::read_dir(source).expect("read source directory") {
             let entry = entry.expect("read source entry");
@@ -3899,6 +4040,65 @@ mod tests {
             std::fs::read_to_string(root.join("existing.md")).expect("read bundle concept"),
             "---\ntype: note\n---\n# Existing\n",
             "validation must not update the bundle",
+        );
+    }
+
+    #[test]
+    fn evaluates_local_profile_advice_without_changing_okf_validation() {
+        let root = canonical_temp_dir("profile-validation");
+        seed_profile_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("existing.md"),
+                "---\ntype: note\nowner: Docs\n---\n# Existing\n".to_string(),
+            )
+            .expect("stage profile-aware concept");
+
+        let validation = stages.validate_staged("session-1").expect("validate");
+        assert_eq!(validation.errors, 0);
+        assert_eq!(validation.profile.source, "draft");
+        assert_eq!(validation.profile.declared, 1);
+        assert_eq!(validation.profile.active, 1);
+        assert_eq!(validation.profile.unavailable, 0);
+        assert!(validation.profile.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn reevaluates_selected_source_profiles_for_fresh_bundle_drafts() {
+        let root = canonical_temp_dir("profile-create-validation");
+        seed_profile_bundle(&root);
+        let stages = registered(&root);
+        stages.set_grant("session-1", true).expect("grant");
+        stages
+            .set_mode("session-1", AgentStageMode::Create)
+            .expect("select create mode");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("index.md"),
+                "---\nokf_version: 0.1\n---\n# Fresh bundle\n".to_string(),
+            )
+            .expect("stage index without a declaration");
+        stages
+            .stage_write(
+                "session-1",
+                &root.join("fresh.md"),
+                "---\ntype: note\n---\n# Fresh\n".to_string(),
+            )
+            .expect("stage concept without profile field");
+
+        let validation = stages.validate_staged("session-1").expect("validate");
+        assert_eq!(validation.errors, 0);
+        assert_eq!(validation.profile.source, "selected-source");
+        assert_eq!(validation.profile.active, 1);
+        assert_eq!(validation.profile.diagnostics.len(), 1);
+        assert_eq!(validation.profile.diagnostics[0].rule_id, "owner-present");
+        assert_eq!(
+            validation.profile.diagnostics[0].concept_id.as_deref(),
+            Some("fresh")
         );
     }
 

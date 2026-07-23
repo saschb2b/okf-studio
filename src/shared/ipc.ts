@@ -2105,6 +2105,7 @@ export async function validateAgentStagedChanges(
     }];
   });
   const preview = mockStagedGraphPreview(state);
+  const profiles = mockProfileReport();
   return {
     sessionId,
     revision: `mock-${state.files.map((file) => (
@@ -2115,6 +2116,22 @@ export async function validateAgentStagedChanges(
     issues,
     truncated: false,
     preview,
+    profile: {
+      source: state.mode === "create" ? "selected-source" : "draft",
+      declared: profiles.profiles.length,
+      active: profiles.profiles.filter((profile) => profile.status === "active").length,
+      unavailable: profiles.profiles.filter((profile) => profile.status === "unavailable").length,
+      diagnostics: profiles.diagnostics.map((diagnostic) => ({
+        namespace: diagnostic.namespace,
+        ruleId: diagnostic.ruleId,
+        level: diagnostic.level,
+        path: diagnostic.file,
+        conceptId: diagnostic.conceptId,
+        field: diagnostic.field,
+        message: diagnostic.message,
+      })),
+      truncated: profiles.truncated,
+    },
   };
 }
 
@@ -3455,6 +3472,14 @@ export async function validateCompatibilityNormalization(
       issues: [],
       truncated: false,
       preview: { nodes: [], edges: [], totalNodes: 0, totalEdges: 0, truncated: false },
+      profile: {
+        source: "draft",
+        declared: 0,
+        active: 0,
+        unavailable: 0,
+        diagnostics: [],
+        truncated: false,
+      },
     };
   }
   const { invoke } = await import("@tauri-apps/api/core");

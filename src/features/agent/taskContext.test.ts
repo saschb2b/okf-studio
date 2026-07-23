@@ -5,6 +5,7 @@ import {
   createOkfContextPlan,
   taskScopeChangeRequiresConfirmation,
 } from "@/features/agent/taskContext.ts";
+import type { ProfileReport } from "@/shared/types.ts";
 
 const concepts = [
   { id: "product/overview", title: "Overview", type: "Product" },
@@ -95,6 +96,52 @@ describe("OKF task context", () => {
     expect(taskScopeChangeRequiresConfirmation("okf-audit", "okf-research")).toBe(true);
     expect(taskScopeChangeRequiresConfirmation("okf-enrich", "okf-audit")).toBe(true);
     expect(taskScopeChangeRequiresConfirmation("okf-audit", "okf-audit")).toBe(false);
+  });
+
+  it("binds profile-aware plans to the exact projected profile guidance", () => {
+    const baseProfile: ProfileReport = {
+      schemaVersion: 1,
+      profiles: [{
+        namespace: "com.example.knowledge",
+        version: "1.0.0",
+        descriptorPath: "profiles/knowledge.json",
+        status: "active",
+        message: "Resolved locally.",
+        extra: {},
+        descriptor: {
+          schemaVersion: 1,
+          namespace: "com.example.knowledge",
+          version: "1.0.0",
+          title: "Knowledge",
+          description: "",
+          fields: [],
+          relationships: [],
+          checks: [],
+        },
+      }],
+      diagnostics: [],
+      truncated: false,
+    };
+    const input = {
+      taskId: "okf-audit" as const,
+      bundleRoot: "C:\\knowledge\\docs",
+      concepts,
+      activeConcept: null,
+      attachedConcepts: [],
+      sources: [],
+      issues: [],
+    };
+    const first = createOkfContextPlan({ ...input, profileReport: baseProfile });
+    const changed = createOkfContextPlan({
+      ...input,
+      profileReport: {
+        ...baseProfile,
+        profiles: [{ ...baseProfile.profiles[0], version: "1.0.1" }],
+      },
+    });
+
+    expect(first.profileContext?.profiles[0].version).toBe("1.0.0");
+    expect(changed.bundleFingerprint).not.toBe(first.bundleFingerprint);
   });
 
   it("shows a revalidated workspace preference as the exact omission reason", () => {

@@ -220,6 +220,24 @@ pub fn analyze(root: &Path, bundle: &Bundle) -> ProfileReport {
     }
 }
 
+/// Re-run the active descriptors from an existing report against another
+/// parsed bundle tree. Resolution identity and unavailable states are retained;
+/// only deterministic diagnostics are recomputed.
+pub fn reevaluate(report: &ProfileReport, bundle: &Bundle) -> ProfileReport {
+    let mut diagnostics = Vec::new();
+    for profile in &report.profiles {
+        if let Some(descriptor) = &profile.descriptor {
+            diagnostics.extend(evaluate(&profile.namespace, descriptor, bundle));
+        }
+    }
+    ProfileReport {
+        schema_version: report.schema_version,
+        profiles: report.profiles.clone(),
+        diagnostics,
+        truncated: report.truncated,
+    }
+}
+
 fn resolve_one(root: &Path, namespace: &str, value: &Value) -> ProfileResolution {
     let Some(declaration) = value.as_object() else {
         return unavailable(
@@ -400,7 +418,10 @@ fn validate_descriptor(descriptor: &ProfileDescriptor) -> Result<(), String> {
     {
         return Err("The profile descriptor exceeds Studio's item limits.".to_string());
     }
-    if !bounded_string(&descriptor.title) || !bounded_string(&descriptor.description) {
+    if descriptor.title.trim().is_empty()
+        || !bounded_string(&descriptor.title)
+        || !bounded_string(&descriptor.description)
+    {
         return Err(
             "The profile descriptor contains an oversized title or description.".to_string(),
         );
@@ -799,5 +820,21 @@ mod tests {
 
         assert_eq!(report.profiles[0].status, ProfileStatus::Unavailable);
         assert!(report.profiles[0].message.contains("must match"));
+    }
+
+    #[test]
+    fn reevaluates_resolved_rules_against_an_isolated_bundle() {
+        let fixture = TempBundle::new(&declaration("profiles/team.json"), Some(descriptor()));
+        let source = read_bundle(&fixture.path);
+        let report = analyze(&fixture.path, &source);
+        let mut changed = source.clone();
+        changed.concepts[0]
+            .extra
+            .insert("lifecycle".to_string(), Value::String("active".to_string()));
+        changed.concepts[0].description = "Orientation".to_string();
+
+        let reevaluated = reevaluate(&report, &changed);
+        assert!(reevaluated.diagnostics.is_empty());
+        assert_eq!(reevaluated.profiles[0].status, ProfileStatus::Active);
     }
 }

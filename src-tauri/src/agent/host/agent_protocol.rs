@@ -1830,6 +1830,201 @@ fn validate_task_context(task_context: &OkfTaskContextInput) -> Result<(), Strin
             ));
         }
     }
+    validate_profile_context(&task_context.task_id, manifest)?;
+    Ok(())
+}
+
+fn json_text(map: &serde_json::Map<String, serde_json::Value>, key: &str, max: usize) -> bool {
+    map.get(key)
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|value| !value.is_empty() && value.len() <= max)
+}
+
+fn optional_json_text(
+    map: &serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    max: usize,
+) -> bool {
+    map.get(key).is_none_or(|value| {
+        value.is_null()
+            || value
+                .as_str()
+                .is_some_and(|text| !text.is_empty() && text.len() <= max)
+    })
+}
+
+fn json_text_list(value: Option<&serde_json::Value>, max_items: usize, max: usize) -> bool {
+    value
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|items| {
+            items.len() <= max_items
+                && items.iter().all(|item| {
+                    item.as_str()
+                        .is_some_and(|text| !text.is_empty() && text.len() <= max)
+                })
+        })
+}
+
+fn json_bounded_text_list(value: Option<&serde_json::Value>, max_items: usize, max: usize) -> bool {
+    value
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|items| {
+            items.len() <= max_items
+                && items
+                    .iter()
+                    .all(|item| item.as_str().is_some_and(|text| text.len() <= max))
+        })
+}
+
+fn validate_profile_context(
+    task_id: &str,
+    manifest: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(), String> {
+    let Some(value) = manifest.get("profileContext") else {
+        return Ok(());
+    };
+    if value.is_null() {
+        return Ok(());
+    }
+    if !matches!(
+        task_id,
+        "okf-create" | "okf-audit" | "okf-migrate" | "okf-revise"
+    ) {
+        return Err("This OKF task does not accept advisory profile context.".to_string());
+    }
+    let context = value
+        .as_object()
+        .ok_or_else(|| "The advisory profile context must be an object.".to_string())?;
+    if context
+        .get("schemaVersion")
+        .and_then(serde_json::Value::as_u64)
+        != Some(1)
+        || context.get("basis").and_then(serde_json::Value::as_str) != Some("advisory-profile")
+        || context
+            .get("conformanceBoundary")
+            .and_then(serde_json::Value::as_str)
+            != Some("Profile advice does not change OKF validation.")
+        || !context
+            .get("truncated")
+            .is_some_and(serde_json::Value::is_boolean)
+    {
+        return Err("The advisory profile context boundary is invalid.".to_string());
+    }
+    let core = context
+        .get("coreRequirements")
+        .and_then(serde_json::Value::as_array)
+        .filter(|items| items.len() == 1)
+        .and_then(|items| items[0].as_object())
+        .ok_or_else(|| "The advisory profile context must name the OKF type rule.".to_string())?;
+    if core.get("key").and_then(serde_json::Value::as_str) != Some("type")
+        || core.get("requirement").and_then(serde_json::Value::as_str) != Some("OKF-required")
+    {
+        return Err("The advisory profile context cannot redefine OKF requirements.".to_string());
+    }
+
+    let profiles = context
+        .get("profiles")
+        .and_then(serde_json::Value::as_array)
+        .filter(|items| items.len() <= 8)
+        .ok_or_else(|| "The advisory profile context contains too many profiles.".to_string())?;
+    for profile_value in profiles {
+        let profile = profile_value
+            .as_object()
+            .ok_or_else(|| "An advisory profile context entry is invalid.".to_string())?;
+        if !json_text(profile, "namespace", 128)
+            || !optional_json_text(profile, "version", 64)
+            || !optional_json_text(profile, "descriptorPath", 512)
+            || !profile
+                .get("status")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|status| matches!(status, "active" | "unavailable"))
+            || !json_text(profile, "message", 512)
+            || !optional_json_text(profile, "title", 512)
+        {
+            return Err("An advisory profile identity is invalid.".to_string());
+        }
+        let fields = profile
+            .get("fields")
+            .and_then(serde_json::Value::as_array)
+            .filter(|items| items.len() <= 48)
+            .ok_or_else(|| "An advisory profile contains too many authoring fields.".to_string())?;
+        for field_value in fields {
+            let field = field_value
+                .as_object()
+                .ok_or_else(|| "An advisory profile authoring field is invalid.".to_string())?;
+            if !json_text(field, "id", 128)
+                || !field
+                    .get("scope")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|scope| matches!(scope, "bundle" | "concept"))
+                || !json_text(field, "key", 256)
+                || !json_text(field, "label", 512)
+                || field
+                    .get("description")
+                    .and_then(serde_json::Value::as_str)
+                    .is_none_or(|text| text.len() > 512)
+                || !field
+                    .get("valueType")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|kind| {
+                        matches!(kind, "string" | "number" | "boolean" | "array" | "object")
+                    })
+                || !field
+                    .get("requirement")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|label| {
+                        matches!(label, "OKF-required" | "Profile-required" | "Recommended")
+                    })
+                || !json_text_list(field.get("conceptTypes"), 32, 256)
+                || !json_bounded_text_list(field.get("examples"), 4, 1_024)
+            {
+                return Err("An advisory profile authoring field is invalid.".to_string());
+            }
+        }
+        let relationships = profile
+            .get("relationships")
+            .and_then(serde_json::Value::as_array)
+            .filter(|items| items.len() <= 48)
+            .ok_or_else(|| "An advisory profile contains too many relationships.".to_string())?;
+        if relationships.iter().any(|value| {
+            let Some(relationship) = value.as_object() else {
+                return true;
+            };
+            !json_text(relationship, "id", 128)
+                || !json_text(relationship, "label", 512)
+                || !optional_json_text(relationship, "inverse", 128)
+                || relationship
+                    .get("description")
+                    .and_then(serde_json::Value::as_str)
+                    .is_none_or(|text| text.len() > 512)
+        }) {
+            return Err("An advisory profile relationship is invalid.".to_string());
+        }
+    }
+
+    let diagnostics = context
+        .get("diagnostics")
+        .and_then(serde_json::Value::as_array)
+        .filter(|items| items.len() <= 64)
+        .ok_or_else(|| "The advisory profile context contains too many findings.".to_string())?;
+    if diagnostics.iter().any(|value| {
+        let Some(diagnostic) = value.as_object() else {
+            return true;
+        };
+        !json_text(diagnostic, "namespace", 128)
+            || !json_text(diagnostic, "ruleId", 128)
+            || !diagnostic
+                .get("level")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|level| matches!(level, "information" | "recommendation" | "warning"))
+            || !json_text(diagnostic, "file", 1_024)
+            || !optional_json_text(diagnostic, "conceptId", 1_024)
+            || !json_text(diagnostic, "field", 256)
+            || !json_text(diagnostic, "message", 512)
+            || diagnostic.get("basis").and_then(serde_json::Value::as_str) != Some("profile-advice")
+    }) {
+        return Err("An advisory profile finding is invalid.".to_string());
+    }
     Ok(())
 }
 
@@ -4150,6 +4345,85 @@ mod tests {
         assert!(validate_task_context(&mismatched)
             .expect_err("mismatched route should fail")
             .contains("curated capability route"));
+    }
+
+    #[test]
+    fn validates_bounded_advisory_profile_task_context() {
+        let profile_context = serde_json::json!({
+            "schemaVersion": 1,
+            "basis": "advisory-profile",
+            "conformanceBoundary": "Profile advice does not change OKF validation.",
+            "coreRequirements": [{ "key": "type", "requirement": "OKF-required" }],
+            "profiles": [{
+                "namespace": "com.example.knowledge",
+                "version": "1.2.0",
+                "descriptorPath": "profiles/knowledge.json",
+                "status": "active",
+                "message": "Resolved locally.",
+                "title": "Team knowledge",
+                "fields": [{
+                    "id": "owner",
+                    "scope": "concept",
+                    "key": "owner",
+                    "label": "Owner",
+                    "description": "Responsible team.",
+                    "valueType": "string",
+                    "requirement": "Profile-required",
+                    "conceptTypes": ["Guide"],
+                    "examples": ["Docs"]
+                }],
+                "relationships": [{
+                    "id": "supports",
+                    "label": "Supports",
+                    "inverse": "supported-by",
+                    "description": "Provides support."
+                }]
+            }],
+            "diagnostics": [{
+                "namespace": "com.example.knowledge",
+                "ruleId": "owner-present",
+                "level": "recommendation",
+                "file": "guide.md",
+                "conceptId": "guide",
+                "field": "owner",
+                "message": "Name the responsible team.",
+                "basis": "profile-advice"
+            }],
+            "truncated": false
+        });
+        let mut task_context = OkfTaskContextInput {
+            task_id: "okf-audit".to_string(),
+            context_manifest: serde_json::json!({
+                "schemaVersion": 1,
+                "taskId": "okf-audit",
+                "capabilityIds": ["okf-inspect", "okf-audit"],
+                "bundleFingerprint": "okf-revision-1234abcd",
+                "objects": [],
+                "sources": [],
+                "omissions": [],
+                "profileContext": profile_context,
+                "accepted": true
+            }),
+        };
+        validate_task_context(&task_context).expect("valid profile task context");
+
+        task_context.task_id = "okf-research".to_string();
+        task_context.context_manifest["taskId"] = serde_json::json!("okf-research");
+        task_context.context_manifest["capabilityIds"] =
+            serde_json::json!(["okf-inspect", "okf-research"]);
+        assert!(validate_task_context(&task_context)
+            .expect_err("research must reject profile authoring context")
+            .contains("does not accept"));
+
+        task_context.task_id = "okf-audit".to_string();
+        task_context.context_manifest["taskId"] = serde_json::json!("okf-audit");
+        task_context.context_manifest["capabilityIds"] =
+            serde_json::json!(["okf-inspect", "okf-audit"]);
+        task_context.context_manifest["profileContext"]["coreRequirements"][0]["requirement"] =
+            serde_json::json!("Profile-required");
+        assert!(validate_task_context(&task_context)
+            .expect_err("profile must not redefine core")
+            .contains("cannot redefine"));
     }
 
     #[test]

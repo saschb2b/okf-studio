@@ -24,6 +24,10 @@ import { TokenViz } from "@/features/viz/components/TokenViz.tsx";
 import { ExamplePreview } from "@/features/bundle/components/ExamplePreview.tsx";
 import { PeekCard } from "@/features/reader/components/PeekCard.tsx";
 import type { PeekTarget } from "@/features/reader/components/PeekCard.tsx";
+import {
+  MetadataInspector,
+  ODSF_METADATA_KEYS,
+} from "@/features/reader/components/MetadataInspector.tsx";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough
@@ -845,6 +849,21 @@ export function Reader() {
             </div>
           </dl>
         </RailModule>
+
+        {bundle ? (
+          <MetadataInspector
+            title="Bundle metadata"
+            source="index.md"
+            values={bundle.extra}
+          />
+        ) : null}
+
+        <MetadataInspector
+          title="Concept metadata"
+          source={`${c.id}.md`}
+          values={c.extra}
+          excludeKeys={ODSF_METADATA_KEYS}
+        />
 
         {c.brokenLinks.length > 0 && (
           <RailModule title="Broken links" count={c.brokenLinks.length}>

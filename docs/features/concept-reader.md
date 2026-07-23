@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-18T06:30:00Z
+timestamp: 2026-07-23T00:58:00Z
 ---
 
 # What it does
@@ -56,6 +56,7 @@ Stacked, titled modules — quiet navigation context kept beside the prose inste
 - **Links to** — the outbound references.
 - **Related by tag** — other concepts sharing this one's tags (synthesized from frontmatter), a relationship dimension beyond explicit links.
 - **Details** — type, Concept ID, **Updated** timestamp, and the `resource` link.
+- **Bundle and concept metadata** — the bounded, source-labelled [Metadata Inspector](metadata-inspector.md). ODSF-owned fields stay in their dedicated rendering rather than appearing twice.
 - **Broken links** — unresolved targets, de-emphasized, surfaced (never hidden) per the [tolerant-consumer principle](../product/principles.md) and [Validation](validation.md).
 
 Every relationship row is clickable and drives the **single shared selection**, so the [graph](graph-view.md), reader, and [sidebar](navigation.md) stay in sync — the rail turns the reader into a second navigator alongside the graph.

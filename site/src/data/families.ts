@@ -90,7 +90,7 @@ export const families: Family[] = [
           },
           {
             title: "Links match the reader",
-            body: "The Compatibility Clinic groups parser, link, index, and extension findings by file and rule. Producer-defined root and concept metadata remains intact and available to agent inventory without becoming an OKF requirement.",
+            body: "Producer-defined root and concept metadata remains intact. Inspect nested fields with their source file, bounded depth, and copy actions; recognized design-system fields keep their richer renderer.",
           },
           {
             title: "Design-system aware",

@@ -14,6 +14,7 @@ import { renderMarkdown } from "@/shared/render/markdown.ts";
 import { buildTokenIndex } from "@/shared/odsf.ts";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
 import { classifyBodyLinks, classifyLink } from "@/features/reader/components/Reader.tsx";
+import { MetadataInspector } from "@/features/reader/components/MetadataInspector.tsx";
 import type { IndexEntry, IndexNode } from "@/shared/types.ts";
 import "./FolderHome.css";
 
@@ -106,6 +107,16 @@ export function FolderHome({ node }: { node: IndexNode }) {
           dangerouslySetInnerHTML={{ __html: introHtml }}
         />
       )}
+
+      {node.dir === "" && bundle ? (
+        <div className="fh-metadata">
+          <MetadataInspector
+            title="Bundle metadata"
+            source="index.md"
+            values={bundle.extra}
+          />
+        </div>
+      ) : null}
 
       {node.sections.length > 0 ? (
         node.sections.map((sec, si) => (

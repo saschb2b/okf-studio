@@ -399,6 +399,7 @@ mod tests {
             let directory = std::env::temp_dir().join(format!("okf-clinic-stage-{nonce}"));
             let bundle = directory.join("bundle");
             fs::create_dir_all(bundle.join("nested")).expect("fixture directories");
+            let bundle = bundle.canonicalize().expect("canonical bundle root");
             fs::write(bundle.join("index.md"), "# Fixture\n").expect("index");
             fs::write(
                 bundle.join("target.md"),

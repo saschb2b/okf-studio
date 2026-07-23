@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Home
 description: Resume active concepts, review authored change activity, handle deterministic attention items, and return to repository work.
 tags: [feature, home, activity, maintenance, git, navigation]
-timestamp: 2026-07-23T20:25:48+02:00
+timestamp: 2026-07-23T21:24:41+02:00
 ---
 
 # User job
@@ -34,7 +34,7 @@ The maintenance queue contains only deterministic findings with a direct next st
 - Concepts with broken links open at the affected concept.
 - Unlinked concepts open individually, with a route to the graph when the bounded preview omits more.
 
-The queue is not a second conformance summary. [Bundle details](metadata-inspector.md) owns the at-a-glance status; Home translates current findings into work. [Knowledge Health](knowledge-health.md) remains the deeper advisory analysis and does not silently add heuristic items here.
+The queue is not a second conformance summary. [Bundle details](metadata-inspector.md) owns the at-a-glance status; Home translates current findings into work. Optional external sources, relationship exchange, language conventions, and companion resources stay in [Bundle Connections](interoperability-lab.md) and the active concept reader. Home does not run that full filesystem-backed report while opening. [Knowledge Health](knowledge-health.md) remains the deeper advisory analysis and does not silently add heuristic items here.
 
 ## Work in progress
 
@@ -57,6 +57,6 @@ The shape adapts current Atlassian patterns without copying their collaboration 
 
 # States and accessibility
 
-Wide layouts use one activity column and one aligned work stack. Narrow layouts put resumable and urgent work before the activity history. Lists keep visible focus rings, native buttons or links, text labels beside every colored mark, bounded overflow, and explicit no-activity, nothing-to-resume, no-maintenance, clean-tree, loading, and unavailable behavior.
+Wide layouts use one activity column and one aligned work stack. Narrow layouts give Home the workspace instead of preserving a sidebar column that would squeeze it, while retaining the sidebar preference for the next concept or wider window. Resumable and urgent work then appears before the activity history. Lists keep visible focus rings, native buttons or links, text labels beside every colored mark, bounded overflow, and explicit no-activity, nothing-to-resume, no-maintenance, clean-tree, loading, and unavailable behavior.
 
 Related behavior: [Browsing Layout](../ux/browsing-layout.md), [Command Palette](command-palette.md), [Live Reload](live-reload.md), and [Navigation](navigation.md).

@@ -9,7 +9,7 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Access Hints](access-hints.md) - Carry audience, sensitivity, and handling guidance through reading, context, and staged review.
 * [Recipient Projections](recipient-projections.md) - Choose knowledge, review what will travel, and save a separate shareable bundle.
 * [Erasure Audit](erasure-audit.md) - Block a projection when excluded identities or reviewed sensitive terms remain in the output.
-* [Interoperability Lab](interoperability-lab.md) - Exercise optional multilingual, external-reference, JSON-LD, and sidecar conventions without making them core OKF.
+* [Bundle Connections](interoperability-lab.md) - Resolve external knowledge, exchange relationships, and use optional language and resource conventions where each task belongs.
 * [Create Bundle](create-bundle.md) - Start a new conformant bundle from a form, no agent involved.
 * [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.
 * [Bundle Home](bundle-home.md) - Resume active concepts, review authored activity, handle deterministic attention items, and return to repository work.

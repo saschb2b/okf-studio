@@ -52,7 +52,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Access Hints](features/access-hints.md) - Show audience, sensitivity, and handling guidance without treating metadata as authorization.
 * [Recipient Projections](features/recipient-projections.md) - Choose knowledge, review what will travel, and save a separate shareable bundle.
 * [Erasure Audit](features/erasure-audit.md) - Block a projection when declared excluded material remains in its generated output.
-* [Interoperability Lab](features/interoperability-lab.md) - Exercise optional multilingual, external-reference, JSON-LD, and sidecar conventions without making them core OKF.
+* [Bundle Connections](features/interoperability-lab.md) - Resolve external knowledge, exchange relationships, and use optional language and resource conventions where each task belongs.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Bundle Home](features/bundle-home.md) - Resume active concepts, review authored activity, handle deterministic attention items, and return to repository work.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.

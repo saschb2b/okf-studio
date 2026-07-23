@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Frontend Architecture
 description: How the React + TypeScript frontend is organized as a thin client over the Rust command and event surface.
 tags: [architecture, decision, frontend, state, react, typescript]
-timestamp: 2026-07-23T20:25:48+02:00
+timestamp: 2026-07-23T21:24:41+02:00
 ---
 
 # Decision
@@ -33,8 +33,8 @@ The frontend is organized **domain-first**: `src/features/<domain>/` is the top-
 - **`agent/`** — the ACP client: connection, catalog, install, threads, local models, custom profiles, plus the agent-panel components and the staged-write review previews.
 - **`git/`** — repository snapshot and diff stores, the Git panel, its focus contract, and the dedicated read-only diff workspace.
 - **`viz/`** — visualization: the graph engine (`graph/` — backbone, community, force simulation, render model), the chart helpers (hierarchy, labels, Nivo theme), and every graph/chart component.
-- **`reader/`** — the concept reader, reader preferences, lineage panel, and peek card, plus lineage derivation.
-- **`bundle/`** — the working Bundle Home, bundle details and sharing, bundle browsing, and the open-from-URL flow (with its network-free `remoteSource` URL parser).
+- **`reader/`** — the concept reader, reader preferences, contextual language and resource controls, lineage panel, and peek card, plus lineage derivation.
+- **`bundle/`** — the working Bundle Home, bundle details, sharing, and the demand-loaded Connections workspace, plus bundle browsing and the open-from-URL flow (with its network-free `remoteSource` URL parser).
 - **`navigation/`** — the sidebar shell and its index tree, tag browser, and type filters.
 - **`shell/`** — the window frame and global overlays (top bar, status bar, activity bar, tabs, command palette, settings, validation/log panels).
 

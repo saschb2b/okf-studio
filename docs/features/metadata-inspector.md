@@ -3,12 +3,12 @@ type: Feature
 title: Metadata Inspector
 description: Inspect producer-defined bundle and concept fields safely without requiring a custom renderer.
 tags: [feature, metadata, extensions, reader, portability]
-timestamp: 2026-07-23T20:15:52+02:00
+timestamp: 2026-07-23T21:24:41+02:00
 ---
 
 # What it does
 
-The Metadata Inspector renders preserved producer fields from the bundle root and the active concept. Bundle metadata has its own view in **Bundle details**, opened from the Info action beside Share in the persistent [title bar](../ux/browsing-layout.md). The dialog keeps bundle identity, format, concept count, [OKF conformance](validation.md), root metadata, [ignore rules](ignore-rules.md), and [advisory profiles](advisory-profiles.md) together without turning the root overview into an administration page. Concept metadata stays in the Concept Reader context rail with its bundle-relative Markdown file as the source.
+The Metadata Inspector renders preserved producer fields from the bundle root and the active concept. Bundle metadata has its own view in **Bundle details**, opened from the Info action beside Share in the persistent [title bar](../ux/browsing-layout.md). The dialog keeps bundle identity, format, concept count, [OKF conformance](validation.md), root metadata, [ignore rules](ignore-rules.md), and [advisory profiles](advisory-profiles.md) together without turning Bundle Home into an administration page. Its Connections view is a compact summary that opens the dedicated [Bundle Connections](interoperability-lab.md) workspace instead of fitting operational controls into the About dialog. Concept metadata stays in the Concept Reader context rail with its bundle-relative Markdown file as the source.
 
 Keys, scalar values, objects, and arrays render as React text. Metadata never becomes HTML. Each scalar and top-level branch has a copy action; copied objects use the same bounded representation shown by the inspector. The source label and dotted path make a copied or reported value traceable to its authored location.
 

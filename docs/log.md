@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Replaced the root-level Interoperability Lab with [Bundle Connections](features/interoperability-lab.md). Bundle details now gives a compact summary and opens a dedicated scrollable workspace for external sources, relationship exchange, and diagnostics. Language switching and companion resources moved to the active [Concept Reader](features/concept-reader.md). Bundle Home and ordinary folder or concept routes no longer run the filesystem-backed report, so the working start page opens from already-parsed bundle data.
+
 * **Update**: Replaced the static Bundle Overview inventory with [Bundle Home](features/bundle-home.md). Home now leads with the authored `log.md` activity stream, resumes concepts from the current session or newest timestamps, turns validation, broken links, and unlinked concepts into a direct maintenance queue, and shows current Git work when available. Identity, counts, format, and conformance remain in Bundle details; type composition, hubs, and topology remain in filters and the graph.
 
 * **Update**: Moved **Bundle details** beside **Create shareable bundle** in the persistent title bar and reduced the status bar to workspace-panel controls. The new Info action carries an accessible pass, warning, or error mark. Its dialog now summarizes bundle identity, format, concept count, and [OKF conformance](features/validation.md), links to the full report, and separates metadata, ignore rules, and advisory profiles into three focused views.

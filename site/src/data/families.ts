@@ -106,15 +106,15 @@ export const families: Family[] = [
           },
           {
             title: "Bundle details stay together",
-            body: "An Info action beside Share shows bundle conformance at a glance, then opens identity, format, size, metadata, ignore rules, and local profiles in focused views. The overview stays about the knowledge, while the footer stays quiet.",
+            body: "An Info action beside Share shows bundle conformance at a glance, then opens identity, format, metadata, connections, ignore rules, and local profiles in focused views. Connection work opens in its own workspace, while the footer stays quiet.",
           },
           {
             title: "Design-system aware",
             body: "ODSF bundles render their design tokens and live HTML/CSS examples right in the reader.",
           },
           {
-            title: "Interoperability you can inspect",
-            body: "A bounded lab inventories language variants, explicit external references, JSON-LD relationship exchange, and digest-checked sidecars without making them required OKF fields. It never fetches on open or executes unknown media.",
+            title: "Connections where you use them",
+            body: "Resolve external bundles and exchange portable JSON-LD relationships in a dedicated workspace. Language switching and digest-checked resources stay with the active concept. The full report loads only when one of those surfaces needs it.",
           },
         ],
       },
@@ -127,7 +127,7 @@ export const families: Family[] = [
       { label: "Evidence and provenance", href: doc("features/evidence-and-provenance.md"), external: true },
       { label: "Ignore rules", href: doc("features/ignore-rules.md"), external: true },
       { label: "Visualization views", href: doc("features/viz-views.md"), external: true },
-      { label: "Interoperability Lab", href: doc("features/interoperability-lab.md"), external: true },
+      { label: "Bundle Connections", href: doc("features/interoperability-lab.md"), external: true },
     ],
     workflows: ["understand", "ask"],
   },

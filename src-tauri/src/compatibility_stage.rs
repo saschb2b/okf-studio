@@ -7,10 +7,10 @@
 use crate::agent_stage::{
     AgentCheckpointRestoreInfo, AgentStageMode, AgentStagedApplyInfo, AgentStagedChangesInfo,
     AgentStagedFileDiff, AgentStagedValidationInfo, AgentWriteGrantAuthority, AgentWriteGrantMode,
-    SessionStages, MAX_STAGED_FILE_BYTES,
+    SessionStages, MAX_STAGED_FILES, MAX_STAGED_FILE_BYTES, MAX_STAGED_TOTAL_BYTES,
 };
 use okf_core::compatibility;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -93,6 +93,37 @@ impl CompatibilityStageState {
         })
     }
 
+    pub fn stage_concept_move(
+        &self,
+        bundle_root: &Path,
+        source_id: &str,
+        destination_path: &str,
+    ) -> Result<ConceptMoveReview, String> {
+        let bundle = okf_core::read_bundle(bundle_root);
+        let markdown = read_move_markdown(bundle_root, &bundle)?;
+        let plan = okf_core::maintenance::plan_concept_move(
+            &bundle,
+            &markdown,
+            source_id,
+            destination_path,
+        )?;
+        if plan.changes.len() > MAX_STAGED_FILES {
+            return Err(format!(
+                "This move affects {} files; reviewed maintenance is limited to {MAX_STAGED_FILES}.",
+                plan.changes.len()
+            ));
+        }
+        let writes = plan
+            .changes
+            .iter()
+            .map(|change| (bundle_root.join(&change.path), change.content.clone()))
+            .collect();
+        let session_id = self.session_for(bundle_root)?;
+        self.inner.stages.discard(&session_id)?;
+        let staged = self.inner.stages.stage_writes(&session_id, writes)?;
+        Ok(ConceptMoveReview { plan, staged })
+    }
+
     pub fn select_hunk(
         &self,
         bundle_root: &Path,
@@ -105,6 +136,11 @@ impl CompatibilityStageState {
         self.inner
             .stages
             .set_hunk_selection(&session_id, path, revision, hunk_index, selected)
+    }
+
+    pub fn diff(&self, bundle_root: &Path, path: &str) -> Result<AgentStagedFileDiff, String> {
+        let session_id = self.existing_session(bundle_root)?;
+        self.inner.stages.staged_diff(&session_id, path)
     }
 
     pub fn validate(&self, bundle_root: &Path) -> Result<AgentStagedValidationInfo, String> {
@@ -177,6 +213,74 @@ impl CompatibilityStageState {
 pub struct CompatibilityReview {
     pub staged: AgentStagedChangesInfo,
     pub diff: AgentStagedFileDiff,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConceptMoveReview {
+    pub plan: okf_core::maintenance::ConceptMovePlan,
+    pub staged: AgentStagedChangesInfo,
+}
+
+fn read_move_markdown(
+    bundle_root: &Path,
+    bundle: &okf_core::Bundle,
+) -> Result<BTreeMap<String, String>, String> {
+    let mut paths = bundle
+        .concepts
+        .iter()
+        .map(|concept| format!("{}.md", concept.id))
+        .collect::<BTreeSet<_>>();
+    paths.extend(
+        bundle
+            .indexes
+            .iter()
+            .filter(|index| !index.synthesized)
+            .map(|index| {
+                if index.dir.is_empty() {
+                    "index.md".to_string()
+                } else {
+                    format!("{}/index.md", index.dir)
+                }
+            }),
+    );
+    if bundle_root.join("log.md").is_file() {
+        paths.insert("log.md".to_string());
+    }
+    if paths.len() > 4_096 {
+        return Err("Move planning is limited to 4,096 Markdown files.".to_string());
+    }
+
+    let mut total = 0usize;
+    let mut markdown = BTreeMap::new();
+    for relative in paths {
+        let path = bundle_root.join(&relative);
+        let metadata = path
+            .symlink_metadata()
+            .map_err(|_| format!("Move planning could not inspect {relative}."))?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err(format!(
+                "Move planning will not read the non-regular file {relative}."
+            ));
+        }
+        let size = usize::try_from(metadata.len())
+            .map_err(|_| format!("{relative} is too large for move review."))?;
+        if size > MAX_STAGED_FILE_BYTES {
+            return Err(format!(
+                "{relative} exceeds the 1 MB move-review file limit."
+            ));
+        }
+        total = total
+            .checked_add(size)
+            .ok_or_else(|| "Move planning exceeded its text budget.".to_string())?;
+        if total > MAX_STAGED_TOTAL_BYTES {
+            return Err("Move planning is limited to 8 MB of Markdown.".to_string());
+        }
+        let content = fs::read_to_string(path)
+            .map_err(|_| format!("{relative} is not readable UTF-8 Markdown."))?;
+        markdown.insert(relative, content);
+    }
+    Ok(markdown)
 }
 
 #[cfg(test)]
@@ -322,5 +426,79 @@ mod tests {
             .expect_err("stale base");
         assert!(!error.is_empty());
         assert!(fixture.source().contains("Externally changed."));
+    }
+
+    #[test]
+    fn stages_validates_applies_and_restores_a_concept_move() {
+        let fixture = Fixture::new();
+        fs::write(
+            fixture.bundle.join("target.md"),
+            "---\ntype: Reference\nstable_id: reference-target\n---\n\nTarget.\n",
+        )
+        .expect("stable source");
+        fs::write(
+            fixture.bundle.join("index.md"),
+            "# Fixture\n\n- [Target](target.md)\n",
+        )
+        .expect("index link");
+        fs::write(
+            fixture.bundle.join("nested/source.md"),
+            "---\ntype: Guide\n---\n\n[Target](../target.md)\n",
+        )
+        .expect("inbound link");
+        let state = fixture.state();
+
+        let review = state
+            .stage_concept_move(&fixture.bundle, "target", "archive/Target guide.md")
+            .expect("stage move");
+        assert_eq!(review.plan.stable_id.as_deref(), Some("reference-target"));
+        assert_eq!(review.plan.affected_links, 2);
+        assert!(!fixture.bundle.join("archive/Target guide.md").exists());
+        assert!(
+            state.validate(&fixture.bundle).is_err(),
+            "review is required"
+        );
+
+        for file in &review.staged.files {
+            if file.kind != "modify" {
+                continue;
+            }
+            let mut diff = state
+                .inner
+                .stages
+                .staged_diff(&review.staged.session_id, &file.path)
+                .expect("move diff");
+            for hunk in diff.hunks.clone() {
+                diff = state
+                    .select_hunk(
+                        &fixture.bundle,
+                        &file.path,
+                        &diff.revision,
+                        hunk.index,
+                        true,
+                    )
+                    .expect("review move hunk");
+            }
+        }
+        let validation = state.validate(&fixture.bundle).expect("validate move");
+        assert_eq!(validation.errors, 0);
+        let applied = state
+            .apply(&fixture.bundle, &validation.revision)
+            .expect("apply move");
+        assert_eq!(applied.applied_files, 4);
+        assert!(fs::read_to_string(fixture.bundle.join("target.md"))
+            .expect("redirect")
+            .contains("type: Redirect"));
+        assert!(fixture.bundle.join("archive/Target guide.md").is_file());
+        assert!(fs::read_to_string(fixture.bundle.join("nested/source.md"))
+            .expect("updated inbound link")
+            .contains("../archive/Target%20guide.md"));
+
+        let restored = state.restore(&fixture.bundle).expect("restore move");
+        assert_eq!(restored.restored_files, 4);
+        assert!(!fixture.bundle.join("archive/Target guide.md").exists());
+        assert!(fs::read_to_string(fixture.bundle.join("target.md"))
+            .expect("restored source")
+            .contains("reference-target"));
     }
 }

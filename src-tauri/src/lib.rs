@@ -613,6 +613,109 @@ async fn restore_compatibility_normalization(
 }
 
 #[tauri::command]
+async fn stage_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    source_id: String,
+    destination_path: String,
+) -> Result<compatibility_stage::ConceptMoveReview, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.stage_concept_move(&root, &source_id, &destination_path)
+    })
+    .await
+    .map_err(|_| "Studio could not stage the concept move.".to_string())?
+}
+
+#[tauri::command]
+async fn concept_move_diff(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    path: String,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.diff(&root, &path))
+        .await
+        .map_err(|_| "Studio could not open the concept move diff.".to_string())?
+}
+
+#[tauri::command]
+async fn select_concept_move_hunk(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    path: String,
+    revision: String,
+    hunk_index: usize,
+    selected: bool,
+) -> Result<agent_stage::AgentStagedFileDiff, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        stages.select_hunk(&root, &path, &revision, hunk_index, selected)
+    })
+    .await
+    .map_err(|_| "Studio could not update the concept move review.".to_string())?
+}
+
+#[tauri::command]
+async fn validate_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedValidationInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.validate(&root))
+        .await
+        .map_err(|_| "Studio could not validate the concept move.".to_string())?
+}
+
+#[tauri::command]
+async fn apply_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+    revision: String,
+) -> Result<agent_stage::AgentStagedApplyInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.apply(&root, &revision))
+        .await
+        .map_err(|_| "Studio could not apply the concept move.".to_string())?
+}
+
+#[tauri::command]
+async fn discard_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentStagedChangesInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.discard(&root))
+        .await
+        .map_err(|_| "Studio could not discard the concept move.".to_string())?
+}
+
+#[tauri::command]
+async fn restore_concept_move(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    stages: State<'_, compatibility_stage::CompatibilityStageState>,
+    bundle_root: String,
+) -> Result<agent_stage::AgentCheckpointRestoreInfo, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let stages = stages.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || stages.restore(&root))
+        .await
+        .map_err(|_| "Studio could not restore the concept move.".to_string())?
+}
+
+#[tauri::command]
 async fn retrieve_okf_context(
     app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
@@ -1580,6 +1683,13 @@ pub fn run() {
             apply_compatibility_normalization,
             discard_compatibility_normalization,
             restore_compatibility_normalization,
+            stage_concept_move,
+            concept_move_diff,
+            select_concept_move_hunk,
+            validate_concept_move,
+            apply_concept_move,
+            discard_concept_move,
+            restore_concept_move,
             git_repository_snapshot,
             git_repository_history,
             git_repository_diff,

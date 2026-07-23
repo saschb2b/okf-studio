@@ -13,6 +13,7 @@ pub mod health;
 pub mod index_tree;
 pub mod links;
 pub mod logfile;
+pub mod maintenance;
 pub mod model;
 pub mod parse;
 pub mod profile;

@@ -3,7 +3,7 @@ type: Feature
 title: Recipient Projections
 description: Choose knowledge, review what will travel, and save a separate shareable bundle without changing the source.
 tags: [feature, privacy, sharing, access, review]
-timestamp: 2026-07-23T23:45:00Z
+timestamp: 2026-07-23T17:29:00Z
 audience: [maintainers, knowledge-owners]
 sensitivity: public
 ---
@@ -20,7 +20,9 @@ The source bundle remains unchanged. The output is a normal OKF bundle that can 
 
 # Choose content
 
-The root folder home opens **Create shareable bundle**. The first screen asks who the copy is for and puts concept selection at the center. The recipient name is written into the new bundle and becomes its portable folder name.
+**Create shareable bundle** is a bundle-level action, so it stays beside the active bundle’s name in the persistent title bar instead of appearing inside one folder or concept. Its compact share icon opens the full workflow from the overview, any topic, and every workspace layout. The same action is available in the command launcher for keyboard-led work.
+
+The first screen asks who the copy is for and puts concept selection at the center. The recipient name is written into the new bundle and becomes its portable folder name.
 
 Selected concepts without a recognized sensitivity label are eligible by default because concept selection is already explicit and access metadata is advisory. The review calls out how many unlabeled concepts would travel. Known sensitivity limits still apply.
 
@@ -34,8 +36,6 @@ Selected concepts without a recognized sensitivity label are eligible by default
 An empty audience filter means no audience filtering. Entering one or more audiences narrows eligible concepts to matching authored labels. This prevents an optional blank field from silently excluding selected content.
 
 # Review the new bundle
-
-Planning performs no filesystem write. Rust computes:
 
 Planning performs no filesystem write. Rust computes:
 

@@ -25,6 +25,9 @@ export const BundleOpen: Story = {
     await waitFor(() =>
       expect(canvas.getByRole("button", { name: /switch bundle/i })).toBeVisible(),
     );
+    await expect(
+      canvas.getByRole("button", { name: /create shareable bundle/i }),
+    ).toBeVisible();
   },
 };
 

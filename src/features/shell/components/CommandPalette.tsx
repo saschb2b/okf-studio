@@ -169,6 +169,13 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:share-bundle",
+      label: "Create shareable bundle",
+      hint: "Action",
+      run: () => actions.setProjectionOpen(true),
+    },
+    {
+      kind: "action",
       id: "act:rescan",
       label: "Re-scan folder",
       hint: "Action",

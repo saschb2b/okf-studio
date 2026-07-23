@@ -7,7 +7,7 @@
 
 import { useRef } from "react";
 import type { CSSProperties, MouseEvent, ReactElement } from "react";
-import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Search, Share2 } from "lucide-react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "@/shared/store.tsx";
@@ -125,6 +125,28 @@ export function TopBar() {
       >
         <div className="topbar-left">
           <BundleSwitcher />
+          {state.bundle && (
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <Toolbar.Button
+                    className="btn ghost icon topbar-bundle-action"
+                    aria-label="Create shareable bundle"
+                    onClick={() => actions.setProjectionOpen(true)}
+                  >
+                    <Share2 size={16} aria-hidden="true" />
+                  </Toolbar.Button>
+                }
+              />
+              <Tooltip.Portal>
+                <Tooltip.Positioner className="ui-tooltip-positioner" sideOffset={6}>
+                  <Tooltip.Popup className="ui-tooltip">
+                    Create shareable bundle
+                  </Tooltip.Popup>
+                </Tooltip.Positioner>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          )}
         </div>
 
         {/* Window-centered command center: back/forward immediately left of the

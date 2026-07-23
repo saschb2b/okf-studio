@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Moved **Create shareable bundle** from the root folder home into persistent bundle chrome. A compact share action now sits beside the active bundle name and remains available while reading any topic in graph, split, or reader layout. The same action is available through the command launcher. The dialog is mounted by the app shell, so its lifetime no longer depends on one reader surface.
+
 * **Update**: Reworked [Recipient Projections](features/recipient-projections.md) around the user’s sharing task. **Create shareable bundle** now separates content choice from review and save, moves advisory filters and exact redactions into optional safeguards, treats a blank audience filter as no filter, includes explicitly selected unlabeled concepts by default with a visible review notice, and replaces filesystem “parent” language with a plain save-location choice. Source fingerprints, stale-plan rejection, validation, guarded replacement, and the erasure audit remain unchanged.
 
 * **Creation**: Added the [Interoperability Lab](features/interoperability-lab.md) and four pinned research records. Studio now inventories three multilingual conventions without selecting one; reports explicit external bundle sources, contained caches, revision mismatches, and namespaced identity without fetching on open; round-trips the portable typed-relationship subset through JSON-LD with a complete loss preview; and inventories contained, size- and digest-checked sidecars under safe-preview or download-only policy. Explicit JSON-LD and sidecar exports use native destinations outside the open bundle. All four remain experiments outside OKF validation and retain their adoption gaps.

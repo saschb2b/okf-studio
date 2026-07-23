@@ -74,6 +74,35 @@ describe("OKF Studio workspace features", () => {
     expect(container.querySelector(".pane.reader")).not.toBeNull();
   });
 
+  it("keeps bundle sharing available while reading any concept", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+
+    const sidebar = container.querySelector<HTMLElement>(".sidebar")!;
+    await user.click(within(sidebar).getByRole("treeitem", { name: /Overview/i }));
+    await user.click(screen.getByRole("radio", { name: /reader only/i }));
+
+    const share = screen.getByRole("button", { name: "Create shareable bundle" });
+    expect(share).toBeVisible();
+    await user.click(share);
+    expect(
+      await screen.findByRole("dialog", { name: "Create a shareable bundle" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Close shareable bundle dialog" }),
+    );
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    await fillText(user, await screen.findByRole("combobox"), "share bundle");
+    await user.click(
+      await screen.findByRole("option", { name: /create shareable bundle/i }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Create a shareable bundle" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows relationships and the outline in the reader rail", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();

@@ -17,6 +17,7 @@ import { Settings } from "@/features/shell/components/Settings.tsx";
 import { EmptyState } from "@/features/shell/components/EmptyState.tsx";
 import { OpenRemoteDialog } from "@/features/bundle/components/OpenRemoteDialog.tsx";
 import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDialog.tsx";
+import { RecipientProjectionDialog } from "@/features/bundle/components/RecipientProjectionDialog.tsx";
 import { ExternalEntryDialog } from "@/features/bundle/components/ExternalEntryDialog.tsx";
 import { OverviewView } from "@/features/viz/components/OverviewView.tsx";
 import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
@@ -34,7 +35,7 @@ function subscribeWindowResize(onChange: () => void): () => void {
 }
 
 export function App() {
-  const { state } = useApp();
+  const { state, actions } = useApp();
   const gitDiff = useGitDiff();
   useGlobalKeys();
   const windowWidth = useSyncExternalStore(
@@ -106,6 +107,11 @@ export function App() {
           <ValidationPanel />
           <LineagePanel />
           <CommandPalette />
+          <RecipientProjectionDialog
+            open={state.projectionOpen}
+            bundle={state.bundle}
+            onOpenChange={(open) => actions.setProjectionOpen(open)}
+          />
         </>
       )}
       {/* Settings, the shortcuts overlay, and Open-from-URL work without a

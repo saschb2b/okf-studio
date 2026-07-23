@@ -31,6 +31,9 @@
   min-width: 0;
   justify-self: start;
 }
+.topbar-bundle-action {
+  flex: 0 0 auto;
+}
 .topbar-center {
   display: flex;
   align-items: center;

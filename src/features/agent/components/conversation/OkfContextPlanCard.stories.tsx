@@ -139,6 +139,7 @@ export const ProfileAware: Story = {
           },
         }],
         diagnostics: [],
+        edges: [],
         truncated: false,
       },
     }),

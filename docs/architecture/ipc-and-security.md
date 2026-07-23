@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-23T14:24:00Z
+timestamp: 2026-07-23T14:45:00Z
 ---
 
 # Command & event surface
@@ -15,7 +15,7 @@ The frontend never touches the filesystem directly; it calls a small set of [Rus
 | `pick_bundle_folder()` / `revoke_bundle_grant(folder)` | Open the Rust-owned native folder dialog and register its canonical result, or remove one exact remembered scope. The frontend cannot add a grant. |
 | `scan_bundles(folder, max_depth)` / `read_bundle(root)` | Require an exact Rust folder grant, register the roots detected below it for this run, then parse only an exact detected root into a full [`Bundle`](data-model.md). |
 | `okf_compatibility_report(bundle_root)` / `export_compatibility_diagnostic(suggested_name, payload)` | Analyze one exact granted bundle off the UI thread, then optionally save a bounded JSON report through a user-chosen native destination. The report contains relative files and rules, not the absolute root, concept bodies, or frontmatter values. |
-| `okf_profile_report(bundle_root)` | Resolve exact-version [advisory profiles](../features/advisory-profiles.md) for one exact granted bundle off the UI thread. Descriptors are bounded JSON files whose canonical paths remain inside that bundle; the command performs no registry lookup, network request, code execution, or write. |
+| `okf_profile_report(bundle_root)` | Resolve exact-version [advisory profiles](../features/advisory-profiles.md) and their bounded typed-relationship annotations for one exact granted bundle off the UI thread. Descriptors are bounded JSON files whose canonical paths remain inside that bundle; the command performs no registry lookup, network request, code execution, or write. |
 | `stage_compatibility_normalization(...)` / `select_compatibility_hunk(...)` / `validate_compatibility_normalization(...)` / `apply_compatibility_normalization(...)` / `discard_compatibility_normalization(...)` / `restore_compatibility_normalization(...)` | Authorize the exact bundle on every call. Rust regenerates the named live finding instead of accepting replacement content from the frontend, stages one bounded complete file in memory, requires review and isolated validation, applies the exact revision atomically, and retains one conditional restore checkpoint. |
 | `stage_concept_move(...)` / `concept_move_diff(...)` / `select_concept_move_hunk(...)` / `validate_concept_move(...)` / `apply_concept_move(...)` / `discard_concept_move(...)` / `restore_concept_move(...)` | Plan a [safe concept move](../features/safe-concept-move.md) from one exact granted bundle, then route every destination, redirect, inbound-link, and index edit through the shared reviewed-write transaction. Rust derives all replacement content from bounded live Markdown, requires every diff hunk to be explicitly kept, validates the isolated result, applies only its exact revision atomically, and retains one guarded restore checkpoint. |
 | `git_repository_snapshot(bundle_root)` / `git_repository_history(bundle_root, skip, limit)` / `git_repository_diff(bundle_root, path, staged, commit)` | Discover only an enclosing repository inside the persisted folder grant, then return bounded status, history, or unified-diff DTOs without absolute paths. |

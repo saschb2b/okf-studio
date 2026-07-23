@@ -3371,6 +3371,27 @@ function mockProfileReport(): ProfileReport {
       field: "owner",
       message: "Name the team responsible for this concept.",
     }],
+    edges: [{
+      sourceId: "product/overview",
+      targetId: "features/graph-view",
+      namespace: "com.example.knowledge",
+      type: "supports",
+      label: "Supports",
+      inverse: "supported-by",
+      recognized: true,
+      targetExists: true,
+      portableLink: true,
+    }, {
+      sourceId: "product/overview",
+      targetId: "reference/glossary",
+      namespace: "com.example.knowledge",
+      type: "producer-relation",
+      label: "producer-relation",
+      inverse: null,
+      recognized: false,
+      targetExists: true,
+      portableLink: true,
+    }],
     truncated: false,
   };
 }

@@ -172,10 +172,23 @@ export interface ProfileDiagnostic {
   message: string;
 }
 
+export interface ProfileRelationshipEdge {
+  sourceId: string;
+  targetId: string;
+  namespace: string;
+  type: string;
+  label: string;
+  inverse: string | null;
+  recognized: boolean;
+  targetExists: boolean;
+  portableLink: boolean;
+}
+
 export interface ProfileReport {
   schemaVersion: 1;
   profiles: ProfileResolution[];
   diagnostics: ProfileDiagnostic[];
+  edges: ProfileRelationshipEdge[];
   truncated: boolean;
 }
 

@@ -163,6 +163,7 @@ describe("agent thread metadata", () => {
           extra: {},
         }],
         diagnostics: [],
+        edges: [],
         truncated: false,
       },
     }));

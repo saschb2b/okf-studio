@@ -120,6 +120,7 @@ describe("OKF task context", () => {
         },
       }],
       diagnostics: [],
+      edges: [],
       truncated: false,
     };
     const input = {

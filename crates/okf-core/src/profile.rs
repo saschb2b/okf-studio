@@ -18,6 +18,8 @@ const MAX_FIELDS: usize = 128;
 const MAX_RELATIONSHIPS: usize = 128;
 const MAX_CHECKS: usize = 256;
 const MAX_STRING_CHARS: usize = 512;
+const MAX_TYPED_RELATIONSHIPS: usize = 4096;
+const MAX_TYPED_RELATIONSHIPS_PER_CONCEPT: usize = 64;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,6 +27,7 @@ pub struct ProfileReport {
     pub schema_version: u8,
     pub profiles: Vec<ProfileResolution>,
     pub diagnostics: Vec<ProfileDiagnostic>,
+    pub edges: Vec<ProfileRelationshipEdge>,
     pub truncated: bool,
 }
 
@@ -122,6 +125,26 @@ pub struct ProfileRelationship {
     pub description: String,
 }
 
+/// One `relationships.<namespace>.<type>` annotation over an ordinary
+/// Markdown link.
+///
+/// An annotation never creates a core OKF edge. `portable_link` records
+/// whether the same source-target connection exists in the concept body.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileRelationshipEdge {
+    pub source_id: String,
+    pub target_id: String,
+    pub namespace: String,
+    #[serde(rename = "type")]
+    pub relationship_type: String,
+    pub label: String,
+    pub inverse: Option<String>,
+    pub recognized: bool,
+    pub target_exists: bool,
+    pub portable_link: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum ProfileCheck {
@@ -175,25 +198,30 @@ pub struct ProfileDiagnostic {
 /// they cannot make a bundle fail core OKF validation.
 pub fn analyze(root: &Path, bundle: &Bundle) -> ProfileReport {
     let Some(declarations) = bundle.extra.get("profiles") else {
+        let (edges, diagnostics, truncated) = evaluate_relationships(&[], bundle);
         return ProfileReport {
             schema_version: 1,
             profiles: Vec::new(),
-            diagnostics: Vec::new(),
-            truncated: false,
+            diagnostics,
+            edges,
+            truncated,
         };
     };
     let Some(declarations) = declarations.as_object() else {
+        let profiles = vec![unavailable(
+            "profiles",
+            None,
+            None,
+            "The root profiles value must be a namespaced map.",
+            BTreeMap::new(),
+        )];
+        let (edges, diagnostics, truncated) = evaluate_relationships(&profiles, bundle);
         return ProfileReport {
             schema_version: 1,
-            profiles: vec![unavailable(
-                "profiles",
-                None,
-                None,
-                "The root profiles value must be a namespaced map.",
-                BTreeMap::new(),
-            )],
-            diagnostics: Vec::new(),
-            truncated: false,
+            profiles,
+            diagnostics,
+            edges,
+            truncated,
         };
     };
 
@@ -212,11 +240,15 @@ pub fn analyze(root: &Path, bundle: &Bundle) -> ProfileReport {
         profiles.push(resolution);
     }
 
+    let (edges, relationship_diagnostics, relationships_truncated) =
+        evaluate_relationships(&profiles, bundle);
+    diagnostics.extend(relationship_diagnostics);
     ProfileReport {
         schema_version: 1,
         profiles,
         diagnostics,
-        truncated,
+        edges,
+        truncated: truncated || relationships_truncated,
     }
 }
 
@@ -230,12 +262,258 @@ pub fn reevaluate(report: &ProfileReport, bundle: &Bundle) -> ProfileReport {
             diagnostics.extend(evaluate(&profile.namespace, descriptor, bundle));
         }
     }
+    let (edges, relationship_diagnostics, relationships_truncated) =
+        evaluate_relationships(&report.profiles, bundle);
+    diagnostics.extend(relationship_diagnostics);
     ProfileReport {
         schema_version: report.schema_version,
         profiles: report.profiles.clone(),
         diagnostics,
-        truncated: report.truncated,
+        edges,
+        truncated: report.truncated || relationships_truncated,
     }
+}
+
+fn evaluate_relationships(
+    profiles: &[ProfileResolution],
+    bundle: &Bundle,
+) -> (Vec<ProfileRelationshipEdge>, Vec<ProfileDiagnostic>, bool) {
+    let vocabulary: BTreeMap<(&str, &str), &ProfileRelationship> = profiles
+        .iter()
+        .filter_map(|profile| {
+            profile
+                .descriptor
+                .as_ref()
+                .map(|descriptor| (profile.namespace.as_str(), descriptor))
+        })
+        .flat_map(|(namespace, descriptor)| {
+            descriptor
+                .relationships
+                .iter()
+                .map(move |relationship| ((namespace, relationship.id.as_str()), relationship))
+        })
+        .collect();
+    let active_namespaces: BTreeSet<&str> = profiles
+        .iter()
+        .filter(|profile| profile.status == ProfileStatus::Active)
+        .map(|profile| profile.namespace.as_str())
+        .collect();
+    let concept_ids: BTreeSet<&str> = bundle
+        .concepts
+        .iter()
+        .map(|concept| concept.id.as_str())
+        .collect();
+    let mut edges = Vec::new();
+    let mut diagnostics = Vec::new();
+    let mut seen = BTreeSet::new();
+    let mut truncated = false;
+
+    for concept in &bundle.concepts {
+        let Some(raw) = concept.extra.get("relationships") else {
+            continue;
+        };
+        let Some(namespaces) = raw.as_object() else {
+            diagnostics.push(relationship_diagnostic(
+                concept,
+                "relationships",
+                "relationship-record",
+                ProfileDiagnosticLevel::Warning,
+                "Typed relationships must map profile namespaces to relationship types and targets.",
+            ));
+            continue;
+        };
+        let mut concept_edge_count = 0;
+        'namespace: for (namespace, relationships) in namespaces {
+            let field = format!("relationships.{namespace}");
+            if !valid_namespace(namespace) {
+                diagnostics.push(relationship_diagnostic(
+                    concept,
+                    &field,
+                    "relationship-record",
+                    ProfileDiagnosticLevel::Warning,
+                    "This typed relationship has an invalid profile namespace.",
+                ));
+                continue;
+            }
+            let Some(relationships) = relationships.as_object() else {
+                diagnostics.push(relationship_diagnostic(
+                    concept,
+                    &field,
+                    "relationship-record",
+                    ProfileDiagnosticLevel::Warning,
+                    "A relationship profile entry must map types to concept targets.",
+                ));
+                continue;
+            };
+            for (relationship_type, targets) in relationships {
+                let field = format!("relationships.{namespace}.{relationship_type}");
+                if !valid_id(relationship_type) {
+                    diagnostics.push(relationship_diagnostic(
+                        concept,
+                        &field,
+                        "relationship-record",
+                        ProfileDiagnosticLevel::Warning,
+                        "This relationship type is not a bounded portable identifier.",
+                    ));
+                    continue;
+                }
+                let targets: Vec<&str> = match targets {
+                    Value::String(target) => vec![target],
+                    Value::Array(targets) => {
+                        let Some(targets) = targets
+                            .iter()
+                            .map(Value::as_str)
+                            .collect::<Option<Vec<_>>>()
+                        else {
+                            diagnostics.push(relationship_diagnostic(
+                                concept,
+                                &field,
+                                "relationship-record",
+                                ProfileDiagnosticLevel::Warning,
+                                "Relationship targets must be concept ID strings.",
+                            ));
+                            continue;
+                        };
+                        targets
+                    }
+                    _ => {
+                        diagnostics.push(relationship_diagnostic(
+                            concept,
+                            &field,
+                            "relationship-record",
+                            ProfileDiagnosticLevel::Warning,
+                            "Relationship targets must be one concept ID or an array of IDs.",
+                        ));
+                        continue;
+                    }
+                };
+                for target in targets {
+                    if concept_edge_count >= MAX_TYPED_RELATIONSHIPS_PER_CONCEPT
+                        || edges.len() >= MAX_TYPED_RELATIONSHIPS
+                    {
+                        truncated = true;
+                        break 'namespace;
+                    }
+                    concept_edge_count += 1;
+                    if !valid_concept_id(target) {
+                        diagnostics.push(relationship_diagnostic(
+                            concept,
+                            &field,
+                            "relationship-record",
+                            ProfileDiagnosticLevel::Warning,
+                            "This typed relationship has an invalid concept target.",
+                        ));
+                        continue;
+                    }
+                    let identity = (
+                        concept.id.clone(),
+                        namespace.clone(),
+                        relationship_type.clone(),
+                        target.to_string(),
+                    );
+                    if !seen.insert(identity) {
+                        diagnostics.push(relationship_diagnostic(
+                            concept,
+                            &field,
+                            "relationship-duplicate",
+                            ProfileDiagnosticLevel::Information,
+                            "This typed relationship duplicates an earlier annotation.",
+                        ));
+                        continue;
+                    }
+
+                    let definition =
+                        vocabulary.get(&(namespace.as_str(), relationship_type.as_str()));
+                    let recognized = definition.is_some();
+                    let target_exists = concept_ids.contains(target);
+                    let portable_link = concept.links.iter().any(|link| link == target);
+                    edges.push(ProfileRelationshipEdge {
+                        source_id: concept.id.clone(),
+                        target_id: target.to_string(),
+                        namespace: namespace.clone(),
+                        relationship_type: relationship_type.clone(),
+                        label: definition
+                            .map(|relationship| relationship.label.clone())
+                            .unwrap_or_else(|| relationship_type.clone()),
+                        inverse: definition.and_then(|relationship| relationship.inverse.clone()),
+                        recognized,
+                        target_exists,
+                        portable_link,
+                    });
+
+                    if !active_namespaces.contains(namespace.as_str()) {
+                        diagnostics.push(relationship_diagnostic(
+                            concept,
+                            &field,
+                            "relationship-profile-unavailable",
+                            ProfileDiagnosticLevel::Information,
+                            "The relationship profile is not active; Studio preserved the annotation.",
+                        ));
+                    } else if !recognized {
+                        diagnostics.push(relationship_diagnostic(
+                            concept,
+                            &field,
+                            "relationship-type-unknown",
+                            ProfileDiagnosticLevel::Information,
+                            "The active profile does not define this relationship type.",
+                        ));
+                    }
+                    if !target_exists {
+                        diagnostics.push(relationship_diagnostic(
+                            concept,
+                            &field,
+                            "relationship-target-missing",
+                            ProfileDiagnosticLevel::Warning,
+                            "The typed relationship target is not a concept in this bundle.",
+                        ));
+                    } else if !portable_link {
+                        diagnostics.push(relationship_diagnostic(
+                            concept,
+                            &field,
+                            "relationship-link-missing",
+                            ProfileDiagnosticLevel::Warning,
+                            "Add an ordinary Markdown link to keep this relationship portable.",
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    (edges, diagnostics, truncated)
+}
+
+fn relationship_diagnostic(
+    concept: &Concept,
+    field: &str,
+    rule_id: &str,
+    level: ProfileDiagnosticLevel,
+    message: &str,
+) -> ProfileDiagnostic {
+    ProfileDiagnostic {
+        namespace: "relationships".to_string(),
+        rule_id: rule_id.to_string(),
+        level,
+        scope: ProfileScope::Concept,
+        file: format!("{}.md", concept.id),
+        concept_id: Some(concept.id.clone()),
+        field: field.to_string(),
+        message: message.to_string(),
+    }
+}
+
+fn valid_concept_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 512
+        && !value.contains('\\')
+        && !value.ends_with(".md")
+        && !value.chars().any(char::is_control)
+        && value
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
+        && Path::new(value)
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
 }
 
 fn resolve_one(root: &Path, namespace: &str, value: &Value) -> ProfileResolution {
@@ -761,6 +1039,100 @@ mod tests {
         );
         assert_eq!(report.diagnostics.len(), 2);
         assert_eq!(bundle.issues.len(), core_issue_count);
+    }
+
+    #[test]
+    fn resolves_namespaced_relationship_annotations_over_portable_links() {
+        let fixture = TempBundle::new(&declaration("profiles/team.json"), Some(descriptor()));
+        fs::write(
+            fixture.path.join("guide.md"),
+            r#"---
+type: Guide
+title: Guide
+relationships:
+  com.example.knowledge:
+    supports: [target, unlinked, missing, target]
+    unknown-kind: target
+    malformed:
+      nested: value
+  com.unknown.relationships:
+    owns: target
+---
+
+# Guide
+
+[Target](target.md)
+"#,
+        )
+        .expect("relationship fixture");
+        fs::write(
+            fixture.path.join("target.md"),
+            "---\ntype: Reference\n---\n\n# Target\n",
+        )
+        .expect("portable target");
+        fs::write(
+            fixture.path.join("unlinked.md"),
+            "---\ntype: Reference\n---\n\n# Unlinked\n",
+        )
+        .expect("unlinked target");
+
+        let bundle = read_bundle(&fixture.path);
+        let core_issue_count = bundle.issues.len();
+        let report = analyze(&fixture.path, &bundle);
+
+        assert_eq!(report.edges.len(), 5);
+        let recognized = &report.edges[0];
+        assert_eq!(recognized.label, "Supports");
+        assert_eq!(recognized.inverse.as_deref(), Some("supported-by"));
+        assert!(recognized.recognized);
+        assert!(recognized.target_exists);
+        assert!(recognized.portable_link);
+        assert!(report.edges.iter().any(|edge| {
+            edge.relationship_type == "unknown-kind" && !edge.recognized
+        }));
+        assert!(report.edges.iter().any(|edge| {
+            edge.target_id == "unlinked" && edge.target_exists && !edge.portable_link
+        }));
+        assert!(report.edges.iter().any(|edge| {
+            edge.target_id == "missing" && !edge.target_exists && !edge.portable_link
+        }));
+        for rule in [
+            "relationship-type-unknown",
+            "relationship-profile-unavailable",
+            "relationship-link-missing",
+            "relationship-target-missing",
+            "relationship-duplicate",
+            "relationship-record",
+        ] {
+            assert!(
+                report
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.rule_id == rule),
+                "missing {rule}"
+            );
+        }
+        assert_eq!(bundle.issues.len(), core_issue_count);
+    }
+
+    #[test]
+    fn keeps_relationships_visible_when_their_profile_is_not_declared() {
+        let fixture = TempBundle::new("---\nokf_version: \"0.1\"\n---\n# Bundle\n", None);
+        fs::write(
+            fixture.path.join("guide.md"),
+            "---\ntype: Guide\nrelationships:\n  com.example.missing:\n    supports: guide\n---\n\n# Guide\n\n[Self](guide.md)\n",
+        )
+        .expect("unknown profile relationship");
+
+        let report = analyze(&fixture.path, &read_bundle(&fixture.path));
+
+        assert_eq!(report.edges.len(), 1);
+        assert!(!report.edges[0].recognized);
+        assert!(report.edges[0].portable_link);
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.rule_id == "relationship-profile-unavailable"));
     }
 
     #[test]

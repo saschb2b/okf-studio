@@ -72,6 +72,7 @@ function report(): ProfileReport {
       field: "owner",
       message: "Name the responsible team.",
     }],
+    edges: [],
     truncated: false,
   };
 }

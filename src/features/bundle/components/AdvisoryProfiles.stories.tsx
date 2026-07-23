@@ -48,6 +48,7 @@ const ACTIVE_REPORT: ProfileReport = {
     field: "owner",
     message: "Name the team responsible for this concept.",
   }],
+  edges: [],
   truncated: false,
 };
 
@@ -99,6 +100,7 @@ export const Unavailable: Story = {
         extra: { owner: "Platform" },
       }],
       diagnostics: [],
+      edges: [],
       truncated: false,
     },
   },

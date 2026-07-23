@@ -3,7 +3,7 @@ type: Reference
 title: Advisory Profile Contract
 description: The local, version-pinned descriptor contract for optional bundle conventions and diagnostics.
 tags: [reference, profiles, extensions, validation, security]
-timestamp: 2026-07-23T11:10:00Z
+timestamp: 2026-07-23T14:45:00Z
 ---
 
 # Purpose
@@ -79,6 +79,20 @@ Schema version 1 has two executable meanings, both deterministic data checks:
 
 Checks may apply to all concepts or to the listed `conceptTypes`. Levels are `information`, `recommendation`, and `warning`. Unknown descriptor keys are retained for inspection but never interpreted. Limits are 128 fields, 128 relationships, and 256 checks. IDs, field paths, labels, descriptions, and messages are bounded and validated before a profile becomes active.
 
+# Typed relationship annotations
+
+A concept can annotate an ordinary Markdown link with a relationship defined by an active profile:
+
+```yaml
+relationships:
+  com.example.knowledge:
+    supports: [features/graph-view, reference/glossary]
+```
+
+The map path is `relationships.<profile namespace>.<relationship type>`. A type accepts one bundle concept ID or an array of IDs. The concept body remains the portable source of the graph edge, so it also links to each target with ordinary Markdown. The annotation adds a label and optional inverse from the active descriptor; it never creates a core OKF edge by itself.
+
+The profile report returns every structurally valid annotation with its source, target, namespace, type, label, inverse, recognition state, target state, and portable-link state. An unavailable profile or unknown type stays visible under its authored identifier. Missing targets, missing prose links, duplicates, malformed maps, and limits produce profile diagnostics, not OKF issues. Studio reads at most 64 annotations per concept and 4,096 per report.
+
 # Resolution and failure states
 
 The Rust core resolves descriptors from the open bundle only. It does not search registries, follow URLs, load libraries, evaluate expressions, or run hooks. Each declaration becomes either:
@@ -90,6 +104,6 @@ An unavailable profile produces no profile diagnostics because Studio cannot cla
 
 # Security and conformance boundary
 
-Profile resolution uses the existing bundle grant and rejects path traversal and symbolic-link escapes. It performs local reads only. Descriptor content cannot start network work or code execution. A profile report is a separate diagnostic contract and never enters `Bundle.issues`, suppresses an OKF issue, hides an unknown field, or changes whether the bundle is conformant.
+Profile resolution uses the existing bundle grant and rejects path traversal and symbolic-link escapes. It performs local reads only. Descriptor content cannot start network work or code execution. A profile report is a separate diagnostic contract and never enters `Bundle.issues`, suppresses an OKF issue, hides an unknown field or relationship type, or changes whether the bundle is conformant.
 
 Related contracts: [Data Model](../architecture/data-model.md), [IPC and Security](../architecture/ipc-and-security.md), [Validation](../features/validation.md), and the [OKF Ecosystem Response](../product/okf-ecosystem-response-roadmap.md).

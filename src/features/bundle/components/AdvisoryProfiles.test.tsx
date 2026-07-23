@@ -33,6 +33,7 @@ const ACTIVE_REPORT: ProfileReport = {
     field: "owner",
     message: "Name the responsible team.",
   }],
+  edges: [],
   truncated: false,
 };
 
@@ -75,6 +76,7 @@ describe("AdvisoryProfilesView", () => {
             extra: { owner: "Platform" },
           }],
           diagnostics: [],
+          edges: [],
           truncated: false,
         }}
       />,
@@ -89,7 +91,7 @@ describe("AdvisoryProfilesView", () => {
   it("renders nothing when a bundle declares no profiles", () => {
     const { container } = render(
       <AdvisoryProfilesView
-        report={{ schemaVersion: 1, profiles: [], diagnostics: [], truncated: false }}
+        report={{ schemaVersion: 1, profiles: [], diagnostics: [], edges: [], truncated: false }}
       />,
     );
     expect(container).toBeEmptyDOMElement();

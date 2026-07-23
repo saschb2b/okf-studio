@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Extended the [Advisory Profile Contract](reference/advisory-profile-contract.md) with bounded namespaced relationship annotations over ordinary Markdown links. The profile report resolves known labels and inverses, preserves unknown profiles and types, and reports missing targets or portable links without changing core OKF conformance.
+
 * **Creation**: Added [Safe Concept Move](features/safe-concept-move.md) to the Concept Reader. Studio creates the destination, preserves a portable redirect, rebases outgoing links, and rewrites parser-confirmed inbound links, reference definitions, and indexes as one staged graph change. Every hunk must be reviewed and kept; isolated validation, revision-bound Apply, Restore, path limits, collision checks, and stable-identity warnings keep the operation explicit.
 
 * **Creation**: Added [Profile-Aware Authoring](features/profile-aware-authoring.md). Create, Revise, Audit, and migration plans now carry bounded, fingerprinted local profile guidance with explicit requirement labels. Staged review reports OKF validation and advisory profile checks independently, fresh drafts can be checked against the selected source profile, and each profile finding can start a reviewed migration without gaining Apply authority.

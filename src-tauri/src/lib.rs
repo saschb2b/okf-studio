@@ -670,7 +670,7 @@ async fn validate_concept_move(
 ) -> Result<agent_stage::AgentStagedValidationInfo, String> {
     let root = grants.authorize_bundle(Path::new(&bundle_root))?;
     let stages = stages.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || stages.validate(&root))
+    tauri::async_runtime::spawn_blocking(move || stages.validate_move(&root))
         .await
         .map_err(|_| "Studio could not validate the concept move.".to_string())?
 }

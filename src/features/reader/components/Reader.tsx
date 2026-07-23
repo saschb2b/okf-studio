@@ -5,7 +5,7 @@
 // side in reader-only mode and falls below the article when space is tight (the
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
-import { Sparkles, X } from "lucide-react";
+import { MoveRight, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "@/shared/store.tsx";
@@ -28,6 +28,7 @@ import {
   MetadataInspector,
   ODSF_METADATA_KEYS,
 } from "@/features/reader/components/MetadataInspector.tsx";
+import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough
@@ -273,6 +274,7 @@ export function Reader() {
   // Body HTML with images resolved, paired with the source html it derives from
   // (so a concept switch never renders the previous body while the new one loads).
   const [processed, setProcessed] = useState<{ src: string; html: string } | null>(null);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
   // the body's `{ref}` resolution and the TokenViz below.
@@ -675,6 +677,16 @@ export function Reader() {
             )}
             <div className="reader-header-actions">
               <button
+                id="reader-concept-move"
+                type="button"
+                className="reader-concept-move"
+                aria-label="Move concept"
+                onClick={() => setMoveOpen(true)}
+              >
+                <MoveRight size={14} aria-hidden="true" />
+                Move
+              </button>
+              <button
                 id="reader-okf-task"
                 type="button"
                 className="reader-okf-task"
@@ -886,6 +898,19 @@ export function Reader() {
           dark={resolveDark(state.settings.theme)}
         />
       )}
+
+      {moveOpen && bundle ? (
+        <ConceptMoveDialog
+          open
+          bundleRoot={bundle.root}
+          concept={c}
+          onOpenChange={setMoveOpen}
+          onOpenMovedConcept={(conceptId) => {
+            setMoveOpen(false);
+            actions.selectConcept(conceptId);
+          }}
+        />
+      ) : null}
 
       {/* Image spotlight. Click anywhere or the close button to dismiss; Escape
           is handled by an effect. Keyboard-accessible via the close button. */}

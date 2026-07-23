@@ -1,4 +1,4 @@
-//! Reviewed staging for Compatibility Clinic normalizations.
+//! Reviewed staging for Compatibility Clinic normalizations and maintenance.
 //!
 //! The frontend identifies a live report finding, never replacement content.
 //! This boundary regenerates the report, derives the repair from the current
@@ -145,6 +145,33 @@ impl CompatibilityStageState {
 
     pub fn validate(&self, bundle_root: &Path) -> Result<AgentStagedValidationInfo, String> {
         let session_id = self.existing_session(bundle_root)?;
+        self.inner.stages.validate_staged(&session_id)
+    }
+
+    pub fn validate_move(&self, bundle_root: &Path) -> Result<AgentStagedValidationInfo, String> {
+        let session_id = self.existing_session(bundle_root)?;
+        let staged = self
+            .inner
+            .stages
+            .summary(&session_id)
+            .ok_or_else(|| "Open a concept move review first.".to_string())?;
+        if staged.files.is_empty() {
+            return Err("Open a concept move review first.".to_string());
+        }
+        for file in staged.files {
+            let diff = self.inner.stages.staged_diff(&session_id, &file.path)?;
+            if diff.truncated
+                || diff
+                    .hunks
+                    .iter()
+                    .any(|hunk| !hunk.reviewed || !hunk.selected)
+            {
+                return Err(format!(
+                    "Review and keep every move hunk in {} before validation. A concept move is one graph transaction.",
+                    file.path
+                ));
+            }
+        }
         self.inner.stages.validate_staged(&session_id)
     }
 
@@ -455,32 +482,42 @@ mod tests {
         assert_eq!(review.plan.affected_links, 2);
         assert!(!fixture.bundle.join("archive/Target guide.md").exists());
         assert!(
-            state.validate(&fixture.bundle).is_err(),
+            state.validate_move(&fixture.bundle).is_err(),
             "review is required"
         );
 
+        let mut rejected = None;
         for file in &review.staged.files {
-            if file.kind != "modify" {
-                continue;
-            }
             let mut diff = state
                 .inner
                 .stages
                 .staged_diff(&review.staged.session_id, &file.path)
                 .expect("move diff");
             for hunk in diff.hunks.clone() {
+                let selected = rejected.is_some();
                 diff = state
                     .select_hunk(
                         &fixture.bundle,
                         &file.path,
                         &diff.revision,
                         hunk.index,
-                        true,
+                        selected,
                     )
                     .expect("review move hunk");
+                if !selected {
+                    rejected = Some((file.path.clone(), diff.revision.clone(), hunk.index));
+                }
             }
         }
-        let validation = state.validate(&fixture.bundle).expect("validate move");
+        assert!(
+            state.validate_move(&fixture.bundle).is_err(),
+            "a rejected move hunk blocks the transaction"
+        );
+        let (path, revision, hunk_index) = rejected.expect("one rejected hunk");
+        state
+            .select_hunk(&fixture.bundle, &path, &revision, hunk_index, true)
+            .expect("keep rejected move hunk");
+        let validation = state.validate_move(&fixture.bundle).expect("validate move");
         assert_eq!(validation.errors, 0);
         let applied = state
             .apply(&fixture.bundle, &validation.revision)

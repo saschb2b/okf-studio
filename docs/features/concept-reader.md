@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-23T00:58:00Z
+timestamp: 2026-07-23T14:15:00Z
 ---
 
 # What it does
@@ -13,6 +13,8 @@ Selecting a node (in the [graph](graph-view.md) or [sidebar](navigation.md)) ope
 Selected reader text can be added explicitly to the [Agent Panel](agent-panel.md) from its compact context menu. Studio snapshots plain text only when that menu opens and only when the complete selection belongs to the currently displayed concept. The resulting source is bounded, removable, and labelled with a bundle-relative concept origin. Studio does not watch later selection changes or grant the agent file access.
 
 The header's **Work with agent** action opens [Native OKF Tasks](native-okf-tasks.md) for this concept. A `resource` citation in the Details module has the same action scoped to that URL and concept. Both routes show the bounded context plan before a prompt is prepared; cancelling returns focus to the action that opened it.
+
+The neighboring **Move** action opens [Safe Concept Move](safe-concept-move.md). Move computes the affected graph, keeps a portable redirect at the old path, and requires per-hunk review, isolated validation, and explicit Apply. It never renames or rewrites a file directly from the reader.
 
 # Composition
 

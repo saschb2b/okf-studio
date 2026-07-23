@@ -193,6 +193,7 @@
 }
 
 .reader-okf-task,
+.reader-concept-move,
 .reader-resource-agent {
   display: inline-flex;
   gap: var(--space-6);
@@ -207,12 +208,14 @@
 }
 
 .reader-okf-task:hover,
+.reader-concept-move:hover,
 .reader-resource-agent:hover {
   color: var(--text);
   background: var(--bg-sunken);
 }
 
 .reader-okf-task:focus-visible,
+.reader-concept-move:focus-visible,
 .reader-resource-agent:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;

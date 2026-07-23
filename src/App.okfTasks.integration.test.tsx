@@ -5,6 +5,44 @@ import * as ipc from "@/shared/ipc.ts";
 import { openAgentThread, openFolder, renderApp } from "@/test/appHarness.tsx";
 
 describe("native OKF task entry points", () => {
+  it("reviews, validates, applies, and restores a safe concept move", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+    await user.click(screen.getByRole("button", {
+      name: /Overview What OKF Studio is and who it's for/i,
+    }));
+
+    const origin = screen.getByRole("button", { name: "Move concept" });
+    await user.click(origin);
+    const dialog = await screen.findByRole("dialog", { name: "Move concept" });
+    expect(within(dialog).getByLabelText("Destination path"))
+      .toHaveValue("archive/overview.md");
+
+    await user.click(within(dialog).getByRole("button", { name: "Review move" }));
+    while (within(dialog).queryAllByRole("button", { name: "Review file" }).length > 0) {
+      await user.click(within(dialog).getAllByRole("button", { name: "Review file" })[0]);
+    }
+    for (const keep of within(dialog).getAllByRole("button", { name: "Keep" })) {
+      await user.click(keep);
+    }
+
+    const validate = within(dialog).getByRole("button", { name: "Validate" });
+    await waitFor(() => expect(validate).toBeEnabled());
+    await user.click(validate);
+    expect(await within(dialog).findByRole("status", { name: "Concept move validation" }))
+      .toHaveTextContent("OKF validation passed");
+
+    await user.click(within(dialog).getByRole("button", { name: "Apply move" }));
+    expect(await within(dialog).findByRole("heading", { name: "Concept moved" }))
+      .toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Restore" }));
+    expect(await within(dialog).findByRole("heading", { name: "Move restored" }))
+      .toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(origin).toHaveFocus());
+  });
+
   it("starts a bounded task from the reader without replacing the current thread", async () => {
     const { user } = await openAgentThread("Task Launcher Harness");
 

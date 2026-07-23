@@ -17,7 +17,7 @@ const raw: RawConcept[] = [
     tags: ["product", "vision"],
     timestamp: "2026-06-28T00:00:00Z",
     resource: null,
-    extra: {},
+    extra: { stable_id: "okf-studio-product-overview" },
     body:
       "## What it is\n\n" +
       "A local-first desktop workspace that renders [OKF](../reference/glossary.md) bundles as a [graph](/features/graph-view.md) and reader, with optional agent assistance for researching the active bundle.\n\n" +

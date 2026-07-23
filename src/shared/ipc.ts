@@ -3389,8 +3389,32 @@ export interface CompatibilityReview {
   diff: AgentStagedFileDiff;
 }
 
+export interface ConceptMoveChange {
+  path: string;
+  kind: "create" | "modify";
+  reason: string;
+}
+
+export interface ConceptMovePlan {
+  schemaVersion: 1;
+  sourceId: string;
+  destinationId: string;
+  stableId: string | null;
+  affectedLinks: number;
+  affectedIndexes: number;
+  warnings: string[];
+  changes: ConceptMoveChange[];
+}
+
+export interface ConceptMoveReview {
+  plan: ConceptMovePlan;
+  staged: AgentStagedChangesInfo;
+}
+
 let mockCompatibilityDiff: AgentStagedFileDiff | null = null;
 let mockCompatibilityCanRestore = false;
+let mockConceptMoveDiffs = new Map<string, AgentStagedFileDiff>();
+let mockConceptMoveCanRestore = false;
 
 export async function stageCompatibilityNormalization(
   bundleRoot: string,
@@ -3531,6 +3555,219 @@ export async function restoreCompatibilityNormalization(
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentCheckpointRestoreInfo>("restore_compatibility_normalization", { bundleRoot });
+}
+
+export async function stageConceptMove(
+  bundleRoot: string,
+  sourceId: string,
+  destinationPath: string,
+): Promise<ConceptMoveReview> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    const destinationId = destinationPath.trim().replaceAll("\\", "/").replace(/\.md$/iu, "");
+    if (!destinationId || destinationId === sourceId) {
+      throw new Error("Choose a different bundle-relative .md path.");
+    }
+    const changes: ConceptMoveChange[] = [
+      { path: `${sourceId}.md`, kind: "modify", reason: "Keep portable redirect" },
+      { path: destinationPath, kind: "create", reason: "Create destination" },
+      { path: "index.md", kind: "modify", reason: "Update navigation" },
+    ];
+    mockConceptMoveDiffs = new Map(changes.map((change, index) => [
+      change.path,
+      {
+        path: change.path,
+        kind: change.kind,
+        revision: `mock-move-diff-${index}`,
+        hunks: [{
+          index: 0,
+          header: "@@ -1,1 +1,1 @@",
+          unified: change.kind === "create"
+            ? `+---\n+type: Guide\n+---\n+# Moved concept\n`
+            : `-[Old](${sourceId}.md)\n+[Moved](${destinationId}.md)\n`,
+          selected: true,
+          reviewed: false,
+        }],
+        truncated: false,
+      },
+    ]));
+    return {
+      plan: {
+        schemaVersion: 1,
+        sourceId,
+        destinationId,
+        stableId: "concept-stable-01",
+        affectedLinks: 2,
+        affectedIndexes: 1,
+        warnings: [],
+        changes,
+      },
+      staged: {
+        sessionId: "concept-move-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: mockConceptMoveCanRestore,
+        files: changes.map((change) => ({
+          path: change.path,
+          kind: change.kind,
+          bytes: 180,
+        })),
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ConceptMoveReview>("stage_concept_move", {
+    bundleRoot,
+    sourceId,
+    destinationPath,
+  });
+}
+
+export async function conceptMoveDiff(
+  bundleRoot: string,
+  path: string,
+): Promise<AgentStagedFileDiff> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    const diff = mockConceptMoveDiffs.get(path);
+    if (!diff) throw new Error("This move file is no longer staged.");
+    return structuredClone(diff);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedFileDiff>("concept_move_diff", { bundleRoot, path });
+}
+
+export async function selectConceptMoveHunk(
+  bundleRoot: string,
+  path: string,
+  revision: string,
+  hunkIndex: number,
+  selected: boolean,
+): Promise<AgentStagedFileDiff> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    const diff = mockConceptMoveDiffs.get(path);
+    if (diff?.revision !== revision) {
+      throw new Error("The move diff changed. Review it again.");
+    }
+    const updated = {
+      ...diff,
+      hunks: diff.hunks.map((hunk) => hunk.index === hunkIndex
+        ? { ...hunk, selected, reviewed: true }
+        : hunk),
+    };
+    mockConceptMoveDiffs.set(path, updated);
+    return structuredClone(updated);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedFileDiff>("select_concept_move_hunk", {
+    bundleRoot,
+    path,
+    revision,
+    hunkIndex,
+    selected,
+  });
+}
+
+export async function validateConceptMove(
+  bundleRoot: string,
+): Promise<AgentStagedValidationInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(30);
+    if ([...mockConceptMoveDiffs.values()].some((diff) =>
+      diff.truncated || diff.hunks.some((hunk) => !hunk.reviewed || !hunk.selected)
+    )) {
+      throw new Error(
+        "Review and keep every move hunk before validation. A concept move is one graph transaction.",
+      );
+    }
+    return {
+      sessionId: "concept-move-mock",
+      revision: "mock-move-validation-1",
+      errors: 0,
+      warnings: 0,
+      issues: [],
+      truncated: false,
+      preview: { nodes: [], edges: [], totalNodes: 3, totalEdges: 2, truncated: false },
+      profile: {
+        source: "draft",
+        declared: 0,
+        active: 0,
+        unavailable: 0,
+        diagnostics: [],
+        truncated: false,
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedValidationInfo>("validate_concept_move", { bundleRoot });
+}
+
+export async function applyConceptMove(
+  bundleRoot: string,
+  revision: string,
+): Promise<AgentStagedApplyInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(30);
+    mockConceptMoveDiffs.clear();
+    mockConceptMoveCanRestore = true;
+    return {
+      sessionId: "concept-move-mock",
+      revision,
+      appliedFiles: 3,
+      changes: {
+        sessionId: "concept-move-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: true,
+        files: [],
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedApplyInfo>("apply_concept_move", { bundleRoot, revision });
+}
+
+export async function discardConceptMove(bundleRoot: string): Promise<AgentStagedChangesInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(20);
+    mockConceptMoveDiffs.clear();
+    return {
+      sessionId: "concept-move-mock",
+      granted: true,
+      grantMode: "interactive",
+      mode: "enhance",
+      canRestore: mockConceptMoveCanRestore,
+      files: [],
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentStagedChangesInfo>("discard_concept_move", { bundleRoot });
+}
+
+export async function restoreConceptMove(
+  bundleRoot: string,
+): Promise<AgentCheckpointRestoreInfo> {
+  if (!isTauri()) {
+    await browserMockDelay(30);
+    mockConceptMoveCanRestore = false;
+    return {
+      sessionId: "concept-move-mock",
+      restoredFiles: 3,
+      changes: {
+        sessionId: "concept-move-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: false,
+        files: [],
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentCheckpointRestoreInfo>("restore_concept_move", { bundleRoot });
 }
 
 function mockCompatibilityChanges(canRestore: boolean): AgentStagedChangesInfo {

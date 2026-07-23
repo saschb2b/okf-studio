@@ -225,6 +225,10 @@ export const families: Family[] = [
             title: "Writing that keeps the knowledge",
             body: "Name the reader's question, then write a concept or improve an existing one with the same versioned method across agents. Rust rejects a style-only rewrite that drops protected numbers, qualifiers, citations, links, formulas, or code.",
           },
+          {
+            title: "Move a concept without breaking the graph",
+            body: "Choose a new Markdown path from the reader. Studio previews every link and index repair, keeps a portable redirect at the old path, validates the isolated result, and applies the reviewed files in one restorable transaction.",
+          },
         ],
       },
       {

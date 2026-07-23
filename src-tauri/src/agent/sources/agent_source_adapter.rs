@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 pub(crate) const ADAPTER_SCHEMA_VERSION: u32 = 1;
 const ADAPTER_VERSION: u32 = 1;
@@ -35,6 +37,7 @@ pub struct SourceAdapterReceipt {
     pub schema_version: u32,
     pub adapter_id: String,
     pub adapter_version: u32,
+    pub observed_at: String,
     pub discovery: SourceDiscovery,
     pub origin: String,
     pub media_type: String,
@@ -488,6 +491,9 @@ fn receipt(
         schema_version: ADAPTER_SCHEMA_VERSION,
         adapter_id: adapter_id.to_string(),
         adapter_version: ADAPTER_VERSION,
+        observed_at: OffsetDateTime::now_utc()
+            .format(&Rfc3339)
+            .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string()),
         discovery,
         origin: origin.to_string(),
         media_type: media_type.to_string(),

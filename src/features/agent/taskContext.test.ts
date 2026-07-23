@@ -61,6 +61,45 @@ describe("OKF task context", () => {
     expect(plan.budget.selectedBytes).toBeGreaterThan("Overview body".length);
   });
 
+  it("carries a redacted durable provenance projection for adapted sources", () => {
+    const plan = createOkfContextPlan({
+      taskId: "okf-research",
+      bundleRoot: "C:\\knowledge\\docs",
+      concepts,
+      activeConcept: null,
+      attachedConcepts: [],
+      sources: [{
+        id: "source-1",
+        title: "private.md",
+        content: "Evidence",
+        sourceDigest: "a".repeat(64),
+        adapterReceipt: {
+          schemaVersion: 1,
+          adapterId: "markdown",
+          adapterVersion: 1,
+          observedAt: "2026-07-23T18:00:00Z",
+          discovery: "file",
+          origin: "C:\\Users\\person\\private.md",
+          mediaType: "text/markdown",
+          sourceFingerprint: `sha256-${"a".repeat(64)}`,
+          evidenceFingerprint: `sha256-${"b".repeat(64)}`,
+          refreshFingerprint: `source-refresh-v1-${"c".repeat(64)}`,
+          trust: "untrusted",
+          diagnostics: [],
+        },
+      }],
+      issues: [],
+    });
+
+    expect(plan.sources[0].provenance).toMatchObject({
+      id: "source-1",
+      origin: "private.md",
+      observedAt: "2026-07-23T18:00:00Z",
+      localPathRedacted: true,
+    });
+    expect(JSON.stringify(plan)).not.toContain("Users");
+  });
+
   it("omits optional content deterministically and explains why", () => {
     const plan = createOkfContextPlan({
       taskId: "okf-research",

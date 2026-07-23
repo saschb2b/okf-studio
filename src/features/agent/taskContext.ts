@@ -1,4 +1,8 @@
 import type { AgentSourceInput } from "@/shared/ipc.ts";
+import {
+  durableProvenanceFromSource,
+  type DurableProvenance,
+} from "@/shared/evidence.ts";
 import type { Issue } from "@/shared/types.ts";
 import type { ProfileReport } from "@/shared/types.ts";
 import {
@@ -126,6 +130,7 @@ export interface OkfContextSource {
   title: string;
   origin: string | null;
   sourceDigest: string | null;
+  provenance: DurableProvenance | null;
   required: boolean;
   estimatedBytes: number;
 }
@@ -176,14 +181,7 @@ interface ContextPlanInput {
   }[];
   activeConcept: { id: string; title: string } | null;
   attachedConcepts: readonly { id: string; title: string; type: string }[];
-  sources: readonly {
-    id: string;
-    title: string;
-    content: string;
-    origin?: string;
-    sourceDigest?: string;
-    imageData?: string;
-  }[];
+  sources: readonly (AgentSourceInput & { id: string })[];
   issues: readonly Issue[];
   profileReport?: ProfileReport | null;
   removedIds?: ReadonlySet<string>;
@@ -307,6 +305,7 @@ export function createOkfContextPlan(input: ContextPlanInput): OkfContextPlan {
     title: source.title,
     origin: source.origin ?? null,
     sourceDigest: source.sourceDigest ?? null,
+    provenance: durableProvenanceFromSource(source.id, source),
     required: false,
     estimatedBytes: byteLength(source.content) + byteLength(source.imageData ?? ""),
   })).sort((left, right) => left.title.localeCompare(right.title) || left.id.localeCompare(right.id));

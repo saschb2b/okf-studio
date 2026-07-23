@@ -1663,6 +1663,7 @@ export interface AgentSourceAdapterReceipt {
   schemaVersion: 1;
   adapterId: string;
   adapterVersion: number;
+  observedAt?: string;
   discovery: AgentSourceDiscovery;
   origin: string;
   mediaType: string;
@@ -1686,6 +1687,7 @@ function browserSourceReceipt(
     schemaVersion: 1,
     adapterId,
     adapterVersion: 1,
+    observedAt: new Date().toISOString(),
     discovery,
     origin,
     mediaType,

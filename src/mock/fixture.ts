@@ -531,6 +531,31 @@ export const MOCK_BUNDLE: Bundle = {
       ],
     },
     {
+      dir: "features",
+      title: "Features",
+      intro: "Capabilities for exploring and improving connected knowledge.",
+      synthesized: false,
+      sections: [
+        {
+          heading: "Open and explore",
+          entries: [
+            {
+              title: "Graph View",
+              target: "features/graph-view",
+              description: "Force-directed graph of concepts.",
+              kind: "concept",
+            },
+            {
+              title: "Concept Reader",
+              target: "features/concept-reader",
+              description: "Rendered markdown with backlinks.",
+              kind: "concept",
+            },
+          ],
+        },
+      ],
+    },
+    {
       // An asset-only directory (the Primer bundle's styles/ case): the core
       // synthesizes an index for it, but it holds no concepts — the tree must
       // explain the empty expansion instead of silently adding zero rows.

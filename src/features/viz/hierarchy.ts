@@ -1,9 +1,9 @@
 // Shared hierarchy model for the space-filling visualizations (Treemap,
-// Sunburst, Circle Packing). Concept ids are slash-separated paths
-// ("design/color"), so the folder structure *is* the bundle's hierarchy; the
-// bundle's index nodes supply human titles for the directories. All three
-// views consume the same tree, so drilling into "design" means the same thing
-// everywhere. See docs/features/viz-views.md.
+// Sunburst, Circle Packing). Concept ids provide the directory tree; authored
+// index sections can add presentation groups inside a directory without
+// changing concept identity. All three views consume the same tree, so
+// drilling into "design" means the same thing everywhere. See
+// docs/features/viz-views.md.
 
 import type { Bundle, Concept } from "@/shared/types.ts";
 
@@ -17,6 +17,8 @@ export interface VizNode {
   /** Size metric — leaves only (groups sum their children in the layout).
    *  Word count of the body, floored at 1 so empty stubs stay visible. */
   value?: number;
+  /** Authored order within an index section. Unauthored nodes sort after it. */
+  order?: number;
   children?: VizNode[];
 }
 
@@ -75,8 +77,99 @@ export function buildVizTree(bundle: Bundle, concepts: Concept[]): VizNode {
     });
   }
 
+  addIndexSectionGroups(root.node, bundle);
   sortTree(root.node);
   return root.node;
+}
+
+/**
+ * Add semantic groups from authored index headings without changing paths.
+ * Only direct concept children of that index directory are eligible. Nested
+ * concepts stay inside their physical subdirectory, cross-directory entries
+ * remain references, and a one-item heading does not add a redundant ring.
+ * The first heading commonly repeats the index title; it describes the
+ * directory itself and must not become a same-name child generation.
+ */
+function addIndexSectionGroups(root: VizNode, bundle: Bundle): void {
+  const usedIds = new Set(bundle.concepts.map((concept) => concept.id));
+
+  for (const index of bundle.indexes) {
+    const dir = index.dir === "." ? "" : index.dir;
+    const parent = findVizNode(root, dir);
+    if (!parent?.children) continue;
+
+    const directLeaves = new Map(
+      parent.children
+        .filter((child) => !child.children && parentDir(child.id) === dir)
+        .map((child) => [child.id, child]),
+    );
+    const claimed = new Set<string>();
+    const groups: VizNode[] = [];
+
+    for (const [sectionIndex, section] of index.sections.entries()) {
+      const heading = section.heading.trim();
+      if (!heading || sameLabel(heading, index.title)) continue;
+
+      const entries = section.entries.flatMap((entry, entryIndex) => {
+        if (
+          entry.kind !== "concept" ||
+          claimed.has(entry.target) ||
+          parentDir(entry.target) !== dir
+        ) {
+          return [];
+        }
+        const leaf = directLeaves.get(entry.target);
+        return leaf ? [{ leaf, entryIndex }] : [];
+      });
+      if (entries.length < 2) continue;
+
+      const sectionId = uniqueSectionId(dir, sectionIndex, usedIds);
+      const children = entries.map(({ leaf, entryIndex }) => {
+        claimed.add(leaf.id);
+        return { ...leaf, order: entryIndex };
+      });
+      groups.push({
+        id: sectionId,
+        name: heading,
+        order: sectionIndex,
+        children,
+      });
+    }
+
+    if (groups.length > 0) {
+      parent.children = [
+        ...groups,
+        ...parent.children.filter((child) => !claimed.has(child.id)),
+      ];
+    }
+  }
+}
+
+function sameLabel(a: string, b: string): boolean {
+  const normalize = (value: string) =>
+    value.trim().replace(/\s+/g, " ").toLowerCase();
+  return normalize(a) === normalize(b);
+}
+
+function parentDir(id: string): string {
+  const slash = id.lastIndexOf("/");
+  return slash < 0 ? "" : id.slice(0, slash);
+}
+
+function uniqueSectionId(
+  dir: string,
+  sectionIndex: number,
+  usedIds: Set<string>,
+): string {
+  const base = `@index-section/${dir || "root"}/${sectionIndex}`;
+  let id = base;
+  let suffix = 2;
+  while (usedIds.has(id)) {
+    id = `${base}/${suffix}`;
+    suffix += 1;
+  }
+  usedIds.add(id);
+  return id;
 }
 
 /** How buildVizTreeAuto grouped the bundle: by id paths (the normal case), by
@@ -140,6 +233,9 @@ function prettifySegment(seg: string): string {
 function sortTree(node: VizNode): void {
   if (!node.children) return;
   node.children.sort((a, b) => {
+    const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+    const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+    if (ao !== bo) return ao - bo;
     const ag = a.children ? 0 : 1;
     const bg = b.children ? 0 : 1;
     if (ag !== bg) return ag - bg;

@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Prepared OKF Studio 0.5.0. Bundle Home now brings recent work, knowledge health, and repository activity together; bundle information and optional connections have focused workspaces; sharing and knowledge maintenance use reviewed, source-preserving flows; advisory profiles, provenance, lineage, reliability, and compatibility findings are available where they help a decision; and authored hierarchy now guides both navigation and visualizations while wide tables remain readable.
+
 * **Update**: Aligned the sidebar with the authored hierarchy used by the treemap, sunburst, and circle-packing views. A root section now takes its visible subgroup headings and order from the indexed folder it opens, while parent-only links remain available. Concept ids, paths, search behavior, and direct folder-home navigation stay unchanged.
 
 * **Fix**: Made reader tables preserve readable columns. Native content sizing now keeps whole words in the column calculation, caps long prose at a useful reading measure, and gives every GFM or embedded HTML table its own keyboard-focusable horizontal overflow region when the content does not fit. Wide tables no longer widen the reader, while narrow panes no longer collapse labels into single-character stacks.

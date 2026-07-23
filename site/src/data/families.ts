@@ -387,8 +387,8 @@ export const vizzes: VizView[] = [
   {
     src: `${base}screenshot-viz-sunburst.webp`,
     title: "Sunburst",
-    body: "The whole hierarchy as concentric rings. Click a sector to re-root on it; the center takes you back up.",
-    alt: "OKF Studio's sunburst view: the bundle hierarchy as labeled concentric rings",
+    body: "Every ring adds an authored level, and All keeps every concept in view. Click a sector to focus; the center takes you back up.",
+    alt: "OKF Studio's sunburst view with authored bundle sections as concentric rings",
   },
   {
     src: `${base}screenshot-viz-pack.webp`,

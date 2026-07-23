@@ -33,6 +33,9 @@ export const BundleOpen: Story = {
     await expect(git).toHaveAttribute("aria-pressed", "true");
     await expect(canvas.getByRole("button", { name: "Toggle agent panel" })).toBeVisible();
     await expect(canvas.getByTitle("Concepts in this bundle")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: /open bundle details for OKF Studio/i }),
+    ).toHaveTextContent("ODSF 0.1 · OKF 0.1");
   },
 };
 

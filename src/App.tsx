@@ -18,6 +18,7 @@ import { EmptyState } from "@/features/shell/components/EmptyState.tsx";
 import { OpenRemoteDialog } from "@/features/bundle/components/OpenRemoteDialog.tsx";
 import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDialog.tsx";
 import { RecipientProjectionDialog } from "@/features/bundle/components/RecipientProjectionDialog.tsx";
+import { BundleDetailsDialog } from "@/features/bundle/components/BundleDetailsDialog.tsx";
 import { ExternalEntryDialog } from "@/features/bundle/components/ExternalEntryDialog.tsx";
 import { OverviewView } from "@/features/viz/components/OverviewView.tsx";
 import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
@@ -111,6 +112,11 @@ export function App() {
             open={state.projectionOpen}
             bundle={state.bundle}
             onOpenChange={(open) => actions.setProjectionOpen(open)}
+          />
+          <BundleDetailsDialog
+            open={state.bundleDetailsOpen}
+            bundle={state.bundle}
+            onOpenChange={(open) => actions.setBundleDetailsOpen(open)}
           />
         </>
       )}

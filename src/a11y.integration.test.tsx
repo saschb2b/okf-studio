@@ -117,4 +117,13 @@ describe("accessibility (axe-core)", () => {
     const popup = await screen.findByLabelText("Bundle switcher");
     await expectNoViolations(popup);
   });
+
+  it("the bundle details dialog has no violations", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("button", { name: /open bundle details/i }));
+    await screen.findByRole("dialog", { name: "Bundle details" });
+    await expectNoViolations(container);
+  });
 });

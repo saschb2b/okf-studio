@@ -280,6 +280,8 @@ export interface State {
   createOpen: boolean;
   /** The reviewed shareable-bundle workflow for the active bundle. */
   projectionOpen: boolean;
+  /** Bundle-level format, metadata, ignore rules, and advisory profiles. */
+  bundleDetailsOpen: boolean;
   maximized: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
@@ -336,6 +338,7 @@ function makeInitialState(): State {
   remoteSeed: null,
   createOpen: false,
   projectionOpen: false,
+  bundleDetailsOpen: false,
   maximized: false,
   activeRoot: null,
   bundle: null,
@@ -390,6 +393,7 @@ type Msg =
   | { t: "remoteOpen"; v: boolean; seed?: string }
   | { t: "createOpen"; v: boolean }
   | { t: "projectionOpen"; v: boolean }
+  | { t: "bundleDetailsOpen"; v: boolean }
   | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
@@ -487,6 +491,8 @@ function reducer(s: State, m: Msg): State {
       return { ...s, createOpen: m.v };
     case "projectionOpen":
       return { ...s, projectionOpen: m.v };
+    case "bundleDetailsOpen":
+      return { ...s, bundleDetailsOpen: m.v };
     case "maximized":
       return { ...s, maximized: m.v };
     case "setBundle": {
@@ -756,6 +762,7 @@ export interface Actions {
   setRemoteOpen(open: boolean, seed?: string): void;
   setCreateOpen(open: boolean): void;
   setProjectionOpen(open: boolean): void;
+  setBundleDetailsOpen(open: boolean): void;
   /** Static new-bundle generation (see docs/features/create-bundle.md):
    *  Rust shows the parent-folder picker, writes the conformant starter, and
    *  the result opens like any picked folder. Resolves false when the user
@@ -983,6 +990,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setProjectionOpen(open) {
       dispatch({ t: "projectionOpen", v: open });
+    },
+    setBundleDetailsOpen(open) {
+      dispatch({ t: "bundleDetailsOpen", v: open });
     },
     async createBundle(input) {
       const folder = await ipc.createBundle(input);

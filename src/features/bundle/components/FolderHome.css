@@ -70,15 +70,6 @@
   margin-bottom: 0;
 }
 
-.fh-metadata {
-  max-width: 60rem;
-  margin: 0 auto var(--space-24);
-  padding: var(--space-12);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-}
-
 /* Sections mirror the index's own headings, styled like the command palette's
    group labels so grouped lists read the same everywhere. */
 .fh-section {

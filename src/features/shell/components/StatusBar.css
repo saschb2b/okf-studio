@@ -76,7 +76,7 @@ button.status-item:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Hairline between the conformance verdict and the read-only bundle facts —
+/* Hairline between the conformance verdict and the bundle facts —
    the quiet boundary that lets the left region scan as two groups. */
 .status-sep {
   align-self: center;

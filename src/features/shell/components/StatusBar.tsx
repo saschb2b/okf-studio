@@ -15,6 +15,7 @@ import { useApp } from "@/shared/store.tsx";
 import { AGENT_PANEL_OPENER_ID } from "@/features/agent/agentPanelFocus.ts";
 import { useGitRepository } from "@/features/git/gitRepositoryStore.ts";
 import { GIT_PANEL_OPENER_ID } from "@/features/git/gitPanelFocus.ts";
+import { BUNDLE_DETAILS_OPENER_ID } from "@/features/bundle/bundleDetailsFocus.ts";
 import "./StatusBar.css";
 
 export function StatusBar() {
@@ -40,13 +41,19 @@ export function StatusBar() {
   }
   const aria =
     errors > 0 || warns > 0 ? `Validation: ${label}` : "Validation: conformant, no issues";
+  const formatLabel = bundle
+    ? [
+        bundle.odsfVersion ? `ODSF ${bundle.odsfVersion}` : null,
+        bundle.okfVersion ? `OKF ${bundle.okfVersion}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
 
   return (
     <footer className="status-bar">
-      {/* Left: the state of the open bundle — the conformance verdict, then
-          quiet read-only facts (size, format version) behind a hairline. The
-          right region holds only panel toggles, so clickability follows
-          placement instead of hover-probing five identical-looking items. */}
+      {/* Left: the state of the open bundle, then its size and the one labelled
+          entry for bundle-level details. The right region holds panel toggles. */}
       <div className="status-region">
         {bundle && (
           <button
@@ -69,16 +76,18 @@ export function StatusBar() {
             {plural(bundle.concepts.length, "concept")}
           </span>
         )}
-        {/* Format version(s), read-only — a property of the data, not the app. */}
-        {bundle && (bundle.odsfVersion ?? bundle.okfVersion) !== null && (
-          <span className="status-item status-muted" title="Bundle format version">
-            {[
-              bundle.odsfVersion ? `ODSF ${bundle.odsfVersion}` : null,
-              bundle.okfVersion ? `OKF ${bundle.okfVersion}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
+        {bundle && (
+          <button
+            id={BUNDLE_DETAILS_OPENER_ID}
+            type="button"
+            className="status-item status-muted"
+            aria-label={`Open bundle details for ${bundle.name}`}
+            aria-haspopup="dialog"
+            title="Bundle details"
+            onClick={() => actions.setBundleDetailsOpen(true)}
+          >
+            {formatLabel || "Bundle details"}
+          </button>
         )}
       </div>
       <div className="status-region">

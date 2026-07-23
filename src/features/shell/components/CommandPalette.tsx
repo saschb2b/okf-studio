@@ -169,6 +169,13 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:bundle-details",
+      label: "Open bundle details",
+      hint: "Action",
+      run: () => actions.setBundleDetailsOpen(true),
+    },
+    {
+      kind: "action",
       id: "act:share-bundle",
       label: "Create shareable bundle",
       hint: "Action",

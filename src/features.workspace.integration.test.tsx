@@ -103,6 +103,35 @@ describe("OKF Studio workspace features", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps bundle administration out of the overview and available from the status bar", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    expect(screen.queryByRole("heading", { name: "Ignore rules" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Advisory profiles" })).not.toBeInTheDocument();
+    expect(screen.queryByText("OKF Studio fixture")).not.toBeInTheDocument();
+
+    const detailsButton = screen.getByRole("button", {
+      name: /open bundle details for OKF Studio/i,
+    });
+    expect(detailsButton).toHaveTextContent("ODSF 0.1 · OKF 0.1");
+    await user.click(detailsButton);
+
+    const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
+    expect(within(dialog).getByText("OKF Studio fixture")).toBeInTheDocument();
+    expect(await within(dialog).findByRole("heading", { name: "Ignore rules" }))
+      .toBeInTheDocument();
+    expect(await within(dialog).findByRole("heading", { name: "Advisory profiles" }))
+      .toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Close bundle details" }));
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    await fillText(user, await screen.findByRole("combobox"), "bundle details");
+    await user.click(await screen.findByRole("option", { name: /open bundle details/i }));
+    expect(await screen.findByRole("dialog", { name: "Bundle details" })).toBeInTheDocument();
+  });
+
   it("shows relationships and the outline in the reader rail", async () => {
     const user = userEvent.setup();
     const { container } = renderApp();

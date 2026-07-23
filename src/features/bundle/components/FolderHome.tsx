@@ -14,9 +14,6 @@ import { renderMarkdown } from "@/shared/render/markdown.ts";
 import { buildTokenIndex } from "@/shared/odsf.ts";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
 import { classifyBodyLinks, classifyLink } from "@/features/reader/components/Reader.tsx";
-import { MetadataInspector } from "@/features/reader/components/MetadataInspector.tsx";
-import { AdvisoryProfiles } from "./AdvisoryProfiles.tsx";
-import { IgnoreRules } from "./IgnoreRules.tsx";
 import { InteroperabilityLab } from "./InteroperabilityLab.tsx";
 import type { IndexEntry, IndexNode } from "@/shared/types.ts";
 import "./FolderHome.css";
@@ -112,40 +109,12 @@ export function FolderHome({ node }: { node: IndexNode }) {
       )}
 
       {node.dir === "" && bundle ? (
-        <>
-          {Object.hasOwn(bundle.extra, "profiles") ? (
-            <AdvisoryProfiles
-              bundleRoot={bundle.root}
-              onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
-              onReviewMigration={(diagnostic, focusId) => {
-                actions.openOkfTaskLauncher({
-                  kind: "profile-finding",
-                  id: `${diagnostic.namespace}:${diagnostic.ruleId}:${diagnostic.file}`,
-                  title: diagnostic.message,
-                  conceptId: diagnostic.conceptId,
-                  diagnostic,
-                }, {
-                  preferredTaskId: "okf-migrate",
-                  returnFocusId: focusId,
-                });
-              }}
-            />
-          ) : null}
-          <IgnoreRules bundleRoot={bundle.root} />
-          <InteroperabilityLab
-            key={bundle.root}
-            bundleRoot={bundle.root}
-            onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
-            onReviewExternal={(url) => actions.setRemoteOpen(true, url)}
-          />
-          <div className="fh-metadata">
-            <MetadataInspector
-              title="Bundle metadata"
-              source="index.md"
-              values={bundle.extra}
-            />
-          </div>
-        </>
+        <InteroperabilityLab
+          key={bundle.root}
+          bundleRoot={bundle.root}
+          onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
+          onReviewExternal={(url) => actions.setRemoteOpen(true, url)}
+        />
       ) : null}
 
       {node.sections.length > 0 ? (

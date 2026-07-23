@@ -613,7 +613,7 @@ where
         ranges.push((range, next));
     }
 
-    ranges.sort_by(|left, right| right.0.start.cmp(&left.0.start));
+    ranges.sort_by_key(|item| std::cmp::Reverse(item.0.start));
     ranges.dedup_by(|left, right| left.0 == right.0);
     let count = ranges.len();
     let mut rewritten = body.to_string();

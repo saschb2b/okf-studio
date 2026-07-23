@@ -648,7 +648,7 @@ fn rewrite_omitted_links(
             .ok_or_else(|| "A projection inline link could not be rewritten safely.".to_string())?;
         ranges.push((range, OMISSION_ANCHOR.to_string(), target));
     }
-    ranges.sort_by(|left, right| right.0.start.cmp(&left.0.start));
+    ranges.sort_by_key(|item| std::cmp::Reverse(item.0.start));
     ranges.dedup_by(|left, right| left.0 == right.0);
     let mut counts = BTreeMap::new();
     let mut rewritten = body.to_string();

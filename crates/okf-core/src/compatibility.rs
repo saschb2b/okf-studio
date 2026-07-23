@@ -223,7 +223,7 @@ pub fn apply_repairs(body: &str, repairs: &[CompatibilityRepair]) -> Result<Stri
         }
     }
 
-    replacements.sort_by(|left, right| right.0.start.cmp(&left.0.start));
+    replacements.sort_by_key(|item| std::cmp::Reverse(item.0.start));
     replacements.dedup_by(|left, right| left.0 == right.0);
     let mut normalized = body.to_string();
     for (range, replacement) in replacements {

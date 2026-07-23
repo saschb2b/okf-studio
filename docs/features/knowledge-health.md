@@ -3,7 +3,7 @@ type: Feature
 title: Knowledge Health
 description: Give agents deterministic, revision-bound evidence about bundle quality without turning heuristics into OKF conformance rules.
 tags: [feature, agents, health, validation, graph, provenance]
-timestamp: 2026-07-23T15:45:00Z
+timestamp: 2026-07-23T18:30:00Z
 ---
 
 # What it does
@@ -35,6 +35,8 @@ Conformance findings are always facts copied from the existing validator. Missin
 The writing category finds observable patterns such as generic framing, empty headings, repeated adjacent paragraphs, and repeated bold-label bullets. Each is a heuristic with a path and evidence excerpt or count. These findings support the explicit [OKF Writing](okf-writing.md) workflow and never become a readability score, word blacklist, or validity gate.
 
 The freshness category also evaluates authored [Reliability and Lifecycle](reliability-and-lifecycle.md) signals. Unknown lifecycle values and confidence outside 0 to 1 are facts about malformed profile metadata. A bounded linear graph pass finds supersession cycles and refuses to choose a terminal replacement. Missing reliability metadata creates no finding.
+
+The provenance and freshness categories also interpret the optional [Evidence and Provenance](evidence-and-provenance.md) profile. A dangling structured claim marker names its exact body line. Invalid or unused evidence entries remain advisory. Authored `changed` and `unavailable` check observations preserve their source ID, time, and fingerprint, while the explanation states that a changed representation or failed request does not prove factual invalidity. The existing lifecycle, contradiction, replacement, and retrieval-conflict findings remain separate evidence in the same report instead of being collapsed into a truth score.
 
 # Agent tools
 

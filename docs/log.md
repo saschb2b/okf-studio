@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Evidence and Provenance](features/evidence-and-provenance.md) and the local `io.okf.evidence` advisory descriptor. Adapter receipts now carry an observation time and project a path-redacted durable source identity into accepted agent context. Structured claim markers render as sanitized source footnotes, retrieval preserves the same source records and exact claim lines, and Knowledge Health reports dangling, changed, or unavailable evidence without treating a failed request as a truth verdict. Public source checks run only from the reader's named action through the existing bounded Rust fetch.
+
 * **Update**: Completed [Lineage](features/lineage.md) as a bounded multi-hop maintenance view. The docked panel now filters upstream dependencies and downstream impact by portable or profile-defined relationship and advisory reliability state; labels cycles, repeated branches, missing targets, hubs, and traversal omissions; and explains each incoming or outgoing step in a filtered shortest path. Portable links remain available when profiles do not resolve.
 
 * **Creation**: Added the [Retirement Workflow](features/retirement-workflow.md). The Concept Reader now separates deprecate, redirect, tombstone, and delete; shows link, index, file, and retrieval impact; derives a dated rationale entry for `log.md`; and routes the complete change through mandatory hunk review, isolated validation, revision-bound atomic Apply, and guarded Restore. Deletion requires explicit acknowledgement and a replacement while inbound links remain, and a durable checkpoint restores deleted bytes after a staging-service restart.

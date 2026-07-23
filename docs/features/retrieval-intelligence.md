@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-23T15:45:00Z
+timestamp: 2026-07-23T18:30:00Z
 ---
 
 # What it does
@@ -11,6 +11,8 @@ timestamp: 2026-07-23T15:45:00Z
 Every ordinary Agent Panel question can use a Rust-owned retrieval pass over the active granted bundle before it reaches the selected agent. Studio classifies the question, chooses a local route, compiles coherent sections into a bounded evidence packet, and attaches that packet with stable concept and section identities. The agent does not need its own chunker or unrestricted filesystem access.
 
 The generated attachment carries the lowercase SHA-256 digest of the exact Markdown sent through the prompt boundary. The retrieval receipt remains a separate identity and is never substituted for this content digest.
+
+Retrieval units also preserve the optional [Evidence and Provenance](evidence-and-provenance.md) map. Each evidence item carries the bounded source identities available to its concept and the structured claim markers whose exact body lines fall inside that section. The packet keeps source URI, locator, observation, digest, adapter, and authored liveness state separate from ordinary concept-wide external links. An agent can therefore connect an excerpt to the same evidence the reader shows without parsing frontmatter again.
 
 The answer turn shows one compact evidence receipt with the excerpt count, search method, and an Inspect action. It adds a plain status only when the evidence is incomplete, conflicting, stale, unavailable, or shared remotely. The answer does not append an `Evidence`, `Sources`, concept-path, or receipt-ID footer because Inspect already owns that provenance. A concept or external citation may still appear inline when it helps the reader understand a claim. Internal generation instructions such as the abstention flag never appear in the conversation.
 

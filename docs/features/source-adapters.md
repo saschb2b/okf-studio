@@ -3,7 +3,7 @@ type: Feature
 title: Source Adapters and Provenance
 description: Versioned Rust adapters turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible provenance and refresh identity.
 tags: [feature, agents, sources, adapters, provenance, security]
-timestamp: 2026-07-18T14:20:00Z
+timestamp: 2026-07-23T18:30:00Z
 ---
 
 # Purpose
@@ -21,6 +21,7 @@ Adapters turn each explicit selection into repeatable evidence with visible orig
 Every adapter receipt uses schema version 1 and records:
 
 - adapter ID and version;
+- the UTC time at which Studio observed the selected or fetched bytes;
 - discovery mode: file, folder, image, or URL;
 - bounded visible origin and closed media type;
 - SHA-256 source fingerprint over the original bytes;
@@ -32,6 +33,8 @@ Every adapter receipt uses schema version 1 and records:
 Rust revalidates the receipt at prompt submission. Origin and media type must match the attachment. Source and evidence fingerprints must match the attached bytes or normalized text. The refresh fingerprint must match the declared adapter contract. A webview cannot forge a different adapter, evidence body, or trust label.
 
 The composer keeps the healthy inventory collapsed to one line. A partial extraction opens it so the warning, adapter, origin, evidence ID, and refresh ID are visible. The inventory states that embedded instructions remain inert. The full adapter receipt also precedes the evidence in the agent context block.
+
+When an adapted source enters a named OKF task, Studio also derives the bounded `io.okf.evidence` profile record described in [Evidence and Provenance](evidence-and-provenance.md). The accepted context keeps the observed time, fingerprints, adapter, media type, and safe locator beside the source body. This lets a staged concept retain the exact receipt identity. Absolute local paths, cache locations, and credentials do not enter the projection.
 
 # Built-in adapters
 

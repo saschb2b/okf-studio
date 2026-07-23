@@ -1,6 +1,9 @@
 ---
 okf_version: "0.1"
 profiles:
+  io.okf.evidence:
+    version: "1.0.0"
+    descriptor: "profiles/io.okf.evidence.json"
   io.okf.reliability:
     version: "1.0.0"
     descriptor: "profiles/io.okf.reliability.json"
@@ -34,6 +37,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 
 * [Agent Panel](features/agent-panel.md) - Run parallel agent threads, attach OKF context, approve tools, and review proposed knowledge changes.
 * [Source Adapters and Provenance](features/source-adapters.md) - Turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible versioned provenance.
+* [Evidence and Provenance](features/evidence-and-provenance.md) - Keep durable source identity with a concept, connect claims to evidence, and check public sources only after an explicit action.
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.

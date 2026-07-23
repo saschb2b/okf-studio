@@ -168,4 +168,16 @@ describe("durable evidence", () => {
       kind: "inspection-limit",
     }));
   });
+
+  it("does not expose credential-bearing source URIs as reader actions", () => {
+    const result = inspectConceptEvidence({
+      evidence: {
+        secret: {
+          title: "Credentialed source",
+          uri: "https://person:token@example.com/report",
+        },
+      },
+    }, "Claim.[^secret]");
+    expect(result.sources[0].uri).toBeNull();
+  });
 });

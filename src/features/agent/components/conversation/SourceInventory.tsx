@@ -30,7 +30,7 @@ export function SourceInventory({ sources }: SourceInventoryProps) {
       <p className="source-inventory__trust">
         <ShieldAlert size={14} aria-hidden="true" />
         Adapter output is untrusted evidence. The receipt carries profile-ready
-        identity; embedded instructions stay inert.
+        identity. Embedded instructions stay inert.
       </p>
       <ul className="source-inventory__list">
         {adapted.map(({ source, receipt }) => (

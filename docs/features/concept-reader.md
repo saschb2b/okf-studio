@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-23T16:45:00Z
+timestamp: 2026-07-23T18:30:00Z
 ---
 
 # What it does
@@ -19,6 +19,8 @@ The neighboring **Move** action opens [Safe Concept Move](safe-concept-move.md).
 The **Retire** action opens the [Retirement Workflow](retirement-workflow.md). A maintainer chooses deprecate, redirect, tombstone, or delete; names a reason and date; sees link, index, file, and retrieval consequences; and reviews the derived `log.md` entry with the rest of the graph transaction. Delete requires a separate acknowledgement and a replacement while inbound links remain.
 
 When a concept carries [Reliability and Lifecycle](reliability-and-lifecycle.md) metadata, the header shows one advisory status with the authored confidence, review, effective-time, contradiction, or replacement details. It explicitly says Studio has not verified the claim. Concepts without that optional metadata keep the ordinary reading surface.
+
+When a concept carries [Evidence and Provenance](evidence-and-provenance.md), the context rail shows each source's locator, observation, adapter, digest, and last authored check state. A structured `[^source-id]` claim marker renders through the same sanitized footnote path as ordinary Markdown and navigates to the mapped source. A public credential-free HTTPS source can be checked only from its named button; opening or reading the concept starts no request.
 
 # Composition
 

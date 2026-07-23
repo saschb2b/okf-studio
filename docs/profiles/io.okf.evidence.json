@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "namespace": "io.okf.evidence",
+  "version": "1.0.0",
+  "title": "Provenance and claim evidence",
+  "description": "Advisory durable source identity, claim-level evidence, and explicit source-check observations.",
+  "fields": [
+    {
+      "id": "provenance",
+      "scope": "concept",
+      "key": "provenance",
+      "label": "Provenance",
+      "description": "A map or list of durable source observations with a title, observed time, digest, adapter identity, media type, and safe locator.",
+      "valueType": "object",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": [
+        {
+          "report": {
+            "title": "Public report",
+            "uri": "https://example.com/report",
+            "observed_at": "2026-07-23T00:00:00Z",
+            "source_digest": "sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "adapter": {
+              "id": "html",
+              "version": 1
+            },
+            "media_type": "text/html"
+          }
+        }
+      ]
+    },
+    {
+      "id": "evidence",
+      "scope": "concept",
+      "key": "evidence",
+      "label": "Evidence map",
+      "description": "A source-ID map used by claim markers such as [^report], with an optional provenance reference, locator, and last explicit source-check observation.",
+      "valueType": "object",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": [
+        {
+          "report": {
+            "provenance_id": "report",
+            "locator": "Results, paragraph 4",
+            "last_checked_at": "2026-07-23T12:00:00Z",
+            "last_status": "available",
+            "last_fingerprint": "sha256-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ]
+    }
+  ],
+  "relationships": [],
+  "checks": []
+}

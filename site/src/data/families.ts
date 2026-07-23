@@ -86,6 +86,10 @@ export const families: Family[] = [
             title: "Know when knowledge needs caution",
             body: "Optional lifecycle, confidence, effective-time, review, contradiction, and replacement signals qualify what readers and agents see. Missing metadata never makes a concept invalid.",
           },
+          {
+            title: "Follow a claim to its source",
+            body: "Optional evidence markers connect a sentence to a durable source record. The reader shows its locator, observation, adapter, digest, and status, and checks a public source only when you press Check source.",
+          },
         ],
       },
       {
@@ -112,6 +116,7 @@ export const families: Family[] = [
       { label: "Graph view", href: doc("features/graph-view.md"), external: true },
       { label: "Search and filter", href: doc("features/search-and-filter.md"), external: true },
       { label: "Lineage", href: doc("features/lineage.md"), external: true },
+      { label: "Evidence and provenance", href: doc("features/evidence-and-provenance.md"), external: true },
       { label: "Visualization views", href: doc("features/viz-views.md"), external: true },
     ],
     workflows: ["understand", "ask"],
@@ -162,7 +167,7 @@ export const families: Family[] = [
           },
           {
             title: "Sources with receipts",
-            body: "Files, folders, images, and public pages show their adapter, origin, evidence fingerprint, and warnings before send. OpenAPI, dbt, and BigQuery exports become stable inventories, while every source stays untrusted evidence.",
+            body: "Files, folders, images, and public pages show their adapter, observed time, origin, fingerprints, and warnings before send. Named tasks carry a profile-ready provenance record, while absolute local paths and embedded instructions stay out.",
           },
         ],
       },
@@ -208,6 +213,7 @@ export const families: Family[] = [
       { label: "Capability packs", href: doc("features/capability-packs.md"), external: true },
       { label: "Retrieval intelligence", href: doc("features/retrieval-intelligence.md"), external: true },
       { label: "Source adapters", href: doc("features/source-adapters.md"), external: true },
+      { label: "Evidence and provenance", href: doc("features/evidence-and-provenance.md"), external: true },
       { label: "Workspace memory", href: doc("features/workspace-memory.md"), external: true },
     ],
     workflows: ["ask", "improve"],
@@ -254,7 +260,7 @@ export const families: Family[] = [
           },
           {
             title: "Health findings with evidence",
-            body: "Audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Writing clues stay advisory, point to the passage, and never make a valid bundle fail.",
+            body: "Audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Missing claim sources name the exact line; changed or unavailable pages never become a truth verdict.",
           },
           {
             title: "A second pass without write authority",

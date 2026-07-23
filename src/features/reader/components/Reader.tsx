@@ -33,7 +33,12 @@ import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialo
 import { ConceptRetirementDialog } from "@/features/reader/components/ConceptRetirementDialog.tsx";
 import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
 import { ReliabilityNotice } from "@/features/reader/components/ReliabilityNotice.tsx";
+import { EvidencePanel } from "@/features/reader/components/EvidencePanel.tsx";
 import { assessReliability } from "@/shared/reliability.ts";
+import {
+  inspectConceptEvidence,
+  materializeEvidenceFootnotes,
+} from "@/shared/evidence.ts";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough
@@ -287,9 +292,21 @@ export function Reader() {
   // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
   // the body's `{ref}` resolution and the TokenViz below.
   const tokenIndex = buildTokenIndex(bundle);
+  const conceptEvidence = c
+    ? inspectConceptEvidence(c.extra, c.body)
+    : inspectConceptEvidence({}, "");
   // Classify links in the HTML string (not by post-render DOM mutation) so the
   // routing/styling cues survive React re-applying the body's innerHTML.
-  const bodyHtml = c ? classifyBodyLinks(renderMarkdown(c.body, tokenIndex), c.id, bundle) : "";
+  const bodyHtml = c
+    ? classifyBodyLinks(
+        renderMarkdown(
+          materializeEvidenceFootnotes(c.body, conceptEvidence),
+          tokenIndex,
+        ),
+        c.id,
+        bundle,
+      )
+    : "";
   // Use the image-resolved html once it matches the current body; until then
   // (or when there are no images) render the body as-is.
   const displayHtml = processed?.src === bodyHtml ? processed.html : bodyHtml;
@@ -822,6 +839,12 @@ export function Reader() {
           onPeekEnd={hidePeek}
         />
 
+        <EvidencePanel
+          key={c.id}
+          evidence={conceptEvidence}
+          onOpenExternal={(url) => actions.openExternal(url)}
+        />
+
         {c.citedBy.length > 0 && (
           <RailModule title="Cited by" count={c.citedBy.length}>
             <RelRows bundle={bundle} ids={c.citedBy} onSelect={select} onPeek={peekStart} onPeekEnd={hidePeek} />
@@ -907,7 +930,7 @@ export function Reader() {
           title="Concept metadata"
           source={`${c.id}.md`}
           values={c.extra}
-          excludeKeys={ODSF_METADATA_KEYS}
+          excludeKeys={[...ODSF_METADATA_KEYS, "evidence", "provenance"]}
         />
 
         {c.brokenLinks.length > 0 && (

@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-23T16:45:00Z
+timestamp: 2026-07-23T18:30:00Z
 ---
 
 # Outcome
@@ -152,6 +152,10 @@ A package is complete only when all applicable conditions hold:
 | LK3 Reliability and lifecycle | Shipped | The optional `io.okf.reliability` profile defines lifecycle, confidence, effective-time, review, contradiction, and replacement signals. The reader derives a qualified advisory state, health finds malformed values and supersession cycles, and retrieval preserves caveats for both Studio and native agents without claiming metadata proves truth. |
 | LK4 Retirement and deletion workflow | Shipped | The reader offers deprecate, redirect, tombstone, and delete as distinct outcomes with required rationale, link and index impact, and retrieval consequences. Rust derives the complete graph transaction and dated `log.md` entry from live bounded Markdown. Every hunk must be kept before isolated validation and revision-bound Apply; durable checkpoints restore a deleted file after a staging-service restart. |
 | LK5 Lineage completion | Shipped | The docked panel filters upstream and downstream traversal by portable or typed relationship and advisory reliability state. Rows expose labelled relations, cycles, already-shown branches, missing targets, and explicit depth, hub, and node-budget omissions. Bounded shortest-path search explains every incoming or outgoing step under the same filters and reports an exhausted search separately from no path. |
-| PF1 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
+| PF1 Durable provenance mapping | Shipped | Rust stamps each adapter receipt with its observation time. Accepted task context projects its safe identity, digests, adapter, media type, URI, and locator into the local `io.okf.evidence` profile contract; absolute local paths are reduced to safe names. |
+| PF2 Citation and evidence contract | Shipped | Structured `[^source-id]` markers resolve through a bounded optional evidence map into sanitized Markdown footnotes and reader navigation. Retrieval packets preserve the same source records and exact claim lines, while health reports dangling markers and unused or invalid entries as advice. |
+| PF3 Explicit source-liveness checks | Shipped | Each eligible evidence row names the only network action. It reuses the HTTPS-only Rust fetch with credential, redirect, DNS, timeout, media, and size checks, compares content fingerprints, and reports Available, Changed, or Unavailable without requesting on open. |
+| PF4 Evidence health | Shipped | Deterministic health joins claim locations, source check observations, lifecycle, contradiction, replacement, and retrieval conflicts. Each finding preserves evidence and states that source change or failure is not a factual verdict; repairs remain guided staged proposals. |
+| AP1 through IX4 | Planned | Each remaining package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
 
 Related product boundaries: [Design Principles](principles.md), [Scope & Non-Goals](scope-and-non-goals.md), [Validation](../features/validation.md), [Knowledge Health](../features/knowledge-health.md), [Source Adapters and Provenance](../features/source-adapters.md), and [OKF Parsing](../architecture/okf-parsing.md).

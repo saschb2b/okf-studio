@@ -15,6 +15,7 @@ pub mod links;
 pub mod logfile;
 pub mod model;
 pub mod parse;
+pub mod profile;
 pub mod query;
 pub mod retrieval;
 pub mod validate;

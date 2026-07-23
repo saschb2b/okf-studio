@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Defined the [Advisory Profile Contract](reference/advisory-profile-contract.md) and implemented its pure Rust resolver. Version-pinned descriptors resolve only from bounded JSON files inside the authorized bundle, retain unknown values without interpreting them, expose active and unavailable states, and emit profile diagnostics separately from OKF conformance. Traversal, symbolic-link escape, URL-like paths, invalid identity, and unpinned versions are rejected without closing the bundle.
+
 * **Creation**: Added the [Metadata Inspector](features/metadata-inspector.md) to root folder homes and the Concept Reader rail. It renders producer-defined root and concept values as bounded text, names their source file and path, copies only a bounded representation after an explicit action, and states every display limit. ODSF-owned fields remain in their dedicated renderer.
 
 * **Update**: Preserve producer-defined bundle-root frontmatter through the complete read path. `Bundle.extra` now retains every parsed root field except promoted OKF and ODSF versions, including nested maps, lists, and concept-shaped keys. The map crosses serde IPC, TypeScript, browser fixtures, Compatibility Clinic reporting, pure inventory queries, and MCP inventory without affecting OKF conformance.

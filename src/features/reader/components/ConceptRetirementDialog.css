@@ -1,0 +1,124 @@
+.concept-retirement-dialog {
+  max-height: min(52rem, 84vh);
+}
+
+.concept-retirement-choices {
+  display: grid;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.concept-retirement-choices legend,
+.concept-move-dialog__form > label {
+  margin-block-end: var(--space-2);
+  font-weight: var(--weight-semibold);
+}
+
+.concept-retirement-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  min-height: 44px;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.concept-retirement-choice:hover {
+  background: var(--bg-sunken);
+}
+
+.concept-retirement-choice[data-selected] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.concept-retirement-choice[data-destructive][data-selected] {
+  border-color: var(--error);
+  box-shadow: inset 0 0 0 1px var(--error);
+}
+
+.concept-retirement-choice input {
+  width: 18px;
+  height: 18px;
+  margin: var(--space-2) 0 0;
+  accent-color: var(--accent);
+}
+
+.concept-retirement-choice[data-destructive] input {
+  accent-color: var(--error);
+}
+
+.concept-retirement-choice span {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.concept-retirement-choice small {
+  color: var(--text-dim);
+  line-height: var(--lh-normal);
+}
+
+.concept-move-dialog__form select,
+.concept-move-dialog__form textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-6) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.concept-move-dialog__form textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.concept-move-dialog__form select:focus-visible,
+.concept-move-dialog__form textarea:focus-visible,
+.concept-retirement-choice:has(input:focus-visible) {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.concept-retirement-confirm {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  min-height: 44px;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-sm);
+  color: var(--error);
+  cursor: pointer;
+}
+
+.concept-retirement-confirm input {
+  width: 18px;
+  height: 18px;
+  margin: var(--space-2) 0 0;
+  accent-color: var(--error);
+}
+
+.concept-retirement-summary > p strong {
+  text-transform: capitalize;
+}
+
+.concept-move-files > li[data-kind="delete"] {
+  border-color: var(--error);
+}
+
+@media (max-width: 420px) {
+  .concept-retirement-dialog {
+    top: var(--space-8);
+    max-height: calc(100vh - var(--space-16));
+  }
+}

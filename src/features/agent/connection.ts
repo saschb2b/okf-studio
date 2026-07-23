@@ -273,7 +273,7 @@ export interface AgentTurnEvent {
 export interface AgentStagedFileInfo {
   path: string;
   bytes: number;
-  kind: "create" | "modify";
+  kind: "create" | "modify" | "delete";
 }
 
 export type AgentWriteGrantMode = "interactive" | "unattended";
@@ -294,7 +294,7 @@ export interface AgentStageEvent {
 
 export interface AgentStagedFileDiff {
   path: string;
-  kind: "create" | "modify";
+  kind: "create" | "modify" | "delete";
   revision: string;
   hunks: readonly AgentStagedDiffHunk[];
   truncated: boolean;

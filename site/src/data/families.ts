@@ -237,6 +237,10 @@ export const families: Family[] = [
             title: "Move a concept without breaking the graph",
             body: "Choose a new Markdown path from the reader. Studio previews every link and index repair, keeps a portable redirect at the old path, validates the isolated result, and applies the reviewed files in one restorable transaction.",
           },
+          {
+            title: "Retire knowledge without losing the reason",
+            body: "Choose deprecate, redirect, tombstone, or delete. Studio shows what happens to links, indexes, and retrieval, records the reason in the bundle log, and keeps deletion behind review, validation, and a restore checkpoint.",
+          },
         ],
       },
       {
@@ -276,6 +280,7 @@ export const families: Family[] = [
       { label: "Compatibility Clinic", href: doc("features/compatibility-clinic.md"), external: true },
       { label: "Validation", href: doc("features/validation.md"), external: true },
       { label: "OKF writing", href: doc("features/okf-writing.md"), external: true },
+      { label: "Retirement workflow", href: doc("features/retirement-workflow.md"), external: true },
       { label: "Knowledge health", href: doc("features/knowledge-health.md"), external: true },
       { label: "Structured agent work", href: doc("features/structured-agent-work.md"), external: true },
       { label: "Create a bundle", href: doc("features/create-bundle.md"), external: true },

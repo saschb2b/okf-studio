@@ -13,6 +13,7 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Safe Concept Move](safe-concept-move.md) - Relocate a concept with reviewed link, index, redirect, validation, Apply, and Restore changes.
 * [Typed Relationships](typed-relationships.md) - Add profile-defined meaning to portable Markdown links, then inspect and filter those connections.
 * [Reliability and Lifecycle](reliability-and-lifecycle.md) - Qualify optional lifecycle, confidence, effective-time, review, contradiction, and replacement signals.
+* [Retirement Workflow](retirement-workflow.md) - Deprecate, redirect, tombstone, or delete a concept through one impact-aware, reviewed, restorable graph transaction.
 * [Metadata Inspector](metadata-inspector.md) - Inspect bounded producer-defined bundle and concept fields with their source locations.
 * [Advisory Profiles](advisory-profiles.md) - Resolve local version-pinned team conventions as advice, never as OKF conformance.
 * [Profile-Aware Authoring](profile-aware-authoring.md) - Carry selected advisory conventions into bounded tasks and staged review.

@@ -5,7 +5,7 @@
 // side in reader-only mode and falls below the article when space is tight (the
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
-import { MoveRight, Sparkles, X } from "lucide-react";
+import { Archive, MoveRight, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "@/shared/store.tsx";
@@ -30,6 +30,7 @@ import {
   ODSF_METADATA_KEYS,
 } from "@/features/reader/components/MetadataInspector.tsx";
 import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
+import { ConceptRetirementDialog } from "@/features/reader/components/ConceptRetirementDialog.tsx";
 import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
 import { ReliabilityNotice } from "@/features/reader/components/ReliabilityNotice.tsx";
 import { assessReliability } from "@/shared/reliability.ts";
@@ -281,6 +282,7 @@ export function Reader() {
   // (so a concept switch never renders the previous body while the new one loads).
   const [processed, setProcessed] = useState<{ src: string; html: string } | null>(null);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [retirementOpen, setRetirementOpen] = useState(false);
 
   // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
   // the body's `{ref}` resolution and the TokenViz below.
@@ -685,6 +687,16 @@ export function Reader() {
             )}
             <div className="reader-header-actions">
               <button
+                id="reader-concept-retirement"
+                type="button"
+                className="reader-concept-retirement"
+                aria-label="Retire concept"
+                onClick={() => setRetirementOpen(true)}
+              >
+                <Archive size={14} aria-hidden="true" />
+                Retire
+              </button>
+              <button
                 id="reader-concept-move"
                 type="button"
                 className="reader-concept-move"
@@ -928,6 +940,19 @@ export function Reader() {
           onOpenChange={setMoveOpen}
           onOpenMovedConcept={(conceptId) => {
             setMoveOpen(false);
+            actions.selectConcept(conceptId);
+          }}
+        />
+      ) : null}
+
+      {retirementOpen && bundle ? (
+        <ConceptRetirementDialog
+          open
+          bundle={bundle}
+          concept={c}
+          onOpenChange={setRetirementOpen}
+          onOpenConcept={(conceptId) => {
+            setRetirementOpen(false);
             actions.selectConcept(conceptId);
           }}
         />

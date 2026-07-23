@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added the [Retirement Workflow](features/retirement-workflow.md). The Concept Reader now separates deprecate, redirect, tombstone, and delete; shows link, index, file, and retrieval impact; derives a dated rationale entry for `log.md`; and routes the complete change through mandatory hunk review, isolated validation, revision-bound atomic Apply, and guarded Restore. Deletion requires explicit acknowledgement and a replacement while inbound links remain, and a durable checkpoint restores deleted bytes after a staging-service restart.
+
 * **Creation**: Added [Reliability and Lifecycle](features/reliability-and-lifecycle.md) and the local `io.okf.reliability` advisory descriptor. The reader qualifies authored confidence, review, effective-time, contradiction, and replacement signals; Knowledge Health reports malformed values and supersession cycles; and retrieval returns lifecycle, uncertainty, and conflict caveats to Studio and native agents without changing OKF validation.
 
 * **Creation**: Added [Typed Relationships](features/typed-relationships.md). Namespaced profile annotations label ordinary Markdown links without replacing them. The reader shows known, unknown, incoming, missing-target, and missing-prose-link states, while the graph filters valid participants by resolved or authored relationship type.

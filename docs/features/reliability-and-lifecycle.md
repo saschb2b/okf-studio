@@ -3,7 +3,7 @@ type: Feature
 title: Reliability and Lifecycle
 description: Qualify knowledge with optional lifecycle, confidence, effective-time, review, contradiction, and replacement signals.
 tags: [feature, reliability, lifecycle, profiles, retrieval, health]
-timestamp: 2026-07-23T15:45:00Z
+timestamp: 2026-07-23T16:15:00Z
 lifecycle: active
 confidence: 0.9
 review_after: 2026-10-01
@@ -39,6 +39,8 @@ Malformed confidence or date ranges, unknown lifecycle values, active concepts w
 The Rust retrieval manifest preserves the reliability fields with each coherent evidence unit. Included deprecated, superseded, retired, uncertain, or explicitly contradictory knowledge produces a bounded caveat. Conflict or lifecycle caveats require an abstaining answer rather than silently presenting the excerpt as current truth. The native agent tool returns the same caveats as the Studio retrieval inspector.
 
 Authored confidence remains an assertion by the producer. A URL, timestamp, status, or high confidence value is not proof that a claim is correct.
+
+Maintainers change lifecycle deliberately through the [Retirement Workflow](retirement-workflow.md). That workflow turns deprecation, redirect, tombstone, or deletion into an impact-aware graph change and records its reason in `log.md`; the advisory profile alone never deletes or rewrites a file.
 
 # Bounds and failure states
 

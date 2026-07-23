@@ -3412,7 +3412,7 @@ export interface CompatibilityReview {
 
 export interface ConceptMoveChange {
   path: string;
-  kind: "create" | "modify";
+  kind: "create" | "modify" | "delete";
   reason: string;
 }
 
@@ -3429,6 +3429,25 @@ export interface ConceptMovePlan {
 
 export interface ConceptMoveReview {
   plan: ConceptMovePlan;
+  staged: AgentStagedChangesInfo;
+}
+
+export type RetirementAction = "deprecate" | "redirect" | "tombstone" | "delete";
+
+export interface ConceptRetirementPlan {
+  schemaVersion: 1;
+  sourceId: string;
+  action: RetirementAction;
+  replacementId: string | null;
+  affectedLinks: number;
+  affectedIndexes: number;
+  retrievalConsequence: string;
+  warnings: string[];
+  changes: ConceptMoveChange[];
+}
+
+export interface ConceptRetirementReview {
+  plan: ConceptRetirementPlan;
   staged: AgentStagedChangesInfo;
 }
 
@@ -3642,6 +3661,106 @@ export async function stageConceptMove(
     bundleRoot,
     sourceId,
     destinationPath,
+  });
+}
+
+export async function stageConceptRetirement(
+  bundleRoot: string,
+  request: {
+    sourceId: string;
+    action: RetirementAction;
+    replacementId: string | null;
+    reason: string;
+    decisionDate: string;
+  },
+): Promise<ConceptRetirementReview> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    const sourcePath = `${request.sourceId}.md`;
+    const requestedReplacement = request.replacementId?.trim();
+    const replacementId = requestedReplacement && requestedReplacement.length > 0
+      ? requestedReplacement
+      : null;
+    if (!request.reason.trim()) {
+      throw new Error("Name a bounded plain-text retirement reason.");
+    }
+    if (request.action === "redirect" && !replacementId) {
+      throw new Error("Redirect requires a replacement concept.");
+    }
+    const changes: ConceptMoveChange[] = [
+      {
+        path: sourcePath,
+        kind: request.action === "delete" ? "delete" : "modify",
+        reason: request.action === "deprecate"
+          ? "Mark deprecated"
+          : request.action === "redirect"
+            ? "Keep portable redirect"
+            : request.action === "tombstone"
+              ? "Keep retirement tombstone"
+              : "Delete concept file",
+      },
+      ...(request.action === "redirect" || request.action === "delete"
+        ? [{ path: "index.md", kind: "modify" as const, reason: "Update navigation" }]
+        : []),
+      { path: "log.md", kind: "modify", reason: "Record retirement decision" },
+    ];
+    const replacement = replacementId ?? "replacement-concept";
+    mockConceptMoveDiffs = new Map(changes.map((change, index) => [
+      change.path,
+      {
+        path: change.path,
+        kind: change.kind,
+        revision: `mock-retirement-diff-${index}`,
+        hunks: [{
+          index: 0,
+          header: "@@ -1,3 +1,3 @@",
+          unified: change.kind === "delete"
+            ? `----\n-type: Feature\n----\n-# Retired concept\n`
+            : change.path === "log.md"
+              ? `+* **Retirement**: ${request.action} \`${request.sourceId}\`.\n`
+              : `-[Retired](${sourcePath})\n+[Replacement](${replacement}.md)\n`,
+          selected: true,
+          reviewed: false,
+        }],
+        truncated: false,
+      },
+    ]));
+    const consequence = {
+      deprecate: "The concept remains searchable and retrieval adds a lifecycle caveat.",
+      redirect: "Retrieval follows rewritten links to the replacement; the old identity remains an explicit redirect.",
+      tombstone: "Retrieval sees only the retirement explanation, not the former claims.",
+      delete: "The concept leaves the active bundle; rewritten links use the replacement when one was selected.",
+    } satisfies Record<RetirementAction, string>;
+    return {
+      plan: {
+        schemaVersion: 1,
+        sourceId: request.sourceId,
+        action: request.action,
+        replacementId,
+        affectedLinks: request.action === "redirect" || request.action === "delete" ? 2 : 1,
+        affectedIndexes: request.action === "redirect" || request.action === "delete" ? 1 : 0,
+        retrievalConsequence: consequence[request.action],
+        warnings: [],
+        changes,
+      },
+      staged: {
+        sessionId: "concept-retirement-mock",
+        granted: true,
+        grantMode: "interactive",
+        mode: "enhance",
+        canRestore: mockConceptMoveCanRestore,
+        files: changes.map((change) => ({
+          path: change.path,
+          kind: change.kind,
+          bytes: change.kind === "delete" ? 0 : 180,
+        })),
+      },
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ConceptRetirementReview>("stage_concept_retirement", {
+    bundleRoot,
+    request,
   });
 }
 

@@ -50,7 +50,8 @@
 /* Top row: breadcrumb (left) and the "Aa" reading-preferences control (right). */
 .reader-header-top {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-8);
 }
@@ -240,12 +241,19 @@
 .reader-header-actions,
 .reader-resource-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-8);
   align-items: center;
 }
 
+.reader-header-actions {
+  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+
 .reader-okf-task,
 .reader-concept-move,
+.reader-concept-retirement,
 .reader-resource-agent {
   display: inline-flex;
   gap: var(--space-6);
@@ -261,6 +269,7 @@
 
 .reader-okf-task:hover,
 .reader-concept-move:hover,
+.reader-concept-retirement:hover,
 .reader-resource-agent:hover {
   color: var(--text);
   background: var(--bg-sunken);
@@ -268,6 +277,7 @@
 
 .reader-okf-task:focus-visible,
 .reader-concept-move:focus-visible,
+.reader-concept-retirement:focus-visible,
 .reader-resource-agent:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;

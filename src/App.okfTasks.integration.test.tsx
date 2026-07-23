@@ -43,6 +43,48 @@ describe("native OKF task entry points", () => {
     await waitFor(() => expect(origin).toHaveFocus());
   });
 
+  it("records and restores a reviewed concept deprecation", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+    await user.click(screen.getByRole("button", {
+      name: /Overview What OKF Studio is and who it's for/i,
+    }));
+
+    const origin = screen.getByRole("button", { name: "Retire concept" });
+    await user.click(origin);
+    const dialog = await screen.findByRole("dialog", { name: "Retire concept" });
+    expect(within(dialog).getByRole("radio", { name: /Deprecate/i })).toBeChecked();
+    await user.type(
+      within(dialog).getByLabelText("Reason"),
+      "A newer overview is now authoritative",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Review deprecate" }));
+    expect(await within(dialog).findByRole("region", { name: "Retirement impact" }))
+      .toHaveTextContent("retrieval adds a lifecycle caveat");
+
+    while (within(dialog).queryAllByRole("button", { name: "Review file" }).length > 0) {
+      await user.click(within(dialog).getAllByRole("button", { name: "Review file" })[0]);
+    }
+    for (const keep of within(dialog).getAllByRole("button", { name: "Keep" })) {
+      await user.click(keep);
+    }
+    const validate = within(dialog).getByRole("button", { name: "Validate" });
+    await waitFor(() => expect(validate).toBeEnabled());
+    await user.click(validate);
+    expect(await within(dialog).findByRole("status", { name: "Concept retirement validation" }))
+      .toHaveTextContent("OKF validation passed");
+
+    await user.click(within(dialog).getByRole("button", { name: "Apply deprecate" }));
+    expect(await within(dialog).findByRole("heading", { name: "Retirement applied" }))
+      .toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Restore" }));
+    expect(await within(dialog).findByRole("heading", { name: "Retirement restored" }))
+      .toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(origin).toHaveFocus());
+  });
+
   it("starts a bounded task from the reader without replacing the current thread", async () => {
     const { user } = await openAgentThread("Task Launcher Harness");
 

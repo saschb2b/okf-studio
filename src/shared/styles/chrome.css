@@ -32,6 +32,15 @@
   filter: brightness(1.06);
   background: var(--accent);
 }
+.btn.danger {
+  border-color: transparent;
+  background: var(--error);
+  color: var(--accent-contrast);
+}
+.btn.danger:hover:not(:disabled) {
+  filter: brightness(1.06);
+  background: var(--error);
+}
 .btn.ghost {
   border-color: transparent;
   background: transparent;

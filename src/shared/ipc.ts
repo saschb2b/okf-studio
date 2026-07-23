@@ -25,6 +25,10 @@ import type {
   ProjectionInput,
   ProjectionPlan,
 } from "@/features/bundle/projection.ts";
+import type {
+  InteropReport,
+  SemanticImportPreview,
+} from "@/features/bundle/interop.ts";
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import { assessAccessHints } from "@/shared/access.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
@@ -3641,6 +3645,131 @@ export async function exportOkfProjection(
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<ProjectionExportResult | null>("export_okf_projection", { bundleRoot, input });
+}
+
+function mockInteropReport(): InteropReport {
+  return {
+    schemaVersion: 1,
+    multilingual: {
+      groups: [{
+        identity: "product/overview",
+        variants: [{
+          conceptId: "product/overview",
+          title: "Overview",
+          language: "en",
+          convention: "frontmatter",
+          translationOf: null,
+          targetExists: true,
+        }, {
+          conceptId: "product/overview.de",
+          title: "Überblick",
+          language: "de",
+          convention: "translation-reference",
+          translationOf: "product/overview",
+          targetExists: true,
+        }],
+      }],
+      conventions: [{
+        convention: "frontmatter",
+        observed: 1,
+        strengths: ["Keeps filenames stable."],
+        gaps: ["A language field alone does not identify sibling variants."],
+      }, {
+        convention: "filename-suffix",
+        observed: 0,
+        strengths: ["Variant identity is visible without parsing frontmatter."],
+        gaps: ["Renaming the base path can split a set."],
+      }, {
+        convention: "translation-reference",
+        observed: 1,
+        strengths: ["Variants keep ordinary concept identities and an explicit base reference."],
+        gaps: ["Safe move does not rewrite the producer-defined reference yet."],
+      }],
+      adoptionReady: false,
+      message: "Variants remain an experiment until link, search, retrieval, move, and projection fixtures pass together.",
+    },
+    externalBundles: [{
+      alias: "upstream",
+      url: "https://github.com/GoogleCloudPlatform/knowledge-catalog",
+      expectedDigest: null,
+      cachePath: null,
+      status: "not-resolved",
+      cachedDigest: null,
+      identityPrefix: "external:upstream:",
+      message: "Not fetched. Resolution begins only from the named user action.",
+    }],
+    semanticWeb: {
+      exportableRelationships: 8,
+      unsupportedRelationships: 2,
+      message: "JSON-LD exchange covers typed relationships backed by portable Markdown links; every other construct is reported as loss.",
+    },
+    sidecars: [{
+      conceptId: "product/overview",
+      path: "assets/example.notebook",
+      mediaType: "application/x-ipynb+json",
+      authoredDigest: null,
+      actualDigest: "sha256:mock-sidecar",
+      size: 14_280,
+      status: "ready",
+      openPolicy: "download-only",
+      message: "The file remains exportable but Studio will not execute or render it.",
+    }],
+    diagnostics: [],
+    truncated: false,
+  };
+}
+
+export async function readInteropReport(bundleRoot: string): Promise<InteropReport> {
+  if (!isTauri()) {
+    await browserMockDelay(60);
+    return mockInteropReport();
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<InteropReport>("okf_interop_report", { bundleRoot });
+}
+
+export async function exportSemanticWeb(bundleRoot: string): Promise<string | null> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return "okf-studio-sample-relationships.jsonld";
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("export_semantic_web", { bundleRoot });
+}
+
+export async function importSemanticWeb(): Promise<SemanticImportPreview | null> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return {
+      schemaVersion: 1,
+      relationships: [{
+        sourceId: "product/overview",
+        targetId: "features/graph-view",
+        namespace: "com.example.knowledge",
+        type: "supports",
+      }],
+      losses: [{
+        path: "@graph[4]",
+        message: "An OWL restriction is outside the declared relationship subset.",
+      }],
+      truncated: false,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<SemanticImportPreview | null>("import_semantic_web");
+}
+
+export async function exportOkfSidecar(
+  bundleRoot: string,
+  conceptId: string,
+  path: string,
+): Promise<string | null> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return path.split("/").pop() ?? "sidecar";
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("export_okf_sidecar", { bundleRoot, conceptId, path });
 }
 
 export interface CompatibilityReview {

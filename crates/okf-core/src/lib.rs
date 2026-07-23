@@ -14,6 +14,7 @@ pub mod graph;
 pub mod health;
 pub mod ignore;
 pub mod index_tree;
+pub mod interop;
 pub mod links;
 pub mod logfile;
 pub mod maintenance;

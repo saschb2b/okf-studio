@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-23T22:30:00Z
+timestamp: 2026-07-23T23:30:00Z
 ---
 
 # Outcome
@@ -160,6 +160,9 @@ A package is complete only when all applicable conditions hold:
 | AP2 Audience and sensitivity hints | Shipped | The local `io.okf.access` profile defines bounded audience, sensitivity, and handling notes. One deterministic parser keeps recognized ranks and unknown authored values visible in the reader, accepted context, persisted manifest, isolated staged-tree preview, and staged review. Every surface states that guidance does not grant, remove, or prove access, and no hint silently drops evidence. |
 | AP3 Reviewed recipient projection | Shipped | The root home now produces a source-bound, read-only plan from explicit seeds, transitive links, advisory hints, `.okfignore`, and exact redaction terms. Review lists every inclusion, omission, link consequence, redaction, and destination before a native picker opens. Rust regenerates the plan, validates and audits a temporary normal OKF bundle, verifies the unchanged source, and refuses unconfirmed or unmarked replacement. |
 | AP4 Erasure audit | Shipped | The bounded no-symlink scanner checks the complete generated tree for omitted IDs, paths, titles, stable identities, evidence values, ignored paths, and exact user terms. Seeded Markdown, frontmatter, root index, JSON diagnostic, and binary-asset leaks block export, remove the temporary copy, and leave a versioned JSON audit beside the requested destination. |
-| IX1 through IX4 | Planned | Each interoperability experiment remains gated by its adoption criteria. No experiment changes core OKF conformance. |
+| IX1 Multilingual variants | Shipped experiment; not adopted | The lab inventories frontmatter, filename-suffix, and explicit translation-reference variants and dogfoods an English/German pair. All files remain ordinary searchable and retrievable concepts. The comparison names the Safe Move and grouping gaps, so `adoptionReady` remains false until the complete bilingual link, rename, retrieval, and projection gate passes. |
+| IX2 External bundle references | Shipped experiment; not adopted | A bounded root registry reports explicit HTTPS source, optional contained cache, expected revision, unavailable state, and digest mismatch without fetching on open. Resolution begins in the existing URL review dialog, and foreign identities use `external:<alias>:`. Navigable cross-bundle Markdown links remain outside the adopted product. |
+| IX3 Semantic-web adapters | Shipped experiment; not adopted | Explicit export projects profile-typed relationships backed by portable local links into a versioned JSON-LD subset with a loss report. Explicit import parses at most 2 MiB into a read-only preview and reports unsupported items by path. A Rust round trip preserves the declared subset; no RDF reasoning or bundle write is implied. |
+| IX4 Sidecar resources | Shipped experiment; not adopted | Path-keyed declarations now report contained canonical file, media type, size, SHA-256, digest mismatch, and safe-preview or download-only policy. A ready file can be copied only through a native save choice outside the bundle. Unknown media is never executed or rendered as trusted HTML. Packaging, move, and projection adoption gates remain open. |
 
 Related product boundaries: [Design Principles](principles.md), [Scope & Non-Goals](scope-and-non-goals.md), [Validation](../features/validation.md), [Knowledge Health](../features/knowledge-health.md), [Source Adapters and Provenance](../features/source-adapters.md), and [OKF Parsing](../architecture/okf-parsing.md).

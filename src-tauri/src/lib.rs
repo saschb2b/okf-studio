@@ -68,6 +68,7 @@ mod agent_url;
 mod agent_stage;
 mod bundle_create;
 mod bundle_grant;
+mod bundle_interop;
 mod bundle_library;
 mod bundle_projection;
 mod compatibility_stage;
@@ -280,6 +281,49 @@ async fn okf_projection_plan(
     })
     .await
     .map_err(|_| "The recipient projection plan stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn okf_interop_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::interop::InteropReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        Ok(okf_core::interop::analyze(&root, &bundle))
+    })
+    .await
+    .map_err(|_| "The interoperability analysis stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn export_semantic_web(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<Option<String>, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    bundle_interop::export_semantic_web(&app, root).await
+}
+
+#[tauri::command]
+async fn import_semantic_web(
+    app: AppHandle,
+) -> Result<Option<okf_core::interop::SemanticImportPreview>, String> {
+    bundle_interop::import_semantic_web(&app).await
+}
+
+#[tauri::command]
+async fn export_okf_sidecar(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    concept_id: String,
+    path: String,
+) -> Result<Option<String>, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    bundle_interop::export_sidecar(&app, root, concept_id, path).await
 }
 
 #[tauri::command]
@@ -1772,8 +1816,12 @@ pub fn run() {
             okf_ignore_report,
             okf_compatibility_report,
             okf_profile_report,
+            okf_interop_report,
             okf_projection_plan,
             export_okf_projection,
+            export_semantic_web,
+            import_semantic_web,
+            export_okf_sidecar,
             stage_compatibility_normalization,
             select_compatibility_hunk,
             validate_compatibility_normalization,

@@ -17,6 +17,7 @@ import { classifyBodyLinks, classifyLink } from "@/features/reader/components/Re
 import { MetadataInspector } from "@/features/reader/components/MetadataInspector.tsx";
 import { AdvisoryProfiles } from "./AdvisoryProfiles.tsx";
 import { IgnoreRules } from "./IgnoreRules.tsx";
+import { InteroperabilityLab } from "./InteroperabilityLab.tsx";
 import { RecipientProjectionDialog } from "./RecipientProjectionDialog.tsx";
 import type { IndexEntry, IndexNode } from "@/shared/types.ts";
 import "./FolderHome.css";
@@ -153,6 +154,12 @@ export function FolderHome({ node }: { node: IndexNode }) {
             />
           ) : null}
           <IgnoreRules bundleRoot={bundle.root} />
+          <InteroperabilityLab
+            key={bundle.root}
+            bundleRoot={bundle.root}
+            onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
+            onReviewExternal={(url) => actions.setRemoteOpen(true, url)}
+          />
           <div className="fh-metadata">
             <MetadataInspector
               title="Bundle metadata"

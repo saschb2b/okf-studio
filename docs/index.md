@@ -10,6 +10,12 @@ profiles:
   io.okf.reliability:
     version: "1.0.0"
     descriptor: "profiles/io.okf.reliability.json"
+  io.okf.interop:
+    version: "0.1.0"
+    descriptor: "profiles/io.okf.interop.json"
+external_bundles:
+  google-okf:
+    url: "https://github.com/GoogleCloudPlatform/knowledge-catalog"
 ---
 
 # OKF Studio product knowledge
@@ -46,6 +52,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Access Hints](features/access-hints.md) - Show audience, sensitivity, and handling guidance without treating metadata as authorization.
 * [Recipient Projections](features/recipient-projections.md) - Build a reviewed least-disclosure copy for a named recipient without changing the source.
 * [Erasure Audit](features/erasure-audit.md) - Block a projection when declared excluded material remains in its generated output.
+* [Interoperability Lab](features/interoperability-lab.md) - Exercise optional multilingual, external-reference, JSON-LD, and sidecar conventions without making them core OKF.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.
@@ -100,6 +107,10 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Spec Summary](reference/okf-spec-summary.md) - The v0.1 rules Studio must honor.
 * [OKF Reference HTML Visualizer](reference/okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.
 * [OKF Sample Bundles](reference/okf-sample-bundles.md) - The GA4, Stack Overflow, and Bitcoin bundles used as additional fixtures.
+* [Multilingual Variants Experiment](reference/multilingual-variants-experiment.md) - Compare language conventions without selecting a core format.
+* [External Bundle References Experiment](reference/external-bundle-references-experiment.md) - Test explicit read-only resolution with namespaced identity.
+* [Semantic-Web Exchange Experiment](reference/semantic-web-exchange-experiment.md) - Round-trip a declared JSON-LD relationship subset with loss accounting.
+* [Sidecar Resources Experiment](reference/sidecar-resources-experiment.md) - Inventory and export digest-checked companion files without execution.
 * [Tauri 2.0](reference/tauri-2.md) - Key facts about the framework and its plugins.
 * [Glossary](reference/glossary.md) - Terms used across this bundle.
 

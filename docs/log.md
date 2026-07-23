@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added the [Interoperability Lab](features/interoperability-lab.md) and four pinned research records. Studio now inventories three multilingual conventions without selecting one; reports explicit external bundle sources, contained caches, revision mismatches, and namespaced identity without fetching on open; round-trips the portable typed-relationship subset through JSON-LD with a complete loss preview; and inventories contained, size- and digest-checked sidecars under safe-preview or download-only policy. Explicit JSON-LD and sidecar exports use native destinations outside the open bundle. All four remain experiments outside OKF validation and retain their adoption gaps.
+
 * **Creation**: Added [Recipient Projections](features/recipient-projections.md) and the [Erasure Audit](features/erasure-audit.md). The root home now reviews explicit and transitive inclusions, advisory audience and sensitivity omissions, `.okfignore` paths, link rewrites, and exact redactions before a native destination choice. Rust recomputes the source-bound plan, writes a separate temporary bundle, validates it, blocks declared leaks across text or binary files, verifies the unchanged source, and replaces only an explicitly confirmed marked prior Studio projection.
 
 * **Creation**: Added [Access Hints](features/access-hints.md) and the local `io.okf.access` advisory descriptor. Bounded audience, sensitivity, and handling notes now appear in the reader, accepted agent context, persisted context manifests, isolated staged validation, and staged review. Unknown values remain visible, hints never remove evidence, and every surface states that metadata does not grant access.

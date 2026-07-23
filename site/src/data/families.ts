@@ -112,6 +112,10 @@ export const families: Family[] = [
             title: "Design-system aware",
             body: "ODSF bundles render their design tokens and live HTML/CSS examples right in the reader.",
           },
+          {
+            title: "Interoperability you can inspect",
+            body: "A bounded lab inventories language variants, explicit external references, JSON-LD relationship exchange, and digest-checked sidecars without making them required OKF fields. It never fetches on open or executes unknown media.",
+          },
         ],
       },
     ],
@@ -123,6 +127,7 @@ export const families: Family[] = [
       { label: "Evidence and provenance", href: doc("features/evidence-and-provenance.md"), external: true },
       { label: "Ignore rules", href: doc("features/ignore-rules.md"), external: true },
       { label: "Visualization views", href: doc("features/viz-views.md"), external: true },
+      { label: "Interoperability Lab", href: doc("features/interoperability-lab.md"), external: true },
     ],
     workflows: ["understand", "ask"],
   },

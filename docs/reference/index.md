@@ -8,6 +8,10 @@ External specifications Studio must honor, the OKF ecosystem it builds on, and a
 * [OKF Spec Summary](okf-spec-summary.md) - The OKF v0.1 rules Studio must honor.
 * [OKF Reference HTML Visualizer](okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.
 * [OKF Sample Bundles](okf-sample-bundles.md) - The GA4, Stack Overflow, and Bitcoin bundles used as additional fixtures.
+* [Multilingual Variants Experiment](multilingual-variants-experiment.md) - Compare language conventions without selecting a core format.
+* [External Bundle References Experiment](external-bundle-references-experiment.md) - Test explicit read-only resolution with namespaced identity.
+* [Semantic-Web Exchange Experiment](semantic-web-exchange-experiment.md) - Round-trip a declared JSON-LD relationship subset with loss accounting.
+* [Sidecar Resources Experiment](sidecar-resources-experiment.md) - Inventory and export digest-checked companion files without execution.
 * [Advisory Profile Contract](advisory-profile-contract.md) - Local, version-pinned descriptors for optional fields, relationships, and health checks.
 * [Retrieval Schema Adapters](retrieval-schema-adapters.md) - Provider-neutral manifest and receipt fields with built-in local and external vector-store mappings.
 * [Tauri 2.0](tauri-2.md) - Key facts about the framework, its plugins, and prerequisites.

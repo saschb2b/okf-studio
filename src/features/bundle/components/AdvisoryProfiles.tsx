@@ -24,10 +24,12 @@ function ProfileCard({
   profile,
   diagnostics,
   onOpenConcept,
+  onReviewMigration,
 }: {
   profile: ProfileResolution;
   diagnostics: ProfileDiagnostic[];
   onOpenConcept?: (conceptId: string) => void;
+  onReviewMigration?: (diagnostic: ProfileDiagnostic, focusId: string) => void;
 }) {
   const active = profile.status === "active";
   const descriptor = profile.descriptor;
@@ -77,6 +79,12 @@ function ProfileCard({
           <ul>
             {diagnostics.slice(0, 8).map((diagnostic) => {
               const target = diagnostic.conceptId;
+              const migrationId = [
+                "profile-migration",
+                diagnostic.namespace,
+                diagnostic.ruleId,
+                diagnostic.file,
+              ].join(":");
               const content = (
                 <>
                   <span className={`profile-diagnostic-level is-${diagnostic.level}`}>
@@ -91,17 +99,29 @@ function ProfileCard({
               );
               return (
                 <li key={`${diagnostic.ruleId}:${diagnostic.file}:${diagnostic.field}`}>
-                  {target && onOpenConcept ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpenConcept(target)}
-                      aria-label={`${diagnostic.message} Open ${target}.`}
-                    >
+                  <div className="profile-diagnostic-entry">
+                    <div className="profile-diagnostic-content">
                       {content}
-                    </button>
-                  ) : (
-                    <div>{content}</div>
-                  )}
+                    </div>
+                    {(target && onOpenConcept) || onReviewMigration ? (
+                      <div className="profile-diagnostic-actions">
+                        {target && onOpenConcept ? (
+                          <button type="button" onClick={() => onOpenConcept(target)}>
+                            Open concept
+                          </button>
+                        ) : null}
+                        {onReviewMigration ? (
+                          <button
+                            id={migrationId}
+                            type="button"
+                            onClick={() => onReviewMigration(diagnostic, migrationId)}
+                          >
+                            Review migration
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </li>
               );
             })}
@@ -118,9 +138,11 @@ function ProfileCard({
 export function AdvisoryProfilesView({
   report,
   onOpenConcept,
+  onReviewMigration,
 }: {
   report: ProfileReport;
   onOpenConcept?: (conceptId: string) => void;
+  onReviewMigration?: (diagnostic: ProfileDiagnostic, focusId: string) => void;
 }) {
   if (report.profiles.length === 0) return null;
 
@@ -140,6 +162,7 @@ export function AdvisoryProfilesView({
             profile={profile}
             diagnostics={profileDiagnostics(report, profile)}
             onOpenConcept={onOpenConcept}
+            onReviewMigration={onReviewMigration}
           />
         ))}
       </ul>
@@ -153,9 +176,11 @@ export function AdvisoryProfilesView({
 export function AdvisoryProfiles({
   bundleRoot,
   onOpenConcept,
+  onReviewMigration,
 }: {
   bundleRoot: string;
   onOpenConcept?: (conceptId: string) => void;
+  onReviewMigration?: (diagnostic: ProfileDiagnostic, focusId: string) => void;
 }) {
   const [state, setState] = useState<ProfileReportState>({
     status: "loading",
@@ -201,5 +226,11 @@ export function AdvisoryProfiles({
       </section>
     );
   }
-  return <AdvisoryProfilesView report={state.report} onOpenConcept={onOpenConcept} />;
+  return (
+    <AdvisoryProfilesView
+      report={state.report}
+      onOpenConcept={onOpenConcept}
+      onReviewMigration={onReviewMigration}
+    />
+  );
 }

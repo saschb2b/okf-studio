@@ -196,6 +196,97 @@
   outline-offset: 1px;
 }
 
+.okf-context-plan__profiles {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.okf-context-plan__profiles > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.okf-context-plan__profiles > header strong,
+.okf-context-plan__profiles > header span,
+.okf-context-plan__profiles p,
+.okf-context-plan__profiles summary,
+.okf-context-plan__profiles dt,
+.okf-context-plan__profiles dd,
+.okf-context-plan__profiles small {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.okf-context-plan__profiles > header span,
+.okf-context-plan__profiles p,
+.okf-context-plan__profiles summary > span,
+.okf-context-plan__profiles dd,
+.okf-context-plan__profiles small {
+  color: var(--text-dim);
+}
+
+.okf-context-plan__profiles p,
+.okf-context-plan__profiles ul,
+.okf-context-plan__profiles dl,
+.okf-context-plan__profiles dd {
+  margin: 0;
+}
+
+.okf-context-plan__profiles ul {
+  display: grid;
+  gap: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.okf-context-plan__profiles details {
+  min-width: 0;
+}
+
+.okf-context-plan__profiles summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  min-height: 24px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.okf-context-plan__profiles details > p {
+  margin: var(--space-4) 0;
+}
+
+.okf-context-plan__profiles dl {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.okf-context-plan__profiles dl > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.okf-context-plan__profiles dt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.okf-context-plan__profiles dt span {
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 .okf-context-plan footer {
   display: flex;
   flex-wrap: wrap;

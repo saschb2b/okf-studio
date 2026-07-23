@@ -121,6 +121,61 @@ export function OkfContextPlanCard({
           ))}
         </div>
       )}
+      {plan.profileContext && (
+        <section className="okf-context-plan__profiles" aria-label="Advisory profile guidance">
+          <header>
+            <strong>Profile guidance</strong>
+            <span>Not OKF validation</span>
+          </header>
+          <p>{plan.profileContext.conformanceBoundary}</p>
+          <ul>
+            {plan.profileContext.profiles.map((profile) => {
+              const findingCount = plan.profileContext?.diagnostics.filter(
+                (diagnostic) => diagnostic.namespace === profile.namespace,
+              ).length ?? 0;
+              return (
+                <li key={profile.namespace}>
+                  <details>
+                    <summary>
+                      <code>{profile.namespace}</code>
+                      <span>{profile.version ? `v${profile.version}` : "version unavailable"}</span>
+                      <span>{profile.status}</span>
+                    </summary>
+                    <p>{profile.message}</p>
+                    {profile.fields.length > 0 && (
+                      <dl>
+                        {profile.fields.map((field) => (
+                          <div key={field.id}>
+                            <dt>
+                              <code>{field.key}</code>
+                              <span>{field.requirement}</span>
+                            </dt>
+                            <dd>
+                              {field.label} · {field.valueType}
+                              {field.examples.length > 0
+                                ? ` · examples: ${field.examples.join(", ")}`
+                                : ""}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                    <small>
+                      {profile.relationships.length} relationship
+                      {profile.relationships.length === 1 ? "" : "s"}
+                      {" · "}
+                      {findingCount} current finding{findingCount === 1 ? "" : "s"}
+                    </small>
+                  </details>
+                </li>
+              );
+            })}
+          </ul>
+          {plan.profileContext.truncated && (
+            <p>Some profile guidance was omitted at the task-context limit.</p>
+          )}
+        </section>
+      )}
       {plan.omissions.length > 0 && (
         <ul className="okf-context-plan__omissions" aria-label="Omitted context">
           {plan.omissions.map((omission) => (

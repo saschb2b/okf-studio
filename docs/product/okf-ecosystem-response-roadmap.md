@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-23T11:32:00Z
+timestamp: 2026-07-23T13:55:00Z
 ---
 
 # Outcome
@@ -146,6 +146,7 @@ A package is complete only when all applicable conditions hold:
 | MP1 Preserve bundle-root extensions | Shipped | Root `index.md` fields other than promoted OKF and ODSF versions survive as nested `Bundle.extra` values through parsing, serde IPC, TypeScript, the browser fixture, compatibility reporting, pure inventory queries, and MCP inventory. Concept-shaped root keys are not accidentally discarded, and extensions do not affect core validation. |
 | MP2 Generic metadata inspector | Shipped | Root-home and reader-rail inspectors name the source file, render unknown maps, arrays, and scalars as text, expose bounded copy actions, and state depth, child, node, scalar, and copy limits. ODSF-owned fields stay in their dedicated renderer. Hostile markup remains text, and wide, narrow, pressure, and copy states are tested. |
 | MP3 Declarative advisory profiles | Shipped | Namespaced root declarations pin exact versions and resolve bounded JSON descriptors only from inside the granted bundle. A typed report exposes Active and Unavailable states, retained unknown values, fields, relationships, closed health checks, and file-specific advice separately from `Bundle.issues`. The root home labels the entire surface **Not OKF validation**. |
-| MP4 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
+| MP4 Profile-aware authoring | Shipped | Create, Revise, Audit, and migration tasks receive a bounded, fingerprinted projection of selected local profiles with explicit OKF-required, Profile-required, and Recommended labels. Isolated staged validation reports OKF conformance and profile checks independently, and a profile finding can start a reviewed migration. |
+| LK1 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
 
 Related product boundaries: [Design Principles](principles.md), [Scope & Non-Goals](scope-and-non-goals.md), [Validation](../features/validation.md), [Knowledge Health](../features/knowledge-health.md), [Source Adapters and Provenance](../features/source-adapters.md), and [OKF Parsing](../architecture/okf-parsing.md).

@@ -3,7 +3,7 @@ type: Feature
 title: Native OKF Tasks
 description: Start a bounded, curated OKF task from the concept, finding, citation, graph object, search result, or source already in view.
 tags: [feature, agents, tasks, context, launcher, keyboard]
-timestamp: 2026-07-18T20:30:00Z
+timestamp: 2026-07-23T13:55:00Z
 ---
 
 # Purpose
@@ -26,6 +26,7 @@ Each origin has a closed task set:
 - graph selections prioritize change impact, then audit and enrichment;
 - search results offer cited research, change impact, and enrichment;
 - validation findings prioritize repair, then audit and cited research;
+- advisory profile findings prioritize a reviewed migration, then revision and audit;
 - citations offer cited research, enrichment, and change impact; and
 - sources offer concept authoring, enrichment, cited research, and creation.
 
@@ -40,6 +41,8 @@ Every entry point opens one modal launcher. It names the origin, offers only the
 Connecting an agent temporarily suspends the launcher and returns to the same request after connection or Back. A changed bundle blocks start until the plan is refreshed. Optional context that exceeds the budget is listed as omitted. If the current thread is running or waiting, Studio starts the task in a separate thread and leaves the live turn and draft intact.
 
 Cancel returns focus to the originating control. Starting a task preserves the graph, reader, filters, and open panels, opens the Agent Panel if needed, and carries the accepted origin into a new task kickoff. No entry point grants a wider tool, network, or write scope. Any proposed bundle change still goes through [reviewed staging](agent-panel.md#context-tools-and-writes).
+
+Create, Revise, Audit, and migration plans can also carry [bounded advisory profile context](profile-aware-authoring.md). The context plan names its local profiles and labels OKF-required, profile-required, and recommended fields before the user starts. Its fingerprint changes with the profile report, and the native session boundary rejects profile context on any other task.
 
 # Keyboard and search
 

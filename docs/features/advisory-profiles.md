@@ -3,7 +3,7 @@ type: Feature
 title: Advisory Profiles
 description: Resolve optional team conventions from local version-pinned descriptors without changing OKF conformance.
 tags: [feature, profiles, metadata, diagnostics, authoring]
-timestamp: 2026-07-23T11:32:00Z
+timestamp: 2026-07-23T13:55:00Z
 ---
 
 # User job
@@ -37,6 +37,6 @@ Resolution runs no network request, registry search, code, hook, or expression. 
 
 # Authoring
 
-The active descriptor is the input to [profile-aware authoring](../product/okf-ecosystem-response-roadmap.md). Create, Revise, and Audit tasks can use its fields, examples, relationships, and checks as bounded context. Any resulting edit still passes core validation, profile checks, staged diff review, and explicit Apply.
+The active descriptor is the input to [Profile-Aware Authoring](profile-aware-authoring.md). Create, Revise, Audit, and migration tasks receive its fields, examples, relationships, and checks as bounded, fingerprinted context. Requirement labels distinguish what OKF requires from what the profile requires or recommends. Staged review displays OKF validation and profile checks independently, and a profile finding can start a reviewed migration without granting Apply.
 
 Related behavior: [Validation](validation.md), [Compatibility Clinic](compatibility-clinic.md), [Native OKF Tasks](native-okf-tasks.md), and [IPC & Security](../architecture/ipc-and-security.md).

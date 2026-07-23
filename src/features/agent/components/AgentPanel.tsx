@@ -11,6 +11,7 @@ import {
   maybeRestoreLastAgentConnection,
   okfCapabilityCatalog,
   onOkfCapabilityPackChanged,
+  readProfileReport,
   subscribeAgentRestore,
 } from "@/shared/ipc.ts";
 import { AgentConnectionCatalog } from "@/features/agent/components/AgentConnectionCatalog.tsx";
@@ -34,6 +35,8 @@ import {
 } from "@/features/agent/taskLauncher.ts";
 import { aggregateThreadStatus } from "@/features/agent/threadStatus.ts";
 import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
+import { taskUsesAdvisoryProfiles } from "@/features/agent/profileContext.ts";
+import type { Bundle, ProfileReport } from "@/shared/types.ts";
 import "./AgentPanel.css";
 
 export function AgentPanel() {
@@ -71,6 +74,14 @@ export function AgentPanel() {
     requestId: string;
     reason: "connection" | "authentication";
   } | null>(null);
+  const [profileReportState, setProfileReportState] = useState<
+    | { status: "idle" }
+    | { status: "ready"; bundleRoot: string; bundle: Bundle; report: ProfileReport }
+    | { status: "error"; bundleRoot: string; bundle: Bundle }
+  >({ status: "idle" });
+  const profileDeclaration = state.bundle?.extra.profiles;
+  const profileDeclarationKey = JSON.stringify(profileDeclaration ?? null);
+  const profileDeclared = profileDeclaration !== undefined;
 
   // Restore the most recent explicitly connected agent once, when the panel
   // first has an open bundle after launch. An explicit Disconnect forgot the
@@ -102,6 +113,35 @@ export function AgentPanel() {
   useEffect(() => {
     if (panelOpen && activeRoot) maybeRestoreLastAgentConnection(activeRoot);
   }, [panelOpen, activeRoot]);
+  useEffect(() => {
+    const bundle = state.bundle;
+    if (!activeRoot || !profileDeclared || !bundle) return;
+    let ignore = false;
+    void readProfileReport(activeRoot).then(
+      (report) => {
+        if (!ignore) {
+          setProfileReportState({
+            status: "ready",
+            bundleRoot: activeRoot,
+            bundle,
+            report,
+          });
+        }
+      },
+      () => {
+        if (!ignore) {
+          setProfileReportState({
+            status: "error",
+            bundleRoot: activeRoot,
+            bundle,
+          });
+        }
+      },
+    );
+    return () => {
+      ignore = true;
+    };
+  }, [activeRoot, profileDeclarationKey, profileDeclared, state.bundle]);
   if (!state.panels.agent) return null;
 
   const width =
@@ -170,17 +210,41 @@ export function AgentPanel() {
   const launcherHidden = launcherSuspended?.reason === "connection"
     || (launcherSuspended?.reason === "authentication" && !selectedConnection?.authenticated);
   const launcherPlan = launcherRequest && launcherTaskId && state.activeRoot && state.bundle
-    ? createLauncherPlan(launcherRequest.origin, launcherTaskId, state.activeRoot, state.bundle)
+    ? createLauncherPlan(
+        launcherRequest.origin,
+        launcherTaskId,
+        state.activeRoot,
+        state.bundle,
+        profileReportState.status === "ready"
+          && profileReportState.bundleRoot === state.activeRoot
+          ? profileReportState.report
+          : null,
+      )
     : undefined;
   const launcherFingerprint = state.activeRoot && state.bundle
     ? bundleContextFingerprint(state.activeRoot, state.bundle.concepts, state.bundle.issues)
     : null;
+  const selectedTaskNeedsProfiles = launcherTaskId
+    ? taskUsesAdvisoryProfiles(launcherTaskId) && profileDeclared
+    : false;
+  const profileReportReady = profileReportState.status === "ready"
+    && profileReportState.bundleRoot === state.activeRoot
+    && profileReportState.bundle === state.bundle
+    && profileDeclared;
+  const profileReportFailed = profileReportState.status === "error"
+    && profileReportState.bundleRoot === state.activeRoot
+    && profileReportState.bundle === state.bundle
+    && profileDeclared;
   const launcherStatus: OkfTaskLauncherStatus = !launcherRequest || launcherTasks.length === 0
     ? "unsupported"
     : connections.length === 0
       ? "first-use"
       : selectedConnection && !selectedConnection.authenticated && selectedConnection.authMethods.length > 0
         ? "authentication"
+        : selectedTaskNeedsProfiles && profileReportFailed
+          ? "profile-unavailable"
+          : selectedTaskNeedsProfiles && !profileReportReady
+            ? "profile-loading"
         : launcherFingerprint !== launcherRequest.openedBundleFingerprint
           ? "stale"
           : launcherPlan?.omissions.some((omission) => omission.reason === "budget-exceeded")
@@ -337,6 +401,7 @@ export function AgentPanel() {
                   concepts={state.bundle?.concepts ?? []}
                   onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
                   issues={state.bundle?.issues ?? []}
+                  profileReport={profileReportReady ? profileReportState.report : null}
                   onChangeAgent={openCatalog}
                   onConnectionEnd={(event) => {
                     if (event.status === "failed") {
@@ -634,6 +699,7 @@ function createLauncherPlan(
   taskId: OkfTaskId,
   bundleRoot: string,
   bundle: import("@/shared/types.ts").Bundle,
+  profileReport: ProfileReport | null,
 ) {
   const conceptId = "conceptId" in origin
     ? origin.conceptId
@@ -655,6 +721,7 @@ function createLauncherPlan(
       ...source,
     })),
     issues: origin.kind === "validation-finding" ? [origin.issue] : bundle.issues,
+    profileReport,
   });
 }
 

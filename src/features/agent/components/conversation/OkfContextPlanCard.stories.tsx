@@ -82,3 +82,71 @@ export const MemoryError: Story = {
     await expect(canvas.getByRole("alert")).toHaveTextContent("could not save");
   },
 };
+
+export const ProfileAware: Story = {
+  args: {
+    plan: createOkfContextPlan({
+      taskId: "okf-revise",
+      bundleRoot: "C:\\knowledge\\docs",
+      concepts: [
+        { id: "guides/start", title: "Getting started", type: "Guide" },
+      ],
+      activeConcept: { id: "guides/start", title: "Getting started" },
+      attachedConcepts: [],
+      sources: [],
+      issues: [],
+      profileReport: {
+        schemaVersion: 1,
+        profiles: [{
+          namespace: "com.example.knowledge",
+          version: "1.2.0",
+          descriptorPath: "profiles/knowledge.json",
+          status: "active",
+          message: "Resolved from a local descriptor.",
+          extra: {},
+          descriptor: {
+            schemaVersion: 1,
+            namespace: "com.example.knowledge",
+            version: "1.2.0",
+            title: "Team knowledge",
+            description: "",
+            fields: [
+              {
+                id: "type",
+                scope: "concept",
+                key: "type",
+                label: "Type",
+                description: "",
+                valueType: "string",
+                expectation: "required",
+                conceptTypes: [],
+                examples: ["Guide"],
+              },
+              {
+                id: "owner",
+                scope: "concept",
+                key: "owner",
+                label: "Owner",
+                description: "",
+                valueType: "string",
+                expectation: "required",
+                conceptTypes: ["Guide"],
+                examples: ["Docs"],
+              },
+            ],
+            relationships: [],
+            checks: [],
+          },
+        }],
+        diagnostics: [],
+        truncated: false,
+      },
+    }),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByText("com.example.knowledge"));
+    await expect(canvas.getByText("OKF-required")).toBeVisible();
+    await expect(canvas.getByText("Profile-required")).toBeVisible();
+    await expect(canvas.getByText("Not OKF validation")).toBeVisible();
+  },
+};

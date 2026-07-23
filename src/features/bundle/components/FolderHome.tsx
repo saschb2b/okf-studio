@@ -115,6 +115,18 @@ export function FolderHome({ node }: { node: IndexNode }) {
             <AdvisoryProfiles
               bundleRoot={bundle.root}
               onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
+              onReviewMigration={(diagnostic, focusId) => {
+                actions.openOkfTaskLauncher({
+                  kind: "profile-finding",
+                  id: `${diagnostic.namespace}:${diagnostic.ruleId}:${diagnostic.file}`,
+                  title: diagnostic.message,
+                  conceptId: diagnostic.conceptId,
+                  diagnostic,
+                }, {
+                  preferredTaskId: "okf-migrate",
+                  returnFocusId: focusId,
+                });
+              }}
             />
           ) : null}
           <div className="fh-metadata">

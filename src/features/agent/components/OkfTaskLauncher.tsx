@@ -13,6 +13,8 @@ import "./OkfTaskLauncher.css";
 export type OkfTaskLauncherStatus =
   | "first-use"
   | "authentication"
+  | "profile-loading"
+  | "profile-unavailable"
   | "unsupported"
   | "ready"
   | "stale"
@@ -80,7 +82,9 @@ export function OkfTaskLauncher({
           </header>
 
           <div className="okf-task-launcher__body">
-            {status !== "first-use" && status !== "authentication" && status !== "unsupported" && (
+            {status !== "first-use" && status !== "authentication" &&
+              status !== "profile-loading" && status !== "profile-unavailable" &&
+              status !== "unsupported" && (
               <fieldset className="okf-task-launcher__tasks">
               <legend>Choose a task</legend>
               {tasks.map((taskId) => {
@@ -157,6 +161,9 @@ export function OkfTaskLauncher({
             {status === "stale" && (
               <button type="button" className="btn primary" onClick={onRefresh}>Review refreshed plan</button>
             )}
+            {status === "profile-unavailable" && (
+              <button type="button" className="btn primary" onClick={onRefresh}>Retry profile resolution</button>
+            )}
             {(status === "ready" || status === "overflow" || status === "active-thread-conflict") && (
               <button type="button" className="btn primary" disabled={startDisabled} onClick={onStart}>
                 {status === "active-thread-conflict" ? "Start separate thread" : status === "overflow" ? "Start with selected context" : "Start task"}
@@ -185,6 +192,18 @@ function launcherState(
         title: `${connectionName ?? "This agent"} needs authentication`,
         description: "Authenticate with the agent, then review this same bounded context plan before starting.",
         role: "status",
+      };
+    case "profile-loading":
+      return {
+        title: "Loading profile conventions",
+        description: "Studio is resolving the bundle's local descriptor before it builds this authoring plan.",
+        role: "status",
+      };
+    case "profile-unavailable":
+      return {
+        title: "Profile guidance unavailable",
+        description: "Studio could not resolve the declared profile for this task. The bundle remains open, but this profile-aware task is paused.",
+        role: "alert",
       };
     case "unsupported":
       return {

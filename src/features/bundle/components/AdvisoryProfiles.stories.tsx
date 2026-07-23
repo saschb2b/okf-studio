@@ -64,6 +64,7 @@ const meta = {
   args: {
     report: ACTIVE_REPORT,
     onOpenConcept: fn(),
+    onReviewMigration: fn(),
   },
 } satisfies Meta<typeof AdvisoryProfilesView>;
 
@@ -74,8 +75,13 @@ export const Active: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Not OKF validation")).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: /Open product\/overview/ }));
+    await userEvent.click(canvas.getByRole("button", { name: "Open concept" }));
     await expect(args.onOpenConcept).toHaveBeenCalledWith("product/overview");
+    await userEvent.click(canvas.getByRole("button", { name: "Review migration" }));
+    await expect(args.onReviewMigration).toHaveBeenCalledWith(
+      ACTIVE_REPORT.diagnostics[0],
+      "profile-migration:com.example.knowledge:owner-present:product/overview.md",
+    );
   },
 };
 

@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Profile-Aware Authoring](features/profile-aware-authoring.md). Create, Revise, Audit, and migration plans now carry bounded, fingerprinted local profile guidance with explicit requirement labels. Staged review reports OKF validation and advisory profile checks independently, fresh drafts can be checked against the selected source profile, and each profile finding can start a reviewed migration without gaining Apply authority.
+
 * **Creation**: Added [Advisory Profiles](features/advisory-profiles.md) to the root folder home. Active descriptors show their exact version, local source, convention counts, and file-specific advice; unavailable declarations show the precise resolution failure while the bundle remains open. The grant-checked IPC command and interface both keep profile advice visibly separate from OKF validation.
 
 * **Creation**: Defined the [Advisory Profile Contract](reference/advisory-profile-contract.md) and implemented its pure Rust resolver. Version-pinned descriptors resolve only from bounded JSON files inside the authorized bundle, retain unknown values without interpreting them, expose active and unavailable states, and emit profile diagnostics separately from OKF conformance. Traversal, symbolic-link escape, URL-like paths, invalid identity, and unpinned versions are rejected without closing the bundle.

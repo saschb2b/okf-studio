@@ -163,7 +163,7 @@ export const families: Family[] = [
         items: [
           {
             title: "One launcher, any starting point",
-            body: "Open authoring, audit, repair, research, enrichment, or change-impact work from a concept, graph selection, validation finding, citation, search result, or attached source. The object and context plan stay visible before the agent starts.",
+            body: "Open authoring, audit, repair, research, enrichment, migration, or change-impact work from the object in view. Profile findings carry the selected local conventions and say which fields OKF requires, which the profile requires, and which it only recommends.",
           },
           {
             title: "Plans and reports that stay usable",
@@ -233,7 +233,7 @@ export const families: Family[] = [
         items: [
           {
             title: "Conformance and portability",
-            body: "The Compatibility Clinic keeps OKF errors separate from optional portability advice and preserved producer fields. Safe link replacements require hunk review and validation before Apply, while the tolerant reader still opens the bundle.",
+            body: "The Compatibility Clinic and profile checks keep OKF errors separate from optional portability and team advice. Safe link replacements and profile migrations require hunk review and validation before Apply, while the tolerant reader still opens the bundle.",
           },
           {
             title: "Health findings with evidence",

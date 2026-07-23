@@ -39,18 +39,25 @@ const ACTIVE_REPORT: ProfileReport = {
 describe("AdvisoryProfilesView", () => {
   it("keeps profile advice visibly separate from OKF validation", () => {
     const onOpenConcept = vi.fn();
+    const onReviewMigration = vi.fn();
     render(
       <AdvisoryProfilesView
         report={ACTIVE_REPORT}
         onOpenConcept={onOpenConcept}
+        onReviewMigration={onReviewMigration}
       />,
     );
 
     expect(screen.getByText("Not OKF validation")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("Profile advice · 1")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Open guides\/start/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Open concept" }));
     expect(onOpenConcept).toHaveBeenCalledWith("guides/start");
+    fireEvent.click(screen.getByRole("button", { name: "Review migration" }));
+    expect(onReviewMigration).toHaveBeenCalledWith(
+      ACTIVE_REPORT.diagnostics[0],
+      "profile-migration:com.example.knowledge:owner-present:guides/start.md",
+    );
   });
 
   it("explains an unavailable descriptor without hiding the declaration", () => {

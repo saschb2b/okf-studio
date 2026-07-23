@@ -57,6 +57,8 @@ import {
   markContextSummary,
 } from "@/features/agent/components/conversation/contextRecovery.ts";
 import { useAppActions } from "@/shared/store.tsx";
+import type { ProfileReport } from "@/shared/types.ts";
+import { StagedProfileValidationSummary } from "@/features/agent/components/conversation/StagedProfileValidationSummary.tsx";
 
 
 export interface AgentConversationProps {
@@ -75,6 +77,7 @@ export interface AgentConversationProps {
   }[];
   onOpenConcept: (conceptId: string) => void;
   issues: readonly Issue[];
+  profileReport: ProfileReport | null;
   onChangeAgent: () => void;
   onConnectionEnd: (event: AgentConnectionEvent) => void;
   onOpenFolder: () => Promise<void>;
@@ -102,6 +105,7 @@ export function AgentConversation({
   concepts,
   onOpenConcept,
   issues,
+  profileReport,
   onChangeAgent,
   onConnectionEnd,
   onOpenFolder,
@@ -303,6 +307,7 @@ export function AgentConversation({
         attachedConcepts,
         sources: attachedSources,
         issues,
+        profileReport,
         removedIds: removedContextIds,
         memoryRemovedIds,
       })
@@ -727,6 +732,7 @@ export function AgentConversation({
               attachedConcepts: draftConcepts,
               sources: draftSources,
               issues,
+              profileReport,
               removedIds: removedContextIds,
               memoryRemovedIds,
             })
@@ -2800,8 +2806,8 @@ export function AgentConversation({
                       : <CircleAlert size={14} aria-hidden="true" />}
                     <strong>
                       {stagedValidation.result.errors === 0
-                        ? "Validation passed"
-                        : "Validation found errors"}
+                        ? "OKF validation passed"
+                        : "OKF validation found errors"}
                     </strong>
                     <span>
                       {stagedValidation.result.errors} error{stagedValidation.result.errors === 1 ? "" : "s"}
@@ -2830,6 +2836,14 @@ export function AgentConversation({
                       )}
                     </details>
                   )}
+                  <StagedProfileValidationSummary
+                    profile={stagedValidation.result.profile}
+                    profileContext={
+                      acceptedContextManifest?.profileContext
+                      ?? contextPlan?.profileContext
+                      ?? null
+                    }
+                  />
                   <StagedGraphPreview preview={stagedValidation.result.preview} />
                   {stagedValidation.result.errors === 0 && stagedChanges.mode !== "create" && (
                     <div className="agent-staged__apply">

@@ -20,7 +20,7 @@ import type {
   RefObject,
   SetStateAction,
 } from "react";
-import { ChevronDown, ChevronRight, House } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderOpen, House } from "lucide-react";
 import { useApp } from "@/shared/store.tsx";
 import { conceptById, distinctTypes, filteredConceptIds, indexIdForDir } from "@/shared/selectors.ts";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
@@ -52,7 +52,11 @@ function nodeFor(
  * directory entries, or its directory has no index. This lets a section heading
  * like "Product" open the product/ folder home, not just the entries below it.
  */
-function sectionFolderDir(indexes: IndexNode[], sec: IndexSection): string | null {
+function sectionFolderDir(
+  indexes: IndexNode[],
+  sec: IndexSection,
+  selfDir: string,
+): string | null {
   const dirs = new Set<string>();
   for (const e of sec.entries) {
     if (e.kind !== "concept") return null;
@@ -62,7 +66,37 @@ function sectionFolderDir(indexes: IndexNode[], sec: IndexSection): string | nul
   if (dirs.size !== 1) return null;
   const dir = [...dirs][0];
   if (!dir) return null; // root-level concepts are not a subfolder
+  if (dir === selfDir) return null; // an authored group inside this index
+  if (selfDir && !dir.startsWith(`${selfDir}/`)) return null;
   return indexes.some((n) => n.dir === dir) ? dir : null;
+}
+
+/**
+ * Resolve a folder-door section to its own index. The child index owns the
+ * visible grouping; parent-only entries remain available in an unnamed tail.
+ */
+function sectionChildNode(
+  indexes: IndexNode[],
+  node: IndexNode,
+  sec: IndexSection,
+): IndexNode | null {
+  const dir = sectionFolderDir(indexes, sec, node.dir);
+  if (!dir) return null;
+  const child = nodeFor(indexes, dir, node.dir);
+  if (!child || child.sections.every((section) => section.entries.length === 0)) {
+    return null;
+  }
+
+  const childTargets = new Set(
+    child.sections.flatMap((section) => section.entries.map((entry) => entry.target)),
+  );
+  const parentOnlyEntries = sec.entries.filter((entry) => !childTargets.has(entry.target));
+  if (parentOnlyEntries.length === 0) return child;
+
+  return {
+    ...child,
+    sections: [...child.sections, { heading: "", entries: parentOnlyEntries }],
+  };
 }
 
 /** Directories already reachable as a clickable section heading in this node —
@@ -72,7 +106,7 @@ function redundantDirTargets(indexes: IndexNode[], node: IndexNode): Set<string>
   const dirs = new Set<string>();
   for (const sec of node.sections) {
     if (!sec.heading) continue;
-    const d = sectionFolderDir(indexes, sec);
+    const d = sectionFolderDir(indexes, sec, node.dir);
     if (d) dirs.add(d);
   }
   return dirs;
@@ -143,6 +177,17 @@ function expandPathTo(
   pathKey: string,
 ): string[] | null {
   for (const sec of renderableSections(indexes, node)) {
+    const sectionChild = sectionChildNode(indexes, node, sec);
+    if (sectionChild) {
+      const sub = expandPathTo(
+        indexes,
+        sectionChild,
+        conceptId,
+        `${pathKey}/section:${sectionChild.dir}`,
+      );
+      if (sub) return sub;
+      continue;
+    }
     for (const entry of sec.entries) {
       if (entry.kind === "concept" && entry.target === conceptId) return [];
       if (entry.kind === "directory") {
@@ -183,7 +228,9 @@ function flatten(
     // A folder-door heading is a treeitem in its own right — modeled as a
     // synthetic concept row targeting the folder-home id, so the existing
     // roving-tabindex / open-on-Enter machinery carries it for free.
-    const folderDir = sec.heading ? sectionFolderDir(indexes, sec) : null;
+    const folderDir = sec.heading
+      ? sectionFolderDir(indexes, sec, node.dir)
+      : null;
     if (folderDir) {
       const target = indexIdForDir(folderDir);
       out.push({
@@ -193,6 +240,18 @@ function flatten(
         hasChildren: false,
         expanded: false,
       });
+    }
+    const sectionChild = sectionChildNode(indexes, node, sec);
+    if (sectionChild) {
+      flatten(
+        indexes,
+        sectionChild,
+        expanded,
+        depth + 1,
+        `${pathKey}/section:${sectionChild.dir}`,
+        out,
+      );
+      continue;
     }
     for (let ei = 0; ei < sec.entries.length; ei++) {
       const entry = sec.entries[ei];
@@ -549,150 +608,173 @@ function TreeNode({
 
   return (
     <ul className="sb-tree-group" role="group">
-      {renderableSections(indexes, node).map((sec, si) => (
-        <li key={`sec:${si}`} className="sb-tree-sec" role="none">
-          {sec.heading && (
-            <SectionHeading
-              indexes={indexes}
-              sec={sec}
-              si={si}
-              pathKey={pathKey}
-              depth={depth}
-              activeId={activeId}
-              focusedKey={focusedKey}
-              onOpen={onOpenConcept}
-            />
-          )}
-          <ul className="sb-tree-entries" role="group">
-            {sec.entries.map((entry, ei) => {
-              const key = rowKeyOf(pathKey, si, ei, entry.target);
-              if (entry.kind === "directory") {
-                const child = nodeFor(indexes, entry.target, node.dir);
-                const expandKey = child
-                  ? expandKeyOf(pathKey, entry.target)
-                  : undefined;
-                const isOpen = !!expandKey && expanded.has(expandKey);
-                const dirActive = activeId === indexIdForDir(entry.target);
-                return (
-                  <li key={key} role="none" className="sb-tree-li">
-                    <button
-                      type="button"
-                      role="treeitem"
-                      aria-selected={dirActive}
-                      aria-current={dirActive ? "true" : undefined}
-                      aria-expanded={child ? isOpen : undefined}
-                      aria-level={depth + 1}
-                      data-row-key={key}
-                      tabIndex={key === focusedKey ? 0 : -1}
-                      className={`sb-tree-item sb-tree-dir${
-                        child ? "" : " is-missing"
-                      }${dirActive ? " is-active" : ""}`}
-                      style={indent(depth)}
-                      title={entry.description || entry.title}
-                      // A directory is an openable root: open its folder home.
-                      // A plain click also expands it (to reveal contents); a
-                      // click that collapses does not navigate. Ctrl/Cmd+click
-                      // opens the home in a background tab.
-                      onClick={(e) => {
-                        if (e.ctrlKey || e.metaKey) {
-                          onOpenConcept(indexIdForDir(entry.target), e);
-                          return;
-                        }
-                        const willExpand = !!expandKey && !isOpen;
-                        if (expandKey) toggle(expandKey);
-                        if (!expandKey || willExpand) {
-                          onOpenConcept(indexIdForDir(entry.target), e);
-                        }
-                      }}
-                    >
-                      <span className="sb-twisty" aria-hidden="true">
-                        {child ? (
-                          isOpen ? (
-                            <ChevronDown size={14} />
+      {renderableSections(indexes, node).map((sec, si) => {
+        const sectionChild = sectionChildNode(indexes, node, sec);
+        return (
+          <li key={`sec:${si}`} className="sb-tree-sec" role="none">
+            {sec.heading && (
+              <SectionHeading
+                indexes={indexes}
+                nodeDir={node.dir}
+                sec={sec}
+                si={si}
+                pathKey={pathKey}
+                depth={depth}
+                activeId={activeId}
+                focusedKey={focusedKey}
+                onOpen={onOpenConcept}
+              />
+            )}
+            {sectionChild ? (
+              <TreeNode
+                indexes={indexes}
+                node={sectionChild}
+                depth={depth + 1}
+                pathKey={`${pathKey}/section:${sectionChild.dir}`}
+                expanded={expanded}
+                toggle={toggle}
+                rows={rows}
+                focusIdx={focusIdx}
+                activeId={activeId}
+                visibleIds={visibleIds}
+                filtering={filtering}
+                dirCounts={dirCounts}
+                dotFor={dotFor}
+                onOpenConcept={onOpenConcept}
+              />
+            ) : (
+              <ul className="sb-tree-entries" role="group">
+                {sec.entries.map((entry, ei) => {
+                  const key = rowKeyOf(pathKey, si, ei, entry.target);
+                  if (entry.kind === "directory") {
+                    const child = nodeFor(indexes, entry.target, node.dir);
+                    const expandKey = child
+                      ? expandKeyOf(pathKey, entry.target)
+                      : undefined;
+                    const isOpen = !!expandKey && expanded.has(expandKey);
+                    const dirActive = activeId === indexIdForDir(entry.target);
+                    return (
+                      <li key={key} role="none" className="sb-tree-li">
+                        <button
+                          type="button"
+                          role="treeitem"
+                          aria-selected={dirActive}
+                          aria-current={dirActive ? "true" : undefined}
+                          aria-expanded={child ? isOpen : undefined}
+                          aria-level={depth + 1}
+                          data-row-key={key}
+                          tabIndex={key === focusedKey ? 0 : -1}
+                          className={`sb-tree-item sb-tree-dir${
+                            child ? "" : " is-missing"
+                          }${dirActive ? " is-active" : ""}`}
+                          style={indent(depth)}
+                          title={entry.description || entry.title}
+                          // A directory is an openable root: open its folder home.
+                          // A plain click also expands it (to reveal contents); a
+                          // click that collapses does not navigate. Ctrl/Cmd+click
+                          // opens the home in a background tab.
+                          onClick={(e) => {
+                            if (e.ctrlKey || e.metaKey) {
+                              onOpenConcept(indexIdForDir(entry.target), e);
+                              return;
+                            }
+                            const willExpand = !!expandKey && !isOpen;
+                            if (expandKey) toggle(expandKey);
+                            if (!expandKey || willExpand) {
+                              onOpenConcept(indexIdForDir(entry.target), e);
+                            }
+                          }}
+                        >
+                          <span className="sb-twisty" aria-hidden="true">
+                            {child ? (
+                              isOpen ? (
+                                <ChevronDown size={14} />
+                              ) : (
+                                <ChevronRight size={14} />
+                              )
+                            ) : null}
+                          </span>
+                          <span className="sb-tree-label">{entry.title}</span>
+                          {child?.synthesized && (
+                            <span
+                              className="sb-synth"
+                              title="Synthesized index (no index.md in this directory)"
+                            >
+                              auto
+                            </span>
+                          )}
+                          <DirCount count={dirCounts.get(entry.target)} />
+                        </button>
+                        {child &&
+                          isOpen &&
+                          (child.sections.some((s) => s.entries.length > 0) ? (
+                            <TreeNode
+                              indexes={indexes}
+                              node={child}
+                              depth={depth + 1}
+                              pathKey={expandKey}
+                              expanded={expanded}
+                              toggle={toggle}
+                              rows={rows}
+                              focusIdx={focusIdx}
+                              activeId={activeId}
+                              visibleIds={visibleIds}
+                              filtering={filtering}
+                              dirCounts={dirCounts}
+                              dotFor={dotFor}
+                              onOpenConcept={onOpenConcept}
+                            />
                           ) : (
-                            <ChevronRight size={14} />
-                          )
-                        ) : null}
-                      </span>
-                      <span className="sb-tree-label">{entry.title}</span>
-                      {child?.synthesized && (
-                        <span
-                          className="sb-synth"
-                          title="Synthesized index (no index.md in this directory)"
-                        >
-                          auto
-                        </span>
-                      )}
-                      <DirCount count={dirCounts.get(entry.target)} />
-                    </button>
-                    {child &&
-                      isOpen &&
-                      (child.sections.some((s) => s.entries.length > 0) ? (
-                        <TreeNode
-                          indexes={indexes}
-                          node={child}
-                          depth={depth + 1}
-                          pathKey={expandKey}
-                          expanded={expanded}
-                          toggle={toggle}
-                          rows={rows}
-                          focusIdx={focusIdx}
-                          activeId={activeId}
-                          visibleIds={visibleIds}
-                          filtering={filtering}
-                          dirCounts={dirCounts}
-                          dotFor={dotFor}
-                          onOpenConcept={onOpenConcept}
-                        />
-                      ) : (
-                        // A directory with no concepts (assets only, or empty):
-                        // expanding must say so, not silently add zero rows.
-                        <div
-                          className="sb-tree-empty-dir"
-                          role="none"
-                          style={indent(depth + 1)}
-                        >
-                          No concepts in this folder
-                        </div>
-                      ))}
-                  </li>
-                );
-              }
+                            // A directory with no concepts (assets only, or empty):
+                            // expanding must say so, not silently add zero rows.
+                            <div
+                              className="sb-tree-empty-dir"
+                              role="none"
+                              style={indent(depth + 1)}
+                            >
+                              No concepts in this folder
+                            </div>
+                          ))}
+                      </li>
+                    );
+                  }
 
-              // concept entry
-              const active = entry.target === activeId;
-              const dimmed = filtering && !visibleIds.has(entry.target);
-              const dot = dotFor(entry.target);
-              return (
-                <li key={key} role="none" className="sb-tree-li">
-                  <button
-                    type="button"
-                    role="treeitem"
-                    aria-selected={active}
-                    aria-level={depth + 1}
-                    aria-current={active ? "true" : undefined}
-                    data-row-key={key}
-                    tabIndex={key === focusedKey ? 0 : -1}
-                    className={`sb-tree-item sb-tree-concept${
-                      active ? " is-active" : ""
-                    }${dimmed ? " is-dimmed" : ""}`}
-                    style={indent(depth)}
-                    title={entry.description || entry.title}
-                    onClick={(e) => onOpenConcept(entry.target, e)}
-                  >
-                    <span className="sb-twisty sb-leaf" aria-hidden="true">
-                      {dot && (
-                        <span className="sb-tree-dot" style={{ background: dot }} />
-                      )}
-                    </span>
-                    <span className="sb-tree-label">{entry.title}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </li>
-      ))}
+                  // concept entry
+                  const active = entry.target === activeId;
+                  const dimmed = filtering && !visibleIds.has(entry.target);
+                  const dot = dotFor(entry.target);
+                  return (
+                    <li key={key} role="none" className="sb-tree-li">
+                      <button
+                        type="button"
+                        role="treeitem"
+                        aria-selected={active}
+                        aria-level={depth + 1}
+                        aria-current={active ? "true" : undefined}
+                        data-row-key={key}
+                        tabIndex={key === focusedKey ? 0 : -1}
+                        className={`sb-tree-item sb-tree-concept${
+                          active ? " is-active" : ""
+                        }${dimmed ? " is-dimmed" : ""}`}
+                        style={indent(depth)}
+                        title={entry.description || entry.title}
+                        onClick={(e) => onOpenConcept(entry.target, e)}
+                      >
+                        <span className="sb-twisty sb-leaf" aria-hidden="true">
+                          {dot && (
+                            <span className="sb-tree-dot" style={{ background: dot }} />
+                          )}
+                        </span>
+                        <span className="sb-tree-label">{entry.title}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -704,6 +786,7 @@ function TreeNode({
  *  roving-tabindex keyboard nav (its row comes from flatten()). */
 function SectionHeading({
   indexes,
+  nodeDir,
   sec,
   si,
   pathKey,
@@ -713,6 +796,7 @@ function SectionHeading({
   onOpen,
 }: {
   indexes: IndexNode[];
+  nodeDir: string;
   sec: IndexSection;
   si: number;
   pathKey: string;
@@ -721,7 +805,7 @@ function SectionHeading({
   focusedKey: string | undefined;
   onOpen: (id: string, e?: ReactMouseEvent<HTMLElement>) => void;
 }) {
-  const folderDir = sectionFolderDir(indexes, sec);
+  const folderDir = sectionFolderDir(indexes, sec, nodeDir);
   if (!folderDir) {
     return (
       <div className="sb-tree-heading" role="none" style={indent(depth)}>
@@ -747,9 +831,7 @@ function SectionHeading({
       onClick={(e) => onOpen(target, e)}
     >
       <span className="sb-tree-label">{sec.heading}</span>
-      {/* A persistent, quiet "open folder" cue so the heading reads as a door,
-          not an inert label — brightens on hover and when its home is active. */}
-      <ChevronRight className="sb-heading-go" size={13} aria-hidden="true" />
+      <FolderOpen className="sb-heading-folder" size={13} aria-hidden="true" />
     </button>
   );
 }

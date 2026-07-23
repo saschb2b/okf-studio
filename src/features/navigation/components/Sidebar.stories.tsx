@@ -32,5 +32,8 @@ export const BundleOpen: Story = {
     await waitFor(() =>
       expect(canvas.getByLabelText("Search and filter concepts")).toBeVisible(),
     );
+    await expect(canvas.getByText("Open and explore")).toBeVisible();
+    await expect(canvas.getByRole("treeitem", { name: "Graph View" }))
+      .toHaveAttribute("aria-level", "2");
   },
 };

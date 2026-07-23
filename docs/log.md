@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Completed [Lineage](features/lineage.md) as a bounded multi-hop maintenance view. The docked panel now filters upstream dependencies and downstream impact by portable or profile-defined relationship and advisory reliability state; labels cycles, repeated branches, missing targets, hubs, and traversal omissions; and explains each incoming or outgoing step in a filtered shortest path. Portable links remain available when profiles do not resolve.
+
 * **Creation**: Added the [Retirement Workflow](features/retirement-workflow.md). The Concept Reader now separates deprecate, redirect, tombstone, and delete; shows link, index, file, and retrieval impact; derives a dated rationale entry for `log.md`; and routes the complete change through mandatory hunk review, isolated validation, revision-bound atomic Apply, and guarded Restore. Deletion requires explicit acknowledgement and a replacement while inbound links remain, and a durable checkpoint restores deleted bytes after a staging-service restart.
 
 * **Creation**: Added [Reliability and Lifecycle](features/reliability-and-lifecycle.md) and the local `io.okf.reliability` advisory descriptor. The reader qualifies authored confidence, review, effective-time, contradiction, and replacement signals; Knowledge Health reports malformed values and supersession cycles; and retrieval returns lifecycle, uncertainty, and conflict caveats to Studio and native agents without changing OKF validation.

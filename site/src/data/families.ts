@@ -76,7 +76,7 @@ export const families: Family[] = [
           },
           {
             title: "Lineage across hops",
-            body: "A lineage panel traces dependencies through the graph, several links deep.",
+            body: "Trace upstream dependencies or downstream impact across several hops. Filter by portable or team-defined relationship and reliability state, see cycles and limits, and open a shortest path that explains every step.",
           },
           {
             title: "Meaning on portable links",
@@ -111,6 +111,7 @@ export const families: Family[] = [
       { label: "Concept reader", href: doc("features/concept-reader.md"), external: true },
       { label: "Graph view", href: doc("features/graph-view.md"), external: true },
       { label: "Search and filter", href: doc("features/search-and-filter.md"), external: true },
+      { label: "Lineage", href: doc("features/lineage.md"), external: true },
       { label: "Visualization views", href: doc("features/viz-views.md"), external: true },
     ],
     workflows: ["understand", "ask"],

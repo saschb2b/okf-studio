@@ -13,7 +13,7 @@
 .concept-retirement-choices legend,
 .concept-move-dialog__form > label {
   margin-block-end: var(--space-2);
-  font-weight: var(--weight-semibold);
+  font-weight: 600;
 }
 
 .concept-retirement-choice {

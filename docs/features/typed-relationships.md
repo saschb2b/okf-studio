@@ -3,7 +3,7 @@ type: Feature
 title: Typed Relationships
 description: Add profile-defined meaning to portable Markdown links, then inspect and filter those connections without hiding unknown annotations.
 tags: [feature, relationships, profiles, graph, reader, portability]
-timestamp: 2026-07-23T15:15:00Z
+timestamp: 2026-07-23T16:45:00Z
 ---
 
 # User job
@@ -42,4 +42,4 @@ Rust resolves annotations in the grant-checked local profile report. It returns 
 
 Malformed maps, duplicate annotations, unavailable profiles, unknown types, missing targets, and missing prose links produce advisory profile diagnostics. They do not enter core OKF validation, and missing relationship metadata never invalidates or hides an ordinary Markdown link.
 
-Related behavior: [Advisory Profiles](advisory-profiles.md), [Concept Reader](concept-reader.md), [Graph View](graph-view.md), [Validation](validation.md), and [Lineage](../proposals/lineage-and-traversal.md).
+Related behavior: [Advisory Profiles](advisory-profiles.md), [Concept Reader](concept-reader.md), [Graph View](graph-view.md), [Validation](validation.md), and [Lineage](lineage.md).

@@ -103,6 +103,30 @@ describe("OKF Studio shell", () => {
     expect(screen.getByRole("complementary", { name: /agent panel/i })).toBeInTheDocument();
   });
 
+  it("filters multi-hop lineage and explains a relationship path", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openFolder(user);
+    await user.click(screen.getByRole("button", {
+      name: /Overview What OKF Studio is and who it's for/i,
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Toggle lineage panel" }));
+    const panel = await screen.findByRole("dialog", { name: "Lineage" });
+    const supports = await within(panel).findByRole("option", { name: "Supports" });
+    await user.selectOptions(
+      within(panel).getByLabelText("Path target concept"),
+      "features/graph-view",
+    );
+    expect(within(panel).getByText(/Outgoing · Links to/)).toBeInTheDocument();
+
+    await user.selectOptions(within(panel).getByLabelText("Relationship"), supports);
+    expect(within(panel).getByText("Supports")).toBeInTheDocument();
+    await user.click(within(panel).getByRole("radio", { name: "Downstream" }));
+    expect(within(panel).getByText("No relationships match the current filters."))
+      .toBeInTheDocument();
+  });
+
   it("opens a repository change in the dedicated diff workspace", async () => {
     const user = userEvent.setup();
     renderApp();

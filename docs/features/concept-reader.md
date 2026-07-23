@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-23T16:15:00Z
+timestamp: 2026-07-23T16:45:00Z
 ---
 
 # What it does
@@ -61,6 +61,7 @@ Stacked, titled modules — quiet navigation context kept beside the prose inste
 - **Cited by** — the backlinks: every concept that links *to* this one ([computed by the core](../architecture/data-model.md)). The reverse-index a flat file tree hides; listed first because it is the context the file system cannot give.
 - **Links to** — the outbound references.
 - **Typed relationships** — incoming and outgoing [profile annotations](typed-relationships.md) over portable Markdown links, with resolved labels, inverses, unknown types, and missing-target or missing-prose-link states kept visible.
+- **Lineage** — the status-bar panel traces [filtered multi-hop dependencies and downstream impact](lineage.md), exposes cycles, hubs, missing targets, reliability states, and traversal limits, and explains the labelled shortest path to another concept.
 - **Related by tag** — other concepts sharing this one's tags (synthesized from frontmatter), a relationship dimension beyond explicit links.
 - **Details** — type, Concept ID, **Updated** timestamp, and the `resource` link.
 - **Bundle and concept metadata** — the bounded, source-labelled [Metadata Inspector](metadata-inspector.md). ODSF-owned fields stay in their dedicated rendering rather than appearing twice.

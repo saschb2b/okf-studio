@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-23T16:15:00Z
+timestamp: 2026-07-23T16:45:00Z
 ---
 
 # Outcome
@@ -151,6 +151,7 @@ A package is complete only when all applicable conditions hold:
 | LK2 Relationship profile | Shipped | Namespaced annotations add profile labels and inverses to ordinary Markdown links. Rust preserves unknown types, bounds the report, and keeps missing targets or prose links advisory. The reader inspects incoming and outgoing edges, while the graph filters participating concepts without treating metadata as a core edge. |
 | LK3 Reliability and lifecycle | Shipped | The optional `io.okf.reliability` profile defines lifecycle, confidence, effective-time, review, contradiction, and replacement signals. The reader derives a qualified advisory state, health finds malformed values and supersession cycles, and retrieval preserves caveats for both Studio and native agents without claiming metadata proves truth. |
 | LK4 Retirement and deletion workflow | Shipped | The reader offers deprecate, redirect, tombstone, and delete as distinct outcomes with required rationale, link and index impact, and retrieval consequences. Rust derives the complete graph transaction and dated `log.md` entry from live bounded Markdown. Every hunk must be kept before isolated validation and revision-bound Apply; durable checkpoints restore a deleted file after a staging-service restart. |
-| LK5 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
+| LK5 Lineage completion | Shipped | The docked panel filters upstream and downstream traversal by portable or typed relationship and advisory reliability state. Rows expose labelled relations, cycles, already-shown branches, missing targets, and explicit depth, hub, and node-budget omissions. Bounded shortest-path search explains every incoming or outgoing step under the same filters and reports an exhausted search separately from no path. |
+| PF1 through IX4 | Planned | Each package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
 
 Related product boundaries: [Design Principles](principles.md), [Scope & Non-Goals](scope-and-non-goals.md), [Validation](../features/validation.md), [Knowledge Health](../features/knowledge-health.md), [Source Adapters and Provenance](../features/source-adapters.md), and [OKF Parsing](../architecture/okf-parsing.md).

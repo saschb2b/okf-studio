@@ -115,10 +115,17 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
                 text: section.text,
                 tags: concept.tags.clone(),
                 timestamp: concept.timestamp.clone(),
-                effective_time: extra_string(concept, "effective_time"),
+                effective_time: extra_string(concept, "effective_from")
+                    .or_else(|| extra_string(concept, "effective_time")),
+                effective_until: extra_string(concept, "effective_until"),
+                review_after: extra_string(concept, "review_after"),
+                lifecycle: extra_string(concept, "lifecycle"),
+                confidence: extra_confidence(concept),
                 source_class: extra_string(concept, "source_class"),
                 owner: extra_string(concept, "owner"),
                 supersedes: extra_strings(concept, "supersedes"),
+                superseded_by: extra_strings(concept, "superseded_by"),
+                contradicts: extra_strings(concept, "contradicts"),
                 resource: concept.resource.clone(),
                 citations: concept.external_links.clone(),
                 links: concept.links.clone(),
@@ -131,6 +138,17 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
             }
         })
         .collect()
+}
+
+fn extra_confidence(concept: &Concept) -> Option<String> {
+    match concept.extra.get("confidence") {
+        Some(serde_json::Value::Number(value)) => Some(value.to_string()),
+        Some(serde_json::Value::String(value)) => {
+            let trimmed = value.trim();
+            (!trimmed.is_empty()).then(|| trimmed.to_string())
+        }
+        _ => None,
+    }
 }
 
 fn extra_string(concept: &Concept, key: &str) -> Option<String> {
@@ -320,6 +338,46 @@ mod tests {
         assert!(snapshot.text.contains("<!-- okf:concepts/revenue#"));
         assert!(snapshot.bytes > 0);
         assert!(snapshot.estimated_tokens > 0);
+    }
+
+    #[test]
+    fn manifest_projects_advisory_reliability_fields() {
+        let mut bundle = bundle_with_body("# A\n\nAlpha");
+        let concept = &mut bundle.concepts[0];
+        concept
+            .extra
+            .insert("confidence".to_string(), serde_json::json!(0.8));
+        concept
+            .extra
+            .insert("lifecycle".to_string(), serde_json::json!("deprecated"));
+        concept.extra.insert(
+            "effective_from".to_string(),
+            serde_json::json!("2026-01-01"),
+        );
+        concept.extra.insert(
+            "effective_until".to_string(),
+            serde_json::json!("2026-12-31"),
+        );
+        concept
+            .extra
+            .insert("review_after".to_string(), serde_json::json!("2026-06-01"));
+        concept.extra.insert(
+            "superseded_by".to_string(),
+            serde_json::json!(["concepts/current"]),
+        );
+        concept.extra.insert(
+            "contradicts".to_string(),
+            serde_json::json!(["concepts/disputed"]),
+        );
+
+        let unit = build_manifest(&bundle).units.remove(0);
+        assert_eq!(unit.confidence.as_deref(), Some("0.8"));
+        assert_eq!(unit.lifecycle.as_deref(), Some("deprecated"));
+        assert_eq!(unit.effective_time.as_deref(), Some("2026-01-01"));
+        assert_eq!(unit.effective_until.as_deref(), Some("2026-12-31"));
+        assert_eq!(unit.review_after.as_deref(), Some("2026-06-01"));
+        assert_eq!(unit.superseded_by, ["concepts/current"]);
+        assert_eq!(unit.contradicts, ["concepts/disputed"]);
     }
 
     fn bundle_with_body(body: &str) -> Bundle {

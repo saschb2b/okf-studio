@@ -179,6 +179,7 @@ struct RetrievalOutput {
     route: String,
     route_reason: String,
     evidence: Vec<RetrievalEvidenceOutput>,
+    caveats: Vec<RetrievalCaveatOutput>,
     omissions: Vec<RetrievalOmissionOutput>,
     providers: Vec<RetrievalProviderOutput>,
     diagnostic_class: String,
@@ -201,6 +202,14 @@ struct RetrievalEvidenceOutput {
     text: String,
     citations: Vec<String>,
     relationship_path: Vec<String>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct RetrievalCaveatOutput {
+    kind: String,
+    concept_ids: Vec<String>,
+    message: String,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -821,6 +830,20 @@ impl OkfMcpServer {
                         .into_iter()
                         .map(|id| bounded_output(&id, MAX_OUTPUT_ID_CHARS))
                         .collect(),
+                })
+                .collect(),
+            caveats: result
+                .evidence
+                .caveats
+                .into_iter()
+                .map(|caveat| RetrievalCaveatOutput {
+                    kind: serialized_label(caveat.kind),
+                    concept_ids: caveat
+                        .concept_ids
+                        .into_iter()
+                        .map(|id| bounded_output(&id, MAX_OUTPUT_ID_CHARS))
+                        .collect(),
+                    message: bounded_output(&caveat.message, MAX_OUTPUT_PROSE_CHARS),
                 })
                 .collect(),
             omissions: result

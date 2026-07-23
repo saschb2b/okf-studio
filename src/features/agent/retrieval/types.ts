@@ -77,7 +77,14 @@ export interface EvidenceItem {
 }
 
 export interface EvidenceCaveat {
-  kind: "stale" | "conflict" | "inferred-relationship" | "broken-link" | "authority-unknown";
+  kind:
+    | "stale"
+    | "conflict"
+    | "uncertain"
+    | "lifecycle"
+    | "inferred-relationship"
+    | "broken-link"
+    | "authority-unknown";
   conceptIds: string[];
   message: string;
 }

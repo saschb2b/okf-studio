@@ -155,6 +155,7 @@ pub fn analyze(bundle: &Bundle) -> Result<HealthReport, HealthLimitExceeded> {
     add_navigation_findings(bundle, &mut findings);
     add_provenance_findings(bundle, &mut findings);
     add_freshness_findings(bundle, &mut findings);
+    add_reliability_findings(bundle, &mut findings);
     add_duplication_findings(bundle, &mut findings);
     add_coverage_findings(bundle, &mut findings);
     add_writing_findings(bundle, &mut findings);
@@ -449,6 +450,191 @@ fn add_freshness_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
             affected: vec![concept.id.clone()],
             repairability: HealthRepairability::Guided,
         }));
+    }
+}
+
+fn add_reliability_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
+    let ids = bundle
+        .concepts
+        .iter()
+        .map(|concept| concept.id.as_str())
+        .collect::<BTreeSet<_>>();
+    let mut supersedes = BTreeMap::<String, BTreeSet<String>>::new();
+
+    for concept in &bundle.concepts {
+        let lifecycle = concept
+            .extra
+            .get("lifecycle")
+            .and_then(serde_json::Value::as_str);
+        if lifecycle.is_some_and(|value| {
+            !matches!(
+                value,
+                "draft" | "active" | "deprecated" | "superseded" | "retired"
+            )
+        }) {
+            let value = lifecycle.unwrap_or_default();
+            findings.push(finding(FindingInput {
+                rule_id: "okf.reliability.unknown-lifecycle",
+                rule_version: "1.0.0",
+                category: HealthCategory::Freshness,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!("{} has an unknown lifecycle value", concept.title),
+                why: "The advisory reliability profile cannot derive a lifecycle state from this producer-defined value.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &format!("{}.md", concept.id)),
+                    evidence("lifecycle", "Authored value", value),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        if let Some(confidence) = concept.extra.get("confidence") {
+            let valid = confidence
+                .as_f64()
+                .or_else(|| confidence.as_str().and_then(|value| value.parse().ok()))
+                .is_some_and(|value| (0.0..=1.0).contains(&value));
+            if !valid {
+                findings.push(finding(FindingInput {
+                    rule_id: "okf.reliability.invalid-confidence",
+                    rule_version: "1.0.0",
+                    category: HealthCategory::Freshness,
+                    severity: HealthSeverity::Advisory,
+                    basis: HealthBasis::Fact,
+                    summary: format!("{} has invalid authored confidence", concept.title),
+                    why: "Confidence is advisory, but Studio can qualify retrieval only when the value is a number from 0 to 1.".to_string(),
+                    evidence: vec![
+                        evidence("path", "Concept path", &format!("{}.md", concept.id)),
+                        evidence("confidence", "Authored value", &confidence.to_string()),
+                    ],
+                    affected: vec![concept.id.clone()],
+                    repairability: HealthRepairability::Guided,
+                }));
+            }
+        }
+
+        for target in extra_string_values(concept.extra.get("supersedes")) {
+            if ids.contains(target.as_str()) {
+                supersedes
+                    .entry(concept.id.clone())
+                    .or_default()
+                    .insert(target);
+            }
+        }
+        for replacement in extra_string_values(concept.extra.get("superseded_by")) {
+            if ids.contains(replacement.as_str()) {
+                supersedes
+                    .entry(replacement)
+                    .or_default()
+                    .insert(concept.id.clone());
+            }
+        }
+        if let Some(namespaces) = concept
+            .extra
+            .get("relationships")
+            .and_then(serde_json::Value::as_object)
+        {
+            for relations in namespaces.values().filter_map(serde_json::Value::as_object) {
+                for target in extra_string_values(relations.get("supersedes")) {
+                    if ids.contains(target.as_str()) {
+                        supersedes
+                            .entry(concept.id.clone())
+                            .or_default()
+                            .insert(target);
+                    }
+                }
+            }
+        }
+    }
+
+    // Repeatedly peel nodes with no incoming or no outgoing edge. What remains
+    // is the bounded cycle-affected core. This is linear in the authored graph
+    // and avoids recursive traversal on a 10,000-concept health report.
+    let mut active = supersedes
+        .iter()
+        .flat_map(|(source, targets)| {
+            std::iter::once(source.clone()).chain(targets.iter().cloned())
+        })
+        .collect::<BTreeSet<_>>();
+    let mut incoming = BTreeMap::<String, BTreeSet<String>>::new();
+    for (source, targets) in &supersedes {
+        for target in targets {
+            incoming
+                .entry(target.clone())
+                .or_default()
+                .insert(source.clone());
+        }
+    }
+    let mut indegree = active
+        .iter()
+        .map(|id| (id.clone(), incoming.get(id).map_or(0, BTreeSet::len)))
+        .collect::<BTreeMap<_, _>>();
+    let mut outdegree = active
+        .iter()
+        .map(|id| (id.clone(), supersedes.get(id).map_or(0, BTreeSet::len)))
+        .collect::<BTreeMap<_, _>>();
+    let mut queue = active
+        .iter()
+        .filter(|id| indegree[*id] == 0 || outdegree[*id] == 0)
+        .cloned()
+        .collect::<Vec<_>>();
+    while let Some(id) = queue.pop() {
+        if !active.remove(&id) {
+            continue;
+        }
+        for target in supersedes.get(&id).into_iter().flatten() {
+            if active.contains(target) {
+                let degree = indegree.entry(target.clone()).or_default();
+                *degree = degree.saturating_sub(1);
+                if *degree == 0 {
+                    queue.push(target.clone());
+                }
+            }
+        }
+        for source in incoming.get(&id).into_iter().flatten() {
+            if active.contains(source) {
+                let degree = outdegree.entry(source.clone()).or_default();
+                *degree = degree.saturating_sub(1);
+                if *degree == 0 {
+                    queue.push(source.clone());
+                }
+            }
+        }
+    }
+    if !active.is_empty() {
+        let affected = active.into_iter().collect::<Vec<_>>();
+        findings.push(finding(FindingInput {
+            rule_id: "okf.reliability.supersession-cycle",
+            rule_version: "1.0.0",
+            category: HealthCategory::Freshness,
+            severity: HealthSeverity::Warning,
+            basis: HealthBasis::Fact,
+            summary: "Supersession relationships contain a cycle".to_string(),
+            why: "A cycle makes it impossible to identify a terminal replacement. Studio reports the authored graph without choosing a current concept.".to_string(),
+            evidence: vec![evidence(
+                "cycle",
+                "Cycle-affected concepts",
+                &affected.join(" → "),
+            )],
+            affected,
+            repairability: HealthRepairability::Guided,
+        }));
+    }
+}
+
+fn extra_string_values(value: Option<&serde_json::Value>) -> Vec<String> {
+    match value {
+        Some(serde_json::Value::String(value)) if !value.trim().is_empty() => {
+            vec![value.trim().to_string()]
+        }
+        Some(serde_json::Value::Array(values)) => values
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
@@ -918,6 +1104,60 @@ mod tests {
             .expect("missing type finding");
         assert_eq!(missing_type.repairability, HealthRepairability::Guided);
         assert!(suggested_repair(missing_type).is_none());
+    }
+
+    #[test]
+    fn reliability_metadata_and_cycles_stay_advisory() {
+        let concept = |id: &str, target: &str, confidence: serde_json::Value| Concept {
+            id: id.to_string(),
+            concept_type: "Policy".to_string(),
+            title: id.to_string(),
+            description: "Policy fixture".to_string(),
+            tags: Vec::new(),
+            timestamp: Some("2026-07-23T00:00:00Z".to_string()),
+            resource: None,
+            extra: BTreeMap::from([
+                ("lifecycle".to_string(), serde_json::json!("active")),
+                ("confidence".to_string(), confidence),
+                ("supersedes".to_string(), serde_json::json!([target])),
+            ]),
+            body: "Policy".to_string(),
+            links: vec![target.to_string()],
+            external_links: Vec::new(),
+            broken_links: Vec::new(),
+            cited_by: vec![target.to_string()],
+            degree: 2,
+        };
+        let bundle = Bundle {
+            root: String::new(),
+            name: "Reliability".to_string(),
+            okf_version: Some("0.1".to_string()),
+            odsf_version: None,
+            extra: BTreeMap::new(),
+            concepts: vec![
+                concept("policy/a", "policy/b", serde_json::json!(0.8)),
+                concept("policy/b", "policy/a", serde_json::json!(4)),
+            ],
+            indexes: Vec::new(),
+            log: Vec::new(),
+            issues: Vec::new(),
+            confidence: Confidence::Confident,
+        };
+
+        let report = analyze(&bundle).expect("reliability report");
+        let cycle = report
+            .findings
+            .iter()
+            .find(|finding| finding.rule_id == "okf.reliability.supersession-cycle")
+            .expect("cycle finding");
+        assert_eq!(cycle.severity, HealthSeverity::Warning);
+        assert_eq!(cycle.basis, HealthBasis::Fact);
+        assert_eq!(cycle.affected_concept_ids, ["policy/a", "policy/b"]);
+        assert!(report
+            .findings
+            .iter()
+            .any(|finding| finding.rule_id == "okf.reliability.invalid-confidence"));
+        assert!(bundle.issues.is_empty());
     }
 
     #[test]

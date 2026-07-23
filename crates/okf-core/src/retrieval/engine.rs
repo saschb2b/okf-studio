@@ -864,6 +864,61 @@ fn caveats_for(
                 ),
             });
         }
+        if let Some(status) = unit.lifecycle.as_deref() {
+            if matches!(
+                status.to_ascii_lowercase().as_str(),
+                "deprecated" | "superseded" | "retired"
+            ) {
+                caveats.push(EvidenceCaveat {
+                    kind: EvidenceCaveatKind::Lifecycle,
+                    concept_ids: vec![unit.concept_id.clone()],
+                    message: format!(
+                        "{} is marked {status}; Studio included it as qualified evidence, not current truth.",
+                        unit.concept_title
+                    ),
+                });
+            }
+        }
+        if let Some(confidence) = unit.confidence.as_deref() {
+            if confidence
+                .parse::<f64>()
+                .is_ok_and(|value| (0.0..1.0).contains(&value))
+            {
+                caveats.push(EvidenceCaveat {
+                    kind: EvidenceCaveatKind::Uncertain,
+                    concept_ids: vec![unit.concept_id.clone()],
+                    message: format!(
+                        "{} declares confidence {confidence}; Studio did not independently verify that assessment.",
+                        unit.concept_title
+                    ),
+                });
+            }
+        }
+        if !unit.superseded_by.is_empty() {
+            caveats.push(EvidenceCaveat {
+                kind: EvidenceCaveatKind::Lifecycle,
+                concept_ids: vec![unit.concept_id.clone()],
+                message: format!(
+                    "{} declares a replacement: {}.",
+                    unit.concept_title,
+                    unit.superseded_by.join(", ")
+                ),
+            });
+        }
+        if !unit.contradicts.is_empty() {
+            let mut concept_ids = vec![unit.concept_id.clone()];
+            concept_ids.extend(unit.contradicts.iter().cloned());
+            concept_ids.sort();
+            concept_ids.dedup();
+            caveats.push(EvidenceCaveat {
+                kind: EvidenceCaveatKind::Conflict,
+                concept_ids,
+                message: format!(
+                    "{} declares contradictory knowledge. Studio kept both sides visible.",
+                    unit.concept_title
+                ),
+            });
+        }
         if !unit.links.is_empty() && items.iter().any(|item| item.relationship_path.len() > 1) {
             caveats.push(EvidenceCaveat {
                 kind: EvidenceCaveatKind::InferredRelationship,
@@ -943,7 +998,9 @@ fn caveats_require_abstention(caveats: &[EvidenceCaveat]) -> bool {
     caveats.iter().any(|caveat| {
         matches!(
             caveat.kind,
-            EvidenceCaveatKind::Conflict | EvidenceCaveatKind::AuthorityUnknown
+            EvidenceCaveatKind::Conflict
+                | EvidenceCaveatKind::Lifecycle
+                | EvidenceCaveatKind::AuthorityUnknown
         )
     })
 }
@@ -1342,6 +1399,50 @@ mod tests {
             conflict.concept_ids,
             ["metrics/finance-revenue", "metrics/sales-revenue"]
         );
+    }
+
+    #[test]
+    fn lifecycle_confidence_and_declared_conflicts_qualify_retrieval() {
+        let mut retired = concept(
+            "policy/old",
+            "Old policy",
+            "Policy",
+            "# Rule\n\nUse the former process.",
+        );
+        retired.extra.insert(
+            "lifecycle".to_string(),
+            serde_json::Value::String("superseded".to_string()),
+        );
+        retired
+            .extra
+            .insert("confidence".to_string(), serde_json::json!(0.6));
+        retired.extra.insert(
+            "superseded_by".to_string(),
+            serde_json::json!(["policy/current"]),
+        );
+        retired.extra.insert(
+            "contradicts".to_string(),
+            serde_json::json!(["policy/current"]),
+        );
+
+        let result = retrieve(
+            &bundle(vec![retired]),
+            &RetrievalRequest {
+                query: "old policy".to_string(),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        let kinds = result
+            .evidence
+            .caveats
+            .iter()
+            .map(|caveat| caveat.kind)
+            .collect::<Vec<_>>();
+        assert!(kinds.contains(&EvidenceCaveatKind::Lifecycle));
+        assert!(kinds.contains(&EvidenceCaveatKind::Uncertain));
+        assert!(kinds.contains(&EvidenceCaveatKind::Conflict));
+        assert!(result.evidence.requires_abstention);
     }
 
     fn concept(id: &str, title: &str, concept_type: &str, body: &str) -> Concept {

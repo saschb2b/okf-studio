@@ -61,11 +61,17 @@ export function evidenceAssessment(result: RetrievalResult): EvidenceAssessment 
   const itemCount = result.evidence.items.length;
   switch (result.diagnostic.class) {
     case "ready":
-      return {
-        tone: "neutral",
-        title: "Evidence is available",
-        description: `Studio found ${itemCount} excerpt${itemCount === 1 ? "" : "s"} that can support this answer.`,
-      };
+      return result.evidence.requiresAbstention
+        ? {
+            tone: "warning",
+            title: "Evidence needs qualification",
+            description: "Studio found relevant excerpts, but their authored lifecycle or authority signals do not support presenting the answer as settled.",
+          }
+        : {
+            tone: "neutral",
+            title: "Evidence is available",
+            description: `Studio found ${itemCount} excerpt${itemCount === 1 ? "" : "s"} that can support this answer.`,
+          };
     case "conflicting-evidence":
       return {
         tone: "warning",

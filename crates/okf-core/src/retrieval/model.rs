@@ -42,9 +42,15 @@ pub struct RetrievalUnit {
     pub tags: Vec<String>,
     pub timestamp: Option<String>,
     pub effective_time: Option<String>,
+    pub effective_until: Option<String>,
+    pub review_after: Option<String>,
+    pub lifecycle: Option<String>,
+    pub confidence: Option<String>,
     pub source_class: Option<String>,
     pub owner: Option<String>,
     pub supersedes: Vec<String>,
+    pub superseded_by: Vec<String>,
+    pub contradicts: Vec<String>,
     pub resource: Option<String>,
     pub citations: Vec<String>,
     pub links: Vec<String>,
@@ -166,11 +172,13 @@ pub struct RetrievalOmission {
     pub detail: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum EvidenceCaveatKind {
     Stale,
     Conflict,
+    Uncertain,
+    Lifecycle,
     InferredRelationship,
     BrokenLink,
     AuthorityUnknown,

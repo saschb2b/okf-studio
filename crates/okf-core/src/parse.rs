@@ -61,6 +61,12 @@ pub fn read_bundle(root: &Path) -> Bundle {
         .as_ref()
         .and_then(|fm| fm.scalar("odsf_version"))
         .map(str::to_owned);
+    let mut extra = root_fm
+        .as_ref()
+        .map(ParsedFrontmatter::all_values)
+        .unwrap_or_default();
+    extra.remove("okf_version");
+    extra.remove("odsf_version");
     let name = read_bundle_name(root);
     let confidence = if okf_version.is_some() {
         Confidence::Confident
@@ -73,6 +79,7 @@ pub fn read_bundle(root: &Path) -> Bundle {
         name,
         okf_version,
         odsf_version,
+        extra,
         concepts,
         indexes,
         log,

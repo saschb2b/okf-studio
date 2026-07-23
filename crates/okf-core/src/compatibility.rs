@@ -107,6 +107,20 @@ pub fn analyze(bundle: &Bundle) -> CompatibilityReport {
         });
     }
 
+    if !bundle.extra.is_empty() {
+        let keys = bundle.extra.keys().cloned().collect::<Vec<_>>().join(", ");
+        findings.push(CompatibilityFinding {
+            rule_id: "okf.extensions.root-preserved".to_string(),
+            category: CompatibilityCategory::Extension,
+            level: CompatibilityLevel::Information,
+            basis: CompatibilityBasis::Preservation,
+            file: "index.md".to_string(),
+            concept_id: None,
+            message: format!("Studio preserved producer-defined bundle metadata: {keys}."),
+            repair: None,
+        });
+    }
+
     for concept in &bundle.concepts {
         let file = format!("{}.md", concept.id);
         let mut seen_portable_links = HashSet::new();

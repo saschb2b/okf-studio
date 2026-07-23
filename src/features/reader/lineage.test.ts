@@ -37,6 +37,7 @@ function bundleOf(concepts: Concept[]): Bundle {
     name: "b",
     okfVersion: "0.1",
     odsfVersion: null,
+    extra: {},
     concepts,
     indexes: [],
     log: [],

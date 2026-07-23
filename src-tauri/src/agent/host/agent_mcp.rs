@@ -71,6 +71,7 @@ struct InventoryOutput {
     name: String,
     okf_version: Option<String>,
     odsf_version: Option<String>,
+    extra: std::collections::BTreeMap<String, serde_json::Value>,
     confidence: String,
     concept_count: usize,
     matching_count: usize,
@@ -636,6 +637,7 @@ impl OkfMcpServer {
             odsf_version: result
                 .odsf_version
                 .map(|value| bounded_output(&value, MAX_OUTPUT_FIELD_CHARS)),
+            extra: result.extra,
             confidence: result.confidence,
             concept_count: result.concept_count,
             matching_count: result.matching_count,
@@ -1839,6 +1841,7 @@ mod tests {
             name: "Empty".to_string(),
             okf_version: None,
             odsf_version: None,
+            extra: Default::default(),
             concepts: Vec::new(),
             indexes: Vec::new(),
             log: Vec::new(),
@@ -1904,6 +1907,46 @@ mod tests {
                 resource_id: "instructions".to_string(),
             }))
             .is_err());
+    }
+
+    #[test]
+    fn inventory_preserves_nested_bundle_root_extensions() {
+        let extra = [(
+            "profile".to_string(),
+            serde_json::json!({
+                "namespace": "com.example.knowledge",
+                "checks": ["ownership", "freshness"]
+            }),
+        )]
+        .into_iter()
+        .collect();
+        let server = OkfMcpServer::new(Bundle {
+            root: String::new(),
+            name: "Extended".to_string(),
+            okf_version: Some("0.1".to_string()),
+            odsf_version: None,
+            extra,
+            concepts: Vec::new(),
+            indexes: Vec::new(),
+            log: Vec::new(),
+            issues: Vec::new(),
+            confidence: okf_core::Confidence::Confident,
+        });
+
+        let Json(inventory) = server
+            .okf_inventory(Parameters(InventoryInput {
+                prefix: None,
+                r#type: None,
+                tag: None,
+                offset: None,
+                limit: None,
+            }))
+            .expect("inventory");
+
+        assert_eq!(
+            inventory.extra["profile"]["checks"][1],
+            serde_json::Value::String("freshness".to_string())
+        );
     }
 
     #[test]

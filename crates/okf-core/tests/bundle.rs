@@ -236,6 +236,58 @@ fn root_index_versions_are_read() {
 }
 
 #[test]
+fn root_extensions_survive_parse_ipc_and_inventory_without_affecting_conformance() {
+    let dir = temp_bundle("root-extensions");
+    write(
+        &dir,
+        "index.md",
+        concat!(
+            "---\n",
+            "okf_version: \"0.1\"\n",
+            "title: Producer title\n",
+            "profile:\n",
+            "  namespace: com.example.knowledge\n",
+            "  version: 2\n",
+            "  checks:\n",
+            "    - ownership\n",
+            "    - freshness\n",
+            "---\n",
+            "# Bundle title\n",
+        ),
+    );
+    write(&dir, "note.md", "---\ntype: Note\n---\nBody.\n");
+
+    let bundle = read_bundle(&dir);
+    assert_eq!(
+        bundle.extra.get("title"),
+        Some(&serde_json::Value::String("Producer title".to_string()))
+    );
+    assert_eq!(
+        bundle.extra["profile"]["namespace"],
+        serde_json::Value::String("com.example.knowledge".to_string())
+    );
+    assert_eq!(bundle.extra["profile"]["version"], "2");
+    assert_eq!(
+        bundle.extra["profile"]["checks"][1],
+        serde_json::Value::String("freshness".to_string())
+    );
+    assert!(!bundle.extra.contains_key("okf_version"));
+    assert!(bundle
+        .issues
+        .iter()
+        .all(|issue| issue.level != IssueLevel::Error));
+
+    let serialized = serde_json::to_string(&bundle).expect("serialize IPC bundle");
+    let round_trip: okf_core::Bundle =
+        serde_json::from_str(&serialized).expect("deserialize IPC bundle");
+    assert_eq!(round_trip.extra, bundle.extra);
+
+    let inventory = okf_core::query::inventory(&bundle, None, None, None, 0, 50);
+    assert_eq!(inventory.extra, bundle.extra);
+    fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
 fn concept_missing_type_yields_error_not_panic() {
     let dir = temp_bundle("missing-type");
     write(&dir, "index.md", "---\nokf_version: \"0.1\"\n---\n# Tiny\n");

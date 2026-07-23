@@ -43,6 +43,7 @@ pub struct InventoryResult {
     pub name: String,
     pub okf_version: Option<String>,
     pub odsf_version: Option<String>,
+    pub extra: BTreeMap<String, serde_json::Value>,
     pub confidence: String,
     pub concept_count: usize,
     pub matching_count: usize,
@@ -219,6 +220,7 @@ pub fn inventory(
         name: bundle.name.clone(),
         okf_version: bundle.okf_version.clone(),
         odsf_version: bundle.odsf_version.clone(),
+        extra: bundle.extra.clone(),
         confidence: match bundle.confidence {
             Confidence::Confident => "confident",
             Confidence::Candidate => "candidate",
@@ -745,6 +747,7 @@ mod tests {
             name: "Test".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts,
             indexes: Vec::new(),
             log: Vec::new(),

@@ -99,6 +99,8 @@ export interface Bundle {
   okfVersion: string | null;
   /** ODSF profile version from the root index, if the bundle declares one. */
   odsfVersion: string | null;
+  /** Producer-defined root index frontmatter, excluding promoted versions. */
+  extra: Record<string, unknown>;
   concepts: Concept[];
   indexes: IndexNode[];
   log: LogEntry[];

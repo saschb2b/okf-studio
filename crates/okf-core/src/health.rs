@@ -943,6 +943,7 @@ mod tests {
             name: "Large".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts: vec![concept; MAX_HEALTH_CONCEPTS + 1],
             indexes: Vec::<IndexNode>::new(),
             log: Vec::new(),
@@ -981,6 +982,7 @@ mod tests {
             name: "Scale".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts,
             indexes: Vec::new(),
             log: Vec::new(),
@@ -1023,6 +1025,7 @@ mod tests {
             name: "Writing".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts: vec![concept],
             indexes: Vec::new(),
             log: Vec::new(),
@@ -1071,6 +1074,7 @@ mod tests {
             name: "Writing exceptions".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts: vec![
                 concept(
                     "standard",

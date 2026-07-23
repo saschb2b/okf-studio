@@ -1369,6 +1369,7 @@ mod tests {
             name: "Fixture".to_string(),
             okf_version: Some("0.1".to_string()),
             odsf_version: None,
+            extra: Default::default(),
             concepts,
             indexes: Vec::new(),
             log: Vec::new(),

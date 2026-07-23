@@ -90,7 +90,7 @@ export const families: Family[] = [
           },
           {
             title: "Links match the reader",
-            body: "The Compatibility Clinic groups parser, link, index, and extension findings by file and rule. Review safe link normalizations as a diff, validate the exact revision, apply it atomically, or restore the last change.",
+            body: "The Compatibility Clinic groups parser, link, index, and extension findings by file and rule. Producer-defined root and concept metadata remains intact and available to agent inventory without becoming an OKF requirement.",
           },
           {
             title: "Design-system aware",

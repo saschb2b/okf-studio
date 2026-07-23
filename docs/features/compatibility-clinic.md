@@ -3,7 +3,7 @@ type: Feature
 title: Compatibility Clinic
 description: Explain how a bundle will travel across OKF consumers without confusing portability advice with conformance.
 tags: [feature, compatibility, validation, portability, diagnostics]
-timestamp: 2026-07-23T00:15:00Z
+timestamp: 2026-07-23T00:28:00Z
 ---
 
 # What it does
@@ -14,7 +14,7 @@ The report keeps three meanings separate:
 
 - **OKF conformance** carries the same errors and warnings as [Validation](validation.md).
 - **Portability advice** identifies syntax that Studio can read but another consumer may handle differently. A resolved bundle-absolute link, for example, includes its deterministic relative replacement.
-- **Preservation information** lists producer-defined frontmatter keys that Studio retained. Their presence is not an error and does not imply Studio understands their semantics.
+- **Preservation information** lists producer-defined root and concept frontmatter keys that Studio retained. Root keys name `index.md`; concept keys name their concept file. Their presence is not an error and does not imply Studio understands their semantics.
 
 # Machine-readable report
 

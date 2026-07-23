@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Preserve producer-defined bundle-root frontmatter through the complete read path. `Bundle.extra` now retains every parsed root field except promoted OKF and ODSF versions, including nested maps, lists, and concept-shaped keys. The map crosses serde IPC, TypeScript, browser fixtures, Compatibility Clinic reporting, pure inventory queries, and MCP inventory without affecting OKF conformance.
+
 * **Update**: Completed Compatibility Clinic normalization review. Rust regenerates a live safe-link finding and changes only parser-confirmed inline destinations, then uses the existing in-memory stage, per-hunk decisions, isolated validation, revision-bound atomic Apply, and conditional Restore. Forged findings, stale disk bases, reference definitions, code, prose, and unreviewed changes cannot enter the apply path.
 
 * **Creation**: Added the Compatibility Clinic to the existing validation panel. It groups parser, link, index, and extension behavior; labels conformance, portability, and preservation separately; names each file and rule; shows deterministic relative-link proposals; and exports a source-text-redacted JSON diagnostic through the native save dialog.

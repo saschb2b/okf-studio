@@ -385,6 +385,12 @@ export const MOCK_BUNDLE: Bundle = {
   name: "OKF Studio (sample)",
   okfVersion: "0.1",
   odsfVersion: "0.1",
+  extra: {
+    profiles: {
+      "com.example.knowledge": { version: "1.2.0", mode: "advisory" },
+    },
+    producer: { name: "OKF Studio fixture", channel: "development" },
+  },
   concepts: finalize([...raw, ...designSystem, ...generated()]),
   indexes: [
     {

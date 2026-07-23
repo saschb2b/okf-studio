@@ -93,6 +93,17 @@ export interface CompatibilityReport {
   truncated: boolean;
 }
 
+export interface IgnoreReport {
+  schemaVersion: 1;
+  source: string | null;
+  ruleCount: number;
+  caseSensitive: boolean;
+  excludedCount: number;
+  excludedPaths: string[];
+  diagnostics: string[];
+  truncated: boolean;
+}
+
 export type ProfileStatus = "active" | "unavailable";
 export type ProfileScope = "bundle" | "concept";
 export type ProfileValueType = "string" | "number" | "boolean" | "array" | "object";

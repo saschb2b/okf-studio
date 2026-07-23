@@ -27,6 +27,7 @@ use walkdir::WalkDir;
 /// Scan `folder` for OKF bundle roots, descending at most `max_depth` levels
 /// (clamped to a sane range).
 pub fn scan(folder: &Path, max_depth: usize) -> Vec<BundleRoot> {
+    let ignore = crate::ignore::IgnoreMatcher::load(folder);
     // Per-directory facts: whether its index.md declares okf_version.
     let mut confident_dirs: Vec<PathBuf> = Vec::new();
     // Concepts grouped by their nearest scanned ancestor are computed lazily;
@@ -39,6 +40,9 @@ pub fn scan(folder: &Path, max_depth: usize) -> Vec<BundleRoot> {
         .into_iter()
         .filter_entry(|e| !parse::is_ignored_dir(e.path(), folder))
         .filter_map(Result::ok)
+        .filter(|entry| {
+            entry.path() == folder || !ignore.is_ignored(entry.path(), entry.file_type().is_dir())
+        })
     {
         if entry.file_type().is_dir() {
             if dir_index_has_okf_version(entry.path()) {

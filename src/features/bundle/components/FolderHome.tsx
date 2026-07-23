@@ -16,6 +16,7 @@ import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
 import { classifyBodyLinks, classifyLink } from "@/features/reader/components/Reader.tsx";
 import { MetadataInspector } from "@/features/reader/components/MetadataInspector.tsx";
 import { AdvisoryProfiles } from "./AdvisoryProfiles.tsx";
+import { IgnoreRules } from "./IgnoreRules.tsx";
 import type { IndexEntry, IndexNode } from "@/shared/types.ts";
 import "./FolderHome.css";
 
@@ -129,6 +130,7 @@ export function FolderHome({ node }: { node: IndexNode }) {
               }}
             />
           ) : null}
+          <IgnoreRules bundleRoot={bundle.root} />
           <div className="fh-metadata">
             <MetadataInspector
               title="Bundle metadata"

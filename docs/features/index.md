@@ -5,6 +5,7 @@
 One concept per user-facing capability. Together these define Studio's explore, create, curate, and query loop (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
 
 * [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
+* [Ignore Rules](ignore-rules.md) - Apply one visible root rule file across parsing, watching, retrieval, source intake, and projections.
 * [Create Bundle](create-bundle.md) - Start a new conformant bundle from a form, no agent involved.
 * [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.
 * [Graph View](graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.

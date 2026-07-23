@@ -101,7 +101,11 @@ export const families: Family[] = [
             body: "Open a folder on disk, or explicitly download and cache a GitHub URL on your machine. Rust records that choice and limits readers, assets, watchers, and agents to bundle roots found by its scan.",
           },
           {
-            title: "Links match the reader",
+            title: "One visible ignore boundary",
+            body: "A root .okfignore keeps chosen paths out of parsing, watching, retrieval, source intake, and projections. Studio reports what it excluded and makes clear that ignore rules are not encryption or access control.",
+          },
+          {
+            title: "Extensions stay intact",
             body: "Producer metadata remains intact and inspectable. Optional team profiles resolve from version-pinned files inside the bundle, with their advice clearly separated from OKF validation.",
           },
           {
@@ -117,6 +121,7 @@ export const families: Family[] = [
       { label: "Search and filter", href: doc("features/search-and-filter.md"), external: true },
       { label: "Lineage", href: doc("features/lineage.md"), external: true },
       { label: "Evidence and provenance", href: doc("features/evidence-and-provenance.md"), external: true },
+      { label: "Ignore rules", href: doc("features/ignore-rules.md"), external: true },
       { label: "Visualization views", href: doc("features/viz-views.md"), external: true },
     ],
     workflows: ["understand", "ask"],

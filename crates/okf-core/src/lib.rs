@@ -11,6 +11,7 @@ mod evidence;
 pub mod frontmatter;
 pub mod graph;
 pub mod health;
+pub mod ignore;
 pub mod index_tree;
 pub mod links;
 pub mod logfile;

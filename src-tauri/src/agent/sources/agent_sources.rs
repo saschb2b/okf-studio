@@ -214,6 +214,7 @@ fn read_folder_sources(root: &Path, limit: usize) -> Result<Vec<AgentSourceInput
     if !metadata.is_dir() {
         return Err("The selected source folder is not a directory.".to_string());
     }
+    let ignore = okf_core::ignore::IgnoreMatcher::load(root);
 
     let mut inspected_entries = 0_usize;
     let mut directories = vec![(root.to_path_buf(), 0_usize)];
@@ -247,6 +248,9 @@ fn read_folder_sources(root: &Path, limit: usize) -> Result<Vec<AgentSourceInput
                 continue;
             }
             if !file_type.is_file() || supported_media_type(&path).is_none() {
+                continue;
+            }
+            if ignore.is_ignored(&path, false) {
                 continue;
             }
             let relative = path
@@ -651,6 +655,10 @@ mod tests {
         fs::write(root.join("reports").join("a-first.md"), "first").expect("write nested source");
         fs::write(root.join("reports").join("ignored.xml"), "<ignored />")
             .expect("write unsupported file");
+        fs::write(root.join("reports").join("private.md"), "private")
+            .expect("write ignored source");
+        fs::write(root.join(".okfignore"), "reports/private.md\n")
+            .expect("write source ignore rules");
 
         let sources = read_folder_sources(&root, 2).expect("read source folder");
 

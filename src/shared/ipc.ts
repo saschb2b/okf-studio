@@ -7,6 +7,7 @@ import type {
   BundleRoot,
   CompatibilityFinding,
   CompatibilityReport,
+  IgnoreReport,
   ProfileReport,
   RecentBundle,
   RemoteSource,
@@ -3317,6 +3318,29 @@ export async function readCompatibilityReport(bundleRoot: string): Promise<Compa
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<CompatibilityReport>("okf_compatibility_report", { bundleRoot });
+}
+
+export async function readIgnoreReport(bundleRoot: string): Promise<IgnoreReport> {
+  if (!isTauri()) {
+    await browserMockDelay(40);
+    return {
+      schemaVersion: 1,
+      source: ".okfignore",
+      ruleCount: 3,
+      caseSensitive: true,
+      excludedCount: 4,
+      excludedPaths: [
+        "drafts/private-notes.md",
+        "generated/cache.md",
+        "private/source-dump.json",
+        "tmp/research.md",
+      ],
+      diagnostics: [],
+      truncated: false,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<IgnoreReport>("okf_ignore_report", { bundleRoot });
 }
 
 function mockProfileReport(): ProfileReport {

@@ -3,14 +3,14 @@ type: Reference
 title: OKF Parsing
 description: How a bundle root is turned into concepts, resolved links, backlinks, and an index tree.
 tags: [architecture, parsing, links]
-timestamp: 2026-07-23T00:28:00Z
+timestamp: 2026-07-23T20:30:00Z
 ---
 
 # Pipeline
 
 For each [detected bundle root](bundle-detection.md), the [Rust core](tech-stack.md) produces the [data model](data-model.md):
 
-1. **Enumerate** non-reserved `.md` files → each is a concept. Reserved filenames (`index.md`, `log.md`) are handled separately.
+1. **Enumerate** non-reserved `.md` files → each is a concept. Reserved filenames (`index.md`, `log.md`) are handled separately. The root [`.okfignore`](../features/ignore-rules.md) matcher removes excluded files before parsing while retaining children restored by a later negation.
 2. **Split frontmatter / body.** Parse the leading `---` YAML block (a tolerant subset: scalars, quoted strings, `[a, b]` / block lists, and **indentation-nested maps and lists**). Concept keys are promoted according to the concept model. The root `index.md` separately promotes only `okf_version` and `odsf_version`; every other parsed root field enters `Bundle.extra`, even when the same name is recognized on concepts. Scalars, nested objects, and arrays therefore survive IPC and agent inventory without changing conformance. Missing or malformed frontmatter is tolerated; only a present-but-typeless concept is an [error](../features/validation.md).
 3. **Concept ID = path − `.md`,** relative to the bundle root. `tables/orders.md` → `tables/orders`.
 4. **Extract links** with a CommonMark parser, classify, and **resolve**. Inline, full-reference, collapsed-reference, shortcut-reference, autolink, title, angle-destination, balanced-parenthesis, escaped-punctuation, and footnote-definition forms follow the same parser rules. Link-shaped text inside code does not create an edge.

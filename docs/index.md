@@ -39,6 +39,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Source Adapters and Provenance](features/source-adapters.md) - Turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible versioned provenance.
 * [Evidence and Provenance](features/evidence-and-provenance.md) - Keep durable source identity with a concept, connect claims to evidence, and check public sources only after an explicit action.
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
+* [Ignore Rules](features/ignore-rules.md) - Keep selected paths out of Studio through one visible root rule file without mistaking it for access control.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.

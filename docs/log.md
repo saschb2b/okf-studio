@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Ignore Rules](features/ignore-rules.md). A bounded root `.okfignore` matcher now controls parsing, validation inventory, synthesized navigation, live reload, selected-folder source intake, retrieval's parsed concept set, and recipient projection inputs. The root home reports rule and exclusion counts, case behavior, diagnostics, and bounded paths while stating that ignore rules are neither encryption nor filesystem access control.
+
 * **Creation**: Added [Evidence and Provenance](features/evidence-and-provenance.md) and the local `io.okf.evidence` advisory descriptor. Adapter receipts now carry an observation time and project a path-redacted durable source identity into accepted agent context. Structured claim markers render as sanitized source footnotes, retrieval preserves the same source records and exact claim lines, and Knowledge Health reports dangling, changed, or unavailable evidence without treating a failed request as a truth verdict. Public source checks run only from the reader's named action through the existing bounded Rust fetch.
 
 * **Update**: Completed [Lineage](features/lineage.md) as a bounded multi-hop maintenance view. The docked panel now filters upstream dependencies and downstream impact by portable or profile-defined relationship and advisory reliability state; labels cycles, repeated branches, missing targets, hubs, and traversal omissions; and explains each incoming or outgoing step in a filtered shortest path. Portable links remain available when profiles do not resolve.

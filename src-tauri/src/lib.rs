@@ -496,6 +496,15 @@ fn read_bundle(
 }
 
 #[tauri::command]
+fn okf_ignore_report(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+) -> Result<okf_core::ignore::IgnoreReport, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    Ok(okf_core::ignore::analyze(&root))
+}
+
+#[tauri::command]
 async fn okf_compatibility_report(
     grants: State<'_, bundle_grant::BundleGrantState>,
     bundle_root: String,
@@ -1708,6 +1717,7 @@ pub fn run() {
             revoke_bundle_grant,
             scan_bundles,
             read_bundle,
+            okf_ignore_report,
             okf_compatibility_report,
             okf_profile_report,
             stage_compatibility_normalization,

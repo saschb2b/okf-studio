@@ -20,9 +20,6 @@ use tauri::{AppHandle, Emitter};
 /// is emitted.
 const DEBOUNCE: Duration = Duration::from_millis(200);
 
-/// Directories whose contents are noise for our purposes and are skipped.
-const IGNORED_DIRS: &[&str] = &[".git", "node_modules", "target", "dist", "build", ".venv"];
-
 /// Payload for the `bundle-changed` event. `root` is the watched folder; the
 /// frontend re-reads the whole bundle on any change, so `concept_ids` may be
 /// empty.
@@ -44,22 +41,17 @@ struct ActiveWatch {
 #[derive(Default)]
 pub struct WatchState(Mutex<Option<ActiveWatch>>);
 
-/// Returns true when a path lives inside one of the ignored directories.
-fn is_ignored(path: &Path) -> bool {
-    path.components().any(|c| {
-        c.as_os_str()
-            .to_str()
-            .is_some_and(|name| IGNORED_DIRS.contains(&name))
-    })
-}
-
 /// Whether an event's paths are relevant enough to trigger a reload. We keep
 /// changes to `.md` files (and structural changes like directory create/remove,
 /// where the path may have no extension) and drop pure noise inside ignored
 /// dirs.
-fn is_relevant(paths: &[PathBuf]) -> bool {
+fn is_relevant(root: &Path, paths: &[PathBuf]) -> bool {
+    let ignore = okf_core::ignore::IgnoreMatcher::load(root);
     paths.iter().any(|p| {
-        if is_ignored(p) {
+        let is_directory = p.is_dir();
+        if p.file_name().and_then(|name| name.to_str()) != Some(".okfignore")
+            && ignore.is_ignored(p, is_directory)
+        {
             return false;
         }
         match p.extension().and_then(|e| e.to_str()) {
@@ -138,10 +130,11 @@ fn debounce_loop(
     event_rx: mpsc::Receiver<notify::Result<Event>>,
     shutdown_rx: mpsc::Receiver<()>,
 ) {
+    let root = PathBuf::from(&folder);
     loop {
         // Block until the first event (or shutdown / disconnect).
         let mut pending = match event_rx.recv() {
-            Ok(res) => consume(res),
+            Ok(res) => consume(&root, res),
             // Sender dropped (watch stopped) — exit the thread.
             Err(_) => return,
         };
@@ -153,7 +146,7 @@ fn debounce_loop(
                 return;
             }
             match event_rx.recv_timeout(DEBOUNCE) {
-                Ok(res) => pending |= consume(res),
+                Ok(res) => pending |= consume(&root, res),
                 Err(RecvTimeoutError::Timeout) => break,
                 // Sender dropped mid-burst — emit what we have, then exit below.
                 Err(RecvTimeoutError::Disconnected) => break,
@@ -169,9 +162,9 @@ fn debounce_loop(
 }
 
 /// Maps a single raw notify result to whether it should count toward an emit.
-fn consume(res: notify::Result<Event>) -> bool {
+fn consume(root: &Path, res: notify::Result<Event>) -> bool {
     match res {
-        Ok(event) => is_relevant(&event.paths),
+        Ok(event) => is_relevant(root, &event.paths),
         Err(err) => {
             eprintln!("[watch] notify error: {err}");
             false
@@ -187,5 +180,36 @@ fn emit(app: &AppHandle, folder: &str) {
     };
     if let Err(err) = app.emit("bundle-changed", payload) {
         eprintln!("[watch] failed to emit bundle-changed: {err}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn watcher_uses_root_rules_and_observes_rule_changes() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("okf-watch-ignore-{nonce}"));
+        fs::create_dir_all(root.join("private")).expect("private directory");
+        fs::write(root.join(".okfignore"), "private/**\n!private/public.md\n")
+            .expect("ignore rules");
+
+        assert!(!is_relevant(
+            &root,
+            &[root.join("private").join("secret.md")]
+        ));
+        assert!(is_relevant(
+            &root,
+            &[root.join("private").join("public.md")]
+        ));
+        assert!(is_relevant(&root, &[root.join(".okfignore")]));
+
+        fs::remove_dir_all(root).expect("cleanup");
     }
 }

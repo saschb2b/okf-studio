@@ -277,8 +277,8 @@ export const families: Family[] = [
             body: "Optional audience, sensitivity, and handling notes stay visible while you read, choose agent context, and review staged files. Studio never treats a metadata label as filesystem permission or silently drops evidence because of it.",
           },
           {
-            title: "Share a reviewed least-disclosure copy",
-            body: "Select seed concepts and a recipient, then inspect every transitive inclusion, omission, link rewrite, and exact redaction before export. Studio validates the separate bundle, blocks declared leaks with a retained erasure audit, and never edits the source.",
+            title: "Create a shareable bundle",
+            body: "Name who the copy is for, choose the knowledge to share, then review what will travel and what will stay behind. Optional safeguards can filter handling labels or remove exact text. Studio checks the separate bundle for declared leaks and never edits the source.",
           },
           {
             title: "A second pass without write authority",

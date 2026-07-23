@@ -7,7 +7,7 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Ignore Rules](ignore-rules.md) - Apply one visible root rule file across parsing, watching, retrieval, source intake, and projections.
 * [Access Hints](access-hints.md) - Carry audience, sensitivity, and handling guidance through reading, context, and staged review.
-* [Recipient Projections](recipient-projections.md) - Build a reviewed least-disclosure copy for a named recipient without changing the source.
+* [Recipient Projections](recipient-projections.md) - Choose knowledge, review what will travel, and save a separate shareable bundle.
 * [Erasure Audit](erasure-audit.md) - Block a projection when excluded identities or reviewed sensitive terms remain in the output.
 * [Interoperability Lab](interoperability-lab.md) - Exercise optional multilingual, external-reference, JSON-LD, and sidecar conventions without making them core OKF.
 * [Create Bundle](create-bundle.md) - Start a new conformant bundle from a form, no agent involved.

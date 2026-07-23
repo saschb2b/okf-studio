@@ -1,22 +1,41 @@
 ---
 type: Feature
 title: Recipient Projections
-description: Build a reviewed least-disclosure bundle for a named recipient without changing the source.
+description: Choose knowledge, review what will travel, and save a separate shareable bundle without changing the source.
 tags: [feature, privacy, sharing, access, review]
-timestamp: 2026-07-23T22:30:00Z
+timestamp: 2026-07-23T23:45:00Z
 audience: [maintainers, knowledge-owners]
 sensitivity: public
 ---
 
 # User job and value
 
-A maintainer needs to share a useful subset of a bundle with a named recipient without editing, copying, and repairing Markdown by hand. Studio turns that job into two separate actions: review a deterministic plan, then choose where to write a new bundle.
+A maintainer needs to share a useful subset of a bundle without editing, copying, and repairing Markdown by hand. Studio presents this as the job the person is doing:
 
-The source bundle remains unchanged. The output is a normal OKF bundle that can be opened without Studio.
+1. Name who the copy is for.
+2. Choose the concepts to share.
+3. Review what the new bundle will contain, then choose where to save it.
 
-# Reviewed plan
+The source bundle remains unchanged. The output is a normal OKF bundle that can be opened without Studio. The interface calls it a **shareable bundle**; recipient projection remains the implementation and audit term.
 
-The root folder home opens **Project bundle**. The maintainer names the recipient, provides optional recipient audiences, chooses the highest recognized sensitivity, decides whether concepts without a sensitivity hint are eligible, selects seed concepts, and may name exact text to redact.
+# Choose content
+
+The root folder home opens **Create shareable bundle**. The first screen asks who the copy is for and puts concept selection at the center. The recipient name is written into the new bundle and becomes its portable folder name.
+
+Selected concepts without a recognized sensitivity label are eligible by default because concept selection is already explicit and access metadata is advisory. The review calls out how many unlabeled concepts would travel. Known sensitivity limits still apply.
+
+**Sharing safeguards** remain available in one collapsed optional section:
+
+- an audience filter;
+- the highest recognized sensitivity to include;
+- whether unlabeled or unknown sensitivity values are eligible;
+- exact words or phrases to remove.
+
+An empty audience filter means no audience filtering. Entering one or more audiences narrows eligible concepts to matching authored labels. This prevents an optional blank field from silently excluding selected content.
+
+# Review the new bundle
+
+Planning performs no filesystem write. Rust computes:
 
 Planning performs no filesystem write. Rust computes:
 
@@ -28,11 +47,17 @@ Planning performs no filesystem write. Rust computes:
 - every occurrence of an exact reviewed redaction term;
 - a destination folder name, source fingerprint, and plan revision.
 
-The reviewer sees this complete plan before a destination picker opens. [Audience and sensitivity](access-hints.md) remain advisory. They guide this conservative copy operation but never grant access, prove classification, or change operating-system permissions.
+The second screen leads with the outcome: concepts in the new bundle, concepts left out, link updates, and text removals. Detail sections explain each item in plain language. Source fingerprints, stale-plan protection, validation, and erasure checks remain available under **How Studio protects the source** instead of competing with the sharing decision.
+
+If every selected concept is excluded, the review says that nothing can be shared and directs the user back to the audience and sensitivity safeguards. Saving remains disabled.
+
+[Audience and sensitivity](access-hints.md) remain advisory. They guide this conservative copy operation but never grant access, prove classification, or change operating-system permissions.
 
 # Export transaction
 
-Export starts only from **Choose parent & export** and a Rust-owned native folder picker. Rust reauthorizes the exact source, recomputes the plan, and rejects a stale revision. It writes a temporary sibling directory, rewrites parser-confirmed links to omitted concepts, applies exact case-insensitive redactions, generates a root index and log, validates the result, and runs the [Erasure Audit](erasure-audit.md).
+Saving starts only from **Choose save location** and a Rust-owned native folder picker. The user chooses the folder where Studio will create the named bundle. The interface never asks the user to understand a filesystem “parent.”
+
+Rust reauthorizes the exact source, recomputes the plan, and rejects a stale revision. It writes a temporary sibling directory, rewrites parser-confirmed links to omitted concepts, applies exact case-insensitive redactions, generates a root index and log, validates the result, and runs the [Erasure Audit](erasure-audit.md).
 
 The complete directory moves into place only after validation and audit pass and the source fingerprint still matches the reviewed source. A successful output receives its own local folder grant so Studio can open it.
 
@@ -44,7 +69,7 @@ Replacement first renames the prior projection to a guarded sibling, installs th
 
 # Failure and recovery
 
-- No selected concept or no named recipient keeps plan review disabled.
+- No selected concept or no named recipient keeps the preview action disabled and states what is missing.
 - A selected concept that fails audience or sensitivity review appears as an omission.
 - A source or choice change invalidates the plan and requires another review.
 - Choosing the source, a descendant, or an ancestor as destination is refused.
@@ -55,4 +80,3 @@ Replacement first renames the prior projection to a guarded sibling, installs th
 Planning accepts at most 2,048 selected concepts, 16 audience values, and 32 exact redaction terms. The graph plan is capped at 10,000 items. These are product bounds, not OKF conformance rules.
 
 Related behavior: [Ignore Rules](ignore-rules.md), [Access Hints](access-hints.md), [Validation](validation.md), and [IPC and Security](../architecture/ipc-and-security.md).
-

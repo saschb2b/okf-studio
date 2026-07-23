@@ -210,22 +210,22 @@
   opacity: 0.55;
 }
 
+/* Label/value pairs as one shared grid: the label column hugs the longest
+   term so every value starts at the same X instead of wherever its own label
+   ended. display:contents lifts dt/dd out of the row wrappers into the grid. */
 .reader-meta {
   margin: var(--space-4) 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-4) var(--space-8);
   font-size: var(--fs-xs);
 }
 
 .reader-meta .meta-row {
-  display: flex;
-  gap: var(--space-8);
-  align-items: baseline;
+  display: contents;
 }
 
 .reader-meta dt {
-  flex: 0 0 84px;
   color: var(--text-dim);
   text-transform: uppercase;
   font-size: var(--fs-xs);
@@ -855,18 +855,26 @@
   min-width: 0;
 }
 
-/* Default rail = stacked below the article (split mode, or a narrow pane). */
+/* Default rail = stacked below the article (split mode, or a narrow pane).
+   Balanced multi-columns rather than a row-major grid: modules differ wildly
+   in height (six Related rows beside two Details rows), and grid rows would
+   leave a void under every short module. Columns pack each module directly
+   under the previous one and the browser balances the column heights. */
 .reader-rail {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-16) var(--space-24);
+  columns: 2 240px;
+  column-gap: var(--space-32);
   max-width: var(--reader-measure);
   margin-inline: auto;
-  padding: var(--space-16) var(--space-24) var(--space-40);
+  padding: var(--space-24) var(--space-24) var(--space-40);
   border-top: 1px solid var(--border);
+}
+.reader-rail > * {
+  break-inside: avoid;
+  margin: 0 0 var(--space-24);
 }
 /* Side rail = a sticky single column beside the prose. */
 .reader-shell[data-rail="side"] .reader-rail {
+  columns: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
@@ -879,6 +887,9 @@
   padding: var(--space-20) var(--space-8) var(--space-40) 0;
   border-top: 0;
 }
+.reader-shell[data-rail="side"] .reader-rail > * {
+  margin: 0;
+}
 /* Too narrow for two columns → collapse the side rail to the stacked form.
    The threshold tracks the chosen measure (data-measure, from the "Aa" width
    preference): 900px fits the default 72ch column beside the rail; the Wide
@@ -888,16 +899,20 @@
     display: block;
   }
   .reader-shell[data-rail="side"] .reader-rail {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-16) var(--space-24);
+    columns: 2 240px;
+    column-gap: var(--space-32);
+    display: block;
     position: static;
     max-height: none;
     overflow: visible;
     max-width: var(--reader-measure);
     margin-inline: auto;
-    padding: var(--space-16) var(--space-24) var(--space-40);
+    padding: var(--space-24) var(--space-24) var(--space-40);
     border-top: 1px solid var(--border);
+  }
+  .reader-shell[data-rail="side"] .reader-rail > * {
+    break-inside: avoid;
+    margin: 0 0 var(--space-24);
   }
 }
 @container (max-width: 1040px) {
@@ -905,16 +920,20 @@
     display: block;
   }
   .reader-shell[data-measure="88"][data-rail="side"] .reader-rail {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-16) var(--space-24);
+    columns: 2 240px;
+    column-gap: var(--space-32);
+    display: block;
     position: static;
     max-height: none;
     overflow: visible;
     max-width: var(--reader-measure);
     margin-inline: auto;
-    padding: var(--space-16) var(--space-24) var(--space-40);
+    padding: var(--space-24) var(--space-24) var(--space-40);
     border-top: 1px solid var(--border);
+  }
+  .reader-shell[data-measure="88"][data-rail="side"] .reader-rail > * {
+    break-inside: avoid;
+    margin: 0 0 var(--space-24);
   }
 }
 
@@ -944,7 +963,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-6);
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-8);
   font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;

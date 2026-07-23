@@ -271,19 +271,21 @@ function MetadataTreeNode({ node, depth }: { node: MetadataNode; depth: number }
       </li>
     );
   }
+  // The copy button is a sibling of <details>, absolutely placed over the
+  // summary row's right edge: nested subtrees keep the full row width (so
+  // every depth's copy button lands in one shared right-edge column), and the
+  // button never nests inside the interactive <summary>.
   return (
     <li className="metadata-branch">
-      <div className="metadata-branch-row">
-        <details open={depth < 1}>
-          <summary>
-            <span className="metadata-key">{node.key}</span>
-            <span className="metadata-summary">{node.summary}</span>
-          </summary>
-          <NodeChildren children={node.children} depth={depth + 1} />
-          {node.truncated ? <span className="metadata-limit">bounded preview</span> : null}
-        </details>
-        <CopyValue text={node.copyText} label={node.path} />
-      </div>
+      <details open={depth < 1}>
+        <summary>
+          <span className="metadata-key">{node.key}</span>
+          <span className="metadata-summary">{node.summary}</span>
+        </summary>
+        <NodeChildren children={node.children} depth={depth + 1} />
+        {node.truncated ? <span className="metadata-limit">bounded preview</span> : null}
+      </details>
+      <CopyValue text={node.copyText} label={node.path} />
     </li>
   );
 }

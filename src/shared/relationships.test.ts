@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProfileReport } from "@/shared/types.ts";
-import {
-  relationshipGroups,
-  relationshipsForConcept,
-} from "@/shared/relationships.ts";
+import { relationshipsForConcept } from "@/shared/relationships.ts";
 
 const report: ProfileReport = {
   schemaVersion: 1,
@@ -48,18 +45,6 @@ const report: ProfileReport = {
 };
 
 describe("profile relationships", () => {
-  it("groups recognized and unknown edge types for graph filtering", () => {
-    const groups = relationshipGroups(report);
-
-    expect(groups.map((group) => [group.label, group.recognized, group.count]))
-      .toEqual([
-        ["Supports", true, 2],
-        ["feeds", false, 1],
-      ]);
-    expect(groups[0].conceptIds).toEqual(["a", "b"]);
-    expect(groups[1].conceptIds).toEqual(["c", "b"]);
-  });
-
   it("uses profile inverses for incoming inspection and keeps unknown labels", () => {
     expect(relationshipsForConcept(report, "b").map((relationship) => [
       relationship.label,

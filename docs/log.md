@@ -2,6 +2,8 @@
 
 ## 2026-07-24
 
+* **Update**: Removed the relationship-type dropdown from the [Graph View](features/graph-view.md). It was a floating layer of chrome no other visualization has, often rendered for a single annotation, and its bundle-wide job is covered: the [Lineage](features/lineage.md) Relationship control filters traversal by portable links or one namespaced type, and the reader's context rail keeps per-concept [typed-relationship](features/typed-relationships.md) inspection. The graph's isolate-chip mechanism stays for orphan and broken-link sets; the visualization toolbars are now uniform.
+
 * **Update**: Added a quiet **update badge** so new releases stop going unnoticed. Once shortly after launch (main window only, never pop-outs or web builds), Studio reads the public release manifest; if a newer version exists, a small warning-colored dot appears on the Settings gear in the [Activity Bar](ux/browsing-layout.md), springs in once with two soft sonar rings, then rests still (reduce motion keeps only the resting dot). The trail continues on the Updates item inside [Settings](ux/settings.md); visiting that category acknowledges the release, and the dot stays away for that version across launches. Failures and offline launches surface nothing. Installing stays an explicit action, and the on-by-default **New release badge** setting removes the automatic check entirely; [principles](product/principles.md), [build-and-release](architecture/build-and-release.md), and [IPC & Security](architecture/ipc-and-security.md) now document this one disclosed exception to user-initiated networking.
 
 ## 2026-07-23

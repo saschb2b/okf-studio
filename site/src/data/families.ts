@@ -80,7 +80,7 @@ export const families: Family[] = [
           },
           {
             title: "Meaning on portable links",
-            body: "Optional team profiles can label a Markdown link as evidence, dependency, ownership, supersession, or a producer-defined relation. The reader shows known and unknown types, and the graph filters each type without changing OKF validation.",
+            body: "Optional team profiles can label a Markdown link as evidence, dependency, ownership, supersession, or a producer-defined relation. The reader shows known and unknown types without changing OKF validation.",
           },
           {
             title: "Know when knowledge needs caution",

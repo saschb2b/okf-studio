@@ -3,7 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { openFolder, renderApp } from "@/test/appHarness.tsx";
 
-it("inspects known and unknown profile relationships and filters the graph", async () => {
+it("inspects known and unknown profile relationships", async () => {
   const user = userEvent.setup();
   renderApp();
   await openFolder(user);
@@ -21,14 +21,6 @@ it("inspects known and unknown profile relationships and filters the graph", asy
     .toBeInTheDocument();
   expect(screen.getByRole("button", {
     name: /producer-relation → Glossary Unknown type/i,
-  })).toBeInTheDocument();
-
-  const filter = await screen.findByRole("combobox", {
-    name: "Filter by relationship type",
-  });
-  await user.selectOptions(filter, "com.example.knowledge::supports");
-  expect(screen.getByRole("button", {
-    name: "Showing isolated set: Supports · 1. Click to clear.",
   })).toBeInTheDocument();
 
   await user.click(screen.getByRole("button", { name: /Supports → Graph View/i }));

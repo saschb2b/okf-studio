@@ -1,14 +1,14 @@
 ---
 type: Feature
 title: Typed Relationships
-description: Add profile-defined meaning to portable Markdown links, then inspect and filter those connections without hiding unknown annotations.
-tags: [feature, relationships, profiles, graph, reader, portability]
-timestamp: 2026-07-23T16:45:00Z
+description: Add profile-defined meaning to portable Markdown links, then inspect and trace those connections without hiding unknown annotations.
+tags: [feature, relationships, profiles, reader, lineage, portability]
+timestamp: 2026-07-24T12:30:00Z
 ---
 
 # User job
 
-A maintainer wants to distinguish evidence, dependency, ownership, supersession, and producer-specific connections without replacing ordinary OKF links with an application-only graph model. A reader wants to see that meaning beside a concept and isolate every connection of one type in the graph.
+A maintainer wants to distinguish evidence, dependency, ownership, supersession, and producer-specific connections without replacing ordinary OKF links with an application-only graph model. A reader wants to see that meaning beside a concept and follow connections of one type through [Lineage](lineage.md) tracing.
 
 # Portable annotation
 
@@ -32,9 +32,9 @@ Selecting a valid row opens the other concept through the same tab and peek beha
 
 Create, Revise, Audit, and migration tasks receive a bounded projection of the authored typed edges alongside the selected profile vocabulary. The reviewed context card states how many edges will enter the task. Each projected edge preserves its endpoints, namespace, type, display label, optional inverse, recognition state, target state, and portable-link state so an agent can distinguish supported semantics from producer-specific annotations without treating either as core conformance.
 
-# Graph filter
+# Filtering by type
 
-When the active bundle has portable typed edges, the graph toolbar offers **Filter by relationship type**. Each option names the resolved label, marks unknown types, and shows its annotation count. Selecting one isolates the participating source and target concepts through the existing bounded graph restriction; the active chip clears the filter. The underlying graph still comes from Markdown links.
+Bundle-wide filtering by relationship type lives in [Lineage](lineage.md): its Relationship control selects all relationships, portable Markdown links, or one namespaced type, known or unknown. The [Graph View](graph-view.md) itself carries no relationship-type chrome; its edges remain the ordinary Markdown links, keeping the visualization toolbars uniform.
 
 # Diagnostics and limits
 

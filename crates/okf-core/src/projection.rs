@@ -577,7 +577,8 @@ fn eligibility(
     max_rank: u8,
 ) -> Result<AccessHints, ProjectionOmissionReason> {
     let hints = access::assess(concept);
-    if !hints.audiences.is_empty()
+    if !input.recipient_audiences.is_empty()
+        && !hints.audiences.is_empty()
         && !hints.audiences.iter().any(|audience| {
             input
                 .recipient_audiences
@@ -915,6 +916,42 @@ mod tests {
             .any(|item| item.id == "private/raw.txt"));
         assert_eq!(plan.link_consequences.len(), 3);
         assert!(!plan.revision.is_empty());
+    }
+
+    #[test]
+    fn empty_recipient_audiences_do_not_filter_selected_concepts() {
+        let concept = Concept {
+            id: "audience-labelled".to_string(),
+            title: "Audience labelled".to_string(),
+            concept_type: "Note".to_string(),
+            description: String::new(),
+            tags: vec![],
+            timestamp: None,
+            resource: None,
+            extra: BTreeMap::from([
+                (
+                    "audience".to_string(),
+                    serde_json::json!(["partners"]),
+                ),
+                ("sensitivity".to_string(), serde_json::json!("public")),
+            ]),
+            body: String::new(),
+            links: vec![],
+            external_links: vec![],
+            broken_links: vec![],
+            cited_by: vec![],
+            degree: 0,
+        };
+        let input = ProjectionInput {
+            recipient: "Research group".to_string(),
+            recipient_audiences: vec![],
+            max_sensitivity: "internal".to_string(),
+            include_unknown_sensitivity: true,
+            selected_concept_ids: vec![concept.id.clone()],
+            sensitive_terms: vec![],
+        };
+
+        assert!(eligibility(&concept, &input, 1).is_ok());
     }
 
     #[test]

@@ -110,7 +110,7 @@ export function FolderHome({ node }: { node: IndexNode }) {
               onClick={() => setProjectionOpen(true)}
             >
               <Share2 size={15} />
-              Project bundle
+              Create shareable bundle
             </button>
           ) : null}
         </div>

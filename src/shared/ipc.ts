@@ -3485,7 +3485,7 @@ function mockProjectionPlan(input: ProjectionInput): ProjectionPlan {
     const sensitivity = access.knownSensitivity
       ? ["public", "internal", "confidential", "restricted"].indexOf(access.knownSensitivity)
       : -1;
-    const audienceMismatch = access.audiences.length > 0 &&
+    const audienceMismatch = audiences.size > 0 && access.audiences.length > 0 &&
       !access.audiences.some((value) => audiences.has(value.toLocaleLowerCase()));
     if (audienceMismatch) {
       omittedReasons.set(concept.id, "audience-mismatch");
@@ -3589,7 +3589,7 @@ function mockProjectionPlan(input: ProjectionInput): ProjectionPlan {
     recipientAudiences: input.recipientAudiences,
     maxSensitivity: input.maxSensitivity,
     includeUnknownSensitivity: input.includeUnknownSensitivity,
-    destinationFolderName: `${MOCK_BUNDLE.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-${safeRecipient}`,
+    destinationFolderName: `${safeRecipient}-okf`,
     included: [...included.values()],
     omissions,
     linkConsequences,

@@ -1,5 +1,13 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { AlertTriangle, CheckCircle2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  FolderOutput,
+  Search,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { exportOkfProjection, planOkfProjection } from "@/shared/ipc.ts";
 import { KNOWN_SENSITIVITIES, type KnownSensitivity } from "@/shared/access.ts";
@@ -29,10 +37,10 @@ interface RecipientProjectionDialogProps {
 }
 
 const OMISSION_LABELS: Record<ProjectionPlan["omissions"][number]["reason"], string> = {
-  "not-selected": "Not selected or linked from a retained concept",
-  "audience-mismatch": "Audience does not match",
-  "sensitivity-exceeds-maximum": "Sensitivity exceeds the reviewed maximum",
-  "unknown-sensitivity": "Sensitivity is unknown",
+  "not-selected": "Not part of this copy",
+  "audience-mismatch": "Does not match the optional audience filter",
+  "sensitivity-exceeds-maximum": "Above the chosen sensitivity limit",
+  "unknown-sensitivity": "Has no recognized sensitivity label",
   "ignored-by-rule": "Excluded by .okfignore",
 };
 
@@ -46,7 +54,7 @@ export function RecipientProjectionDialog({
   const [recipient, setRecipient] = useState("");
   const [audiences, setAudiences] = useState("");
   const [maxSensitivity, setMaxSensitivity] = useState<KnownSensitivity>("internal");
-  const [includeUnknown, setIncludeUnknown] = useState(false);
+  const [includeUnknown, setIncludeUnknown] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [sensitiveTerms, setSensitiveTerms] = useState("");
   const [query, setQuery] = useState("");
@@ -56,13 +64,13 @@ export function RecipientProjectionDialog({
   const [busy, setBusy] = useState<"plan" | "export" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const visibleConcepts = bundle.concepts.filter((concept) => {
-    const needle = query.trim().toLocaleLowerCase();
-    return needle.length === 0 ||
-      concept.title.toLocaleLowerCase().includes(needle) ||
-      concept.id.toLocaleLowerCase().includes(needle) ||
-      concept.type.toLocaleLowerCase().includes(needle);
-  });
+  const needle = query.trim().toLocaleLowerCase();
+  const visibleConcepts = bundle.concepts.filter((concept) =>
+    needle.length === 0 ||
+    concept.title.toLocaleLowerCase().includes(needle) ||
+    concept.id.toLocaleLowerCase().includes(needle) ||
+    concept.type.toLocaleLowerCase().includes(needle)
+  );
   const input = projectionInput();
   const canPlan = input.recipient.length > 0 && input.selectedConceptIds.length > 0 && busy === null;
   const canExport = plan !== null && plan.included.length > 0 && busy === null;
@@ -89,7 +97,7 @@ export function RecipientProjectionDialog({
     setRecipient("");
     setAudiences("");
     setMaxSensitivity("internal");
-    setIncludeUnknown(false);
+    setIncludeUnknown(true);
     setSelectedIds(new Set());
     setSensitiveTerms("");
     setQuery("");
@@ -140,197 +148,258 @@ export function RecipientProjectionDialog({
     >
       <Dialog.Portal>
         <Dialog.Backdrop className="ui-backdrop" />
-        <Dialog.Popup className="ui-dialog projection-dialog" aria-label="Recipient projection">
+        <Dialog.Popup className="ui-dialog projection-dialog" aria-label="Create a shareable bundle">
           <header className="ui-dialog-head projection-dialog__head">
             <div>
-              <Dialog.Title className="ui-dialog-title">Recipient projection</Dialog.Title>
+              <Dialog.Title className="ui-dialog-title">Create a shareable bundle</Dialog.Title>
               <Dialog.Description className="projection-dialog__description">
-                Build a separate, least-disclosure copy. The source bundle is never edited.
+                Make a separate OKF bundle from the knowledge you choose. Your open bundle stays
+                unchanged.
               </Dialog.Description>
             </div>
-            <Dialog.Close className="btn ghost icon" aria-label="Close recipient projection">
+            <Dialog.Close className="btn ghost icon" aria-label="Close shareable bundle dialog">
               <X size={16} />
             </Dialog.Close>
           </header>
 
-          <div
-            className={`projection-dialog__body${plan ? " projection-dialog__body--reviewed" : ""}`}
-          >
-            <section className="projection-config" aria-label="Projection choices">
-              <div className="projection-fields">
-                <label>
-                  <span>Recipient</span>
-                  <input
-                    // eslint-disable-next-line jsx-a11y/no-autofocus -- the explicit modal action should place focus in its first field
-                    autoFocus
-                    value={recipient}
-                    disabled={busy !== null}
-                    placeholder="Partner team"
-                    onChange={(event) => {
-                      setRecipient(event.target.value);
-                      invalidateReview();
-                    }}
-                  />
-                </label>
-                <label>
-                  <span>Recipient audiences</span>
-                  <input
-                    value={audiences}
-                    disabled={busy !== null}
-                    placeholder="partners, research"
-                    onChange={(event) => {
-                      setAudiences(event.target.value);
-                      invalidateReview();
-                    }}
-                  />
-                </label>
-                <label>
-                  <span>Maximum sensitivity</span>
-                  <select
-                    value={maxSensitivity}
-                    disabled={busy !== null}
-                    onChange={(event) => {
-                      setMaxSensitivity(event.target.value as KnownSensitivity);
-                      invalidateReview();
-                    }}
-                  >
-                    {KNOWN_SENSITIVITIES.map((value) => (
-                      <option key={value} value={value}>{sentenceCase(value)}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Exact text to redact</span>
-                  <textarea
-                    rows={2}
-                    value={sensitiveTerms}
-                    disabled={busy !== null}
-                    placeholder="One term per line"
-                    onChange={(event) => {
-                      setSensitiveTerms(event.target.value);
-                      invalidateReview();
-                    }}
-                  />
-                </label>
-              </div>
-              <label className="projection-check">
-                <input
-                  type="checkbox"
-                  checked={includeUnknown}
-                  disabled={busy !== null}
-                  onChange={(event) => {
-                    setIncludeUnknown(event.target.checked);
-                    invalidateReview();
-                  }}
-                />
-                Include concepts with no sensitivity hint
-              </label>
-              <p className="projection-guidance">
-                Audience and sensitivity fields are advisory handling hints, not access control.
-                Studio applies them conservatively and shows every omission before export.
-              </p>
+          <ol className="projection-steps" aria-label="Shareable bundle progress">
+            <li className={plan === null ? "is-current" : "is-complete"}>
+              <span>1</span>
+              Choose content
+            </li>
+            <li className={plan === null ? "" : "is-current"}>
+              <span>2</span>
+              Review and save
+            </li>
+          </ol>
 
-              <div className="projection-concept-head">
-                <label>
-                  <span className="sr-only">Filter concepts</span>
-                  <input
-                    type="search"
-                    value={query}
-                    placeholder="Filter concepts"
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
-                </label>
-                <span>{selectedIds.size} selected</span>
-                <button
-                  type="button"
-                  className="btn ghost"
-                  disabled={busy !== null}
-                  onClick={() => {
-                    setSelectedIds(new Set(bundle.concepts.map((concept) => concept.id)));
-                    invalidateReview();
-                  }}
-                >
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  className="btn ghost"
-                  disabled={busy !== null || selectedIds.size === 0}
-                  onClick={() => {
-                    setSelectedIds(new Set());
-                    invalidateReview();
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-              <ul className="projection-concepts" aria-label="Concepts to seed the projection">
-                {visibleConcepts.map((concept) => (
-                  <li key={concept.id}>
-                    <label>
+          <div className="projection-dialog__body">
+            {plan === null ? (
+              <section className="projection-choice" aria-labelledby="projection-choice-title">
+                <div className="projection-name">
+                  <div>
+                    <h2 id="projection-choice-title">Who is this copy for?</h2>
+                    <p>
+                      Studio uses this name in the new bundle and its folder name.
+                    </p>
+                  </div>
+                  <label>
+                    <span>Recipient or group</span>
+                    <input
+                      // eslint-disable-next-line jsx-a11y/no-autofocus -- the explicit modal action should place focus in its first field
+                      autoFocus
+                      value={recipient}
+                      disabled={busy !== null}
+                      placeholder="Research partner"
+                      onChange={(event) => {
+                        setRecipient(event.target.value);
+                        invalidateReview();
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div className="projection-picker">
+                  <div className="projection-section-head">
+                    <div>
+                      <h2>Choose what to share</h2>
+                      <p>
+                        Linked concepts may be added so the new bundle still makes sense. You will
+                        see every addition and omission before saving.
+                      </p>
+                    </div>
+                    <strong>{selectedIds.size} selected</strong>
+                  </div>
+
+                  <div className="projection-picker-tools">
+                    <label className="projection-search">
+                      <Search size={15} aria-hidden="true" />
+                      <span className="sr-only">Find concepts</span>
                       <input
-                        aria-label={`Select ${concept.title}`}
+                        type="search"
+                        value={query}
+                        placeholder="Find a concept"
+                        onChange={(event) => setQuery(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      disabled={busy !== null}
+                      onClick={() => {
+                        setSelectedIds(new Set(bundle.concepts.map((concept) => concept.id)));
+                        invalidateReview();
+                      }}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      disabled={busy !== null || selectedIds.size === 0}
+                      onClick={() => {
+                        setSelectedIds(new Set());
+                        invalidateReview();
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <details className="projection-safeguards">
+                    <summary>
+                      <span>
+                        <ShieldCheck size={17} aria-hidden="true" />
+                        Sharing safeguards
+                      </span>
+                      <small>Optional</small>
+                    </summary>
+                    <p>
+                      Narrow the copy with advisory labels or remove exact text. Leave the audience
+                      field empty to ignore audience labels.
+                    </p>
+                    <div className="projection-fields">
+                      <label>
+                        <span>Only these audiences</span>
+                        <input
+                          value={audiences}
+                          disabled={busy !== null}
+                          placeholder="partners, research"
+                          onChange={(event) => {
+                            setAudiences(event.target.value);
+                            invalidateReview();
+                          }}
+                        />
+                      </label>
+                      <label>
+                        <span>Include sensitivity up to</span>
+                        <select
+                          value={maxSensitivity}
+                          disabled={busy !== null}
+                          onChange={(event) => {
+                            setMaxSensitivity(event.target.value as KnownSensitivity);
+                            invalidateReview();
+                          }}
+                        >
+                          {KNOWN_SENSITIVITIES.map((value) => (
+                            <option key={value} value={value}>{sentenceCase(value)}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="projection-field-wide">
+                        <span>Text to remove</span>
+                        <textarea
+                          rows={2}
+                          value={sensitiveTerms}
+                          disabled={busy !== null}
+                          placeholder="One exact word or phrase per line"
+                          onChange={(event) => {
+                            setSensitiveTerms(event.target.value);
+                            invalidateReview();
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <label className="projection-check">
+                      <input
                         type="checkbox"
-                        checked={selectedIds.has(concept.id)}
+                        checked={includeUnknown}
                         disabled={busy !== null}
                         onChange={(event) => {
-                          const next = new Set(selectedIds);
-                          if (event.target.checked) next.add(concept.id);
-                          else next.delete(concept.id);
-                          setSelectedIds(next);
+                          setIncludeUnknown(event.target.checked);
                           invalidateReview();
                         }}
                       />
-                      <span>
-                        <strong>{concept.title}</strong>
-                        <small>{concept.type} · {concept.id}</small>
-                      </span>
+                      Include selected concepts without a recognized sensitivity label
                     </label>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                    <p className="projection-guidance">
+                      These labels help with review. They are not access control, encryption, or proof
+                      that the source was classified correctly.
+                    </p>
+                  </details>
 
-            <section className="projection-review" aria-label="Reviewed projection plan">
-              {plan === null ? (
-                <div className="projection-empty">
-                  <h2>Review before writing</h2>
-                  <p>
-                    Choose a recipient and seed concepts, then review the transitive inclusions,
-                    exact omissions, link rewrites, and redactions.
-                  </p>
+                  <ul className="projection-concepts" aria-label="Concepts to share">
+                    {visibleConcepts.map((concept) => {
+                      const selected = selectedIds.has(concept.id);
+                      return (
+                        <li key={concept.id} className={selected ? "is-selected" : ""}>
+                          <label>
+                            <input
+                              aria-label={`Share ${concept.title}`}
+                              type="checkbox"
+                              checked={selected}
+                              disabled={busy !== null}
+                              onChange={(event) => {
+                                const next = new Set(selectedIds);
+                                if (event.target.checked) next.add(concept.id);
+                                else next.delete(concept.id);
+                                setSelectedIds(next);
+                                invalidateReview();
+                              }}
+                            />
+                            <span>
+                              <strong>{concept.title}</strong>
+                              <small>{concept.type} · {concept.id}</small>
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                    {visibleConcepts.length === 0 ? (
+                      <li className="projection-concepts__empty">No concepts match “{query}”.</li>
+                    ) : null}
+                  </ul>
                 </div>
-              ) : (
+
+                {error && <p className="projection-error" role="alert">{error}</p>}
+              </section>
+            ) : (
+              <section className="projection-review" aria-label="Review shareable bundle">
                 <ProjectionPlanReview plan={plan} />
-              )}
-              {result && <ProjectionResult result={result} />}
-              {result?.status === "existing-destination" && (
-                <label className="projection-replace">
-                  <input
-                    type="checkbox"
-                    checked={overwriteConfirmed}
-                    onChange={(event) => setOverwriteConfirmed(event.target.checked)}
-                  />
-                  Replace only the marked prior OKF Studio projection at this destination
-                </label>
-              )}
-              {error && <p className="projection-error" role="alert">{error}</p>}
-            </section>
+                {result && <ProjectionResult result={result} />}
+                {result?.status === "existing-destination" && (
+                  <label className="projection-replace">
+                    <input
+                      type="checkbox"
+                      checked={overwriteConfirmed}
+                      onChange={(event) => setOverwriteConfirmed(event.target.checked)}
+                    />
+                    Replace the existing copy only if it was created by OKF Studio
+                  </label>
+                )}
+                {error && <p className="projection-error" role="alert">{error}</p>}
+              </section>
+            )}
           </div>
 
           <footer className="ui-dialog-foot projection-dialog__foot">
             <p aria-live="polite">
-              {busy === "plan" && "Building the read-only plan…"}
-              {busy === "export" && "Writing and auditing the separate copy…"}
-              {busy === null && plan === null && "No filesystem writes occur during review."}
-              {busy === null && plan !== null && result === null &&
-                `${plan.included.length} concepts ready for an explicit export.`}
+              {busy === "plan" && "Preparing the preview…"}
+              {busy === "export" && "Creating and checking the new bundle…"}
+              {busy === null && plan === null && (
+                recipient.trim().length === 0
+                  ? "Name the recipient and choose at least one concept."
+                  : selectedIds.size === 0
+                    ? "Choose at least one concept."
+                    : "Ready to preview. Nothing has been written."
+              )}
+              {busy === null && plan !== null && result === null && plan.included.length > 0 &&
+                `${plan.included.length} concepts are ready for the new bundle.`}
+              {busy === null && plan !== null && result === null && plan.included.length === 0 &&
+                "Adjust your selection or safeguards before saving."}
             </p>
-            <Dialog.Close className="btn ghost" disabled={busy !== null}>Cancel</Dialog.Close>
             {plan === null ? (
-              <button type="button" className="btn primary" disabled={!canPlan} onClick={() => void reviewPlan()}>
-                {busy === "plan" ? "Reviewing…" : "Review plan"}
-              </button>
+              <>
+                <Dialog.Close className="btn ghost" disabled={busy !== null}>Cancel</Dialog.Close>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={!canPlan}
+                  onClick={() => void reviewPlan()}
+                >
+                  {busy === "plan" ? "Preparing…" : "Preview bundle"}
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -339,7 +408,8 @@ export function RecipientProjectionDialog({
                   disabled={busy !== null}
                   onClick={invalidateReview}
                 >
-                  Change choices
+                  <ArrowLeft size={15} />
+                  Back to selection
                 </button>
                 <button
                   type="button"
@@ -348,11 +418,12 @@ export function RecipientProjectionDialog({
                     (result?.status === "existing-destination" && !overwriteConfirmed)}
                   onClick={() => void exportProjectionCopy()}
                 >
+                  <FolderOutput size={15} />
                   {busy === "export"
-                    ? "Exporting…"
+                    ? "Creating…"
                     : result?.status === "existing-destination"
-                      ? "Choose parent & replace"
-                      : "Choose parent & export"}
+                      ? "Choose location and replace"
+                      : "Choose save location"}
                 </button>
               </>
             )}
@@ -364,41 +435,90 @@ export function RecipientProjectionDialog({
 }
 
 function ProjectionPlanReview({ plan }: { plan: ProjectionPlan }) {
+  const linkChanges = sumOccurrences(plan.linkConsequences);
+  const exactRedactions = sumOccurrences(plan.redactions);
+  const unlabelledIncluded = plan.included.filter((concept) =>
+    concept.access.knownSensitivity === null
+  ).length;
+  const otherWarnings = plan.warnings.filter((warning) =>
+    !warning.startsWith("No selected concept passed")
+  );
+
   return (
     <div className="projection-plan">
-      <div className="projection-plan__title">
+      <div className={`projection-review-intro${plan.included.length === 0 ? " is-blocked" : ""}`}>
+        {plan.included.length === 0 ? (
+          <AlertTriangle size={20} aria-hidden="true" />
+        ) : (
+          <CheckCircle2 size={20} aria-hidden="true" />
+        )}
         <div>
-          <h2>Reviewed plan</h2>
-          <p><code>{plan.destinationFolderName}</code></p>
+          <h2>
+            {plan.included.length === 0
+              ? "Nothing can be shared with these safeguards"
+              : "Your new bundle is ready to save"}
+          </h2>
+          <p>
+            {plan.included.length === 0
+              ? "Every selected concept was left out. Go back and adjust the audience or sensitivity settings."
+              : <>Studio will create <code>{plan.destinationFolderName}</code> inside the folder you choose.</>}
+          </p>
         </div>
-        <span>{plan.included.length} included · {plan.omissions.length} omitted</span>
       </div>
-      <p className="projection-source-note">
-        Source fingerprint <code>{plan.sourceBundleFingerprint.slice(0, 16)}</code>. Export is
-        cancelled if the source changes after this review.
-      </p>
-      {plan.warnings.map((warning) => (
+
+      <dl className="projection-summary" aria-label="Bundle preview summary">
+        <div>
+          <dt>{plan.included.length}</dt>
+          <dd>In new bundle</dd>
+        </div>
+        <div>
+          <dt>{plan.omissions.length}</dt>
+          <dd>Left out</dd>
+        </div>
+        <div>
+          <dt>{linkChanges}</dt>
+          <dd>Link updates</dd>
+        </div>
+        <div>
+          <dt>{exactRedactions}</dt>
+          <dd>Text removals</dd>
+        </div>
+      </dl>
+
+      {unlabelledIncluded > 0 ? (
+        <p className="projection-notice">
+          <ShieldCheck size={16} aria-hidden="true" />
+          {unlabelledIncluded} included {plural(unlabelledIncluded, "concept has", "concepts have")} no
+          recognized sensitivity label. Your safeguards allow unlabeled content.
+        </p>
+      ) : null}
+      {otherWarnings.map((warning) => (
         <p className="projection-warning" key={warning}>
-          <AlertTriangle size={15} /> {warning}
+          <AlertTriangle size={15} aria-hidden="true" /> {warning}
         </p>
       ))}
+
       <details open>
-        <summary>Included concepts ({plan.included.length})</summary>
-        <ul>
-          {plan.included.map((concept) => (
-            <li key={concept.id}>
-              <strong>{concept.title}</strong>
-              <span>
-                {concept.reason === "explicit"
-                  ? "Selected explicitly"
-                  : `Linked from ${concept.linkedFrom ?? "a retained concept"}`}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <summary>What will be shared ({plan.included.length})</summary>
+        {plan.included.length === 0 ? (
+          <p>No concepts passed the selected safeguards.</p>
+        ) : (
+          <ul>
+            {plan.included.map((concept) => (
+              <li key={concept.id}>
+                <strong>{concept.title}</strong>
+                <span>
+                  {concept.reason === "explicit"
+                    ? "You selected this"
+                    : `Included because it is linked from ${concept.linkedFrom ?? "another concept"}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </details>
       <details>
-        <summary>Omissions ({plan.omissions.length})</summary>
+        <summary>What will stay behind ({plan.omissions.length})</summary>
         <ul>
           {plan.omissions.map((omission) => (
             <li key={`${omission.kind}:${omission.id}`}>
@@ -409,9 +529,9 @@ function ProjectionPlanReview({ plan }: { plan: ProjectionPlan }) {
         </ul>
       </details>
       <details>
-        <summary>Link consequences ({sumOccurrences(plan.linkConsequences)})</summary>
+        <summary>Link updates ({linkChanges})</summary>
         {plan.linkConsequences.length === 0 ? (
-          <p>No retained link is affected.</p>
+          <p>No links need to change.</p>
         ) : (
           <ul>
             {plan.linkConsequences.map((link) => (
@@ -419,8 +539,8 @@ function ProjectionPlanReview({ plan }: { plan: ProjectionPlan }) {
                 <strong>{link.sourceId} → {link.target}</strong>
                 <span>
                   {link.outcome === "rewritten-omitted"
-                    ? "Rewritten to the projection omissions note"
-                    : "Already broken in the source"}
+                    ? "Will point to an omission note"
+                    : "Was already broken in the source"}
                   {" "}({link.occurrences})
                 </span>
               </li>
@@ -429,9 +549,9 @@ function ProjectionPlanReview({ plan }: { plan: ProjectionPlan }) {
         )}
       </details>
       <details>
-        <summary>Exact redactions ({sumOccurrences(plan.redactions)})</summary>
+        <summary>Text removals ({exactRedactions})</summary>
         {plan.redactions.length === 0 ? (
-          <p>No reviewed term occurs in retained concepts.</p>
+          <p>No requested text appears in the shared concepts.</p>
         ) : (
           <ul>
             {plan.redactions.map((redaction) => (
@@ -443,6 +563,14 @@ function ProjectionPlanReview({ plan }: { plan: ProjectionPlan }) {
           </ul>
         )}
       </details>
+      <details className="projection-technical">
+        <summary>How Studio protects the source</summary>
+        <p>
+          Preview fingerprint <code>{plan.sourceBundleFingerprint.slice(0, 16)}</code>. Studio
+          cancels the save if the source or these choices change. It validates the new bundle and
+          checks that omitted names and requested text did not leak before moving it into place.
+        </p>
+      </details>
     </div>
   );
 }
@@ -453,21 +581,21 @@ export function ProjectionResult({ result }: { result: ProjectionExportResult })
     <div className={`projection-result projection-result--${result.status}`} role="status">
       <h2>
         {exported ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
-        {exported && "Projection exported"}
-        {result.status === "blocked-by-audit" && "Export blocked by erasure audit"}
-        {result.status === "existing-destination" && "Destination already exists"}
+        {exported && "Shareable bundle created"}
+        {result.status === "blocked-by-audit" && "Save blocked by the privacy check"}
+        {result.status === "existing-destination" && "A copy with this name already exists"}
       </h2>
       <p>
         {exported
           ? result.destination
           : result.status === "blocked-by-audit"
-            ? "Studio removed the temporary copy. Inspect the retained audit before trying again."
-            : "Studio did not replace the existing folder. Confirm replacement only if it is the prior marked projection."}
+            ? "Studio removed the temporary copy. Review the audit report before trying again."
+            : "Studio left the existing folder unchanged. Replacement is allowed only for a copy previously created by OKF Studio."}
       </p>
       <dl>
         <div><dt>Source unchanged</dt><dd>{result.sourceUnchanged ? "Yes" : "No"}</dd></div>
-        <div><dt>Validation</dt><dd>{result.validation.errors} errors, {result.validation.warnings} warnings</dd></div>
-        <div><dt>Erasure audit</dt><dd>{result.audit.passed ? "Passed" : `${result.audit.findings.length} finding(s)`}</dd></div>
+        <div><dt>Bundle check</dt><dd>{result.validation.errors} errors, {result.validation.warnings} warnings</dd></div>
+        <div><dt>Privacy check</dt><dd>{result.audit.passed ? "Passed" : `${result.audit.findings.length} finding(s)`}</dd></div>
         <div><dt>Audit report</dt><dd>{result.auditReport}</dd></div>
       </dl>
       {result.audit.findings.length > 0 && (
@@ -493,6 +621,10 @@ function sentenceCase(value: string): string {
 
 function sumOccurrences(items: readonly { occurrences: number }[]): number {
   return items.reduce((sum, item) => sum + item.occurrences, 0);
+}
+
+function plural(count: number, singular: string, multiple: string): string {
+  return count === 1 ? singular : multiple;
 }
 
 function errorText(raised: unknown): string {

@@ -20,6 +20,12 @@ const raw: RawConcept[] = [
     extra: {
       stable_id: "okf-studio-product-overview",
       lifecycle: "active",
+      language: "en",
+      sidecars: {
+        "assets/example.notebook": {
+          media_type: "application/x-ipynb+json",
+        },
+      },
       confidence: 1,
       review_after: "2026-10-01",
       audience: ["engineering", "release partners"],

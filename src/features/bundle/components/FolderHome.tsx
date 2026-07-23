@@ -14,7 +14,6 @@ import { renderMarkdown } from "@/shared/render/markdown.ts";
 import { buildTokenIndex } from "@/shared/odsf.ts";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
 import { classifyBodyLinks, classifyLink } from "@/features/reader/components/Reader.tsx";
-import { InteroperabilityLab } from "./InteroperabilityLab.tsx";
 import type { IndexEntry, IndexNode } from "@/shared/types.ts";
 import "./FolderHome.css";
 
@@ -107,15 +106,6 @@ export function FolderHome({ node }: { node: IndexNode }) {
           dangerouslySetInnerHTML={{ __html: introHtml }}
         />
       )}
-
-      {node.dir === "" && bundle ? (
-        <InteroperabilityLab
-          key={bundle.root}
-          bundleRoot={bundle.root}
-          onOpenConcept={(conceptId) => actions.selectConcept(conceptId)}
-          onReviewExternal={(url) => actions.setRemoteOpen(true, url)}
-        />
-      ) : null}
 
       {node.sections.length > 0 ? (
         node.sections.map((sec, si) => (

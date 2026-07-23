@@ -19,6 +19,7 @@ import { renderMathBlocks } from "@/shared/render/math.ts";
 import { renderMermaidBlocks } from "@/shared/render/mermaid.ts";
 import type { Bundle, Concept } from "@/shared/types.ts";
 import { useProfileReport } from "@/shared/useProfileReport.ts";
+import { useInteropReport } from "@/shared/useInteropReport.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "@/shared/odsf.ts";
 import { ReaderPrefs } from "@/features/reader/components/ReaderPrefs.tsx";
 import { TokenViz } from "@/features/viz/components/TokenViz.tsx";
@@ -35,6 +36,11 @@ import { TypedRelationships } from "@/features/reader/components/TypedRelationsh
 import { ReliabilityNotice } from "@/features/reader/components/ReliabilityNotice.tsx";
 import { EvidencePanel } from "@/features/reader/components/EvidencePanel.tsx";
 import { AccessNotice } from "@/features/reader/components/AccessNotice.tsx";
+import {
+  ConceptLanguageSelect,
+  ConceptResources,
+} from "@/features/reader/components/ConceptExtensions.tsx";
+import { conceptNeedsInteropReport } from "@/features/bundle/interop.ts";
 import { assessReliability } from "@/shared/reliability.ts";
 import { assessAccessHints } from "@/shared/access.ts";
 import {
@@ -270,6 +276,9 @@ export function Reader() {
   const { state, actions } = useApp();
   const bundle = state.bundle;
   const profileReport = useProfileReport(bundle);
+  const interopReport = useInteropReport(
+    conceptNeedsInteropReport(c, bundle) ? bundle : null,
+  );
   const readerScale = state.settings.readerScale;
   const reduceMotion = state.settings.reduceMotion;
 
@@ -763,6 +772,13 @@ export function Reader() {
             {appliesTo.length > 0 && (
               <span className="applies-label">{appliesTo.join(" · ")}</span>
             )}
+            {interopReport.status === "ready" && interopReport.report ? (
+              <ConceptLanguageSelect
+                conceptId={c.id}
+                report={interopReport.report}
+                onSelect={(conceptId) => actions.selectConcept(conceptId)}
+              />
+            ) : null}
           </div>
           <h1>{c.title}</h1>
           {c.description && <p className="desc">{c.description}</p>}
@@ -848,6 +864,14 @@ export function Reader() {
           evidence={conceptEvidence}
           onOpenExternal={(url) => actions.openExternal(url)}
         />
+
+        {bundle && interopReport.status === "ready" && interopReport.report ? (
+          <ConceptResources
+            bundleRoot={bundle.root}
+            conceptId={c.id}
+            report={interopReport.report}
+          />
+        ) : null}
 
         {c.citedBy.length > 0 && (
           <RailModule title="Cited by" count={c.citedBy.length}>
@@ -941,6 +965,9 @@ export function Reader() {
             "handling_notes",
             "evidence",
             "provenance",
+            "language",
+            "translation_of",
+            "sidecars",
           ]}
         />
 

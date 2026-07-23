@@ -140,6 +140,58 @@
   font-size: calc(var(--fs-sm) * var(--reader-scale, 1));
 }
 
+.reliability-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+  padding: var(--space-12);
+  color: var(--text-dim);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+.reliability-notice[data-state="current"] {
+  border-inline-start-color: var(--success);
+}
+
+.reliability-notice[data-state="retired"],
+.reliability-notice[data-state="superseded"],
+.reliability-notice[data-state="contradicted"] {
+  border-inline-start-color: var(--error);
+}
+
+.reliability-notice header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-8);
+  color: var(--text);
+}
+
+.reliability-notice header span {
+  color: var(--text-dim);
+}
+
+.reliability-notice ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-16);
+  margin: 0;
+  padding-inline-start: var(--space-16);
+}
+
+.reliability-notice p {
+  margin: 0;
+}
+
+.reliability-notice__diagnostic {
+  color: var(--warn);
+}
+
 /* Tags as quiet #text — they are labels, not buttons, so no pill chrome
    suggesting a click that goes nowhere. */
 .tag-list {

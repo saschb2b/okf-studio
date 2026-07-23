@@ -82,6 +82,10 @@ export const families: Family[] = [
             title: "Meaning on portable links",
             body: "Optional team profiles can label a Markdown link as evidence, dependency, ownership, supersession, or a producer-defined relation. The reader shows known and unknown types, and the graph filters each type without changing OKF validation.",
           },
+          {
+            title: "Know when knowledge needs caution",
+            body: "Optional lifecycle, confidence, effective-time, review, contradiction, and replacement signals qualify what readers and agents see. Missing metadata never makes a concept invalid.",
+          },
         ],
       },
       {

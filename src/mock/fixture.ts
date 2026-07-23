@@ -19,6 +19,9 @@ const raw: RawConcept[] = [
     resource: null,
     extra: {
       stable_id: "okf-studio-product-overview",
+      lifecycle: "active",
+      confidence: 1,
+      review_after: "2026-10-01",
       relationships: {
         "com.example.knowledge": {
           supports: ["features/graph-view"],

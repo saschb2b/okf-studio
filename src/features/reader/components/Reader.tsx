@@ -31,12 +31,15 @@ import {
 } from "@/features/reader/components/MetadataInspector.tsx";
 import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
 import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
+import { ReliabilityNotice } from "@/features/reader/components/ReliabilityNotice.tsx";
+import { assessReliability } from "@/shared/reliability.ts";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough
  *  that scanning prose doesn't flash cards, short enough to answer "worth
  *  opening?" without a click. Wikipedia's page previews use a similar dwell. */
 const PEEK_DELAY = 450;
+const SESSION_DAY = new Date().toISOString().slice(0, 10);
 
 interface OutlineItem {
   id: string;
@@ -521,6 +524,7 @@ export function Reader() {
   const hasRelationshipMetadata = Object.hasOwn(c.extra, "relationships");
   // Design-system (ODSF) extras, feature-detected — null/empty on plain OKF.
   const status = conceptStatus(c);
+  const reliability = assessReliability(c, profileReport.report, SESSION_DAY);
   const appliesTo = conceptAppliesTo(c);
   // Side rail in reader-only mode; otherwise (split / narrow) it falls below.
   const railSide = state.layout === "reader";
@@ -730,6 +734,7 @@ export function Reader() {
           </div>
           <h1>{c.title}</h1>
           {c.description && <p className="desc">{c.description}</p>}
+          <ReliabilityNotice assessment={reliability} />
 
           {c.tags.length > 0 && (
             <ul className="tag-list" aria-label="Tags">

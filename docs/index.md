@@ -1,5 +1,9 @@
 ---
 okf_version: "0.1"
+profiles:
+  io.okf.reliability:
+    version: "1.0.0"
+    descriptor: "profiles/io.okf.reliability.json"
 ---
 
 # OKF Studio product knowledge
@@ -35,6 +39,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.
 * [Concept Reader](features/concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
+* [Reliability and Lifecycle](features/reliability-and-lifecycle.md) - Qualify optional lifecycle, confidence, review, contradiction, and replacement signals without changing OKF conformance.
 * [Design-System Rendering](features/design-system-rendering.md) - Native ODSF token visualizations and sandboxed example previews.
 * [Search & Filter](features/search-and-filter.md) - Full-text search, type filters, and tag browsing.
 * [Navigation](features/navigation.md) - Progressive disclosure from index.md, link following, and history.

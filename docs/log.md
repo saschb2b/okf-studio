@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Reliability and Lifecycle](features/reliability-and-lifecycle.md) and the local `io.okf.reliability` advisory descriptor. The reader qualifies authored confidence, review, effective-time, contradiction, and replacement signals; Knowledge Health reports malformed values and supersession cycles; and retrieval returns lifecycle, uncertainty, and conflict caveats to Studio and native agents without changing OKF validation.
+
 * **Creation**: Added [Typed Relationships](features/typed-relationships.md). Namespaced profile annotations label ordinary Markdown links without replacing them. The reader shows known, unknown, incoming, missing-target, and missing-prose-link states, while the graph filters valid participants by resolved or authored relationship type.
 
 * **Update**: Extended the [Advisory Profile Contract](reference/advisory-profile-contract.md) with bounded namespaced relationship annotations over ordinary Markdown links. The profile report resolves known labels and inverses, preserves unknown profiles and types, and reports missing targets or portable links without changing core OKF conformance.

@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "namespace": "io.okf.reliability",
+  "version": "1.0.0",
+  "title": "Reliability and lifecycle",
+  "description": "Advisory status, confidence, effective-time, review, contradiction, and replacement signals for maintained knowledge.",
+  "fields": [
+    {
+      "id": "lifecycle",
+      "scope": "concept",
+      "key": "lifecycle",
+      "label": "Lifecycle",
+      "description": "Authored lifecycle state: draft, active, deprecated, superseded, or retired.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["active"]
+    },
+    {
+      "id": "confidence",
+      "scope": "concept",
+      "key": "confidence",
+      "label": "Confidence",
+      "description": "An authored assessment from 0 to 1. Studio does not verify the claim.",
+      "valueType": "number",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": [0.8]
+    },
+    {
+      "id": "effective-from",
+      "scope": "concept",
+      "key": "effective_from",
+      "label": "Effective from",
+      "description": "ISO date or timestamp when the knowledge begins to apply.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["2026-01-01"]
+    },
+    {
+      "id": "effective-until",
+      "scope": "concept",
+      "key": "effective_until",
+      "label": "Effective until",
+      "description": "ISO date or timestamp after which the knowledge no longer applies.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["2026-12-31"]
+    },
+    {
+      "id": "review-after",
+      "scope": "concept",
+      "key": "review_after",
+      "label": "Review after",
+      "description": "ISO date or timestamp after which a maintainer should review this concept.",
+      "valueType": "string",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": ["2026-09-01"]
+    },
+    {
+      "id": "superseded-by",
+      "scope": "concept",
+      "key": "superseded_by",
+      "label": "Superseded by",
+      "description": "Bundle concept IDs that replace this concept.",
+      "valueType": "array",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": [["policies/current"]]
+    },
+    {
+      "id": "contradicts",
+      "scope": "concept",
+      "key": "contradicts",
+      "label": "Contradicts",
+      "description": "Bundle concept IDs whose authored claims conflict with this concept.",
+      "valueType": "array",
+      "expectation": "recommended",
+      "conceptTypes": [],
+      "examples": [["research/alternate"]]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "supersedes",
+      "label": "Supersedes",
+      "inverse": "superseded-by",
+      "description": "This concept replaces the target while preserving its history."
+    },
+    {
+      "id": "contradicts",
+      "label": "Contradicts",
+      "inverse": "contradicts",
+      "description": "The concepts make claims that a reader should inspect together."
+    }
+  ],
+  "checks": []
+}

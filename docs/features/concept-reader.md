@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-23T14:55:00Z
+timestamp: 2026-07-23T15:45:00Z
 ---
 
 # What it does
@@ -15,6 +15,8 @@ Selected reader text can be added explicitly to the [Agent Panel](agent-panel.md
 The header's **Work with agent** action opens [Native OKF Tasks](native-okf-tasks.md) for this concept. A `resource` citation in the Details module has the same action scoped to that URL and concept. Both routes show the bounded context plan before a prompt is prepared; cancelling returns focus to the action that opened it.
 
 The neighboring **Move** action opens [Safe Concept Move](safe-concept-move.md). Move computes the affected graph, keeps a portable redirect at the old path, and requires per-hunk review, isolated validation, and explicit Apply. It never renames or rewrites a file directly from the reader.
+
+When a concept carries [Reliability and Lifecycle](reliability-and-lifecycle.md) metadata, the header shows one advisory status with the authored confidence, review, effective-time, contradiction, or replacement details. It explicitly says Studio has not verified the claim. Concepts without that optional metadata keep the ordinary reading surface.
 
 # Composition
 

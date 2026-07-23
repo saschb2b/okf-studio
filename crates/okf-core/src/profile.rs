@@ -936,6 +936,23 @@ mod tests {
     use crate::read_bundle;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    #[test]
+    fn docs_bundle_resolves_the_shipped_reliability_profile() {
+        let root = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs"));
+        let bundle = read_bundle(root);
+        let report = analyze(root, &bundle);
+
+        assert!(report.profiles.iter().any(|profile| {
+            profile.namespace == "io.okf.reliability"
+                && profile.version.as_deref() == Some("1.0.0")
+                && profile.status == ProfileStatus::Active
+        }));
+        assert!(report
+            .profiles
+            .iter()
+            .all(|profile| profile.status == ProfileStatus::Active));
+    }
+
     struct TempBundle {
         path: std::path::PathBuf,
     }
@@ -1087,9 +1104,10 @@ relationships:
         assert!(recognized.recognized);
         assert!(recognized.target_exists);
         assert!(recognized.portable_link);
-        assert!(report.edges.iter().any(|edge| {
-            edge.relationship_type == "unknown-kind" && !edge.recognized
-        }));
+        assert!(report
+            .edges
+            .iter()
+            .any(|edge| { edge.relationship_type == "unknown-kind" && !edge.recognized }));
         assert!(report.edges.iter().any(|edge| {
             edge.target_id == "unlinked" && edge.target_exists && !edge.portable_link
         }));

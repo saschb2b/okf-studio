@@ -11,6 +11,10 @@ it("inspects known and unknown profile relationships and filters the graph", asy
     name: /Overview What OKF Studio is and who it's for/i,
   }));
 
+  expect(await screen.findByRole("complementary", { name: "Reliability advisory" }))
+    .toHaveTextContent("Current");
+  expect(screen.getByRole("complementary", { name: "Reliability advisory" }))
+    .toHaveTextContent("Authored confidence: 100%");
   expect(await screen.findByRole("heading", { name: /Typed relationships 2/i }))
     .toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Supports → Graph View/i }))

@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Update**: Grouped bundle-level administration under one persistent **Bundle details** entry. The format label in the [status bar](ux/browsing-layout.md) now opens the bundle's declared format, concept count, root [metadata](features/metadata-inspector.md), [ignore rules](features/ignore-rules.md), and [advisory profiles](features/advisory-profiles.md); the [command palette](features/command-palette.md) offers the same action. These sections no longer interrupt the root overview, which stays focused on the bundle's authored introduction, navigation, and active interoperability experiments.
+
 * **Update**: Moved **Create shareable bundle** from the root folder home into persistent bundle chrome. A compact share action now sits beside the active bundle name and remains available while reading any topic in graph, split, or reader layout. The same action is available through the command launcher. The dialog is mounted by the app shell, so its lifetime no longer depends on one reader surface.
 
 * **Update**: Reworked [Recipient Projections](features/recipient-projections.md) around the user’s sharing task. **Create shareable bundle** now separates content choice from review and save, moves advisory filters and exact redactions into optional safeguards, treats a blank audience filter as no filter, includes explicitly selected unlabeled concepts by default with a visible review notice, and replaces filesystem “parent” language with a plain save-location choice. Source fingerprints, stale-plan rejection, validation, guarded replacement, and the erasure audit remain unchanged.

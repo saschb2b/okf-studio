@@ -3,14 +3,14 @@ type: Feature
 title: Advisory Profiles
 description: Resolve optional team conventions from local version-pinned descriptors without changing OKF conformance.
 tags: [feature, profiles, metadata, diagnostics, authoring]
-timestamp: 2026-07-23T14:55:00Z
+timestamp: 2026-07-23T19:58:47+02:00
 ---
 
 # User job
 
 A bundle maintainer wants Studio to understand the team's recommended fields, profile-required fields, relationship names, and deterministic health checks without making the bundle dependent on one application or changing what OKF requires.
 
-The maintainer declares a namespaced, exact-version profile in the root `index.md`. Its descriptor travels inside the bundle. On the root folder home, Studio shows each profile's namespace, pinned version, local source, resolution state, field, relationship, and check counts. Advice names the source file and rule and can open the affected concept.
+The maintainer declares a namespaced, exact-version profile in the root `index.md`. Its descriptor travels inside the bundle. In **Bundle details**, Studio shows each profile's namespace, pinned version, local source, resolution state, field, relationship, and check counts. Advice names the source file and rule and can open the affected concept. The dialog opens from the bundle's format label in the persistent [status bar](../ux/browsing-layout.md), so profile advice stays reachable while the user reads any concept.
 
 # Boundaries in the interface
 

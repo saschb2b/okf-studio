@@ -3,12 +3,12 @@ type: Feature
 title: Command Palette
 description: A global launcher (Ctrl/Cmd + K or /) that jumps to any concept, searches body text, and runs quick actions — keyboard-only, grouped results.
 tags: [feature, palette, launcher, navigation, keyboard, search]
-timestamp: 2026-07-23T17:29:00Z
+timestamp: 2026-07-23T19:58:47+02:00
 ---
 
 # What it does
 
-A **global launcher** — opened with `Ctrl/Cmd + K`, with `/`, or by clicking the search field in the top bar — that jumps to any concept, searches concept **body text**, and runs quick actions such as open folder, [create a shareable bundle](recipient-projections.md), toggle [log](log-view.md), and re-scan (see [keyboard shortcuts](../ux/keyboard-shortcuts.md)). It is the one fast way to get anywhere without reaching for the mouse, and the app's primary search entry point.
+A **global launcher**, opened with `Ctrl/Cmd + K`, with `/`, or by clicking the search field in the top bar, that jumps to any concept, searches concept **body text**, and runs quick actions such as open folder, open [Bundle details](metadata-inspector.md), [create a shareable bundle](recipient-projections.md), toggle [log](log-view.md), and re-scan (see [keyboard shortcuts](../ux/keyboard-shortcuts.md)). It is the one fast way to get anywhere without reaching for the mouse, and the app's primary search entry point.
 
 # Matching & grouping
 

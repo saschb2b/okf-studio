@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-07-23T17:29:00Z
+timestamp: 2026-07-23T19:58:47+02:00
 ---
 
 # The three panes
@@ -48,4 +48,6 @@ The window runs **borderless** (native title-bar decorations are off — see [Th
 
 The right side ends with the [Agent Panel](../features/agent-panel.md) opener. It remains present without an open bundle and toggles the right-docked agent workspace. When a bundle is open, the same region also carries [Integrated Git](git-workflow.md): its opener shows the current branch and ahead/behind counts when available. Git and Agent are mutually exclusive docks, preserving one main workspace and one auxiliary panel.
 
-A thin **status bar** spans the bottom of the window (the VS Code pattern). It carries ambient status and low-frequency toggles: the [validation](../features/validation.md) **issue indicator** and quiet bundle facts at the left, with Git, Lineage, Log, and Agent controls at the right. Concept count and the bundle's **format version** (`OKF x.y`, prefixed with `ODSF x.y` for a [design-system bundle](../features/design-system-rendering.md)) are read-only properties of the data. Validation urgency is deliberately inverted from a badge: conformance is expected and quiet; amber and red appear only when there is something to act on. The indicator opens the [Validation](../features/validation.md) panel.
+A thin **status bar** spans the bottom of the window (the VS Code pattern). It carries ambient status and low-frequency actions: the [validation](../features/validation.md) **issue indicator** and quiet bundle facts at the left, with Git, Lineage, Log, and Agent controls at the right. Concept count remains a read-only fact. The bundle's **format version** (`OKF x.y`, prefixed with `ODSF x.y` for a [design-system bundle](../features/design-system-rendering.md)) remains a property of the data and also acts as the labelled **Bundle details** entry. It opens one dialog for the declared format, root [metadata](../features/metadata-inspector.md), [ignore rules](../features/ignore-rules.md), and [advisory profiles](../features/advisory-profiles.md). A single labelled entry avoids a cluster of unexplained status-bar icons and keeps the root overview focused on orientation and navigation. The same dialog is available from the [command palette](../features/command-palette.md).
+
+Validation urgency is deliberately inverted from a badge: conformance is expected and quiet; amber and red appear only when there is something to act on. The indicator opens the [Validation](../features/validation.md) panel.

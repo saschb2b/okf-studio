@@ -3,12 +3,12 @@ type: Feature
 title: Ignore Rules
 description: Keep generated, private, or irrelevant paths out of Studio's bundle views and agent context through one visible root rule file.
 tags: [feature, privacy, ignore, filesystem, agents]
-timestamp: 2026-07-23T20:30:00Z
+timestamp: 2026-07-23T19:58:47+02:00
 ---
 
 # What it does
 
-A bundle may place a `.okfignore` file at its root. Studio applies that file to concept parsing, validation inventory, synthesized navigation, live reload, selected-folder source intake, retrieval inputs derived from the parsed bundle, and recipient projections. The root folder home names the rule source, applied-rule count, platform case behavior, excluded-path count, bounded diagnostics, and up to 128 excluded paths.
+A bundle may place a `.okfignore` file at its root. Studio applies that file to concept parsing, validation inventory, synthesized navigation, live reload, selected-folder source intake, retrieval inputs derived from the parsed bundle, and recipient projections. The **Bundle details** dialog names the rule source, applied-rule count, platform case behavior, excluded-path count, bounded diagnostics, and up to 128 excluded paths. It opens from the bundle's format label in the persistent [status bar](../ux/browsing-layout.md), so the boundary remains available from every concept and layout.
 
 The same matcher keeps each surface from quietly inventing a different privacy boundary. A path excluded from the parsed bundle cannot enter search, retrieval, or an agent's bundle context because those systems consume the same parsed concept set.
 

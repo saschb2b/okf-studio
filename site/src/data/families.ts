@@ -105,8 +105,8 @@ export const families: Family[] = [
             body: "A root .okfignore keeps chosen paths out of parsing, watching, retrieval, source intake, and projections. Studio reports what it excluded and makes clear that ignore rules are not encryption or access control.",
           },
           {
-            title: "Extensions stay intact",
-            body: "Producer metadata remains intact and inspectable. Optional team profiles resolve from version-pinned files inside the bundle, with their advice clearly separated from OKF validation.",
+            title: "Bundle details stay together",
+            body: "The format label in the status bar opens one place for root metadata, ignore rules, and local advisory profiles. The overview stays focused on understanding the bundle, and optional advice remains separate from OKF validation.",
           },
           {
             title: "Design-system aware",

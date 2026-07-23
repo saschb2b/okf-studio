@@ -3,12 +3,12 @@ type: Feature
 title: Metadata Inspector
 description: Inspect producer-defined bundle and concept fields safely without requiring a custom renderer.
 tags: [feature, metadata, extensions, reader, portability]
-timestamp: 2026-07-23T00:58:00Z
+timestamp: 2026-07-23T19:58:47+02:00
 ---
 
 # What it does
 
-The Metadata Inspector renders preserved producer fields from the bundle root and the active concept. Bundle metadata appears on the root folder home and in the Concept Reader context rail with `index.md` as its source. Concept metadata appears in the rail with its bundle-relative Markdown file as the source.
+The Metadata Inspector renders preserved producer fields from the bundle root and the active concept. Bundle metadata appears in **Bundle details**, opened from the bundle's format label in the persistent [status bar](../ux/browsing-layout.md). The dialog keeps the declared format, concept count, root location, metadata, [ignore rules](ignore-rules.md), and [advisory profiles](advisory-profiles.md) together without turning the root overview into an administration page. Concept metadata stays in the Concept Reader context rail with its bundle-relative Markdown file as the source.
 
 Keys, scalar values, objects, and arrays render as React text. Metadata never becomes HTML. Each scalar and top-level branch has a copy action; copied objects use the same bounded representation shown by the inspector. The source label and dotted path make a copied or reported value traceable to its authored location.
 

@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const HEALTH_SCHEMA_VERSION: u32 = 1;
 pub const MAX_HEALTH_CONCEPTS: usize = 10_000;
 pub const MAX_HEALTH_LINKS: usize = 50_000;
+const MAX_EVIDENCE_FINDINGS_PER_CONCEPT: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -447,8 +448,15 @@ fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
             .map(|citation| citation.source_id.as_str())
             .collect::<BTreeSet<_>>();
         let path = format!("{}.md", concept.id);
+        let mut evidence_findings = 0_usize;
+        let mut omitted_evidence_findings = 0_usize;
 
         for source_id in authored.invalid_source_ids {
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
             findings.push(finding(FindingInput {
                 rule_id: "okf.evidence.invalid-source",
                 rule_version: "1.0.0",
@@ -465,7 +473,7 @@ fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
                 repairability: HealthRepairability::Guided,
             }));
         }
-        if authored.truncated {
+        if authored.sources_truncated {
             findings.push(finding(FindingInput {
                 rule_id: "okf.evidence.source-limit",
                 rule_version: "1.0.0",
@@ -489,11 +497,40 @@ fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
                 repairability: HealthRepairability::Guided,
             }));
         }
+        if authored.citations_truncated {
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.citation-limit",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!("{} exceeds the claim-marker inspection limit", concept.title),
+                why: format!(
+                    "Studio inspected the first {} structured claim markers and preserved the remaining body without interpreting those markers.",
+                    evidence::MAX_CLAIM_CITATIONS
+                ),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence(
+                        "limit",
+                        "Inspected claim-marker limit",
+                        &evidence::MAX_CLAIM_CITATIONS.to_string(),
+                    ),
+                ],
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
         for citation in authored
             .citations
             .iter()
             .filter(|citation| !source_ids.contains(citation.source_id.as_str()))
         {
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
             findings.push(finding(FindingInput {
                 rule_id: "okf.evidence.dangling-citation",
                 rule_version: "1.0.0",
@@ -519,6 +556,11 @@ fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
             .iter()
             .filter(|source| !cited_ids.contains(source.id.as_str()))
         {
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
             findings.push(finding(FindingInput {
                 rule_id: "okf.evidence.unused-source",
                 rule_version: "1.0.0",
@@ -549,6 +591,11 @@ fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
                 ),
                 _ => continue,
             };
+            if evidence_findings >= MAX_EVIDENCE_FINDINGS_PER_CONCEPT {
+                omitted_evidence_findings += 1;
+                continue;
+            }
+            evidence_findings += 1;
             let mut details = vec![
                 evidence("path", "Concept path", &path),
                 evidence("source-id", "Evidence source", &source.id),
@@ -577,6 +624,35 @@ fn add_provenance_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
                 summary,
                 why: why.to_string(),
                 evidence: details,
+                affected: vec![concept.id.clone()],
+                repairability: HealthRepairability::Guided,
+            }));
+        }
+        if omitted_evidence_findings > 0 {
+            findings.push(finding(FindingInput {
+                rule_id: "okf.evidence.finding-limit",
+                rule_version: "1.0.0",
+                category: HealthCategory::Provenance,
+                severity: HealthSeverity::Advisory,
+                basis: HealthBasis::Fact,
+                summary: format!(
+                    "{} has more evidence advice than one report expands",
+                    concept.title
+                ),
+                why: "Studio bounded per-source evidence findings for this concept. Inspect or partition its evidence map before acting on the omitted entries.".to_string(),
+                evidence: vec![
+                    evidence("path", "Concept path", &path),
+                    evidence(
+                        "expanded",
+                        "Expanded evidence findings",
+                        &MAX_EVIDENCE_FINDINGS_PER_CONCEPT.to_string(),
+                    ),
+                    evidence(
+                        "omitted",
+                        "Additional evidence findings",
+                        &omitted_evidence_findings.to_string(),
+                    ),
+                ],
                 affected: vec![concept.id.clone()],
                 repairability: HealthRepairability::Guided,
             }));

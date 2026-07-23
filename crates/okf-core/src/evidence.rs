@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 
 pub(crate) const MAX_EVIDENCE_SOURCES: usize = 128;
+pub(crate) const MAX_CLAIM_CITATIONS: usize = 1_024;
 const MAX_EVIDENCE_TEXT: usize = 2_048;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,18 +36,21 @@ pub(crate) struct ConceptEvidence {
     pub sources: Vec<AuthoredEvidenceSource>,
     pub citations: Vec<AuthoredClaimCitation>,
     pub invalid_source_ids: Vec<String>,
-    pub truncated: bool,
+    pub sources_truncated: bool,
+    pub citations_truncated: bool,
 }
 
 pub(crate) fn inspect(concept: &Concept) -> ConceptEvidence {
     let provenance = parse_provenance(concept.extra.get("provenance"));
-    let (sources, invalid_source_ids, truncated) =
+    let (sources, invalid_source_ids, sources_truncated) =
         parse_sources(concept.extra.get("evidence"), &provenance);
+    let (citations, citations_truncated) = citation_references(&concept.body);
     ConceptEvidence {
         sources,
-        citations: citation_references(&concept.body),
+        citations,
         invalid_source_ids,
-        truncated,
+        sources_truncated,
+        citations_truncated,
     }
 }
 
@@ -195,13 +199,19 @@ fn parse_source(
     }
 }
 
-fn citation_references(body: &str) -> Vec<AuthoredClaimCitation> {
-    let definitions = body
+fn citation_references(body: &str) -> (Vec<AuthoredClaimCitation>, bool) {
+    let definition_ids = body
         .lines()
         .filter_map(|line| definition_pattern().captures(line))
         .filter_map(|capture| capture.get(1).map(|item| item.as_str().to_string()))
-        .collect::<BTreeSet<_>>();
-    body.lines()
+        .take(MAX_CLAIM_CITATIONS + 1)
+        .collect::<Vec<_>>();
+    if definition_ids.len() > MAX_CLAIM_CITATIONS {
+        return (Vec::new(), true);
+    }
+    let definitions = definition_ids.into_iter().collect::<BTreeSet<_>>();
+    let mut citations = body
+        .lines()
         .enumerate()
         .filter(|(_, line)| !definition_pattern().is_match(line))
         .flat_map(|(index, line)| {
@@ -214,7 +224,11 @@ fn citation_references(body: &str) -> Vec<AuthoredClaimCitation> {
                     line: index + 1,
                 })
         })
-        .collect()
+        .take(MAX_CLAIM_CITATIONS + 1)
+        .collect::<Vec<_>>();
+    let truncated = citations.len() > MAX_CLAIM_CITATIONS;
+    citations.truncate(MAX_CLAIM_CITATIONS);
+    (citations, truncated)
 }
 
 fn definition_pattern() -> &'static Regex {

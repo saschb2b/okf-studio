@@ -155,4 +155,17 @@ describe("durable evidence", () => {
     expect(result.truncated).toBe(true);
     expect(getter).not.toHaveBeenCalled();
   });
+
+  it("bounds structured claim inspection", () => {
+    const body = Array.from(
+      { length: 1_025 },
+      (_, index) => `Claim ${index}.[^source-${index}]`,
+    ).join("\n");
+    const result = inspectConceptEvidence({}, body);
+    expect(result.citations).toHaveLength(1_024);
+    expect(result.truncated).toBe(true);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      kind: "inspection-limit",
+    }));
+  });
 });

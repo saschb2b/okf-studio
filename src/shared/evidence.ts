@@ -5,6 +5,7 @@ import type {
 
 export const EVIDENCE_PROFILE_NAMESPACE = "io.okf.evidence";
 export const MAX_EVIDENCE_SOURCES = 128;
+export const MAX_CLAIM_CITATIONS = 1_024;
 export const MAX_EVIDENCE_TEXT = 2_048;
 
 export type EvidenceCheckStatus =
@@ -53,7 +54,11 @@ export interface ClaimCitation {
 }
 
 export interface EvidenceDiagnostic {
-  kind: "dangling-citation" | "unused-source" | "invalid-source";
+  kind:
+    | "dangling-citation"
+    | "unused-source"
+    | "invalid-source"
+    | "inspection-limit";
   sourceId: string;
   line: number | null;
   message: string;
@@ -133,13 +138,22 @@ export function inspectConceptEvidence(
   const parsed = parseEvidenceMap(extra.evidence, provenanceById);
   const sources = parsed.sources;
   const sourceIds = new Set(sources.map((source) => source.id));
-  const citations = citationReferences(body).map((citation) => ({
+  const parsedCitations = citationReferences(body);
+  const citations = parsedCitations.citations.map((citation) => ({
     ...citation,
     resolved: sourceIds.has(citation.sourceId),
   }));
   const citedIds = new Set(citations.map((citation) => citation.sourceId));
   const diagnostics: EvidenceDiagnostic[] = [
     ...parsed.diagnostics,
+    ...(parsedCitations.truncated
+      ? [{
+          kind: "inspection-limit" as const,
+          sourceId: "claim-markers",
+          line: null,
+          message: `Studio inspected the first ${MAX_CLAIM_CITATIONS} structured claim markers.`,
+        }]
+      : []),
     ...citations
       .filter((citation) => !citation.resolved)
       .map((citation) => ({
@@ -162,7 +176,8 @@ export function inspectConceptEvidence(
     sources,
     citations,
     diagnostics,
-    truncated: provenance.length >= MAX_EVIDENCE_SOURCES || parsed.truncated,
+    truncated: provenance.length >= MAX_EVIDENCE_SOURCES ||
+      parsed.truncated || parsedCitations.truncated,
   };
 }
 
@@ -288,25 +303,36 @@ function parseEvidenceMap(
   };
 }
 
-function citationReferences(body: string): ClaimCitation[] {
+function citationReferences(body: string): {
+  citations: ClaimCitation[];
+  truncated: boolean;
+} {
   const definitions = new Set<string>();
   const refs: ClaimCitation[] = [];
   const lines = body.split(/\r?\n/u);
   for (const line of lines) {
     const definition = /^\s{0,3}\[\^([A-Za-z0-9][A-Za-z0-9._-]{0,127})\]:/u
       .exec(line);
-    if (definition) definitions.add(definition[1]);
+    if (definition) {
+      definitions.add(definition[1]);
+      if (definitions.size > MAX_CLAIM_CITATIONS) {
+        return { citations: [], truncated: true };
+      }
+    }
   }
   for (const [index, line] of lines.entries()) {
     if (/^\s{0,3}\[\^/u.test(line)) continue;
     const pattern = /\[\^([A-Za-z0-9][A-Za-z0-9._-]{0,127})\]/gu;
     for (const match of line.matchAll(pattern)) {
       if (!definitions.has(match[1])) {
+        if (refs.length >= MAX_CLAIM_CITATIONS) {
+          return { citations: refs, truncated: true };
+        }
         refs.push({ sourceId: match[1], line: index + 1, resolved: false });
       }
     }
   }
-  return refs;
+  return { citations: refs, truncated: false };
 }
 
 function objectEntries(value: unknown): [string, unknown][] {

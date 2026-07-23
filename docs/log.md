@@ -2,6 +2,10 @@
 
 ## 2026-07-23
 
+* **Update**: Replaced the static Bundle Overview inventory with [Bundle Home](features/bundle-home.md). Home now leads with the authored `log.md` activity stream, resumes concepts from the current session or newest timestamps, turns validation, broken links, and unlinked concepts into a direct maintenance queue, and shows current Git work when available. Identity, counts, format, and conformance remain in Bundle details; type composition, hubs, and topology remain in filters and the graph.
+
+* **Update**: Moved **Bundle details** beside **Create shareable bundle** in the persistent title bar and reduced the status bar to workspace-panel controls. The new Info action carries an accessible pass, warning, or error mark. Its dialog now summarizes bundle identity, format, concept count, and [OKF conformance](features/validation.md), links to the full report, and separates metadata, ignore rules, and advisory profiles into three focused views.
+
 * **Update**: Grouped bundle-level administration under one persistent **Bundle details** entry. The format label in the [status bar](ux/browsing-layout.md) now opens the bundle's declared format, concept count, root [metadata](features/metadata-inspector.md), [ignore rules](features/ignore-rules.md), and [advisory profiles](features/advisory-profiles.md); the [command palette](features/command-palette.md) offers the same action. These sections no longer interrupt the root overview, which stays focused on the bundle's authored introduction, navigation, and active interoperability experiments.
 
 * **Update**: Moved **Create shareable bundle** from the root folder home into persistent bundle chrome. A compact share action now sits beside the active bundle name and remains available while reading any topic in graph, split, or reader layout. The same action is available through the command launcher. The dialog is mounted by the app shell, so its lifetime no longer depends on one reader surface.

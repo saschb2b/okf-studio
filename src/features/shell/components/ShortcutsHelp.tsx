@@ -57,7 +57,7 @@ const GROUPS: Group[] = [
   {
     title: "Layout",
     items: [
-      { combo: ["O"], label: "Bundle overview" },
+      { combo: ["O"], label: "Bundle home" },
       { combo: ["T"], label: "Trace lineage" },
       { combo: [mod, "1"], label: "Graph only" },
       { combo: [mod, "2"], label: "Split" },

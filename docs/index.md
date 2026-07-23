@@ -54,6 +54,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Erasure Audit](features/erasure-audit.md) - Block a projection when declared excluded material remains in its generated output.
 * [Interoperability Lab](features/interoperability-lab.md) - Exercise optional multilingual, external-reference, JSON-LD, and sidecar conventions without making them core OKF.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
+* [Bundle Home](features/bundle-home.md) - Resume active concepts, review authored activity, handle deterministic attention items, and return to repository work.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.
 * [Concept Reader](features/concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
@@ -117,7 +118,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 # Proposals
 
 * [Deep Knowledge Diving](proposals/deep-knowledge-diving.md) - Where the viewer is thin for going deep, and the big-data patterns worth borrowing.
-* [Bundle Overview & Health](proposals/bundle-overview.md) - A landing view that orients you in a bundle before you dive.
+* [Bundle Overview & Health (superseded)](proposals/bundle-overview.md) - The original inventory-dashboard proposal, superseded by a working Home for activity, resumption, attention, and repository changes.
 * [Faceted Query Bar](proposals/faceted-search.md) - Structured field queries and facet rails that filter the workspace live.
 * [Lineage & Traversal](proposals/lineage-and-traversal.md) - Expand-on-click, upstream/downstream lineage, path-between, and unlinked mentions.
 * [Multi-View — Tabs & Windows](proposals/multi-view.md) - Reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own window.

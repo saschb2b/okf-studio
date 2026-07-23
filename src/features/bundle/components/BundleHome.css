@@ -1,0 +1,440 @@
+/* Bundle Home: a working dashboard, not a second bundle inspector. The primary
+   activity stream and one consistent side stack retain their own alignment. */
+
+.overview {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-24) var(--space-32) var(--space-32);
+}
+
+.ov-shell {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+}
+
+.ov-head {
+  margin-bottom: var(--space-24);
+}
+
+.ov-eyebrow {
+  margin: 0 0 var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ov-title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  line-height: var(--lh-tight);
+}
+
+.ov-subtitle {
+  max-width: 42rem;
+  margin: var(--space-8) 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ov-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(19rem, 0.85fr);
+  align-items: start;
+  gap: var(--space-16);
+}
+
+.ov-side {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.ov-card {
+  min-width: 0;
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elev);
+}
+
+.ov-card-head {
+  display: flex;
+  min-height: 40px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-12);
+}
+
+.ov-card-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: var(--lh-snug);
+}
+
+.ov-card-hint {
+  margin: var(--space-2) 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.ov-card-action,
+.ov-inline-action {
+  display: inline-flex;
+  flex: none;
+  min-height: 28px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.ov-card-action:hover,
+.ov-inline-action:hover {
+  background: var(--bg-sunken);
+}
+
+.ov-card-action:focus-visible,
+.ov-inline-action:focus-visible,
+.ov-row:focus-visible,
+.ov-attention-summary:focus-visible,
+.ov-changes button:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: -1px;
+}
+
+.ov-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ov-list,
+.ov-changes,
+.ov-activity {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ov-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ov-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ov-row:hover {
+  background: var(--bg-sunken);
+}
+
+.ov-row > svg {
+  color: var(--text-dim);
+}
+
+.ov-row-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.ov-row-title {
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-row-meta {
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-activity {
+  display: grid;
+}
+
+.ov-activity-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+}
+
+.ov-activity-marker {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.ov-activity-marker::after {
+  position: absolute;
+  top: 17px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+  content: "";
+}
+
+.ov-activity-item:last-child .ov-activity-marker::after {
+  display: none;
+}
+
+.ov-activity-marker > span {
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  margin-top: var(--space-4);
+  border: 2px solid var(--bg-elev);
+  border-radius: 50%;
+  background: var(--text-dim);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.ov-activity-marker > span[data-kind="creation"] {
+  background: var(--ok);
+}
+
+.ov-activity-marker > span[data-kind="fix"] {
+  background: var(--warn);
+}
+
+.ov-activity-marker > span[data-kind="deprecation"] {
+  background: var(--error);
+}
+
+.ov-activity-marker > span[data-kind="update"] {
+  background: var(--accent);
+}
+
+.ov-activity-content {
+  min-width: 0;
+  padding: 0 0 var(--space-16) var(--space-8);
+}
+
+.ov-activity-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.ov-activity-meta span {
+  text-transform: capitalize;
+}
+
+.ov-activity-body {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.ov-activity-body > :first-child {
+  margin-top: 0;
+}
+
+.ov-activity-body > :last-child {
+  margin-bottom: 0;
+}
+
+.ov-activity-body a {
+  color: var(--accent);
+}
+
+.ov-attention {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.ov-attention-summary {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ov-attention-summary > svg:first-child {
+  color: var(--warn);
+}
+
+.ov-attention-summary[data-kind="error"] > svg:first-child {
+  color: var(--error);
+}
+
+.ov-attention-summary > svg:last-child {
+  color: var(--text-dim);
+}
+
+.ov-attention-summary span,
+.ov-clear span,
+.ov-empty span {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.ov-attention-summary strong,
+.ov-clear strong,
+.ov-empty strong {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.ov-attention-summary small,
+.ov-clear small,
+.ov-empty small {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.ov-attention-group {
+  min-width: 0;
+}
+
+.ov-attention-group h3 {
+  margin: 0 0 var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: var(--lh-snug);
+}
+
+.ov-inline-action {
+  margin-top: var(--space-4);
+}
+
+.ov-clear,
+.ov-empty {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-8);
+  padding: var(--space-8);
+}
+
+.ov-clear > svg {
+  color: var(--ok);
+}
+
+.ov-empty > svg {
+  color: var(--text-dim);
+}
+
+.ov-changes {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ov-changes button {
+  display: grid;
+  width: 100%;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-8);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ov-changes button:hover {
+  background: var(--bg-sunken);
+}
+
+.ov-changes button > span,
+.ov-changes button > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-changes button > span {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+.ov-changes button > small {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.ov-more {
+  margin: var(--space-8) var(--space-8) 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 54rem) {
+  .overview {
+    padding: var(--space-20);
+  }
+
+  .ov-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ov-side {
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 30rem) {
+  .overview {
+    padding: var(--space-16);
+  }
+
+  .ov-card {
+    padding: var(--space-12);
+  }
+
+  .ov-card-head {
+    gap: var(--space-8);
+  }
+
+  .ov-card-action {
+    padding-inline: var(--space-4);
+  }
+}

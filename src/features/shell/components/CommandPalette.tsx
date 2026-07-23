@@ -163,7 +163,7 @@ export function CommandPalette() {
     {
       kind: "action",
       id: "act:overview",
-      label: "Bundle overview",
+      label: "Bundle home",
       hint: "Action",
       run: () => actions.setOverview(true),
     },

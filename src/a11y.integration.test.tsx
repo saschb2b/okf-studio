@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import * as ipc from "@/shared/ipc.ts";
@@ -123,7 +123,20 @@ describe("accessibility (axe-core)", () => {
     const { container } = renderApp();
     await openBundle(user);
     await user.click(screen.getByRole("button", { name: /open bundle details/i }));
-    await screen.findByRole("dialog", { name: "Bundle details" });
+    const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
+    await user.click(within(dialog).getByRole("tab", { name: "Ignore rules" }));
+    await within(dialog).findByRole("heading", { name: "Ignore rules" });
+    await user.click(within(dialog).getByRole("tab", { name: "Profiles" }));
+    await within(dialog).findByRole("heading", { name: "Advisory profiles" });
+    await expectNoViolations(container);
+  });
+
+  it("Bundle Home has no violations", async () => {
+    const user = userEvent.setup();
+    const { container } = renderApp();
+    await openBundle(user);
+    await user.click(screen.getByRole("button", { name: "Bundle home" }));
+    await screen.findByRole("region", { name: "Bundle home" });
     await expectNoViolations(container);
   });
 });

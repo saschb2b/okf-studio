@@ -15,24 +15,13 @@ import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useApp } from "@/shared/store.tsx";
 import { renderMarkdown } from "@/shared/render/markdown.ts";
 import { classifyBodyLinks, classifyLink } from "@/features/reader/components/Reader.tsx";
-import type { LogEntry } from "@/shared/types.ts";
+import {
+  changeLogKind,
+  newestLogEntries,
+} from "@/features/bundle/changeLog.ts";
 import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
 import "./LogView.css";
-
-/** Newest group first. ISO YYYY-MM-DD sorts lexicographically; non-ISO dates
- *  keep their incoming order relative to each other, after the ISO ones. */
-function newestFirst(log: LogEntry[]): LogEntry[] {
-  return [...log].sort((a, b) => b.date.localeCompare(a.date));
-}
-
-/** The entry's conventional lead kind (log.md entries open with
- *  "**Creation**: …" / "**Update**" / "**Fix**" / "**Deprecation**"), driving
- *  the timeline dot's color. Compound leads ("Fix + Update") take the first
- *  word; anything else falls back to the neutral dot. */
-function kindOf(entry: string): string | undefined {
-  return /^\*\*(Creation|Update|Fix|Deprecation)/.exec(entry.trim())?.[1].toLowerCase();
-}
 
 export function LogView() {
   const { state, actions } = useApp();
@@ -46,10 +35,10 @@ export function LogView() {
   // and re-sets innerHTML whenever it changes.
   const groups = useMemo(
     () =>
-      newestFirst(bundle?.log ?? []).map((g) => ({
+      newestLogEntries(bundle?.log ?? []).map((g) => ({
         date: g.date,
         entries: g.entries.map((e) => ({
-          kind: kindOf(e),
+          kind: changeLogKind(e),
           html: { __html: classifyBodyLinks(renderMarkdown(e), "", bundle) },
         })),
       })),

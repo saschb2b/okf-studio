@@ -20,7 +20,7 @@ import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDia
 import { RecipientProjectionDialog } from "@/features/bundle/components/RecipientProjectionDialog.tsx";
 import { BundleDetailsDialog } from "@/features/bundle/components/BundleDetailsDialog.tsx";
 import { ExternalEntryDialog } from "@/features/bundle/components/ExternalEntryDialog.tsx";
-import { OverviewView } from "@/features/viz/components/OverviewView.tsx";
+import { BundleHome } from "@/features/bundle/components/BundleHome.tsx";
 import { ResizeHandles } from "@/features/shell/components/ResizeHandles.tsx";
 import { ShortcutsHelp } from "@/features/shell/components/ShortcutsHelp.tsx";
 import { AgentPanel } from "@/features/agent/components/AgentPanel.tsx";
@@ -171,7 +171,7 @@ function Workspace() {
             <Sidebar />
           </aside>
         )}
-        <OverviewView />
+        <BundleHome />
       </div>
     );
   }

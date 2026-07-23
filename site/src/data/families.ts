@@ -67,8 +67,8 @@ export const families: Family[] = [
         lede: "Orientation first, then precise questions.",
         items: [
           {
-            title: "An overview to orient",
-            body: "Land on a bundle overview before diving into individual concepts.",
+            title: "A home for active work",
+            body: "Resume concepts, read the bundle-authored activity stream, handle validation and link issues, and return to current Git changes without hunting through separate panels.",
           },
           {
             title: "Faceted search",
@@ -106,7 +106,7 @@ export const families: Family[] = [
           },
           {
             title: "Bundle details stay together",
-            body: "The format label in the status bar opens one place for root metadata, ignore rules, and local advisory profiles. The overview stays focused on understanding the bundle, and optional advice remains separate from OKF validation.",
+            body: "An Info action beside Share shows bundle conformance at a glance, then opens identity, format, size, metadata, ignore rules, and local profiles in focused views. The overview stays about the knowledge, while the footer stays quiet.",
           },
           {
             title: "Design-system aware",

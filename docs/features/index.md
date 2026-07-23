@@ -12,6 +12,7 @@ One concept per user-facing capability. Together these define Studio's explore, 
 * [Interoperability Lab](interoperability-lab.md) - Exercise optional multilingual, external-reference, JSON-LD, and sidecar conventions without making them core OKF.
 * [Create Bundle](create-bundle.md) - Start a new conformant bundle from a form, no agent involved.
 * [Bundle Switcher](bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles, and recently-opened bundles.
+* [Bundle Home](bundle-home.md) - Resume active concepts, review authored activity, handle deterministic attention items, and return to repository work.
 * [Graph View](graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](viz-views.md) - Treemap, sunburst, and circle packing of the bundle hierarchy, with a persisted switcher.
 * [Concept Reader](concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.

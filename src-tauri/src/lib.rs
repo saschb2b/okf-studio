@@ -69,6 +69,7 @@ mod agent_stage;
 mod bundle_create;
 mod bundle_grant;
 mod bundle_library;
+mod bundle_projection;
 mod compatibility_stage;
 mod external_entry;
 #[path = "git/repository.rs"]
@@ -264,6 +265,57 @@ fn git_stop_watch(watch: State<'_, git_watch::GitWatchState>) {
 #[tauri::command]
 fn okf_capability_catalog() -> agent_capabilities::CapabilityCatalogInfo {
     agent_capabilities::catalog_info()
+}
+
+#[tauri::command]
+async fn okf_projection_plan(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    input: okf_core::projection::ProjectionInput,
+) -> Result<okf_core::projection::ProjectionPlan, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        okf_core::projection::plan(&root, &bundle, &input)
+    })
+    .await
+    .map_err(|_| "The recipient projection plan stopped unexpectedly.".to_string())?
+}
+
+#[tauri::command]
+async fn export_okf_projection(
+    app: AppHandle,
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    input: bundle_projection::ProjectionExportInput,
+) -> Result<Option<bundle_projection::ProjectionExportResult>, String> {
+    let root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_title("Choose where to create the recipient projection")
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+    let parent = selected.into_path().map_err(|_| {
+        "The selected projection destination is not available on this platform.".to_string()
+    })?;
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        bundle_projection::export(&root, &parent, &input)
+    })
+    .await
+    .map_err(|_| "The recipient projection export stopped unexpectedly.".to_string())??;
+    if matches!(
+        result.status,
+        bundle_projection::ProjectionExportStatus::Exported
+    ) {
+        grants.grant(
+            Path::new(&result.destination),
+            bundle_grant::BundleGrantKind::LocalFolder,
+        )?;
+    }
+    Ok(Some(result))
 }
 
 #[tauri::command]
@@ -1720,6 +1772,8 @@ pub fn run() {
             okf_ignore_report,
             okf_compatibility_report,
             okf_profile_report,
+            okf_projection_plan,
+            export_okf_projection,
             stage_compatibility_normalization,
             select_compatibility_hunk,
             validate_compatibility_normalization,

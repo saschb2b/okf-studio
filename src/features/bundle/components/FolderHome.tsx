@@ -6,8 +6,8 @@
 // index tree, and the default landing for a freshly opened bundle. The synthetic
 // selection id is "index" (root) or "<dir>/index"; see selectors.ts.
 
-import { ChevronRight } from "lucide-react";
-import type { MouseEvent } from "react";
+import { ChevronRight, Share2 } from "lucide-react";
+import { useState, type MouseEvent } from "react";
 import { useApp } from "@/shared/store.tsx";
 import { conceptById, indexIdForDir } from "@/shared/selectors.ts";
 import { renderMarkdown } from "@/shared/render/markdown.ts";
@@ -17,6 +17,7 @@ import { classifyBodyLinks, classifyLink } from "@/features/reader/components/Re
 import { MetadataInspector } from "@/features/reader/components/MetadataInspector.tsx";
 import { AdvisoryProfiles } from "./AdvisoryProfiles.tsx";
 import { IgnoreRules } from "./IgnoreRules.tsx";
+import { RecipientProjectionDialog } from "./RecipientProjectionDialog.tsx";
 import type { IndexEntry, IndexNode } from "@/shared/types.ts";
 import "./FolderHome.css";
 
@@ -27,6 +28,7 @@ function humanize(seg: string): string {
 
 export function FolderHome({ node }: { node: IndexNode }) {
   const { state, actions } = useApp();
+  const [projectionOpen, setProjectionOpen] = useState(false);
   const bundle = state.bundle;
   const dark = resolveDark(state.settings.theme);
   const palette = buildTypePalette(bundle?.concepts.map((c) => c.type) ?? [], dark);
@@ -91,15 +93,35 @@ export function FolderHome({ node }: { node: IndexNode }) {
             </button>
           ))}
         </nav>
-        <h1 className="fh-title">
-          {node.title}
-          {node.synthesized && (
-            <span className="fh-synth" title="No index.md in this folder — this listing is synthesized">
-              auto
-            </span>
-          )}
-        </h1>
+        <div className="fh-title-row">
+          <h1 className="fh-title">
+            {node.title}
+            {node.synthesized && (
+              <span className="fh-synth" title="No index.md in this folder; this listing is synthesized">
+                auto
+              </span>
+            )}
+          </h1>
+          {node.dir === "" && bundle ? (
+            <button
+              type="button"
+              className="btn ghost fh-project"
+              onClick={() => setProjectionOpen(true)}
+            >
+              <Share2 size={15} />
+              Project bundle
+            </button>
+          ) : null}
+        </div>
       </header>
+
+      {node.dir === "" && bundle ? (
+        <RecipientProjectionDialog
+          open={projectionOpen}
+          bundle={bundle}
+          onOpenChange={setProjectionOpen}
+        />
+      ) : null}
 
       {introHtml && (
         // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- delegated routing for in-body <a>s, which are natively keyboard-accessible

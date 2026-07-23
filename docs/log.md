@@ -2,6 +2,8 @@
 
 ## 2026-07-23
 
+* **Creation**: Added [Recipient Projections](features/recipient-projections.md) and the [Erasure Audit](features/erasure-audit.md). The root home now reviews explicit and transitive inclusions, advisory audience and sensitivity omissions, `.okfignore` paths, link rewrites, and exact redactions before a native destination choice. Rust recomputes the source-bound plan, writes a separate temporary bundle, validates it, blocks declared leaks across text or binary files, verifies the unchanged source, and replaces only an explicitly confirmed marked prior Studio projection.
+
 * **Creation**: Added [Access Hints](features/access-hints.md) and the local `io.okf.access` advisory descriptor. Bounded audience, sensitivity, and handling notes now appear in the reader, accepted agent context, persisted context manifests, isolated staged validation, and staged review. Unknown values remain visible, hints never remove evidence, and every surface states that metadata does not grant access.
 
 * **Creation**: Added [Ignore Rules](features/ignore-rules.md). A bounded root `.okfignore` matcher now controls parsing, validation inventory, synthesized navigation, live reload, selected-folder source intake, retrieval's parsed concept set, and recipient projection inputs. The root home reports rule and exclusion counts, case behavior, diagnostics, and bounded paths while stating that ignore rules are neither encryption nor filesystem access control.

@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-23T21:15:00Z
+timestamp: 2026-07-23T22:30:00Z
 ---
 
 # Outcome
@@ -158,6 +158,8 @@ A package is complete only when all applicable conditions hold:
 | PF4 Evidence health | Shipped | Deterministic health joins claim locations, source check observations, lifecycle, contradiction, replacement, and retrieval conflicts. Each finding preserves evidence and states that source change or failure is not a factual verdict; repairs remain guided staged proposals. |
 | AP1 Ignore semantics | Shipped | One bounded root matcher now controls concept parsing, validation inventory, navigation synthesis, live reload, selected-folder source intake, retrieval's parsed bundle, and projection inputs. The grant-checked root home reports its rule source, counts, platform case behavior, diagnostics, and bounded exclusions while stating that ignore rules are neither encryption nor filesystem access control. Nested negation, case, default-noise, parser, watcher, source, and no-follow symlink tests pin the boundary. |
 | AP2 Audience and sensitivity hints | Shipped | The local `io.okf.access` profile defines bounded audience, sensitivity, and handling notes. One deterministic parser keeps recognized ranks and unknown authored values visible in the reader, accepted context, persisted manifest, isolated staged-tree preview, and staged review. Every surface states that guidance does not grant, remove, or prove access, and no hint silently drops evidence. |
-| AP3 through IX4 | Planned | Each remaining package remains gated by the dependency and completion criteria above. No planned profile or experiment is part of core OKF conformance. |
+| AP3 Reviewed recipient projection | Shipped | The root home now produces a source-bound, read-only plan from explicit seeds, transitive links, advisory hints, `.okfignore`, and exact redaction terms. Review lists every inclusion, omission, link consequence, redaction, and destination before a native picker opens. Rust regenerates the plan, validates and audits a temporary normal OKF bundle, verifies the unchanged source, and refuses unconfirmed or unmarked replacement. |
+| AP4 Erasure audit | Shipped | The bounded no-symlink scanner checks the complete generated tree for omitted IDs, paths, titles, stable identities, evidence values, ignored paths, and exact user terms. Seeded Markdown, frontmatter, root index, JSON diagnostic, and binary-asset leaks block export, remove the temporary copy, and leave a versioned JSON audit beside the requested destination. |
+| IX1 through IX4 | Planned | Each interoperability experiment remains gated by its adoption criteria. No experiment changes core OKF conformance. |
 
 Related product boundaries: [Design Principles](principles.md), [Scope & Non-Goals](scope-and-non-goals.md), [Validation](../features/validation.md), [Knowledge Health](../features/knowledge-health.md), [Source Adapters and Provenance](../features/source-adapters.md), and [OKF Parsing](../architecture/okf-parsing.md).

@@ -3,7 +3,7 @@ type: Feature
 title: Access Hints
 description: Show intended audience, sensitivity, and handling guidance without turning metadata into authorization.
 tags: [feature, privacy, profiles, audience, sensitivity, agents]
-timestamp: 2026-07-23T21:15:00Z
+timestamp: 2026-07-23T22:30:00Z
 audience: [maintainers, agent-builders]
 sensitivity: public
 handling_notes: These labels are public examples, not an authorization policy.
@@ -44,7 +44,7 @@ These fields are routing and review hints:
 - they do not hide evidence from a context plan;
 - they do not prove that the author classified the concept correctly.
 
-The root [`.okfignore`](ignore-rules.md) can reduce what Studio reads, but it is also not access control. A reviewed [recipient projection](../product/okf-ecosystem-response-roadmap.md#area-5-access-hints-and-recipient-projections) may later use recognized hints to propose a least-disclosure copy; the user must still review its exact inclusion and omission plan.
+The root [`.okfignore`](ignore-rules.md) can reduce what Studio reads, but it is also not access control. A [Recipient Projection](recipient-projections.md) uses recognized hints only to propose a least-disclosure copy. The user still reviews its exact inclusion and omission plan before any destination write.
 
 # Determinism and compatibility
 

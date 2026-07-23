@@ -19,6 +19,12 @@ import type {
   GitRemoteOperation,
   GitRepositorySnapshot,
 } from "@/features/git/types.ts";
+import type {
+  ProjectionExportInput,
+  ProjectionExportResult,
+  ProjectionInput,
+  ProjectionPlan,
+} from "@/features/bundle/projection.ts";
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import { assessAccessHints } from "@/shared/access.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
@@ -3455,6 +3461,186 @@ export async function readProfileReport(bundleRoot: string): Promise<ProfileRepo
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<ProfileReport>("okf_profile_report", { bundleRoot });
+}
+
+function mockProjectionPlan(input: ProjectionInput): ProjectionPlan {
+  const byId = new Map(MOCK_BUNDLE.concepts.map((concept) => [concept.id, concept]));
+  const audiences = new Set(input.recipientAudiences.map((value) => value.toLocaleLowerCase()));
+  const maximum = ["public", "internal", "confidential", "restricted"]
+    .indexOf(input.maxSensitivity);
+  const included = new Map<string, ProjectionPlan["included"][number]>();
+  const omittedReasons = new Map<string, ProjectionPlan["omissions"][number]["reason"]>();
+  const queue = input.selectedConceptIds.map((id) => ({ id, linkedFrom: null as string | null }));
+
+  while (queue.length > 0) {
+    const next = queue.shift();
+    if (!next || included.has(next.id) || omittedReasons.has(next.id)) continue;
+    const concept = byId.get(next.id);
+    if (!concept) continue;
+    const access = assessAccessHints(concept);
+    const sensitivity = access.knownSensitivity
+      ? ["public", "internal", "confidential", "restricted"].indexOf(access.knownSensitivity)
+      : -1;
+    const audienceMismatch = access.audiences.length > 0 &&
+      !access.audiences.some((value) => audiences.has(value.toLocaleLowerCase()));
+    if (audienceMismatch) {
+      omittedReasons.set(concept.id, "audience-mismatch");
+      continue;
+    }
+    if (
+      access.sensitivity !== null &&
+      access.knownSensitivity === null &&
+      !input.includeUnknownSensitivity
+    ) {
+      omittedReasons.set(concept.id, "unknown-sensitivity");
+      continue;
+    }
+    if (access.sensitivity === null && !input.includeUnknownSensitivity) {
+      omittedReasons.set(concept.id, "unknown-sensitivity");
+      continue;
+    }
+    if (sensitivity > maximum) {
+      omittedReasons.set(concept.id, "sensitivity-exceeds-maximum");
+      continue;
+    }
+    included.set(concept.id, {
+      id: concept.id,
+      title: concept.title,
+      reason: next.linkedFrom === null ? "explicit" : "transitive-link",
+      linkedFrom: next.linkedFrom,
+      access,
+    });
+    for (const id of concept.links) queue.push({ id, linkedFrom: concept.id });
+  }
+  for (const concept of MOCK_BUNDLE.concepts) {
+    if (!included.has(concept.id) && !omittedReasons.has(concept.id)) {
+      omittedReasons.set(concept.id, "not-selected");
+    }
+  }
+  const omissions: ProjectionPlan["omissions"] = MOCK_BUNDLE.concepts
+    .filter((concept) => omittedReasons.has(concept.id))
+    .map((concept) => ({
+      kind: "concept",
+      id: concept.id,
+      title: concept.title,
+      reason: omittedReasons.get(concept.id) ?? "not-selected",
+    }));
+  omissions.push({
+    kind: "ignored-path",
+    id: "drafts/private-notes.md",
+    title: "drafts/private-notes.md",
+    reason: "ignored-by-rule",
+  });
+  const includedIds = new Set(included.keys());
+  const linkConsequences: ProjectionPlan["linkConsequences"] = [];
+  for (const concept of MOCK_BUNDLE.concepts.filter((item) => includedIds.has(item.id))) {
+    for (const target of concept.links.filter((id) => !includedIds.has(id))) {
+      linkConsequences.push({
+        sourceId: concept.id,
+        target,
+        outcome: "rewritten-omitted",
+        occurrences: 1,
+      });
+    }
+    for (const target of concept.brokenLinks) {
+      linkConsequences.push({
+        sourceId: concept.id,
+        target,
+        outcome: "existing-broken",
+        occurrences: 1,
+      });
+    }
+  }
+  const redactions = input.sensitiveTerms.flatMap((value) =>
+    MOCK_BUNDLE.concepts
+      .filter((concept) => includedIds.has(concept.id))
+      .map((concept) => ({
+        file: `${concept.id}.md`,
+        category: "user-sensitive-term",
+        value,
+        occurrences: concept.body.toLocaleLowerCase().split(value.toLocaleLowerCase()).length - 1,
+      }))
+      .filter((item) => item.occurrences > 0)
+  );
+  const safeRecipient = input.recipient.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "recipient";
+  const signature = [
+    input.recipient,
+    ...input.selectedConceptIds,
+    ...input.recipientAudiences,
+    input.maxSensitivity,
+    String(input.includeUnknownSensitivity),
+    ...input.sensitiveTerms,
+  ].join("|");
+  let hash = 2_166_136_261;
+  for (const character of signature) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return {
+    schemaVersion: 1,
+    revision: `okf-projection-mock-${(hash >>> 0).toString(16)}`,
+    sourceBundleFingerprint: "mock-bundle-fingerprint",
+    recipient: input.recipient,
+    recipientAudiences: input.recipientAudiences,
+    maxSensitivity: input.maxSensitivity,
+    includeUnknownSensitivity: input.includeUnknownSensitivity,
+    destinationFolderName: `${MOCK_BUNDLE.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-${safeRecipient}`,
+    included: [...included.values()],
+    omissions,
+    linkConsequences,
+    redactions,
+    ignoredRuleCount: 3,
+    ignoredPathsTruncated: false,
+    warnings: included.size === 0 ? ["No selected concept passed the reviewed constraints."] : [],
+  };
+}
+
+export async function planOkfProjection(
+  bundleRoot: string,
+  input: ProjectionInput,
+): Promise<ProjectionPlan> {
+  if (!isTauri()) {
+    await browserMockDelay(80);
+    return mockProjectionPlan(input);
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ProjectionPlan>("okf_projection_plan", { bundleRoot, input });
+}
+
+export async function exportOkfProjection(
+  bundleRoot: string,
+  input: ProjectionExportInput,
+): Promise<ProjectionExportResult | null> {
+  if (!isTauri()) {
+    await browserMockDelay(120);
+    const plan = mockProjectionPlan(input.projection);
+    if (plan.revision !== input.planRevision) {
+      throw new Error("The source bundle or projection choices changed. Review a refreshed plan.");
+    }
+    return {
+      schemaVersion: 1,
+      status: "exported",
+      destination: `/mock/exports/${plan.destinationFolderName}`,
+      destinationFolderName: plan.destinationFolderName,
+      auditReport: `/mock/exports/${plan.destinationFolderName}.erasure-audit.json`,
+      audit: {
+        schemaVersion: 1,
+        passed: true,
+        checkedFiles: plan.included.length + 3,
+        checkedBytes: 18_640,
+        checkedTerms: plan.omissions.length + input.projection.sensitiveTerms.length,
+        findings: [],
+        truncated: false,
+        diagnostics: [],
+      },
+      validation: { errors: 0, warnings: 0, issues: [], truncated: false },
+      sourceUnchanged: true,
+      replacedExistingProjection: input.overwriteConfirmed,
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<ProjectionExportResult | null>("export_okf_projection", { bundleRoot, input });
 }
 
 export interface CompatibilityReview {

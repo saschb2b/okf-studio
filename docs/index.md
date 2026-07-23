@@ -44,6 +44,8 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
 * [Ignore Rules](features/ignore-rules.md) - Keep selected paths out of Studio through one visible root rule file without mistaking it for access control.
 * [Access Hints](features/access-hints.md) - Show audience, sensitivity, and handling guidance without treating metadata as authorization.
+* [Recipient Projections](features/recipient-projections.md) - Build a reviewed least-disclosure copy for a named recipient without changing the source.
+* [Erasure Audit](features/erasure-audit.md) - Block a projection when declared excluded material remains in its generated output.
 * [Bundle Switcher](features/bundle-switcher.md) - Top-left switcher for the open bundle, sibling bundles in the folder, and recently-opened bundles.
 * [Graph View](features/graph-view.md) - Force-directed graph of concepts, colored by type, linked by cross-references.
 * [Visualization Views](features/viz-views.md) - Treemap, sunburst, and circle packing views of the bundle hierarchy.

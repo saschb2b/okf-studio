@@ -272,6 +272,10 @@ export const families: Family[] = [
             body: "Optional audience, sensitivity, and handling notes stay visible while you read, choose agent context, and review staged files. Studio never treats a metadata label as filesystem permission or silently drops evidence because of it.",
           },
           {
+            title: "Share a reviewed least-disclosure copy",
+            body: "Select seed concepts and a recipient, then inspect every transitive inclusion, omission, link rewrite, and exact redaction before export. Studio validates the separate bundle, blocks declared leaks with a retained erasure audit, and never edits the source.",
+          },
+          {
             title: "A second pass without write authority",
             body: "Studio checks each structured result deterministically first. Studio Agent can then review the work for evidence gaps or clarity in a separate no-tool session. A critic can never approve or apply a change.",
           },
@@ -299,6 +303,8 @@ export const families: Family[] = [
       { label: "Retirement workflow", href: doc("features/retirement-workflow.md"), external: true },
       { label: "Knowledge health", href: doc("features/knowledge-health.md"), external: true },
       { label: "Access hints", href: doc("features/access-hints.md"), external: true },
+      { label: "Recipient projections", href: doc("features/recipient-projections.md"), external: true },
+      { label: "Erasure audit", href: doc("features/erasure-audit.md"), external: true },
       { label: "Structured agent work", href: doc("features/structured-agent-work.md"), external: true },
       { label: "Create a bundle", href: doc("features/create-bundle.md"), external: true },
     ],

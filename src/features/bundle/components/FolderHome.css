@@ -46,6 +46,17 @@
   margin: 0;
   font-size: var(--fs-xl);
 }
+
+.fh-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.fh-project {
+  flex: none;
+}
 .fh-synth {
   font-size: var(--fs-xs);
   font-weight: 400;
@@ -172,4 +183,11 @@
   max-width: 60rem;
   margin: 0 auto;
   padding: 0 var(--space-10);
+}
+
+@media (max-width: 480px) {
+  .fh-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

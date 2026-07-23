@@ -20,6 +20,7 @@ pub mod maintenance;
 pub mod model;
 pub mod parse;
 pub mod profile;
+pub mod projection;
 pub mod query;
 pub mod retrieval;
 pub mod validate;

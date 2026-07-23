@@ -28,6 +28,31 @@ pub struct RetrievalHealth {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RetrievalEvidenceSource {
+    pub source_id: String,
+    pub title: String,
+    pub uri: Option<String>,
+    pub locator: Option<String>,
+    pub observed_at: Option<String>,
+    pub source_digest: Option<String>,
+    pub evidence_digest: Option<String>,
+    pub adapter_id: Option<String>,
+    pub adapter_version: Option<u64>,
+    pub media_type: Option<String>,
+    pub last_checked_at: Option<String>,
+    pub last_status: String,
+    pub last_fingerprint: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RetrievalClaimCitation {
+    pub source_id: String,
+    pub line: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RetrievalUnit {
     pub section_id: String,
     pub content_hash: String,
@@ -53,6 +78,8 @@ pub struct RetrievalUnit {
     pub contradicts: Vec<String>,
     pub resource: Option<String>,
     pub citations: Vec<String>,
+    pub evidence_sources: Vec<RetrievalEvidenceSource>,
+    pub claim_citations: Vec<RetrievalClaimCitation>,
     pub links: Vec<String>,
     pub backlinks: Vec<String>,
     pub token_estimate: usize,
@@ -202,6 +229,8 @@ pub struct EvidenceItem {
     pub source_range: SourceRange,
     pub text: String,
     pub citations: Vec<String>,
+    pub evidence_sources: Vec<RetrievalEvidenceSource>,
+    pub claim_citations: Vec<RetrievalClaimCitation>,
     pub relationship_path: Vec<String>,
     pub token_estimate: usize,
 }

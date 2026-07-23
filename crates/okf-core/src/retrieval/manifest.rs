@@ -1,7 +1,9 @@
 use super::{
-    CanonicalSnapshot, RetrievalHealth, RetrievalManifest, RetrievalUnit, RetrievalUnitKind,
-    SourceRange, RETRIEVAL_PRODUCER, RETRIEVAL_SCHEMA_VERSION,
+    CanonicalSnapshot, RetrievalClaimCitation, RetrievalEvidenceSource, RetrievalHealth,
+    RetrievalManifest, RetrievalUnit, RetrievalUnitKind, SourceRange, RETRIEVAL_PRODUCER,
+    RETRIEVAL_SCHEMA_VERSION,
 };
+use crate::evidence;
 use crate::{Bundle, Concept};
 use sha2::{Digest, Sha256};
 
@@ -68,6 +70,26 @@ pub fn canonical_snapshot(manifest: &RetrievalManifest) -> CanonicalSnapshot {
 }
 
 fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
+    let authored_evidence = evidence::inspect(concept);
+    let evidence_sources = authored_evidence
+        .sources
+        .iter()
+        .map(|source| RetrievalEvidenceSource {
+            source_id: source.id.clone(),
+            title: source.title.clone(),
+            uri: source.uri.clone(),
+            locator: source.locator.clone(),
+            observed_at: source.observed_at.clone(),
+            source_digest: source.source_digest.clone(),
+            evidence_digest: source.evidence_digest.clone(),
+            adapter_id: source.adapter_id.clone(),
+            adapter_version: source.adapter_version,
+            media_type: source.media_type.clone(),
+            last_checked_at: source.last_checked_at.clone(),
+            last_status: source.last_status.clone(),
+            last_fingerprint: source.last_fingerprint.clone(),
+        })
+        .collect::<Vec<_>>();
     let sections = structural_sections(&concept.body);
     let sections = if sections.is_empty() {
         vec![SectionDraft {
@@ -98,6 +120,15 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
             } else {
                 RetrievalUnitKind::Section
             };
+            let claim_citations = authored_evidence
+                .citations
+                .iter()
+                .filter(|citation| (section.start_line..=section.end_line).contains(&citation.line))
+                .map(|citation| RetrievalClaimCitation {
+                    source_id: citation.source_id.clone(),
+                    line: citation.line,
+                })
+                .collect();
             RetrievalUnit {
                 section_id,
                 content_hash,
@@ -128,6 +159,8 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
                 contradicts: extra_strings(concept, "contradicts"),
                 resource: concept.resource.clone(),
                 citations: concept.external_links.clone(),
+                evidence_sources: evidence_sources.clone(),
+                claim_citations,
                 links: concept.links.clone(),
                 backlinks: concept.cited_by.clone(),
                 health: RetrievalHealth {
@@ -378,6 +411,44 @@ mod tests {
         assert_eq!(unit.review_after.as_deref(), Some("2026-06-01"));
         assert_eq!(unit.superseded_by, ["concepts/current"]);
         assert_eq!(unit.contradicts, ["concepts/disputed"]);
+    }
+
+    #[test]
+    fn manifest_projects_claim_level_evidence_with_its_source_identity() {
+        let mut bundle = bundle_with_body("# A\n\nSupported.[^report]\n\n## B\n\nOther");
+        let concept = &mut bundle.concepts[0];
+        concept.extra.insert(
+            "provenance".to_string(),
+            serde_json::json!({
+                "report": {
+                    "title": "Public report",
+                    "uri": "https://example.com/report",
+                    "observed_at": "2026-07-22T00:00:00Z",
+                    "source_digest": format!("sha256-{}", "a".repeat(64)),
+                    "adapter": {"id": "html", "version": 1},
+                    "media_type": "text/html"
+                }
+            }),
+        );
+        concept.extra.insert(
+            "evidence".to_string(),
+            serde_json::json!({
+                "report": {"provenance_id": "report", "locator": "Paragraph 4"}
+            }),
+        );
+
+        let manifest = build_manifest(&bundle);
+        assert_eq!(manifest.units[0].claim_citations[0].source_id, "report");
+        assert_eq!(manifest.units[0].claim_citations[0].line, 3);
+        assert_eq!(
+            manifest.units[0].evidence_sources[0].uri.as_deref(),
+            Some("https://example.com/report")
+        );
+        assert_eq!(
+            manifest.units[0].evidence_sources[0].locator.as_deref(),
+            Some("Paragraph 4")
+        );
+        assert!(manifest.units[1].claim_citations.is_empty());
     }
 
     fn bundle_with_body(body: &str) -> Bundle {

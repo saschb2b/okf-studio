@@ -828,6 +828,8 @@ fn evidence_item(unit: &super::RetrievalUnit, relationship_path: Vec<String>) ->
         source_range: unit.source_range.clone(),
         text: unit.text.clone(),
         citations: unit.citations.clone(),
+        evidence_sources: unit.evidence_sources.clone(),
+        claim_citations: unit.claim_citations.clone(),
         relationship_path,
         token_estimate: unit.token_estimate,
     }

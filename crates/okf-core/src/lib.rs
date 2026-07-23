@@ -7,6 +7,7 @@
 pub mod asset;
 pub mod compatibility;
 pub mod detect;
+mod evidence;
 pub mod frontmatter;
 pub mod graph;
 pub mod health;

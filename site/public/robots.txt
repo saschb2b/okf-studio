@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://saschb2b.github.io/okf-viewer/sitemap.xml
+Sitemap: https://saschb2b.github.io/okf-studio/sitemap.xml

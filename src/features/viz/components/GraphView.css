@@ -5,6 +5,11 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  /* The pane is the query container for its own overlay chrome: the toolbar
+     has to change shape by how much room the pane has, not by how wide the
+     window is (a split pane or an open agent panel narrows it independently).
+     Shared with the hierarchy views, which render `.graph-view .viz-view`. */
+  container-type: inline-size;
 }
 
 .graph-canvas {
@@ -19,40 +24,54 @@
   cursor: grabbing;
 }
 
+/* Zoom controls: ONE object, not three. They were three separately bordered
+   buttons with gaps between them, each carrying the full dialog --shadow, so a
+   single control read as three stacked enclosures and cast three shadows over
+   the canvas. One border, one shadow, hairline dividers: the same segmented
+   shape the toolbar uses, turned vertical. */
 .graph-controls {
   position: absolute;
   right: 12px;
   bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
   z-index: 2;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .graph-btn {
   font: inherit;
   font-size: var(--fs-md);
   line-height: 1;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-elev);
-  color: var(--text);
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
   cursor: pointer;
-  box-shadow: var(--shadow);
+}
+
+.graph-btn:first-child {
+  border-top: 0;
 }
 
 .graph-btn:hover {
   background: var(--bg-sunken);
+  color: var(--text);
 }
 
+/* Inset, so the ring stays inside the group's clipped corners. */
 .graph-btn:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  outline: 0;
+  box-shadow: inset 0 0 0 var(--focus-w) var(--accent);
 }
 
 .graph-fit {
@@ -93,6 +112,71 @@
   pointer-events: auto;
 }
 
+/* Independent positioning buys a pane-centered middle region, and it costs
+   collision: all three regions share one coordinate space, so once the pane is
+   narrow enough that they would meet, they simply overlap instead. At 447px
+   (the graph pane with the agent panel open) the Controls button sat clipped
+   under the mode bar and the switcher covered the word "Focus".
+   Below the threshold the toolbar becomes a real three-track row, so the
+   regions push on each other rather than through each other. The center is
+   then centered between its neighbors instead of in the pane, which is the
+   right trade at a width where nothing else fits anyway. */
+@container (max-width: 620px) {
+  .graph-toolbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .graph-toolbar-left {
+    position: static;
+    grid-column: 1;
+  }
+  .graph-mode,
+  .viz-crumbs {
+    position: static;
+    transform: none;
+    grid-column: 2;
+    justify-self: center;
+    min-width: 0;
+  }
+  .graph-toolbar-right {
+    position: static;
+    grid-column: 3;
+  }
+}
+
+/* Narrower than the three regions can sit side by side (Controls plus the mode
+   bar plus the switcher need roughly 470px), the center region drops to its own
+   row rather than being squeezed to nothing: the pinned pair keeps the top row
+   and the mode bar sits centered beneath them. */
+@container (max-width: 500px) {
+  .graph-toolbar {
+    grid-template-areas:
+      "left . right"
+      "center center center";
+    row-gap: var(--space-6);
+  }
+  .graph-toolbar-left {
+    grid-area: left;
+  }
+  .graph-toolbar-right {
+    grid-area: right;
+  }
+  .graph-mode,
+  .viz-crumbs {
+    grid-area: center;
+  }
+}
+
+/* Tighter still: the "Depth" word is the first thing to go. The three numbered
+   buttons keep their own labels, and the group keeps aria-label="Focus depth". */
+@container (max-width: 380px) {
+  .graph-depth-label {
+    display: none;
+  }
+}
+
 .graph-toolbar-left {
   display: flex;
   gap: var(--space-8);
@@ -125,7 +209,7 @@
   background: var(--bg-elev);
   color: var(--text);
   cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
 
 .graph-panel-toggle:hover {
@@ -234,16 +318,33 @@
 
 /* Mode toggle (Overview/Focus) + depth stepper — the toolbar's center region,
    pane-centered independent of the side regions' widths. */
+/* The centered mode cluster stacks: the control bar, then its hint beneath.
+   Both are centered on the same axis, so nothing about the stack is ragged. */
 .graph-mode {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-8);
-  flex-wrap: wrap;
-  justify-content: center;
+  gap: var(--space-6);
+  max-width: 100%;
+}
+
+/* Mode and depth are one control, so they are one pill. They used to be two
+   separately bordered and shadowed pills that appeared side by side only in
+   focus mode, which gave the toolbar a different silhouette per mode and, in a
+   narrow pane, wrapped into a staircase of mismatched widths. */
+.graph-mode-bar {
+  display: flex;
+  align-items: stretch;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .graph-seg,
@@ -255,7 +356,22 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Inside the bar the two groups are flush sections of one surface, divided by
+   a hairline. Scoped to the bar so the standalone .graph-seg users (the viz
+   switcher, the drill breadcrumb) keep their own pill. */
+.graph-mode-bar .graph-seg,
+.graph-mode-bar .graph-depth {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.graph-mode-bar .graph-depth {
+  border-left: 1px solid var(--border);
 }
 
 .graph-depth-label {
@@ -307,13 +423,19 @@
   outline-offset: 1px;
 }
 
+/* A hint, not a control: quiet text on the canvas, the same register as
+   .graph-chip-hint. As an elevated pill it carried the same weight as the
+   buttons above it and read as a fourth thing to click. */
 .graph-mode-hint {
   font-size: var(--fs-xs);
   color: var(--text-dim);
-  padding: var(--space-4) var(--space-8);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elev);
-  box-shadow: var(--shadow);
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  /* Legible over a busy canvas without a box: a halo in the pane's own
+     background separates the words from whatever node they land on. A pill
+     would give a hint the same weight as the buttons above it. */
+  text-shadow: var(--canvas-text-halo);
 }
 
 /* Defect count chip — bottom left, validation severity feel. */
@@ -336,7 +458,7 @@
   background: var(--bg-elev);
   color: var(--text-dim);
   cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
 
 .graph-chip:hover {
@@ -373,4 +495,5 @@
   opacity: 0.7;
   pointer-events: none;
   user-select: none;
+  text-shadow: var(--canvas-text-halo);
 }

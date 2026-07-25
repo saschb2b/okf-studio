@@ -4,6 +4,14 @@ import { App } from "@/App.tsx";
 import { AppProvider } from "@/shared/store.tsx";
 import { installNativeBehaviors } from "@/shared/platform/native.ts";
 import { logToHost } from "@/shared/ipc.ts";
+
+// The two typefaces the token layer names, bundled into the app rather than
+// resolved from the host. A desktop app that inherits `system-ui` renders in
+// Segoe UI on Windows, SF on macOS, and whatever fontconfig picks on Linux, so
+// the same window has three different metrics, three different x-heights, and
+// three different answers to `font-weight: 650`. Shipping the variable fonts
+// makes the chrome identical on all three. Latin subsets only; see the file.
+import "@/shared/styles/fonts.css";
 import "./styles.css";
 
 // Make the webview feel native: block page-zoom + the default browser context

@@ -36,7 +36,9 @@ import { graphBackbone, maxPerNodeFor } from "@/features/viz/graph/backbone.ts";
 // Lazy so cosmos.gl's WebGL bundle (~hundreds of KB) only loads if the user
 // switches to the GPU renderer — the default canvas path stays lean.
 const CosmosGraph = lazy(() =>
-  import("@/features/viz/components/CosmosGraph.tsx").then((m) => ({ default: m.CosmosGraph })),
+  import("@/features/viz/components/CosmosGraph.tsx").then((m) => ({
+    default: m.CosmosGraph,
+  })),
 );
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
 import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary.tsx";
@@ -90,7 +92,10 @@ export function GraphView() {
   // A transient "isolate" set: when non-null, the graph renders only these ids
   // (plus their neighbors), overriding focus/overview. Driven by the defect
   // count chip. Read-only and tolerant — clearing it returns to normal.
-  const [isolate, setIsolate] = useState<{ label: string; ids: string[] } | null>(null);
+  const [isolate, setIsolate] = useState<{
+    label: string;
+    ids: string[];
+  } | null>(null);
   // Expand-on-click: an explicit, incrementally-grown set the graph restricts to.
   // Seeded/grown by double-clicking a node (pulls in that node + its neighbors),
   // so the user builds up a neighborhood a hop at a time — Neo4j Bloom's core
@@ -115,7 +120,11 @@ export function GraphView() {
     neighbors: [],
   });
   const viewRef = useRef<View>({ scale: 1, tx: 0, ty: 0 });
-  const sizeRef = useRef<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 });
+  const sizeRef = useRef<{ w: number; h: number; dpr: number }>({
+    w: 0,
+    h: 0,
+    dpr: 1,
+  });
   const rafRef = useRef<number | null>(null);
   // Coalesces high-frequency direct-draw requests (wheel zoom, pan) into at most
   // one draw per animation frame — a trackpad zoom can fire hundreds of wheel
@@ -342,10 +351,15 @@ export function GraphView() {
 
   useEffect(() => {
     const list = concepts ?? [];
-    const filter = { query: "", hiddenTypes: state.hiddenTypes, activeTag: state.activeTag };
+    const filter = {
+      query: "",
+      hiddenTypes: state.hiddenTypes,
+      activeTag: state.activeTag,
+    };
     // Apply type/tag filtering first, then the focus/isolate restriction on top.
     const visible = list.filter(
-      (c) => isVisible(c, filter) && (restrictIds === null || restrictIds.has(c.id)),
+      (c) =>
+        isVisible(c, filter) && (restrictIds === null || restrictIds.has(c.id)),
     );
 
     const dark = resolveDark(state.settings.theme);
@@ -446,7 +460,8 @@ export function GraphView() {
         color: palette.color(c.type),
         clusterColor: "", // filled below once communities are detected
         dim: !matchesQuery(c, state.query),
-        orphan: c.degree === 0 && c.links.length === 0 && c.citedBy.length === 0,
+        orphan:
+          c.degree === 0 && c.links.length === 0 && c.citedBy.length === 0,
         broken: c.brokenLinks.length,
       });
     });
@@ -654,7 +669,6 @@ export function GraphView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.settings.reduceMotion]);
 
-
   // ---- Coordinate helpers --------------------------------------------------
 
   function toWorld(clientX: number, clientY: number): { x: number; y: number } {
@@ -748,7 +762,8 @@ export function GraphView() {
   function onPointerUp(e: ReactPointerEvent<HTMLCanvasElement>) {
     const drag = dragRef.current;
     const canvas = canvasRef.current;
-    if (canvas?.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    if (canvas?.hasPointerCapture(e.pointerId))
+      canvas.releasePointerCapture(e.pointerId);
     dragRef.current = null;
     if (!drag) return;
     if (drag.kind === "node") {
@@ -895,7 +910,10 @@ export function GraphView() {
     const pad = 40;
     const bw = Math.max(1, maxX - minX);
     const bh = Math.max(1, maxY - minY);
-    const scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh));
+    const scale = Math.max(
+      MIN_SCALE,
+      Math.min(MAX_SCALE, (w - pad * 2) / bw, (h - pad * 2) / bh),
+    );
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
     return { scale, tx: w / 2 - cx * scale, ty: h / 2 - cy * scale };
@@ -955,9 +973,13 @@ export function GraphView() {
   // Defect counts over the whole bundle (not just the rendered set) — the chip
   // reports the global health and offers to isolate it.
   const orphans = orphanIds(state.bundle);
-  const brokenConceptIds = (concepts ?? []).filter((c) => c.brokenLinks.length > 0).map((c) => c.id);
+  const brokenConceptIds = (concepts ?? [])
+    .filter((c) => c.brokenLinks.length > 0)
+    .map((c) => c.id);
   const hasDefects = orphans.length > 0 || brokenConceptIds.length > 0;
-  const selectedConcept = concepts?.find((concept) => concept.id === state.activeConceptId);
+  const selectedConcept = concepts?.find(
+    (concept) => concept.id === state.activeConceptId,
+  );
   // Focus mode is on but there is no selection (or an isolate overrides it): the
   // graph falls back to Overview, so tell the newcomer how to engage focus.
   const focusFallback =
@@ -1044,63 +1066,78 @@ export function GraphView() {
               type="button"
               className="graph-panel-toggle graph-okf-task"
               aria-label={`Work with ${selectedConcept.title} in an OKF agent`}
-              onClick={() => actions.openOkfTaskLauncher({
-                kind: "graph-selection",
-                id: `graph:${selectedConcept.id}`,
-                title: selectedConcept.title,
-                conceptId: selectedConcept.id,
-              }, { returnFocusId: "graph-okf-task" })}
+              onClick={() =>
+                actions.openOkfTaskLauncher(
+                  {
+                    kind: "graph-selection",
+                    id: `graph:${selectedConcept.id}`,
+                    title: selectedConcept.title,
+                    conceptId: selectedConcept.id,
+                  },
+                  { returnFocusId: "graph-okf-task" },
+                )
+              }
             >
               <Sparkles size={13} aria-hidden="true" />
               Agent
             </button>
           )}
         </div>
-        <div className="graph-mode" role="group" aria-label="Graph mode">
-          <div className="graph-seg">
-            <button
-              type="button"
-              className="graph-seg-btn"
-              aria-label="Overview: show the whole graph"
-              aria-pressed={state.graphMode === "overview" && !explore}
-              onClick={() => {
-                setExplore(null);
-                actions.setGraphMode("overview");
-              }}
-            >
-              Overview
-            </button>
-            <button
-              type="button"
-              className="graph-seg-btn"
-              aria-label="Focus: show the selected concept's neighborhood"
-              aria-pressed={state.graphMode === "focus" && !explore}
-              onClick={() => {
-                setExplore(null);
-                actions.setGraphMode("focus");
-              }}
-            >
-              Focus
-            </button>
-          </div>
-          {state.graphMode === "focus" && (
-            <div className="graph-depth" role="group" aria-label="Focus depth">
-              <span className="graph-depth-label">Depth</span>
-              {[1, 2, 3].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className="graph-seg-btn"
-                  aria-label={`Focus depth ${d}`}
-                  aria-pressed={state.focusDepth === d}
-                  onClick={() => actions.setFocusDepth(d)}
-                >
-                  {d}
-                </button>
-              ))}
+        {/* Mode and depth are one control and share one pill; the hint sits
+            below both, centered on the same axis. */}
+        <div className="graph-mode">
+          <div className="graph-mode-bar" role="group" aria-label="Graph mode">
+            <div className="graph-seg">
+              <button
+                type="button"
+                className="graph-seg-btn"
+                aria-label="Overview: show the whole graph"
+                aria-pressed={state.graphMode === "overview" && !explore}
+                onClick={() => {
+                  setExplore(null);
+                  actions.setGraphMode("overview");
+                }}
+              >
+                Overview
+              </button>
+              <button
+                type="button"
+                className="graph-seg-btn"
+                aria-label="Focus: show the selected concept's neighborhood"
+                aria-pressed={state.graphMode === "focus" && !explore}
+                onClick={() => {
+                  setExplore(null);
+                  actions.setGraphMode("focus");
+                }}
+              >
+                Focus
+              </button>
             </div>
+            {state.graphMode === "focus" && (
+              <div
+                className="graph-depth"
+                role="group"
+                aria-label="Focus depth"
+              >
+                <span className="graph-depth-label">Depth</span>
+                {[1, 2, 3].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className="graph-seg-btn"
+                    aria-label={`Focus depth ${d}`}
+                    aria-pressed={state.focusDepth === d}
+                    onClick={() => actions.setFocusDepth(d)}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {focusFallback && (
+            <span className="graph-mode-hint">Select a concept to focus</span>
           )}
-          {focusFallback && <span className="graph-mode-hint">Select a concept to focus</span>}
         </div>
         <div className="graph-toolbar-right">
           <VizSwitcher />
@@ -1139,7 +1176,8 @@ export function GraphView() {
                 )
               }
             >
-              {orphans.length} orphan{orphans.length === 1 ? "" : "s"} &middot; {brokenConceptIds.length} broken
+              {orphans.length} orphan{orphans.length === 1 ? "" : "s"} &middot;{" "}
+              {brokenConceptIds.length} broken
             </button>
           ) : (
             <span className="graph-chip-hint muted" aria-hidden="true">
@@ -1150,7 +1188,12 @@ export function GraphView() {
       )}
       {renderer === "canvas" && (
         <div className="graph-controls">
-          <button type="button" className="graph-btn" aria-label="Zoom in" onClick={() => zoomBy(1.2)}>
+          <button
+            type="button"
+            className="graph-btn"
+            aria-label="Zoom in"
+            onClick={() => zoomBy(1.2)}
+          >
             +
           </button>
           <button
@@ -1161,7 +1204,12 @@ export function GraphView() {
           >
             &minus;
           </button>
-          <button type="button" className="graph-btn graph-fit" aria-label="Fit graph to view" onClick={fit}>
+          <button
+            type="button"
+            className="graph-btn graph-fit"
+            aria-label="Fit graph to view"
+            onClick={fit}
+          >
             Fit
           </button>
         </div>

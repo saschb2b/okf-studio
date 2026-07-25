@@ -1,0 +1,127 @@
+<!doctype html>
+<!--
+  Source of truth for public/og.png, the 1200x630 social card.
+
+  It is a real page rather than an image editor file, so the card cannot drift
+  from the design system: it links the synced token stylesheet and the same
+  self-hosted Inter build the site ships. Regenerate after changing the
+  headline, the version line, or the hero screenshot:
+
+    pnpm sync:ds
+    agent-browser open "file://$PWD/scripts/og-template.html"
+    agent-browser screenshot --full /tmp/og-full.png
+    python3 -c "from PIL import Image; \
+      Image.open('/tmp/og-full.png').crop((0,0,1200,630)).save('public/og.png')"
+
+  The page is exactly 630 tall and the card sits at the origin, so the crop is
+  the card. Capturing the element directly clips it to the window height.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OKF Studio social card</title>
+<link rel="stylesheet" href="../src/styles/design-system/tokens.css">
+<style>
+  @font-face {
+    font-family: 'Inter Variable';
+    font-weight: 100 900;
+    src: url(../node_modules/@fontsource-variable/inter/files/inter-latin-standard-normal.woff2) format('woff2-variations');
+  }
+  @font-face {
+    font-family: 'JetBrains Mono Variable';
+    font-weight: 100 800;
+    src: url(../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2) format('woff2-variations');
+  }
+  body { margin: 0; background: #333; }
+
+  .og {
+    position: relative;
+    width: 1200px;
+    height: 630px;
+    display: grid;
+    grid-template-columns: 640px 1fr;
+    column-gap: 40px;
+    align-items: center;
+    overflow: hidden;
+    background:
+      radial-gradient(52% 60% at 30% 20%, color-mix(in oklab, var(--colors-secondary) 8%, transparent), transparent 70%),
+      radial-gradient(46% 50% at 78% 6%, color-mix(in oklab, var(--colors-primary) 6%, transparent), transparent 72%),
+      var(--colors-bg);
+    font-family: 'Inter Variable', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-feature-settings: var(--font-features-sans);
+    color: var(--colors-text);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* The same node-dot backdrop as the hero canvas. */
+  .og::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(color-mix(in oklab, var(--colors-text) 5%, transparent) 1px, transparent 1.6px);
+    background-size: 26px 26px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 95%);
+  }
+  .og__copy { position: relative; padding: 0 0 0 64px; }
+
+  .og__brand {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 40px;
+    font-size: 26px; font-weight: 600; letter-spacing: var(--tracking-tight);
+  }
+  .og__brand img { width: 52px; height: 52px; border-radius: var(--radius-md); }
+
+  .og__title {
+    margin: 0 0 24px;
+    font-size: 42px; font-weight: 600;
+    line-height: 1.1; letter-spacing: var(--tracking-tighter);
+  }
+  .og__sub {
+    margin: 0 0 40px;
+    max-width: 27ch;
+    font-size: 22px; line-height: 1.5;
+    color: var(--colors-text-muted);
+  }
+  .og__meta {
+    margin: 0;
+    font-family: 'JetBrains Mono Variable', monospace;
+    font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--colors-text-dim);
+  }
+
+  /* The product shot runs off the right edge, the hero's grounded-media motif
+     turned sideways: rounded and bordered on the side that stays in frame. */
+  .og__art {
+    position: relative;
+    align-self: stretch;
+    margin: 56px -80px 56px 0;
+    border: var(--border-width) solid var(--colors-border-strong);
+    border-right: none;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    background: var(--colors-surface);
+  }
+  .og__art img {
+    display: block;
+    width: 760px; height: 100%;
+    object-fit: cover; object-position: left top;
+  }
+</style>
+</head>
+<body>
+  <div class="og">
+    <div class="og__copy">
+      <div class="og__brand">
+        <img src="../public/icon-512.png" alt="">
+        OKF Studio
+      </div>
+      <h1 class="og__title">Explore connected knowledge<br>with your agents.</h1>
+      <p class="og__sub">A local-first desktop workspace for Open Knowledge Format bundles.</p>
+      <p class="og__meta">Free and open source · Windows · Linux</p>
+    </div>
+    <figure class="og__art">
+      <img src="../public/screenshot-graph.webp" alt="">
+    </figure>
+  </div>
+</body>
+</html>

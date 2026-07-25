@@ -43,7 +43,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/saschb2b/okf-viewer/releases/latest/download/latest.json"
+        "https://github.com/saschb2b/okf-studio/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI1RUM0MDE4NzU4REU2RTkKUldUcDVvMTFHRURzdFhHZ3J5cnkwWE5VMGJ4STJpM25jd1haNnZ4Y2sxVFRXUE11TEdhTmliOFEK"
     },

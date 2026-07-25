@@ -1,7 +1,7 @@
 // routes.ts: the one owner of the site's route table. Every internal href on
 // every page comes from here, already prefixed with the GitHub Pages base path.
 
-const base = import.meta.env.BASE_URL; // "/okf-viewer/"
+const base = import.meta.env.BASE_URL; // "/okf-studio/"
 
 export const routes = {
   home: base,

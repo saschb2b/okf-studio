@@ -24,7 +24,7 @@ Tauri is a framework for building small, fast, secure desktop (and mobile) apps 
 # Project shape
 
 ```
-okf-viewer/
+okf-studio/
   src/            # frontend (web app)
   src-tauri/      # Rust core: Cargo.toml, tauri.conf.json, capabilities/, src/
   docs/           # this OKF bundle (also the built-in sample)

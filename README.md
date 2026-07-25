@@ -7,17 +7,17 @@
 <p align="center"><strong>Explore connected knowledge with the agents you already use.</strong></p>
 
 <p align="center">
-  <a href="https://saschb2b.github.io/okf-viewer/">Homepage</a>
+  <a href="https://saschb2b.github.io/okf-studio/">Homepage</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/saschb2b/okf-viewer/releases/latest">Download</a>
+  <a href="https://github.com/saschb2b/okf-studio/releases/latest">Download</a>
   &nbsp;·&nbsp;
-  <a href="https://saschb2b.github.io/okf-viewer/#features">Features</a>
+  <a href="https://saschb2b.github.io/okf-studio/#features">Features</a>
   &nbsp;·&nbsp;
   <a href="docs/index.md">Docs</a>
 </p>
 
 <p align="center">
-  <a href="https://saschb2b.github.io/okf-viewer/">
+  <a href="https://saschb2b.github.io/okf-studio/">
     <img src="site/public/screenshot-graph.webp" width="840" alt="OKF Studio showing a concept graph and reader beside the agent catalog">
   </a>
 </p>
@@ -26,7 +26,7 @@ OKF Studio is a local-first desktop workspace for [Open Knowledge Format](https:
 
 ## Download
 
-Get the latest build from the [Releases page](https://github.com/saschb2b/okf-viewer/releases/latest), or browse the [homepage](https://saschb2b.github.io/okf-viewer/#download).
+Get the latest build from the [Releases page](https://github.com/saschb2b/okf-studio/releases/latest), or browse the [homepage](https://saschb2b.github.io/okf-studio/#download).
 
 | Platform | Formats |
 |----------|---------|

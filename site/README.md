@@ -1,6 +1,6 @@
 # OKF Studio product site
 
-The product/download site at [saschb2b.github.io/okf-viewer](https://saschb2b.github.io/okf-viewer/), built with Astro. A small multi-page site shaped by [docs/product/site-evolution/](../docs/product/site-evolution/): the homepage tells one knowledge-work loop; capability depth lives on Product routes.
+The product/download site at [saschb2b.github.io/okf-studio](https://saschb2b.github.io/okf-studio/), built with Astro. A small multi-page site shaped by [docs/product/site-evolution/](../docs/product/site-evolution/): the homepage tells one knowledge-work loop; capability depth lives on Product routes.
 
 ## Structure
 
@@ -40,7 +40,7 @@ Both typefaces are self-hosted through `@fontsource-variable/*` and imported onc
 pnpm install
 pnpm dev       # sync design system, then astro dev
 pnpm build     # sync design system, then astro build (CI runs this)
-pnpm preview   # serve dist/ (the site lives under /okf-viewer/)
+pnpm preview   # serve dist/ (the site lives under /okf-studio/)
 ```
 
 Deploys via the repo's Pages workflow on pushes to `main`; it is not part of the app's CI gate, so run `pnpm build` here before pushing site changes.

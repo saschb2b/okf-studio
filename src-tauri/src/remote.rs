@@ -461,10 +461,10 @@ mod tests {
         let source = src(
             "github",
             Some("saschb2b"),
-            Some("okf-viewer"),
+            Some("okf-studio"),
             Some("main"),
             Some("docs"),
-            "https://github.com/saschb2b/okf-viewer/tree/main/docs",
+            "https://github.com/saschb2b/okf-studio/tree/main/docs",
         );
         let (url, _) = resolve(&source).unwrap();
         let bytes = download(&url).expect("download the repo tarball");

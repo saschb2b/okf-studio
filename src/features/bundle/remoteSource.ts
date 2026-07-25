@@ -101,6 +101,6 @@ export const REMOTE_EXAMPLES: RemoteExample[] = [
   {
     title: "OKF Studio docs",
     blurb: "This app's own knowledge, as an OKF bundle",
-    url: "https://github.com/saschb2b/okf-viewer/tree/main/docs",
+    url: "https://github.com/saschb2b/okf-studio/tree/main/docs",
   },
 ];

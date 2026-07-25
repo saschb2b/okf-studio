@@ -57,7 +57,7 @@ Gate: this roadmap, [Agent Panel](../features/agent-panel.md), [Agent System](..
 - [x] Rename visible app, docs, fixture, site, window-title, and display metadata copy to **OKF Studio**.
 - [x] Replace the viewer one-liner with a proposition covering connected knowledge and user-chosen agents.
 - [x] Keep the repository name, update endpoint, Tauri identifier `app.okfviewer.desktop`, and current app-data location so installed copies upgrade in place.
-- [x] Document compatibility names that intentionally remain `okf-viewer`.
+- [x] Document compatibility names that intentionally remain `okf-viewer` (the Tauri identifier, credential service, store file, and package/binary name; the repository itself later became `saschb2b/okf-studio`).
 
 Gate: no visible Viewer branding remains; updater identity is unchanged; app and site builds pass.
 

@@ -7,7 +7,7 @@ A cross-platform **desktop workspace** (Windows + Ubuntu, macOS for free) that a
 The **Rust core** (`crates/okf-core` + `src-tauri/`) owns filesystem, process, and network mediation: it [scans a folder for bundles](docs/architecture/bundle-detection.md), [parses concepts/links/backlinks](docs/architecture/okf-parsing.md), [validates](docs/features/validation.md), [watches for changes](docs/features/live-reload.md), and hosts explicit [agent connections](docs/architecture/agent-system.md). Its typed [command/event surface](docs/architecture/ipc-and-security.md) hands the **React 19 + TypeScript frontend** (`src/`, Vite, React Compiler enabled — no manual memoization) ready-to-render state. The frontend combines the [graph](docs/features/graph-view.md), [concept reader](docs/features/concept-reader.md), [search](docs/features/search-and-filter.md), [navigation](docs/features/navigation.md), and [Agent Panel](docs/features/agent-panel.md). Folder opening remains read-only; agent processes and network actions start only after explicit user actions.
 
 ```
-okf-viewer/
+okf-studio/
   src/             # web frontend (React 19 + TS, Vite) — domain-first: features/ + shared/
   src-tauri/       # Tauri shell: tauri.conf.json, capabilities/, commands
   crates/okf-core/ # Rust parsing/validation core (unit-tested against docs/)

@@ -1,7 +1,7 @@
 name: Deploy site to GitHub Pages
 
 # Builds the Astro marketing/download site (site/) and deploys it to GitHub
-# Pages at https://saschb2b.github.io/okf-viewer/. Pages source must be set to
+# Pages at https://saschb2b.github.io/okf-studio/. Pages source must be set to
 # "GitHub Actions" in the repo settings.
 on:
   push:

@@ -15,7 +15,7 @@
 import { isTauri } from "@/shared/ipc.ts";
 
 /** The release the user is pointed at for a manual download (.deb path). */
-export const RELEASES_URL = "https://github.com/saschb2b/okf-viewer/releases/latest";
+export const RELEASES_URL = "https://github.com/saschb2b/okf-studio/releases/latest";
 
 export type UpdateStatus =
   | { kind: "idle" }

@@ -4,7 +4,7 @@
 export const version = "v0.5.0";
 export const softwareVersion = "0.5.0";
 
-export const repo = "https://github.com/saschb2b/okf-viewer";
+export const repo = "https://github.com/saschb2b/okf-studio";
 export const releasesLatest = `${repo}/releases/latest`;
 export const releases = `${repo}/releases`;
 export const issues = `${repo}/issues`;

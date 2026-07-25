@@ -8,13 +8,20 @@
   --text: #1a1d21;
   --text-dim: #5b626b;
   --border: #d8dce2;
-  --accent: #2f6df6;
+  /* Light-theme accent and status colors are darker than their dark-theme
+     counterparts because they have to carry TEXT on a near-white surface, not
+     just fill a shape. The previous values missed WCAG AA against --bg-sunken,
+     the palest surface they land on: accent #2f6df6 at 3.90, warn #b8860b at
+     2.80, ok #2e7d52 at 4.33. Every value below clears 4.5 on all three
+     backgrounds and still takes white at 4.5 when used as a fill. Check both
+     directions before changing one. */
+  --accent: #1d5fe0;
   --accent-contrast: #ffffff;
   /* Dim accent tint for selected/pressed items; tracks --accent per theme. */
   --accent-dim: color-mix(in srgb, var(--accent) 14%, transparent);
   --error: #c0392b;
-  --warn: #b8860b;
-  --ok: #2e7d52;
+  --warn: #8a6100;
+  --ok: #276b46;
   --shadow: 0 6px 24px rgba(20, 24, 31, 0.14);
   /* Subtle elevation for small raised surfaces (e.g. the segmented-control
      thumb) — far lighter than the dialog/popover --shadow. */
@@ -51,13 +58,26 @@
   --lh-snug: 1.35;
   --lh-normal: 1.5;
 
+  /* Halo for label text drawn over a canvas (the graph and hierarchy panes),
+     where there is no surface behind the words. Two stacked shadows in the
+     pane's own background give the glyphs an edge against a node or an edge
+     without putting them in a box. */
+  --canvas-text-halo: 0 0 6px var(--bg-sunken), 0 0 3px var(--bg-sunken);
+
   /* Focus + motion */
   --focus-w: 2px;
   --dur: 120ms;
 
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Both families are bundled (see main.tsx), so the chrome renders the same on
+     every platform's webview; the system stacks stay behind them as the
+     fallback while a variable font loads and for anyone who blocks web fonts.
+     `font-feature-settings` picks Inter's single-storey g and l and its curved
+     r, which read quieter at the 12px this UI mostly runs at. */
+  --mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+  --ui: "Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --ui-features: "cv05" 1, "cv11" 1, "ss03" 1;
   color-scheme: light;
 }
 
@@ -142,6 +162,8 @@ body {
   background: transparent;
   color: var(--text);
   font-size: var(--fs-sm);
+  font-optical-sizing: auto;
+  font-feature-settings: var(--ui-features);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -385,7 +407,7 @@ body,
 .issues li { padding: 7px 8px; border-radius: 6px; cursor: pointer; border-left: 3px solid var(--border); margin-bottom: 4px; }
 .issues li.error { border-left-color: var(--error); }
 .issues li.warning { border-left-color: var(--warn); }
-.issues .lvl { font-size: 11px; text-transform: uppercase; color: var(--text-dim); }
+.issues .lvl { font-size: var(--fs-xs); text-transform: uppercase; color: var(--text-dim); }
 .muted { color: var(--text-dim); }
 .log-entry h4 { margin: 12px 0 4px; }
 

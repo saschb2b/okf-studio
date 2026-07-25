@@ -351,7 +351,10 @@
 .markdown h1 { font-size: 1.6em; letter-spacing: -0.01em; }
 .markdown h2 { font-size: 1.3em; letter-spacing: -0.01em; }
 .markdown h3 { font-size: 1.12em; }
-.markdown h4 { font-size: 1em; color: var(--text-dim); }
+/* Same size as body, but heavier and in full text color. It used to be dimmed,
+   which made a heading quieter than the paragraph it introduces and inverted
+   the hierarchy; the weight step from 400 to 600 is the distinction. */
+.markdown h4 { font-size: 1em; letter-spacing: 0.01em; }
 .markdown p { margin: 0.9em 0; }
 .markdown ul,
 .markdown ol { margin: 0.8em 0; padding-left: 1.5em; }
@@ -565,15 +568,29 @@
   padding: 1px var(--space-4);
   border-radius: var(--radius-sm);
 }
+/* A code block is marked by its monospace face and its sunken surface. It used
+   to also carry a 3px accent rule down its left edge, which cost twice: the
+   accent means "you can act on this" everywhere else in the app, and a code
+   block is not actionable; and it made code a visual twin of a NOTE callout,
+   which is a bordered box with a 3px blue left rule and a tinted fill. In a
+   technical bundle the two sit next to each other constantly.
+   The colored left rule now belongs to callouts alone, where the color carries
+   severity. See --canvas-text-halo's neighbours in styles.css for the same
+   rule applied to the graph. */
 .markdown pre {
   position: relative;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-12) var(--space-16);
+  /* `overflow-x: auto` alone forces the used overflow-y to `auto` too (CSS
+     Overflow: a non-visible value on one axis promotes the other), so a box
+     one sub-pixel taller than its content grows a vertical scrollbar nobody
+     asked for. Naming both axes keeps the horizontal scroll and drops the
+     phantom. WebKitGTK under fractional scaling produces that sub-pixel
+     routinely; see the same defense on html/body in styles.css. */
   overflow-x: auto;
-  /* Subtle syntax tint via a left accent rule. */
-  border-left: 3px solid var(--accent);
+  overflow-y: hidden;
 }
 .markdown pre code {
   background: none;
@@ -612,8 +629,12 @@
   /* A span (valid mid-paragraph) styled as its own block. */
   display: block;
   margin: 1em 0;
-  /* A wide equation scrolls in place rather than breaking the measure. */
+  /* A wide equation scrolls in place rather than breaking the measure. The
+     explicit overflow-y stops the promotion described on `.markdown pre`:
+     KaTeX's display wrapper measured 2px taller than its line box, so every
+     display equation carried a vertical scrollbar it could not use. */
   overflow-x: auto;
+  overflow-y: hidden;
   padding: var(--space-2) 0;
 }
 .markdown .math-block .katex-display {
@@ -633,8 +654,10 @@
    colors into the SVG, so the string can't be re-themed in place). */
 .markdown .mermaid-diagram {
   margin: 1em 0;
-  /* A wide diagram scrolls in place rather than breaking the measure. */
+  /* A wide diagram scrolls in place rather than breaking the measure; the
+     explicit overflow-y stops the promotion described on `.markdown pre`. */
   overflow-x: auto;
+  overflow-y: hidden;
   text-align: center;
 }
 .markdown .mermaid-diagram svg {
@@ -652,13 +675,17 @@
 }
 
 /* GFM alert callouts (> [!NOTE] / [!TIP] / [!IMPORTANT] / [!WARNING] / [!CAUTION]). */
+/* Three signals for one thing, down from four: the colored left rule, a faint
+   wash of the same hue, and the colored title. The outer 1px border is gone.
+   With it, a callout carried a box AND a rule AND a fill AND a colored
+   heading, which is why an amber Warning read as a slab dropped into the
+   prose rather than as an aside within it. */
 .markdown .callout {
   margin: 1em 0;
   padding: var(--space-10) var(--space-16);
-  border: 1px solid var(--border);
   border-left: 3px solid var(--c, var(--accent));
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--c, var(--accent)) 8%, transparent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--c, var(--accent)) 7%, transparent);
 }
 .markdown .callout-title {
   margin: 0 0 var(--space-4);
@@ -774,7 +801,9 @@
 .markdown .markdown-table-scroll {
   width: 100%;
   margin: 1em 0;
+  /* Explicit overflow-y: see the note on `.markdown pre`. */
   overflow-x: auto;
+  overflow-y: hidden;
   overscroll-behavior-inline: contain;
 }
 .markdown .markdown-table-scroll:focus-visible {
@@ -790,10 +819,20 @@
   font-size: var(--fs-sm);
   table-layout: auto;
 }
+/* Rules between rows, not a box around every cell. A full grid draws one border
+   per cell edge, so a 3x2 table spends 17 rules separating 6 values and reads
+   as a spreadsheet import rather than as part of the prose. Horizontal rules
+   alone carry the row structure, and the eye follows a row without help; the
+   header rule is the one place a heavier line earns its keep. Matches the
+   hairline language the rest of the app uses for grouped rows. */
 .markdown th,
 .markdown td {
-  border: 1px solid var(--border);
+  border: 0;
+  border-bottom: 1px solid var(--border);
   padding: var(--space-6) var(--space-10);
+  /* Cells run to the column edges, but the first sits flush with the prose. */
+  padding-left: 0;
+  padding-right: var(--space-16);
   max-width: min(48ch, 70vw);
   text-align: left;
   vertical-align: top;
@@ -804,9 +843,18 @@
   overflow-wrap: break-word;
   word-break: normal;
 }
+/* The header is a label row: no fill, a heavier rule under it, and the same
+   mono-uppercase register the app uses for column labels everywhere else. */
 .markdown th {
-  background: var(--bg-sunken);
+  background: none;
+  border-bottom: 1px solid var(--text-dim);
+  font-size: 0.92em;
   font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+.markdown tbody tr:last-child > * {
+  border-bottom: 0;
 }
 .markdown tbody tr:hover {
   background: color-mix(in srgb, var(--bg-sunken) 60%, transparent);

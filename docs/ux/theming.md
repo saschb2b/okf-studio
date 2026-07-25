@@ -22,6 +22,8 @@ All visual values come from a single token layer defined once on `:root` (light 
 - The app follows the OS color scheme by default, with a manual override in settings.
 - Both themes meet WCAG AA contrast for text and for node/edge legibility, part of the app's [accessibility](accessibility.md) commitments.
 
+**The light theme's accent and status colors are darker than their dark-theme counterparts**, and deliberately so: on a near-white surface they have to carry *text*, not just fill a shape. Each is checked against all three background roles, `--bg`, `--bg-elev`, and `--bg-sunken`, because `--bg-sunken` is the palest surface a colored label lands on and is the one that fails first. The earlier values missed AA there: the accent came to 3.90, `--warn` to 2.80, and `--ok` to 4.33. Their replacements clear 4.5 on all three and still take white at 4.5 when used as a fill, so a colored role works in both directions. Check both before changing one; an accent light enough to look bright on dark is never dark enough to be read on white.
+
 # The type-color palette
 
 Concept `type` drives node and badge color across the [graph](../features/graph-view.md), [reader](../features/concept-reader.md), [bundle switcher](../features/bundle-switcher.md), and [filters](../features/search-and-filter.md). Because `type` is open-ended (the [spec](../reference/okf-spec-summary.md) does not enumerate it), colors are assigned **deterministically from the type string** rather than a fixed map:
@@ -32,7 +34,9 @@ Concept `type` drives node and badge color across the [graph](../features/graph-
 
 # Typography & code
 
-- A readable UI font for chrome and bodies; a monospace font for inline code and fenced blocks, with light syntax tinting.
+- **Inter** for chrome and bodies, **JetBrains Mono** for inline code and fenced blocks with light syntax tinting, both shipped with the app as variable fonts rather than resolved from the host. A desktop app that inherits `system-ui` renders in Segoe UI on Windows, SF on macOS, and whatever fontconfig picks on Linux, so one window has three different sets of metrics and three different x-heights, and a weight like 650 either exists or silently rounds to bold. Bundling them costs about 113KB of latin subsets and makes the chrome identical on all three platforms. The system stacks stay behind them as the fallback.
+- Inter is set with `font-optical-sizing: auto` and the `--ui-features` alternates (single-storey `g` and `l`, curved `r`), which read quieter at the 12px most of the chrome runs at.
+- The reader's opt-in serif and its own measure/line-height controls are unaffected; they layer on top of this (see [Concept Reader](../features/concept-reader.md)).
 - Markdown rendering styles (tables, blockquotes, headings) are consistent in both themes.
 
 # Native chrome

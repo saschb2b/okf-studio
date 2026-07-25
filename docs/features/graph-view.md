@@ -43,6 +43,8 @@ A **Reset to defaults** restores the tuned starting point. The graph **auto-fits
 
 By default the graph shows a **focused neighborhood** of the selected concept — that concept plus its neighbors out to an adjustable **depth** (1–3 hops over links and backlinks) — rather than the whole bundle, so it answers "what relates to *this*?" instead of presenting a hairball. An **Overview / Focus** toggle switches to the full graph (Overview is the default when nothing is selected), and a depth stepper sets the hop count. Toggling reuses cached node positions so the layout animates rather than jumps.
 
+Mode and depth are **one control on one surface**, divided by a hairline rather than split into two floating pills: the depth stepper only exists in Focus, and as a separate pill it changed the toolbar's silhouette per mode and wrapped into a staircase on a narrow pane. When the graph cannot be focused because nothing is selected, the "Select a concept to focus" hint sits beneath the control as quiet canvas text with a background halo, not as a third pill competing with the buttons above it.
+
 # Surfacing defects
 
 The graph makes conformance problems visible instead of hiding them: **orphans** (concepts with no links in or out) get a marked ring, concepts with **broken links** get a warning marker, and a count chip (`N orphans · M broken`) isolates that set on click. This stays [tolerant](validation.md) — defects are surfaced, never rejected, and use the same severity language as [Validation](validation.md).

@@ -39,6 +39,7 @@ All three space-filling views consume one tree, built per render from the same f
 # Switching and persistence
 
 - The switcher is an icon segmented control every view renders in the same toolbar spot; `V` cycles the views, and the [command palette](command-palette.md) has a `View: …` action per visualization.
+- The toolbar's three regions — per-view controls left, the variant control or breadcrumb centered, the switcher right — are positioned independently so an empty region never shifts the others, which keeps the center **pane**-centered. That costs collision once the pane is too narrow for all three, so below roughly 500 CSS pixels of pane width the toolbar becomes a real grid: the pinned pair keeps the top row and the centered region drops beneath them. The breakpoint is a **container query on the pane**, not the window, because a split pane or an open agent panel narrows the pane on its own.
 - The choice **persists with the layout** (the same stored blob as the pane sizes), so a user who prefers the treemap gets the treemap on next launch. It never silently resets to the graph; an unknown stored value falls back to it.
 - **Drill position survives switching**: the breadcrumb (`Bundle › design › tokens ×`) is shared state, so drilling into a group in the treemap and switching to sunburst keeps you in that group. Each crumb re-roots; `×` returns to the whole bundle.
 - Graph-only chrome (Overview/Focus, link density, defect chips, zoom keys) mounts and unmounts with the graph itself; the other views bring only their breadcrumb.

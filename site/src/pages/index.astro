@@ -1,6 +1,6 @@
 ---
 // Home: one product story, not a feature catalogue. Hero, the knowledge-work
-// loop, selected product proof, the trust model, the format bridge, and the
+// loop, three product stories, the boundaries, the format itself, and the
 // download close. Capability depth lives on the Product routes.
 import Shell from "../components/Shell.astro";
 import LoopGrid from "../components/LoopGrid.astro";
@@ -17,9 +17,9 @@ const shotReader = `${base}screenshot-reader.webp`;
 // never pretend to be one.
 const reviewFlow = [
   { title: "The agent proposes", body: "Changes land in a staged tree, never directly on your files." },
-  { title: "You review", body: "Each diff hunk, and each claim before and after." },
+  { title: "You review", body: "Every diff hunk, and every claim before and after." },
   { title: "Studio validates", body: "Deterministic checks against the OKF spec." },
-  { title: "Apply and keep", body: "One restorable transaction, committed to Git when you say so." },
+  { title: "You apply", body: "One restorable transaction, committed to Git when you say so." },
 ];
 ---
 
@@ -32,17 +32,22 @@ const reviewFlow = [
       <div class="container">
         <span class="eyebrow hero__eyebrow">OKF Studio · {version}</span>
         <h1 class="hero__title">
-          Explore connected knowledge<br /><span class="hero__grad">with your agents.</span>
+          Explore connected knowledge<br />with your agents.
         </h1>
         <p class="hero__sub">
-          A local-first desktop workspace: open an Open Knowledge Format bundle
-          as a graph and reader, then work on it with the agent you choose.
+          Open a bundle of Markdown as a graph and a reader, question it with
+          the agent you already use, and review every proposed change before it
+          touches a file.
         </p>
-        <div class="hero__cta">
-          <a class="btn btn--primary" href={routes.download}>↓ Download for free</a>
-          <a class="btn btn--secondary" href="#loop">See how it works</a>
+        <div class="actions actions--center">
+          <a class="btn btn--primary btn--lg" href={routes.download}>↓ Download for free</a>
+          <a class="btn btn--secondary btn--lg" href="#loop">See how it works</a>
         </div>
-        <p class="hero__meta">Free & open source · Windows · macOS · Linux</p>
+        {/* The platform line names what actually ships: there is no signed
+            macOS build yet, so the hero does not imply one. */}
+        <p class="hero__meta">
+          Free and open source · Windows and Linux builds · macOS from source
+        </p>
         <figure class="hero__art">
           <img
             class="zoomable"
@@ -64,75 +69,106 @@ const reviewFlow = [
     <section class="section" id="loop">
       <div class="container">
         <div class="section__head">
-          <span class="eyebrow">Knowledge work</span>
+          <span class="eyebrow">How it works</span>
           <h2 class="section__title">Understand. Ask. Improve. Keep.</h2>
           <p class="section__sub">
-            Studio keeps reading, asking, revising, and versioning in the same
-            workspace. Open any area for the details.
+            One workspace covers reading a bundle, questioning it, changing it,
+            and versioning the result. Open any area for the details.
           </p>
         </div>
         <LoopGrid />
       </div>
     </section>
 
-    <section class="section showcase" aria-label="Product proof">
+    <section class="section" aria-label="Product stories">
       <div class="container">
-        <div class="showcase__row">
-          <div class="showcase__text">
-            <span class="eyebrow showcase__eyebrow">Understand</span>
-            <h2 class="showcase__title">Every concept, its links, and where it's cited.</h2>
-            <p class="showcase__body">
-              A distraction-free reader with a live index, syntax-highlighted
-              code, and the relationship panel. Hover a link to peek at its
-              target, and open side quests in tabs that keep their own history.
-            </p>
-            <a class="showcase__link" href={routes.explore}>Explore knowledge →</a>
-          </div>
-          <figure class="showcase__media">
-            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotReader} alt="OKF Studio's concept reader with the index and relationship panel" width="1760" height="1117" loading="lazy" decoding="async" />
-          </figure>
-        </div>
+        <div class="stories">
+          <section class="story">
+            <span class="eyebrow story__eyebrow">Understand</span>
+            <div class="story__head">
+              <h2 class="story__title">Every concept, its links, and where it is cited.</h2>
+              <div>
+                <p class="story__body">
+                  A reader with a live index, highlighted code, and a
+                  relationship panel showing what a concept links to and what
+                  cites it. Hover a link to preview its target, and branch side
+                  quests into tabs that keep their own history.
+                </p>
+                <a class="story__link" href={routes.explore}>Explore knowledge →</a>
+              </div>
+            </div>
+            <figure class="story__media">
+              <img
+                class="zoomable"
+                data-spotlight
+                role="button"
+                tabindex="0"
+                src={shotReader}
+                alt="OKF Studio's concept reader with the index and relationship panel"
+                width="1760"
+                height="1117"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+          </section>
 
-        <div class="showcase__row showcase__row--reverse">
-          <div class="showcase__text">
-            <span class="eyebrow showcase__eyebrow">Ask</span>
-            <h2 class="showcase__title">Ask the bundle, beside the bundle.</h2>
-            <p class="showcase__body">
-              An agent thread runs next to the graph and reader, answering from
-              the open bundle. Context goes in explicitly, and each answer keeps
-              a receipt of excerpts and conflicts you can open under Inspect.
-            </p>
-            <a class="showcase__link" href={routes.agents}>Work with agents →</a>
-          </div>
-          <figure class="showcase__media">
-            <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotGraph} alt="An agent thread in OKF Studio answering a question about the open bundle, beside the concept graph and reader" width="1760" height="1051" loading="lazy" decoding="async" />
-          </figure>
-        </div>
+          <section class="story">
+            <span class="eyebrow story__eyebrow">Ask</span>
+            <div class="story__head">
+              <h2 class="story__title">Ask the bundle, beside the bundle.</h2>
+              <div>
+                <p class="story__body">
+                  An agent thread runs next to the graph and reader and answers
+                  from the open bundle. You see exactly what context goes in,
+                  and every answer keeps a receipt of the excerpts it used and
+                  the conflicts it found.
+                </p>
+                <a class="story__link" href={routes.agents}>Work with agents →</a>
+              </div>
+            </div>
+            <figure class="story__media">
+              <img
+                class="zoomable"
+                data-spotlight
+                role="button"
+                tabindex="0"
+                src={shotGraph}
+                alt="An agent thread in OKF Studio answering a question about the open bundle, beside the concept graph and reader"
+                width="1760"
+                height="1051"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+          </section>
 
-        <div class="showcase__row">
-          <div class="showcase__text">
-            <span class="eyebrow showcase__eyebrow">Improve & keep</span>
-            <h2 class="showcase__title">Review every change, then keep it.</h2>
-            <p class="showcase__body">
-              No agent writes to your files. Proposed changes wait in a staged
-              tree for your review, pass deterministic validation, and land in
-              one restorable transaction with Git history right beside them.
-            </p>
-            <a class="showcase__link" href={routes.review}>Review and improve →</a>
-          </div>
-          <div class="showcase__media">
+          <section class="story">
+            <span class="eyebrow story__eyebrow">Improve and keep</span>
+            <div class="story__head">
+              <h2 class="story__title">No agent writes to your files.</h2>
+              <div>
+                <p class="story__body">
+                  Proposed changes wait in a staged tree. You read each diff,
+                  deterministic validation runs against the spec, and the change
+                  lands in one transaction you can restore, with Git history
+                  beside it.
+                </p>
+                <a class="story__link" href={routes.review}>Review and improve →</a>
+              </div>
+            </div>
+            {/* A diagram, not a screenshot: the staged-review surface has no
+                capture yet, and a mock-up would be a claim we cannot back. */}
             <div class="flow" role="img" aria-label="The reviewed-write pipeline: the agent proposes into a staged tree, you review each diff, Studio validates against the spec, and the change is applied in one restorable transaction and kept in Git">
               {reviewFlow.map((s, i) => (
                 <div class="flow__step">
                   <span class="flow__marker" aria-hidden="true">{i + 1}</span>
-                  <div>
-                    <p class="flow__title">{s.title}</p>
-                    <p class="flow__body">{s.body}</p>
-                  </div>
+                  <p class="flow__title">{s.title}</p>
+                  <p class="flow__body">{s.body}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </section>
@@ -140,24 +176,26 @@ const reviewFlow = [
     <section class="section" id="trust">
       <div class="container">
         <div class="section__head">
-          <span class="eyebrow">Trust model</span>
-          <h2 class="section__title">You can tell exactly what it does.</h2>
+          <span class="eyebrow">Boundaries</span>
+          <h2 class="section__title">Limits you don't have to configure.</h2>
           <p class="section__sub">
-            Local files, explicit external activity, user-chosen agents,
-            reviewed writes. These are product boundaries, not settings.
+            Each of these is how the app is built, not a setting you can leave
+            in the wrong position.
           </p>
         </div>
-        <div class="trust">
+        <dl class="deflist">
           {
             trustClaims.map((c) => (
-              <article class="trust-item">
-                <h3 class="trust-item__title">{c.title}</h3>
-                <p class="trust-item__body">{c.body}</p>
-                <a class="trust-item__link" href={c.href}>{c.linkLabel} →</a>
-              </article>
+              <div class="deflist__row">
+                <dt class="deflist__term">{c.title}</dt>
+                <dd class="deflist__desc">
+                  {c.body}
+                  <a class="deflist__link" href={c.href}>{c.linkLabel} →</a>
+                </dd>
+              </div>
             ))
           }
-        </div>
+        </dl>
       </div>
     </section>
 
@@ -166,16 +204,52 @@ const reviewFlow = [
         <div class="section__head">
           <span class="eyebrow">The format underneath</span>
           <h2 class="section__title">Plain Markdown, connected.</h2>
-          <p class="section__sub">
-            Studio works on Open Knowledge Format bundles: portable folders of
-            Markdown with structured frontmatter that agents and humans read the
-            same way. The bundle needs no database or SDK and remains portable
-            between tools. Design systems get the same treatment through ODSF.
-          </p>
         </div>
-        <div class="hero__cta">
-          <a class="btn btn--secondary" href={routes.okf}>What is OKF?</a>
-          <a class="btn btn--ghost" href={routes.odsf}>ODSF for design systems →</a>
+        <div class="format">
+          <div>
+            <p class="cap-group__lede">
+              A bundle is a folder. Each concept is a Markdown file whose
+              frontmatter gives it a type, an owner, and its links to other
+              concepts. That is the whole Open Knowledge Format: no database,
+              no SDK, nothing to export it from later.
+            </p>
+            <p class="cap-group__lede">
+              It is Google's open, vendor-neutral spec, so a bundle written for
+              Studio still reads in any other tool that speaks it. Design
+              systems get the same treatment through ODSF, which adds tokens
+              and runnable examples; this site is built from one.
+            </p>
+            <div class="actions">
+              <a class="btn btn--secondary" href={routes.okf}>What is OKF?</a>
+              <a class="btn btn--ghost" href={routes.odsf}>ODSF for design systems →</a>
+            </div>
+          </div>
+          <div class="format__samples">
+            <div class="code">
+              <div class="code__head">concepts/checkout-funnel.md</div>
+              <pre><code>---
+<b>type</b>: Metric
+<b>title</b>: Checkout funnel
+<b>owner</b>: growth-analytics
+<b>related</b>:
+  - concepts/cart-abandonment.md
+---
+
+# Definition
+Sessions that reach /checkout and complete
+payment, over sessions that reach /checkout.</code></pre>
+            </div>
+            <div class="code">
+              <div class="code__head">and a bundle is just a folder</div>
+              <pre><code><b>revenue-knowledge/</b>
+├── index.md          <i>the entry point</i>
+├── <b>concepts/</b>
+│   ├── checkout-funnel.md
+│   └── cart-abandonment.md
+└── <b>runbooks/</b>
+    └── revenue-drop.md</code></pre>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -185,7 +259,7 @@ const reviewFlow = [
         {/* The closing band mirrors the opening canvas, so the page opens and
             closes on the same contained shape. */}
         <div class="band">
-          <div class="section__head">
+          <div class="section__head section__head--center">
             <span class="eyebrow">Download</span>
             <h2 class="section__title">Get OKF Studio</h2>
             <p class="section__sub">Free and open source. Pick your platform.</p>
@@ -207,7 +281,7 @@ const reviewFlow = [
           {/* One line: JSX collapses the whitespace around newline-separated
               inline children, which glued the middots to their neighbors. */}
           <p class="download__note">
-            {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases</a> · macOS: <a href={repo}>build from source</a>
+            {version} · builds are unsigned, so your OS may warn on first launch · macOS <a href={repo}>builds from source</a> · <a href={releases}>all releases</a>
           </p>
           <p class="download__note">
             Upgrading from OKF Viewer? <a href={migrationNotes}>Migration notes</a> · Requirements and details on the <a href={routes.download}>download page</a>

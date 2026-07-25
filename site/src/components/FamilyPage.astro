@@ -32,18 +32,21 @@ const related = workflows.filter((w) => family.workflows.includes(w.id));
         <slot />
 
         {
+          /* Definition rows, not a card grid: these groups run from two to six
+             parallel items, and a responsive grid leaves a hole at every count
+             that isn't a multiple of its column count. */
           family.groups.map((g) => (
             <div class="cap-group">
               <h2 class="cap-group__title">{g.title}</h2>
               <p class="cap-group__lede">{g.lede}</p>
-              <div class="features">
+              <dl class="deflist">
                 {g.items.map((c) => (
-                  <article class="feature-card">
-                    <h3 class="feature-card__title">{c.title}</h3>
-                    <p class="feature-card__body">{c.body}</p>
-                  </article>
+                  <div class="deflist__row">
+                    <dt class="deflist__term">{c.title}</dt>
+                    <dd class="deflist__desc">{c.body}</dd>
+                  </div>
                 ))}
-              </div>
+              </dl>
             </div>
           ))
         }

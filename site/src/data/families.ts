@@ -98,7 +98,7 @@ export const families: Family[] = [
         items: [
           {
             title: "Local folder or GitHub URL",
-            body: "Open a folder on disk, or explicitly download and cache a GitHub URL on your machine. Rust records that choice and limits readers, assets, watchers, and agents to bundle roots found by its scan.",
+            body: "Open a folder on disk, or explicitly download and cache a GitHub URL on your machine. Studio records that choice and confines readers, assets, watchers, and agents to the bundle roots its scan found.",
           },
           {
             title: "One visible ignore boundary",
@@ -248,7 +248,7 @@ export const families: Family[] = [
           },
           {
             title: "Writing that keeps the knowledge",
-            body: "Name the reader's question, then write a concept or improve an existing one with the same versioned method across agents. Rust rejects a style-only rewrite that drops protected numbers, qualifiers, citations, links, formulas, or code.",
+            body: "Name the reader's question, then write a concept or improve an existing one with the same versioned method across agents. A style-only rewrite that drops a number, a qualifier, a citation, a link, a formula, or a code block is rejected before you ever see it.",
           },
           {
             title: "Move a concept without breaking the graph",
@@ -270,7 +270,7 @@ export const families: Family[] = [
           },
           {
             title: "Health findings with evidence",
-            body: "Audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns through deterministic Rust tools. Missing claim sources name the exact line; changed or unavailable pages never become a truth verdict.",
+            body: "Audit conformance, graph connectivity, navigation, provenance, freshness, duplication, coverage, and writing patterns with deterministic local checks, no agent involved. A missing claim source names the exact line, and a page that changed or went offline is reported as that, never as a verdict on whether the claim is true.",
           },
           {
             title: "Handling labels without false authority",

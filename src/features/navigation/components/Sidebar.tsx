@@ -78,7 +78,13 @@ export function Sidebar() {
           data-search
           type="search"
           className="sb-search"
-          placeholder="Search, or filter: type: tag: degree>…"
+          // Short enough to survive the default sidebar width. The old string
+          // ("Search, or filter: type: tag: degree>…") measured 245px against
+          // 207px of field, so it always rendered clipped mid-word as
+          // "…type: tag: deg" — teaching one broken fragment of the syntax and
+          // reading as a rendering bug. The full field syntax, with worked
+          // examples, is on the title below.
+          placeholder="Search or filter…"
           aria-label="Search and filter concepts"
           title="Filter with fields: type:Table tag:revenue degree>5 is:orphan has:broken — or plain text"
           value={state.query}

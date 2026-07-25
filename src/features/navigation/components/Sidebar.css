@@ -9,6 +9,12 @@
   padding: var(--space-10);
   min-height: 0;
   height: 100%;
+  /* "You are here": the wash every row that opens a FOLDER home takes — the
+     bundle root, a folder-door section heading, and a directory row. A selected
+     concept is a different state and keeps the solid accent block. One value,
+     because the three used to sit at 14%, 16%, and a solid fill for what is the
+     same answer to the same question. */
+  --sb-here: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* Below the persistent search box: the active lens's content, filling the
@@ -334,7 +340,7 @@
    without turning an all-caps header into a loud solid block. */
 .sb-tree-heading-link.is-active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--sb-here);
 }
 /* The trailing folder cue distinguishes "open this section home" from the
    chevrons that expand and collapse directory rows. */
@@ -413,14 +419,20 @@
   color: var(--text-dim);
   cursor: default;
 }
-/* A directory row is an openable root; when its folder home is the active
-   selection it reads as selected, like an active concept. */
+/* A directory row opens a folder home, so it takes the same accent wash as the
+   other two rows that do (the folder-door section heading and the bundle root),
+   not the solid block a selected concept gets. The system already drew that
+   line — "a folder location reads as current, a document reads as selected" —
+   and this row was the one place that crossed it, so the same destination
+   looked like two different kinds of thing depending on how you reached it.
+   The wash strength is shared: see --sb-here. */
 .sb-tree-dir.is-active {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--sb-here);
+  color: var(--text);
 }
-.sb-tree-dir.is-active .sb-twisty {
-  color: var(--accent-contrast);
+.sb-tree-dir.is-active .sb-twisty,
+.sb-tree-dir.is-active .sb-tree-count {
+  color: var(--accent);
 }
 
 /* The bundle root's folder home, sitting above the tree. */
@@ -447,13 +459,19 @@
    folder-door headings), not the solid block a selected concept gets — a folder
    location reads as "current", a document reads as "selected". */
 .sb-tree-home.is-active {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: var(--sb-here);
   color: var(--text);
 }
 .sb-tree-home.is-active .sb-home-glyph {
   color: var(--accent);
 }
+/* Every row opens with a 14px glyph slot — twisty, type dot, or this house —
+   so labels start at the same x whatever kind of row it is. The house renders
+   at 15px, which put the bundle-root label one pixel off every folder row
+   below it. */
 .sb-home-glyph {
+  flex: none;
+  width: 14px;
   color: var(--text-dim);
 }
 .sb-twisty {
@@ -490,16 +508,25 @@
   opacity: 1;
   box-shadow: 0 0 0 1px var(--accent-contrast);
 }
+/* Shrink-to-fit, so a trailing marker sits beside the name instead of being
+   pushed to the far edge. `1 1 auto` made the label eat the row's free space,
+   which parked the synthesized-index marker against the count: the two read as
+   one token ("auto 8"), and the marker's right edge moved between adjacent
+   rows depending on whether that row had a count at all. */
 .sb-tree-label {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 /* Synthesized-index marker: a quiet dim word, not a badge — the tooltip
-   carries the explanation. */
+   carries the explanation. It belongs to the folder's name (this index was
+   inferred, not authored), so it travels with the label rather than joining
+   the numeric column at the right edge. */
 .sb-synth {
   flex: 0 0 auto;
+  margin-left: var(--space-6);
   font-size: var(--fs-xs);
   font-style: italic;
   color: var(--text-dim);
@@ -516,10 +543,12 @@
 }
 
 /* Right-aligned concept count on directory rows — how much bundle lives
-   behind the fold. */
+   behind the fold. It is the only thing in the row's right column, so counts
+   line up down the tree however long the folder names are. */
 .sb-tree-count {
   flex: 0 0 auto;
   margin-left: auto;
+  padding-left: var(--space-8);
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);

@@ -113,7 +113,7 @@
 
 .ln-segmented input:checked + span {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
@@ -185,7 +185,7 @@
 }
 
 .ln-row:hover:not(:disabled) {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .ln-row:focus-visible {

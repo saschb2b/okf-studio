@@ -100,7 +100,7 @@
 .hero-action:hover,
 .hero-action:focus-visible {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   outline: none;
 }
 .hero-action:focus-visible {

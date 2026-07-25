@@ -223,11 +223,11 @@
 }
 
 .projection-concepts li + li {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-variant);
 }
 
 .projection-concepts li.is-selected {
-  background: var(--bg-sunken);
+  background: var(--ghost-active);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
@@ -241,7 +241,7 @@
 }
 
 .projection-concepts label:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .projection-concepts input {

@@ -207,7 +207,7 @@
 }
 
 .bundle-details-tabs__tab:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 

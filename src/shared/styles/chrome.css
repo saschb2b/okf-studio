@@ -17,7 +17,11 @@
   line-height: var(--lh-tight);
 }
 .btn:hover:not(:disabled) {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
+  border-color: var(--border-strong);
+}
+.btn:active:not(:disabled) {
+  background: var(--el-active);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -29,8 +33,10 @@
   border-color: transparent;
 }
 .btn.primary:hover:not(:disabled) {
-  filter: brightness(1.06);
-  background: var(--accent);
+  background: var(--accent-hover);
+}
+.btn.primary:active:not(:disabled) {
+  background: var(--accent-active);
 }
 .btn.danger {
   border-color: transparent;
@@ -38,15 +44,17 @@
   color: var(--accent-contrast);
 }
 .btn.danger:hover:not(:disabled) {
-  filter: brightness(1.06);
-  background: var(--error);
+  background: var(--error-hover);
+}
+.btn.danger:active:not(:disabled) {
+  background: var(--error-active);
 }
 .btn.ghost {
   border-color: transparent;
   background: transparent;
 }
 .btn.ghost:hover:not(:disabled) {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .btn.icon {
   padding: var(--space-6) var(--space-8);
@@ -65,8 +73,14 @@
   line-height: var(--lh-tight);
 }
 .badge:hover {
-  filter: brightness(1.04);
+  border-color: var(--border-strong);
+  color: var(--text);
 }
+/* A status badge keeps its own role color on hover — only the edge firms up,
+   so the ok/warn/error reading never changes under the pointer. */
+.badge.ok:hover { color: var(--ok); border-color: var(--ok); }
+.badge.warn:hover { color: var(--warn); border-color: var(--warn); }
+.badge.error:hover { color: var(--error); border-color: var(--error); }
 .badge.ok {
   color: var(--ok);
   border-color: var(--ok);

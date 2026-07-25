@@ -233,7 +233,7 @@
 
 .retrieval-summary__trigger:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .retrieval-summary__trigger:focus-visible {
@@ -731,7 +731,7 @@
 }
 
 .retrieval-candidate-table [role="row"][data-included] {
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .retrieval-candidate-table [role="cell"] {

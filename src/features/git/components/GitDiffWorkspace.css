@@ -35,7 +35,7 @@
 }
 
 .git-diff-header > button:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -100,15 +100,15 @@
 }
 
 .git-diff-code > span.is-addition {
-  background: color-mix(in srgb, var(--ok) 13%, transparent);
+  background: var(--ok-soft);
 }
 
 .git-diff-code > span.is-deletion {
-  background: color-mix(in srgb, var(--error) 13%, transparent);
+  background: var(--error-soft);
 }
 
 .git-diff-code > span.is-hunk {
-  background: var(--accent-dim);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 

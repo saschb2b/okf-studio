@@ -137,7 +137,7 @@
 }
 
 .connections-workspace__tabs > button:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 

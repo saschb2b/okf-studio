@@ -272,7 +272,7 @@
 .reader-concept-retirement:hover,
 .reader-resource-agent:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .reader-okf-task:focus-visible,
@@ -613,7 +613,7 @@
   color: var(--text-dim);
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--dur) ease;
+  transition: opacity var(--dur) var(--ease);
 }
 .markdown pre:hover .code-copy,
 .code-copy:focus-visible {
@@ -828,7 +828,7 @@
 .markdown th,
 .markdown td {
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-variant);
   padding: var(--space-6) var(--space-10);
   /* Cells run to the column edges, but the first sits flush with the prose. */
   padding-left: 0;
@@ -857,7 +857,7 @@
   border-bottom: 0;
 }
 .markdown tbody tr:hover {
-  background: color-mix(in srgb, var(--bg-sunken) 60%, transparent);
+  background: var(--ghost-hover);
 }
 
 .markdown hr {
@@ -1083,7 +1083,7 @@
   cursor: pointer;
 }
 .rel-link:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .rel-link:focus-visible {
   outline: var(--focus-w) solid var(--accent);
@@ -1114,7 +1114,7 @@ button.typed-rel-link {
 }
 
 button.typed-rel-link:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 button.typed-rel-link:focus-visible {

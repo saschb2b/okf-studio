@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "check:contrast": "node scripts/check-contrast.mjs",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run --project unit --project component",
     "test:watch": "vitest --project unit --project component",

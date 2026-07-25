@@ -83,7 +83,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Agent Workspace Dogfood](ux/agent-workspace-dogfood.md) - Journey evidence and open findings from the Agent Panel workspace refinement.
 * [Browsing Layout](ux/browsing-layout.md) - The three-pane workspace: sidebar, graph, reader.
 * [Keyboard Shortcuts](ux/keyboard-shortcuts.md) - Keys for power users.
-* [Theming](ux/theming.md) - Light/dark and the type-color palette.
+* [Theming](ux/theming.md) - Light/dark, the surface and state token layer, and the type-color palette.
 * [Accessibility](ux/accessibility.md) - Keyboard operability, focus, screen-reader semantics, contrast, and motion.
 * [Settings and preferences](ux/settings.md) - Searchable categories for local, reader, agent, bundle, and update controls.
 

@@ -104,7 +104,7 @@
   padding: var(--space-8);
   border-radius: var(--radius-sm);
   color: var(--warn);
-  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  background: var(--warn-soft);
 }
 
 @media (max-width: 420px) {

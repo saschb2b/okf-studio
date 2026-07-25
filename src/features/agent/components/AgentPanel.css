@@ -155,7 +155,7 @@
 
 .agent-panel__connection[aria-pressed="true"] {
   color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .agent-panel__connection-label {
@@ -272,7 +272,7 @@
 }
 
 .agent-launch-menu__item[data-highlighted] {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   box-shadow: inset 0 0 0 var(--focus-w) var(--accent);
 }
 

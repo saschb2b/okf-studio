@@ -37,13 +37,13 @@
   cursor: pointer;
 }
 .activity-btn:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 /* The active view switcher (sidebar showing this lens). VS Code marks it with a
    left accent bar; we tint the icon and recess it. */
 .activity-btn[aria-pressed="true"] {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--accent);
 }
 .activity-btn[aria-pressed="true"]::before {

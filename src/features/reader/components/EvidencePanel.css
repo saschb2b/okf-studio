@@ -136,7 +136,7 @@
 
 .evidence-panel__actions button:hover:not(:disabled) {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 .evidence-panel__actions button:focus-visible {

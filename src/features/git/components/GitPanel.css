@@ -104,7 +104,7 @@
 .git-feedback button:hover:not(:disabled),
 .git-load-more:hover:not(:disabled),
 .git-panel-state button:hover:not(:disabled) {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -126,7 +126,7 @@
 }
 
 .git-icon-button:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -156,7 +156,7 @@
 
 .git-change-list li:hover,
 .git-history-list li:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .git-stage-checkbox {

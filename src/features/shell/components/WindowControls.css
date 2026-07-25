@@ -24,11 +24,11 @@
   cursor: pointer;
 }
 .win-btn:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 .win-btn:active {
-  background: var(--border);
+  background: var(--ghost-active);
 }
 .win-btn:focus-visible {
   outline: var(--focus-w) solid var(--accent);
@@ -39,7 +39,8 @@
   color: var(--accent-contrast);
 }
 .win-close:active {
-  filter: brightness(0.85);
+  background: var(--error-active);
+  color: var(--accent-contrast);
 }
 /* The window has rounded corners except when maximized (.app in styles.css);
    round Close's outer corner to match so it reads as the frame's actual

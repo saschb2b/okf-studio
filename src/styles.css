@@ -1,32 +1,105 @@
 /* OKF Studio base styles. Color comes from role variables so light/dark and the
-   type palette stay consistent. Component agents add their own scoped styles. */
+   type palette stay consistent. Component agents add their own scoped styles.
+
+   The color roles below follow the shape Zed's theme uses, because the problem
+   is the same one: a dense tool UI with many docked surfaces, where "which
+   surface am I on" has to stay legible without a border around everything.
+   Four groups, and a component picks from the group that matches its job:
+
+     surface   --bg-sunken / --bg / --bg-elev / --bg-overlay
+               A fixed depth order. Sunken is the recessed canvas (the graph,
+               inset tracks), --bg the app frame and the tab strip, --bg-elev
+               the docked panes and chrome, --bg-overlay only what floats
+               (dialogs, popovers, menus) so a dialog reads as a layer above
+               the panel it covers instead of the same gray.
+     element   --el-hover / --el-active, and the translucent --ghost-* pair
+               The state fills. Zed splits these the same way: `element.*` for
+               a control that paints its own surface, `ghost_element.*` for one
+               drawn straight onto a pane. The translucent pair composites onto
+               whatever is behind it, so a row hovers correctly on all four
+               surfaces without knowing which one it sits on.
+     border    --border / --border-variant / --border-strong
+               Structural edge, quiet internal divider, emphasized (hover) edge.
+               One border weight for both jobs makes list rules shout.
+     content   --text / --text-dim / --text-disabled, --accent*, status roles
+
+   State fills move TOWARD the foreground in both themes: lighter on dark,
+   darker on light. The single most common theming bug in a dark UI is a hover
+   that darkens, which reads as a hole punched in the surface rather than a
+   control lighting up. */
 
 :root {
-  --bg: #f7f8fa;
+  /* Surfaces, recessed → floating. */
+  --bg-sunken: #edeff3;
+  --bg: #f6f7fa;
   --bg-elev: #ffffff;
-  --bg-sunken: #eceef2;
-  --text: #1a1d21;
-  --text-dim: #5b626b;
-  --border: #d8dce2;
+  /* Light separates a floating surface with shadow, not tone — a popover that
+     went lighter than white has nowhere to go. */
+  --bg-overlay: #ffffff;
+
+  /* Element state fills. --el-* are opaque, for a control that paints its own
+     surface (.btn, chips, toggles); --ghost-* are translucent, for anything
+     drawn directly on a pane (list rows, icon buttons, tabs, menu items). */
+  --el-hover: #f0f2f6;
+  --el-active: #e7eaf0;
+  --ghost-hover: rgba(17, 24, 39, 0.045);
+  --ghost-active: rgba(17, 24, 39, 0.07);
+
+  --text: #191c22;
+  --text-dim: #596170;
+  /* Disabled text is exempt from WCAG 1.4.3 and does not clear 4.5; it is the
+     only text role that may fail, and only where the control is inert. */
+  --text-disabled: #a2a9b5;
+
+  --border: #d4d9e1;
+  --border-variant: #e5e9ef;
+  --border-strong: #b8c0cc;
+
   /* Light-theme accent and status colors are darker than their dark-theme
      counterparts because they have to carry TEXT on a near-white surface, not
-     just fill a shape. The previous values missed WCAG AA against --bg-sunken,
-     the palest surface they land on: accent #2f6df6 at 3.90, warn #b8860b at
-     2.80, ok #2e7d52 at 4.33. Every value below clears 4.5 on all three
-     backgrounds and still takes white at 4.5 when used as a fill. Check both
-     directions before changing one. */
-  --accent: #1d5fe0;
+     just fill a shape. Every value below clears 4.5:1 on all four surfaces AND
+     on the state fills stacked on them, and still takes --accent-contrast at
+     4.5 when used as a fill. Those two requirements pull in opposite
+     directions, so check both before changing one — `pnpm check:contrast`
+     re-derives all 90 pairings per theme from these declarations. It is what
+     caught the state-fill cases: the roles were checked against the resting
+     surfaces only, and a hovered row is a surface too. */
+  --accent: #1a56d0;
   --accent-contrast: #ffffff;
-  /* Dim accent tint for selected/pressed items; tracks --accent per theme. */
-  --accent-dim: color-mix(in srgb, var(--accent) 14%, transparent);
-  --error: #c0392b;
-  --warn: #8a6100;
+  /* Hover moves the accent away from the page (darker on light, lighter on
+     dark) so a filled button reacts in the same direction as a ghost one.
+     This replaces a `filter: brightness()`, which desaturates as it lightens
+     and does nothing at all to an already-dark fill. */
+  --accent-hover: #164bb8;
+  --accent-active: #13419e;
+  --error: #b23127;
+  /* --error is a fill too (the danger button, the window close box), so it
+     needs the same hover/active pair as the accent. */
+  --error-hover: #9c2a21;
+  --error-active: #87241c;
+  --warn: #7d5800;
   --ok: #276b46;
-  --shadow: 0 6px 24px rgba(20, 24, 31, 0.14);
-  /* Subtle elevation for small raised surfaces (e.g. the segmented-control
-     thumb) — far lighter than the dialog/popover --shadow. */
-  --shadow-sm: 0 1px 2px rgba(20, 24, 31, 0.12);
-  --scrim: rgba(20, 24, 31, 0.45);
+
+  /* Translucent tints of the same roles: selected rows, callouts, status
+     chips. Alpha rather than a mixed-in surface color so one token works on
+     every surface. */
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --error-soft: color-mix(in srgb, var(--error) 13%, transparent);
+  --warn-soft: color-mix(in srgb, var(--warn) 13%, transparent);
+  --ok-soft: color-mix(in srgb, var(--ok) 13%, transparent);
+
+  /* Text selection. Left to the browser this is a fixed system blue that
+     ignores the theme and turns opaque over dark prose. */
+  --selection: color-mix(in srgb, var(--accent) 22%, transparent);
+
+  /* Elevation: one scale, three steps, each a tight contact shadow under a
+     wider ambient one. --shadow-sm is for a small raised tile (the
+     segmented-control thumb), --shadow for popovers and menus, --shadow-lg
+     only for modals, which float above everything else. */
+  --shadow-sm: 0 1px 2px rgba(16, 22, 34, 0.1);
+  --shadow: 0 4px 12px rgba(16, 22, 34, 0.1), 0 1px 3px rgba(16, 22, 34, 0.08);
+  --shadow-lg: 0 16px 48px rgba(16, 22, 34, 0.18), 0 4px 12px rgba(16, 22, 34, 0.1);
+  --scrim: rgba(16, 22, 34, 0.45);
 
   /* Radius scale */
   --radius-sm: 6px;
@@ -64,9 +137,15 @@
      without putting them in a box. */
   --canvas-text-halo: 0 0 6px var(--bg-sunken), 0 0 3px var(--bg-sunken);
 
-  /* Focus + motion */
+  /* Focus + motion. One easing curve for everything: a fast start that settles
+     slowly, which is what makes a panel resize or a menu open read as physical
+     rather than mechanical. `ease` (the CSS default this replaces) is
+     symmetric, so it drifts at the start and stops abruptly. */
   --focus-w: 2px;
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --dur-fast: 90ms;
   --dur: 120ms;
+  --dur-slow: 220ms;
 
   /* Both families are bundled (see main.tsx), so the chrome renders the same on
      every platform's webview; the system stacks stay behind them as the
@@ -81,20 +160,43 @@
   color-scheme: light;
 }
 
+/* Dark keeps the app's near-black identity — the surfaces sit around 7–16%
+   lightness rather than Zed's 18–26% — but spaces the four steps evenly enough
+   that a pane edge is visible without leaning on --border for every seam. */
 :root[data-theme="dark"] {
-  --bg: #14171c;
-  --bg-elev: #1c2026;
-  --bg-sunken: #0f1216;
+  --bg-sunken: #0e1116;
+  --bg: #15181e;
+  --bg-elev: #1b1f26;
+  --bg-overlay: #22262e;
+
+  --el-hover: #242933;
+  --el-active: #2a303a;
+  --ghost-hover: rgba(255, 255, 255, 0.05);
+  --ghost-active: rgba(255, 255, 255, 0.08);
+
   --text: #e6e9ee;
-  --text-dim: #9aa3ad;
-  --border: #2c323b;
-  --accent: #5b8cff;
-  --accent-contrast: #0f1216;
-  --error: #ff6b5e;
+  --text-dim: #9ea7b3;
+  --text-disabled: #626b78;
+
+  --border: #2b313b;
+  --border-variant: #21262e;
+  --border-strong: #3b434f;
+
+  --accent: #74a0ff;
+  /* Dark ink on the bright fill: white on #5b8cff is 3.2:1, so the label of a
+     primary button would fail its own threshold. See design-system color.md. */
+  --accent-contrast: #0e1116;
+  --accent-hover: #92b4ff;
+  --accent-active: #5e8df5;
+  --error: #ff7f72;
+  --error-hover: #ff988d;
+  --error-active: #f26a5c;
   --warn: #e0b341;
   --ok: #5ed39a;
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow: 0 4px 14px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.62), 0 6px 16px rgba(0, 0, 0, 0.42);
   --scrim: rgba(0, 0, 0, 0.62);
   color-scheme: dark;
 }
@@ -105,6 +207,19 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Text selection and the native controls the webview still draws itself
+   (checkbox ticks, the caret, spinner arrows) default to a platform blue that
+   ignores the theme — three different blues across Windows, WebKitGTK, and
+   WKWebView. Bind them to the accent so a selection in the reader matches the
+   rest of the window. */
+::selection {
+  background: var(--selection);
+}
+:root {
+  accent-color: var(--accent);
+  caret-color: var(--accent);
+}
 
 /* Visually hidden but available to screen readers (e.g. the "opens in browser"
    cue appended to external links). */
@@ -202,7 +317,9 @@ body,
 .switcher-scroll,
 .graph-panel-body {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  /* --border-strong, not --border: a thumb at structural-border weight is
+     invisible against a dark pane, which is where a scrollbar matters most. */
+  scrollbar-color: var(--border-strong) transparent;
   scrollbar-gutter: stable;
 }
 .pane::-webkit-scrollbar,
@@ -231,7 +348,7 @@ body,
 .palette-list::-webkit-scrollbar-thumb,
 .switcher-scroll::-webkit-scrollbar-thumb,
 .graph-panel-body::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--border-strong);
   border-radius: var(--radius);
   /* Inset the thumb so it reads thin against the track. */
   border: 2px solid transparent;
@@ -282,22 +399,11 @@ body,
   min-width: 0;
 }
 
-/* Top bar layout lives in TopBar.css. */
+/* Top bar layout lives in TopBar.css; .btn and .badge live in chrome.css — this
+   file used to carry a second, drifting copy of the button rules. */
 
-.btn {
-  font: inherit;
-  padding: 6px 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
-  color: var(--text);
-  cursor: pointer;
-}
-.btn:hover { background: var(--bg-sunken); }
-.btn.primary { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
-.btn.ghost { border-color: transparent; background: transparent; }
-.btn:focus-visible, input:focus-visible, select:focus-visible, li:focus-visible {
-  outline: 2px solid var(--accent);
+input:focus-visible, select:focus-visible, li:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -317,7 +423,7 @@ body,
   min-height: 0;
   /* Transition the column tracks on mode change; zeroed under reduce-motion by
      the global :root[data-reduce-motion] rule. */
-  transition: grid-template-columns var(--dur) ease;
+  transition: grid-template-columns var(--dur) var(--ease);
 }
 /* During an active divider drag, track the pointer 1:1 (no easing lag). */
 .workspace.dragging {
@@ -354,23 +460,32 @@ body,
 }
 
 /* Sidebar */
-.sidebar-inner { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.sidebar-inner {
+  padding: var(--space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
 .search {
   font: inherit;
   width: 100%;
-  padding: 7px 10px;
+  padding: var(--space-6) var(--space-10);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg);
+  /* Inset field: recessed relative to the pane it sits in, the way Zed's
+     search inputs read against a panel. */
+  background: var(--bg-sunken);
   color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease);
 }
+.search:hover { border-color: var(--border-strong); }
 .concept-list { list-style: none; margin: 0; padding: 0; }
 .concept-list li {
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
-.concept-list li:hover { background: var(--bg-sunken); }
+.concept-list li:hover { background: var(--ghost-hover); }
 .concept-list li.active { background: var(--accent); color: var(--accent-contrast); }
 
 /* Graph placeholder */
@@ -382,12 +497,14 @@ body,
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 /* Reader styling lives in Reader.css (the single source for the reading pane). */
 
-/* Panels (log / validation) — docked on the right */
+/* Panels (log / validation) — docked on the right. Docked, so --bg-elev and the
+   mid shadow: it belongs to the window frame. Only what floats free of the
+   layout (the palette, dialogs) gets --bg-overlay and --shadow-lg. */
 .panel {
   position: fixed;
   top: 49px;
@@ -398,18 +515,29 @@ body,
   background: var(--bg-elev);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow);
-  padding: 12px 14px;
+  padding: var(--space-12) var(--space-16);
   overflow: auto;
   z-index: 20;
 }
-.panel header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-10);
+}
 .issues, .panel ul { list-style: none; margin: 0; padding: 0; }
-.issues li { padding: 7px 8px; border-radius: 6px; cursor: pointer; border-left: 3px solid var(--border); margin-bottom: 4px; }
-.issues li.error { border-left-color: var(--error); }
-.issues li.warning { border-left-color: var(--warn); }
+.issues li {
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border-left: 3px solid var(--border-variant);
+  margin-bottom: var(--space-4);
+}
+.issues li.error { border-left-color: var(--error); background: var(--error-soft); }
+.issues li.warning { border-left-color: var(--warn); background: var(--warn-soft); }
 .issues .lvl { font-size: var(--fs-xs); text-transform: uppercase; color: var(--text-dim); }
 .muted { color: var(--text-dim); }
-.log-entry h4 { margin: 12px 0 4px; }
+.log-entry h4 { margin: var(--space-12) 0 var(--space-4); }
 
 /* Overlays (palette / settings) */
 .overlay {
@@ -425,43 +553,63 @@ body,
   margin-top: 12vh;
   width: 560px;
   max-width: 92vw;
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 .palette input {
   font: inherit;
   width: 100%;
-  padding: 14px 16px;
+  padding: var(--space-16);
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-variant);
   background: transparent;
   color: var(--text);
 }
-.palette ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
-.palette li { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
-.palette li:hover { background: var(--bg-sunken); }
+.palette ul {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-6);
+  max-height: 50vh;
+  overflow: auto;
+}
+.palette li {
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+.palette li:hover { background: var(--ghost-hover); }
 .palette small, .concept-list small { color: var(--text-dim); }
 
 .dialog {
   margin-top: 14vh;
   width: 420px;
   max-width: 92vw;
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  padding: 20px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-20);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
 }
 .dialog h2 { margin: 0; }
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field.check { flex-direction: row; align-items: center; gap: 8px; }
-.field select { font: inherit; padding: 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.field { display: flex; flex-direction: column; gap: var(--space-6); }
+.field.check { flex-direction: row; align-items: center; gap: var(--space-8); }
+.field select {
+  font: inherit;
+  padding: var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text);
+}
 
 /* Empty state */
 .empty {
@@ -471,8 +619,8 @@ body,
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 10px;
-  padding: 40px;
+  gap: var(--space-10);
+  padding: var(--space-40);
   color: var(--text-dim);
 }
 .empty h1 { color: var(--text); margin: 0; }

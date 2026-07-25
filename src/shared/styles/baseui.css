@@ -10,7 +10,7 @@
   background: var(--scrim);
   z-index: 49;
   opacity: 1;
-  transition: opacity var(--dur) ease;
+  transition: opacity var(--dur) var(--ease);
 }
 .ui-backdrop[data-starting-style],
 .ui-backdrop[data-ending-style] {
@@ -26,11 +26,11 @@
   max-width: 92vw;
   max-height: 76vh;
   overflow: auto;
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  transition: opacity var(--dur) ease, transform var(--dur) ease;
+  box-shadow: var(--shadow-lg);
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 .ui-dialog[data-starting-style],
 .ui-dialog[data-ending-style] {
@@ -68,6 +68,9 @@
   color: var(--text);
   cursor: pointer;
 }
+.ui-select-trigger:hover {
+  border-color: var(--border-strong);
+}
 .ui-select-trigger:focus-visible {
   outline: var(--focus-w) solid var(--accent);
   outline-offset: 1px;
@@ -81,12 +84,12 @@
 }
 .ui-select-popup {
   min-width: 160px;
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   padding: var(--space-4);
-  transition: opacity var(--dur) ease;
+  transition: opacity var(--dur) var(--ease);
 }
 .ui-select-popup[data-starting-style],
 .ui-select-popup[data-ending-style] {
@@ -103,9 +106,18 @@
   user-select: none;
   outline: none;
 }
+/* The menu cursor, matching the agent launch and thread menus: a soft fill and
+   an inset accent ring. It used to be a solid accent block, which made every
+   arrow-key step through a list flash a saturated bar and collided with
+   [data-selected] — the accent's real job here is marking the chosen value. */
 .ui-select-item[data-highlighted] {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--ghost-hover);
+  box-shadow: inset 0 0 0 var(--focus-w) var(--accent);
+}
+/* The value actually chosen. */
+.ui-select-item[data-selected] {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .ui-select-check {
   display: inline-flex;
@@ -175,19 +187,20 @@
   align-items: center;
 }
 .ui-numberfield-btn:hover {
-  background: var(--border);
+  background: var(--el-hover);
 }
 
 /* --- Tooltip --- */
 .ui-tooltip-positioner { z-index: 70; }
 .ui-tooltip {
-  background: var(--text);
-  color: var(--bg);
+  background: var(--bg-overlay);
+  color: var(--text);
+  border: 1px solid var(--border);
   font-size: var(--fs-xs);
   padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  transition: opacity var(--dur) ease;
+  transition: opacity var(--dur) var(--ease);
 }
 .ui-tooltip[data-starting-style],
 .ui-tooltip[data-ending-style] { opacity: 0; }
@@ -195,12 +208,12 @@
 /* --- Popover --- */
 .ui-popover-positioner { z-index: 60; }
 .ui-popover {
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: var(--space-12);
-  transition: opacity var(--dur) ease, transform var(--dur) ease;
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 .ui-popover[data-starting-style],
 .ui-popover[data-ending-style] { opacity: 0; transform: scale(0.98); }
@@ -252,7 +265,7 @@
   color: var(--text);
   cursor: pointer;
 }
-.ui-toggle:hover { background: var(--bg-sunken); }
+.ui-toggle:hover { background: var(--el-hover); }
 .ui-toggle[data-pressed] {
   background: var(--accent);
   color: var(--accent-contrast);
@@ -272,14 +285,14 @@
   padding: 2px;
   touch-action: none;
   opacity: 0;
-  transition: opacity var(--dur) ease;
+  transition: opacity var(--dur) var(--ease);
 }
 .ui-scrollarea-scrollbar[data-hovering],
 .ui-scrollarea-scrollbar[data-scrolling] { opacity: 1; }
 .ui-scrollarea-thumb {
   flex: 1;
   border-radius: 999px;
-  background: var(--border);
+  background: var(--border-strong);
 }
 .ui-scrollarea-thumb:hover { background: var(--text-dim); }
 
@@ -301,6 +314,6 @@
   cursor: pointer;
 }
 .ui-collapsible-trigger:hover { color: var(--text); }
-.ui-collapsible-chevron { transition: transform var(--dur) ease; font-size: var(--fs-xs); }
+.ui-collapsible-chevron { transition: transform var(--dur) var(--ease); font-size: var(--fs-xs); }
 .ui-collapsible-trigger[data-panel-open] .ui-collapsible-chevron { transform: rotate(90deg); }
 .ui-collapsible-panel { overflow: hidden; }

@@ -36,7 +36,7 @@ button.status-item {
   border-radius: var(--radius-sm);
 }
 button.status-item:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 button.status-item:focus-visible {
@@ -45,7 +45,7 @@ button.status-item:focus-visible {
 }
 /* A toggle whose panel is open reads as recessed/active. */
 .status-item.is-active {
-  background: var(--bg-sunken);
+  background: var(--ghost-active);
   color: var(--text);
 }
 

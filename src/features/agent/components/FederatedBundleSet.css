@@ -69,7 +69,7 @@
 }
 
 .federated-bundle-set__row + .federated-bundle-set__row {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-variant);
 }
 
 .federated-bundle-set__row:has(input:focus-visible) {
@@ -78,7 +78,7 @@
 }
 
 .federated-bundle-set__row:has(input:checked) {
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .federated-bundle-set__row[data-state="missing"],

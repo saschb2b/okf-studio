@@ -459,7 +459,7 @@
 .agent-artifact__concept:not(:disabled):hover,
 .agent-artifact__concept[data-selected] {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .agent-artifact__concept:disabled {

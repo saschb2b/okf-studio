@@ -64,7 +64,7 @@
 }
 
 .graph-btn:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -213,7 +213,7 @@
 }
 
 .graph-panel-toggle:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 .graph-panel-toggle:focus-visible,
@@ -313,7 +313,7 @@
 }
 
 .graph-panel-reset:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 /* Mode toggle (Overview/Focus) + depth stepper — the toolbar's center region,
@@ -409,7 +409,7 @@
 }
 
 .graph-seg-btn:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -462,7 +462,7 @@
 }
 
 .graph-chip:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 .graph-chip:focus-visible {

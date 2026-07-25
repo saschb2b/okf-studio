@@ -40,7 +40,7 @@
 .agent-session-control:hover:not(:disabled),
 .agent-session-control[data-popup-open] {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .agent-session-control:focus-visible,
@@ -192,7 +192,7 @@
 
 .agent-session-picker__choice:hover,
 .agent-session-picker__choice[aria-current="true"] {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .agent-session-picker__choice span {
@@ -224,7 +224,7 @@
 .agent-session-picker__favorite:hover,
 .agent-session-picker__favorite[aria-pressed="true"] {
   color: var(--accent);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .agent-session-configuration {

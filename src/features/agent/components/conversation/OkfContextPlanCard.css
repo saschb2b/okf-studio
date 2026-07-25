@@ -200,7 +200,7 @@
 
 .okf-context-plan__items button:hover:not(:disabled) {
   color: var(--text);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .okf-context-plan__items button:focus-visible {

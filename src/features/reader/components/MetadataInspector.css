@@ -86,7 +86,7 @@
 
 .metadata-copy:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .metadata-copy:focus-visible {

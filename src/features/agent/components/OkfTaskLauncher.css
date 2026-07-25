@@ -33,7 +33,7 @@
   height: 32px;
   place-items: center;
   color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
   border-radius: var(--radius-sm);
 }
 
@@ -70,7 +70,7 @@
 
 .okf-task-launcher__tasks label:has(input:checked) {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .okf-task-launcher__tasks span {

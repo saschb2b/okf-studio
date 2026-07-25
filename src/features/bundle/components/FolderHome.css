@@ -113,7 +113,7 @@
   text-align: left;
 }
 .fh-row:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .fh-row:focus-visible {
   outline: var(--focus-w) solid var(--accent);

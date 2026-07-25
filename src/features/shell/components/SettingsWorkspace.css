@@ -309,7 +309,7 @@
   border-radius: 50%;
   background: var(--text-muted);
   transform: translateX(0);
-  transition: transform var(--dur) ease, background var(--dur) ease;
+  transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 
 .settings-toggle[data-checked] .settings-toggle__thumb {
@@ -350,7 +350,7 @@
 }
 
 .settings-search-result:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 .settings-search-result:focus-visible {

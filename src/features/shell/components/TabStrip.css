@@ -46,7 +46,7 @@
   color: var(--text-dim);
 }
 .tab:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .tab.is-active {
   background: var(--bg-elev);
@@ -108,7 +108,7 @@
   opacity: 1;
 }
 .tab-close:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -128,6 +128,6 @@
   cursor: pointer;
 }
 .tab-popout:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }

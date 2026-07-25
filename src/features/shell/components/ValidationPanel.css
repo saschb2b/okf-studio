@@ -121,7 +121,7 @@
 
 .vp-issue-agent:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .vp-issue-agent:focus-visible {
@@ -151,7 +151,7 @@
 
 .vp-review-trigger:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .vp-review-trigger:focus-visible {
@@ -181,7 +181,7 @@
   cursor: pointer;
 }
 .vp-issue-body.clickable:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .vp-issue-body:focus-visible {
   outline: var(--focus-w) solid var(--accent);

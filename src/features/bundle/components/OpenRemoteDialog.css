@@ -166,7 +166,7 @@
   cursor: pointer;
 }
 .remote-picker-row:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 .remote-picker-row:focus-visible {
   outline: var(--focus-w) solid var(--accent);
@@ -207,7 +207,7 @@
   cursor: pointer;
 }
 .remote-example:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 .remote-example:focus-visible {
   outline: var(--focus-w) solid var(--accent);

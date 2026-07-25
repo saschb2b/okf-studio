@@ -104,8 +104,10 @@
   background: var(--border);
 }
 
+/* A ghost button whose panel is open is selected, not merely hovered — one
+   step past --ghost-hover so the two states stay distinguishable. */
 .topbar .btn.ghost.active {
-  background: var(--bg-sunken);
+  background: var(--ghost-active);
   color: var(--text);
 }
 
@@ -138,7 +140,7 @@
   background: var(--bg-elev);
   box-shadow: var(--shadow-sm), 0 0 0 1px var(--border);
   transform: translateX(calc(var(--seg, 0) * var(--space-32)));
-  transition: transform var(--dur) ease;
+  transition: transform var(--dur) var(--ease);
 }
 
 .layout-switch .layout-btn {
@@ -149,7 +151,7 @@
   padding: 0;
   justify-content: center;
   color: var(--text-dim);
-  transition: color var(--dur) ease;
+  transition: color var(--dur) var(--ease);
 }
 /* The thumb owns the selected background; segments stay transparent even on
    hover, so only the icon color responds. */
@@ -192,8 +194,8 @@
   line-height: var(--lh-tight);
 }
 .topbar-search:hover {
-  background: var(--bg-elev);
-  border-color: var(--accent);
+  background: var(--el-hover);
+  border-color: var(--border-strong);
 }
 
 .topbar-search-icon {

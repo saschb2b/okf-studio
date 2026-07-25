@@ -170,7 +170,7 @@
 }
 
 .agent-thread-actions__item[data-highlighted] {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   box-shadow: inset 0 0 0 var(--focus-w) var(--accent);
 }
 
@@ -450,7 +450,7 @@
 }
 
 .agent-starter:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 .agent-starter:focus-visible {
@@ -1237,7 +1237,7 @@
 }
 
 .agent-live-work__content > * + * {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-variant);
 }
 
 .agent-live-work__content .agent-staged {
@@ -1477,7 +1477,7 @@
   gap: var(--space-4);
   padding: var(--space-6);
   overflow-y: auto;
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -1514,7 +1514,7 @@
 
 .agent-mention-menu__option:hover,
 .agent-mention-menu__option:focus-visible {
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .agent-mention-menu__option:focus-visible {
@@ -1690,7 +1690,7 @@
 
 .agent-staged__hunk-actions .btn[aria-pressed="true"] {
   color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .agent-staged__hunk--rejected pre {
@@ -2025,7 +2025,7 @@
 
 .agent-context-chip button:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .agent-context-chip button:focus-visible {
@@ -2064,12 +2064,11 @@
 
 .agent-attachment-picker__menu > button:hover,
 .agent-attachment-picker__menu > button:focus-visible {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
-/* Pressed flash — text-tinted sunken reads darker in light, lighter in dark. */
 .agent-attachment-picker__menu > button:active:not(:disabled) {
-  background: color-mix(in srgb, var(--bg-sunken) 88%, var(--text));
+  background: var(--ghost-active);
 }
 
 .agent-attachment-picker__menu > button:focus-visible {
@@ -2154,11 +2153,11 @@
 
 .agent-context-picker__results > button:hover,
 .agent-context-picker__results > button:focus-visible {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .agent-context-picker__results > button:active:not(:disabled) {
-  background: color-mix(in srgb, var(--bg-sunken) 88%, var(--text));
+  background: var(--ghost-active);
 }
 
 .agent-context-picker__results > button:focus-visible {

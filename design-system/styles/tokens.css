@@ -10,12 +10,12 @@
   --colors-border-strong: #34353E;
   --colors-text: #EDEEF2;
   --colors-text-muted: #A0A6B0;
-  --colors-text-dim: #6C717B;
+  --colors-text-dim: #7B808A;
   --colors-primary: #5B8CFF;
   --colors-primary-hover: #6E9BFF;
   --colors-secondary: #9A6BFF;
   --colors-indigo: #3E4BAF;
-  --colors-on-primary: #FFFFFF;
+  --colors-on-primary: #0B0B0D;
   --colors-success: #5ED39A;
   --colors-warning: #E0B341;
   --colors-error: #FF6B5E;
@@ -24,24 +24,27 @@
   --colors-gradient-tile: linear-gradient(180deg, #2A2A2E, #060608);
 
   /* typography */
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --text-display: clamp(2.75rem, 6vw, 4.5rem);
-  --text-h1: clamp(2rem, 4vw, 2.75rem);
-  --text-h2: 1.75rem;
-  --text-h3: 1.25rem;
+  --font-features-sans: 'cv05' 1, 'cv11' 1, 'ss03' 1;
+  --text-display: clamp(2.25rem, 4.2vw, 3.25rem);
+  --text-h1: clamp(1.75rem, 2.6vw, 2.125rem);
+  --text-h2: 1.5rem;
+  --text-h3: 1.125rem;
   --text-lg: 1.125rem;
   --text-base: 1rem;
-  --text-sm: 0.875rem;
+  --text-sm: 0.9375rem;
   --text-xs: 0.8125rem;
-  --leading-tight: 1.08;
-  --leading-snug: 1.3;
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
   --leading-normal: 1.6;
-  --tracking-tight: -0.02em;
+  --leading-relaxed: 1.7;
+  --tracking-tighter: -0.028em;
+  --tracking-tight: -0.015em;
   --tracking-normal: 0;
   --tracking-wide: 0.08em;
 
@@ -61,7 +64,8 @@
   --space-128: 128px;
   --size-container: 1120px;
   --size-canvas: 1680px;
-  --size-measure: 42rem;
+  --size-measure: 40rem;
+  --size-headline: 24ch;
 
   /* shape */
   --radius-sm: 8px;
@@ -75,8 +79,6 @@
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
   --shadow-md: 0 8px 30px rgba(0,0,0,0.45);
   --shadow-lg: 0 24px 70px rgba(0,0,0,0.55);
-  --glow-brand: 0 0 80px rgba(91,140,255,0.25);
-  --glow-brand-strong: 0 0 120px rgba(122,107,255,0.35);
 
   /* motion */
   --duration-fast: 120ms;

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OKF Studio DS · Code sample</title>
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <link rel="stylesheet" href="../styles/components.css">
+  <style>body{background:var(--colors-bg);color:var(--colors-text);font-family:var(--font-sans);padding:48px;display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start}</style>
+</head>
+<body>
+  <div class="code">
+    <div class="code__head">concepts/checkout-funnel.md</div>
+    <pre><code>---
+<b>type</b>: Metric
+<b>title</b>: Checkout funnel
+<b>owner</b>: growth-analytics
+<b>tags</b>: [revenue, funnel]
+<b>related</b>:
+  - concepts/cart-abandonment.md
+---
+
+# Definition
+Sessions that reach /checkout and complete
+payment, over sessions that reach /checkout.</code></pre>
+  </div>
+
+  <div class="code">
+    <div class="code__head">a bundle is a folder</div>
+    <pre><code><b>my-bundle/</b>
+├── index.md          <i>entry point</i>
+├── <b>concepts/</b>
+│   ├── checkout-funnel.md
+│   └── cart-abandonment.md
+└── <b>runbooks/</b>
+    └── revenue-drop.md</code></pre>
+  </div>
+</body>
+</html>

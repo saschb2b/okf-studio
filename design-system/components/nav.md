@@ -5,7 +5,7 @@ description: "A floating pill bar: brand mark on the left, route links with one 
 tags: [components, navigation]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-19T00:00:00Z
+timestamp: 2026-07-25T00:00:00Z
 examples:
   - /components/nav.example.html
 tokens:
@@ -15,7 +15,9 @@ tokens:
 ---
 
 # Anatomy
-`.site-nav` with `.site-nav__brand` (logo + wordmark) and `.site-nav__links` (route links, one optional `.nav-menu` disclosure, and one `.btn--primary`). The bar is a pill: fully rounded (`shape.radius-pill`), hairline `nav.border` on all sides, translucent `nav.surface` with a backdrop blur, and a `shadow-sm` lift. Actions inside the pill take its curvature.
+`.site-nav` with `.site-nav__brand` (logo + wordmark) and `.site-nav__links` (route links, one optional `.nav-menu` disclosure, and one `.btn--primary`). The bar is a pill: fully rounded (`shape.radius-pill`), hairline `nav.border` on all sides, `nav.surface` at 94 percent opacity with a backdrop blur, and a `shadow-sm` lift. Actions inside the pill take its curvature.
+
+The pill is nearly opaque on purpose. At the 84 percent it once used, headings and card text scrolling beneath it stayed legible through the surface, so a section title read as sliced in half while it passed behind the bar. A floating object should occlude what it floats over.
 
 Two subcomponents extend the pill for a multi-page site:
 

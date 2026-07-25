@@ -5,7 +5,7 @@ description: A screenshot with its caption on one surface, the unit of the visua
 tags: [components, card, media]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-11T04:45:00Z
+timestamp: 2026-07-25T00:00:00Z
 examples:
   - /components/viz-card.example.html
 tokens:
@@ -27,6 +27,9 @@ tokens:
 | `viz-card.border` | `{colors.border}` |
 | `viz-card.radius` | `{radius.lg}` |
 | `viz-card-hover.border` | `{colors.border-strong}` |
+
+# States
+Hover brightens the border to `viz-card-hover.border`. The card does not move; see [feature card](/components/feature-card.md) for why.
 
 # Examples
 - [viz-card.example.html](/components/viz-card.example.html)

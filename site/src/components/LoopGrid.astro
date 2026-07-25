@@ -18,8 +18,11 @@ const ordered = (["Understand", "Ask", "Improve", "Keep"] as const).map(
 
 <div class="loop">
   {
-    ordered.map((f) => (
+    ordered.map((f, i) => (
       <article class="loop__step">
+        {/* The mono index carries the sequence, so the four cells read as a
+            path rather than as an unordered set of features. */}
+        <span class="loop__index" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
         <Heading class="loop__title">{f.step}</Heading>
         <p class="loop__body">{f.outcome}</p>
         <a class="loop__link" href={f.href}>{f.title} →</a>

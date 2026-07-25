@@ -2,7 +2,9 @@
    from a token custom property (var(--…)); no hard-coded literals. BEM naming:
    .block, .block--modifier, .block__element. */
 
-/* --- Buttons --- */
+/* --- Buttons ---
+   Feedback is border and background only. No lift, no glow: elevation is
+   reserved for surfaces that genuinely float (see foundations/elevation.md). */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -11,32 +13,39 @@
   border: var(--border-width) solid transparent;
   border-radius: var(--radius-md);
   font: inherit;
+  font-size: var(--text-sm);
   font-weight: var(--font-weight-semibold);
   line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
-  transition: transform var(--duration-fast) var(--ease-standard),
-    box-shadow var(--duration-fast) var(--ease-standard),
-    background var(--duration-fast) var(--ease-standard);
+  transition: background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 .btn:focus-visible {
   outline: 2px solid var(--colors-focus);
   outline-offset: 2px;
 }
+/* The one action a page is built around (the hero and band download). */
+.btn--lg {
+  padding: var(--space-16) var(--space-24);
+  font-size: var(--text-base);
+}
 .btn--primary {
-  background: var(--colors-gradient-brand);
+  background: var(--colors-primary);
   color: var(--colors-on-primary);
 }
-.btn--primary:hover {
-  box-shadow: var(--glow-brand);
-  transform: translateY(-1px);
-}
+.btn--primary:hover { background: var(--colors-primary-hover); }
 .btn--secondary {
   background: var(--colors-surface-2);
   color: var(--colors-text);
   border-color: var(--colors-border-strong);
 }
-.btn--secondary:hover { border-color: var(--colors-text-dim); }
+.btn--secondary:hover {
+  background: var(--colors-surface-2);
+  border-color: var(--colors-text-dim);
+}
 .btn--ghost {
   background: transparent;
   color: var(--colors-text-muted);
@@ -49,7 +58,7 @@
   align-items: center;
   gap: var(--space-12);
   padding: var(--space-16) var(--space-20);
-  min-width: 240px;
+  min-width: 230px;
   border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-md);
   background: var(--colors-surface);
@@ -62,17 +71,18 @@
   border-color: var(--colors-primary);
   background: var(--colors-surface-2);
 }
-.dl-btn__glyph { font-size: 1.5rem; line-height: 1; }
+.dl-btn__glyph { font-size: 1.25rem; line-height: 1; color: var(--colors-text-muted); }
 .dl-btn__text { display: flex; flex-direction: column; gap: 2px; text-align: left; }
-.dl-btn__os { font-weight: var(--font-weight-semibold); }
+.dl-btn__os { font-weight: var(--font-weight-semibold); font-size: var(--text-sm); }
 .dl-btn__meta {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
   color: var(--colors-text-dim);
 }
 /* Trailing download arrow: the quiet affordance that makes the card read as
-   an action, not an info tile. Dim at rest; on hover it takes the primary
-   color and nudges down a touch (instant under reduced motion). */
+   an action, not an info tile. Dim at rest; on hover it takes the accent and
+   nudges down a touch (instant under reduced motion). */
 .dl-btn__arrow {
   margin-left: auto;
   padding-left: var(--space-12);
@@ -85,18 +95,20 @@
   transform: translateY(2px);
 }
 
-/* --- Eyebrow label --- */
+/* --- Eyebrow label ---
+   Dim, not accent: the accent is reserved for what a reader can click. */
 .eyebrow {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  color: var(--colors-primary);
+  color: var(--colors-text-dim);
 }
 
-/* --- Site nav: a floating pill, not a page-wide strip. Translucent with a
-   backdrop blur so content scrolls under it legibly; the page applies sticky
-   positioning (the pill itself only owns its shape). --- */
+/* --- Site nav: a floating pill, not a page-wide strip. Nearly opaque with a
+   backdrop blur so content scrolls under it without ghosting through; the page
+   applies sticky positioning (the pill itself only owns its shape). --- */
 .site-nav {
   display: flex;
   align-items: center;
@@ -105,8 +117,8 @@
   padding: var(--space-8) var(--space-12) var(--space-8) var(--space-20);
   border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-pill);
-  background: color-mix(in oklab, var(--colors-surface) 84%, transparent);
-  backdrop-filter: saturate(140%) blur(14px);
+  background: color-mix(in oklab, var(--colors-surface) 94%, transparent);
+  backdrop-filter: saturate(140%) blur(16px);
   box-shadow: var(--shadow-sm);
 }
 /* Actions inside the pill take its curvature. */
@@ -118,20 +130,23 @@
   align-items: center;
   gap: var(--space-12);
   font-weight: var(--font-weight-semibold);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-tight);
   color: var(--colors-text);
   text-decoration: none;
 }
-.site-nav__logo { width: 28px; height: 28px; border-radius: var(--radius-sm); }
-.site-nav__links { display: flex; align-items: center; gap: var(--space-20); }
+.site-nav__logo { width: 24px; height: 24px; border-radius: var(--radius-sm); }
+.site-nav__links { display: flex; align-items: center; gap: var(--space-16); }
 .site-nav__link {
   color: var(--colors-text-muted);
   text-decoration: none;
   font-size: var(--text-sm);
   /* Comfortable click/tap area inside the pill without growing its height. */
   padding: var(--space-8) var(--space-4);
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 .site-nav__link:hover { color: var(--colors-text); }
-/* The active route stays visible: full text color plus a brand underline. */
+/* The active route stays visible: full text color plus an accent underline. */
 .site-nav__link[aria-current="page"] {
   color: var(--colors-text);
   text-decoration: underline;
@@ -180,8 +195,8 @@
   padding: var(--space-8);
   border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--colors-surface) 94%, transparent);
-  backdrop-filter: saturate(140%) blur(14px);
+  background: color-mix(in oklab, var(--colors-surface) 97%, transparent);
+  backdrop-filter: saturate(140%) blur(16px);
   box-shadow: var(--shadow-md);
 }
 .nav-menu__panel[hidden] { display: none; }
@@ -208,8 +223,8 @@
   padding: var(--space-12);
   border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-lg);
-  background: color-mix(in oklab, var(--colors-surface) 96%, transparent);
-  backdrop-filter: saturate(140%) blur(14px);
+  background: color-mix(in oklab, var(--colors-surface) 98%, transparent);
+  backdrop-filter: saturate(140%) blur(16px);
   box-shadow: var(--shadow-md);
 }
 .mobile-menu[hidden] { display: none; }
@@ -234,6 +249,7 @@
   border-radius: var(--radius-sm);
   color: var(--colors-text-muted);
   text-decoration: none;
+  font-size: var(--text-sm);
 }
 .mobile-menu__link:hover {
   background: var(--colors-surface-2);
@@ -241,32 +257,35 @@
 }
 .mobile-menu__link[aria-current="page"] { color: var(--colors-text); }
 
-/* --- Feature card --- */
+/* --- Feature card ---
+   Hover changes the edge only. The card does not move: a grid that jumps under
+   the pointer reads as decoration (see foundations/elevation.md). --- */
 .feature-card {
   padding: var(--space-24);
   border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-lg);
   background: var(--colors-surface);
-  transition: border-color var(--duration-base) var(--ease-standard),
-    transform var(--duration-base) var(--ease-standard);
+  transition: border-color var(--duration-base) var(--ease-standard);
 }
 .feature-card:hover {
   border-color: var(--colors-border-strong);
-  transform: translateY(-2px);
 }
 .feature-card__glyph {
   display: inline-flex;
-  width: 44px; height: 44px;
+  width: 40px; height: 40px;
   align-items: center; justify-content: center;
+  border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-md);
   background: var(--colors-surface-2);
   margin-bottom: var(--space-16);
-  font-size: 1.25rem;
+  font-size: var(--text-base);
+  color: var(--colors-text-muted);
 }
 .feature-card__title {
   margin: 0 0 var(--space-8);
   font-size: var(--text-h3);
   font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--colors-text);
 }
 .feature-card__body {
@@ -281,6 +300,7 @@
   margin-top: var(--space-16);
   color: var(--colors-primary);
   text-decoration: none;
+  font-size: var(--text-sm);
   font-weight: var(--font-weight-medium);
 }
 .feature-card__link:hover { text-decoration: underline; }
@@ -295,12 +315,10 @@
   border-radius: var(--radius-lg);
   background: var(--colors-surface);
   overflow: hidden;
-  transition: border-color var(--duration-base) var(--ease-standard),
-    transform var(--duration-base) var(--ease-standard);
+  transition: border-color var(--duration-base) var(--ease-standard);
 }
 .viz-card:hover {
   border-color: var(--colors-border-strong);
-  transform: translateY(-2px);
 }
 .viz-card__media {
   margin: 0; /* a <figure>: UA margin would inset the bleed */
@@ -317,6 +335,7 @@
   margin: 0 0 var(--space-4);
   font-size: var(--text-h3);
   font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--colors-text);
 }
 .viz-card__text {
@@ -326,6 +345,97 @@
   margin: 0;
   color: var(--colors-text-muted);
   line-height: var(--leading-normal);
+}
+
+/* --- Definition rows: a set of named claims on one hairline-divided surface,
+   term on the left and its description on the right. Takes any number of
+   entries without leaving a hole, which a card grid cannot. --- */
+.deflist {
+  margin: 0;
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-xl);
+  background: var(--colors-surface);
+  overflow: hidden;
+}
+.deflist__row {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: var(--space-32);
+  padding: var(--space-24) var(--space-32);
+  border-top: var(--border-width) solid var(--colors-border);
+}
+.deflist__row:first-child {
+  border-top: none;
+}
+.deflist__term {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--colors-text);
+}
+.deflist__desc {
+  margin: 0;
+  color: var(--colors-text-muted);
+  line-height: var(--leading-normal);
+}
+/* Block, not inline-block: the link follows the description text inside the
+   same <dd>, and inline-block leaves it glued to the final full stop. */
+.deflist__link {
+  display: block;
+  width: fit-content;
+  margin-top: var(--space-8);
+  color: var(--colors-primary);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+}
+.deflist__link:hover { text-decoration: underline; }
+@media (max-width: 860px) {
+  .deflist__row {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+    padding: var(--space-20) var(--space-24);
+  }
+}
+
+/* --- Code sample: a named file and its literal contents, on one surface.
+   Two levels of emphasis, no syntax rainbow: structure in `colors.text`,
+   contents in `colors.text-muted`, annotations in `colors.text-dim`. --- */
+.code {
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-lg);
+  background: var(--colors-surface);
+  overflow: hidden;
+}
+.code__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-20);
+  border-bottom: var(--border-width) solid var(--colors-border);
+  background: var(--colors-surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--colors-text-muted);
+}
+.code pre {
+  margin: 0;
+  padding: var(--space-20);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--colors-text-muted);
+  tab-size: 2;
+}
+.code b {
+  font-weight: var(--font-weight-medium);
+  color: var(--colors-text);
+}
+.code i {
+  font-style: normal;
+  color: var(--colors-text-dim);
 }
 
 /* --- Layout helpers used by the pattern examples --- */

@@ -17,6 +17,10 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
+  /* Inter's optical-size axis (the "standard" build) plus the alternate
+     glyphs the design system names: single-storey g and l, curved r. */
+  font-optical-sizing: auto;
+  font-feature-settings: var(--font-features-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   position: relative;
@@ -32,6 +36,13 @@ svg {
 :focus-visible {
   outline: 2px solid var(--colors-focus);
   outline-offset: 2px;
+}
+/* Digits in mono meta lines, version strings, and step markers line up. */
+code,
+kbd,
+samp,
+pre {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Keyboard users shouldn't have to tab the whole pill nav on every visit:
@@ -66,6 +77,27 @@ svg {
   border: 0;
 }
 
+/* --- Links in prose: the accent marks what you can act on, so every inline
+   link takes it and nothing else does. --- */
+.prose-link,
+.cap-group__lede a,
+.feature-card__body a,
+.download__note a,
+.story__link,
+.loop__link {
+  color: var(--colors-primary);
+  text-decoration: none;
+}
+.prose-link:hover,
+.cap-group__lede a:hover,
+.feature-card__body a:hover,
+.download__note a:hover,
+.story__link:hover,
+.loop__link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .container {
   width: 100%;
   max-width: var(--size-container);
@@ -73,36 +105,53 @@ svg {
   padding-inline: var(--space-24);
 }
 .section {
-  padding-block: var(--space-96);
+  padding-block: var(--space-80);
   /* Anchor jumps must clear the sticky pill nav (its height + top offset),
      or the target section's eyebrow lands hidden beneath it. */
   scroll-margin-top: var(--space-80);
 }
+/* A section that follows another without a surface between them shouldn't
+   pay full rhythm twice; the pair reads as one region. */
+.section + .section {
+  padding-top: 0;
+}
+
+/* --- Section head: left-aligned by default. Centering every heading on a
+   long page removes the shared left edge the eye tracks down, and it forces
+   short titles to wrap around a fixed centre. The centred variant is kept for
+   the two composed surfaces (the hero canvas and the download band), where
+   the surface itself supplies the alignment. --- */
 .section__head {
   max-width: var(--size-measure);
-  margin: 0 auto var(--space-48);
+  margin: 0 0 var(--space-40);
+}
+.section__head--center {
+  margin-inline: auto;
   text-align: center;
 }
 .section__title {
   margin: var(--space-12) 0 var(--space-16);
   font-size: var(--text-h1);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: var(--tracking-tight);
   line-height: var(--leading-snug);
+  text-wrap: balance;
 }
 .section__sub {
   margin: 0;
   color: var(--colors-text-muted);
   font-size: var(--text-lg);
+  line-height: var(--leading-normal);
 }
 
 /* --- The opening canvas -----------------------------------------------------
    One rounded, tinted surface bundling the nav, the hero copy, and the product
    shot (Gestalt common region), so the above-the-fold reads as a single object.
-   Inset from the viewport so the page
-   background frames it; the brand tints and the node-grid backdrop live INSIDE
-   it (clipped to the radius) rather than floating over the whole page. The
-   download band at the page foot mirrors the shape. */
+   Inset from the viewport so the page background frames it; the tints and the
+   node-grid backdrop live INSIDE it (clipped to the radius) rather than
+   floating over the whole page. The download band at the page foot mirrors the
+   shape. Tints stay at or under 8%: at the 16% they once used, the canvas read
+   as a colored panel rather than as a neutral surface. */
 .canvas {
   position: relative;
   /* Inset from the viewport, but capped on ultrawide displays: the content
@@ -117,12 +166,12 @@ svg {
   background:
     radial-gradient(
       58% 46% at 48% 20%,
-      color-mix(in oklab, var(--colors-secondary) 16%, transparent),
+      color-mix(in oklab, var(--colors-secondary) 8%, transparent),
       transparent 70%
     ),
     radial-gradient(
       46% 42% at 74% 8%,
-      color-mix(in oklab, var(--colors-primary) 12%, transparent),
+      color-mix(in oklab, var(--colors-primary) 6%, transparent),
       transparent 72%
     ),
     var(--colors-surface);
@@ -136,7 +185,7 @@ svg {
   inset: 0;
   pointer-events: none;
   background-image: radial-gradient(
-    color-mix(in oklab, var(--colors-text) 6%, transparent) 1px,
+    color-mix(in oklab, var(--colors-text) 5%, transparent) 1px,
     transparent 1.6px
   );
   background-size: 26px 26px;
@@ -203,12 +252,10 @@ svg {
   }
   .topbar__inner .site-nav__brand {
     gap: var(--space-8);
-    font-size: var(--text-sm);
     white-space: nowrap;
   }
   .topbar__inner .btn {
     padding: var(--space-8) var(--space-12);
-    font-size: var(--text-sm);
     white-space: nowrap;
   }
 }
@@ -225,19 +272,15 @@ svg {
   margin-bottom: var(--space-20);
 }
 .hero__title {
+  /* Capped at size-headline so the authored break holds and the headline
+     never spans the full container. Solid text: the accent belongs on the
+     button below, not on the words. */
   margin: 0 auto var(--space-24);
-  /* The authored <br> owns the two-line break; a ch cap on top of it forced a
-     third line on desktop ("Read your / knowledge / as a graph."). */
+  max-width: var(--size-headline);
   font-size: var(--text-display);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--leading-tight);
-  letter-spacing: var(--tracking-tight);
-}
-.hero__grad {
-  background: var(--colors-gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  letter-spacing: var(--tracking-tighter);
 }
 .hero__sub {
   margin: 0 auto var(--space-32);
@@ -245,14 +288,18 @@ svg {
   color: var(--colors-text-muted);
   font-size: var(--text-lg);
 }
-.hero__cta {
+/* --- Action rows. `.actions` sits wherever a page offers a choice of two;
+   `--center` is for the composed surfaces (hero canvas, download band). --- */
+.actions {
   display: flex;
-  gap: var(--space-16);
-  justify-content: center;
+  gap: var(--space-12);
   flex-wrap: wrap;
 }
+.actions--center {
+  justify-content: center;
+}
 .hero__meta {
-  margin-top: var(--space-16);
+  margin-top: var(--space-20);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--colors-text-dim);
@@ -260,7 +307,7 @@ svg {
 /* The product shot is grounded: flush against the canvas foot with only its
    top corners rounded (the app "rising from the surface"). The tinted canvas
    supplies the atmosphere without a glow. The screenshot shows through a
-   windowed crop (~60% of the 1760x1117 capture) rather than full height:
+   windowed crop (~60% of the 1760x1051 capture) rather than full height:
    the fold teases the app, the spotlight zoom still shows everything. */
 .hero__art {
   margin: var(--space-64) auto 0;
@@ -281,8 +328,8 @@ svg {
    viewport, the screenshot pans through its window from the app's top chrome
    to its foot. The page scroll moves through the app. Pure CSS scroll-driven
    animation: browsers without it keep the static top crop, and reduced
-   motion opts out entirely. -39% is the hidden remainder of the capture
-   (1 - 680/1117 of its height). */
+   motion opts out entirely. -35% is the hidden remainder of the capture
+   (1 - 680/1051 of its height). */
 @supports (animation-timeline: view()) {
   .hero__art img {
     animation: hero-pan linear both;
@@ -293,7 +340,7 @@ svg {
       transform: translateY(0);
     }
     to {
-      transform: translateY(-39%);
+      transform: translateY(-35%);
     }
   }
 }
@@ -303,90 +350,79 @@ svg {
   }
 }
 
-/* --- Showcase (alternating image + copy) ---
-   Each row is a contained surface panel (the canvas family) with the
-   screenshot bleeding flush to the panel's edge. This applies the hero's
-   grounded-media motif sideways. */
-.showcase {
-  padding-block: var(--space-64);
-}
-.showcase__row {
+/* --- Story sections (design-system pattern: showcase) -----------------------
+   A two-column copy header over one full-container figure. The media is full
+   width because a 1760px capture in a half-width column renders the app's
+   labels at three or four pixels: composed, and no proof of anything. Every
+   story's figure shares one 16:9 frame, so the stack has a rhythm and the
+   lazy-loaded images never shift the page. */
+.stories {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: stretch;
+  gap: var(--space-80);
+}
+/* The eyebrow spans the head, so the claim and the body below it start on the
+   same line. Aligning the two columns on their bottoms instead put the right
+   column higher than the left whenever it carried a detail link. */
+.story__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-48);
+  align-items: start;
   margin-bottom: var(--space-32);
+}
+.story__eyebrow {
+  display: block;
+  margin-bottom: var(--space-12);
+}
+.story__title {
+  margin: 0;
+  max-width: var(--size-headline);
+  font-size: var(--text-h1);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+}
+/* A story nested inside a cap-group: its heading is an h3 under that group's
+   h2, so it must not render larger than its parent. */
+.story--nested .story__title {
+  font-size: var(--text-h2);
+}
+.story__body {
+  margin: 0;
+  color: var(--colors-text-muted);
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+}
+.story__link {
+  display: inline-block;
+  margin-top: var(--space-16);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+}
+.story__media {
+  margin: 0;
+  aspect-ratio: 16 / 9;
   border: var(--border-width) solid var(--colors-border);
   border-radius: var(--radius-xl);
   background: var(--colors-surface);
   overflow: hidden;
 }
-.showcase__row:last-child {
-  margin-bottom: 0;
-}
-.showcase__row--reverse .showcase__media {
-  order: -1;
-}
-.showcase__text {
-  align-self: center;
-  padding: var(--space-48);
-}
-.showcase__media {
-  position: relative;
-  margin: 0; /* a <figure>: without this its UA margin insets the bleed */
-  /* A hairline where the flush media meets the panel; the outer sides are
-     clipped by the row's radius, so only the seam shows. */
-  box-shadow: 0 0 0 var(--border-width) var(--colors-border);
-}
-.showcase__media img {
-  position: absolute;
-  inset: 0;
+.story__media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-/* A standalone proof figure (not half of a row): its own contained surface. */
-.showcase__media--standalone {
-  margin: 0 0 var(--space-40);
-  border: var(--border-width) solid var(--colors-border);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  box-shadow: none;
-}
-.showcase__media--standalone img {
-  position: static;
-  width: 100%;
-  height: auto;
-}
-.showcase__eyebrow {
-  margin-bottom: var(--space-12);
-}
-.showcase__title {
-  margin: 0 0 var(--space-16);
-  font-size: var(--text-h2);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--tracking-tight);
-  line-height: var(--leading-snug);
-}
-.showcase__body {
-  margin: 0;
-  color: var(--colors-text-muted);
-  font-size: var(--text-lg);
+  /* The app puts its chrome and primary panel at the top of every capture. */
+  object-position: top center;
 }
 @media (max-width: 860px) {
-  .showcase__row {
+  .story__head {
     grid-template-columns: 1fr;
-    margin-bottom: var(--space-32);
+    gap: var(--space-20);
+    align-items: start;
+    margin-bottom: var(--space-24);
   }
-  .showcase__row--reverse .showcase__media {
-    order: 0;
-  }
-  .showcase__text {
-    padding: var(--space-24);
-  }
-  /* Single column: the media flows below the text at its natural height. */
-  .showcase__media img {
-    position: static;
-    height: auto;
+  .stories {
+    gap: var(--space-64);
   }
 }
 
@@ -394,7 +430,7 @@ svg {
 .features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-  gap: var(--space-24);
+  gap: var(--space-16);
 }
 .features--product {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -420,13 +456,20 @@ svg {
 .loop__step {
   display: flex;
   flex-direction: column;
-  padding: var(--space-32);
+  padding: var(--space-24);
   background: var(--colors-surface);
 }
+.loop__index {
+  margin-bottom: var(--space-16);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--colors-text-dim);
+}
 .loop__title {
-  margin: 0 0 var(--space-12);
+  margin: 0 0 var(--space-8);
   font-size: var(--text-h3);
   font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-tight);
 }
 .loop__body {
   margin: 0 0 var(--space-24);
@@ -436,13 +479,8 @@ svg {
 .loop__link {
   margin-top: auto;
   align-self: flex-start;
-  color: var(--colors-primary);
-  text-decoration: none;
   font-weight: var(--font-weight-medium);
   font-size: var(--text-sm);
-}
-.loop__link:hover {
-  text-decoration: underline;
 }
 @media (max-width: 1080px) {
   .loop {
@@ -453,19 +491,33 @@ svg {
   .loop {
     grid-template-columns: 1fr;
   }
-  .loop__step {
-    padding: var(--space-24);
-  }
 }
 
 /* --- Visualization views; cards come from .viz-card. --- */
 .vizzes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-24);
+  gap: var(--space-16);
 }
 @media (max-width: 860px) {
   .vizzes {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Format section: the claim beside a sample of the thing itself. --- */
+.format {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-32);
+  align-items: start;
+}
+.format__samples {
+  display: grid;
+  gap: var(--space-16);
+}
+@media (max-width: 860px) {
+  .format {
     grid-template-columns: 1fr;
   }
 }
@@ -481,7 +533,7 @@ svg {
   background:
     radial-gradient(
       60% 70% at 50% 0%,
-      color-mix(in oklab, var(--colors-secondary) 12%, transparent),
+      color-mix(in oklab, var(--colors-secondary) 7%, transparent),
       transparent 72%
     ),
     var(--colors-surface);
@@ -498,13 +550,16 @@ svg {
   margin-bottom: var(--space-24);
 }
 .download__note {
+  margin: 0 auto;
+  max-width: var(--size-measure);
   text-align: center;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  line-height: var(--leading-normal);
   color: var(--colors-text-dim);
 }
-.download__note a {
-  color: var(--colors-primary);
+.download__note + .download__note {
+  margin-top: var(--space-8);
 }
 
 /* --- Footer: a durable directory, not a repeat of the header. One brand
@@ -528,9 +583,15 @@ svg {
 }
 .footer__tagline {
   margin: 0;
-  max-width: 28ch;
+  max-width: 30ch;
   color: var(--colors-text-muted);
   line-height: var(--leading-normal);
+}
+.footer__meta {
+  margin: var(--space-24) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--colors-text-dim);
 }
 .footer__group {
   display: flex;
@@ -562,25 +623,26 @@ svg {
   }
 }
 
-/* --- Page head: the intro block of a route page (eyebrow, H1, lede). --- */
+/* --- Page head: the intro block of a route page (eyebrow, H1, lede).
+   Left-aligned, matching the section heads it precedes. --- */
 /* The enclosing .section already supplies the top padding. */
 .page-head {
-  padding-block: 0 var(--space-24);
-  text-align: center;
+  max-width: var(--size-measure);
+  padding-block: 0 var(--space-40);
 }
 .page-head__title {
-  margin: var(--space-12) auto var(--space-16);
-  max-width: 24ch;
+  margin: var(--space-12) 0 var(--space-16);
+  max-width: var(--size-headline);
   font-size: var(--text-h1);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: var(--tracking-tight);
   line-height: var(--leading-snug);
 }
 .page-head__lede {
-  margin: 0 auto;
-  max-width: var(--size-measure);
+  margin: 0;
   color: var(--colors-text-muted);
   font-size: var(--text-lg);
+  line-height: var(--leading-normal);
 }
 
 /* --- Capability groups on a family page: a headed subsection whose parallel
@@ -588,23 +650,22 @@ svg {
 .cap-group {
   margin-top: var(--space-64);
 }
+/* A family page whose proof slot is empty puts the first group straight under
+   the page head, where the head's own bottom padding already separates them. */
+.page-head + .cap-group {
+  margin-top: var(--space-16);
+}
 .cap-group__title {
   margin: 0 0 var(--space-8);
   font-size: var(--text-h2);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: var(--tracking-tight);
 }
 .cap-group__lede {
   margin: 0 0 var(--space-24);
+  max-width: var(--size-measure);
   color: var(--colors-text-muted);
-  font-size: var(--text-lg);
-}
-.cap-group__lede a {
-  color: var(--colors-primary);
-  text-decoration: none;
-}
-.cap-group__lede a:hover {
-  text-decoration: underline;
+  line-height: var(--leading-normal);
 }
 /* A lede that follows its grid instead of preceding it. */
 .cap-group__lede--after {
@@ -615,7 +676,7 @@ svg {
 .doc-links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-12);
+  gap: var(--space-8);
 }
 .doc-links a {
   padding: var(--space-8) var(--space-16);
@@ -624,72 +685,32 @@ svg {
   color: var(--colors-text-muted);
   text-decoration: none;
   font-size: var(--text-sm);
+  transition: border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 .doc-links a:hover {
   border-color: var(--colors-border-strong);
   color: var(--colors-text);
 }
 
-/* --- Trust model: five boundary claims on one shared grid. --- */
-.trust {
-  display: grid;
-  /* min() keeps the track fitting viewports narrower than the card minimum. */
-  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-  gap: var(--space-24);
-}
-.trust-item {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-24);
-  border: var(--border-width) solid var(--colors-border);
-  border-radius: var(--radius-lg);
-  background: var(--colors-surface);
-}
-.trust-item__title {
-  margin: 0 0 var(--space-8);
-  font-size: var(--text-h3);
-  font-weight: var(--font-weight-semibold);
-}
-.trust-item__body {
-  margin: 0 0 var(--space-16);
-  color: var(--colors-text-muted);
-  line-height: var(--leading-normal);
-}
-.trust-item__link {
-  margin-top: auto;
-  align-self: flex-start;
-  color: var(--colors-primary);
-  text-decoration: none;
-  font-weight: var(--font-weight-medium);
-  font-size: var(--text-sm);
-}
-.trust-item__link:hover {
-  text-decoration: underline;
-}
-
 /* --- Flow panel: the reviewed-write pipeline as an honest diagram (not a
-   screenshot). A left rail of mono step markers connected by a hairline. --- */
+   screenshot). Four steps in one hairline-divided surface, matching the frame
+   the story screenshots sit in. --- */
 .flow {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-24);
-  padding: var(--space-32) var(--space-40);
-  height: 100%;
-  justify-content: center;
-  background:
-    radial-gradient(
-      70% 60% at 50% 0%,
-      color-mix(in oklab, var(--colors-secondary) 8%, transparent),
-      transparent 70%
-    ),
-    var(--colors-surface-2);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--border-width);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-xl);
+  background: var(--colors-border);
+  overflow: hidden;
 }
 .flow__step {
-  position: relative;
-  display: grid;
-  grid-template-columns: var(--space-32) 1fr;
-  gap: var(--space-16);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-32) var(--space-24);
+  background: var(--colors-surface);
 }
 .flow__marker {
   display: inline-flex;
@@ -699,32 +720,29 @@ svg {
   height: var(--space-32);
   border: var(--border-width) solid var(--colors-border-strong);
   border-radius: var(--radius-pill);
-  background: var(--colors-surface);
+  background: var(--colors-surface-2);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--colors-primary);
-}
-/* The connecting rail between markers. */
-.flow__step:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: var(--space-16);
-  top: var(--space-32);
-  bottom: calc(-1 * var(--space-24));
-  width: var(--border-width);
-  background: var(--colors-border-strong);
+  color: var(--colors-text-muted);
 }
 .flow__title {
   margin: 0;
   font-weight: var(--font-weight-semibold);
   line-height: var(--leading-snug);
-  padding-top: var(--space-4);
 }
 .flow__body {
-  margin: var(--space-4) 0 0;
+  margin: 0;
   color: var(--colors-text-muted);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
+}
+@media (max-width: 860px) {
+  .flow {
+    grid-template-columns: 1fr;
+  }
+  .flow__step {
+    padding: var(--space-24);
+  }
 }
 
 /* --- Workflow steps: a numbered path through the product. --- */
@@ -763,7 +781,7 @@ svg {
 .workflow__title {
   margin: 0 0 var(--space-4);
   font-size: var(--text-h2);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: var(--tracking-tight);
 }
 .workflow__question {
@@ -791,19 +809,7 @@ svg {
 .workflows-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-32);
-}
-
-/* --- Detail link inside a showcase story row. --- */
-.showcase__link {
-  display: inline-block;
-  margin-top: var(--space-20);
-  color: var(--colors-primary);
-  text-decoration: none;
-  font-weight: var(--font-weight-medium);
-}
-.showcase__link:hover {
-  text-decoration: underline;
+  gap: var(--space-16);
 }
 
 /* --- Spotlight (click a screenshot to enlarge) --- */

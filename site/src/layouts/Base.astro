@@ -1,6 +1,19 @@
 ---
 // Base document shell. Imports the design-system token + component CSS (the
 // bridge from the ODSF bundle) and the page styles, in cascade order.
+//
+// The two typefaces the design system names are self-hosted, not fetched from
+// a font CDN: Astro bundles the woff2 files into the site's own assets, so
+// there is no third-party request on a page whose subject is local-first
+// software. Only the latin subsets are ever downloaded (each @font-face
+// carries a unicode-range), and font-display: swap keeps the system fallback
+// visible until they land.
+// Inter's "standard" build carries both the weight and the optical-size axis,
+// so `font-optical-sizing: auto` can tighten the 52px hero headline without a
+// second file (73KB latin, against 48KB for weight alone).
+import "@fontsource-variable/inter/standard.css";
+import "@fontsource-variable/jetbrains-mono/wght.css";
+
 import "../styles/design-system/tokens.css";
 import "../styles/design-system/components.css";
 import "../styles/site.css";
@@ -74,7 +87,7 @@ const jsonLd = {
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="OKF Studio showing a knowledge bundle as a concept graph beside the reader" />
+    <meta property="og:image:alt" content="OKF Studio: explore connected knowledge with your agents. A local-first desktop workspace showing a bundle as a concept graph beside the reader." />
     <meta property="og:locale" content="en_US" />
 
     <!-- Twitter / X -->
@@ -82,7 +95,7 @@ const jsonLd = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <meta name="twitter:image:alt" content="OKF Studio showing a knowledge bundle as a concept graph beside the reader" />
+    <meta name="twitter:image:alt" content="OKF Studio: explore connected knowledge with your agents. A local-first desktop workspace showing a bundle as a concept graph beside the reader." />
 
     {isHome && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   </head>

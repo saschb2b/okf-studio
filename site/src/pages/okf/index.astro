@@ -76,21 +76,23 @@ const shotDs = `${base}screenshot-ds.webp`;
             HTML/CSS examples so an agent can follow the system. This site's
             design system is an ODSF bundle that Studio can open and preview.
           </p>
-          <div class="showcase__row">
-            <div class="showcase__text">
-              <span class="eyebrow showcase__eyebrow">In the reader</span>
-              <h3 class="showcase__title">Tokens and live examples, inline.</h3>
-              <p class="showcase__body">
-                Open an ODSF bundle and Studio renders its design tokens and
-                live HTML/CSS examples in the reader. Inspect resolved values
-                and switch between preview and source.
-              </p>
-              <a class="showcase__link" href={odsfSpec}>Read the ODSF spec<span class="sr-only"> (external)</span> →</a>
+          <section class="story story--nested">
+            <span class="eyebrow story__eyebrow">In the reader</span>
+            <div class="story__head">
+              <h3 class="story__title">Tokens and live examples, inline.</h3>
+              <div>
+                <p class="story__body">
+                  Open an ODSF bundle and Studio renders its design tokens and
+                  live HTML/CSS examples in the reader. Inspect resolved values
+                  and switch between preview and source.
+                </p>
+                <a class="story__link" href={odsfSpec}>Read the ODSF spec<span class="sr-only"> (external)</span> →</a>
+              </div>
             </div>
-            <figure class="showcase__media">
+            <figure class="story__media">
               <img class="zoomable" data-spotlight role="button" tabindex="0" src={shotDs} alt="OKF Studio rendering an ODSF design-system bundle with a live component preview" width="1760" height="1117" loading="lazy" decoding="async" />
             </figure>
-          </div>
+          </section>
         </div>
       </div>
     </section>

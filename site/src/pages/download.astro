@@ -35,7 +35,7 @@ import { version, repo, releases, migrationNotes, downloads } from "../data/site
             }
           </div>
           <p class="download__note">
-            {version} · unsigned for now (your OS may warn on first launch) · <a href={releases}>all releases and notes</a>
+            {version} · builds are unsigned, so your OS may warn on first launch · <a href={releases}>all releases and notes</a>
           </p>
         </div>
 
@@ -59,8 +59,8 @@ import { version, repo, releases, migrationNotes, downloads } from "../data/site
             <article class="feature-card">
               <h3 class="feature-card__title">Upgrading from OKF Viewer?</h3>
               <p class="feature-card__body">
-                Settings and agent profiles stay in place; open retained local
-                folders once to grant them to Rust. See the <a href={migrationNotes}>migration notes</a>.
+                Settings and agent profiles stay in place. Open each retained
+                local folder once so Studio can reach it again. See the <a href={migrationNotes}>migration notes</a>.
               </p>
             </article>
           </div>

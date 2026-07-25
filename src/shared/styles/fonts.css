@@ -1,5 +1,5 @@
 /* The app's two bundled typefaces, declared by hand rather than by importing
-   `@fontsource-variable/*/standard.css`.
+   the packages' own `standard.css` / `wght.css` entry points.
 
    Those entry stylesheets declare every subset the family ships: latin,
    latin-ext, greek, greek-ext, cyrillic, cyrillic-ext, vietnamese. On the web

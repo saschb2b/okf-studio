@@ -1,0 +1,12 @@
+# Files whose exact bytes are verified must not be rewritten on checkout.
+#
+# An OKF sidecar declares a sha256 over its asset's bytes, and Studio refuses to
+# export a sidecar whose digest does not match. On a Windows checkout git was
+# converting docs/assets/interop-sample.json to CRLF, which changed those bytes
+# and made the digest fail — the gate reported tampering on a pristine file, and
+# the interop dogfood test failed locally while passing in CI on Linux. Marking
+# the assets binary keeps the bytes the digest was computed over.
+#
+# This applies to any digest-verified asset added later, which is why it matches
+# the directory rather than the one file.
+docs/assets/** -text

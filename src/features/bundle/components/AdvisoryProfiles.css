@@ -280,3 +280,11 @@
     padding-left: 0;
   }
 }
+
+/* Prose here takes a reading measure; unbounded it ran the full width of the
+   surface. max-width only bites once a line is long. */
+.profile-card :is(p, li, dd),
+.profile-diagnostics :is(p, li, dd),
+.advisory-profiles :is(p, li, dd) {
+  max-width: var(--measure-prose);
+}

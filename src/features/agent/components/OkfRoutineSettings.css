@@ -59,9 +59,12 @@
   border-radius: var(--radius-sm);
 }
 
+/* The label is what a pointer hits for its checkbox, so it carries the 24px
+   floor rather than the 13px replaced element inside it. */
 .okf-routines__schedule {
   display: flex;
   align-items: center;
+  min-height: 24px;
   gap: var(--space-6);
 }
 
@@ -150,4 +153,11 @@
   .okf-routines__attention li {
     display: grid;
   }
+}
+
+/* Prose in this surface takes a reading measure. Every paragraph and list
+   item here ran the full width of a widened agent panel; max-width only
+   bites once a line is long, so short labels are unaffected. */
+.okf-routines :is(p, li, dd) {
+  max-width: var(--measure-prose);
 }

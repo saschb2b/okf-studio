@@ -23,6 +23,7 @@ import {
   openExternal,
   uninstallAgent,
 } from "@/shared/ipc.ts";
+import "./AgentConnectionCatalog.css";
 
 export type InstallableEntry = AgentCatalogEntry & {
   availability: "installable";
@@ -106,6 +107,15 @@ function installedConnectionLabel(
     return `Connected over ACP v${connection.protocolVersion} to another bundle.`;
   }
   return `Connected over ACP v${connection.protocolVersion}.`;
+}
+
+/**
+ * A distribution version as a reader should see it. The `v` prefix was
+ * unconditional, and npm dist-tags are legitimate version values, so a catalog
+ * entry pinned to `latest` — which is the common case — rendered as "vlatest".
+ */
+function versionLabel(version: string): string {
+  return /^\d/.test(version) ? `v${version}` : version;
 }
 
 export function AgentRegistryRow({
@@ -485,7 +495,7 @@ function AgentRowFrame({
       <div className="agent-row__head">
         <h3>{entry.name}</h3>
         {entry.distribution && (
-          <span className="agent-row__version">v{entry.distribution.version}</span>
+          <span className="agent-row__version">{versionLabel(entry.distribution.version)}</span>
         )}
         {entry.availability === "planned" && <span className="badge">Soon</span>}
         {entry.runtime === "studio-native" && <span className="badge">Studio</span>}

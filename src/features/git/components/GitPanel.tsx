@@ -491,15 +491,20 @@ function StageCheckbox({
     if (ref.current) ref.current.indeterminate = mixed;
   }, [mixed]);
   return (
-    <input
-      ref={ref}
-      className="git-stage-checkbox"
-      type="checkbox"
-      checked={change.staged && !mixed}
-      disabled={disabled}
-      aria-label={`${change.staged ? "Unstage" : "Stage"} ${change.path}`}
-      onChange={onToggle}
-    />
+    // The label is the hit area. A bare 16px checkbox in a dense change list is
+    // under the 24px floor, and a label wrapping an input toggles it natively,
+    // so the target grows without the box growing with it.
+    <label className="git-stage-toggle">
+      <input
+        ref={ref}
+        className="git-stage-checkbox"
+        type="checkbox"
+        checked={change.staged && !mixed}
+        disabled={disabled}
+        aria-label={`${change.staged ? "Unstage" : "Stage"} ${change.path}`}
+        onChange={onToggle}
+      />
+    </label>
   );
 }
 

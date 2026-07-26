@@ -134,6 +134,13 @@
   --space-32: 32px;
   --space-40: 40px;
 
+  /* Reading measure for prose in the chrome — notices, policies, findings, and
+     the explanatory paragraphs inside docked panels. Distinct from the reader's
+     --reader-measure, which a reader tunes; this one is fixed, because chrome
+     prose is not what anyone came to read. Unbounded, these paragraphs ran to
+     190ch in a widened agent panel. */
+  --measure-prose: 72ch;
+
   /* Type scale (size + paired line-height) */
   --fs-xs: 12px;
   --fs-sm: 14px;

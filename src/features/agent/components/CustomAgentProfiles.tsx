@@ -12,6 +12,7 @@ import {
   disconnectAgent,
   onAgentConnectionState,
 } from "@/shared/ipc.ts";
+import "./AgentConnectionCatalog.css";
 
 interface CustomAgentProfilesProps {
   bundleRoot: string | null;

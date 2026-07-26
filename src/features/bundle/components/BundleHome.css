@@ -438,3 +438,11 @@
     padding-inline: var(--space-4);
   }
 }
+
+/* Prose here takes a reading measure; unbounded it ran the full width of the
+   surface. max-width only bites once a line is long. */
+.ov-activity-item :is(p, li, dd),
+.ov-activity-body :is(p, li, dd),
+.ov-card :is(p, li, dd) {
+  max-width: var(--measure-prose);
+}

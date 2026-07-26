@@ -63,6 +63,7 @@
 
 .agent-history__search input {
   min-width: 0;
+  min-height: 24px;
   padding-block: var(--space-4);
   color: var(--text);
   background: transparent;

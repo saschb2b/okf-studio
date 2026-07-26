@@ -1,5 +1,6 @@
 import { FileText, FolderTree, Link2, TriangleAlert, WandSparkles } from "lucide-react";
 import type { BundleProposalParseResult } from "@/features/agent/bundleProposal.ts";
+import "./AgentConversation.css";
 
 interface BundleProposalPreviewProps {
   result: BundleProposalParseResult;

@@ -37,6 +37,14 @@
   /* Light separates a floating surface with shadow, not tone — a popover that
      went lighter than white has nowhere to go. */
   --bg-overlay: #ffffff;
+  /* The window's own furniture: title bar, status bar, activity bar. It moves
+     AWAY from the content surface — darker on light, lighter on dark — which is
+     the same rule the state fills follow, and the reason this cannot just be
+     --bg: in light the frame color is already the right step away from white,
+     but in dark it is on the wrong side of the panes. Zed draws the same
+     distinction, its title and status bars being a step off its panels. Here
+     the value coincides with --bg in light and sits above --bg-elev in dark. */
+  --bg-chrome: #f6f7fa;
 
   /* Element state fills. --el-* are opaque, for a control that paints its own
      surface (.btn, chips, toggles); --ghost-* are translucent, for anything
@@ -185,6 +193,7 @@
   --bg: #15181e;
   --bg-elev: #1b1f26;
   --bg-overlay: #22262e;
+  --bg-chrome: #21252c;
 
   --el-hover: #242933;
   --el-active: #2a303a;

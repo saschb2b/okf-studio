@@ -19,7 +19,7 @@
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-8) var(--space-12);
-  background: var(--bg-elev);
+  background: var(--bg-chrome);
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
 }

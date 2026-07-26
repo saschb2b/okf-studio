@@ -71,7 +71,10 @@ function readBlock(css, selector) {
   if (at === -1) throw new Error(`no ${selector} block in ${CSS}`);
   const open = css.indexOf("{", at);
   const close = css.indexOf("\n}", open);
-  const body = css.slice(open, close);
+  // Comments first: the block documents its own token names, and a prose
+  // "--bg:" inside one otherwise parses as a declaration whose value runs to
+  // the next semicolon somewhere below.
+  const body = css.slice(open, close).replace(/\/\*[\s\S]*?\*\//g, "");
   const tokens = {};
   for (const m of body.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) {
     tokens[m[1]] = m[2].trim();
@@ -87,7 +90,15 @@ const dark = { ...light, ...readBlock(css, ':root[data-theme="dark"] {') };
 
 // Surfaces any text can end up on. --el-* are here because a hovered control
 // keeps its label, and the state fill is the surface at that moment.
-const SURFACES = ["--bg-sunken", "--bg", "--bg-elev", "--bg-overlay", "--el-hover", "--el-active"];
+const SURFACES = [
+  "--bg-sunken",
+  "--bg",
+  "--bg-chrome",
+  "--bg-elev",
+  "--bg-overlay",
+  "--el-hover",
+  "--el-active",
+];
 
 // Translucent fills composite onto every surface, so each produces its own set.
 const GHOSTS = ["--ghost-hover", "--ghost-active"];
@@ -120,9 +131,9 @@ function check(themeName, tokens) {
   for (const g of GHOSTS) {
     const c = parseColor(tokens[g]);
     if (!c) throw new Error(`${themeName}: ${g} is not a literal color (${tokens[g]})`);
-    // A ghost fill only ever sits on a real surface; check the worst case, which
-    // is the surface closest in tone to the ink.
-    for (const [name, base] of backdrops.slice(0, 4)) {
+    // A ghost fill only ever sits on a real surface, never on another state
+    // fill — so composite it over each of the five, and not over --el-*.
+    for (const [name, base] of backdrops.slice(0, SURFACES.indexOf("--el-hover"))) {
       backdrops.push([`${g} on ${name}`, over(c, base)]);
     }
   }

@@ -1,7 +1,7 @@
 ---
 type: Color
 title: Color
-description: "Dark-first palette built from the app theme and app icon: near-black surfaces with one blue accent, used only where a reader can act."
+description: "Dark-first palette built from the app theme and app icon: near-black surfaces with one blue accent, used only where a reader can act. The brand roles track the app; the surfaces deliberately do not."
 tags: [foundations, color, tokens]
 status: stable
 timestamp: 2026-07-25T00:00:00Z
@@ -15,16 +15,16 @@ tokens:
     text: "#EDEEF2"
     text-muted: "#A0A6B0"
     text-dim: "#7B808A"
-    primary: "#5B8CFF"
-    primary-hover: "#6E9BFF"
+    primary: "#74A0FF"
+    primary-hover: "#92B4FF"
     secondary: "#9A6BFF"
     indigo: "#3E4BAF"
     on-primary: "#0B0B0D"
     success: "#5ED39A"
     warning: "#E0B341"
-    error: "#FF6B5E"
-    focus: "#5B8CFF"
-    gradient-brand: "linear-gradient(135deg, #5B8CFF, #9A6BFF)"
+    error: "#FF7F72"
+    focus: "#74A0FF"
+    gradient-brand: "linear-gradient(135deg, #74A0FF, #9A6BFF)"
     gradient-tile: "linear-gradient(180deg, #2A2A2E, #060608)"
 ---
 
@@ -37,7 +37,7 @@ tokens:
 | `colors.border` | `#26272E` | Hairline dividers and card borders. |
 | `colors.text` | `#EDEEF2` | Primary body / heading text. |
 | `colors.text-muted` | `#A0A6B0` | Secondary text, captions. |
-| `colors.primary` | `#5B8CFF` | The accent: links, the primary button, focus. |
+| `colors.primary` | `#74A0FF` | The accent: links, the primary button, focus. Tracks the app. |
 | `colors.secondary` | `#9A6BFF` | The violet the icon fades into; background tints only. |
 | `colors.gradient-brand` | blue→violet | The icon's gradient. Artwork only, never UI chrome. |
 
@@ -58,18 +58,46 @@ Color identity is carried by exactly one hue, `colors.primary`, lifted from the 
 
 `colors.secondary` survives only as a **background tint**, mixed into transparency at 8 percent or less behind a large surface. At that strength it warms the dark without becoming a second brand color.
 
+# Relationship to the app theme
+This palette was derived from the desktop app's dark theme (`src/styles.css`), and the two drifted apart the first time the app's changed. Some of that drift is deliberate and some was an accident, so the split is now explicit.
+
+**These track the app. Change one, change both.**
+
+| Token | App role |
+|-------|----------|
+| `colors.primary` | `--accent` |
+| `colors.primary-hover` | `--accent-hover` |
+| `colors.focus` | `--accent` |
+| `colors.error` | `--error` |
+| `colors.warning` | `--warn` |
+| `colors.success` | `--ok` |
+
+The accent is the product's one identity color. A visitor who reads the site and then opens the app should not see two different blues, and the site has room to follow: the app's value moved because a colored label sitting on a hovered row inside a dialog has to clear 4.5:1, and on this page, which is darker still and has no state fills under its links, adopting it only adds headroom.
+
+**These deliberately differ, and should not be "fixed" to match.**
+
+| Token | Why |
+|-------|-----|
+| `bg`, `surface`, `surface-2`, `border` | A marketing page is one long scroll on a near-black canvas; the app is a dense tool window with five stacked surfaces. Both are near-black, and neither ramp fits the other's job. |
+| `text`, `text-muted`, `text-dim` | Tuned against this darker page and this larger type. |
+| `on-primary` | The ink on an accent fill, which here is *this* page's `bg`, not the app's. |
+
+`node scripts/check-design-system.mjs` enforces the first table and the contrast numbers below, so neither claim can rot quietly.
+
 # Contrast
 Every pairing the system actually uses clears 4.5:1, the threshold for normal-size text, because most of this site's small text is exactly that: 13px mono meta lines and eyebrow labels.
 
 | Pairing | Ratio |
 |---------|-------|
-| `text` on `bg` | 17.4:1 |
-| `text-muted` on `surface` | 8.4:1 |
-| `text-dim` on `surface` | 4.6:1 |
-| `primary` on `bg` (links) | 5.2:1 |
-| `on-primary` on `primary` (the button label) | 6.2:1 |
+| `text` on `bg` | 16.96:1 |
+| `text-muted` on `surface` | 7.46:1 |
+| `text-dim` on `surface` | 4.61:1 |
+| `primary` on `bg` (links) | 7.69:1 |
+| `on-primary` on `primary` (the button label) | 7.69:1 |
 
-Two of these took a change. `text-dim` was `#6C717B`, which came to 4.0:1 on `bg` and less on `surface`, and it carries the footer, the download notes, the mono meta lines, and every eyebrow. And `on-primary` was white, which on `#5B8CFF` is 3.2:1: a primary button whose own label failed the threshold.
+These are measured, not remembered. The previous table claimed 17.4, 8.4, 5.2, and 6.2 — close enough to look right in review, and none of them derivable from the tokens beside them.
+
+Two of these took a change. `text-dim` was `#6C717B`, which came to 4.0:1 on `bg` and less on `surface`, and it carries the footer, the download notes, the mono meta lines, and every eyebrow. And `on-primary` was white, which on the accent is 3.2:1: a primary button whose own label failed the threshold.
 
 White cannot be fixed by darkening the accent, because the same hue has to work as a link on a near-black page, where darkening makes it worse. The two requirements pull in opposite directions, so the button takes dark text on the bright fill instead. That is also the honest reading of the palette: `primary` is a light color, and light colors carry dark text.
 

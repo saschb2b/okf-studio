@@ -69,6 +69,12 @@ Every text-carrying role clears WCAG AA (4.5:1) on all five surfaces **and on th
 
 `pnpm check:contrast` re-derives all 108 pairings per theme straight from the declarations in `src/styles.css` and fails on any below 4.5. Run it before changing a color role, and check both directions: a role has to be readable *as* ink and to take `--accent-contrast` at 4.5 when used as a *fill*. Inert controls are the one exception — WCAG 1.4.3 exempts them, and `--disabled-opacity` may take a role below the bar.
 
+## The marketing site shares the brand roles
+
+The [`design-system/`](../../design-system/) ODSF bundle is the [site's](../../site/) visual language, and it was derived from this theme. Six roles are declared to **track** it — `primary`, `primary-hover`, `focus`, `error`, `warning`, `success` map to `--accent`, `--accent-hover`, `--accent`, `--error`, `--warn`, `--ok` — so changing a color role here means changing the bundle in the same change. The accent is the product's one identity color; a visitor who reads the site and then opens the app should not meet two different blues.
+
+The surfaces and text roles deliberately do **not** track: a marketing page is one scroll on a near-black canvas, this is a dense tool window with five stacked surfaces, and neither ramp fits the other's job. `pnpm check:ds` enforces the split, so a role can drift only by being moved into the bundle's "deliberately differ" table with a reason.
+
 ## Tokens that do not exist
 
 `var(--nope)` with no fallback is invalid at computed-value time: the whole declaration is discarded and the property falls back to its initial or inherited value. It fails **completely silently** — no console warning, no build error, just a status color that renders as body text or a focus ring that never draws.

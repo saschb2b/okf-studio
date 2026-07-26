@@ -16,5 +16,8 @@ timestamp: 2026-07-25T00:00:00Z
 6. **Restraint over decoration.** No glow, no gradient fills, no movement on hover.
 7. **Function first, edge to edge.** OKF Studio is a power tool: docked surfaces run flush behind a single hairline, and radius belongs to what floats. Beauty comes from alignment and rhythm, not enclosure (see [function-first](/guidelines/function-first.md)).
 
+# Its relationship to the app
+This bundle is the *site's* language, derived from the desktop app's dark theme. The brand roles (`primary`, `primary-hover`, `focus`, `error`, `warning`, `success`) **track the app** and must change with it; the surfaces and text roles deliberately do not, because a marketing page is one scroll on a near-black canvas and the app is a dense tool window with five stacked surfaces. Both tables, with reasons, are in [color](/foundations/color.md); `pnpm check:ds` enforces them.
+
 # How to use this bundle
 Start here, then pull the foundations from [`/styles/tokens.css`](/styles/tokens.css) (import it once; every value is a CSS custom property). The language behind those properties lives in [color](/foundations/color.md), [typography](/foundations/typography.md), [spacing](/foundations/spacing.md), [shape](/foundations/shape.md), [elevation](/foundations/elevation.md), and [motion](/foundations/motion.md). Descend to the [components](/components/) and [patterns](/patterns/) the page needs, copy the markup from each concept's `*.example.html`, and honor the [guidelines](/guidelines/). The site's own CSS should consume the token custom properties via `var(--…)` and never hard-code a literal.

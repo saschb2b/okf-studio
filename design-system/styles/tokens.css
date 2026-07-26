@@ -11,16 +11,16 @@
   --colors-text: #EDEEF2;
   --colors-text-muted: #A0A6B0;
   --colors-text-dim: #7B808A;
-  --colors-primary: #5B8CFF;
-  --colors-primary-hover: #6E9BFF;
+  --colors-primary: #74A0FF;
+  --colors-primary-hover: #92B4FF;
   --colors-secondary: #9A6BFF;
   --colors-indigo: #3E4BAF;
   --colors-on-primary: #0B0B0D;
   --colors-success: #5ED39A;
   --colors-warning: #E0B341;
-  --colors-error: #FF6B5E;
-  --colors-focus: #5B8CFF;
-  --colors-gradient-brand: linear-gradient(135deg, #5B8CFF, #9A6BFF);
+  --colors-error: #FF7F72;
+  --colors-focus: #74A0FF;
+  --colors-gradient-brand: linear-gradient(135deg, #74A0FF, #9A6BFF);
   --colors-gradient-tile: linear-gradient(180deg, #2A2A2E, #060608);
 
   /* typography */

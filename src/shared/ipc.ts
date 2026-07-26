@@ -81,8 +81,12 @@ import {
   parseAgentThreadMetadata,
   removeAgentThreadMetadata as removeThreadMetadata,
   upsertAgentThreadMetadata,
+  withThreadPrompt,
 } from "@/features/agent/threadMetadata.ts";
-import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import type {
+  AgentThreadMetadata,
+  AgentThreadPrompt,
+} from "@/features/agent/threadMetadata.ts";
 import {
   createOmissionPreference,
   createTaskRecord,
@@ -1064,19 +1068,24 @@ async function restoreLastAgentConnection(
 ): Promise<AgentConnectionInfo | null> {
   const last = lastAgentConnection();
   if (!last) return null;
-  const info = await connectRememberedAgent(last, bundleRoot);
+  // Set before connecting, because the connection is published from inside the
+  // connect call and a subscriber acts on it immediately.
+  markNextConnectionRestored = true;
+  let info: AgentConnectionInfo | null;
+  try {
+    info = await connectRememberedAgent(last, bundleRoot);
+  } finally {
+    markNextConnectionRestored = false;
+  }
   // A remembered entry that cannot even be turned into a connection attempt is
   // a failed restore, not a quiet no-op. Resolving with null here published
   // "idle", which dropped the user on the first-run empty state with no hint
   // that the agent they had been using was supposed to come back.
   if (!info) throw new Error("The remembered agent could not be reconnected.");
-  // Marked the moment the connection exists, not after authenticating. This is
-  // what tells the first conversation surface to continue the saved thread
-  // instead of offering a Resume card, and re-authenticating made restore long
-  // enough that the surface could reach "ready" first and read the flag before
-  // it was set — which put the card back for exactly the launches this is meant
-  // to smooth over.
-  restoredConnectionIds.add(info.connectionId);
+  // Authenticating happens after the connection is already marked and published,
+  // so however long it takes, the first conversation surface can still tell this
+  // was a launch restore and continue the saved thread rather than offering a
+  // Resume card.
   return reauthenticateRestored(info, last.authMethodId);
 }
 
@@ -1108,10 +1117,33 @@ async function reauthenticateRestored(
   return activeAgentConnectionsById.get(info.connectionId) ?? info;
 }
 
+/**
+ * Publish a new connection, marking it as a launch restore before any subscriber
+ * can see it.
+ *
+ * The marker used to be added after `connectRememberedAgent` resolved, which is
+ * after the connection had already been published from inside it. A subscriber
+ * learns about the connection synchronously, mounts a conversation surface, and
+ * that surface asks whether this was a launch restore as soon as it finishes
+ * loading its saved-thread metadata. Whether the answer existed yet came down to
+ * which store read finished first, so the thread auto-resumed or offered a
+ * Resume card depending on disk timing. Setting it here removes the window
+ * instead of making it smaller.
+ */
+function registerAgentConnection(info: AgentConnectionInfo): void {
+  activeAgentConnectionsById.set(info.connectionId, info);
+  if (markNextConnectionRestored) {
+    markNextConnectionRestored = false;
+    restoredConnectionIds.add(info.connectionId);
+  }
+  publishAgentConnections();
+}
+
 export type AgentRestoreStatus = "idle" | "restoring" | "failed";
 
 let agentRestoreState: AgentRestoreStatus = "idle";
 let agentRestoreAttempted = false;
+let markNextConnectionRestored = false;
 const agentRestoreSubscribers = new Set<() => void>();
 const restoredConnectionIds = new Set<string>();
 
@@ -1229,8 +1261,7 @@ export async function connectCustomAgent(
       bundleRoot,
       mode,
     });
-    activeAgentConnectionsById.set(info.connectionId, info);
-    publishAgentConnections();
+    registerAgentConnection(info);
     remember(info);
     return info;
   }
@@ -1263,8 +1294,7 @@ export async function connectCustomAgent(
     },
     securityScope: mockExternalSecurityScope(),
   };
-  activeAgentConnectionsById.set(info.connectionId, info);
-  publishAgentConnections();
+  registerAgentConnection(info);
   remember(info);
   return info;
 }
@@ -1279,8 +1309,7 @@ export async function connectCatalogAgent(
       agentId,
       bundleRoot,
     });
-    activeAgentConnectionsById.set(info.connectionId, info);
-    publishAgentConnections();
+    registerAgentConnection(info);
     saveLastAgentConnection({ kind: "catalog", id: agentId, name: rememberableName(info) });
     return info;
   }
@@ -1319,8 +1348,7 @@ export async function connectCatalogAgent(
     },
     securityScope: mockExternalSecurityScope(),
   };
-  activeAgentConnectionsById.set(info.connectionId, info);
-  publishAgentConnections();
+  registerAgentConnection(info);
   saveLastAgentConnection({ kind: "catalog", id: agentId, name: rememberableName(info) });
   return info;
 }
@@ -1332,8 +1360,7 @@ export async function connectLocalModel(
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
     const info = await invoke<AgentConnectionInfo>("connect_local_model", { profileId, model });
-    activeAgentConnectionsById.set(info.connectionId, info);
-    publishAgentConnections();
+    registerAgentConnection(info);
     saveLastAgentConnection({ kind: "local", id: profileId, model, name: rememberableName(info) });
     return info;
   }
@@ -1369,8 +1396,7 @@ export async function connectLocalModel(
     },
     securityScope: mockNativeSecurityScope(),
   };
-  activeAgentConnectionsById.set(info.connectionId, info);
-  publishAgentConnections();
+  registerAgentConnection(info);
   saveLastAgentConnection({ kind: "local", id: profileId, model, name: rememberableName(info) });
   return info;
 }
@@ -5010,15 +5036,62 @@ export async function loadAgentThreadMetadata(
 }
 
 export async function saveAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "taskId" | "contextManifest"> & {
+  input: Omit<
+    AgentThreadMetadata,
+    "updatedAt" | "archived" | "taskId" | "contextManifest" | "prompts"
+  > & {
     archived?: boolean;
     taskId?: OkfTaskId | null;
     contextManifest?: AcceptedOkfContextManifest | null;
+    prompts?: readonly AgentThreadPrompt[];
   },
 ): Promise<AgentThreadMetadata> {
-  const metadata = createAgentThreadMetadata(input);
-  await writeAgentThreads(upsertAgentThreadMetadata(await readAgentThreads(), metadata));
+  const threads = await readAgentThreads();
+  // Callers that only mean to rename or archive a thread must not erase its
+  // recorded prompts, so an absent `prompts` keeps whatever is already stored
+  // rather than defaulting to none.
+  const prompts = input.prompts ?? threads.find((thread) =>
+    thread.bundleRoot === input.bundleRoot && thread.profileId === input.profileId &&
+    thread.sessionId === input.sessionId
+  )?.prompts ?? [];
+  const metadata = createAgentThreadMetadata({ ...input, prompts });
+  await writeAgentThreads(upsertAgentThreadMetadata(threads, metadata));
   return metadata;
+}
+
+/**
+ * Record a prompt as the user typed it, against its position among the thread's
+ * user messages.
+ *
+ * Restoring a thread rebuilds it from the agent's replay, and every user message
+ * in that replay has been through the adapter's storage format — Studio's
+ * preamble, capability resource URIs and attached-source blocks run together
+ * with the question. This is the record that lets restore show what was asked.
+ *
+ * Best-effort on purpose: a thread that cannot be written still prompts fine,
+ * it just restores less faithfully, so a storage failure must not fail the turn.
+ */
+export async function recordAgentThreadPrompt(
+  bundleRoot: string,
+  profileId: string,
+  sessionId: string,
+  index: number,
+  text: string,
+): Promise<void> {
+  try {
+    const threads = await readAgentThreads();
+    const existing = threads.find((thread) =>
+      thread.bundleRoot === bundleRoot && thread.profileId === profileId &&
+      thread.sessionId === sessionId
+    );
+    if (!existing) return;
+    await writeAgentThreads(upsertAgentThreadMetadata(threads, {
+      ...existing,
+      prompts: withThreadPrompt(existing.prompts, index, text),
+    }));
+  } catch {
+    // Recording is a convenience for the next restore, never a reason to lose a turn.
+  }
 }
 
 export async function removeAgentThreadMetadata(

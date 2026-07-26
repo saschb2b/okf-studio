@@ -1,6 +1,28 @@
 import type { AcceptedOkfContextManifest, OkfTaskId } from "@/features/agent/taskContext.ts";
 import { isOkfTaskId, OKF_TASKS } from "@/features/agent/taskContext.ts";
 
+/**
+ * One prompt as the user typed it, with its position among the thread's user
+ * messages.
+ *
+ * Studio cannot recover this from the agent. A prompt is sent as one turn whose
+ * blocks are Studio's preamble, capability resources, attached sources and the
+ * typed text, and an adapter is free to store that however it likes:
+ * claude-agent-acp flattens Resource blocks into `<context ref="…">` envelopes
+ * and pushes every resource URI into the message as a link, so `session/load`
+ * replays a "user message" that is mostly Studio's own scaffolding run together
+ * with the question. Guessing which part was typed is a losing game across
+ * adapters, so Studio records what it knows.
+ *
+ * The ordinal is stored rather than implied by array position: the list is
+ * trimmed to its most recent entries, and matching by position would then
+ * attribute the wrong prompt to every message in a long thread.
+ */
+export interface AgentThreadPrompt {
+  index: number;
+  text: string;
+}
+
 export interface AgentThreadMetadata {
   bundleRoot: string;
   profileId: string;
@@ -9,10 +31,14 @@ export interface AgentThreadMetadata {
   archived: boolean;
   taskId: OkfTaskId | null;
   contextManifest: AcceptedOkfContextManifest | null;
+  prompts: AgentThreadPrompt[];
   updatedAt: number;
 }
 
 export const AGENT_THREAD_METADATA_CAP = 50;
+
+/** Kept per thread. Older prompts fall away before the thread itself does. */
+export const AGENT_THREAD_PROMPT_CAP = 32;
 
 const LIMITS = {
   bundleRoot: 4_096,
@@ -20,6 +46,7 @@ const LIMITS = {
   sessionId: 1_024,
   title: 80,
   contextManifest: 64 * 1024,
+  promptText: 4_096,
 } as const;
 
 const LEGACY_WORKFLOW_TASKS = {
@@ -53,6 +80,41 @@ function isOptionalBoundedText(value: unknown, limit: number): value is string |
       return code <= 31 || code === 127;
     })
   );
+}
+
+/**
+ * Prompt text, which unlike every other field here is allowed newlines and
+ * tabs: people write multi-line prompts, and `isBoundedText` rejects every
+ * control character, so reusing it would have silently dropped exactly the
+ * prompts most worth keeping.
+ */
+function isPromptText(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 &&
+    value.length <= LIMITS.promptText &&
+    !Array.from(value).some((character) => {
+      const code = character.charCodeAt(0);
+      return (code <= 31 && code !== 9 && code !== 10 && code !== 13) || code === 127;
+    });
+}
+
+function parseThreadPrompts(value: unknown): AgentThreadPrompt[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<number>();
+  return value
+    .filter((item): item is AgentThreadPrompt => {
+      if (!item || typeof item !== "object") return false;
+      const prompt = item as Record<string, unknown>;
+      return typeof prompt.index === "number" && Number.isSafeInteger(prompt.index) &&
+        prompt.index >= 0 && isPromptText(prompt.text);
+    })
+    .map((prompt) => ({ index: prompt.index, text: prompt.text }))
+    .filter((prompt) => {
+      if (seen.has(prompt.index)) return false;
+      seen.add(prompt.index);
+      return true;
+    })
+    .sort((left, right) => left.index - right.index)
+    .slice(-AGENT_THREAD_PROMPT_CAP);
 }
 
 function isSafeCount(value: unknown): value is number {
@@ -272,6 +334,9 @@ function parseMetadata(value: unknown): AgentThreadMetadata | null {
     archived: candidate.archived ?? false,
     taskId: taskId ?? null,
     contextManifest: contextManifest ?? null,
+    // Threads written before prompts were recorded simply have none, and the
+    // restore path falls back for them rather than failing to parse.
+    prompts: parseThreadPrompts(raw.prompts),
     updatedAt: candidate.updatedAt,
   };
 }
@@ -297,10 +362,14 @@ export function parseAgentThreadMetadata(value: unknown): AgentThreadMetadata[] 
 }
 
 export function createAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "taskId" | "contextManifest"> & {
+  input: Omit<
+    AgentThreadMetadata,
+    "updatedAt" | "archived" | "taskId" | "contextManifest" | "prompts"
+  > & {
     archived?: boolean;
     taskId?: OkfTaskId | null;
     contextManifest?: AcceptedOkfContextManifest | null;
+    prompts?: readonly AgentThreadPrompt[];
   },
   updatedAt = Date.now(),
 ): AgentThreadMetadata {
@@ -311,12 +380,52 @@ export function createAgentThreadMetadata(
     archived: input.archived ?? false,
     taskId: input.taskId ?? null,
     contextManifest: input.contextManifest ?? null,
+    prompts: input.prompts ?? [],
     updatedAt,
   });
   if (!metadata) {
     throw new Error("The thread metadata is invalid or exceeds its storage limit.");
   }
   return metadata;
+}
+
+/** Append or replace the prompt at `index`, keeping the list ordered and capped. */
+export function withThreadPrompt(
+  current: readonly AgentThreadPrompt[],
+  index: number,
+  text: string,
+): AgentThreadPrompt[] {
+  return parseThreadPrompts([
+    ...current.filter((prompt) => prompt.index !== index),
+    { index, text },
+  ]);
+}
+
+/**
+ * Restore a replayed transcript using the prompts Studio recorded.
+ *
+ * The agent's replay decides the shape of the thread — how many messages there
+ * are and in what order — because it is the only record of the agent's side.
+ * But every user message it hands back has been through the adapter's storage
+ * format, so where Studio has its own record of that prompt, that wins.
+ *
+ * A user message with no recorded prompt is left exactly as replayed: threads
+ * from before this was recorded, or started outside Studio, are still readable,
+ * and the alternative of guessing which fragment was typed is what this replaces.
+ */
+export function restoreThreadPrompts<T extends { role: string; text: string }>(
+  messages: readonly T[],
+  prompts: readonly AgentThreadPrompt[],
+): T[] {
+  if (prompts.length === 0) return [...messages];
+  const byIndex = new Map(prompts.map((prompt) => [prompt.index, prompt.text]));
+  let userIndex = 0;
+  return messages.map((message) => {
+    if (message.role !== "user") return message;
+    const recorded = byIndex.get(userIndex);
+    userIndex += 1;
+    return recorded === undefined ? message : { ...message, text: recorded };
+  });
 }
 
 export function upsertAgentThreadMetadata(

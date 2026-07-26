@@ -11,7 +11,7 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, CircleAlert, Crosshair, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordWorkspaceTaskObservation, respondAgentPermission, retrieveOkfContext, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordWorkspaceTaskObservation, rememberedAuthMethod, respondAgentPermission, retrieveOkfContext, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
@@ -1231,6 +1231,16 @@ export function AgentConversation({
     ));
   }
 
+  // The method that signed this profile in before, if the panel has one. Used to
+  // lead the picker and to word it as a re-auth rather than a first choice.
+  const previousMethod = rememberedAuthMethod(connection.profileId);
+  const orderedAuthMethods = previousMethod
+    ? [
+        ...connection.authMethods.filter((method) => method.id === previousMethod),
+        ...connection.authMethods.filter((method) => method.id !== previousMethod),
+      ]
+    : connection.authMethods;
+
   async function authenticate(methodId: string) {
     setAuthentication({ status: "authenticating", methodId });
     try {
@@ -2391,13 +2401,27 @@ export function AgentConversation({
 
       {requiresAuthentication && (
         <div className="agent-conversation__state agent-authentication">
-          <h3>Authentication required</h3>
-          <p>The agent owns sign-in and credentials. Studio sends only the method you choose.</p>
+          <h3>{previousMethod ? "Sign in again" : "Authentication required"}</h3>
+          {/* A remembered method means Studio already tried it and the agent
+              declined, so this is an expired or revoked credential rather than a
+              first-run choice. Saying which one it was saves re-deciding. */}
+          <p>
+            {previousMethod
+              ? "Studio reconnected and reused the method you signed in with last time, but the agent did not accept it. The credential has most likely expired."
+              : "The agent owns sign-in and credentials. Studio sends only the method you choose."}
+          </p>
           <div className="agent-authentication__methods">
-            {connection.authMethods.map((method) => (
-              <div key={method.id} className="agent-authentication__method">
+            {orderedAuthMethods.map((method) => (
+              <div
+                key={method.id}
+                className="agent-authentication__method"
+                data-previous={method.id === previousMethod ? "true" : undefined}
+              >
                 <div>
                   <strong>{method.name}</strong>
+                  {method.id === previousMethod && (
+                    <span className="agent-authentication__previous">used last time</span>
+                  )}
                   {method.description && <p>{method.description}</p>}
                 </div>
                 <button

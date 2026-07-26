@@ -58,7 +58,7 @@ describe("agent panel restore at launch", () => {
     );
     localStorage.setItem(
       "okf-studio:agent-last-connection",
-      JSON.stringify({ kind: "custom", id: profile.id }),
+      JSON.stringify({ kind: "custom", id: profile.id, authMethodId: "browser-login" }),
     );
 
     const user = userEvent.setup();
@@ -69,10 +69,11 @@ describe("agent panel restore at launch", () => {
     );
     await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
     await screen.findByRole("button", { name: /switch bundle/i });
-    expect(await screen.findByRole("heading", { name: "Authentication required" }))
-      .toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-
+    // The whole point of the fix. Reconnecting reports authenticated: false and
+    // re-advertises the methods, so the panel used to stop here and ask which
+    // one to use — on every launch, in front of a thread the user had already
+    // chosen. The method is remembered now and re-applied silently, so the
+    // transcript comes back with no interaction at all.
     expect(
       await screen.findByRole("heading", { name: "Trading risk controls" }),
     ).toBeInTheDocument();
@@ -86,6 +87,14 @@ describe("agent panel restore at launch", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Saved thread unavailable" }))
       .not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Authentication required" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Sign in again" }))
+      .not.toBeInTheDocument();
+    // Re-authenticating made restore long enough that the surface could reach
+    // "ready" before the connection was marked as restored, which put this card
+    // back for exactly the launches the fix is meant to smooth over.
+    expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
 
     // An explicit disconnect forgets the remembered entry.
     const connection = ipc
@@ -94,6 +103,58 @@ describe("agent panel restore at launch", () => {
     expect(connection).toBeDefined();
     await act(() => ipc.disconnectAgent(connection!.connectionId));
     expect(ipc.lastAgentConnection()).toBeNull();
+    await ipc.removeCustomAgent(profile.id);
+  });
+
+  it("still asks which method to use when none was remembered", async () => {
+    // An entry saved by an older build, or a profile that was never
+    // authenticated, carries no authMethodId. There is nothing to re-apply, so
+    // the picker is correct here rather than a regression.
+    const profile = await ipc.saveCustomAgent({
+      name: "Restore Auth Harness",
+      executable: "C:\tools\restore.exe",
+      arguments: [],
+      environment: [],
+    });
+    localStorage.setItem(
+      "okf-studio:agent-panel",
+      JSON.stringify({ open: true, width: null }),
+    );
+    localStorage.setItem(
+      "okf-studio:agent-last-connection",
+      JSON.stringify({ kind: "custom", id: profile.id }),
+    );
+
+    const user = userEvent.setup();
+    render(
+      <AppProvider>
+        <App />
+      </AppProvider>,
+    );
+    await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
+    await screen.findByRole("button", { name: /switch bundle/i });
+
+    expect(await screen.findByRole("heading", { name: "Authentication required" }))
+      .toBeInTheDocument();
+    await ipc.removeCustomAgent(profile.id);
+  });
+
+  it("records the method it authenticated with, so the next launch can reuse it", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Restore Auth Harness",
+      executable: "C:\tools\restore.exe",
+      arguments: [],
+      environment: [],
+    });
+    const bundleRoot = "/mock/workspace/docs";
+    const connection = await ipc.connectCustomAgent(profile.id, bundleRoot);
+    expect(ipc.rememberedAuthMethod(profile.id)).toBeNull();
+
+    await ipc.authenticateAgent(connection.connectionId, "browser-login");
+    expect(ipc.rememberedAuthMethod(profile.id)).toBe("browser-login");
+    expect(ipc.lastAgentConnection()?.authMethodId).toBe("browser-login");
+
+    await act(() => ipc.disconnectAgent(connection.connectionId));
     await ipc.removeCustomAgent(profile.id);
   });
 });

@@ -931,12 +931,34 @@ export interface LastAgentConnection {
   id: string;
   mode?: AgentConnectionMode;
   model?: string;
+  /**
+   * The auth method that last authenticated this profile. ACP agents own their
+   * own credentials — Zed's docs are explicit that "External Agent usually owns
+   * its own runtime, auth, model selection, tools" — so calling `authenticate`
+   * again with the same method is normally a non-interactive no-op against an
+   * agent that is already signed in. Without remembering it, a restored
+   * connection came back unauthenticated and the panel asked which method to
+   * use on every single launch, blocking the saved thread behind a choice the
+   * user had already made.
+   */
+  authMethodId?: string;
 }
 
 const LAST_CONNECTION_KEY = "okf-studio:agent-last-connection";
 
 function lastConnectionProfileId(entry: LastAgentConnection): string {
   return entry.kind === "catalog" ? `catalog-${entry.id}` : entry.id;
+}
+
+/**
+ * The auth method remembered for a profile, if any. The picker leads with it and
+ * says the credential expired, rather than presenting a first-run choice for a
+ * decision the user already made.
+ */
+export function rememberedAuthMethod(profileId: string): string | null {
+  const last = lastAgentConnection();
+  if (!last || lastConnectionProfileId(last) !== profileId) return null;
+  return last.authMethodId ?? null;
 }
 
 export function lastAgentConnection(): LastAgentConnection | null {
@@ -959,6 +981,12 @@ export function lastAgentConnection(): LastAgentConnection | null {
         typeof stored.model === "string" && stored.model.length > 0 && stored.model.length <= 256
           ? stored.model
           : undefined,
+      authMethodId:
+        typeof stored.authMethodId === "string" &&
+        stored.authMethodId.length > 0 &&
+        stored.authMethodId.length <= 128
+          ? stored.authMethodId
+          : undefined,
     };
   } catch {
     return null;
@@ -974,6 +1002,18 @@ function saveLastAgentConnection(entry: LastAgentConnection): void {
   }
 }
 
+/**
+ * Note the method that just authenticated `profileId`, if that profile is the
+ * remembered one. Kept separate from saveLastAgentConnection so authenticating
+ * never rewrites the connection kind, mode, or model.
+ */
+function rememberAuthMethod(profileId: string, methodId: string): void {
+  const last = lastAgentConnection();
+  if (!last || lastConnectionProfileId(last) !== profileId) return;
+  if (last.authMethodId === methodId) return;
+  saveLastAgentConnection({ ...last, authMethodId: methodId });
+}
+
 function forgetLastAgentConnection(profileId: string): void {
   const last = lastAgentConnection();
   if (!last || lastConnectionProfileId(last) !== profileId) return;
@@ -984,18 +1024,63 @@ function forgetLastAgentConnection(profileId: string): void {
   }
 }
 
-/** Reconnect the most recent explicitly connected agent, if one is remembered. */
+/**
+ * Reconnect the most recent explicitly connected agent, if one is remembered,
+ * and re-apply the auth method it was signed in with.
+ *
+ * Reconnecting alone was not enough. A fresh ACP connection reports
+ * `authenticated: false` and re-advertises its methods, and the conversation
+ * surface gates its draft session, its saved-thread resume, and its session load
+ * on that flag — so the panel asked which method to use on every launch, and the
+ * previous thread sat behind a choice the user had already made. The agent
+ * itself holds the credentials, so `authenticate` with the remembered method is
+ * normally a non-interactive no-op; it is the same call the user was making by
+ * hand. If it fails the connection stays up and the picker appears, which is
+ * where an expired or revoked credential should surface.
+ */
 async function restoreLastAgentConnection(
   bundleRoot: string,
 ): Promise<AgentConnectionInfo | null> {
   const last = lastAgentConnection();
   if (!last) return null;
+  const info = await connectRememberedAgent(last, bundleRoot);
+  if (!info) return null;
+  // Marked the moment the connection exists, not after authenticating. This is
+  // what tells the first conversation surface to continue the saved thread
+  // instead of offering a Resume card, and re-authenticating made restore long
+  // enough that the surface could reach "ready" first and read the flag before
+  // it was set — which put the card back for exactly the launches this is meant
+  // to smooth over.
+  restoredConnectionIds.add(info.connectionId);
+  return reauthenticateRestored(info, last.authMethodId);
+}
+
+function connectRememberedAgent(
+  last: LastAgentConnection,
+  bundleRoot: string,
+): Promise<AgentConnectionInfo | null> {
   if (last.kind === "catalog") return connectCatalogAgent(last.id, bundleRoot);
   if (last.kind === "custom") {
     return connectCustomAgent(last.id, bundleRoot, last.mode ?? "standard");
   }
-  if (!last.model) return null;
+  if (!last.model) return Promise.resolve(null);
   return connectLocalModel(last.id, last.model);
+}
+
+/** Re-apply a remembered method, returning the connection either way. */
+async function reauthenticateRestored(
+  info: AgentConnectionInfo,
+  methodId: string | undefined,
+): Promise<AgentConnectionInfo> {
+  if (info.authenticated || !methodId) return info;
+  if (!info.authMethods.some((method) => method.id === methodId)) return info;
+  try {
+    await authenticateAgent(info.connectionId, methodId);
+  } catch {
+    // An expired credential is not a restore failure: the connection is up, and
+    // the picker is the right place to say so.
+  }
+  return activeAgentConnectionsById.get(info.connectionId) ?? info;
 }
 
 export type AgentRestoreStatus = "idle" | "restoring" | "failed";
@@ -1071,10 +1156,7 @@ export function maybeRestoreLastAgentConnection(bundleRoot: string): void {
   if (activeAgentConnectionSnapshot.length > 0 || !lastAgentConnection()) return;
   publishAgentRestoreState("restoring");
   restoreLastAgentConnection(bundleRoot).then(
-    (info) => {
-      if (info) restoredConnectionIds.add(info.connectionId);
-      publishAgentRestoreState("idle");
-    },
+    () => publishAgentRestoreState("idle"),
     () => publishAgentRestoreState("failed"),
   );
 }
@@ -1545,6 +1627,7 @@ export async function authenticateAgent(
     if (latest) {
       activeAgentConnectionsById.set(connectionId, { ...latest, authenticated: true });
       publishAgentConnections();
+      rememberAuthMethod(latest.profileId, methodId);
     }
   }
   return authenticated;

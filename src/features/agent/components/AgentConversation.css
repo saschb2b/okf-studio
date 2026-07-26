@@ -499,6 +499,20 @@
   border-radius: var(--radius);
 }
 
+/* The method that signed this profile in before. Marked with the accent edge the
+   app uses for "you are here", so the row a reader wants is the one they see
+   first — it is also sorted to the top. */
+.agent-authentication__method[data-previous="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.agent-authentication__previous {
+  margin-left: var(--space-6);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
 .agent-authentication__method > div {
   min-width: 0;
 }

@@ -18,10 +18,9 @@
 // change and bury the pins in noise.
 
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 
 const CATALOG = new URL("../src/features/agent/catalog.json", import.meta.url);
-const NODE_TEST_PIN = "src/features/agent/catalog.test.ts";
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");
@@ -180,6 +179,47 @@ async function nodeUpdate(catalog, version) {
   return { from: catalog.nodeRuntime.version, to: version, distributions };
 }
 
+/**
+ * Source files that still name the old runtime version.
+ *
+ * The version is asserted in four places, not one: the catalog, its TS test, a
+ * Rust test in agent_catalog.rs, and a shell integration test that reads it off
+ * the UI. Moving it and updating only the two obvious ones is exactly what
+ * happened here, and CI caught it after the fact. Printing the real list beats a
+ * hardcoded reminder that goes stale the moment a fifth assertion appears.
+ *
+ * History is skipped: docs/log.md records what was pinned at the time, and the
+ * Zed reference describes Zed's pin rather than ours.
+ */
+async function stillMentioning(version) {
+  const roots = ["src", "src-tauri/src", "docs", "scripts", ".github"];
+  const skip = [/docs[\\/]log\.md$/, /zed-agent-system\.md$/];
+  const found = [];
+  const walk = async (dir) => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        await walk(path);
+      } else if (/\.(rs|ts|tsx|md|json|yml|mjs)$/.test(entry.name)) {
+        if (skip.some((pattern) => pattern.test(path))) continue;
+        const text = await readFile(path, "utf8").catch(() => "");
+        // Un-escape the haystack rather than guessing how each file spells the
+        // version: the shell integration test asserts on `v24\.18\.0` because it
+        // matches with a regex, and searching for the plain form alone missed it.
+        if (text.replaceAll("\\.", ".").includes(version)) found.push(path);
+      }
+    }
+  };
+  await Promise.all(roots.map(walk));
+  return found.sort();
+}
+
 function reportManual(catalog) {
   const binaries = catalog.entries.filter((entry) => entry.distribution?.kind === "binary");
   for (const entry of binaries) {
@@ -248,8 +288,10 @@ await writeFile(CATALOG, eol === "\r\n" ? text.replaceAll("\n", "\r\n") : text);
 console.log(`\nUpdated ${behind.length} npm pin(s) in src/features/agent/catalog.json.`);
 if (node) {
   console.log(`Moved the Node runtime ${node.from} -> ${node.to} across ${node.distributions.length} targets.`);
-  // The test pins the exact version deliberately, so moving it stays a conscious
-  // act rather than something a refresh slips through.
-  console.log(`Update the pinned version in ${NODE_TEST_PIN} to match.`);
+  const stale = await stillMentioning(node.from);
+  if (stale.length > 0) {
+    console.log(`\nStill pinned to ${node.from} and asserted elsewhere — update these too:`);
+    for (const file of stale) console.log(`  ${file}`);
+  }
 }
-console.log("Then: pnpm lint && pnpm vitest run --project unit");
+console.log("\nThen: pnpm lint && pnpm vitest run && cargo test --manifest-path src-tauri/Cargo.toml --lib");

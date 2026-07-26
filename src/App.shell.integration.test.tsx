@@ -80,7 +80,7 @@ describe("OKF Studio shell", () => {
       expect(installButtons).toHaveLength(9);
       expect(installButtons[0]).toBeEnabled();
     });
-    expect(screen.getAllByText(/managed Node v24\.11\.0/i)).toHaveLength(8);
+    expect(screen.getAllByText(/managed Node v24\.18\.0/i)).toHaveLength(8);
     expect(screen.getAllByText(/platform archive pinned by Studio-measured checksum/i))
       .toHaveLength(1);
     const hostSummary = await screen.findByText(/Restricted agent host:/);

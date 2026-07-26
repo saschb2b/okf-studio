@@ -166,7 +166,7 @@ mod tests {
         let catalog = load().expect("catalog should parse");
         assert_eq!(catalog.version, 1);
         assert_eq!(catalog.entries.len(), 13);
-        assert_eq!(catalog.node_runtime.version, "v24.11.0");
+        assert_eq!(catalog.node_runtime.version, "v24.18.0");
         assert_eq!(catalog.node_runtime.distributions.len(), 5);
         let mut ids = catalog
             .entries

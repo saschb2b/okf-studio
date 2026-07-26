@@ -157,4 +157,99 @@ describe("agent panel restore at launch", () => {
     await act(() => ipc.disconnectAgent(connection.connectionId));
     await ipc.removeCustomAgent(profile.id);
   });
+
+  it("names the agent it could not reconnect, and offers to try again", async () => {
+    // A remembered agent whose profile is gone: the install was removed, or the
+    // endpoint moved. The id is not presentable and the profile can no longer be
+    // read for a name, which is why the name is stored alongside it.
+    localStorage.setItem(
+      "okf-studio:agent-panel",
+      JSON.stringify({ open: true, width: null }),
+    );
+    localStorage.setItem(
+      "okf-studio:agent-last-connection",
+      JSON.stringify({ kind: "custom", id: "custom-goneforever", name: "Ghost Agent" }),
+    );
+
+    const user = userEvent.setup();
+    render(
+      <AppProvider>
+        <App />
+      </AppProvider>,
+    );
+    await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
+    await screen.findByRole("button", { name: /switch bundle/i });
+
+    expect(
+      await screen.findByRole("heading", { name: "Couldn't reconnect Ghost Agent" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/your threads are kept/i)).toBeInTheDocument();
+    // The failure used to be a note under "Connect an agent", whose only way
+    // forward was finding the agent in the catalog again by hand.
+    expect(screen.queryByRole("heading", { name: "Connect an agent" }))
+      .not.toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    expect(screen.getByRole("button", { name: "Choose a different agent" }))
+      .toBeInTheDocument();
+
+    // Retrying re-runs the attempt rather than being a dead control. The profile
+    // is still gone, so it lands back here instead of silently doing nothing.
+    await user.click(retry);
+    expect(
+      await screen.findByRole("heading", { name: "Couldn't reconnect Ghost Agent" }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to unnamed copy for an entry saved before names were recorded", async () => {
+    localStorage.setItem(
+      "okf-studio:agent-panel",
+      JSON.stringify({ open: true, width: null }),
+    );
+    localStorage.setItem(
+      "okf-studio:agent-last-connection",
+      JSON.stringify({ kind: "custom", id: "custom-goneforever" }),
+    );
+
+    const user = userEvent.setup();
+    render(
+      <AppProvider>
+        <App />
+      </AppProvider>,
+    );
+    await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
+    await screen.findByRole("button", { name: /switch bundle/i });
+
+    expect(
+      await screen.findByRole("heading", { name: "Couldn't reconnect your last agent" }),
+    ).toBeInTheDocument();
+  });
+
+  it("records the connected agent's name for the next launch", async () => {
+    const profile = await ipc.saveCustomAgent({
+      name: "Named For Restore",
+      executable: "C:\\tools\\named.exe",
+      arguments: [],
+      environment: [],
+    });
+    const connection = await ipc.connectCustomAgent(profile.id, "/mock/workspace/docs");
+    expect(ipc.lastAgentConnection()?.name).toBe("Named For Restore");
+
+    await act(() => ipc.disconnectAgent(connection.connectionId));
+    await ipc.removeCustomAgent(profile.id);
+  });
+
+  it("treats a remembered entry it cannot even attempt as a failure", async () => {
+    // A local-model entry with no model cannot produce a connection attempt.
+    // Resolving quietly published "idle", which dropped the user on the
+    // first-run empty state with no hint that an agent was meant to come back.
+    localStorage.setItem(
+      "okf-studio:agent-last-connection",
+      JSON.stringify({ kind: "local", id: "local-1", name: "Ollama · llama3.1" }),
+    );
+    ipc.maybeRestoreLastAgentConnection("/mock/workspace/docs");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(ipc.agentRestoreStatus()).toBe("failed");
+  });
 });

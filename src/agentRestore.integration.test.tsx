@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -63,9 +64,15 @@ describe("agent panel restore at launch", () => {
 
     const user = userEvent.setup();
     render(
-      <AppProvider>
-        <App />
-      </AppProvider>,
+      // StrictMode because src/main.tsx mounts the app inside it, so every effect
+      // here runs twice exactly as it does when the app is run. Rendering without
+      // it let a self-racing saved-thread load pass the suite while putting the
+      // Resume card back over an already-restored thread in the real app.
+      <StrictMode>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </StrictMode>,
     );
     await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
     await screen.findByRole("button", { name: /switch bundle/i });
@@ -127,9 +134,15 @@ describe("agent panel restore at launch", () => {
 
     const user = userEvent.setup();
     render(
-      <AppProvider>
-        <App />
-      </AppProvider>,
+      // StrictMode because src/main.tsx mounts the app inside it, so every effect
+      // here runs twice exactly as it does when the app is run. Rendering without
+      // it let a self-racing saved-thread load pass the suite while putting the
+      // Resume card back over an already-restored thread in the real app.
+      <StrictMode>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </StrictMode>,
     );
     await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
     await screen.findByRole("button", { name: /switch bundle/i });
@@ -173,9 +186,15 @@ describe("agent panel restore at launch", () => {
 
     const user = userEvent.setup();
     render(
-      <AppProvider>
-        <App />
-      </AppProvider>,
+      // StrictMode because src/main.tsx mounts the app inside it, so every effect
+      // here runs twice exactly as it does when the app is run. Rendering without
+      // it let a self-racing saved-thread load pass the suite while putting the
+      // Resume card back over an already-restored thread in the real app.
+      <StrictMode>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </StrictMode>,
     );
     await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
     await screen.findByRole("button", { name: /switch bundle/i });
@@ -212,9 +231,15 @@ describe("agent panel restore at launch", () => {
 
     const user = userEvent.setup();
     render(
-      <AppProvider>
-        <App />
-      </AppProvider>,
+      // StrictMode because src/main.tsx mounts the app inside it, so every effect
+      // here runs twice exactly as it does when the app is run. Rendering without
+      // it let a self-racing saved-thread load pass the suite while putting the
+      // Resume card back over an already-restored thread in the real app.
+      <StrictMode>
+        <AppProvider>
+          <App />
+        </AppProvider>
+      </StrictMode>,
     );
     await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
     await screen.findByRole("button", { name: /switch bundle/i });
@@ -235,6 +260,49 @@ describe("agent panel restore at launch", () => {
     expect(ipc.lastAgentConnection()?.name).toBe("Named For Restore");
 
     await act(() => ipc.disconnectAgent(connection.connectionId));
+    await ipc.removeCustomAgent(profile.id);
+  });
+
+  it("marks a restored connection before any subscriber can see it", async () => {
+    // The invariant, asserted directly rather than through the UI, because the
+    // bug was pure ordering and the mock's timings hid it: the marker used to be
+    // added after connectRememberedAgent resolved, which is after the connection
+    // had already been published from inside it. A surface that mounted on that
+    // publish and finished loading its saved-thread metadata first asked "was
+    // this a launch restore?" before the answer existed, and got the Resume card.
+    const profile = await ipc.saveCustomAgent({
+      name: "Restore Order Harness",
+      executable: "C:\\tools\\order.exe",
+      arguments: [],
+      environment: [],
+    });
+    localStorage.setItem(
+      "okf-studio:agent-last-connection",
+      JSON.stringify({ kind: "custom", id: profile.id, authMethodId: "browser-login" }),
+    );
+
+    let markedWhenFirstSeen: boolean | null = null;
+    const stop = ipc.subscribeAgentConnections(() => {
+      if (markedWhenFirstSeen !== null) return;
+      const restored = ipc.activeAgentConnections()
+        .find((candidate) => candidate.profileId === profile.id);
+      if (!restored) return;
+      // The first notification that carries this connection. Whatever decides to
+      // auto-resume runs off exactly this signal, so the answer has to be ready.
+      markedWhenFirstSeen = ipc.consumeRestoredConnection(restored.connectionId);
+    });
+
+    ipc.maybeRestoreLastAgentConnection("/mock/workspace/docs");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+    stop();
+
+    expect(markedWhenFirstSeen).toBe(true);
+
+    const connection = ipc.activeAgentConnections()
+      .find((candidate) => candidate.profileId === profile.id);
+    if (connection) await act(() => ipc.disconnectAgent(connection.connectionId));
     await ipc.removeCustomAgent(profile.id);
   });
 

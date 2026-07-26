@@ -344,6 +344,7 @@ export function AgentConversation({
   // messages state so it is exact at the moment a turn is sent, and re-seeded on
   // restore from however many user messages the replay brought back.
   const promptIndexRef = useRef(0);
+  const savedThreadRequestRef = useRef(0);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   const stagedValidationRequestRef = useRef(0);
@@ -393,9 +394,16 @@ export function AgentConversation({
       setSavedThread({ status: "none" });
       return;
     }
+    // A request token, as the rest of this file's async work already uses —
+    // draftSessionRequestRef, sessionConfigRequestRef, artifactValidationRequestRef.
+    // This load was the one path without one, and StrictMode runs the effect
+    // twice, so two reads were in flight and either could publish last.
+    const request = savedThreadRequestRef.current + 1;
+    savedThreadRequestRef.current = request;
     setSavedThread({ status: "loading" });
     try {
       const metadata = await loadAgentThreadMetadata(bundleRoot, connection.profileId);
+      if (savedThreadRequestRef.current !== request) return;
       const current = metadata.find((entry) => !entry.archived);
       const archived = metadata.find((entry) => entry.archived);
       const continuationChoices = [current, archived].filter(
@@ -405,6 +413,7 @@ export function AgentConversation({
         ? { status: "ready", metadata: continuationChoices }
         : { status: "none" });
     } catch (error: unknown) {
+      if (savedThreadRequestRef.current !== request) return;
       setSavedThread({ status: "error", message: errorMessage(error) });
     }
   }

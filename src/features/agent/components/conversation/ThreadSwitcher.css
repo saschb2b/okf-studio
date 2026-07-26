@@ -12,18 +12,33 @@
 
 .agent-conversation__toolbar .agent-panel__threads {
   flex: 1 1 auto;
+  /* No padding-right to clear the pinned add button: `sticky; right: 0` aligns
+     to the padding edge, so reserving space insets the button instead of the
+     content. Tabs pass behind it, which its opaque fill is for. */
   padding: 0;
   background: transparent;
   border: 0;
 }
 
+/* Tabs give way instead of scrolling out of sight. Every tab used to be
+   flex: 0 0 auto at up to 112px inside a 136px scroller, so with three threads
+   the second was clipped mid-word and the third was gone — and, because the
+   strip carries no scroll affordance, nothing said they were there. Shrinking
+   to the ordinal and its status dot keeps every thread on screen and reachable
+   by pointer; the title stays in the tooltip and the accessible name. */
 .agent-panel__thread {
-  flex: 0 0 auto;
-  min-width: 32px;
+  flex: 0 1 auto;
+  min-width: 34px;
   min-height: 32px;
   max-width: 112px;
   padding: var(--space-4) var(--space-8);
   gap: var(--space-4);
+}
+
+/* The thread being read keeps its name. It is the one tab whose label is worth
+   the width, so it does not join the shrinking. */
+.agent-panel__thread[aria-pressed="true"] {
+  flex: 0 0 auto;
 }
 
 .agent-panel__thread[aria-pressed="true"] {
@@ -45,8 +60,24 @@
   white-space: nowrap;
 }
 
+/* Pinned to the right edge of the strip. Starting a thread is the strip's
+   primary action and it was the last child of a horizontal scroller, so it was
+   the first thing to leave the viewport — unreachable by pointer at the exact
+   moment there were enough threads to want another one. Sticky keeps it in its
+   own group rather than moving it out to the actions row, and it needs an opaque
+   background so shrinking tabs pass behind it rather than through it. */
 .agent-panel__thread--add {
+  position: sticky;
+  right: 0;
   flex: 0 0 32px;
   justify-content: center;
   padding: var(--space-4);
+  /* The docked strip sits on the sunken surface. Both rules stay under the
+     specificity of .btn.ghost:hover, so the hover fill still reads. */
+  background: var(--bg-sunken);
+}
+
+/* In the toolbar the strip is transparent over the panel itself. */
+.agent-conversation__toolbar .agent-panel__thread--add {
+  background: var(--bg-elev);
 }

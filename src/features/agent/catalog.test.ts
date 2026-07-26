@@ -16,7 +16,7 @@ describe("agent connection catalog", () => {
     expect(entries.filter((entry) => entry.distribution !== null)).toHaveLength(9);
     expect(entries.find((entry) => entry.id === "studio-api")?.availability)
       .toBe("configurable");
-    expect(catalog.nodeRuntime.version).toBe("v24.11.0");
+    expect(catalog.nodeRuntime.version).toBe("v24.18.0");
     expect(catalog.nodeRuntime.distributions).toHaveLength(5);
     for (const distribution of catalog.nodeRuntime.distributions) {
       expect(distribution.url).toMatch(/^https:\/\/nodejs\.org\/dist\//);

@@ -1,47 +1,47 @@
 {
   "version": 1,
   "nodeRuntime": {
-    "version": "v24.11.0",
+    "version": "v24.18.0",
     "distributions": [
       {
         "target": "windows-x86_64",
         "archive": "zip",
-        "url": "https://nodejs.org/dist/v24.11.0/node-v24.11.0-win-x64.zip",
-        "sha256": "1054540bce22b54ec7e50ebc078ec5d090700a77657607a58f6a64df21f49fdd",
-        "downloadSize": 36356854,
-        "root": "node-v24.11.0-win-x64"
+        "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-win-x64.zip",
+        "sha256": "0ae68406b42d7725661da979b1403ec9926da205c6770827f33aac9d8f26e821",
+        "downloadSize": 37176245,
+        "root": "node-v24.18.0-win-x64"
       },
       {
         "target": "linux-x86_64",
         "archive": "tar-gz",
-        "url": "https://nodejs.org/dist/v24.11.0/node-v24.11.0-linux-x64.tar.gz",
-        "sha256": "b3c071cdf47aab867c3b2aa287257df12ec5d7c962bf922b32fd33226c4295fd",
-        "downloadSize": 58899117,
-        "root": "node-v24.11.0-linux-x64"
+        "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-linux-x64.tar.gz",
+        "sha256": "783130984963db7ba9cbd01089eaf2c2efb055c7c1693c943174b967b3050cb8",
+        "downloadSize": 57224421,
+        "root": "node-v24.18.0-linux-x64"
       },
       {
         "target": "linux-aarch64",
         "archive": "tar-gz",
-        "url": "https://nodejs.org/dist/v24.11.0/node-v24.11.0-linux-arm64.tar.gz",
-        "sha256": "4786d00c4d259d3ff0b2328307f764ef3ced65f2d6e9502d433e68d66238509d",
-        "downloadSize": 58578283,
-        "root": "node-v24.11.0-linux-arm64"
+        "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-linux-arm64.tar.gz",
+        "sha256": "6b4484c2190274175df9aa8f28e2d758a819cb1c1fe6ab481e2f95b463ab8508",
+        "downloadSize": 56979089,
+        "root": "node-v24.18.0-linux-arm64"
       },
       {
         "target": "macos-x86_64",
         "archive": "tar-gz",
-        "url": "https://nodejs.org/dist/v24.11.0/node-v24.11.0-darwin-x64.tar.gz",
-        "sha256": "3884671e87f46f773832d98a0a6cabcc5ec4f637084f0f3515b69e66ea27f2f1",
-        "downloadSize": 52344343,
-        "root": "node-v24.11.0-darwin-x64"
+        "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-x64.tar.gz",
+        "sha256": "dfd0dbd3e721503434df7b7205e719f61b3a3a31b2bcf9729b8b91fea240f080",
+        "downloadSize": 53282687,
+        "root": "node-v24.18.0-darwin-x64"
       },
       {
         "target": "macos-aarch64",
         "archive": "tar-gz",
-        "url": "https://nodejs.org/dist/v24.11.0/node-v24.11.0-darwin-arm64.tar.gz",
-        "sha256": "0be2ab2816a4fa02d1acff014a434f29f56d8d956f5af6a98b70ced6c5f4d201",
-        "downloadSize": 51168984,
-        "root": "node-v24.11.0-darwin-arm64"
+        "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz",
+        "sha256": "e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1",
+        "downloadSize": 52087559,
+        "root": "node-v24.18.0-darwin-arm64"
       }
     ]
   },
@@ -59,11 +59,11 @@
       "distribution": {
         "kind": "npm",
         "package": "@augmentcode/auggie",
-        "version": "0.32.0",
-        "tarball": "https://registry.npmjs.org/@augmentcode/auggie/-/auggie-0.32.0.tgz",
-        "integrity": "sha512-/E+X4UrQA8NSkYj3SOu7uEDkfM91Yal08hBhItpIXzC9woFiIbMvP/Y5pBsaJdht2h0wiCMPM5Dt/aRRd15OBg==",
-        "downloadSize": 3998212,
-        "unpackedSize": 12900804,
+        "version": "0.33.0",
+        "tarball": "https://registry.npmjs.org/@augmentcode/auggie/-/auggie-0.33.0.tgz",
+        "integrity": "sha512-cIdUOxU4LNg8fTQfHnJpRIT2uW32BtJ7siXssLVSTP+3DfOUreBtWrgOzp7i0SujbzZfoGD7kohUJASSDOQLkg==",
+        "downloadSize": 4017477,
+        "unpackedSize": 12969751,
         "entrypoint": "augment.mjs",
         "arguments": ["--acp"],
         "environment": ["AUGMENT_SESSION_AUTH"],
@@ -83,11 +83,11 @@
       "distribution": {
         "kind": "npm",
         "package": "@agentclientprotocol/claude-agent-acp",
-        "version": "0.59.0",
-        "tarball": "https://registry.npmjs.org/@agentclientprotocol/claude-agent-acp/-/claude-agent-acp-0.59.0.tgz",
-        "integrity": "sha512-GejLH5qxsI5IoSDfhyOVDEsRNxqi6y0Rcj5FstVeOwMACSht/bUXII0HILbzOQNoA5qlyZle3FRvf+CAjD7Rpg==",
-        "downloadSize": 125251,
-        "unpackedSize": 475829,
+        "version": "0.62.0",
+        "tarball": "https://registry.npmjs.org/@agentclientprotocol/claude-agent-acp/-/claude-agent-acp-0.62.0.tgz",
+        "integrity": "sha512-8QRNmyk5Cfy4XVREeg5KCPoCDtmYS0xALY9WqI640PfopLMpeUzMByXbzLkBLbD819zB67DBhLG5ta98uOEPKg==",
+        "downloadSize": 137294,
+        "unpackedSize": 514010,
         "entrypoint": "dist/index.js",
         "arguments": [],
         "environment": ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"]
@@ -106,11 +106,11 @@
       "distribution": {
         "kind": "npm",
         "package": "cline",
-        "version": "3.0.40",
-        "tarball": "https://registry.npmjs.org/cline/-/cline-3.0.40.tgz",
-        "integrity": "sha512-TWkw9ZaChjqB8sptIGJzT6uPb/2po/VISkttds7hSO1z340Kb5UEwySiQbHbWP9uyxeBDe9g2JJbKh8z3EBLjQ==",
-        "downloadSize": 12585,
-        "unpackedSize": 33436,
+        "version": "3.0.46",
+        "tarball": "https://registry.npmjs.org/cline/-/cline-3.0.46.tgz",
+        "integrity": "sha512-U6uH3sLVvqx4fP65ejHkswhk3WvYOM2LCbQBX77Z7Tha4EX35vo2XZ51F6WnIiKlCAYZJ+YAEou2Yha/EAk+2A==",
+        "downloadSize": 16342,
+        "unpackedSize": 44634,
         "entrypoint": "bin/cline",
         "arguments": ["--acp"],
         "environment": ["CLINE_API_KEY"]
@@ -129,11 +129,11 @@
       "distribution": {
         "kind": "npm",
         "package": "@agentclientprotocol/codex-acp",
-        "version": "1.1.2",
-        "tarball": "https://registry.npmjs.org/@agentclientprotocol/codex-acp/-/codex-acp-1.1.2.tgz",
-        "integrity": "sha512-qE/R1WdqJJ9OFHsHGvbmVmS2j9iCMZzpWT3g2XIViXrGHu1fLOALLINBIlW+WzKDllCh131aB6cqcIWSt0otbw==",
-        "downloadSize": 180958,
-        "unpackedSize": 1094529,
+        "version": "1.1.7",
+        "tarball": "https://registry.npmjs.org/@agentclientprotocol/codex-acp/-/codex-acp-1.1.7.tgz",
+        "integrity": "sha512-bhFLbGtOMEw6+PAp33vNERb6dXlULOfV3mWbRdps4v7sY7PHha/C2T1dnlG0yVcvBu9W+NYPzL0CAupnVoFTiQ==",
+        "downloadSize": 189952,
+        "unpackedSize": 1135856,
         "entrypoint": "dist/index.js",
         "arguments": [],
         "environment": ["CODEX_API_KEY", "OPENAI_API_KEY"]
@@ -237,9 +237,9 @@
       "distribution": {
         "kind": "npm",
         "package": "droid",
-        "version": "0.171.0",
-        "tarball": "https://registry.npmjs.org/droid/-/droid-0.171.0.tgz",
-        "integrity": "sha512-3rCW1++ezdZ6bEGbCYxmbdQVZ6m/gjFHfXLMYxu/HwqZS1PO7+eM9WPXeGn/+xOymvjGWZMCkoFy//c1pyiR4Q==",
+        "version": "0.180.0",
+        "tarball": "https://registry.npmjs.org/droid/-/droid-0.180.0.tgz",
+        "integrity": "sha512-1wkdsai/8cSM9hqFzRjVEr+LRY7PedvioPHjaHm8nZR56sx0KqDkFOwQxkWgHoAHaf4gONe4pKqmhjsVZ3lxXA==",
         "downloadSize": 8350,
         "unpackedSize": 25798,
         "entrypoint": "bin/droid",
@@ -264,11 +264,11 @@
       "distribution": {
         "kind": "npm",
         "package": "@google/gemini-cli",
-        "version": "0.50.0",
-        "tarball": "https://registry.npmjs.org/@google/gemini-cli/-/gemini-cli-0.50.0.tgz",
-        "integrity": "sha512-Z2HSR+UWgOP11WYomOymglYk2AcwEdFfQKytzVla9tkqMIYGVgIvXobmdxI4cgfPQ54XKE9V9uQBP2PrDhvljQ==",
-        "downloadSize": 20711326,
-        "unpackedSize": 97925786,
+        "version": "0.52.0",
+        "tarball": "https://registry.npmjs.org/@google/gemini-cli/-/gemini-cli-0.52.0.tgz",
+        "integrity": "sha512-/6FvfvlcsOJtn3NAgTp5/ca9xS6nmat4otQ+NEVoT6lovmI2N5jHxtBqGtjLUo+cvBfGgtR2WmkCPxxpHjr61Q==",
+        "downloadSize": 20674763,
+        "unpackedSize": 97700528,
         "entrypoint": "bundle/gemini.js",
         "arguments": ["--acp"],
         "environment": ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_CLOUD_PROJECT"]
@@ -287,11 +287,11 @@
       "distribution": {
         "kind": "npm",
         "package": "@github/copilot",
-        "version": "1.0.70",
-        "tarball": "https://registry.npmjs.org/@github/copilot/-/copilot-1.0.70.tgz",
-        "integrity": "sha512-onEwx5tod9t31Lc2rT5ns6s/fY6jtdwVWS3Fzs8hKUjCv7LFIMGf71MLcikl4GBXn6cq44+HVdNzCMWnLjYl3g==",
-        "downloadSize": 5451,
-        "unpackedSize": 12970,
+        "version": "1.0.75",
+        "tarball": "https://registry.npmjs.org/@github/copilot/-/copilot-1.0.75.tgz",
+        "integrity": "sha512-rn7ZQmhydCZ9XRdG6V78QEhXIdYlChlUvOVAtyJ6KHJGt2O9/71si7PCt84amfmg0N7IXBT2UGRYF4GQDQBt+g==",
+        "downloadSize": 5449,
+        "unpackedSize": 12967,
         "entrypoint": "npm-loader.js",
         "arguments": ["--acp"],
         "environment": ["GH_TOKEN", "GITHUB_TOKEN"]
@@ -346,11 +346,11 @@
       "distribution": {
         "kind": "npm",
         "package": "@qwen-code/qwen-code",
-        "version": "0.19.10",
-        "tarball": "https://registry.npmjs.org/@qwen-code/qwen-code/-/qwen-code-0.19.10.tgz",
-        "integrity": "sha512-0DJRJWNluJhkmIs+QhActYVXvq9MmY0Trjbdrcw2XIOWhiGw/VsDPd6PxT8X+FJfO6YKyyUMJEPiJHzjUX5zuw==",
-        "downloadSize": 23291996,
-        "unpackedSize": 85795037,
+        "version": "0.21.0",
+        "tarball": "https://registry.npmjs.org/@qwen-code/qwen-code/-/qwen-code-0.21.0.tgz",
+        "integrity": "sha512-h4t8crH1WTKS4I3uolOQGTzvGu7iW9DuqIegaq+v8yRXTyTkNV7k74AARHPWYh5DJL1ZY/ZCDsOuPsNhaLlnog==",
+        "downloadSize": 23735345,
+        "unpackedSize": 87887106,
         "entrypoint": "cli-entry.js",
         "arguments": ["--acp", "--experimental-skills"],
         "environment": ["OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"]

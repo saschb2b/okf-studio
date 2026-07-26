@@ -13,6 +13,8 @@
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:tokens": "node scripts/check-tokens.mjs",
     "check:ds": "node scripts/check-design-system.mjs",
+    "check:agents": "node scripts/refresh-agent-catalog.mjs",
+    "refresh:agents": "node scripts/refresh-agent-catalog.mjs --write",
     "check:theme": "pnpm check:tokens && pnpm check:contrast && pnpm check:ds",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run --project unit --project component",

@@ -146,6 +146,32 @@
   font-size: var(--fs-xs);
 }
 
+/* --- Markdown permalink --- */
+/* Emitted by shared/render/markdown.ts for every h2-h6, so it appears in the
+   reader, the agent thread view, and the log alike. It lived in Reader.css,
+   which the thread view does not load, so there it rendered as a bare 12px
+   glyph. A quiet "#" revealed on hover or focus, scrolling in place. */
+a.heading-anchor {
+  /* Shown on hover, but still a target once shown: a 12px-wide glyph is under
+     the floor, so the link claims the space around it. */
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  min-height: 24px;
+  margin-left: var(--space-2);
+  color: var(--text-dim);
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+}
+:is(h2, h3, h4, h5, h6):hover .heading-anchor,
+a.heading-anchor:focus-visible {
+  opacity: 1;
+}
+a.heading-anchor:hover {
+  color: var(--accent);
+}
+
 /* --- Overlays (modal scrim) --- */
 .chrome-overlay {
   position: fixed;

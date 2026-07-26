@@ -16,6 +16,7 @@ import {
   testLocalModelEndpoint,
   testSavedLocalModelEndpoint,
 } from "@/shared/ipc.ts";
+import "./AgentConnectionCatalog.css";
 
 type ProbeState =
   | { status: "idle" }

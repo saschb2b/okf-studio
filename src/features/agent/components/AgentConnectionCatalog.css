@@ -718,6 +718,7 @@
 .agent-row :is(p, li, dd),
 .custom-agents :is(p, li, dd),
 .local-models :is(p, li, dd),
-.local-model-form :is(p, li, dd) {
+.local-model-form :is(p, li, dd),
+.agent-catalog__security-host :is(p, li, dd) {
   max-width: var(--measure-prose);
 }

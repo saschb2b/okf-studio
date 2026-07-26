@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
+import "@/shared/styles/chrome.css";
 import "./ThreadMarkdownView.css";
 
 export interface ThreadMarkdownViewProps {

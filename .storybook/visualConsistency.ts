@@ -116,6 +116,32 @@ function unevenSiblings(root: Element): Finding[] {
   return out;
 }
 
+/**
+ * The box a pointer actually has to hit. For a checkbox or radio that is its
+ * label, not the 13px replaced element: clicking the label toggles the control,
+ * so the label is the target. Measuring the input alone reported every
+ * label-wrapped checkbox in the app as a failure while the real target was
+ * comfortably over the floor.
+ */
+function effectiveTarget(el: HTMLElement): DOMRect {
+  const own = el.getBoundingClientRect();
+  const tag = el.tagName.toLowerCase();
+  const type = el.getAttribute("type");
+  const labelled = tag === "input" && (type === "checkbox" || type === "radio");
+  if (!labelled) return own;
+  const wrapping = el.closest("label");
+  const associated = el.id
+    ? el.ownerDocument.querySelector<HTMLElement>(`label[for="${el.id}"]`)
+    : null;
+  const candidates = [wrapping, associated].filter((n): n is HTMLElement => n !== null);
+  let best = own;
+  for (const node of candidates) {
+    const r = node.getBoundingClientRect();
+    if (Math.min(r.width, r.height) > Math.min(best.width, best.height)) best = r;
+  }
+  return best;
+}
+
 /** A control smaller than 24px is hard to hit and fails the project's floor. */
 function smallHitTargets(root: Element): Finding[] {
   const out: Finding[] = [];
@@ -124,8 +150,11 @@ function smallHitTargets(root: Element): Finding[] {
     'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])',
   )) {
     if (isScreenReaderOnly(el)) continue;
-    const r = el.getBoundingClientRect();
+    const r = effectiveTarget(el);
     if (r.width === 0 && r.height === 0) continue; // not rendered
+    // Base UI puts a 1×1 focus guard at each end of a portal. Nothing designed
+    // is two pixels across, so this is a library internal rather than a target.
+    if (r.width <= 2 && r.height <= 2) continue;
     if (getComputedStyle(el).display === "contents") continue;
     // A splitter's hit area is a widened pseudo-element, so its own box is a
     // hairline by design (see .pane-divider::before).

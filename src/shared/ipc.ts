@@ -1219,7 +1219,7 @@ export async function connectLocalModel(
     agent: {
       name: "okf-studio-local",
       title: `${profile.name} · ${model}`,
-      version: "0.5.0-dev",
+      version: "0.6.0-dev",
     },
     authMethods: [],
     authenticated: true,

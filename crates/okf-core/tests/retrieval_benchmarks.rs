@@ -255,6 +255,7 @@ fn concept(id: &str, title: &str, concept_type: &str, body: &str) -> Concept {
         broken_links: Vec::new(),
         cited_by: Vec::new(),
         degree: 0,
+        ..Default::default()
     }
 }
 

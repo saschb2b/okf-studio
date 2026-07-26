@@ -1355,6 +1355,7 @@ mod tests {
             broken_links: Vec::new(),
             cited_by: vec![target.to_string()],
             degree: 2,
+            ..Default::default()
         };
         let bundle = Bundle {
             root: String::new(),
@@ -1434,6 +1435,7 @@ mod tests {
             broken_links: Vec::new(),
             cited_by: Vec::new(),
             degree: 0,
+            ..Default::default()
         };
         let bundle = Bundle {
             root: String::new(),
@@ -1488,6 +1490,7 @@ mod tests {
             broken_links: Vec::new(),
             cited_by: Vec::new(),
             degree: 0,
+            ..Default::default()
         };
         let bundle = Bundle {
             root: String::new(),
@@ -1526,6 +1529,7 @@ mod tests {
                 broken_links: Vec::new(),
                 cited_by: Vec::new(),
                 degree: 5,
+                ..Default::default()
             })
             .collect();
         let mut bundle = Bundle {
@@ -1570,6 +1574,7 @@ mod tests {
             broken_links: Vec::new(),
             cited_by: Vec::new(),
             degree: 0,
+            ..Default::default()
         };
         let bundle = Bundle {
             root: String::new(),
@@ -1618,6 +1623,7 @@ mod tests {
             broken_links: Vec::new(),
             cited_by: Vec::new(),
             degree: 0,
+            ..Default::default()
         };
         let warning = "WARNING: Stop the procedure and isolate the host before continuing.";
         let bundle = Bundle {

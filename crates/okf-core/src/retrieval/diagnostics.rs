@@ -330,6 +330,7 @@ mod tests {
                 broken_links: vec!["missing".to_string()],
                 cited_by: Vec::new(),
                 degree: 0,
+                ..Default::default()
             }],
             indexes: Vec::new(),
             log: Vec::new(),

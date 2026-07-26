@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend fast lane — lint · typecheck · unit · build
+    name: Frontend fast lane — lint · typecheck · gates · unit · build
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -34,6 +34,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+
+      # The theme gates: `var(--nope)` (invalid at computed-value time, and
+      # silent), all 108 AA pairings per theme including ink on the state fills,
+      # and the design-system bundle's declared sync with src/styles.css. All
+      # three read files and do arithmetic, so they cost seconds and fail before
+      # the browser lanes spend minutes.
+      - run: pnpm check:theme
+
+      # Both knowledge bundles are conformance-checked. docs/ is the product
+      # spec AND the app's built-in sample, so a malformed concept ships as
+      # content; design-system/ is what the site's styles are generated from.
+      - run: node scripts/okf-validate.mjs docs
+      - run: node .claude/skills/odsf/odsf-validate.mjs design-system
+
       - run: pnpm test
       - run: pnpm test:agent-benchmarks
       - run: pnpm build
@@ -60,7 +74,7 @@ jobs:
       - run: pnpm test:integration
 
   frontend-stories:
-    name: Frontend stories — Chromium interactions
+    name: Frontend stories — Chromium interactions · visual consistency
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -79,6 +93,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      # Runs every story's play function AND the visual-consistency audit that
+      # .storybook/preview.tsx applies after each one (off-scale gaps, prose with
+      # no reading measure, uneven repeated rows, hit targets under 24px, content
+      # clipped with no affordance). 86 of 297 stories failed when it was
+      # introduced; this is what keeps it at zero.
       - run: pnpm test:stories
 
   core:

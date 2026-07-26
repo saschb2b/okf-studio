@@ -89,7 +89,7 @@ A feature that exists only in code is invisible to the spec and unsold to visito
 - **When a user-facing feature ships, update the site's copy in the same change** (the feature cards and showcase sections in `site/src/pages/index.astro`), the way `docs/` is updated in the same change.
 - **Never describe what the screenshots don't show.** Screenshot-adjacent copy is bound to the image next to it; feature-card copy is not. When the app's look changes materially, recapture the shots (`site/public/`, 1760×1117, hand-captured from the desktop app).
 - **Respect the site's own contract** ([`site/README.md`](site/README.md)): visual language comes from the [`design-system/`](design-system/) ODSF bundle via `sync-ds.mjs` — never edit `site/src/styles/design-system/*` by hand; copy is plain and concrete, no em dashes.
-- **Gate it separately:** `pnpm --dir site build` (it deploys via the [Pages workflow](.github/workflows/pages.yml), not the app CI), and `node .claude/skills/odsf/odsf-validate.mjs design-system` (0 errors) when the design-system bundle changes.
+- **Gate it separately:** `pnpm --dir site build` (it deploys via the [Pages workflow](.github/workflows/pages.yml), not the app CI). The bundle's own conformance check, `node .claude/skills/odsf/odsf-validate.mjs design-system`, **now runs in app CI** rather than only here: since its brand roles are declared to track `src/styles.css`, an app theme change can break it, so the two are no longer separable.
 - **A theme change is two changes.** [`design-system/`](design-system/) was derived from the app's dark theme, and its brand roles — `primary`, `primary-hover`, `focus`, `error`, `warning`, `success` — are declared to track `src/styles.css`. **Touching a color role in the app means updating the bundle in the same change**, or moving the row into the "deliberately differ" table in [`foundations/color.md`](design-system/foundations/color.md) with the reason. Its surfaces and text roles are deliberately not shared: a marketing page is one scroll on a near-black canvas, the app is a dense tool window with five stacked surfaces. `pnpm check:ds` enforces the tracking table, the frontmatter-to-`tokens.css` projection, and the documented contrast ratios, so this is a gate rather than a note.
 
 ## Reviewing your own work (be the critic, not the cheerleader)
@@ -114,6 +114,7 @@ Do not push and let CI find failures you could have caught. Before committing or
 
 ```bash
 pnpm lint        # eslint . (type-aware: parse, type, and a11y issues)
+pnpm check:theme # undefined custom properties · 108 AA pairings/theme · design-system sync
 pnpm typecheck   # tsc --noEmit
 pnpm test        # fast Node unit + jsdom component lanes
 pnpm test:integration # full-app and axe journeys (bounded two-worker lane)

@@ -19,6 +19,8 @@ timestamp: 2026-07-23T20:25:48+02:00
 | `Ctrl/Cmd + Shift + A` | Toggle the [Agent Panel](../features/agent-panel.md) |
 | `Ctrl/Cmd + Shift + G` | Toggle [Integrated Git](git-workflow.md) and move focus between its active tab and status-bar opener |
 | `Ctrl/Cmd + PageUp` / `Ctrl/Cmd + PageDown` | Previous / next live Agent thread while a thread switcher item is focused |
+| `Shift + PageUp` / `Shift + PageDown` | Previous / next prompt, while the Agent transcript has focus. Differs from the thread pair above only by modifier, so the overlay groups them together |
+| `Shift + Home` / `Home` / `End` | Latest prompt / transcript top / transcript bottom, while the Agent transcript has focus |
 | `Esc` | Close the launcher / dialog / deselect |
 | `↑` `↓` | Move through results / the sidebar |
 | `Enter` | Open the highlighted concept |

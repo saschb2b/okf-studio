@@ -122,7 +122,7 @@ function Chord({ keys }: { keys: string[] }) {
             {k}
           </span>
         ) : (
-          <kbd key={`${k}-${i}`} className="sc-kbd">
+          <kbd key={`${k}-${i}`} className="kbd">
             {k}
           </kbd>
         ),
@@ -216,9 +216,13 @@ export function ShortcutsHelp() {
           )}
 
           <footer className="ui-dialog-foot">
-            <span className="muted sc-hint">
-              <kbd className="sc-kbd">?</kbd> toggles this sheet, <kbd className="sc-kbd">Esc</kbd>{" "}
-              closes it.
+            <span className="kbd-hints">
+              <span className="kbd-hint">
+                <kbd className="kbd">?</kbd> toggle this sheet
+              </span>
+              <span className="kbd-hint">
+                <kbd className="kbd">Esc</kbd> close
+              </span>
             </span>
           </footer>
         </Dialog.Popup>

@@ -212,12 +212,8 @@
   white-space: nowrap;
 }
 
+/* The one cap that overrides .kbd's surface: it sits inside the search field,
+   which is itself --bg-sunken, so a sunken cap on a sunken field disappears. */
 .topbar-search-kbd {
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-6);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
   background: var(--bg-elev);
-  color: var(--text-dim);
 }

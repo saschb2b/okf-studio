@@ -127,14 +127,8 @@
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
 }
-.hero-action kbd {
-  padding: var(--space-2) var(--space-6);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  color: var(--text-dim);
-  background: var(--bg-sunken);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+/* The cap itself is .kbd in chrome.css; only the wrapping rule is local. */
+.hero-action .kbd {
   white-space: nowrap;
 }
 

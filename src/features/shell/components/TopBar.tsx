@@ -256,7 +256,7 @@ export function TopBar() {
                 >
                   <Search className="topbar-search-icon" size={15} aria-hidden="true" />
                   <span className="topbar-search-label">Search…</span>
-                  <kbd className="topbar-search-kbd" aria-hidden="true">
+                  <kbd className="kbd topbar-search-kbd" aria-hidden="true">
                     {searchHint}
                   </kbd>
                 </Toolbar.Button>

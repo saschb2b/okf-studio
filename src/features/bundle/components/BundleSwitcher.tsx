@@ -11,9 +11,10 @@ import { Popover } from "@base-ui/react/popover";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { useApp } from "@/shared/store.tsx";
 import type { Actions } from "@/shared/store.tsx";
-import { modKey } from "@/shared/platform/platform.ts";
+import { modKey, shiftKey } from "@/shared/platform/platform.ts";
 import type { BundleRoot, RecentBundle } from "@/shared/types.ts";
 import appIcon from "@/assets/icon.svg";
+import "@/shared/styles/chrome.css";
 import "@/shared/styles/baseui.css";
 import "./BundleSwitcher.css";
 
@@ -240,7 +241,7 @@ export function BundleSwitcher() {
                 >
                   <FolderOpen size={15} aria-hidden="true" />
                   <span className="switcher-foot-label">Open folder…</span>
-                  <kbd className="switcher-kbd">{mod} O</kbd>
+                  <kbd className="kbd">{mod}</kbd> <kbd className="kbd">O</kbd>
                 </button>
                 <button
                   type="button"
@@ -252,7 +253,7 @@ export function BundleSwitcher() {
                 >
                   <Globe size={15} aria-hidden="true" />
                   <span className="switcher-foot-label">Open from URL…</span>
-                  <kbd className="switcher-kbd">{mod} ⇧ O</kbd>
+                  <kbd className="kbd">{mod}</kbd> <kbd className="kbd">{shiftKey}</kbd> <kbd className="kbd">O</kbd>
                 </button>
                 <div className="switcher-foot-sep" role="presentation" />
                 <button

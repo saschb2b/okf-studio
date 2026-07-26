@@ -33,7 +33,7 @@ describe("ShortcutsHelp", () => {
     // garbage, and nothing failed. Every cap is now either plain ASCII or one
     // of the glyphs the keymap deliberately uses.
     openSheet();
-    const caps = document.querySelectorAll("kbd.sc-kbd");
+    const caps = document.querySelectorAll("kbd.kbd");
     expect(caps.length).toBeGreaterThan(30);
     for (const cap of caps) {
       expect(cap.textContent, `unexpected characters in key cap "${cap.textContent}"`).toMatch(CAP);
@@ -71,7 +71,7 @@ describe("ShortcutsHelp", () => {
   it("marks pointer actions as words, not as keys", () => {
     // "click" on a keycap is a category error; it is not a key.
     openSheet();
-    for (const cap of document.querySelectorAll("kbd.sc-kbd")) {
+    for (const cap of document.querySelectorAll("kbd.kbd")) {
       expect(cap.textContent?.toLowerCase()).not.toBe("click");
     }
     expect(document.querySelector(".sc-pointer")?.textContent).toBe("click");

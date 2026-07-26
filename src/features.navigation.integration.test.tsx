@@ -10,18 +10,27 @@ describe("OKF Studio navigation features", () => {
     await openBundleAtOverview(user);
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
 
-    await screen.findByRole("combobox");
-    // Zero-query state: Recent + general Actions + context-aware OKF tasks,
-    // plus object-specific OKF tasks. Walk the live result count because this
-    // protects traversal across groups rather than freezing a command catalog.
-    // This reproduces the bug where the
-    // combobox's `items` and `filteredItems` props disagreed on whether the
+    const combo = await screen.findByRole("combobox");
+    // Driven by a query rather than the zero state. This guards the bug where
+    // the combobox's `items` and `filteredItems` props disagreed on whether the
     // list was grouped, so keyboard navigation only ever toggled between the
-    // first two results instead of walking the full list.
-    const options = await screen.findAllByRole("option");
-    expect(options.length).toBeGreaterThan(15);
+    // first two results instead of walking the full list — which is a bug about
+    // traversing GROUPS, and a query is what produces several of them. The zero
+    // state used to stand in for "a long list" by listing every command; it now
+    // deliberately shows a short suggested set, so it no longer can.
+    await fillText(user, combo, "e");
+    await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(8));
+    const groups = screen.getAllByRole("group");
+    expect(groups.length).toBeGreaterThan(1);
 
-    for (const option of options) {
+    // Walk the live result count: this protects traversal across groups rather
+    // than freezing a command catalog.
+    const options = screen.getAllByRole("option");
+
+    // With a query, autoHighlight already marks the first result — that is the
+    // row Enter would take — so the walk starts from the second.
+    await waitFor(() => expect(options[0]).toHaveAttribute("data-highlighted"));
+    for (const option of options.slice(1)) {
       await user.keyboard("{ArrowDown}");
       await waitFor(() => expect(option).toHaveAttribute("data-highlighted"));
     }

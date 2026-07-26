@@ -109,20 +109,9 @@
   color: var(--text-dim);
 }
 
-.sc-kbd {
-  min-width: 1.5em;
-  padding: var(--space-2) var(--space-6);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  line-height: var(--lh-tight);
-  text-align: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-sunken);
-  /* A cap carries the answer the reader opened this sheet for; --text-dim made
-     the keys quieter than the labels describing them. */
-  color: var(--text);
-}
+
+/* The cap itself is .kbd in chrome.css, shared with the launcher, the bundle
+   switcher, the top bar, and the empty state. */
 
 /* "click" is a pointer action, not a key, so it does not wear a cap. */
 .sc-pointer {
@@ -140,10 +129,7 @@
 .sc-hint {
   font-size: var(--fs-xs);
 }
-.sc-hint .sc-kbd {
-  margin: 0 var(--space-2);
-}
-
+.sc-hint 
 /* One column once two would each be too narrow to hold a label beside a chord. */
 @media (max-width: 700px) {
   .sc-groups {

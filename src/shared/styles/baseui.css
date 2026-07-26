@@ -46,11 +46,23 @@
   margin: 0;
   font-size: var(--fs-lg);
 }
+/* THE dialog footer. One definition, and the one every dialog uses.
+   A footer is chrome *within* the dialog, so it sits on the dialog's own
+   surface and is separated by a quiet hairline — it is not a recessed canvas.
+   The launcher used to fill its footer with --bg-sunken, two steps below the
+   --bg-overlay dialog around it, which read as a black slab bolted to the
+   bottom. Three of the four footers already did it this way; that one was the
+   outlier, so the outlier moved.
+   A dialog with padding gets the hairline and the gap for free. A dialog with
+   `padding: 0` (the launcher) supplies its own inset and the bar bleeds to the
+   edges, which is the only variation this pattern allows. */
 .ui-dialog-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border-variant);
 }
 
 /* --- Select --- */

@@ -111,6 +111,53 @@ export function buildTypePalette(types: string[], dark: boolean): TypePalette {
   };
 }
 
+/**
+ * Resolve the same role variables under BOTH themes at once.
+ *
+ * `getComputedStyle` only ever sees the theme currently on the root, which is
+ * enough for anything that re-reads on a theme switch. It is not enough for a
+ * renderer that bakes color into its output once and keeps it — Mermaid writes
+ * its palette into the SVG, so a diagram is rendered twice up front and CSS
+ * shows the matching copy. That needs the other theme's values while the first
+ * one is live.
+ *
+ * The root's `data-theme` is flipped and restored inside one synchronous block.
+ * A style recalc is forced by each read, but no paint can happen until the task
+ * yields, so nothing flashes. Values are cached: this walks the whole document's
+ * style twice and should happen once per session, not once per diagram.
+ *
+ * Only pass tokens whose value is a literal color. A custom property is not
+ * substituted at computed-value time, so `--focus-ring` comes back as the text
+ * "var(--accent)" and `--accent-soft` as an unevaluated `color-mix(…)`, neither
+ * of which a color library downstream can parse.
+ */
+const themeTokenCache = new Map<string, { light: string; dark: string }>();
+
+export function readTokenPairs(names: readonly string[]): Record<string, { light: string; dark: string }> {
+  const missing = names.filter((n) => !themeTokenCache.has(n));
+  if (missing.length > 0 && typeof document !== "undefined") {
+    const root = document.documentElement;
+    const previous = root.dataset.theme;
+    const readAll = () => {
+      const cs = getComputedStyle(root);
+      return missing.map((n) => cs.getPropertyValue(n).trim());
+    };
+    try {
+      root.dataset.theme = "light";
+      const light = readAll();
+      root.dataset.theme = "dark";
+      const dark = readAll();
+      missing.forEach((n, i) => themeTokenCache.set(n, { light: light[i], dark: dark[i] }));
+    } finally {
+      if (previous === undefined) delete root.dataset.theme;
+      else root.dataset.theme = previous;
+    }
+  }
+  return Object.fromEntries(
+    names.map((n) => [n, themeTokenCache.get(n) ?? { light: "", dark: "" }]),
+  );
+}
+
 /** Resolve "system" to a concrete light/dark using the OS preference. */
 export function resolveDark(mode: ThemeMode): boolean {
   if (mode === "dark") return true;

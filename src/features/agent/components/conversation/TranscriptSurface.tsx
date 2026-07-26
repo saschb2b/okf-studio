@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpToLine, MessageSquareText } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode, UIEvent } from "react";
 
@@ -17,7 +17,39 @@ interface TranscriptSurfaceProps {
   contentVersion: unknown;
 }
 
-type TranscriptTarget = "top" | "latest-user" | "bottom";
+type TranscriptTarget =
+  | "top"
+  | "previous-user"
+  | "next-user"
+  | "latest-user"
+  | "bottom";
+
+/**
+ * Where each prompt sits in the transcript. A turn's tool calls and prose can
+ * run to many screens in a docked panel, so "the previous thing I asked" is a
+ * position worth stepping between rather than something to hunt for by
+ * scrolling. Zed steps prompt to prompt with Shift+PageUp/PageDown; this is the
+ * same motion over the transcript's own scroller.
+ */
+function promptOffsets(surface: HTMLElement): number[] {
+  return [...surface.querySelectorAll<HTMLElement>("[data-transcript-role='user']")]
+    .map((item) => item.offsetTop);
+}
+
+/** The offset of the prompt before, or after, the one currently in view. */
+function steppedPromptOffset(
+  offsets: number[],
+  scrollTop: number,
+  direction: "previous" | "next",
+): number | null {
+  // A tolerance, because landing on a prompt sets scrollTop to its offset and an
+  // exact comparison would then step to that same prompt again forever.
+  if (direction === "previous") {
+    const earlier = offsets.filter((offset) => offset < scrollTop - TAIL_TOLERANCE_PX);
+    return earlier.length > 0 ? earlier[earlier.length - 1] : null;
+  }
+  return offsets.find((offset) => offset > scrollTop + TAIL_TOLERANCE_PX) ?? null;
+}
 
 export function TranscriptSurface({
   children,
@@ -29,6 +61,9 @@ export function TranscriptSurface({
   const followingTailRef = useRef(true);
   const [atTop, setAtTop] = useState(true);
   const [followingTail, setFollowingTail] = useState(true);
+  // Whether a prompt exists before or after the one in view, so the stepping
+  // controls read as spent at the ends instead of silently doing nothing.
+  const [steps, setSteps] = useState({ previous: false, next: false });
 
   useEffect(() => {
     const surface = surfaceRef.current;
@@ -38,6 +73,7 @@ export function TranscriptSurface({
       return;
     }
     if (followingTailRef.current) surface.scrollTop = surface.scrollHeight;
+    syncPosition(surface);
   }, [contentVersion, hasItems]);
 
   function syncPosition(surface: HTMLDivElement) {
@@ -45,6 +81,11 @@ export function TranscriptSurface({
     followingTailRef.current = nextFollowingTail;
     setFollowingTail(nextFollowingTail);
     setAtTop(surface.scrollTop <= TAIL_TOLERANCE_PX);
+    const offsets = promptOffsets(surface);
+    setSteps({
+      previous: steppedPromptOffset(offsets, surface.scrollTop, "previous") !== null,
+      next: steppedPromptOffset(offsets, surface.scrollTop, "next") !== null,
+    });
   }
 
   function jumpTo(target: TranscriptTarget) {
@@ -56,10 +97,21 @@ export function TranscriptSurface({
     } else if (target === "bottom") {
       surface.scrollTop = surface.scrollHeight;
     } else {
-      const userItems = surface.querySelectorAll<HTMLElement>("[data-transcript-role='user']");
-      if (userItems.length === 0) return;
-      const latestUserItem = userItems[userItems.length - 1];
-      surface.scrollTop = latestUserItem.offsetTop;
+      const offsets = promptOffsets(surface);
+      if (offsets.length === 0) return;
+      if (target === "latest-user") {
+        surface.scrollTop = offsets[offsets.length - 1];
+      } else {
+        const next = steppedPromptOffset(
+          offsets,
+          surface.scrollTop,
+          target === "previous-user" ? "previous" : "next",
+        );
+        // Already at the first or last prompt: staying put beats a jump that
+        // looks like the control missed.
+        if (next === null) return;
+        surface.scrollTop = next;
+      }
     }
 
     syncPosition(surface);
@@ -78,6 +130,10 @@ export function TranscriptSurface({
     } else if (event.key === "End" && !event.shiftKey) {
       event.preventDefault();
       jumpTo("bottom");
+    } else if (event.shiftKey && (event.key === "PageUp" || event.key === "PageDown")) {
+      // Shift, so unmodified PageUp/PageDown keep the browser's own paging.
+      event.preventDefault();
+      jumpTo(event.key === "PageUp" ? "previous-user" : "next-user");
     }
   }
 
@@ -111,14 +167,29 @@ export function TranscriptSurface({
           <button
             type="button"
             className="btn ghost icon"
-            aria-label="Jump to latest user prompt"
-            aria-keyshortcuts="Shift+Home"
-            title="Latest prompt (Shift+Home)"
-            disabled={!hasUserMessage}
-            onClick={() => jumpTo("latest-user")}
+            aria-label="Jump to previous prompt"
+            aria-keyshortcuts="Shift+PageUp"
+            title="Previous prompt (Shift+PgUp)"
+            disabled={!hasUserMessage || !steps.previous}
+            onClick={() => jumpTo("previous-user")}
           >
-            <MessageSquareText size={15} aria-hidden="true" />
+            <ChevronUp size={15} aria-hidden="true" />
           </button>
+          <button
+            type="button"
+            className="btn ghost icon"
+            aria-label="Jump to next prompt"
+            aria-keyshortcuts="Shift+PageDown"
+            title="Next prompt (Shift+PgDn)"
+            disabled={!hasUserMessage || !steps.next}
+            onClick={() => jumpTo("next-user")}
+          >
+            <ChevronDown size={15} aria-hidden="true" />
+          </button>
+          {/* No button for the latest prompt. Stepping reaches it, "bottom" is
+              beside it, and a fifth control in a panel that docks at 320px costs
+              more than the shortcut it would duplicate. Shift+Home still goes
+              straight there. */}
           <button
             type="button"
             className="btn ghost icon"

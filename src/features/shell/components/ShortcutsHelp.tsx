@@ -99,11 +99,22 @@ const GROUPS: Group[] = [
       { keys: ["T"], label: "Trace lineage" },
       { keys: ["L"], label: "Toggle log" },
       { keys: ["R"], label: "Re-scan folder" },
-      { keys: [mod, shiftKey, "A"], label: "Agent panel" },
       { keys: [mod, shiftKey, "G"], label: "Git panel" },
-      { keys: [mod, "PgUp"], label: "Previous agent thread", note: "in the thread switcher" },
-      { keys: [mod, "PgDn"], label: "Next agent thread" },
       { keys: [mod, "Enter"], label: "Commit staged scope", note: "in the Git message field" },
+    ],
+  },
+  // Its own group rather than three more rows under "Panels and tools": the
+  // thread and prompt chords differ only by modifier, and reading them next to
+  // each other is what tells them apart.
+  {
+    title: "Agent",
+    items: [
+      { keys: [mod, shiftKey, "A"], label: "Agent panel" },
+      { keys: [mod, "PgUp"], label: "Previous thread", note: "in the thread switcher" },
+      { keys: [mod, "PgDn"], label: "Next thread" },
+      { keys: [shiftKey, "PgUp"], label: "Previous prompt", note: "in the transcript" },
+      { keys: [shiftKey, "PgDn"], label: "Next prompt" },
+      { keys: [shiftKey, "Home"], label: "Latest prompt" },
     ],
   },
 ];

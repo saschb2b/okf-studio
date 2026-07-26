@@ -58,9 +58,36 @@ export const PanelWidth: Story = {
     await expect(canvas.getByRole("button", { name: "Jump to transcript top" })).toBeDisabled();
     await userEvent.keyboard("{End}");
     await expect(canvas.getByRole("button", { name: "Jump to transcript bottom" })).toBeDisabled();
-    const latestPrompt = canvas.getByRole("button", { name: "Jump to latest user prompt" });
-    await userEvent.click(latestPrompt);
-    await expect(latestPrompt).toHaveFocus();
+  },
+};
+
+/**
+ * Prompt stepping over real layout. The unit test drives it with stubbed
+ * offsets, so this is the one that would catch a selector or offset mistake
+ * against an actual scroller.
+ */
+export const PromptStepping: Story = {
+  args: { width: 440 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const transcript = canvas.getByRole("region", { name: "Conversation transcript" });
+    const back = canvas.getByRole("button", { name: "Jump to previous prompt" });
+    const forward = canvas.getByRole("button", { name: "Jump to next prompt" });
+
+    transcript.focus();
+    await userEvent.keyboard("{End}");
+    // Two prompts in this transcript, so from the tail there is one step back to
+    // the second and another to the first, and then nowhere further.
+    await userEvent.click(back);
+    const atSecond = transcript.scrollTop;
+    await expect(atSecond).toBeGreaterThan(0);
+    await userEvent.click(back);
+    await expect(transcript.scrollTop).toBeLessThan(atSecond);
+    await expect(back).toBeDisabled();
+
+    await userEvent.click(forward);
+    await expect(transcript.scrollTop).toBe(atSecond);
+    await expect(forward).toBeDisabled();
   },
 };
 

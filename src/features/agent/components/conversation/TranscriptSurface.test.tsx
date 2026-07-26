@@ -20,8 +20,14 @@ function setGeometry(surface: HTMLElement) {
     scrollHeight: { configurable: true, value: 1_000 },
     scrollTop: { configurable: true, writable: true, value: 800 },
   });
-  const latestPrompt = screen.getByText("Latest prompt");
-  Object.defineProperty(latestPrompt, "offsetTop", { configurable: true, value: 520 });
+  Object.defineProperty(screen.getByText("First prompt"), "offsetTop", {
+    configurable: true,
+    value: 120,
+  });
+  Object.defineProperty(screen.getByText("Latest prompt"), "offsetTop", {
+    configurable: true,
+    value: 520,
+  });
 }
 
 describe("TranscriptSurface", () => {
@@ -69,11 +75,56 @@ describe("TranscriptSurface", () => {
     fireEvent.keyDown(surface, { key: "End" });
     expect(surface.scrollTop).toBe(1_000);
 
-    fireEvent.click(screen.getByRole("button", { name: "Jump to latest user prompt" }));
-    expect(surface.scrollTop).toBe(520);
-
     surface.scrollTop = 400;
     fireEvent.keyDown(screen.getByRole("button", { name: "Transcript action" }), { key: "Home" });
     expect(surface.scrollTop).toBe(400);
+  });
+
+  it("steps prompt to prompt in both directions", () => {
+    render(
+      <TranscriptSurface hasItems hasUserMessage contentVersion={1}>
+        <TranscriptItems revision={1} />
+      </TranscriptSurface>,
+    );
+    const surface = screen.getByRole("region", { name: "Conversation transcript" });
+    setGeometry(surface);
+    fireEvent.scroll(surface);
+
+    // From the tail, back through the prompts one at a time.
+    fireEvent.click(screen.getByRole("button", { name: "Jump to previous prompt" }));
+    expect(surface.scrollTop).toBe(520);
+    fireEvent.click(screen.getByRole("button", { name: "Jump to previous prompt" }));
+    expect(surface.scrollTop).toBe(120);
+    // Spent at the first prompt rather than silently doing nothing.
+    expect(screen.getByRole("button", { name: "Jump to previous prompt" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Jump to next prompt" }));
+    expect(surface.scrollTop).toBe(520);
+    expect(screen.getByRole("button", { name: "Jump to next prompt" })).toBeDisabled();
+
+    // The keyboard reaches the same motion, and Shift+Home still jumps straight
+    // to the latest prompt now that it has no button of its own.
+    fireEvent.keyDown(surface, { key: "PageUp", shiftKey: true });
+    expect(surface.scrollTop).toBe(120);
+    fireEvent.keyDown(surface, { key: "PageDown", shiftKey: true });
+    expect(surface.scrollTop).toBe(520);
+    surface.scrollTop = 0;
+    fireEvent.keyDown(surface, { key: "Home", shiftKey: true });
+    expect(surface.scrollTop).toBe(520);
+  });
+
+  it("leaves unmodified paging to the scroller", () => {
+    render(
+      <TranscriptSurface hasItems hasUserMessage contentVersion={1}>
+        <TranscriptItems revision={1} />
+      </TranscriptSurface>,
+    );
+    const surface = screen.getByRole("region", { name: "Conversation transcript" });
+    setGeometry(surface);
+
+    fireEvent.keyDown(surface, { key: "PageUp" });
+    expect(surface.scrollTop).toBe(800);
+    fireEvent.keyDown(surface, { key: "PageDown" });
+    expect(surface.scrollTop).toBe(800);
   });
 });

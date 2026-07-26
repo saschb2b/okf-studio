@@ -45,9 +45,18 @@ describe("ShortcutsHelp", () => {
     // drifted: these three were live in the app and absent here.
     openSheet();
     expect(screen.getByText("Git panel")).toBeInTheDocument();
-    expect(screen.getByText("Previous agent thread")).toBeInTheDocument();
-    expect(screen.getByText("Next agent thread")).toBeInTheDocument();
+    expect(screen.getByText("Previous thread")).toBeInTheDocument();
+    expect(screen.getByText("Next thread")).toBeInTheDocument();
     expect(screen.getByText("Commit staged scope")).toBeInTheDocument();
+  });
+
+  it("distinguishes the thread and prompt chords, which differ only by modifier", () => {
+    // Mod+PgUp switches thread, Shift+PgUp steps prompt. Read apart they are
+    // easy to confuse, which is why they share a group in the sheet.
+    openSheet();
+    expect(screen.getByText("Previous prompt")).toBeInTheDocument();
+    expect(screen.getByText("Next prompt")).toBeInTheDocument();
+    expect(screen.getByText("Latest prompt")).toBeInTheDocument();
   });
 
   it("gives every action a distinct label", () => {

@@ -19,7 +19,7 @@
 
 .agent-write-grant__mode:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: var(--space-2);
+  outline-offset: var(--focus-offset);
 }
 
 .agent-write-grant__mode:disabled {

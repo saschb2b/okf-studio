@@ -68,7 +68,7 @@
 }
 
 .settings-capability-pack dt {
-  color: var(--text-muted);
+  color: var(--text-dim);
 }
 
 .settings-capability-pack dd {
@@ -151,7 +151,7 @@
 }
 
 .settings-capability dt {
-  color: var(--text-muted);
+  color: var(--text-dim);
 }
 
 .settings-capability dd {

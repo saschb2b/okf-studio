@@ -18,7 +18,7 @@
 }
 
 .advisory-profiles.is-error {
-  border-color: var(--warning);
+  border-color: var(--warn);
 }
 
 .advisory-profiles-head {
@@ -86,7 +86,7 @@
 }
 
 .profile-card.is-unavailable {
-  border-color: var(--warning);
+  border-color: var(--warn);
 }
 
 .profile-card-head {
@@ -98,11 +98,11 @@
 
 .profile-state-icon {
   display: inline-flex;
-  color: var(--success);
+  color: var(--ok);
 }
 
 .profile-card.is-unavailable .profile-state-icon {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 .profile-identity {
@@ -229,11 +229,6 @@
   color: var(--text);
 }
 
-.profile-diagnostic-actions button:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .profile-diagnostic-level {
   grid-row: 1 / span 2;
   padding: var(--space-2) var(--space-4);
@@ -242,7 +237,7 @@
 }
 
 .profile-diagnostic-level.is-warning {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 .profile-diagnostic-source {

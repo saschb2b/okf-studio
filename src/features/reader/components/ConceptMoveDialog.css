@@ -39,7 +39,7 @@
 }
 
 .concept-move-dialog__form label {
-  font-weight: var(--weight-semibold);
+  font-weight: 600;
 }
 
 .concept-move-dialog__form input {
@@ -127,7 +127,7 @@
 
 .concept-move-diff .btn[aria-pressed="true"] {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 

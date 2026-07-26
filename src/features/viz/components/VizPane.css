@@ -84,7 +84,7 @@
   width: max-content;
   max-width: 320px;
   padding: var(--space-8) var(--space-12);
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);

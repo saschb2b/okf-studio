@@ -33,7 +33,7 @@
   height: 32px;
   place-items: center;
   color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
   border-radius: var(--radius-sm);
 }
 
@@ -70,7 +70,7 @@
 
 .okf-task-launcher__tasks label:has(input:checked) {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .okf-task-launcher__tasks span {
@@ -129,11 +129,6 @@
   font: inherit;
   font-weight: 400;
   line-height: var(--lh-normal);
-}
-
-.okf-task-launcher__draft textarea:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .okf-task-launcher__draft small {

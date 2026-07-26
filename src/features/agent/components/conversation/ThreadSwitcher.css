@@ -28,7 +28,7 @@
 
 .agent-panel__thread[aria-pressed="true"] {
   color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .agent-panel__thread-number {

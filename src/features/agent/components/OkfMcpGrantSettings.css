@@ -61,11 +61,6 @@
   line-height: var(--lh-normal);
 }
 
-.okf-mcp-grant__ready textarea:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .okf-mcp-grant .btn {
   justify-self: start;
 }

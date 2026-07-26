@@ -200,12 +200,7 @@
 
 .okf-context-plan__items button:hover:not(:disabled) {
   color: var(--text);
-  background: var(--accent-dim);
-}
-
-.okf-context-plan__items button:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--accent-soft);
 }
 
 .okf-context-plan__profiles {

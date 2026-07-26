@@ -7,7 +7,7 @@
   z-index: 60; /* the popover tier (baseui.css) */
   width: 340px;
   padding: var(--space-12) var(--space-12) var(--space-8);
-  background: var(--bg-elev);
+  background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -15,7 +15,7 @@
   /* Chrome, not content (and it sits inside no selectable scope anyway). */
   -webkit-user-select: none;
   user-select: none;
-  animation: peek-in var(--dur) ease-out;
+  animation: peek-in var(--dur) var(--ease)-out;
 }
 
 @keyframes peek-in {

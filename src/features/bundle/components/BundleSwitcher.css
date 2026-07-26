@@ -20,7 +20,7 @@
 }
 .topbar-switch:hover,
 .topbar-switch[data-popup-open] {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .topbar-switch[data-popup-open] {
   border-color: var(--accent);
@@ -97,7 +97,7 @@
 }
 .switcher-search:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: var(--focus-offset);
   border-color: var(--accent);
 }
 
@@ -136,11 +136,11 @@
 }
 .switcher-row:hover,
 .switcher-row:focus-visible {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   outline: none;
 }
 .switcher-row.is-active {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--accent-soft);
 }
 .switcher-check {
   text-align: center;
@@ -271,7 +271,7 @@
 }
 .switcher-foot-btn:hover:not(:disabled),
 .switcher-foot-btn:focus-visible {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   outline: none;
 }
 .switcher-foot-btn:disabled {

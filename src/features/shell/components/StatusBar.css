@@ -7,7 +7,7 @@
   justify-content: flex-end;
   height: 26px;
   padding: 0 var(--space-6);
-  background: var(--bg-elev);
+  background: var(--bg-chrome);
   border-top: 1px solid var(--border);
   font-size: var(--fs-xs);
 }
@@ -36,16 +36,16 @@ button.status-item {
   border-radius: var(--radius-sm);
 }
 button.status-item:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 button.status-item:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -1px;
+  outline-offset: var(--focus-offset-inset);
 }
 /* A toggle whose panel is open reads as recessed/active. */
 .status-item.is-active {
-  background: var(--bg-sunken);
+  background: var(--ghost-active);
   color: var(--text);
 }
 

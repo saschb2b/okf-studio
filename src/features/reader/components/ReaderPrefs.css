@@ -85,10 +85,3 @@
   cursor: pointer;
   text-decoration: underline;
 }
-
-.prefs-step:focus-visible,
-.prefs-seg-btn:focus-visible,
-.prefs-reset:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}

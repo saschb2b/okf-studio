@@ -11,7 +11,7 @@
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-8) 0;
-  background: var(--bg-elev);
+  background: var(--bg-chrome);
   border-right: 1px solid var(--border);
 }
 
@@ -37,13 +37,13 @@
   cursor: pointer;
 }
 .activity-btn:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 /* The active view switcher (sidebar showing this lens). VS Code marks it with a
    left accent bar; we tint the icon and recess it. */
 .activity-btn[aria-pressed="true"] {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--accent);
 }
 .activity-btn[aria-pressed="true"]::before {
@@ -56,10 +56,6 @@
   height: 20px;
   border-radius: 1px;
   background: var(--accent);
-}
-.activity-btn:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .activity-icon {

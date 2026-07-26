@@ -14,7 +14,7 @@
      concept is a different state and keeps the solid accent block. One value,
      because the three used to sit at 14%, 16%, and a solid fill for what is the
      same answer to the same question. */
-  --sb-here: color-mix(in srgb, var(--accent) 15%, transparent);
+  --sb-here: var(--accent-soft);
 }
 
 /* Below the persistent search box: the active lens's content, filling the
@@ -103,13 +103,6 @@
   text-decoration: underline;
 }
 
-/* ---- Shared focus ring ---- */
-.sb button:focus-visible,
-.sb input:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 /* ---- Search ---- */
 .sb-search-wrap {
   position: relative;
@@ -165,7 +158,7 @@
   cursor: pointer;
 }
 .sb-search-clear:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -197,7 +190,7 @@
 }
 .sb-legend-item.ui-toggle:hover,
 .sb-legend-item:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 /* A visible (pressed) type is the default state — don't fill the row with the
    accent the way a chip would; the dimmed/struck state marks hidden types. */
@@ -206,7 +199,7 @@
   color: var(--text);
 }
 .sb-legend-item.ui-toggle[data-pressed]:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-active);
 }
 .sb-legend-item.is-hidden {
   color: var(--text-dim);
@@ -264,7 +257,7 @@
 }
 .sb-tag.ui-toggle:hover,
 .sb-tag:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 .sb-tag.ui-toggle[data-pressed],
 .sb-tag.is-active {
@@ -334,7 +327,7 @@
 }
 .sb-tree-heading-link:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 /* Active = its folder home is open: a quiet accent wash reads as "you are here"
    without turning an all-caps header into a loud solid block. */
@@ -375,7 +368,7 @@
   text-align: left;
 }
 .sb-tree-item:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .sb-tree-concept.is-active {
   background: var(--accent);
@@ -410,7 +403,7 @@
   cursor: pointer;
 }
 .sb-tree-empty-cta:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 .sb-tree-dir {
   font-weight: 500;
@@ -453,7 +446,7 @@
   text-align: left;
 }
 .sb-tree-home:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 /* Active = you are at the bundle root home. A light accent wash (matching the
    folder-door headings), not the solid block a selected concept gets — a folder

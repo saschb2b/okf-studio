@@ -64,7 +64,7 @@
 }
 
 .graph-btn:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
@@ -213,13 +213,7 @@
 }
 
 .graph-panel-toggle:hover {
-  background: var(--bg-sunken);
-}
-
-.graph-panel-toggle:focus-visible,
-.graph-panel-reset:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--el-hover);
 }
 
 /* Appearance (bg/border/shadow/padding) comes from .ui-popover; this only
@@ -313,7 +307,7 @@
 }
 
 .graph-panel-reset:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 /* Mode toggle (Overview/Focus) + depth stepper — the toolbar's center region,
@@ -409,18 +403,13 @@
 }
 
 .graph-seg-btn:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
   color: var(--text);
 }
 
 .graph-seg-btn[aria-pressed="true"] {
   background: var(--accent);
   color: var(--accent-contrast);
-}
-
-.graph-seg-btn:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 /* A hint, not a control: quiet text on the canvas, the same register as
@@ -462,12 +451,7 @@
 }
 
 .graph-chip:hover {
-  background: var(--bg-sunken);
-}
-
-.graph-chip:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--el-hover);
 }
 
 .graph-chip-warn {

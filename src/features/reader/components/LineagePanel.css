@@ -71,12 +71,6 @@
   font-size: var(--fs-sm);
 }
 
-.ln-controls select:focus-visible,
-.ln-select:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .ln-segmented {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -113,13 +107,8 @@
 
 .ln-segmented input:checked + span {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
   color: var(--accent);
-}
-
-.ln-segmented input:focus-visible + span {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .ln-profile-state {
@@ -185,12 +174,12 @@
 }
 
 .ln-row:hover:not(:disabled) {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .ln-row:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -1px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .ln-row:disabled {

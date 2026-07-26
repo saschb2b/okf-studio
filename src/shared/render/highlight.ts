@@ -16,7 +16,38 @@
 // highlighter type — the runtime `createHighlighterCore` is still dynamic.
 import type { HighlighterCore } from "shiki/core";
 
-const THEMES = { light: "github-light", dark: "github-dark" } as const;
+// One Dark Pro is the Atom One palette Zed ships as its default: softer than
+// GitHub's, and in the same blue/violet/salmon family as our accent and our
+// generated type colors, so a code block stops reading as a transplant from a
+// different product. Measured against the code-block surface (--bg-sunken), its
+// median token contrast is 7.7:1 where github-dark's is 10.7 — GitHub's palette
+// is tuned for a lighter editor and glares on our near-black well.
+//
+// Light does NOT take Zed's One Light, on the same evidence: One Light is built
+// for a #FAFAFA editor, and on our darker #edeff3 well three of its scopes fall
+// under 3:1 (comments at 2.24). github-light-default measures best there — a
+// 3.95 floor and a 6.4 median, against plain github-light's 3.03 floor.
+const THEMES = { light: "github-light-default", dark: "one-dark-pro" } as const;
+
+// Every syntax theme deliberately under-contrasts comments, and every one of
+// them lands below the 4.5:1 that body text owes: 3.95 for github-light-default
+// and 3.13 for one-dark-pro on our surface. Comments in a spec bundle carry
+// real explanation, so both are lifted to clear 4.5 with the hue left alone.
+// Nothing else is patched — see docs/ux/theming.md for the scopes that remain
+// under 4.5 and why re-tinting a whole theme is not the answer.
+const COMMENT_INK = { "github-light-default": "#5f6874", "one-dark-pro": "#767e8b" } as const;
+
+/** Raise a theme's comment scopes to `ink`, leaving every other token alone. */
+function liftComments<T extends { name?: string; tokenColors?: unknown[] }>(theme: T, ink: string): T {
+  const scopes = theme.tokenColors as
+    | { scope?: string | string[]; settings?: { foreground?: string } }[]
+    | undefined;
+  for (const s of scopes ?? []) {
+    const scope = Array.isArray(s.scope) ? s.scope.join(" ") : (s.scope ?? "");
+    if (/\bcomment\b/.test(scope) && s.settings?.foreground) s.settings.foreground = ink;
+  }
+  return theme;
+}
 
 // The languages a design-system / docs bundle realistically uses. An unknown
 // language falls back to a plain themed block — coverage, not completeness.
@@ -62,12 +93,15 @@ async function getHighlighter(): Promise<HighlighterCore> {
       await Promise.all([
         import("shiki/core"),
         import("shiki/engine/javascript"),
-        import("shiki/themes/github-light.mjs"),
-        import("shiki/themes/github-dark.mjs"),
+        import("shiki/themes/github-light-default.mjs"),
+        import("shiki/themes/one-dark-pro.mjs"),
         ...Object.values(LANGS).map((load) => load()),
       ]);
     const hl = await createHighlighterCore({
-      themes: [light.default, dark.default],
+      themes: [
+        liftComments(light.default, COMMENT_INK[THEMES.light]),
+        liftComments(dark.default, COMMENT_INK[THEMES.dark]),
+      ],
       langs: langs as Parameters<typeof createHighlighterCore>[0]["langs"],
       engine: createJavaScriptRegexEngine(),
     });

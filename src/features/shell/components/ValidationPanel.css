@@ -121,12 +121,12 @@
 
 .vp-issue-agent:hover {
   color: var(--text);
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .vp-issue-agent:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .vp-issue-actions {
@@ -151,12 +151,7 @@
 
 .vp-review-trigger:hover {
   color: var(--text);
-  background: var(--bg-sunken);
-}
-
-.vp-review-trigger:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
+  background: var(--ghost-hover);
 }
 
 /* Flat problems-list rows (the VS Code pattern): a severity dot, the message,
@@ -181,11 +176,11 @@
   cursor: pointer;
 }
 .vp-issue-body.clickable:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .vp-issue-body:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .vp-issue-dot {

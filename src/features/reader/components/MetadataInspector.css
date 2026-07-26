@@ -86,12 +86,7 @@
 
 .metadata-copy:hover {
   color: var(--text);
-  background: var(--bg-sunken);
-}
-
-.metadata-copy:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--ghost-hover);
 }
 
 .metadata-branch {

@@ -47,11 +47,6 @@
   font-size: var(--fs-sm);
 }
 
-.create-input:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .create-guide {
   display: flex;
   gap: var(--space-8);

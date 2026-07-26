@@ -101,7 +101,7 @@
 
 .ov-card-action:hover,
 .ov-inline-action:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .ov-card-action:focus-visible,
@@ -110,7 +110,7 @@
 .ov-attention-summary:focus-visible,
 .ov-changes button:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -1px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .ov-dot {
@@ -150,7 +150,7 @@
 }
 
 .ov-row:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .ov-row > svg {
@@ -381,7 +381,7 @@
 }
 
 .ov-changes button:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 
 .ov-changes button > span,

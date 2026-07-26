@@ -40,12 +40,8 @@
   color: var(--text);
   line-height: var(--lh-tight);
 }
-.remote-input:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
 .remote-input:disabled {
-  opacity: 0.6;
+  opacity: var(--disabled-opacity);
 }
 
 /* Preview area reserves two lines (the tallest state — the idle hint wraps to
@@ -166,11 +162,7 @@
   cursor: pointer;
 }
 .remote-picker-row:hover {
-  background: var(--bg-sunken);
-}
-.remote-picker-row:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--el-hover);
 }
 .remote-picker-name {
   font-size: var(--fs-sm);
@@ -207,11 +199,7 @@
   cursor: pointer;
 }
 .remote-example:hover {
-  background: var(--bg-sunken);
-}
-.remote-example:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--el-hover);
 }
 .remote-example-title {
   font-size: var(--fs-sm);

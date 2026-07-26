@@ -420,12 +420,6 @@
   line-height: var(--lh-normal);
 }
 
-.agent-artifact__field textarea:focus-visible,
-.agent-artifact__concept:focus-visible {
-  outline: var(--focus-w) solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 .agent-artifact__links,
 .agent-artifact__items,
 .agent-artifact__sources,
@@ -459,7 +453,7 @@
 .agent-artifact__concept:not(:disabled):hover,
 .agent-artifact__concept[data-selected] {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--accent-soft);
 }
 
 .agent-artifact__concept:disabled {

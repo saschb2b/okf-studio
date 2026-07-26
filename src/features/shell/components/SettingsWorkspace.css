@@ -63,11 +63,6 @@
   color: var(--text-dim);
 }
 
-.settings-search:focus-within {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .settings-search input {
   min-width: 0;
   border: 0;
@@ -78,7 +73,7 @@
 }
 
 .settings-search input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-dim);
 }
 
 .settings-nav {
@@ -127,11 +122,6 @@
   background: var(--bg-elev);
   color: var(--text);
   box-shadow: inset 2px 0 0 var(--accent);
-}
-
-.settings-nav button:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .settings-workspace__main {
@@ -249,7 +239,7 @@
 
 .setting-row:focus {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: var(--space-4);
+  outline-offset: var(--focus-offset);
   border-radius: var(--radius-sm);
 }
 
@@ -295,11 +285,6 @@
   opacity: 0.5;
 }
 
-.settings-toggle:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
-}
-
 .settings-toggle__thumb {
   position: absolute;
   top: var(--space-2);
@@ -307,9 +292,9 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--text-dim);
   transform: translateX(0);
-  transition: transform var(--dur) ease, background var(--dur) ease;
+  transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 
 .settings-toggle[data-checked] .settings-toggle__thumb {
@@ -350,12 +335,7 @@
 }
 
 .settings-search-result:hover {
-  background: var(--bg-sunken);
-}
-
-.settings-search-result:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--el-hover);
 }
 
 .settings-search-result > span:first-child {
@@ -398,7 +378,7 @@
 .settings-empty-state:focus,
 .settings-workspace__content-header h2:focus {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: var(--space-4);
+  outline-offset: var(--focus-offset);
   border-radius: var(--radius-sm);
 }
 
@@ -464,11 +444,6 @@
     background: var(--bg);
     color: var(--text);
     font: inherit;
-  }
-
-  .settings-workspace__mobile-nav select:focus-visible {
-    outline: var(--focus-w) solid var(--accent);
-    outline-offset: 1px;
   }
 
   .settings-workspace__content-header {

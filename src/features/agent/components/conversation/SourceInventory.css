@@ -1,6 +1,6 @@
 .source-inventory {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   background: var(--bg-sunken);
   font-size: var(--fs-xs);
   line-height: var(--lh-snug);
@@ -104,7 +104,7 @@
   padding: var(--space-8);
   border-radius: var(--radius-sm);
   color: var(--warn);
-  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  background: var(--warn-soft);
 }
 
 @media (max-width: 420px) {

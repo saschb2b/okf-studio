@@ -30,7 +30,7 @@
 }
 
 .concept-retirement-choice:hover {
-  background: var(--bg-sunken);
+  background: var(--el-hover);
 }
 
 .concept-retirement-choice[data-selected] {

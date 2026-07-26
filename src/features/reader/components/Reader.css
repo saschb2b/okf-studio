@@ -156,7 +156,7 @@
 }
 
 .reliability-notice[data-state="current"] {
-  border-inline-start-color: var(--success);
+  border-inline-start-color: var(--ok);
 }
 
 .reliability-notice[data-state="retired"],
@@ -272,15 +272,7 @@
 .reader-concept-retirement:hover,
 .reader-resource-agent:hover {
   color: var(--text);
-  background: var(--bg-sunken);
-}
-
-.reader-okf-task:focus-visible,
-.reader-concept-move:focus-visible,
-.reader-concept-retirement:focus-visible,
-.reader-resource-agent:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--ghost-hover);
 }
 
 .reader-resource-agent {
@@ -315,7 +307,7 @@
 }
 .link-btn:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
   border-radius: var(--radius-sm);
 }
 
@@ -455,7 +447,7 @@
 }
 .markdown .md-img-zoom:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 /* A remote image is not auto-fetched (offline); this opens it in the browser. */
 .markdown .md-img-remote {
@@ -488,18 +480,21 @@
 /* Syntax-highlighted code (Shiki dual theme). Shiki emits per-token
    --shiki-light / --shiki-dark CSS vars (defaultColor:false); we pick the set
    that matches the app's resolved theme. The surrounding .markdown pre styles
-   (border, radius, padding, copy button) still apply. */
-.markdown pre.shiki {
-  color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
-}
+   (border, radius, padding, copy button) still apply.
+
+   We take Shiki's TOKEN colors and not its background. A syntax theme ships a
+   surface of its own, and it is never one of ours: it made the code block the
+   only element in the app that contradicted the depth order, in both themes and
+   in opposite directions. Light painted #fff inside a #ffffff reader, so the
+   recessed well collapsed to a bare 1px border. Dark painted #24292e — lighter
+   than the reader pane itself and a near-match for --bg-overlay — so a code
+   block read as a popover floating above the prose instead of a well cut into
+   it. Leaving the background to --bg-sunken (.markdown pre) puts it back. */
+.markdown pre.shiki,
 .markdown pre.shiki span {
   color: var(--shiki-light);
 }
-:root[data-theme="dark"] .markdown pre.shiki {
-  color: var(--shiki-dark);
-  background-color: var(--shiki-dark-bg);
-}
+:root[data-theme="dark"] .markdown pre.shiki,
 :root[data-theme="dark"] .markdown pre.shiki span {
   color: var(--shiki-dark);
 }
@@ -539,10 +534,6 @@
 }
 .lightbox-close:hover {
   border-color: var(--accent);
-}
-.lightbox-close:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */
@@ -613,7 +604,7 @@
   color: var(--text-dim);
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--dur) ease;
+  transition: opacity var(--dur) var(--ease);
 }
 .markdown pre:hover .code-copy,
 .code-copy:focus-visible {
@@ -806,10 +797,6 @@
   overflow-y: hidden;
   overscroll-behavior-inline: contain;
 }
-.markdown .markdown-table-scroll:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
-}
 .markdown table {
   border-collapse: collapse;
   width: max-content;
@@ -828,7 +815,7 @@
 .markdown th,
 .markdown td {
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-variant);
   padding: var(--space-6) var(--space-10);
   /* Cells run to the column edges, but the first sits flush with the prose. */
   padding-left: 0;
@@ -857,7 +844,7 @@
   border-bottom: 0;
 }
 .markdown tbody tr:hover {
-  background: color-mix(in srgb, var(--bg-sunken) 60%, transparent);
+  background: var(--ghost-hover);
 }
 
 .markdown hr {
@@ -1064,7 +1051,7 @@
 }
 .outline-link:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 /* Relation rows read as native list rows, not web hyperlinks: normal text color
@@ -1083,11 +1070,11 @@
   cursor: pointer;
 }
 .rel-link:hover {
-  background: var(--bg-sunken);
+  background: var(--ghost-hover);
 }
 .rel-link:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .typed-rel-list {
@@ -1114,12 +1101,7 @@ button.typed-rel-link {
 }
 
 button.typed-rel-link:hover {
-  background: var(--bg-sunken);
-}
-
-button.typed-rel-link:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  background: var(--ghost-hover);
 }
 
 .typed-rel-link.is-missing {

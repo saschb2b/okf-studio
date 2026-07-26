@@ -1,21 +1,64 @@
 /* Keyboard-shortcuts overlay. Dialog shell comes from baseui.css (.ui-dialog). */
 .shortcuts-dialog {
-  width: 640px;
+  width: 760px;
   max-width: 92vw;
+  /* Taller than .ui-dialog's default 76vh. That default suits a dialog whose
+     body is meant to scroll; a reference sheet is meant to be read at a glance,
+     and the full keymap clears the fold on a normal window at 84. Shorter
+     windows still scroll, which is the right fallback. */
+  max-height: 84vh;
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-12);
   padding: var(--space-20);
 }
 
+.sc-filter {
+  font: inherit;
+  font-size: var(--fs-sm);
+  width: 100%;
+  padding: var(--space-8) var(--space-10);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.sc-filter:hover {
+  border-color: var(--border-strong);
+}
+.sc-filter::placeholder {
+  color: var(--text-dim);
+}
+/* The webview draws its own clear affordance in a search input; ours is Esc
+   and the field emptying itself on close. */
+.sc-filter::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Two balanced columns rather than a grid of fixed tracks. An auto-fit grid
+   put an 8-row group beside a 4-row one and left the short column's remaining
+   height as a void; multicolumn packs the groups and balances the fill, and
+   `break-inside: avoid` keeps a group whole. Reading order becomes
+   column-major, which is what a reference sheet wants anyway. */
 .sc-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--space-16) var(--space-24);
+  columns: 2;
+  column-gap: var(--space-32);
+}
+
+.sc-group {
+  break-inside: avoid;
+  /* Multicolumn ignores margin collapsing at a column break, so the space
+     belongs under the group, not above the next one. */
+  margin-bottom: var(--space-16);
+}
+.sc-group:last-child {
+  margin-bottom: 0;
 }
 
 .sc-group-title {
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-8);
   font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
@@ -23,50 +66,73 @@
   color: var(--text-dim);
 }
 
+/* One grid per group, so every chord in a group hangs off the same right edge
+   and a wrapping label can never push its own keys out of line. The previous
+   flex row used space-between, which put each row's caps wherever its label
+   happened to end. `display: contents` lifts the dt/dd pairs into this grid. */
 .sc-list {
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: var(--space-16);
+  row-gap: var(--space-6);
+  align-items: baseline;
 }
 .sc-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
+  display: contents;
 }
+
 .sc-label {
   font-size: var(--fs-sm);
   color: var(--text);
+  min-width: 0;
 }
+/* The condition that makes a binding live — "in the Git message field". Its own
+   line so it never competes with the action for the first one. */
+.sc-note {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
 .sc-keys {
+  margin: 0;
+  justify-self: end;
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
-  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .sc-or {
-  margin: 0 2px;
+  margin: 0 var(--space-2);
   font-size: var(--fs-xs);
   color: var(--text-dim);
 }
 
-.sc-kbd {
-  min-width: 1.4em;
-  padding: var(--space-2) var(--space-6);
-  font-family: var(--mono);
+
+/* The cap itself is .kbd in chrome.css, shared with the launcher, the bundle
+   switcher, the top bar, and the empty state. */
+
+/* "click" is a pointer action, not a key, so it does not wear a cap. */
+.sc-pointer {
   font-size: var(--fs-xs);
-  text-align: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-sunken);
   color: var(--text-dim);
+}
+
+.sc-empty {
+  margin: 0;
+  padding: var(--space-24) 0;
+  text-align: center;
+  font-size: var(--fs-sm);
 }
 
 .sc-hint {
-  margin-right: auto;
   font-size: var(--fs-xs);
 }
-.sc-hint .sc-kbd {
-  margin: 0 1px;
+.sc-hint 
+/* One column once two would each be too narrow to hold a label beside a chord. */
+@media (max-width: 700px) {
+  .sc-groups {
+    columns: 1;
+  }
 }

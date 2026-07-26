@@ -6,9 +6,35 @@
   width: 560px;
   /* override .ui-dialog's scroll: the list scrolls on its own */
   overflow: hidden;
+
   display: flex;
   flex-direction: column;
   padding: 0;
+}
+
+/* .ui-dialog reserves a stable scrollbar gutter, which here is held open for a
+   scrollbar that can never appear: this dialog is overflow: hidden and the list
+   inside it does its own scrolling. The reservation took 10px off the right, so
+   the footer stopped short of the dialog edge and read as cut off. Two classes,
+   so it wins over the .ui-dialog rule whatever order the bundle emits. */
+.ui-dialog.palette-dialog {
+  scrollbar-gutter: auto;
+}
+
+/* The search row: the field, and Esc as its close control. */
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding-right: var(--space-12);
+  border-bottom: 1px solid var(--border-variant);
+}
+.palette-esc {
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.palette-esc:hover {
+  border-color: var(--border-strong);
 }
 
 .palette-input {
@@ -17,7 +43,6 @@
   width: 100%;
   padding: var(--space-16);
   border: 0;
-  border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--text);
 }
@@ -41,13 +66,23 @@
   margin-top: var(--space-6);
 }
 .palette-group-label {
-  display: block;
-  padding: var(--space-6) var(--space-10) var(--space-2);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-6);
+  padding: var(--space-10) var(--space-10) var(--space-4);
   font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-dim);
+}
+/* How many are in this group, the way the reference labels its sections. The
+   footer's total says how much there is; this says where it is. */
+.palette-group-count {
+  font-weight: 400;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
 }
 
 .palette-item {
@@ -55,10 +90,37 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-12);
+  /* Roomier than it was: the references all give a result line air, and a
+     dense list of one-line rows is the hardest thing to scan quickly. */
   padding: var(--space-8) var(--space-10);
+  min-height: 34px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   outline: none;
+}
+
+/* The type's color, the same encoding the graph, sidebar, and reader use. The
+   references lead each row with an icon; this is the signal we already have. */
+.palette-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  /* Rendered on every row, filled only for a concept, so one left edge runs
+     down the whole list regardless of what each group holds. */
+  background: transparent;
+}
+
+/* What Enter will do, shown on the row it will do it to — taken from the
+   references, where the active row carries its own "↵ Select". */
+.palette-enter {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  opacity: 0;
+}
+.palette-item[data-highlighted] .palette-enter {
+  opacity: 0.8;
 }
 /* Base UI marks the active row via [data-highlighted] (keyboard + hover). */
 .palette-item[data-highlighted] {
@@ -66,9 +128,37 @@
   color: var(--accent-contrast);
 }
 
+/* The no-match state. It says what was searched for, what was searched over,
+   and what can still be done — a bare "No matches" left the reader holding a
+   query that had failed and no next move. */
 .palette-empty {
-  padding: var(--space-16) var(--space-10);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-24) var(--space-16);
   text-align: center;
+}
+.palette-empty-title {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.palette-empty-title strong {
+  /* The query, quoted back. Word-break because it is whatever was typed. */
+  overflow-wrap: anywhere;
+}
+.palette-empty-hint {
+  margin: 0;
+  max-width: 38ch;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+.palette-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
 }
 
 /* A concept row may carry a one-line text snippet beneath its title/meta. */
@@ -82,8 +172,7 @@
 .palette-row-main {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
+  gap: var(--space-8);
   min-width: 0;
 }
 
@@ -110,6 +199,8 @@
 }
 
 .palette-label {
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -148,11 +239,23 @@
   text-overflow: ellipsis;
 }
 
+/* Layout and the hairline come from .ui-dialog-foot; the dialog is padding: 0,
+   so the bar supplies its own inset and bleeds to both edges. */
 .palette-foot {
-  display: flex;
   gap: var(--space-16);
-  padding: var(--space-8) var(--space-16);
-  border-top: 1px solid var(--border);
+  padding: var(--space-10) var(--space-16);
   font-size: var(--fs-xs);
-  background: var(--bg-sunken);
+}
+/* Tabular figures so a count ticking from 9 to 10 does not shift the row. */
+.palette-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Group headings stay put while their own group scrolls past, so a long result
+   list never leaves the reader wondering which group they are in. */
+.palette-group-label {
+  position: sticky;
+  top: calc(-1 * var(--space-6));
+  z-index: 1;
+  background: var(--bg-overlay);
 }

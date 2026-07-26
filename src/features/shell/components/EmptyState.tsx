@@ -4,7 +4,7 @@
 
 import { BookOpen, FilePlus2, FolderOpen, Globe } from "lucide-react";
 import { useApp } from "@/shared/store.tsx";
-import { modKey } from "@/shared/platform/platform.ts";
+import { modKey, shiftKey } from "@/shared/platform/platform.ts";
 import { REMOTE_EXAMPLES } from "@/features/bundle/remoteSource.ts";
 import appIcon from "@/assets/icon.svg";
 import "@/shared/styles/chrome.css";
@@ -84,7 +84,7 @@ export function EmptyState() {
               Browse OKF bundles already on disk
             </span>
           </span>
-          <kbd>{modKey} O</kbd>
+          <kbd className="kbd">{modKey}</kbd> <kbd className="kbd">O</kbd>
         </button>
         <button
           type="button"
@@ -111,7 +111,7 @@ export function EmptyState() {
               Fetch a GitHub repo or archive into a local cache
             </span>
           </span>
-          <kbd>{modKey} ⇧ O</kbd>
+          <kbd className="kbd">{modKey}</kbd> <kbd className="kbd">{shiftKey}</kbd> <kbd className="kbd">O</kbd>
         </button>
         {REMOTE_EXAMPLES.map((ex) => (
           <button

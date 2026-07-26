@@ -246,7 +246,7 @@
   flex-direction: column;
   gap: 2px;
   padding: var(--space-6);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-variant);
 }
 /* Hairline between the open-existing tier and the create tier. */
 .switcher-foot-sep {
@@ -280,15 +280,6 @@
 }
 .switcher-foot-label {
   flex: 1;
-}
-.switcher-kbd {
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  padding: var(--space-2) var(--space-6);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-sunken);
-  color: var(--text-dim);
 }
 /* Marks a recent that was fetched from a URL (its sub-line shows the origin). */
 .switcher-remote-badge {

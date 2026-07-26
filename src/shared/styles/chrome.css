@@ -94,6 +94,58 @@
   border-color: var(--error);
 }
 
+/* --- Key caps and key hints --- */
+/* One cap, everywhere a key is named. There were four near-identical
+   definitions (.sc-kbd, .switcher-kbd, .topbar-search-kbd, and a bare <kbd>
+   with no styling at all in the empty state) that had drifted apart on ink and
+   background, plus the launcher footer, which rendered its keys as plain text
+   and so read as a fifth thing again. */
+.kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: var(--space-2) var(--space-6);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-tight);
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  /* A cap carries the answer someone is looking for; --text-dim left the key
+     quieter than the words describing it. */
+  color: var(--text);
+}
+
+/* Two roles, and the difference is whether the key is being TAUGHT or is simply
+   live right now.
+     .kbd        a boxed cap. For naming a key someone should learn or press:
+                 the shortcuts sheet, an empty-state call to action, the search
+                 field's Ctrl-K advertisement.
+     .hint-key   an unboxed glyph beside its verb. For a surface's own footer,
+                 where the keys are ambient guidance for the thing already in
+                 front of you. A row of boxed caps down there reads as a second
+                 toolbar competing with the results; unboxed, it recedes. */
+.kbd-hint {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-6);
+  color: var(--text-dim);
+}
+.hint-key {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+/* A row of them, for a surface's footer. */
+.kbd-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-16);
+  font-size: var(--fs-xs);
+}
+
 /* --- Overlays (modal scrim) --- */
 .chrome-overlay {
   position: fixed;

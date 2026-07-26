@@ -110,7 +110,6 @@ export function App() {
           <LogView />
           <ValidationPanel />
           <LineagePanel />
-          <CommandPalette />
           <RecipientProjectionDialog
             open={state.projectionOpen}
             bundle={state.bundle}
@@ -128,9 +127,16 @@ export function App() {
           />
         </>
       )}
-      {/* Settings, the shortcuts overlay, and Open-from-URL work without a
-          bundle (Open-from-URL is a first-run entry point); always mounted. */}
+      {/* Settings, the shortcuts overlay, the launcher, and Open-from-URL work
+          without a bundle (Open-from-URL is a first-run entry point); always
+          mounted. The launcher used to be inside the bundle-only block above,
+          which made Ctrl/Cmd+K a dead key on the empty state: the handler ran,
+          called preventDefault, and flipped `palette` in the store with nothing
+          mounted to render it. It now opens on the actions that work with no
+          folder open — Open folder, Open from URL, Settings, and the rest are
+          filtered out by what they need. */}
       <Settings />
+      <CommandPalette />
       <ShortcutsHelp />
       <OpenRemoteDialog />
       <CreateBundleDialog />

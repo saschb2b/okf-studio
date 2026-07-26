@@ -17,3 +17,11 @@ export const isMac: boolean =
 
 /** The modifier-key label for this platform: "⌘" on macOS/iOS, else "Ctrl". */
 export const modKey: string = isMac ? "⌘" : "Ctrl";
+
+/** Shift's label: the glyph on macOS, the word everywhere else. Windows and
+ *  Linux keyboards print "Shift" on the key, and a bare ⇧ there reads as an
+ *  arrow rather than as a modifier. */
+export const shiftKey: string = isMac ? "⇧" : "Shift";
+
+/** Alt/Option, same convention. */
+export const altKey: string = isMac ? "⌥" : "Alt";

@@ -488,18 +488,21 @@
 /* Syntax-highlighted code (Shiki dual theme). Shiki emits per-token
    --shiki-light / --shiki-dark CSS vars (defaultColor:false); we pick the set
    that matches the app's resolved theme. The surrounding .markdown pre styles
-   (border, radius, padding, copy button) still apply. */
-.markdown pre.shiki {
-  color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
-}
+   (border, radius, padding, copy button) still apply.
+
+   We take Shiki's TOKEN colors and not its background. A syntax theme ships a
+   surface of its own, and it is never one of ours: it made the code block the
+   only element in the app that contradicted the depth order, in both themes and
+   in opposite directions. Light painted #fff inside a #ffffff reader, so the
+   recessed well collapsed to a bare 1px border. Dark painted #24292e — lighter
+   than the reader pane itself and a near-match for --bg-overlay — so a code
+   block read as a popover floating above the prose instead of a well cut into
+   it. Leaving the background to --bg-sunken (.markdown pre) puts it back. */
+.markdown pre.shiki,
 .markdown pre.shiki span {
   color: var(--shiki-light);
 }
-:root[data-theme="dark"] .markdown pre.shiki {
-  color: var(--shiki-dark);
-  background-color: var(--shiki-dark-bg);
-}
+:root[data-theme="dark"] .markdown pre.shiki,
 :root[data-theme="dark"] .markdown pre.shiki span {
   color: var(--shiki-dark);
 }

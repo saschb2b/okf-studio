@@ -196,3 +196,10 @@
     margin-top: var(--space-4);
   }
 }
+
+/* Prose here takes a reading measure; unbounded it ran the full width of the
+   surface. max-width only bites once a line is long. */
+.settings-capability-pack :is(p, li, dd),
+.settings-capability :is(p, li, dd) {
+  max-width: var(--measure-prose);
+}

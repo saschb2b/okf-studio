@@ -7,23 +7,22 @@
 // wider than the box holding it. Each check reports an element and a number, so
 // a finding is a fact rather than an opinion.
 //
-// Scoped by story title so it can be adopted an area at a time instead of
-// landing 297 failures at once.
+// Enforced for every story. It was scoped to Agent/* while the checks were
+// being tuned, so one area could be brought clean before the rest inherited it.
 
 /** px values the spacing scale defines, plus the hairlines used deliberately. */
 const SCALE = new Set([0, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40]);
 
-/** Story titles this audit is enforced for. */
-const ENFORCED = [/^Agent\//];
+/** Story titles this audit is enforced for. Every area, now that the agent
+ *  surfaces are clean and the checks have stopped reporting noise. */
+const ENFORCED = [/./];
 
-const SPACING_PROPS = [
-  "paddingTop",
-  "paddingRight",
-  "paddingBottom",
-  "paddingLeft",
-  "rowGap",
-  "columnGap",
-] as const;
+// Gaps only. Padding is routinely composed with calc() to align to a control
+// column — `calc(var(--space-8) + 6rem)` and `calc(24px + var(--space-6))` are
+// both deliberate and both land off the scale — and a computed style cannot be
+// told apart from a magic number. A gap is almost never composed, so an
+// off-scale one there is the real smell.
+const SPACING_PROPS = ["rowGap", "columnGap"] as const;
 
 export interface Finding {
   check: string;
@@ -142,6 +141,21 @@ function effectiveTarget(el: HTMLElement): DOMRect {
   return best;
 }
 
+/**
+ * A link inside running text is exempt. WCAG 2.5.8 carves out targets "in a
+ * sentence or block of text", because a link's size is its type size and
+ * padding it out would break the prose around it.
+ */
+function isInlineInText(el: HTMLElement): boolean {
+  if (el.tagName !== "A") return false;
+  const display = getComputedStyle(el).display;
+  if (display !== "inline" && display !== "inline-block") return false;
+  const parent = el.parentElement;
+  if (!parent) return false;
+  // Text beyond the link itself means the link sits in a sentence.
+  return (parent.textContent ?? "").trim().length > (el.textContent ?? "").trim().length;
+}
+
 /** A control smaller than 24px is hard to hit and fails the project's floor. */
 function smallHitTargets(root: Element): Finding[] {
   const out: Finding[] = [];
@@ -149,7 +163,7 @@ function smallHitTargets(root: Element): Finding[] {
   for (const el of root.querySelectorAll<HTMLElement>(
     'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])',
   )) {
-    if (isScreenReaderOnly(el)) continue;
+    if (isScreenReaderOnly(el) || isInlineInText(el)) continue;
     const r = effectiveTarget(el);
     if (r.width === 0 && r.height === 0) continue; // not rendered
     // Base UI puts a 1×1 focus guard at each end of a portal. Nothing designed

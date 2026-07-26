@@ -115,3 +115,9 @@
     gap: var(--space-4);
   }
 }
+
+/* Prose here takes a reading measure; unbounded it ran the full width of the
+   surface. max-width only bites once a line is long. */
+.ignore-rules :is(p, li, dd) {
+  max-width: var(--measure-prose);
+}

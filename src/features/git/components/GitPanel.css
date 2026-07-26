@@ -159,6 +159,15 @@
   background: var(--ghost-hover);
 }
 
+/* Carries the 24px floor so the 16px box inside it does not have to grow. */
+.git-stage-toggle {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  min-height: 24px;
+  cursor: pointer;
+}
+
 .git-stage-checkbox {
   width: 16px;
   height: 16px;

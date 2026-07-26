@@ -623,3 +623,10 @@
     flex-basis: 100%;
   }
 }
+
+/* Prose here takes a reading measure; unbounded it ran the full width of the
+   surface. max-width only bites once a line is long. */
+.projection-result :is(p, li, dd),
+.projection-dialog :is(p, li, dd) {
+  max-width: var(--measure-prose);
+}

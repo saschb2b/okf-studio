@@ -8,11 +8,29 @@ import { useEffect } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { WithStore } from "@/mock/withStore.tsx";
 import { useApp } from "@/shared/store.tsx";
+import { retryRestoreLastAgentConnection } from "@/shared/ipc.ts";
 import { AgentPanel } from "./AgentPanel.tsx";
 
 function OpenPanel() {
   const { actions } = useApp();
   useEffect(() => actions.togglePanel("agent", true), [actions]);
+  return <AgentPanel />;
+}
+
+function FailedRestore() {
+  const { state, actions } = useApp();
+  const root = state.activeRoot;
+  useEffect(() => {
+    actions.togglePanel("agent", true);
+    if (!root) return;
+    // A remembered agent whose profile does not exist, which is what a removed
+    // install or a moved endpoint looks like from here.
+    localStorage.setItem(
+      "okf-studio:agent-last-connection",
+      JSON.stringify({ kind: "custom", id: "custom-goneforever", name: "Ghost Agent" }),
+    );
+    retryRestoreLastAgentConnection(root);
+  }, [actions, root]);
   return <AgentPanel />;
 }
 
@@ -73,4 +91,27 @@ export const Catalog: Story = {
 export const Narrow: Story = {
   render: panel,
   globals: { viewport: { value: "mobile1" } },
+};
+
+/**
+ * A remembered agent that could not be reconnected — the install, profile, or
+ * endpoint changed since the last launch. Driven through the retry entry point
+ * rather than the launch one, because launch restore is guarded to run once per
+ * module and a story cannot be the first thing to use up that attempt without
+ * becoming order-dependent.
+ */
+export const RestoreFailed: Story = {
+  render: () => (
+    <WithStore withBundle>
+      <FailedRestore />
+    </WithStore>
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await waitFor(() =>
+      expect(body.getByRole("heading", { name: "Couldn't reconnect Ghost Agent" }))
+        .toBeInTheDocument(),
+    );
+    await waitFor(() => expect(body.getByRole("button", { name: "Try again" })).toBeVisible());
+  },
 };

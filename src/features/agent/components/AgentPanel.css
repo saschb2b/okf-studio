@@ -190,9 +190,26 @@
   border-radius: var(--radius);
 }
 
+/* A failed restore is not an invitation, so it does not wear the accent. */
+.agent-panel__mark--warning {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
 .agent-panel__empty h2,
 .agent-panel__empty p {
   margin: 0;
+}
+
+/* Two ways forward, side by side while they fit and stacked when the docked
+   panel gets narrow — retry first, because it is the one that keeps the
+   threads without making the user find the agent again. */
+.agent-panel__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
 }
 
 /* Take over the content area when the workspace beside the panel would fall

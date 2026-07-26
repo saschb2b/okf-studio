@@ -1,4 +1,4 @@
-import { ArrowLeft, CircleAlert, PanelRightClose, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, CircleAlert, PanelRightClose, PlugZap, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import type { AgentConnectionInfo, AgentSessionHistoryInfo } from "@/features/agent/connection.ts";
@@ -12,6 +12,8 @@ import {
   okfCapabilityCatalog,
   onOkfCapabilityPackChanged,
   readProfileReport,
+  rememberedAgentName,
+  retryRestoreLastAgentConnection,
   subscribeAgentRestore,
 } from "@/shared/ipc.ts";
 import { AgentConnectionCatalog } from "@/features/agent/components/AgentConnectionCatalog.tsx";
@@ -89,6 +91,9 @@ export function AgentPanel() {
   // The attempt and its status live in the connection store; the restored
   // connection then appears through the ordinary connections subscription.
   const restoreState = useSyncExternalStore(subscribeAgentRestore, agentRestoreStatus);
+  // Read only while the failure is on screen, which is also the dependency that
+  // makes it re-read: a bare no-argument call would be cached across renders.
+  const failedAgentName = restoreState === "failed" ? rememberedAgentName() : null;
   const panelOpen = state.panels.agent;
   const activeRoot = state.activeRoot;
   useEffect(() => {
@@ -440,7 +445,35 @@ export function AgentPanel() {
               <p>Restoring the connection this panel had when Studio closed.</p>
             </div>
           )}
-          {visibleView === "empty" && restoreState !== "restoring" && (
+          {visibleView === "empty" && restoreState === "failed" && !connectionFailure && (
+            <div className="agent-panel__empty">
+              <span className="agent-panel__mark agent-panel__mark--warning" aria-hidden="true">
+                <PlugZap size={24} />
+              </span>
+              <h2>{failedAgentName ? `Couldn't reconnect ${failedAgentName}` : "Couldn't reconnect your last agent"}</h2>
+              <p role="alert">
+                Its install, profile, or endpoint may have changed. Your threads
+                are kept, and reconnecting brings them back.
+              </p>
+              <div className="agent-panel__empty-actions">
+                <button
+                  type="button"
+                  className="btn primary"
+                  data-agent-initial-focus
+                  disabled={activeRoot === null}
+                  onClick={() => activeRoot && retryRestoreLastAgentConnection(activeRoot)}
+                >
+                  <RefreshCw size={14} aria-hidden="true" />
+                  Try again
+                </button>
+                <button type="button" className="btn ghost" onClick={openCatalog}>
+                  Choose a different agent
+                </button>
+              </div>
+            </div>
+          )}
+          {visibleView === "empty" && restoreState !== "restoring" &&
+            !(restoreState === "failed" && !connectionFailure) && (
             <div className="agent-panel__empty">
               <span className="agent-panel__mark" aria-hidden="true">
                 <Sparkles size={24} />
@@ -453,12 +486,6 @@ export function AgentPanel() {
               ) : (
                 <>
                   <h2>Connect an agent</h2>
-                  {restoreState === "failed" && (
-                    <p role="alert">
-                      The last agent could not be reconnected. Its install,
-                      profile, or endpoint may have changed.
-                    </p>
-                  )}
                   <p>
                     Use an existing subscription, an API-backed Studio Agent, or a
                     local model. Nothing connects until you choose.

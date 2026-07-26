@@ -942,6 +942,14 @@ export interface LastAgentConnection {
    * user had already made.
    */
   authMethodId?: string;
+  /**
+   * What to call this agent when restore fails. The id is not presentable, and
+   * looking the name up is unreliable at exactly the moment it is needed: a
+   * restore fails because the install, profile, or endpoint went away, which is
+   * also when the catalog or profile list no longer has an entry to read a name
+   * from. So the name is recorded while the connection is up.
+   */
+  name?: string;
 }
 
 const LAST_CONNECTION_KEY = "okf-studio:agent-last-connection";
@@ -987,10 +995,23 @@ export function lastAgentConnection(): LastAgentConnection | null {
         stored.authMethodId.length <= 128
           ? stored.authMethodId
           : undefined,
+      name:
+        typeof stored.name === "string" && stored.name.length > 0 && stored.name.length <= 128
+          ? stored.name
+          : undefined,
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * The name to remember an agent by. An ACP agent may report neither a title nor
+ * a name, so this can be absent — the failure state falls back to unnamed copy
+ * rather than showing an empty phrase.
+ */
+function rememberableName(info: AgentConnectionInfo): string | undefined {
+  return info.agent?.title ?? info.agent?.name ?? undefined;
 }
 
 function saveLastAgentConnection(entry: LastAgentConnection): void {
@@ -1044,7 +1065,11 @@ async function restoreLastAgentConnection(
   const last = lastAgentConnection();
   if (!last) return null;
   const info = await connectRememberedAgent(last, bundleRoot);
-  if (!info) return null;
+  // A remembered entry that cannot even be turned into a connection attempt is
+  // a failed restore, not a quiet no-op. Resolving with null here published
+  // "idle", which dropped the user on the first-run empty state with no hint
+  // that the agent they had been using was supposed to come back.
+  if (!info) throw new Error("The remembered agent could not be reconnected.");
   // Marked the moment the connection exists, not after authenticating. This is
   // what tells the first conversation surface to continue the saved thread
   // instead of offering a Resume card, and re-authenticating made restore long
@@ -1154,6 +1179,22 @@ export function maybeRestoreLastAgentConnection(bundleRoot: string): void {
   if (agentRestoreAttempted) return;
   agentRestoreAttempted = true;
   if (activeAgentConnectionSnapshot.length > 0 || !lastAgentConnection()) return;
+  runRestore(bundleRoot);
+}
+
+/**
+ * Try the remembered connection again after a failure. A restore fails for
+ * reasons that are often transient or fixable without leaving Studio — an agent
+ * still installing, a local endpoint not up yet, a network blip — and the only
+ * way out used to be finding the agent in the catalog again by hand.
+ */
+export function retryRestoreLastAgentConnection(bundleRoot: string): void {
+  if (agentRestoreState === "restoring") return;
+  if (activeAgentConnectionSnapshot.length > 0 || !lastAgentConnection()) return;
+  runRestore(bundleRoot);
+}
+
+function runRestore(bundleRoot: string): void {
   publishAgentRestoreState("restoring");
   restoreLastAgentConnection(bundleRoot).then(
     () => publishAgentRestoreState("idle"),
@@ -1161,15 +1202,25 @@ export function maybeRestoreLastAgentConnection(bundleRoot: string): void {
   );
 }
 
+/**
+ * The remembered agent's display name, for a restore failure that has to say
+ * which agent it is talking about. Null when nothing is remembered, or when the
+ * entry predates the name being recorded.
+ */
+export function rememberedAgentName(): string | null {
+  return lastAgentConnection()?.name ?? null;
+}
+
 export async function connectCustomAgent(
   profileId: string,
   bundleRoot: string,
   mode: AgentConnectionMode = "standard",
 ): Promise<AgentConnectionInfo> {
-  const remember = () => saveLastAgentConnection({
+  const remember = (info: AgentConnectionInfo) => saveLastAgentConnection({
     kind: "custom",
     id: profileId,
     mode: mode === "restricted-offline" ? mode : undefined,
+    name: rememberableName(info),
   });
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -1180,7 +1231,7 @@ export async function connectCustomAgent(
     });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
-    remember();
+    remember(info);
     return info;
   }
   const profile = mockCustomAgents.find((candidate) => candidate.id === profileId);
@@ -1214,7 +1265,7 @@ export async function connectCustomAgent(
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
-  remember();
+  remember(info);
   return info;
 }
 
@@ -1230,7 +1281,7 @@ export async function connectCatalogAgent(
     });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
-    saveLastAgentConnection({ kind: "catalog", id: agentId });
+    saveLastAgentConnection({ kind: "catalog", id: agentId, name: rememberableName(info) });
     return info;
   }
   if (!mockInstalledAgents.has(agentId)) throw new Error("Install this agent before connecting it.");
@@ -1270,7 +1321,7 @@ export async function connectCatalogAgent(
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
-  saveLastAgentConnection({ kind: "catalog", id: agentId });
+  saveLastAgentConnection({ kind: "catalog", id: agentId, name: rememberableName(info) });
   return info;
 }
 
@@ -1283,7 +1334,7 @@ export async function connectLocalModel(
     const info = await invoke<AgentConnectionInfo>("connect_local_model", { profileId, model });
     activeAgentConnectionsById.set(info.connectionId, info);
     publishAgentConnections();
-    saveLastAgentConnection({ kind: "local", id: profileId, model });
+    saveLastAgentConnection({ kind: "local", id: profileId, model, name: rememberableName(info) });
     return info;
   }
   const profile = mockLocalModelProfiles.find((candidate) => candidate.id === profileId);
@@ -1320,7 +1371,7 @@ export async function connectLocalModel(
   };
   activeAgentConnectionsById.set(info.connectionId, info);
   publishAgentConnections();
-  saveLastAgentConnection({ kind: "local", id: profileId, model });
+  saveLastAgentConnection({ kind: "local", id: profileId, model, name: rememberableName(info) });
   return info;
 }
 

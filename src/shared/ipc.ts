@@ -81,8 +81,12 @@ import {
   parseAgentThreadMetadata,
   removeAgentThreadMetadata as removeThreadMetadata,
   upsertAgentThreadMetadata,
+  withThreadPrompt,
 } from "@/features/agent/threadMetadata.ts";
-import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import type {
+  AgentThreadMetadata,
+  AgentThreadPrompt,
+} from "@/features/agent/threadMetadata.ts";
 import {
   createOmissionPreference,
   createTaskRecord,
@@ -5010,15 +5014,62 @@ export async function loadAgentThreadMetadata(
 }
 
 export async function saveAgentThreadMetadata(
-  input: Omit<AgentThreadMetadata, "updatedAt" | "archived" | "taskId" | "contextManifest"> & {
+  input: Omit<
+    AgentThreadMetadata,
+    "updatedAt" | "archived" | "taskId" | "contextManifest" | "prompts"
+  > & {
     archived?: boolean;
     taskId?: OkfTaskId | null;
     contextManifest?: AcceptedOkfContextManifest | null;
+    prompts?: readonly AgentThreadPrompt[];
   },
 ): Promise<AgentThreadMetadata> {
-  const metadata = createAgentThreadMetadata(input);
-  await writeAgentThreads(upsertAgentThreadMetadata(await readAgentThreads(), metadata));
+  const threads = await readAgentThreads();
+  // Callers that only mean to rename or archive a thread must not erase its
+  // recorded prompts, so an absent `prompts` keeps whatever is already stored
+  // rather than defaulting to none.
+  const prompts = input.prompts ?? threads.find((thread) =>
+    thread.bundleRoot === input.bundleRoot && thread.profileId === input.profileId &&
+    thread.sessionId === input.sessionId
+  )?.prompts ?? [];
+  const metadata = createAgentThreadMetadata({ ...input, prompts });
+  await writeAgentThreads(upsertAgentThreadMetadata(threads, metadata));
   return metadata;
+}
+
+/**
+ * Record a prompt as the user typed it, against its position among the thread's
+ * user messages.
+ *
+ * Restoring a thread rebuilds it from the agent's replay, and every user message
+ * in that replay has been through the adapter's storage format — Studio's
+ * preamble, capability resource URIs and attached-source blocks run together
+ * with the question. This is the record that lets restore show what was asked.
+ *
+ * Best-effort on purpose: a thread that cannot be written still prompts fine,
+ * it just restores less faithfully, so a storage failure must not fail the turn.
+ */
+export async function recordAgentThreadPrompt(
+  bundleRoot: string,
+  profileId: string,
+  sessionId: string,
+  index: number,
+  text: string,
+): Promise<void> {
+  try {
+    const threads = await readAgentThreads();
+    const existing = threads.find((thread) =>
+      thread.bundleRoot === bundleRoot && thread.profileId === profileId &&
+      thread.sessionId === sessionId
+    );
+    if (!existing) return;
+    await writeAgentThreads(upsertAgentThreadMetadata(threads, {
+      ...existing,
+      prompts: withThreadPrompt(existing.prompts, index, text),
+    }));
+  } catch {
+    // Recording is a convenience for the next restore, never a reason to lose a turn.
+  }
 }
 
 export async function removeAgentThreadMetadata(

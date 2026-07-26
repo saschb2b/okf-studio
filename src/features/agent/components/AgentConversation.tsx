@@ -1,6 +1,7 @@
 import type { AgentAvailableCommandInfo, AgentConnectionEvent, AgentConnectionInfo, AgentLoadedSessionInfo, AgentSessionConfigOption, AgentSessionConfigValueInput, AgentSessionInfo, AgentSessionHistoryInfo, AgentStagedChangesInfo, AgentStagedFileDiff, AgentTurnEvent, AgentTurnInfo, AgentWriteGrantMode } from "@/features/agent/connection.ts";
 import type { AgentSessionConfigFailure } from "@/features/agent/components/AgentSessionControls.tsx";
-import type { AgentThreadMetadata } from "@/features/agent/threadMetadata.ts";
+import type { AgentThreadMetadata, AgentThreadPrompt } from "@/features/agent/threadMetadata.ts";
+import { restoreThreadPrompts } from "@/features/agent/threadMetadata.ts";
 import type { AcceptedOkfContextManifest, OkfTaskId, OkfTaskKickoff } from "@/features/agent/taskContext.ts";
 import { acceptOkfContextPlan, bundleContextFingerprint, createOkfContextPlan } from "@/features/agent/taskContext.ts";
 import { activeMemoryOmissions } from "@/features/agent/workspaceMemory.ts";
@@ -11,7 +12,7 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, CircleAlert, Crosshair, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordWorkspaceTaskObservation, rememberedAuthMethod, respondAgentPermission, retrieveOkfContext, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordAgentThreadPrompt, recordWorkspaceTaskObservation, rememberedAuthMethod, respondAgentPermission, retrieveOkfContext, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
@@ -338,6 +339,11 @@ export function AgentConversation({
   const failedTurnsRef = useRef(new Set<string>());
   const acceptedDraftsRef = useRef(new Map<string, PromptDraft>());
   const metadataSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // The position the next prompt takes among this thread's user messages, which
+  // is what a recorded prompt is keyed by. Counted rather than derived from the
+  // messages state so it is exact at the moment a turn is sent, and re-seeded on
+  // restore from however many user messages the replay brought back.
+  const promptIndexRef = useRef(0);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   const stagedValidationRequestRef = useRef(0);
@@ -861,7 +867,18 @@ export function AgentConversation({
           artifactWorkspaceRef.current = sent;
           setArtifactWorkspace(sent);
         }
-        void persistThreadMetadata(session, nextTitle, false, threadTaskId, acceptedPlan);
+        // After persistThreadMetadata, because recording attaches the prompt to
+        // an existing thread row and a first turn creates that row here.
+        const promptIndex = promptIndexRef.current;
+        promptIndexRef.current += 1;
+        void persistThreadMetadata(session, nextTitle, false, threadTaskId, acceptedPlan)
+          .then(() => recordAgentThreadPrompt(
+            session.bundleRoot,
+            connection.profileId,
+            session.sessionId,
+            promptIndex,
+            text,
+          ));
         resetExport();
         if (source === "composer") {
           setAttachedConcepts([]);
@@ -1935,13 +1952,24 @@ export function AgentConversation({
     title: string,
     taskId: OkfTaskId | null,
     contextManifest: AcceptedOkfContextManifest | null,
+    recordedPrompts: readonly AgentThreadPrompt[] = [],
   ) {
     adoptSession(loaded);
-    setMessages(loaded.messages.map((message, index) => ({
-      id: `history-${sessionId}-${index}`,
-      role: message.role,
-      text: message.text,
-    })));
+    // The replay decides the thread's shape, because it is the only record of
+    // the agent's side. Its user messages, though, have been through the
+    // adapter's storage format — Studio's preamble, capability resource URIs and
+    // attached-source blocks run together with the question — so where Studio
+    // recorded the prompt, that is what the user actually asked.
+    const restored = restoreThreadPrompts(
+      loaded.messages.map((message, index) => ({
+        id: `history-${sessionId}-${index}`,
+        role: message.role,
+        text: message.text,
+      })),
+      recordedPrompts,
+    );
+    setMessages(restored);
+    promptIndexRef.current = restored.filter((message) => message.role === "user").length;
     setThreadTitle({ source: "custom", value: title });
     onThreadTitleChange(title);
     setThreadTaskId(taskId);
@@ -2004,6 +2032,7 @@ export function AgentConversation({
         metadata.title,
         metadata.taskId,
         metadata.contextManifest,
+        metadata.prompts,
       );
     } catch (error: unknown) {
       setSavedThread({ status: "error", message: errorMessage(error), metadata });

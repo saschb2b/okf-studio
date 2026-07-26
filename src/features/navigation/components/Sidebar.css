@@ -296,6 +296,13 @@
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-dim);
+  /* A heading that is also a button, so it carries the 24px floor explicitly.
+     Left to padding plus a font-derived line box it measured 24px on Windows
+     and 22px on Linux — a target should not depend on which font metrics the
+     host happens to supply. */
+  display: flex;
+  align-items: center;
+  min-height: 24px;
   padding: var(--space-6) var(--space-6) var(--space-2);
   text-transform: uppercase;
   letter-spacing: 0.04em;

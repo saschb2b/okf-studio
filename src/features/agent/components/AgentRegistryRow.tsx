@@ -23,6 +23,7 @@ import {
   openExternal,
   uninstallAgent,
 } from "@/shared/ipc.ts";
+import "./AgentConnectionCatalog.css";
 
 export type InstallableEntry = AgentCatalogEntry & {
   availability: "installable";

@@ -4,6 +4,11 @@
 // toolbar's theme toggle drives the same :root[data-theme] attribute the app
 // sets in shared/theme.ts.
 import type { Preview } from "@storybook/react-vite";
+import {
+  auditVisualConsistency,
+  formatFindings,
+  isEnforced,
+} from "./visualConsistency.ts";
 import "../src/styles.css";
 import "../src/shared/styles/chrome.css";
 
@@ -40,6 +45,19 @@ const preview: Preview = {
   ],
   parameters: {
     backgrounds: { disable: true },
+  },
+  // Every story is measured against the visual-consistency criteria after it
+  // renders. 297 stories is past what a screenshot review covers, and these
+  // defects are measurable — so they are a gate rather than a reading exercise.
+  // Scoped by title in visualConsistency.ts so areas adopt it one at a time.
+  afterEach: ({ canvasElement, title }) => {
+    if (!isEnforced(String(title))) return;
+    const findings = auditVisualConsistency(canvasElement as Element);
+    if (findings.length === 0) return;
+    throw new Error(
+      `${findings.length} visual-consistency finding(s):
+${formatFindings(findings)}`,
+    );
   },
 };
 

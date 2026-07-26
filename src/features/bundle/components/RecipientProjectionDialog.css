@@ -151,16 +151,6 @@
   resize: vertical;
 }
 
-.projection-name input:focus-visible,
-.projection-fields :is(input, select, textarea):focus-visible,
-.projection-search:focus-within,
-.projection-check input:focus-visible,
-.projection-replace input:focus-visible,
-.projection-concepts input:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .projection-picker {
   display: grid;
   gap: var(--space-10);
@@ -372,22 +362,22 @@
   gap: var(--space-12);
   align-items: flex-start;
   padding: var(--space-16);
-  border: 1px solid var(--success);
+  border: 1px solid var(--ok);
   border-radius: var(--radius);
   background: var(--bg-sunken);
 }
 
 .projection-review-intro > svg {
   flex: none;
-  color: var(--success);
+  color: var(--ok);
 }
 
 .projection-review-intro.is-blocked {
-  border-color: var(--warning);
+  border-color: var(--warn);
 }
 
 .projection-review-intro.is-blocked > svg {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 .projection-review-intro p,
@@ -453,7 +443,7 @@
 }
 
 .projection-warning {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 .projection-plan details {
@@ -512,12 +502,12 @@
 }
 
 .projection-result--exported h2 {
-  color: var(--success);
+  color: var(--ok);
 }
 
 .projection-result--blocked-by-audit h2,
 .projection-result--existing-destination h2 {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 .projection-result > p {
@@ -552,7 +542,7 @@
 
 .projection-replace {
   padding: var(--space-12);
-  border: 1px solid var(--warning);
+  border: 1px solid var(--warn);
   border-radius: var(--radius);
 }
 

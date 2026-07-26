@@ -37,10 +37,6 @@
 .swatch:hover {
   border-color: var(--accent);
 }
-.swatch:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
-}
 .swatch-chip {
   position: relative;
   height: 56px;

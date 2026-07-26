@@ -117,7 +117,7 @@
 }
 .fh-row:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -1px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 /* A fixed-width mark column so titles share a left edge and the dot centers on

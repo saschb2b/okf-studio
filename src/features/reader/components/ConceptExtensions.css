@@ -17,11 +17,6 @@
   cursor: pointer;
 }
 
-.concept-language select:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .concept-resources > ul {
   display: grid;
   gap: var(--space-6);
@@ -49,11 +44,11 @@
 .concept-resource__head > span {
   display: inline-flex;
   margin-top: 1px;
-  color: var(--success);
+  color: var(--ok);
 }
 
 .concept-resource__head > span:not([data-status="ready"]) {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 .concept-resource__head strong {
@@ -92,11 +87,6 @@
 
 .concept-resources li > button:hover {
   background: var(--bg);
-}
-
-.concept-resources li > button:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .concept-resources li > button:disabled {

@@ -39,7 +39,7 @@
 }
 
 .concept-move-dialog__form label {
-  font-weight: var(--weight-semibold);
+  font-weight: 600;
 }
 
 .concept-move-dialog__form input {

@@ -65,10 +65,6 @@
   border-color: var(--border);
   color: var(--text);
 }
-.example-tab:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
 
 .example-path {
   margin-left: auto;

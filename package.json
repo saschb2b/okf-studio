@@ -11,6 +11,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:contrast": "node scripts/check-contrast.mjs",
+    "check:tokens": "node scripts/check-tokens.mjs",
+    "check:theme": "pnpm check:tokens && pnpm check:contrast",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run --project unit --project component",
     "test:watch": "vitest --project unit --project component",

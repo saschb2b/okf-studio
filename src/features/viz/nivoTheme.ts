@@ -14,28 +14,36 @@ export interface VizColors {
   accent: string;
 }
 
+/**
+ * The light theme's literal values, for the one case that cannot read them: no
+ * document (SSR, a Node unit test). Kept in one place and named after the token
+ * it stands in for, because the previous fallbacks were a separate invented
+ * palette — #2f6df6 for the accent, #111 for the text — that drifted the moment
+ * the theme moved and would have rendered a chart in colors the app has never
+ * used. If you change a role in styles.css, change its twin here.
+ */
+export const VIZ_FALLBACK = {
+  text: "#191c22",
+  textDim: "#596170",
+  bg: "#f6f7fa",
+  bgElev: "#ffffff",
+  border: "#d4d9e1",
+  accent: "#1a56d0",
+  warn: "#7d5800",
+} satisfies VizColors & { warn: string };
+
 /** Resolve the role variables the visualizations need from the document root. */
 export function readVizColors(): VizColors {
-  if (typeof document === "undefined") {
-    return {
-      text: "#111",
-      textDim: "#777",
-      bg: "#fff",
-      bgElev: "#f5f5f5",
-      border: "#ddd",
-      accent: "#2f6df6",
-    };
-  }
+  if (typeof document === "undefined") return { ...VIZ_FALLBACK };
   const s = getComputedStyle(document.documentElement);
-  const v = (name: string, fallback: string) =>
-    s.getPropertyValue(name).trim() || fallback;
+  const v = (name: string, fallback: string) => s.getPropertyValue(name).trim() || fallback;
   return {
-    text: v("--text", "#111"),
-    textDim: v("--text-dim", "#777"),
-    bg: v("--bg", "#fff"),
-    bgElev: v("--bg-elev", "#f5f5f5"),
-    border: v("--border", "#ddd"),
-    accent: v("--accent", "#2f6df6"),
+    text: v("--text", VIZ_FALLBACK.text),
+    textDim: v("--text-dim", VIZ_FALLBACK.textDim),
+    bg: v("--bg", VIZ_FALLBACK.bg),
+    bgElev: v("--bg-elev", VIZ_FALLBACK.bgElev),
+    border: v("--border", VIZ_FALLBACK.border),
+    accent: v("--accent", VIZ_FALLBACK.accent),
   };
 }
 

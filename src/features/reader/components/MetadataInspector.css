@@ -89,11 +89,6 @@
   background: var(--ghost-hover);
 }
 
-.metadata-copy:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .metadata-branch {
   position: relative;
 }

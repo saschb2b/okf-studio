@@ -378,7 +378,7 @@
 .git-commit-button:disabled,
 .git-panel button:disabled,
 .git-stage-checkbox:disabled {
-  opacity: 0.48;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 
@@ -413,14 +413,6 @@
   margin: 0;
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
-}
-
-.git-panel button:focus-visible,
-.git-panel summary:focus-visible,
-.git-panel textarea:focus-visible,
-.git-stage-checkbox:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .spin {

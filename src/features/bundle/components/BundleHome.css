@@ -110,7 +110,7 @@
 .ov-attention-summary:focus-visible,
 .ov-changes button:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -1px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .ov-dot {

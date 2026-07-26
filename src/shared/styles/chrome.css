@@ -24,7 +24,7 @@
   background: var(--el-active);
 }
 .btn:disabled {
-  opacity: 0.45;
+  opacity: var(--disabled-opacity);
   cursor: default;
 }
 .btn.primary {
@@ -92,14 +92,6 @@
 .badge.error {
   color: var(--error);
   border-color: var(--error);
-}
-
-/* Shared focus ring for every interactive chrome element. */
-.btn:focus-visible,
-.badge:focus-visible,
-.chrome-overlay :focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 /* --- Overlays (modal scrim) --- */

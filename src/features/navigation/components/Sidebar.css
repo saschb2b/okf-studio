@@ -103,13 +103,6 @@
   text-decoration: underline;
 }
 
-/* ---- Shared focus ring ---- */
-.sb button:focus-visible,
-.sb input:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 /* ---- Search ---- */
 .sb-search-wrap {
   position: relative;

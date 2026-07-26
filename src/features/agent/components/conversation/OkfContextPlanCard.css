@@ -203,11 +203,6 @@
   background: var(--accent-soft);
 }
 
-.okf-context-plan__items button:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .okf-context-plan__profiles {
   display: grid;
   gap: var(--space-6);

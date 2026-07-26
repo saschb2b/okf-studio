@@ -14,6 +14,7 @@ import { buildEdges, egoIds, isVisible } from "@/shared/selectors.ts";
 import { louvain } from "@/features/viz/graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "@/features/viz/graph/backbone.ts";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
+import { VIZ_FALLBACK } from "@/features/viz/nivoTheme.ts";
 import "./CosmosGraph.css";
 
 /** Read a CSS custom property off the document root. */
@@ -235,7 +236,7 @@ export function CosmosGraph() {
     });
 
     const links = new Float32Array(linkPairs);
-    const [lr, lg, lb] = rgb255(cssVar("--text-dim") || "#888");
+    const [lr, lg, lb] = rgb255(cssVar("--text-dim") || VIZ_FALLBACK.textDim);
     const linkColors = new Float32Array((linkPairs.length / 2) * 4);
     for (let i = 0; i < linkColors.length; i += 4) {
       linkColors[i] = lr;

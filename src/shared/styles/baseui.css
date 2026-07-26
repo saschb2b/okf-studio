@@ -71,10 +71,6 @@
 .ui-select-trigger:hover {
   border-color: var(--border-strong);
 }
-.ui-select-trigger:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
 .ui-select-icon {
   color: var(--text-dim);
   font-size: var(--fs-xs);
@@ -143,10 +139,6 @@
   background: var(--accent);
   border-color: var(--accent);
 }
-.ui-checkbox:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
 .ui-checkbox-indicator {
   display: inline-flex;
   font-size: var(--fs-xs);
@@ -174,7 +166,7 @@
 }
 .ui-numberfield-input:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 .ui-numberfield-btn {
   font: inherit;
@@ -246,9 +238,11 @@
   background: var(--accent);
   box-shadow: 0 0 0 2px var(--bg-elev);
 }
+/* The one control that does not take --focus-offset: a ring 1px off a 14px
+   circle reads as a smudge on the track rather than as a ring. */
 .ui-slider-thumb:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
+  outline: var(--focus-w) solid var(--focus-ring);
+  outline-offset: calc(var(--focus-offset) * 2);
 }
 
 /* --- Toggle (filter chips, pressed = active) --- */
@@ -270,10 +264,6 @@
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: var(--accent);
-}
-.ui-toggle:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 /* --- Scroll area (themed, native-feeling scrollbars) --- */

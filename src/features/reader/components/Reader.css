@@ -156,7 +156,7 @@
 }
 
 .reliability-notice[data-state="current"] {
-  border-inline-start-color: var(--success);
+  border-inline-start-color: var(--ok);
 }
 
 .reliability-notice[data-state="retired"],
@@ -275,14 +275,6 @@
   background: var(--ghost-hover);
 }
 
-.reader-okf-task:focus-visible,
-.reader-concept-move:focus-visible,
-.reader-concept-retirement:focus-visible,
-.reader-resource-agent:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .reader-resource-agent {
   min-width: 28px;
   justify-content: center;
@@ -315,7 +307,7 @@
 }
 .link-btn:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
   border-radius: var(--radius-sm);
 }
 
@@ -455,7 +447,7 @@
 }
 .markdown .md-img-zoom:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 /* A remote image is not auto-fetched (offline); this opens it in the browser. */
 .markdown .md-img-remote {
@@ -542,10 +534,6 @@
 }
 .lightbox-close:hover {
   border-color: var(--accent);
-}
-.lightbox-close:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* Heading permalink: a quiet "#" revealed on hover/focus that scrolls in place. */
@@ -809,10 +797,6 @@
   overflow-y: hidden;
   overscroll-behavior-inline: contain;
 }
-.markdown .markdown-table-scroll:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
-}
 .markdown table {
   border-collapse: collapse;
   width: max-content;
@@ -1067,7 +1051,7 @@
 }
 .outline-link:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 /* Relation rows read as native list rows, not web hyperlinks: normal text color
@@ -1090,7 +1074,7 @@
 }
 .rel-link:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .typed-rel-list {
@@ -1118,11 +1102,6 @@ button.typed-rel-link {
 
 button.typed-rel-link:hover {
   background: var(--ghost-hover);
-}
-
-button.typed-rel-link:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .typed-rel-link.is-missing {

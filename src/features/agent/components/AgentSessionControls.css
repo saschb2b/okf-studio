@@ -43,17 +43,9 @@
   background: var(--ghost-hover);
 }
 
-.agent-session-control:focus-visible,
-.agent-session-picker button:focus-visible,
-.agent-session-picker input:focus-visible,
-.agent-session-boolean input:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .agent-session-control:disabled {
   cursor: not-allowed;
-  opacity: 0.56;
+  opacity: var(--disabled-opacity);
 }
 
 .agent-session-control > span {

@@ -75,7 +75,7 @@
 }
 
 .evidence-panel__status[data-status="available"] {
-  color: var(--success);
+  color: var(--ok);
 }
 
 .evidence-panel__status[data-status="changed"],

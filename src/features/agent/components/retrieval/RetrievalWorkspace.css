@@ -122,7 +122,7 @@
 .retrieval-lab__options > summary:focus-visible {
   border-radius: var(--radius-sm);
   outline: var(--focus-w) solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 
 .retrieval-lab__options > summary span {
@@ -178,14 +178,6 @@
   font-size: var(--fs-sm);
 }
 
-.retrieval-lab__query input:focus-visible,
-.retrieval-lab__query select:focus-visible,
-.retrieval-inspector__search select:focus-visible,
-.retrieval-lab__compare select:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 2px;
-}
-
 .retrieval-workspace__empty {
   display: grid;
   justify-items: start;
@@ -234,11 +226,6 @@
 .retrieval-summary__trigger:hover {
   color: var(--text);
   background: var(--ghost-hover);
-}
-
-.retrieval-summary__trigger:focus-visible {
-  outline: var(--focus-w) solid var(--focus-ring);
-  outline-offset: 2px;
 }
 
 .retrieval-summary__copy {
@@ -437,7 +424,7 @@
 .retrieval-lab__technical > summary:focus-visible {
   border-radius: var(--radius-sm);
   outline: var(--focus-w) solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 
 .retrieval-lab__technical > summary span {
@@ -651,7 +638,7 @@
 
 .retrieval-evidence-list button:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: var(--space-4);
+  outline-offset: var(--focus-offset);
 }
 
 .retrieval-evidence-list button > span {
@@ -808,7 +795,7 @@
 .retrieval-inspector__technical > summary:focus-visible {
   border-radius: var(--radius-sm);
   outline: var(--focus-w) solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 
 .retrieval-inspector__technical > summary span {

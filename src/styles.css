@@ -21,7 +21,8 @@
      border    --border / --border-variant / --border-strong
                Structural edge, quiet internal divider, emphasized (hover) edge.
                One border weight for both jobs makes list rules shout.
-     content   --text / --text-dim / --text-disabled, --accent*, status roles
+     content   --text / --text-dim, --accent*, the status roles, and their
+               translucent -soft tints
 
    State fills move TOWARD the foreground in both themes: lighter on dark,
    darker on light. The single most common theming bug in a dark UI is a hover
@@ -47,9 +48,13 @@
 
   --text: #191c22;
   --text-dim: #596170;
-  /* Disabled text is exempt from WCAG 1.4.3 and does not clear 4.5; it is the
-     only text role that may fail, and only where the control is inert. */
-  --text-disabled: #a2a9b5;
+  /* One dim for every inert control. Opacity rather than a disabled ink,
+     because a disabled button has to take its icon and its border down with
+     its label, and it has to do that on all four surfaces. The six rules this
+     replaced had drifted to 0.45, 0.48, 0.56, 0.58, 0.6, and 0.7, one of them
+     stacked on top of a --text-dim it had already applied. WCAG 1.4.3 exempts
+     inactive controls, which is why this may sit below 4.5:1. */
+  --disabled-opacity: 0.5;
 
   --border: #d4d9e1;
   --border-variant: #e5e9ef;
@@ -137,15 +142,27 @@
      without putting them in a box. */
   --canvas-text-halo: 0 0 6px var(--bg-sunken), 0 0 3px var(--bg-sunken);
 
-  /* Focus + motion. One easing curve for everything: a fast start that settles
-     slowly, which is what makes a panel resize or a menu open read as physical
-     rather than mechanical. `ease` (the CSS default this replaces) is
-     symmetric, so it drifts at the start and stops abruptly. */
+  /* Focus. --focus-ring is the color's own role name (Zed calls it
+     border.focused); components referenced it long before it was defined
+     anywhere, which silently voided nine declarations — an `outline` built on
+     an undefined custom property is invalid at computed-value time and falls
+     back to `medium none`, so those elements drew no focus ring at all.
+     Two offsets, and only two: the outset default, and an inset for a control
+     that runs flush to its container's edge (full-bleed list rows, menu items,
+     tab buttons, the window caption buttons), where an outset ring would be
+     clipped by the container or collide with the neighbouring row. */
   --focus-w: 2px;
+  --focus-ring: var(--accent);
+  --focus-offset: 1px;
+  --focus-offset-inset: -2px;
+
+  /* Motion. One easing curve for everything: a fast start that settles slowly,
+     which is what makes a panel resize or a menu open read as physical rather
+     than mechanical. `ease` (the CSS default this replaces) is symmetric, so it
+     drifts at the start and stops abruptly. */
   --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
   --dur-fast: 90ms;
   --dur: 120ms;
-  --dur-slow: 220ms;
 
   /* Both families are bundled (see main.tsx), so the chrome renders the same on
      every platform's webview; the system stacks stay behind them as the
@@ -176,7 +193,6 @@
 
   --text: #e6e9ee;
   --text-dim: #9ea7b3;
-  --text-disabled: #626b78;
 
   --border: #2b313b;
   --border-variant: #21262e;
@@ -402,9 +418,15 @@ body,
 /* Top bar layout lives in TopBar.css; .btn and .badge live in chrome.css — this
    file used to carry a second, drifting copy of the button rules. */
 
-input:focus-visible, select:focus-visible, li:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+/* One focus ring, declared once. `:where()` contributes zero specificity, so a
+   component that needs the inset offset, a different treatment, or none at all
+   still overrides it with a plain class selector — but nothing has to restate
+   the ring just to have one. This replaced 86 hand-copied declarations across
+   46 files that had drifted into four different offsets. */
+:where(a, button, input, select, textarea, summary, li, [tabindex], [role="button"],
+  [role="tab"], [role="option"], [role="treeitem"], [role="menuitem"]):focus-visible {
+  outline: var(--focus-w) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* Workspace: reader-first adaptive layout. The grid template is computed in
@@ -456,7 +478,7 @@ input:focus-visible, select:focus-visible, li:focus-visible {
 }
 .pane-divider:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: var(--focus-offset);
 }
 
 /* Sidebar */

@@ -41,7 +41,7 @@ button.status-item:hover {
 }
 button.status-item:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -1px;
+  outline-offset: var(--focus-offset-inset);
 }
 /* A toggle whose panel is open reads as recessed/active. */
 .status-item.is-active {

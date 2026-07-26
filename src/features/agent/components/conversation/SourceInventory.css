@@ -1,6 +1,6 @@
 .source-inventory {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   background: var(--bg-sunken);
   font-size: var(--fs-xs);
   line-height: var(--lh-snug);

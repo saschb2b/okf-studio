@@ -30,11 +30,6 @@
   background: var(--accent);
 }
 
-.agent-panel-divider:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .agent-panel__head {
   min-height: 40px;
   display: flex;

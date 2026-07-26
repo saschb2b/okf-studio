@@ -41,6 +41,7 @@ const CosmosGraph = lazy(() =>
   })),
 );
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
+import { VIZ_FALLBACK } from "@/features/viz/nivoTheme.ts";
 import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary.tsx";
 import { GraphControls } from "@/features/viz/components/GraphControls.tsx";
 import { VizSwitcher } from "@/features/viz/components/VizSwitcher.tsx";
@@ -190,14 +191,16 @@ export function GraphView() {
       hover: hoverRef.current,
       animating,
       labelWidths: labelWidthRef.current,
+      // Fallbacks come from the shared role stand-ins, not a second invented
+      // palette; they only fire when there is no document to read.
       colors: {
-        bg: cssVar("--bg") || "#000",
-        edge: cssVar("--text-dim") || "#888",
-        accent: cssVar("--accent") || "#2f6df6",
-        text: cssVar("--text") || "#111",
-        textDim: cssVar("--text-dim") || "#777",
-        nodeStroke: cssVar("--bg") || "#fff",
-        warn: cssVar("--warn") || "#b8860b",
+        bg: cssVar("--bg") || VIZ_FALLBACK.bg,
+        edge: cssVar("--text-dim") || VIZ_FALLBACK.textDim,
+        accent: cssVar("--accent") || VIZ_FALLBACK.accent,
+        text: cssVar("--text") || VIZ_FALLBACK.text,
+        textDim: cssVar("--text-dim") || VIZ_FALLBACK.textDim,
+        nodeStroke: cssVar("--bg") || VIZ_FALLBACK.bg,
+        warn: cssVar("--warn") || VIZ_FALLBACK.warn,
       },
     });
   }

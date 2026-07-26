@@ -74,7 +74,7 @@
 
 .federated-bundle-set__row:has(input:focus-visible) {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: calc(-1 * var(--focus-w));
+  outline-offset: var(--focus-offset-inset);
 }
 
 .federated-bundle-set__row:has(input:checked) {

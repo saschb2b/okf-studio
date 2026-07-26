@@ -45,7 +45,3 @@
 .cosmos-fit:hover {
   border-color: var(--accent);
 }
-.cosmos-fit:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}

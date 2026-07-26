@@ -105,7 +105,7 @@
 }
 .hero-action:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 /* Order carries hierarchy; the primary row gets the one spot of accent. */
 .hero-action--primary > svg,

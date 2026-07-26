@@ -131,11 +131,6 @@
   line-height: var(--lh-normal);
 }
 
-.okf-task-launcher__draft textarea:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .okf-task-launcher__draft small {
   color: var(--text-dim);
   font-weight: 400;

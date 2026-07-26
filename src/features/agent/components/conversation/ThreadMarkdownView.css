@@ -35,7 +35,7 @@
 .agent-thread-markdown h2 {
   overflow-wrap: anywhere;
   font-size: var(--fs-lg);
-  line-height: var(--lh-heading);
+  line-height: var(--lh-tight);
 }
 
 .agent-thread-markdown header p {
@@ -57,7 +57,7 @@
   border: 0;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   font-size: var(--fs-sm);
-  line-height: var(--lh-relaxed);
+  line-height: var(--lh-normal);
   resize: none;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

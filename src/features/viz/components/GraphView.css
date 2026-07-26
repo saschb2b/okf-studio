@@ -216,12 +216,6 @@
   background: var(--el-hover);
 }
 
-.graph-panel-toggle:focus-visible,
-.graph-panel-reset:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 /* Appearance (bg/border/shadow/padding) comes from .ui-popover; this only
    sizes and lays out the controls. */
 .graph-panel-body {
@@ -418,11 +412,6 @@
   color: var(--accent-contrast);
 }
 
-.graph-seg-btn:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 /* A hint, not a control: quiet text on the canvas, the same register as
    .graph-chip-hint. As an elevated pill it carried the same weight as the
    buttons above it and read as a fourth thing to click. */
@@ -463,11 +452,6 @@
 
 .graph-chip:hover {
   background: var(--el-hover);
-}
-
-.graph-chip:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
 }
 
 .graph-chip-warn {

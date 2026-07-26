@@ -20,7 +20,7 @@
 
 .settings-anchor:focus {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: var(--space-4);
+  outline-offset: var(--focus-offset);
   border-radius: var(--radius-sm);
 }
 

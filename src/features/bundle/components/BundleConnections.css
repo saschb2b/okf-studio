@@ -96,12 +96,12 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-6);
-  color: var(--success);
+  color: var(--ok);
   font-size: var(--fs-xs);
 }
 
 .connections-summary__footer > span[data-status="warning"] {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 /* Dedicated workspace tabs ----------------------------------------------- */
@@ -149,7 +149,7 @@
 
 .connections-workspace__tabs > button:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .connections-workspace__tabs > button > span {
@@ -169,7 +169,7 @@
 
 .connections-workspace__panel:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: var(--focus-offset-inset);
 }
 
 .connections-focus,
@@ -270,12 +270,12 @@
 }
 
 .bundle-connections__status[data-status="cached"] {
-  color: var(--success);
+  color: var(--ok);
 }
 
 .bundle-connections__status[data-status="digest-mismatch"],
 .bundle-connections__status[data-status="unavailable"] {
-  color: var(--warning);
+  color: var(--warn);
 }
 
 .connections-exchange__metrics {
@@ -342,7 +342,7 @@
   padding: var(--space-16);
   border-radius: var(--radius);
   background: var(--bg-sunken);
-  color: var(--success);
+  color: var(--ok);
 }
 
 .connections-empty > span {
@@ -437,12 +437,6 @@
   background: var(--bg);
 }
 
-.interop-report__actions button:focus-visible,
-.interop-report summary:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
-}
-
 .interop-report__comparison {
   color: var(--text-dim);
   font-size: var(--fs-xs);
@@ -466,7 +460,7 @@
   padding: var(--space-10);
   border-radius: var(--radius-sm);
   background: var(--bg-sunken);
-  color: var(--warning);
+  color: var(--warn);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
 }

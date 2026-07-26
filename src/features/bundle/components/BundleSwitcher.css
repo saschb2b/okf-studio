@@ -97,7 +97,7 @@
 }
 .switcher-search:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: var(--focus-offset);
   border-color: var(--accent);
 }
 

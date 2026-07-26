@@ -55,6 +55,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Starting a thread has to stay clickable. The thread strip is a horizontal
+ * scroller and the add button was its last child, so with three threads it sat
+ * past the right edge — reachable only by discovering that the strip scrolls, at
+ * exactly the moment there were enough threads to want another one.
+ *
+ * The existing assertions could not see it: the strip is a scroller, so "nothing
+ * overflows" was true of every box while its contents were out of reach.
+ */
+async function expectAddThreadReachable(navigation: HTMLElement) {
+  const add = navigation.querySelector<HTMLElement>(".agent-panel__thread--add");
+  if (add === null) throw new Error("The thread strip has no add-thread button.");
+  const strip = navigation.getBoundingClientRect();
+  const button = add.getBoundingClientRect();
+  await expect(button.left).toBeGreaterThanOrEqual(strip.left - 1);
+  await expect(button.right).toBeLessThanOrEqual(strip.right + 1);
+  await expect(button.width).toBeGreaterThanOrEqual(24);
+}
+
 export const PanelWidth: Story = {
   args: { width: 440 },
   play: async ({ canvas, canvasElement }) => {
@@ -66,6 +85,7 @@ export const PanelWidth: Story = {
       .toBeLessThanOrEqual(actions.getBoundingClientRect().left);
     await expect(actions.scrollWidth).toBeLessThanOrEqual(actions.clientWidth);
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+    await expectAddThreadReachable(navigation);
   },
 };
 
@@ -78,5 +98,6 @@ export const NarrowWidth: Story = {
       .toBeLessThanOrEqual(actions.getBoundingClientRect().left);
     await expect(actions.scrollWidth).toBeLessThanOrEqual(actions.clientWidth);
     await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+    await expectAddThreadReachable(navigation);
   },
 };

@@ -237,6 +237,12 @@
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
 }
+/* A catalog summary is prose and takes a reading measure. Unbounded, it ran the
+   full width of a widened agent panel — the same 45–75ch rule the reader keeps,
+   applied to the one place in this feature that carries a paragraph. */
+.agent-row__summary {
+  max-width: 68ch;
+}
 
 .agent-row__zone {
   display: grid;

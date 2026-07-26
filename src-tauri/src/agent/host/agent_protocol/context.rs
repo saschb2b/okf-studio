@@ -6,6 +6,66 @@
 
 use super::*;
 
+// --- Studio's own prompt scaffolding ---------------------------------------
+//
+// A prompt Studio sends is one user turn whose content blocks are Studio's
+// preamble, the selected task, capability resources, and attached sources,
+// with the text the user actually typed pushed last. The live transcript shows
+// only that last block.
+//
+// `session/load` replays the whole turn as user message chunks, so a restored
+// thread showed every one of these blocks as the user's message — the markdown
+// in them unrendered, because a user message is deliberately plain text. The
+// renderer was right; the message was wrong.
+//
+// These are the headings of every Text block Studio can prepend. Attached
+// concepts are ResourceLink and capability resources are Resource when the
+// agent supports embedded context, and the replay already ignores both. The
+// builders below and `is_studio_prompt_scaffolding` share these constants so a
+// copy edit cannot leave the filter matching text nobody sends any more.
+pub(crate) const PROMPT_PREAMBLE_PREFIX: &str = "OKF Studio attached the shared ";
+pub(crate) const TASK_CONTEXT_HEADING: &str = "## Studio-selected OKF task";
+pub(crate) const CAPABILITY_RESOURCE_HEADING: &str = "## Attached capability resource: ";
+pub(crate) const SOURCE_IMAGE_HEADING: &str = "## Attached user image: ";
+pub(crate) const SOURCE_TEXT_HEADING: &str = "## Attached user source: ";
+
+/// Whether a replayed user text block is Studio's scaffolding rather than
+/// something the user typed.
+///
+/// Deliberately a prefix match on Studio's own headings rather than "keep only
+/// the last block": an agent is free to split one stored block across several
+/// replayed chunks, and dropping all but the last would then truncate the
+/// user's question. Getting this wrong can only show scaffolding that should
+/// have been hidden, which is visible and harmless, never lose what was asked.
+pub(crate) fn is_studio_prompt_scaffolding(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    // An adapter may flatten the Resource blocks Studio sends into text before
+    // storing the turn, so the replay hands back something Studio never wrote.
+    // claude-agent-acp emits `<context ref="URI">…</context>` per resource:
+    //
+    //   context.push({ type: "text",
+    //     text: `\n<context ref="${chunk.resource.uri}">\n${chunk.resource.text}\n</context>` })
+    //
+    // Matching the envelope rather than its contents keeps this independent of
+    // whatever the resource happens to say, and a chunk that is entirely one of
+    // these is attached context by construction — nobody types it.
+    if trimmed.starts_with("<context") && trimmed.ends_with("</context>") {
+        return true;
+    }
+    [
+        PROMPT_PREAMBLE_PREFIX,
+        TASK_CONTEXT_HEADING,
+        CAPABILITY_RESOURCE_HEADING,
+        SOURCE_IMAGE_HEADING,
+        SOURCE_TEXT_HEADING,
+    ]
+    .iter()
+    .any(|prefix| trimmed.starts_with(prefix))
+}
+
 pub(crate) fn read_bundle_text(
     sessions: &Mutex<HashMap<String, PathBuf>>,
     stages: &SessionStages,
@@ -331,7 +391,7 @@ pub(crate) fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<Conte
                 });
                 return vec![
                     ContentBlock::Text(TextContent::new(format!(
-                        "## Attached user image: {}\n\nOrigin: {}\nMedia type: {}\nOriginal source SHA-256: {}{}",
+                        "{SOURCE_IMAGE_HEADING}{}\n\nOrigin: {}\nMedia type: {}\nOriginal source SHA-256: {}{}",
                         source.title.trim(),
                         origin,
                         media_type,
@@ -369,7 +429,7 @@ pub(crate) fn source_content_blocks(sources: Vec<AgentSourceInput>) -> Vec<Conte
                 )
             });
             vec![ContentBlock::Text(TextContent::new(format!(
-                "## Attached user source: {}\n\nOrigin: {}{}{}{}{}\nContent SHA-256: {}\n\n{}",
+                "{SOURCE_TEXT_HEADING}{}\n\nOrigin: {}{}{}{}{}\nContent SHA-256: {}\n\n{}",
                 source.title.trim(),
                 origin,
                 media_type,

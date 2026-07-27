@@ -5,7 +5,7 @@
 //! fact about bundle shape or a heuristic that may deserve human review.
 
 use crate::evidence;
-use crate::model::{Bundle, EntryKind, Issue, IssueLevel};
+use crate::model::{Bundle, ConceptStatus, EntryKind, Issue, IssueLevel};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -666,21 +666,122 @@ fn add_freshness_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
     for concept in bundle
         .concepts
         .iter()
-        .filter(|concept| concept.timestamp.as_deref().is_none_or(str::is_empty))
+        // Through `authored_at`, so a v0.2 concept dated by `generated.at` is not
+        // reported as undated. Reading `timestamp` alone made every migrated
+        // concept look like it had lost its date.
+        .filter(|concept| concept.authored_at().is_none_or(str::is_empty))
     {
         findings.push(finding(FindingInput {
             rule_id: "okf.freshness.missing-timestamp",
-            rule_version: "1.0.0",
+            rule_version: "1.1.0",
             category: HealthCategory::Freshness,
             severity: HealthSeverity::Advisory,
             basis: HealthBasis::Heuristic,
-            summary: format!("{} has no freshness timestamp", concept.title),
-            why: "A timestamp is optional in OKF v0.1, but without one an agent cannot distinguish current knowledge from an undated claim.".to_string(),
-            evidence: vec![evidence("timestamp", "Timestamp", "absent"), evidence("path", "Concept path", &format!("{}.md", concept.id))],
+            summary: format!("{} has no authored date", concept.title),
+            why: "A date is optional, but without one an agent cannot distinguish current knowledge from an undated claim. OKF v0.2 records it as generated.at; v0.1's timestamp still counts.".to_string(),
+            evidence: vec![evidence("generated-at", "generated.at or timestamp", "absent"), evidence("path", "Concept path", &format!("{}.md", concept.id))],
             affected: vec![concept.id.clone()],
             repairability: HealthRepairability::Guided,
         }));
     }
+
+    // Past its own staleness date. A fact, not a heuristic: the bundle declared
+    // the date, and the only judgement is a calendar comparison.
+    let today = today_iso();
+    for concept in bundle
+        .concepts
+        .iter()
+        .filter(|concept| concept.is_stale_on(&today))
+    {
+        let stale_after = concept.stale_after.as_deref().unwrap_or_default();
+        findings.push(finding(FindingInput {
+            rule_id: "okf.freshness.stale",
+            rule_version: "1.0.0",
+            category: HealthCategory::Freshness,
+            severity: HealthSeverity::Warning,
+            basis: HealthBasis::Fact,
+            summary: format!("{} is past its stale_after date", concept.title),
+            why: "The bundle declared when this stops being dependable, and that day has passed. Re-verify it or move the date; leaving it teaches consumers to ignore the field.".to_string(),
+            evidence: vec![
+                evidence("stale-after", "stale_after", stale_after),
+                evidence("today", "Checked on", &today),
+                evidence("path", "Concept path", &format!("{}.md", concept.id)),
+            ],
+            affected: vec![concept.id.clone()],
+            repairability: HealthRepairability::Guided,
+        }));
+    }
+
+    // A deprecated concept still reachable from current ones. Deprecation keeps a
+    // concept for links and history, so being linked is not itself wrong — but a
+    // link from a current concept is how a reader arrives at retired knowledge
+    // without being told, which is the one case worth surfacing.
+    let deprecated = bundle
+        .concepts
+        .iter()
+        .filter(|concept| concept.status == ConceptStatus::Deprecated)
+        .map(|concept| concept.id.as_str())
+        .collect::<BTreeSet<_>>();
+    for concept in bundle
+        .concepts
+        .iter()
+        .filter(|concept| concept.status != ConceptStatus::Deprecated)
+    {
+        let retired = concept
+            .links
+            .iter()
+            .filter(|target| deprecated.contains(target.as_str()))
+            .cloned()
+            .collect::<Vec<_>>();
+        if retired.is_empty() {
+            continue;
+        }
+        findings.push(finding(FindingInput {
+            rule_id: "okf.freshness.links-deprecated",
+            rule_version: "1.0.0",
+            category: HealthCategory::Freshness,
+            severity: HealthSeverity::Advisory,
+            basis: HealthBasis::Fact,
+            summary: format!("{} links to deprecated knowledge", concept.title),
+            why: "A current concept points at one marked deprecated, so a reader can arrive at retired knowledge without being told. Repoint the link or say in the prose why the retired concept is still the right target.".to_string(),
+            evidence: vec![
+                evidence("targets", "Deprecated targets", &retired.join(", ")),
+                evidence("path", "Concept path", &format!("{}.md", concept.id)),
+            ],
+            affected: std::iter::once(concept.id.clone()).chain(retired).collect(),
+            repairability: HealthRepairability::Guided,
+        }));
+    }
+}
+
+/// Today as `YYYY-MM-DD` UTC.
+///
+/// UTC rather than local because a health report is a bundle-level artifact that
+/// may be produced on one machine and read on another; a per-machine boundary day
+/// would make the same bundle look different to two readers. The Reader's own
+/// staleness badge uses the local day, which is right for one person reading now.
+fn today_iso() -> String {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs())
+        .unwrap_or(0) as i64;
+    let days = seconds.div_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    format!("{year:04}-{month:02}-{day:02}")
+}
+
+/// Days since the Unix epoch to a civil date (Howard Hinnant's algorithm).
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    (if m <= 2 { y + 1 } else { y }, m as u32, d as u32)
 }
 
 fn add_reliability_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {

@@ -55,7 +55,12 @@ pub(crate) fn inspect(concept: &Concept) -> ConceptEvidence {
 }
 
 pub(crate) fn has_authored_source_signal(concept: &Concept) -> bool {
-    !inspect(concept).sources.is_empty()
+    // OKF v0.2's `sources` is the spec's own answer to this question, so it
+    // counts first. Without it a v0.2 concept whose provenance is fully declared
+    // in frontmatter — and which therefore needs no `resource` and no external
+    // link — was reported as having no source signal at all.
+    !concept.sources.is_empty()
+        || !inspect(concept).sources.is_empty()
         || concept
             .extra
             .get("provenance")

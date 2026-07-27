@@ -5,6 +5,18 @@ import { expect } from "storybook/test";
 import type { AttestationReport } from "@/shared/types.ts";
 import { AgentRunVerdict } from "./AgentRunVerdict.tsx";
 
+const PASSING: NonNullable<AttestationReport["attestation"]> = {
+  missingReceiptFields: [],
+  provenance: { state: "passed" },
+  fidelity: {
+    state: "unavailable",
+    detail:
+      "Fidelity is checked by the executor's runtime, by re-reading the result by job id.",
+  },
+  attested: false,
+  stale: false,
+};
+
 const REPORT: AttestationReport = {
   conceptId: "metrics/recognized-revenue",
   conceptTitle: "Recognized revenue",
@@ -12,17 +24,7 @@ const REPORT: AttestationReport = {
   source: { kind: "file", path: "computations/recognized-revenue.sql", text: "SELECT 1" },
   contractError: null,
   verdict: "provenance-established",
-  attestation: {
-    missingReceiptFields: [],
-    provenance: { state: "passed" },
-    fidelity: {
-      state: "unavailable",
-      detail:
-        "Fidelity is checked by the executor's runtime, by re-reading the result by job id.",
-    },
-    attested: false,
-    stale: false,
-  },
+  attestation: PASSING,
 };
 
 const meta = {
@@ -58,7 +60,7 @@ export const AgentWroteItsOwnQuery: Story = {
         ...REPORT,
         verdict: "failed",
         attestation: {
-          ...REPORT.attestation!,
+          ...PASSING,
           provenance: {
             state: "failed",
             detail:

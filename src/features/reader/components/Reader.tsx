@@ -454,6 +454,10 @@ export function Reader() {
   // `null` text is a resolved miss (absent, oversized, unreadable), not a
   // pending read. The rail panel is what tells the reader the file could not be
   // read; the body simply omits the section rather than showing an empty fence.
+  // Nothing is cleared on the way out. Clearing here would be a synchronous
+  // setState inside an effect — a cascading render — and it would buy nothing:
+  // the body reads this only when `conceptId` matches the concept on screen, so
+  // a leftover value from a previous concept is already unreachable.
   useEffect(() => {
     let cancelled = false;
     if (c && bundle && declaredComputationPath(c)) {
@@ -461,8 +465,6 @@ export function Reader() {
       void readDeclaredComputation(bundle.root, conceptId).then((text) => {
         if (!cancelled) setComputationSource({ conceptId, text });
       });
-    } else {
-      setComputationSource(null);
     }
     return () => {
       cancelled = true;

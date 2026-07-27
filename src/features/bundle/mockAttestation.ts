@@ -181,8 +181,13 @@ export function mockAttestationFor(
     : { kind: "inline", text: storedText };
 
   const declared = contract.executor?.receipt ?? [];
+  // Absent key or blank value, mirroring the engine's
+  // `receipt.get(field).is_none_or(|value| value.trim().is_empty())`. Written
+  // as an explicit presence check because `Record<string, string>` types a
+  // missing key as `string`, so both `?.` and `??` read as redundant here even
+  // though the value is `undefined` at runtime.
   const missingReceiptFields = declared.filter(
-    (field) => !receipt[field] || !receipt[field].trim(),
+    (field) => !Object.hasOwn(receipt, field) || receipt[field].trim() === "",
   );
   const provenance = provenanceCheck(storedText, receipt, contract.parameters);
   // Never `passed`: only the executor's runtime can re-read the result by job

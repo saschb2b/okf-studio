@@ -47,7 +47,7 @@ export function parseReceipt(text: string): ReceiptParse {
     } else if (typeof value === "object") {
       dropped.push(key);
     } else {
-      receipt[String(key)] = String(value);
+      receipt[key] = String(value);
     }
   }
 

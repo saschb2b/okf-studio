@@ -665,12 +665,20 @@ function mockReceiptValidation(markdown: string, on: string): AgentReceiptValida
   const json = receiptFenceJson(markdown);
   if (json === null) return { status: "none" };
 
-  let envelope: { schemaVersion?: number; conceptId?: string; receipt?: unknown };
+  // Parsed as `unknown` and narrowed, rather than assigned straight into a
+  // shape it has not been checked against. This is agent-supplied input on the
+  // authority path, so taking `JSON.parse`'s `any` at its word is exactly the
+  // wrong move here.
+  let parsed: unknown;
   try {
-    envelope = JSON.parse(json);
+    parsed = JSON.parse(json);
   } catch (error) {
     return { status: "invalid", message: `The receipt JSON is invalid: ${String(error)}` };
   }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { status: "invalid", message: "A receipt envelope is a JSON object." };
+  }
+  const envelope = parsed as { schemaVersion?: number; conceptId?: string; receipt?: unknown };
   if (envelope.schemaVersion !== 1) {
     return { status: "invalid", message: "Receipt schemaVersion must be 1." };
   }

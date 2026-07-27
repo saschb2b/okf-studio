@@ -1,72 +1,173 @@
-/* Self-contained, per the repeated lesson that a component borrowing a
-   sibling's stylesheet renders unstyled wherever that sibling is not loaded. */
-.attest-run-dialog {
-  width: min(680px, calc(100vw - var(--space-32)));
+/* Check-a-run dialog. Uses the shared .ui-dialog / .ui-dialog-foot / .btn
+   chrome; this file only adds the form, the live requirements row, and the
+   verdict slot. Tokens only — no literals.
+
+   Matches the Open-from-URL and Settings dialogs: one explicit surface padding
+   and one gap rhythm on the column, rather than content flush to the border
+   with ad-hoc margins. The first version of this dialog invented its own
+   spacing and left the action button floating mid-content with no footer,
+   which is why it read as a form dumped in a box. */
+.attest-dialog {
+  width: min(38rem, calc(100vw - var(--space-24)));
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
 }
 
-.attest-run-dialog__description {
+.attest-dialog__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-12);
+}
+
+.attest-dialog__subtitle {
   margin: var(--space-4) 0 0;
   max-width: var(--measure-prose);
   color: var(--text-dim);
-  font-size: var(--fs-xs);
-  line-height: var(--lh-normal);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
   text-wrap: pretty;
 }
 
-.attest-run-dialog__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding: var(--space-12);
-}
-
-.attest-run-dialog__declared {
-  margin: 0;
-  max-width: var(--measure-prose);
-  color: var(--text-dim);
-  font-size: var(--fs-xs);
-  line-height: var(--lh-normal);
-}
-
-.attest-run-dialog__declared code,
-.attest-run-dialog__dropped code {
-  padding: var(--space-2) var(--space-4);
-  background: var(--bg-sunken);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-}
-
-.attest-run-dialog__label {
-  font-size: var(--fs-xs);
+.attest-dialog__subtitle strong {
+  color: var(--text);
   font-weight: 600;
 }
 
-.attest-run-dialog__input {
+/* Label and input are one unit; the requirements row below is feedback about
+   the input, so it sits at the column's gap rather than tucked against it. */
+.attest-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.attest-dialog__field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.attest-dialog__label {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.attest-dialog__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.attest-dialog__hint kbd {
+  padding: 0 var(--space-4);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-variant);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.attest-dialog__input {
+  font-family: var(--mono);
   width: 100%;
-  padding: var(--space-8);
+  padding: var(--space-10) var(--space-12);
   color: var(--text);
   background: var(--bg-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
+  border-radius: var(--radius);
   font-size: var(--fs-xs);
+  /* Pasted JSON is read, not just held — normal leading beats the tight
+     line-height the rest of the form uses. */
   line-height: var(--lh-normal);
   resize: vertical;
+  tab-size: 2;
 }
 
-.attest-run-dialog__input:focus-visible {
+.attest-dialog__input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+
+.attest-dialog__input:focus-visible {
   outline: var(--focus-ring);
   outline-offset: 1px;
+  border-color: var(--accent);
 }
 
-.attest-run-dialog__error {
-  margin: 0;
-  color: var(--danger);
+/* One reserved slot for the requirements row, an error, or the no-evidence
+   note. Fixed height so the dialog does not jump as they swap — the same
+   reason the remote dialog reserves its preview. */
+.attest-dialog__status {
+  display: flex;
+  align-items: center;
+  min-height: 2rem;
+}
+
+.attest-dialog__required {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.attest-dialog__required-label {
+  color: var(--text-dim);
   font-size: var(--fs-xs);
-  line-height: var(--lh-normal);
 }
 
-.attest-run-dialog__dropped {
+.attest-dialog__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A required field the receipt does not carry yet. Deliberately quiet: this is
+   a checklist filling in, not an error — the receipt is not wrong until it is
+   submitted. */
+.attest-dialog__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-variant);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+/* Present. The tick carries this as well as the colour, so it survives without
+   colour vision. */
+.attest-dialog__chip.is-present {
+  color: var(--ok);
+  border-color: color-mix(in oklch, var(--ok) 45%, transparent);
+}
+
+.attest-dialog__chip code {
+  color: inherit;
+  font-size: var(--fs-xs);
+}
+
+.attest-dialog__error {
+  margin: 0;
+  max-width: var(--measure-prose);
+  color: var(--error);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.attest-dialog__dropped {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
@@ -78,7 +179,16 @@
   line-height: var(--lh-normal);
 }
 
-.attest-run-dialog__actions {
-  display: flex;
-  gap: var(--space-8);
+.attest-dialog__dropped code {
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+/* The verdict is the answer the dialog exists to give, so it is set apart from
+   the form above it rather than reading as one more field. */
+.attest-dialog__verdict {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-variant);
 }

@@ -5,6 +5,18 @@ import { expect } from "storybook/test";
 import type { AttestationReport } from "@/shared/types.ts";
 import { AttestationVerdict } from "./AttestationVerdict.tsx";
 
+const PASSING: NonNullable<AttestationReport["attestation"]> = {
+  missingReceiptFields: [],
+  provenance: { state: "passed" },
+  fidelity: {
+    state: "unavailable",
+    detail:
+      "Fidelity is checked by the executor's runtime, by re-reading the result by job id.",
+  },
+  attested: false,
+  stale: false,
+};
+
 const BASE: AttestationReport = {
   conceptId: "metrics/revenue",
   conceptTitle: "Recognized revenue",
@@ -12,17 +24,7 @@ const BASE: AttestationReport = {
   source: { kind: "file", path: "computations/revenue.sql", text: "SELECT 1" },
   contractError: null,
   verdict: "provenance-established",
-  attestation: {
-    missingReceiptFields: [],
-    provenance: { state: "passed" },
-    fidelity: {
-      state: "unavailable",
-      detail:
-        "Fidelity is checked by the executor's runtime, by re-reading the result by job id.",
-    },
-    attested: false,
-    stale: false,
-  },
+  attestation: PASSING,
 };
 
 const meta = {
@@ -57,7 +59,7 @@ export const Substituted: Story = {
       ...BASE,
       verdict: "failed",
       attestation: {
-        ...BASE.attestation!,
+        ...PASSING,
         provenance: {
           state: "failed",
           detail: "The executed_sql does not match the stored computation.",
@@ -77,7 +79,7 @@ export const MissingEvidence: Story = {
     report: {
       ...BASE,
       verdict: "failed",
-      attestation: { ...BASE.attestation!, missingReceiptFields: ["job_id", "result"] },
+      attestation: { ...PASSING, missingReceiptFields: ["job_id", "result"] },
     },
   },
   play: async ({ canvas }) => {
@@ -95,7 +97,7 @@ export const NothingToCompare: Story = {
       ...BASE,
       verdict: "failed",
       attestation: {
-        ...BASE.attestation!,
+        ...PASSING,
         provenance: {
           state: "unavailable",
           detail: "The receipt carries no executed-computation field to compare.",
@@ -112,7 +114,7 @@ export const NothingToCompare: Story = {
 /** A stale definition warns without changing the verdict. */
 export const StaleDefinition: Story = {
   args: {
-    report: { ...BASE, attestation: { ...BASE.attestation!, stale: true } },
+    report: { ...BASE, attestation: { ...PASSING, stale: true } },
   },
   play: async ({ canvas }) => {
     await expect(canvas.getByText(/used the sanctioned computation/i)).toBeVisible();

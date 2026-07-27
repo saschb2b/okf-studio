@@ -8,8 +8,8 @@
   flex-direction: column;
   gap: var(--space-6);
   padding: var(--space-10);
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--warning, var(--text-dim));
+  border-radius: var(--radius);
+  border-left: 3px solid var(--warn);
   background: var(--bg-sunken);
 }
 
@@ -25,7 +25,7 @@
 
 .agent-run-verdict__headline > svg {
   flex: none;
-  color: var(--warning, var(--text-dim));
+  color: var(--warn);
 }
 
 .agent-run-verdict__detail {

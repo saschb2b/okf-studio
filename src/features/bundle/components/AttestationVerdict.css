@@ -6,7 +6,7 @@
   flex-direction: column;
   gap: var(--space-8);
   padding: var(--space-10);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   border-left: 3px solid var(--border);
   background: var(--bg-sunken);
 }
@@ -14,15 +14,15 @@
 /* Colour carries the verdict, and never alone — each state also has its own
    icon and its own words, so this reads the same without colour vision. */
 .attestation--provenance-established {
-  border-left-color: var(--success, var(--accent));
+  border-left-color: var(--ok);
 }
 
 .attestation--failed {
-  border-left-color: var(--danger);
+  border-left-color: var(--error);
 }
 
 .attestation--contract-unreadable {
-  border-left-color: var(--warning, var(--text-dim));
+  border-left-color: var(--warn);
 }
 
 .attestation__headline {
@@ -40,15 +40,15 @@
 }
 
 .attestation--provenance-established .attestation__headline > svg {
-  color: var(--success, var(--accent));
+  color: var(--ok);
 }
 
 .attestation--failed .attestation__headline > svg {
-  color: var(--danger);
+  color: var(--error);
 }
 
 .attestation--contract-unreadable .attestation__headline > svg {
-  color: var(--warning, var(--text-dim));
+  color: var(--warn);
 }
 
 .attestation__detail {
@@ -83,11 +83,11 @@
 }
 
 .attestation-check--passed .attestation-check__icon {
-  color: var(--success, var(--accent));
+  color: var(--ok);
 }
 
 .attestation-check--failed .attestation-check__icon {
-  color: var(--danger);
+  color: var(--error);
 }
 
 .attestation-check__label {
@@ -105,11 +105,11 @@
 }
 
 .attestation-check--passed .attestation-check__state {
-  color: var(--success, var(--accent));
+  color: var(--ok);
 }
 
 .attestation-check--failed .attestation-check__state {
-  color: var(--danger);
+  color: var(--error);
 }
 
 .attestation-check__detail {
@@ -165,5 +165,5 @@
 .attestation__stale > svg {
   flex: none;
   margin-top: 2px;
-  color: var(--warning, var(--text-dim));
+  color: var(--warn);
 }

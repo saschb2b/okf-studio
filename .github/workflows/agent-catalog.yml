@@ -1,0 +1,122 @@
+name: Agent catalog
+
+# The catalog pins every installable agent to an exact version, tarball, integrity
+# hash and size — that pinning is what lets Studio verify what it downloads, and
+# it is also what goes stale silently. Maintained by hand it drifted until all
+# eight npm agents were behind, several by many releases, and nothing said so.
+#
+# So a weekly job asks each registry what is current and opens a pull request when
+# something moved. It does not merge: a pin bump changes what users install, so it
+# is reviewed like any other change.
+#
+# Deliberately not part of `ci.yml`. That would turn the build red whenever an
+# unrelated agent shipped a release, which is not a defect in this repository.
+
+on:
+  schedule:
+    # Monday morning UTC: a week is long enough that a run usually has something
+    # to report, and short enough that a pin is never badly out of date.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# One rolling branch and one open PR. A second scheduled run while the first is
+# still unreviewed updates that PR rather than opening a competing one.
+concurrency:
+  group: agent-catalog
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh the pinned distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # The refresh downloads each tarball to measure it and verifies the bytes
+      # against the integrity hash it is about to write, so it needs the lockfile
+      # installed for nothing else — but the repo's scripts assume a full install.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Refresh the catalog
+        id: refresh
+        run: |
+          node scripts/refresh-agent-catalog.mjs --write | tee refresh.log
+          if git diff --quiet -- src/features/agent/catalog.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify the catalog still parses and the pins are consistent
+        if: steps.refresh.outputs.changed == 'true'
+        # The Rust side compiles the catalog in and validates it, and the TS test
+        # pins the runtime version, so a refresh that broke either would otherwise
+        # only surface on the PR's own CI run.
+        run: pnpm vitest run --project unit src/features/agent/catalog.test.ts
+
+      - name: Open or update the pull request
+        if: steps.refresh.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH=chore/agent-catalog-refresh
+
+          # Written to files rather than inlined: a heredoc inside a YAML block
+          # inherits the block's indentation, and nesting quotes through
+          # `gh pr create --body "$(...)"` is where this kind of step usually
+          # breaks silently.
+          {
+            echo "chore(agent): refresh the pinned agent distributions"
+            echo
+            echo "Opened by the weekly agent-catalog job. Each pin is taken from the"
+            echo "registry's current release, and the tarball was downloaded and checked"
+            echo "against the integrity hash written here rather than copied out of"
+            echo "registry metadata."
+            echo
+            cat refresh.log
+          } > commit-message.txt
+
+          {
+            echo "Weekly refresh of the agent catalog."
+            echo
+            echo "Each pin comes from the registry's current release. The tarball was"
+            echo "downloaded and verified against the integrity hash written here rather"
+            echo "than copied out of registry metadata. The catalog's job is verifying"
+            echo "downloads, so taking the registry's word for it would defeat the point."
+            echo
+            echo '```'
+            cat refresh.log
+            echo '```'
+            echo
+            echo "Not refreshed here: the bundled Node runtime, which moves deliberately"
+            echo "and is a separate \`--node\` flag, and the \`cursor\` binary targets, whose"
+            echo "download URLs embed a build hash that no version string predicts."
+          } > pr-body.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add src/features/agent/catalog.json
+          git commit -F commit-message.txt
+          git push --force-with-lease origin "$BRANCH"
+
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            TITLE="chore(agent): refresh the pinned agent distributions"
+            gh pr create --base main --head "$BRANCH" --title "$TITLE" --body-file pr-body.md
+          fi

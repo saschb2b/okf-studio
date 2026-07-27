@@ -23,7 +23,7 @@ A shared Rust pipeline makes exact ranking, grant enforcement, source identity, 
 1. Rust reads only the already authorized bundle through the existing parser.
 2. The manifest builder splits Markdown at structural boundaries and preserves tables, lists, code, citations, heading ancestry, and source lines.
 3. Query classification chooses an exact, lexical-graph, coverage, temporal-conflict, structured, full-context, or hybrid-fallback route.
-4. Candidate generators score exact fields, deterministic BM25 terms, authored graph context, coverage, and supported authority signals.
+4. Candidate generators score exact fields, deterministic BM25 terms, authored graph context, coverage, supported authority signals, and an OKF v0.2 freshness term.
 5. Filters run before final ranking. Every rejected or budget-omitted unit receives a stable reason.
 6. The compiler deduplicates overlap, retains distinct conflicts, orders defining evidence before dependent context, and keeps whole units within the token budget.
 7. Diagnostics classify the result and may produce advisory, review-only repair proposals tied to an observed cause. Missing descriptions and broken links can produce suggestions; merely selecting an unsourced concept cannot invent a citation chore.
@@ -46,6 +46,32 @@ Those additional classes remain in the versioned schema so imported evaluations 
 A section ID derives from concept ID, heading ancestry, structural ordinal, and content hash. The bundle fingerprint binds the complete ordered manifest. A content change therefore creates a new revision identity without mutating authored files. Cache and snapshot scope include the manifest fingerprint and bundle grant set; a different revision or scope cannot reuse them. A receipt ID additionally binds the normalized query, resolved route, bounded limit and context budget, filters, provider identifiers, provider window, and disclosure choice. Repeating the same request is stable, while changing any material search or provider input creates another receipt identity.
 
 The cache is disposable. Failure to publish it does not block retrieval or ordinary reading. Reopening or changing a bundle rebuilds from source, and removing the cache cannot remove knowledge.
+
+# Trust and freshness boundary
+
+OKF v0.2 gave a bundle the vocabulary to say who confirmed a concept and when it stops being current. Retrieval reads those fields, and the rule it applies is **mark and demote, never exclude**.
+
+The spec states that rule outright for one case: a consumer *"SHOULD surface, not silently drop, a failing attestation"* (10.5). For lifecycle it implies it structurally. `deprecated` is defined as *"kept for links and history, no longer current"* — a bundle retains a deprecated concept precisely so its links still resolve, so a retriever that hid it would break the thing the status exists to preserve.
+
+What the engine does with each signal:
+
+| Signal | Effect on ranking | Caveat |
+| --- | --- | --- |
+| `status: deprecated` | −15 | Lifecycle |
+| `status: draft` | −5 | — |
+| `stale_after` reached | −10 | Stale |
+| `verified` by a `human:` actor | +15 | — |
+| `verified` by other actors | +5 | — |
+| `sources` declared | +5 | — |
+| Attested Computation with no attester or no receipt | — | Uncertain |
+
+The magnitudes are the substance of the decision, not decoration. An exact id or title match scores 9,000–10,000, so **no demotion here can outrank one**: search a deprecated concept by name and it still comes back first. What these weights move is the ordering among lexically similar peers, which is the case where "prefer the current one" is right and "hide the old one" is not. `demotion_never_outranks_an_exact_match` in `engine.rs` pins that bound, so a later reweighting cannot quietly turn demotion into exclusion.
+
+Trust is a bonus and never a penalty. Most bundles predate v0.2 and carry no `verified` at all; docking them would punish a producer for the spec moving rather than for anything about their content.
+
+Staleness is judged against a date supplied on the request, not a clock read inside the engine, because a receipt whose meaning changes when it is replayed is not a receipt. `retrieveOkfContext` defaults it for every caller — the failure mode of forgetting it is silent, since staleness simply stops being noticed while every test stays green. A caller replaying a historical receipt can still pin its own date.
+
+The five older signals the engine also reads — `lifecycle`, `confidence`, `source_class`, `effective_until`, `review_after` — are producer conventions taken from `extra`, not OKF keys. They continue to work; the v0.2 fields are read alongside them.
 
 # Conflict boundary
 

@@ -130,6 +130,17 @@ impl ConceptStatus {
             _ => Self::Stable,
         }
     }
+
+    /// The spec's spelling, matching how this serializes. Round-trips through
+    /// `parse`.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::Stable => "stable",
+            Self::Experimental => "experimental",
+            Self::Deprecated => "deprecated",
+        }
+    }
 }
 
 /// How much a consumer should believe a concept, derived from `verified`
@@ -143,6 +154,17 @@ pub enum TrustTier {
     MachineConfirmed,
     /// At least one `human:` verifier.
     HumanReviewed,
+}
+
+impl TrustTier {
+    /// Matching how this serializes, for callers that carry the tier as text.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Unverified => "unverified",
+            Self::MachineConfirmed => "machine-confirmed",
+            Self::HumanReviewed => "human-reviewed",
+        }
+    }
 }
 
 /// One typed, named hole in a computation (spec 10.1).

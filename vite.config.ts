@@ -64,6 +64,12 @@ export default defineConfig(({ mode }) => ({
     // bounded integration lane, and stories render in headless Chromium.
     // Vitest 4.1 reads the browser handshake limit from the root config after
     // expanding project instances. Individual story deadlines stay at 30 s.
+    //
+    // Every project declares `sequence.groupOrder`. Vitest 4 refuses to run two
+    // projects concurrently when they disagree on `maxWorkers`, so without this
+    // a bare `vitest run` — the obvious way to run everything — fails before
+    // executing a single test. The order is also the useful one: the cheap
+    // lanes report first, then the bounded integration lane, then the browser.
     browser: { connectTimeout: 90_000 },
     projects: [
       {
@@ -77,7 +83,7 @@ export default defineConfig(({ mode }) => ({
           globals: true,
           restoreMocks: true,
           slowTestThreshold: 100,
-          sequence: { shuffle: true },
+          sequence: { shuffle: true, groupOrder: 0 },
         },
       },
       {
@@ -93,7 +99,9 @@ export default defineConfig(({ mode }) => ({
           css: false,
           restoreMocks: true,
           slowTestThreshold: 250,
-          sequence: { shuffle: true },
+          // Shares group 0 with `unit`: neither constrains `maxWorkers`, so
+          // they can run together.
+          sequence: { shuffle: true, groupOrder: 0 },
         },
       },
       {
@@ -110,7 +118,7 @@ export default defineConfig(({ mode }) => ({
           slowTestThreshold: 1_000,
           maxWorkers: 2,
           testTimeout: 20_000,
-          sequence: { shuffle: true },
+          sequence: { shuffle: true, groupOrder: 1 },
         },
       },
       {
@@ -131,7 +139,7 @@ export default defineConfig(({ mode }) => ({
           // A single browser avoids competing Chromium boots on Windows.
           maxWorkers: 1,
           testTimeout: 30_000,
-          sequence: { shuffle: true },
+          sequence: { shuffle: true, groupOrder: 2 },
         },
       },
     ],

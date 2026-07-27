@@ -3,7 +3,7 @@ type: Product Strategy
 title: OKF Retrieval Thesis
 description: Position OKF Studio as an inspectable context engine that compiles connected bundle knowledge for agents, models, and external retrieval systems.
 tags: [product, strategy, rag, retrieval, context, okf]
-timestamp: 2026-07-19T23:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T23:15:00Z }
 ---
 
 # Product position

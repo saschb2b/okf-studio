@@ -3,7 +3,7 @@ type: Product
 title: OKF Studio overview
 description: A local-first desktop workspace for exploring, creating, curating, and querying connected OKF bundles with user-chosen agents.
 tags: [product, vision, desktop]
-timestamp: 2026-07-18T20:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T20:00:00Z }
 ---
 
 # What it is

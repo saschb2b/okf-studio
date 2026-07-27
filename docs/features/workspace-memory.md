@@ -3,7 +3,7 @@ type: Feature
 title: Inspectable Workspace Memory
 description: Bundle-scoped local metadata that can shape future context plans without storing knowledge, conversation bodies, or write authority.
 tags: [feature, agents, memory, context, local-first]
-timestamp: 2026-07-18T14:20:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T14:20:00Z }
 ---
 
 # Purpose

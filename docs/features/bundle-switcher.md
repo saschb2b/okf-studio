@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-timestamp: 2026-07-16T23:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-16T23:30:00Z }
 ---
 
 # What it does

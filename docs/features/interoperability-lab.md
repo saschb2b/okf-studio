@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Connections
 description: Resolve external knowledge, exchange portable relationships, and inspect optional conventions from the surface where each task is used.
 tags: [feature, interoperability, connections, multilingual, json-ld, sidecars]
-timestamp: 2026-07-23T21:24:41+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 language: en
 sidecars:
   assets/interop-sample.json:

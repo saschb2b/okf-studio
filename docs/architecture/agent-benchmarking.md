@@ -3,7 +3,7 @@ type: Architecture Decision
 title: OKF Agent Benchmarking
 description: The frozen corpus, task contracts, deterministic merge gate, and opt-in provider evaluation for OKF-specialized agents.
 tags: [architecture, agents, benchmarks, testing, evaluation]
-timestamp: 2026-07-19T22:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T22:15:00Z }
 ---
 
 # Decision

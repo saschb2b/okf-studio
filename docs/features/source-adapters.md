@@ -3,7 +3,7 @@ type: Feature
 title: Source Adapters and Provenance
 description: Versioned Rust adapters turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible provenance and refresh identity.
 tags: [feature, agents, sources, adapters, provenance, security]
-timestamp: 2026-07-23T18:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T18:30:00Z }
 ---
 
 # Purpose

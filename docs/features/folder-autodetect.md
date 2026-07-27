@@ -3,7 +3,7 @@ type: Feature
 title: Folder Autodetect
 description: Point the app at a folder and it finds every OKF bundle nested inside, with no manifest or configuration.
 tags: [feature, discovery, core]
-timestamp: 2026-06-29T12:00:00Z
+generated: { by: claude/unrecorded, at: 2026-06-29T12:00:00Z }
 ---
 
 # What it does

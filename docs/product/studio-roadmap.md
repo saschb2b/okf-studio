@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Studio Transformation
 description: The sequenced transformation from a read-only viewer into a local-first workspace for creating, curating, and querying knowledge with agents.
 tags: [product, roadmap, studio, agents, authoring]
-timestamp: 2026-07-17T21:13:38Z
+generated: { by: claude/unrecorded, at: 2026-07-17T21:13:38Z }
 ---
 
 # Outcome

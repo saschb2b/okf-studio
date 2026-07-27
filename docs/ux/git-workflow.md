@@ -3,7 +3,7 @@ type: UX Flow
 title: Git Workflow
 description: The repository review and commit loop inside the OKF workspace.
 tags: [ux, git, staging, commit]
-timestamp: 2026-07-19T17:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T17:15:00Z }
 ---
 
 # Why the workflow stays compact

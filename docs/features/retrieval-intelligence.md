@@ -3,7 +3,7 @@ type: Feature
 title: Retrieval Intelligence
 description: Route bundle questions through local structural retrieval, preserve coherent evidence, and expose every selection through an inspectable receipt.
 tags: [feature, retrieval, agents, context, evidence, diagnostics]
-timestamp: 2026-07-23T18:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T18:30:00Z }
 ---
 
 # What it does

@@ -3,7 +3,7 @@ type: UX Review
 title: Agent Workspace Dogfood
 description: Journey evidence and open findings from the WP10A Agent Panel refinement.
 tags: [ux, agent-panel, dogfood, accessibility]
-timestamp: 2026-07-18T19:54:10Z
+generated: { by: claude/unrecorded, at: 2026-07-18T19:54:10Z }
 ---
 
 # Scope

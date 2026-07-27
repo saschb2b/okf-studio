@@ -4,7 +4,12 @@ title: OKF Sample Bundles
 description: The three browsable OKF sample bundles — GA4 e-commerce, Stack Overflow, and Bitcoin — that serve as real-world fixtures for exercising OKF Studio beyond this self-describing docs bundle.
 resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf/bundles
 tags: [reference, okf, samples, fixtures, external]
-timestamp: 2026-07-22T23:58:00Z
+generated: { by: claude/unrecorded, at: 2026-07-22T23:58:00Z }
+sources:
+  - resource: "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf/bundles"
+    title: OKF sample bundles directory
+  - resource: okf-spec-summary.md
+    title: OKF Spec Summary
 ---
 
 # Summary
@@ -28,8 +33,3 @@ This `docs/` bundle is **self-describing** — it documents Studio using Studio'
 - **Tolerant-consumer paths** — independently authored bundles surface the soft issues (unknown types, missing optional fields, broken links) that [Validation](../features/validation.md) must tolerate rather than reject.
 
 For that reason [Testing](../architecture/testing.md) keeps reduced, licensed excerpts from all three bundles in the pure parser corpus. The excerpts are pinned to Google commit `d44368c15e38e7c92481c5992e4f9b5b421a801d`; their manifest freezes graph, validation, type, and extension expectations without making test execution depend on GitHub. [Folder Autodetect](../features/folder-autodetect.md) is also validated against a folder holding several bundles at once. Together these checks keep Studio honest against bundles it did not author. See the [OKF Spec Summary](okf-spec-summary.md) for the rules these bundles conform to.
-
-# Citations
-
-[1] [OKF sample bundles directory](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf/bundles)
-[2] [OKF Spec Summary](okf-spec-summary.md)

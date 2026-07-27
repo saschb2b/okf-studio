@@ -5,7 +5,7 @@ description: A compact title and value statement with optional glyph and detail 
 tags: [components, card]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /components/feature-card.example.html
 tokens:

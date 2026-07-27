@@ -3,7 +3,7 @@ type: Feature
 title: Recipient Projections
 description: Choose knowledge, review what will travel, and save a separate shareable bundle without changing the source.
 tags: [feature, privacy, sharing, access, review]
-timestamp: 2026-07-23T17:29:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T17:29:00Z }
 audience: [maintainers, knowledge-owners]
 sensitivity: public
 ---

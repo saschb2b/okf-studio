@@ -49,9 +49,11 @@ export function conceptExamples(concept: Concept): string[] {
 }
 
 /** Lifecycle status (`stable` / `experimental` / `deprecated`), if declared. */
-export function conceptStatus(concept: Concept): string | null {
-  const raw = concept.extra.status;
-  return typeof raw === "string" && raw ? raw : null;
+export function conceptStatus(concept: Concept): string {
+  // Read from the promoted field, not `extra`: OKF v0.2 claimed `status`, so it
+  // is a spec field now and no longer sits among the producer extensions. Always
+  // a value, because absent means `stable` in both OKF and ODSF.
+  return concept.status;
 }
 
 /** Platforms/surfaces a concept governs (`applies_to`), if declared. */

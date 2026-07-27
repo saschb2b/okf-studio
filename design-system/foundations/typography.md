@@ -4,7 +4,7 @@ title: Typography
 description: Inter Variable for copy and JetBrains Mono for labels and code, on a restrained scale sized for reading rather than for impact.
 tags: [foundations, typography, tokens]
 status: stable
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 tokens:
   font:
     sans: "'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"

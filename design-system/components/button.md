@@ -5,7 +5,7 @@ description: Action control. Primary is a solid accent fill; secondary and ghost
 tags: [components, button]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /components/button.example.html
 tokens:

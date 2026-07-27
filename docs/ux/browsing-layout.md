@@ -3,7 +3,7 @@ type: UX Flow
 title: Browsing Layout
 description: The three-pane workspace — sidebar, graph, reader — and how selection keeps them in sync.
 tags: [ux, layout]
-timestamp: 2026-07-24T12:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
 ---
 
 # The three panes

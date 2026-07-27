@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Ecosystem Response
 description: Value, boundaries, dependencies, and delivery gates for turning public OKF implementation problems into useful Studio capabilities.
 tags: [product, roadmap, okf, compatibility, provenance, governance]
-timestamp: 2026-07-24T12:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-24T12:30:00Z }
 ---
 
 # Outcome

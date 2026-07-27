@@ -3,7 +3,7 @@ type: Feature
 title: Artifact Verification and Critic Passes
 description: Deterministic checks and an optional isolated OKF critic that compare findings without gaining authority over revisions or writes.
 tags: [feature, agents, artifacts, verification, critic, safety]
-timestamp: 2026-07-18T14:20:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T14:20:00Z }
 ---
 
 # Purpose

@@ -50,7 +50,12 @@ export interface Attribution {
   at: string | null;
 }
 
-export type ConceptStatus = "draft" | "stable" | "deprecated";
+/**
+ * `experimental` is ODSF's, not OKF's. ODSF v0.2 makes OKF's set normative and
+ * keeps it as a profile extension, because design systems ship components that
+ * are neither drafts nor stable.
+ */
+export type ConceptStatus = "draft" | "stable" | "experimental" | "deprecated";
 
 /**
  * How much to believe a concept, derived from `verified` (spec 5.3). Ordered

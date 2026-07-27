@@ -3,7 +3,7 @@ type: Feature
 title: Log View
 description: Render a bundle's reserved log.md as a readable, date-grouped timeline of changes, newest first.
 tags: [feature, log, timeline, history]
-timestamp: 2026-07-13T19:42:50Z
+generated: { by: claude/unrecorded, at: 2026-07-13T19:42:50Z }
 ---
 
 # What it does

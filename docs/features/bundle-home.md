@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Home
 description: Resume active concepts, review authored change activity, handle deterministic attention items, and return to repository work.
 tags: [feature, home, activity, maintenance, git, navigation]
-timestamp: 2026-07-23T21:24:41+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 ---
 
 # User job

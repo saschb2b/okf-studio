@@ -3,7 +3,7 @@ type: Feature
 title: Structured Agent Work
 description: Rust-validated OKF plans, reports, research, impact maps, migrations, inventories, and staged revisions that remain inspectable beside the conversation.
 tags: [feature, agents, artifacts, planning, research, review]
-timestamp: 2026-07-18T17:20:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T17:20:00Z }
 ---
 
 # Purpose

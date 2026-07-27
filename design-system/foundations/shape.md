@@ -4,7 +4,7 @@ title: Shape
 description: Corner-radius scale, echoing the app-icon tile's ~16% rounding.
 tags: [foundations, shape, radius, tokens]
 status: stable
-timestamp: 2026-07-01T16:29:01Z
+generated: { by: claude/unrecorded, at: 2026-07-01T16:29:01Z }
 tokens:
   radius:
     sm: "8px"

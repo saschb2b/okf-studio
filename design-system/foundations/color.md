@@ -4,7 +4,7 @@ title: Color
 description: "Dark-first palette built from the app theme and app icon: near-black surfaces with one blue accent, used only where a reader can act. The brand roles track the app; the surfaces deliberately do not."
 tags: [foundations, color, tokens]
 status: stable
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 tokens:
   colors:
     bg: "#0B0B0D"

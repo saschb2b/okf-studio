@@ -3,7 +3,7 @@ type: Feature
 title: Lineage
 description: Trace filtered dependencies and downstream impact across bounded hops, then explain how any two concepts connect.
 tags: [feature, graph, traversal, lineage, relationships, reliability]
-timestamp: 2026-07-23T16:45:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T16:45:00Z }
 ---
 
 # User job

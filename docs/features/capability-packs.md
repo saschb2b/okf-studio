@@ -3,7 +3,7 @@ type: Feature
 title: Declarative OKF Capability Packs
 description: Package Studio's curated OKF skills, templates, artifact contract, and tool requirements as one inspectable and reversible built-in unit.
 tags: [feature, agents, skills, capability-pack, security, migration]
-timestamp: 2026-07-18T20:32:58Z
+generated: { by: claude/unrecorded, at: 2026-07-18T20:32:58Z }
 ---
 
 # Purpose

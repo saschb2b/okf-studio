@@ -3,7 +3,7 @@ type: UX Contract
 title: Git Experience Contract
 description: Surface ownership, interaction rules, pressure states, and safety boundaries for integrated Git support.
 tags: [product, git, ux, quality-gate]
-timestamp: 2026-07-19T17:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T17:15:00Z }
 ---
 
 # User job

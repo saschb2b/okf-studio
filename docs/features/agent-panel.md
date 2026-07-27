@@ -3,7 +3,7 @@ type: Feature
 title: Agent Panel
 description: A docked workspace for running parallel agent threads, attaching OKF context, approving tools, and reviewing knowledge changes.
 tags: [feature, agents, panel, authoring, research]
-timestamp: 2026-07-23T00:28:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T00:28:00Z }
 ---
 
 # Entry and first open

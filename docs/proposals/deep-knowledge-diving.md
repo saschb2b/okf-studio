@@ -3,7 +3,7 @@ type: Proposal
 title: Deep Knowledge Diving
 description: Where the viewer is thin for going deep into a bundle, and the data-catalog and graph-explorer patterns worth borrowing — framed as the stages of a dive.
 tags: [proposal, roadmap, ux, graph, search]
-timestamp: 2026-07-04T19:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-04T19:00:00Z }
 ---
 
 # Why this exists

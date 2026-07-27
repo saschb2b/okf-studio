@@ -98,13 +98,27 @@ fn reports_an_actor_that_matches_none_of_the_three_forms() {
 fn reports_lifecycle_values_that_cannot_be_used() {
     let root = scratch("lifecycle");
     write(&root, "status.md", "---\ntype: Table\nstatus: retired\n---\n");
+    // ODSF v0.1 defined status as stable/experimental/deprecated; OKF v0.2 then
+    // claimed the key, and ODSF v0.2 resolves it by making OKF's set normative
+    // while keeping `experimental` as a profile extension. Studio reads ODSF
+    // tokens, so warning here would nag every design-system component that
+    // legitimately uses it.
+    write(
+        &root,
+        "experimental.md",
+        "---\ntype: Component\nstatus: experimental\n---\n",
+    );
     // A relative TTL is exactly what the spec replaced with an absolute date; it
     // is never comparable, so the concept never goes stale and the field reads as
     // a promise it cannot keep.
     write(&root, "stale.md", "---\ntype: Table\nstale_after: 90d\n---\n");
 
     let found = messages(&root);
-    assert_reports(&found, "status \"retired\" is not draft, stable, or deprecated");
+    assert_reports(&found, "status \"retired\" is not draft, stable, deprecated");
+    assert!(
+        !found.iter().any(|message| message.starts_with("experimental.md")),
+        "ODSF's experimental is a legitimate value, got: {found:#?}"
+    );
     assert_reports(&found, "stale_after \"90d\" is not an absolute YYYY-MM-DD date");
 
     fs::remove_dir_all(&root).expect("cleanup");

@@ -3,7 +3,7 @@ type: Feature
 title: Search & Filter
 description: Type filters and tag browsing that persistently narrow the view, plus full-text concept search through the global launcher.
 tags: [feature, search, filter]
-timestamp: 2026-07-18T06:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T06:30:00Z }
 ---
 
 # What it does

@@ -3,7 +3,7 @@ type: Runbook
 title: Retrieval Operations
 description: Rebuild, diagnosis, provider removal, cache cleanup, migration, and rollback behavior for Retrieval Intelligence.
 tags: [retrieval, operations, support, migration, cache, rollback]
-timestamp: 2026-07-19T11:22:06Z
+generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
 ---
 
 # What is stored

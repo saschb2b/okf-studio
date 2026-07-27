@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Agent Specialization
 description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
-timestamp: 2026-07-18T20:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T20:30:00Z }
 ---
 
 # Outcome

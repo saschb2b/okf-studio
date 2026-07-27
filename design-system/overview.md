@@ -4,7 +4,7 @@ title: OKF Studio Design System
 description: The dark-first visual language for OKF Studio's marketing and download site, built from the app theme and app icon, in the register of zed.dev.
 tags: [overview, design-system]
 status: stable
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 ---
 
 # Principles

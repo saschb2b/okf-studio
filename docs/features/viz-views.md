@@ -3,7 +3,7 @@ type: Feature
 title: Visualization Views
 description: The graph pane renders one of four visualizations (force-directed graph, treemap, sunburst, or circle packing) with a persisted switcher and shared drill-down.
 tags: [feature, visualization, hierarchy, graph]
-timestamp: 2026-07-23T22:08:44+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T22:08:44+02:00 }
 ---
 
 # What it does

@@ -3,7 +3,7 @@ type: Feature
 title: Command Palette
 description: A global launcher (Ctrl/Cmd + K or /) that jumps to any concept, searches body text, and runs quick actions — keyboard-only, grouped results.
 tags: [feature, palette, launcher, navigation, keyboard, search]
-timestamp: 2026-07-23T21:24:41+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 ---
 
 # What it does

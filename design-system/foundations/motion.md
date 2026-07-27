@@ -4,7 +4,7 @@ title: Motion
 description: Short, confident transitions with one shared easing curve.
 tags: [foundations, motion, tokens]
 status: stable
-timestamp: 2026-07-01T16:29:01Z
+generated: { by: claude/unrecorded, at: 2026-07-01T16:29:01Z }
 tokens:
   duration:
     fast: "120ms"

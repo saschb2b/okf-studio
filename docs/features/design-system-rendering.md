@@ -3,7 +3,7 @@ type: Feature
 title: Design-System Rendering
 description: Render an ODSF bundle's design artifacts — token swatches/specimens/scales, design status, and live HTML example previews — natively in the reader.
 tags: [feature, odsf, design-system, tokens, reader]
-timestamp: 2026-07-13T19:42:50Z
+generated: { by: claude/unrecorded, at: 2026-07-13T19:42:50Z }
 ---
 
 # What it does

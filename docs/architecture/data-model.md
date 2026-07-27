@@ -3,7 +3,7 @@ type: Reference
 title: Data Model
 description: The Bundle, Concept, graph, index, and log shapes the Rust core computes and the frontend renders.
 tags: [architecture, data-model, schema]
-timestamp: 2026-07-23T00:28:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T00:28:00Z }
 ---
 
 # Shapes
@@ -30,8 +30,19 @@ interface Concept {
   title: string;           // frontmatter title, else derived from id
   description: string;
   tags: string[];
-  timestamp: string | null;
+  timestamp: string | null;  // v0.1's authored-at; read via authoredAt(), not directly
   resource: string | null;
+
+  // OKF v0.2: provenance, trust and lifecycle. Always present in the payload —
+  // an absent family is [] or null — so a consumer never branches on undefined.
+  sources: Source[];               // where claims came from, with credibility signals
+  usageWindow: UsageWindow | null; // frames every sources[].usageCount
+  generated: Attribution | null;   // who wrote it, and when
+  verified: Attribution[];         // who has since confirmed it; trust tier derives from this
+  status: "draft" | "stable" | "experimental" | "deprecated";  // absent means stable
+  staleAfter: string | null;       // absolute YYYY-MM-DD; stale on or after
+  computation: ComputationContract | null;  // only on type: Attested Computation
+
   extra: Record<string, unknown>;  // any other frontmatter keys, preserved
   body: string;            // raw markdown (rendered in the frontend)
   links: string[];         // resolved intra-bundle target Concept IDs
@@ -68,6 +79,10 @@ interface LogEntry {
 
 # Notes
 
+- **Two v0.1 fields are read through accessors, never directly.** OKF v0.2 replaced `timestamp` with `generated: { by, at }` and the `# Citations` body section with `sources` frontmatter, and permits a consumer to fall back to the older form. `authoredAt()` prefers `generated.at` and falls back to `timestamp`; the parser reads a legacy `# Citations` list into `sources` when `sources` is absent, inventing no credibility signals it does not have. Everything downstream reads one field and never learns which spec version a bundle targets, which is what keeps the tolerant-consumer contract from leaking into every surface.
+- **Trust and staleness are derived, never stored.** A bundle cannot declare itself trusted. It records who confirmed it in `verified`, and the tier — unverified, machine-confirmed, human-reviewed — is computed from the `human:` prefix in the actor convention. `generated` is authorship, not confirmation: a concept with full provenance and no `verified` is unverified, because collapsing the two would lose the only signal separating reviewed knowledge from generated knowledge. Staleness takes the date as an argument rather than reading the clock, so it stays a comparison a test can pin.
+- **`status` is a spec field, not a producer key.** OKF v0.2 claimed it with `draft | stable | deprecated`; ODSF v0.1 had defined it as `stable | experimental | deprecated`, and ODSF v0.2 makes OKF's set normative while keeping `experimental` as a profile extension. Studio reads ODSF tokens, so it recognizes all four. Absent means `stable`.
+- **A computation contract belongs to its type.** `runtime`, `parameters`, `executor` and `attester` are only assembled into `Concept.computation` for `type: Attested Computation`; on any other concept they are ordinary producer keys, and promoting them would invent a computation the bundle never declared. See [OKF parsing](okf-parsing.md) for what Studio checks about a run.
 - **`extra` preserves producer keys** rather than dropping them, per the spec's extension contract. `Bundle.extra` contains every parsed root `index.md` field except the promoted `okf_version` and `odsf_version`; `Concept.extra` contains every field except the promoted concept keys. Nested maps and lists retain their parsed order. This distinction matters because a field such as `title` is recognized on a concept but remains producer metadata at the bundle root.
 - The frontend derives the **edge list** and the **type → color** map from `concepts`; the core does not dictate presentation (see [Frontend Architecture](frontend-architecture.md) for these derived/computed stores).
 - IDs are the join key everywhere: links, backlinks, selection, and [navigation history](../features/navigation.md) all reference Concept IDs.

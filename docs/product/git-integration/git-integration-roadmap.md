@@ -3,7 +3,7 @@ type: Product Roadmap
 title: Integrated Git Support
 description: Work packages for a Zed-inspired, repository-native Git workflow inside OKF Studio.
 tags: [product, roadmap, git, workspace]
-timestamp: 2026-07-19T13:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T13:15:00Z }
 ---
 
 # Outcome

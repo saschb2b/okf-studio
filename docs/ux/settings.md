@@ -3,7 +3,7 @@ type: Reference
 title: Settings and preferences
 description: The searchable local settings workspace for appearance, reading, agents, bundle knowledge, discovery, updates, and reset.
 tags: [ux, settings, preferences]
-timestamp: 2026-07-24T12:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
 ---
 
 # Why Settings is a workspace

@@ -3,7 +3,7 @@ type: Feature
 title: Graph View
 description: A force-directed graph of a bundle's concepts — nodes colored by type, edges from cross-links — that the user pans, zooms, and explores.
 tags: [feature, graph, core, visualization]
-timestamp: 2026-07-24T12:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-24T12:30:00Z }
 ---
 
 # What it does

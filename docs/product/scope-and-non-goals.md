@@ -3,7 +3,7 @@ type: Reference
 title: Scope & Non-Goals
 description: What OKF Studio ships now, what is deferred, and what it deliberately will not be.
 tags: [product, scope, roadmap]
-timestamp: 2026-07-22T23:10:18Z
+generated: { by: claude/unrecorded, at: 2026-07-22T23:10:18Z }
 ---
 
 # Current scope

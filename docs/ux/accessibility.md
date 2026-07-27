@@ -3,7 +3,7 @@ type: Reference
 title: Accessibility
 description: The app's accessibility commitments — keyboard operability, focus, screen-reader semantics, contrast, and motion.
 tags: [ux, accessibility, a11y]
-timestamp: 2026-07-14T13:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-14T13:30:00Z }
 ---
 
 # Keyboard operability

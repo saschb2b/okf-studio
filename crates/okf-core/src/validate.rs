@@ -188,9 +188,12 @@ fn v02_issues(concept: &Concept, fm: &frontmatter::ParsedFrontmatter) -> Vec<Iss
 
     if let Some(status) = fm.scalar("status") {
         let status = status.trim();
-        if !matches!(status, "draft" | "stable" | "deprecated") {
+        // `experimental` is ODSF's, kept as a profile extension when OKF v0.2
+        // claimed the key. Warning about it would nag every design-system
+        // component that legitimately uses it.
+        if !matches!(status, "draft" | "stable" | "deprecated" | "experimental") {
             issues.push(warn(format!(
-                "{id}.md: status \"{status}\" is not draft, stable, or deprecated"
+                "{id}.md: status \"{status}\" is not draft, stable, deprecated,                  or ODSF's experimental"
             )));
         }
     }

@@ -3,7 +3,38 @@ type: Research Brief
 title: Zed Git Research
 description: Source-level findings from Zed's Git architecture and the decisions OKF Studio should adopt or adapt.
 tags: [product, git, research, zed]
-timestamp: 2026-07-19T12:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T12:30:00Z }
+sources:
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git/src/repository.rs#L1216-L1360"
+    id: 1
+    title: "Zed `RealGitRepository`, pinned source"
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git/src/repository.rs#L3568-L3715"
+    id: 2
+    title: "Zed Git command builder, pinned source"
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git/src/status.rs#L10-L34"
+    id: 3
+    title: "Zed status types, pinned source"
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L898-L960"
+    id: 4
+    title: "Zed `GitPanel` state, pinned source"
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L4336-L4525"
+    id: 5
+    title: "Zed Git panel update scheduling, pinned source"
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L431-L458"
+    id: 6
+    title: "Zed Changes and History implementation, pinned source"
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L6290-L6505"
+    title: history rendering
+  - resource: "https://zed.dev/docs/git"
+    id: 7
+    title: Zed Git documentation
+  - resource: "https://zed.dev/blog/git"
+    title: native Git design note
+  - resource: "https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/project_diff.rs"
+    id: 8
+    title: "Zed Project Diff implementation, pinned source"
+  - resource: "https://zed.dev/blog/git#under-the-hood"
+    title: native Git implementation note
 ---
 
 # Question
@@ -68,14 +99,3 @@ Zed's Project Diff is an editor item backed by multibuffers. It supports hunk st
 - Hunk staging requires a revision-bound patch model and should not be implied by file-level checkboxes.
 - Credential prompts need an explicit desktop design. The first release uses existing non-interactive Git credentials and explains how to recover when they are unavailable.
 - Multi-repository folders need a repository selector. The first release binds the panel to the repository containing the active bundle.
-
-# Citations
-
-[^1]: [Zed `RealGitRepository`, pinned source](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git/src/repository.rs#L1216-L1360)
-[^2]: [Zed Git command builder, pinned source](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git/src/repository.rs#L3568-L3715)
-[^3]: [Zed status types, pinned source](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git/src/status.rs#L10-L34)
-[^4]: [Zed `GitPanel` state, pinned source](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L898-L960)
-[^5]: [Zed Git panel update scheduling, pinned source](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L4336-L4525)
-[^6]: [Zed Changes and History implementation, pinned source](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L431-L458), [history rendering](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/git_panel.rs#L6290-L6505)
-[^7]: [Zed Git documentation](https://zed.dev/docs/git), [native Git design note](https://zed.dev/blog/git)
-[^8]: [Zed Project Diff implementation, pinned source](https://github.com/zed-industries/zed/blob/0c51c7fd2481859e9da5c490ef8e41ddbcf1a341/crates/git_ui/src/project_diff.rs), [native Git implementation note](https://zed.dev/blog/git#under-the-hood)

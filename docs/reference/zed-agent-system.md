@@ -4,7 +4,66 @@ title: Zed Agent System Research
 description: Primary-source findings from Zed and ACP that inform OKF Studio's agent architecture and UX.
 resource: https://github.com/zed-industries/zed
 tags: [reference, zed, acp, agents, research]
-timestamp: 2026-07-17T18:46:40Z
+generated: { by: claude/unrecorded, at: 2026-07-17T18:46:40Z }
+sources:
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/agent-panel.md"
+    title: Zed Agent Panel
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/external-agents.md"
+    title: Zed External Agents
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/use-an-existing-subscription.md"
+    title: Zed subscriptions
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/use-a-local-model.md"
+    title: Zed local models
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/tool-permissions.md"
+    title: Zed tool permissions
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/sandboxing.md"
+    title: Zed sandboxing
+  - resource: "https://github.com/zed-industries/zed/discussions/40482"
+    title: Zed external-agent sandboxing request
+  - resource: "https://github.com/containers/bubblewrap"
+    title: Bubblewrap
+  - resource: "https://github.com/openai/codex/issues/14919"
+    title: Ubuntu AppArmor and Bubblewrap path behavior
+  - resource: "https://github.com/zed-industries/zed/issues/43021"
+    title: Codex ACP Landlock integration issue
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/skills.md"
+    title: Zed skills
+  - resource: "https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/agent_servers.rs"
+    title: Zed agent server trait
+  - resource: "https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/acp.rs"
+    title: Zed ACP connection
+  - resource: "https://github.com/zed-industries/zed/pull/53696"
+    title: Zed queued-message panel fixes
+  - resource: "https://github.com/zed-industries/zed/blob/main/crates/agent_ui/src/conversation_view/thread_view.rs"
+    title: Zed Agent Panel thread view
+  - resource: "https://github.com/zed-industries/zed/blob/main/crates/agent_ui/src/config_options.rs"
+    title: Zed ACP config option view
+  - resource: "https://github.com/zed-industries/zed/blob/main/docs/src/ai/parallel-agents.md"
+    title: Zed Parallel Agents
+  - resource: "https://agentclientprotocol.com/get-started/architecture"
+    title: ACP architecture
+  - resource: "https://agentclientprotocol.com/get-started/registry"
+    title: ACP Registry
+  - resource: "https://agentclientprotocol.com/protocol/v1/authentication"
+    title: ACP authentication
+  - resource: "https://agentclientprotocol.com/rfds/auth-methods"
+    title: ACP Authentication Methods draft
+  - resource: "https://agentclientprotocol.com/protocol/v1/session-setup"
+    title: ACP sessions
+  - resource: "https://agentclientprotocol.com/protocol/v1/prompt-turn"
+    title: ACP prompt turn
+  - resource: "https://agentclientprotocol.com/protocol/v1/tool-calls"
+    title: ACP tools and permissions
+  - resource: "https://agentclientprotocol.com/protocol/v1/file-system"
+    title: ACP filesystem
+  - resource: "https://agentclientprotocol.com/libraries/rust"
+    title: ACP Rust library
+  - resource: "https://agentclientprotocol.com/rfds/session-config-options"
+    title: ACP session config options
+  - resource: "https://agentclientprotocol.com/announcements/session-config-options-stabilized"
+    title: ACP session config stabilization
+  - resource: "https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server"
+    title: GitHub Copilot CLI ACP server
 ---
 
 # Adopted patterns
@@ -99,35 +158,3 @@ Studio will adapt changed files to its stricter staged OKF transaction rather th
 Studio profiles describe effective resources instead of a command prefix or provider promise. The current native-mediated and external-interactive profiles make the shipped boundaries visible but do not unlock unattended work. A later enforced external profile must fail closed when its platform host cannot start or prove the declared policy; it must not follow Zed's native-tool fallback to an unsandboxed process because the external process itself is the trust boundary.
 
 Studio selected system Bubblewrap for the first Linux backend. The initial preflight is stricter than Zed's documented non-setuid requirement: it also requires a canonical root-owned binary with no file capabilities, no group or world write access, and ordinary read and execute access. It proves that the binary can create the required namespace set, including nested-user-namespace denial, within a deadline. The compiled launch branch follows Bubblewrap's empty-root model instead of read-only binding the whole host. It adds selected system runtime mounts, exact app runtime mounts, one Rust-granted bundle, protected-path masks, private temporary filesystems, and a closed network choice. No profile selects this branch yet. Authentication and network selection must be explicit before Claude or Codex can use it without losing subscription login or provider access. Ubuntu AppArmor can distinguish the system path from a copied or vendored binary. macOS requires a separately tested Seatbelt profile. Windows may offer WSL plus Bubblewrap as an opt-in profile, but a native Job Object remains lifecycle ownership only.
-
-# Citations
-
-- [Zed Agent Panel](https://github.com/zed-industries/zed/blob/main/docs/src/ai/agent-panel.md)
-- [Zed External Agents](https://github.com/zed-industries/zed/blob/main/docs/src/ai/external-agents.md)
-- [Zed subscriptions](https://github.com/zed-industries/zed/blob/main/docs/src/ai/use-an-existing-subscription.md)
-- [Zed local models](https://github.com/zed-industries/zed/blob/main/docs/src/ai/use-a-local-model.md)
-- [Zed tool permissions](https://github.com/zed-industries/zed/blob/main/docs/src/ai/tool-permissions.md)
-- [Zed sandboxing](https://github.com/zed-industries/zed/blob/main/docs/src/ai/sandboxing.md)
-- [Zed external-agent sandboxing request](https://github.com/zed-industries/zed/discussions/40482)
-- [Bubblewrap](https://github.com/containers/bubblewrap)
-- [Ubuntu AppArmor and Bubblewrap path behavior](https://github.com/openai/codex/issues/14919)
-- [Codex ACP Landlock integration issue](https://github.com/zed-industries/zed/issues/43021)
-- [Zed skills](https://github.com/zed-industries/zed/blob/main/docs/src/ai/skills.md)
-- [Zed agent server trait](https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/agent_servers.rs)
-- [Zed ACP connection](https://github.com/zed-industries/zed/blob/main/crates/agent_servers/src/acp.rs)
-- [Zed queued-message panel fixes](https://github.com/zed-industries/zed/pull/53696)
-- [Zed Agent Panel thread view](https://github.com/zed-industries/zed/blob/main/crates/agent_ui/src/conversation_view/thread_view.rs)
-- [Zed ACP config option view](https://github.com/zed-industries/zed/blob/main/crates/agent_ui/src/config_options.rs)
-- [Zed Parallel Agents](https://github.com/zed-industries/zed/blob/main/docs/src/ai/parallel-agents.md)
-- [ACP architecture](https://agentclientprotocol.com/get-started/architecture)
-- [ACP Registry](https://agentclientprotocol.com/get-started/registry)
-- [ACP authentication](https://agentclientprotocol.com/protocol/v1/authentication)
-- [ACP Authentication Methods draft](https://agentclientprotocol.com/rfds/auth-methods)
-- [ACP sessions](https://agentclientprotocol.com/protocol/v1/session-setup)
-- [ACP prompt turn](https://agentclientprotocol.com/protocol/v1/prompt-turn)
-- [ACP tools and permissions](https://agentclientprotocol.com/protocol/v1/tool-calls)
-- [ACP filesystem](https://agentclientprotocol.com/protocol/v1/file-system)
-- [ACP Rust library](https://agentclientprotocol.com/libraries/rust)
-- [ACP session config options](https://agentclientprotocol.com/rfds/session-config-options)
-- [ACP session config stabilization](https://agentclientprotocol.com/announcements/session-config-options-stabilized)
-- [GitHub Copilot CLI ACP server](https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server)

@@ -106,6 +106,15 @@ pub enum ConceptStatus {
     Draft,
     #[default]
     Stable,
+    /// Shipped and usable, but the API may still move.
+    ///
+    /// Not OKF's. ODSF v0.1 defined `status` as stable/experimental/deprecated,
+    /// OKF v0.2 then claimed the key with draft/stable/deprecated, and ODSF v0.2
+    /// resolves it by making OKF's set normative while keeping `experimental` as
+    /// a profile extension — design systems genuinely ship components that are
+    /// neither drafts nor stable. Studio reads ODSF tokens, so it is a
+    /// design-aware consumer and recognizes it rather than treating it as junk.
+    Experimental,
     /// Kept for links and history, no longer current.
     Deprecated,
 }
@@ -116,6 +125,7 @@ impl ConceptStatus {
     pub fn parse(value: &str) -> Self {
         match value.trim().to_ascii_lowercase().as_str() {
             "draft" => Self::Draft,
+            "experimental" => Self::Experimental,
             "deprecated" => Self::Deprecated,
             _ => Self::Stable,
         }

@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Agent System
 description: ACP agents, the native Studio Agent, scoped tools, credentials, permissions, threads, and reviewed writes.
 tags: [architecture, agents, acp, security, tools]
-timestamp: 2026-07-23T00:28:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T00:28:00Z }
 ---
 
 # Decision

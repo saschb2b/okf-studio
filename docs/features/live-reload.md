@@ -3,7 +3,7 @@ type: Feature
 title: Live Reload
 description: Watch the opened folder and refresh the graph and reader in place as bundle files are added, changed, or removed.
 tags: [feature, live, filesystem]
-timestamp: 2026-07-23T20:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T20:30:00Z }
 ---
 
 # What it does

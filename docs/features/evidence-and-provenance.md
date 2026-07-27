@@ -3,7 +3,7 @@ type: Feature
 title: Evidence and Provenance
 description: Keep source identity with a concept, connect claims to evidence, and check public sources only after an explicit user action.
 tags: [feature, provenance, evidence, citations, freshness, security]
-timestamp: 2026-07-23T18:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T18:30:00Z }
 ---
 
 # What it does

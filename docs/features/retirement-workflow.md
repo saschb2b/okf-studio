@@ -3,7 +3,7 @@ type: Feature
 title: Retirement Workflow
 description: Deprecate, redirect, tombstone, or delete a concept through one impact-aware, reviewed, restorable graph transaction.
 tags: [feature, maintenance, lifecycle, retirement, deletion, staging]
-timestamp: 2026-07-23T16:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T16:15:00Z }
 ---
 
 # User job

@@ -4,7 +4,7 @@ title: Spacing
 description: A px-named spacing scale for padding, gaps, and section rhythm, plus the width caps that keep a line of text readable.
 tags: [foundations, spacing, tokens]
 status: stable
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 tokens:
   space:
     "4": "4px"

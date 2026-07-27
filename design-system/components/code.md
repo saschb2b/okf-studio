@@ -5,7 +5,7 @@ description: A named file and its literal contents on one surface, in two levels
 tags: [components, code, media]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /components/code.example.html
 tokens:

@@ -34,6 +34,10 @@ import {
   ConceptTrust,
   hasTrustSignals,
 } from "@/features/reader/components/ConceptTrust.tsx";
+import {
+  ConceptComputation,
+  hasComputation,
+} from "@/features/reader/components/ConceptComputation.tsx";
 import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
 import { ConceptRetirementDialog } from "@/features/reader/components/ConceptRetirementDialog.tsx";
 import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
@@ -961,6 +965,15 @@ export function Reader() {
               concept={c}
               onOpenResource={(resource) => actions.openExternal(resource)}
             />
+          </RailModule>
+        )}
+
+        {/* Above the metadata panels for the same reason the trust panel is: a
+            computation's contract is what the concept is for, not producer
+            metadata it happens to carry. */}
+        {hasComputation(c) && (
+          <RailModule title="Computation contract">
+            <ConceptComputation concept={c} />
           </RailModule>
         )}
 

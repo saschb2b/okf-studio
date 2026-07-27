@@ -1,0 +1,120 @@
+/* Self-contained: this panel renders in isolation in its stories, and borrowing a
+   class from the Reader's stylesheet is what has repeatedly left components
+   looking unstyled anywhere their sibling's CSS was not loaded. */
+.concept-computation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.concept-computation__runtime {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.concept-computation__runtime > svg {
+  flex: none;
+  color: var(--accent);
+}
+
+/* The constraint the whole type exists to enforce, so it reads as a rule rather
+   than as one more metadata row. */
+.concept-computation__rule {
+  margin: 0;
+  padding: var(--space-6) var(--space-8);
+  color: var(--text);
+  background: var(--bg-sunken);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.concept-computation__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.concept-computation__section h4 {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.concept-computation__parameters,
+.concept-computation__receipt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concept-computation__parameters li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+.concept-computation__receipt li code {
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+.concept-computation__type {
+  color: var(--text-dim);
+}
+
+/* Which holes an agent must fill is the operative distinction, so it carries the
+   accent rather than sitting in the same grey as the type. */
+.concept-computation__required {
+  color: var(--accent);
+  font-size: var(--fs-xs);
+}
+
+.concept-computation__where {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+
+.concept-computation__where > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.concept-computation__where code {
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+
+/* An absent piece of the contract is a real finding — the validator reports it —
+   so it is stated plainly rather than left blank. */
+.concept-computation__empty {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}

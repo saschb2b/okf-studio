@@ -1,3 +1,20 @@
+# Line endings are normalized to LF, in the repository and in the working tree.
+#
+# The repository already stores LF for every text file; what it lacked was a
+# policy saying so. On Windows `core.autocrlf=true` therefore rewrote the working
+# copy to CRLF on checkout while git kept LF, so the file on disk never matched
+# the file in git, and every commit was hand-normalized first out of caution.
+#
+# `eol=lf` is what stops that: it pins the working tree to LF as well. This is a
+# Rust + Vite + pnpm project whose toolchain is line-ending agnostic, and nothing
+# here wants CRLF.
+#
+# No renormalization is needed and none happens: `git add --renormalize .` stages
+# nothing but this file, which is the proof that the stored form was already
+# correct. `text=auto` detects binary content, so the icons and .webp assets —
+# which carry CR bytes as data — are left alone.
+* text=auto eol=lf
+
 # Files whose exact bytes are verified must not be rewritten on checkout.
 #
 # An OKF sidecar declares a sha256 over its asset's bytes, and Studio refuses to
@@ -8,5 +25,7 @@
 # the assets binary keeps the bytes the digest was computed over.
 #
 # This applies to any digest-verified asset added later, which is why it matches
-# the directory rather than the one file.
+# the directory rather than the one file. It stays even though the rule above
+# would now also produce LF: a digest-verified file should not depend on a
+# line-ending policy that could later change.
 docs/assets/** -text

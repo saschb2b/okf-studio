@@ -15,7 +15,13 @@ const meta = {
   title: "Agent/JarvisStage",
   component: JarvisStage,
   parameters: { layout: "fullscreen" },
-  args: { onDone: fn(), reduceMotion: false, result: receiptFor("recognized revenue") },
+  args: {
+    onDone: fn(),
+    reduceMotion: false,
+    result: receiptFor("recognized revenue"),
+    // The field renders the open bundle, so the stories pass the mock one.
+    concepts: MOCK_BUNDLE.concepts,
+  },
 } satisfies Meta<typeof JarvisStage>;
 
 export default meta;
@@ -44,6 +50,8 @@ export const BroadSweep: Story = {
  * withhold what the turn used.
  */
 export const ReducedMotion: Story = {
+  // No field either: a slowly rotating point cloud is exactly the continuous
+  // background movement this setting exists to stop.
   args: { reduceMotion: true },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);

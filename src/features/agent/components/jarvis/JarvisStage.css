@@ -1,34 +1,55 @@
-/* Jarvis Mode's stage. Tokens only, and the app's own chrome — this is Studio
-   behaving theatrically, not a skin pretending to be another product. */
+/* Jarvis Mode's stage.
+ *
+ * The first version drew rounded cards with a coloured left rail, which is the
+ * documentation-callout pattern: it reads as an admonition in a docs site, not
+ * as an instrument. Replaced with the language these interfaces actually use —
+ * chamfered corners, hairline strokes, corner brackets, translucency, and
+ * micro-labels in mono — so the panel reads as projected light rather than as
+ * paper stacked on a page.
+ *
+ * Tokens only, except the accent alphas, which are mixed from --accent. */
 
 .jarvis-stage {
+  --jarvis-line: color-mix(in oklch, var(--accent) 55%, transparent);
+  --jarvis-line-dim: color-mix(in oklch, var(--accent) 22%, transparent);
+  --jarvis-glass: color-mix(in oklch, var(--bg) 62%, transparent);
+  --jarvis-chamfer: 10px;
+
   position: fixed;
   inset: 0;
   z-index: 80;
   display: grid;
   place-items: center;
-  /* Dimmed, not replaced: keeping the reader faintly visible underneath is less
-     disorienting than a cut to black, and it keeps the sequence feeling like
-     something happening *to* the app. */
-  background: color-mix(in oklch, var(--bg) 82%, transparent);
-  backdrop-filter: blur(3px);
-  /* Never steals the caret — the composer keeps focus while this plays, which
-     is the whole reason this is an overlay and not an OS window. */
+  background:
+    radial-gradient(
+      ellipse at center,
+      color-mix(in oklch, var(--bg) 55%, transparent),
+      color-mix(in oklch, var(--bg) 92%, transparent) 70%
+    );
+  backdrop-filter: blur(2px);
+  /* Never steals the caret. The composer keeps focus while this plays, which is
+     the whole reason this is an overlay and not an OS window. */
   pointer-events: none;
   animation: jarvis-wake var(--dur) var(--ease);
 }
 
-/* Clicking anywhere skips, so the one interactive affordance takes pointers
-   back. Everything else stays transparent to the mouse. */
-.jarvis-stage,
-.jarvis-stage__dismiss {
-  cursor: default;
+/* The three.js field sits behind everything and is purely a backdrop. */
+.jarvis-field {
+  position: absolute;
+  inset: 0;
+  opacity: 0.85;
+}
+
+.jarvis-field canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .jarvis-stage__field {
   position: relative;
-  width: min(72rem, 92vw);
-  height: min(40rem, 78vh);
+  width: min(76rem, 94vw);
+  height: min(42rem, 80vh);
   pointer-events: auto;
 }
 
@@ -36,14 +57,11 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(30rem, 62vw);
+  width: min(28rem, 60vw);
   translate: calc(-50% + var(--jarvis-x)) calc(-50% + var(--jarvis-y));
-  /* Depth: older panels sink back and dim, so the newest reads as the subject
-     without anything having to move out of the way. Pattern at a glance — the
-     eye finds the front of the stack without being told. */
   opacity: var(--jarvis-depth);
-  scale: calc(0.86 + var(--jarvis-depth) * 0.14);
-  animation: jarvis-arrive 260ms var(--ease) backwards;
+  scale: calc(0.88 + var(--jarvis-depth) * 0.12);
+  animation: jarvis-arrive 240ms var(--ease) backwards;
 }
 
 .jarvis-stage__slot[data-latest] {
@@ -54,31 +72,115 @@
   from { opacity: 0; }
 }
 
+/* Assembles rather than fades in: a short horizontal expand before the body
+   settles, which is the draw-on move these interfaces use to suggest the panel
+   is being constructed rather than revealed. */
 @keyframes jarvis-arrive {
-  from {
+  0% {
     opacity: 0;
-    scale: 0.92;
-    translate: calc(-50% + var(--jarvis-x)) calc(-50% + var(--jarvis-y) + 10px);
+    scale: 0.9;
+    clip-path: inset(48% 0 48% 0);
+  }
+  55% {
+    opacity: var(--jarvis-depth);
+    clip-path: inset(0 0 0 0);
   }
 }
 
-/* Reduced motion: everything lands at once, still legible, no movement. The
-   information survives; only the choreography goes. */
 .jarvis-stage--still,
-.jarvis-stage--still .jarvis-stage__slot {
+.jarvis-stage--still .jarvis-stage__slot,
+.jarvis-stage--still .jarvis-panel::before,
+.jarvis-stage--still .jarvis-panel::after {
   animation: none;
 }
 
+/* --- The panel -----------------------------------------------------------
+ * Square, chamfered top-right and bottom-left, hairline stroke, translucent
+ * fill. No radius, no drop shadow, no coloured rail. */
 .jarvis-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  padding: var(--space-12);
-  background: var(--bg-overlay);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  padding: var(--space-12) var(--space-14, var(--space-12));
+  background: var(--jarvis-glass);
+  backdrop-filter: blur(10px);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--jarvis-chamfer)) 0,
+    100% var(--jarvis-chamfer),
+    100% 100%,
+    var(--jarvis-chamfer) 100%,
+    0 calc(100% - var(--jarvis-chamfer))
+  );
+  box-shadow: inset 0 0 0 1px var(--jarvis-line-dim);
+}
+
+/* Corner brackets. Two L-shaped marks rather than a full frame: the targeting
+   language, and it keeps the eye on the content instead of on a box. */
+.jarvis-panel::before,
+.jarvis-panel::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--jarvis-line);
+  animation: jarvis-bracket 260ms var(--ease) backwards;
+}
+
+.jarvis-panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.jarvis-panel::after {
+  right: -1px;
+  bottom: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+@keyframes jarvis-bracket {
+  from { opacity: 0; scale: 0.4; }
+}
+
+/* Kind is carried by a micro-label and stroke weight, not by a coloured rail. */
+.jarvis-panel__tag {
+  align-self: flex-start;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.jarvis-panel--excerpt .jarvis-panel__tag { color: var(--ok); }
+.jarvis-panel--caveat .jarvis-panel__tag { color: var(--warn); }
+.jarvis-panel--omission .jarvis-panel__tag,
+.jarvis-panel--more .jarvis-panel__tag { color: var(--text-dim); }
+
+.jarvis-panel--question {
+  box-shadow: inset 0 0 0 1px var(--jarvis-line);
+}
+
+.jarvis-panel--candidate {
+  --jarvis-chamfer: 6px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-10);
+  width: auto;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+.jarvis-panel--candidate .jarvis-panel__tag { display: none; }
+
+.jarvis-panel--omission {
+  opacity: 0.8;
 }
 
 .jarvis-panel__query {
@@ -101,26 +203,11 @@
 }
 
 .jarvis-panel__route {
-  padding: var(--space-2) var(--space-6);
-  background: var(--bg-sunken);
-  border-radius: var(--radius-sm);
   color: var(--accent);
   font-family: var(--mono);
-  font-size: var(--fs-xs);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-/* A candidate is a glance, not a read: small, monospaced, gone in ~110ms. */
-.jarvis-panel--candidate {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-  padding: var(--space-6) var(--space-10);
-  border-left-color: var(--border);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
 }
 
 .jarvis-panel--candidate code {
@@ -131,24 +218,6 @@
 .jarvis-panel__score {
   color: var(--accent);
   font-variant-numeric: tabular-nums;
-}
-
-.jarvis-panel--excerpt {
-  border-left-color: var(--ok);
-}
-
-.jarvis-panel--omission {
-  border-left-color: var(--border-variant);
-  opacity: 0.85;
-}
-
-.jarvis-panel--caveat {
-  border-left-color: var(--warn);
-}
-
-.jarvis-panel--more {
-  border-left-color: var(--border-variant);
-  align-items: center;
 }
 
 .jarvis-panel__title {
@@ -169,21 +238,21 @@
 .jarvis-panel__reason {
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: var(--fs-xs);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .jarvis-panel__text {
   margin: 0;
-  max-height: 7.5rem;
+  max-height: 7rem;
   overflow: hidden;
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
   /* Fades rather than clipping mid-word, so a long excerpt reads as continuing
      rather than as broken. */
-  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, #000 68%, transparent);
   text-wrap: pretty;
 }
 
@@ -192,7 +261,8 @@
   bottom: var(--space-20);
   margin: 0;
   color: var(--text-dim);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.04em;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }

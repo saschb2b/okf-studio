@@ -2717,6 +2717,7 @@ export function AgentConversation({
           {stagedTurn && (
             <JarvisStage
               result={stagedTurn}
+              concepts={concepts}
               reduceMotion={reduceMotion}
               onDone={() => setStagedTurn(null)}
             />

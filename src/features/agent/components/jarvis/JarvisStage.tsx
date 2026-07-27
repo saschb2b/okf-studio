@@ -13,11 +13,24 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { RetrievalResult } from "@/features/agent/retrieval/types.ts";
+import type * as Three from "three";
+import { JarvisField, type JarvisFieldConcept } from "./JarvisField.tsx";
+
+/** Loaded once, on the first staged turn. At module scope because the React
+ *  Compiler cannot lower an `import()` expression inside a component. */
+let threePromise: Promise<typeof Three> | null = null;
+function loadThree(): Promise<typeof Three> {
+  threePromise ??= import("three");
+  return threePromise;
+}
 import { BEAT_MS, beatsFor, type JarvisBeat } from "./jarvisBeats.ts";
 import "./JarvisStage.css";
 
 interface JarvisStageProps {
   result: RetrievalResult;
+  /** The open bundle's concepts, rendered as the field behind the stage. Empty
+   *  or absent simply means no field: the panels are the feature. */
+  concepts?: readonly JarvisFieldConcept[];
   /** Cleared when the sequence finishes or the viewer dismisses it. */
   onDone: () => void;
   reduceMotion: boolean;
@@ -30,6 +43,7 @@ function Panel({ beat }: { beat: JarvisBeat }) {
     case "question":
       return (
         <div className="jarvis-panel jarvis-panel--question">
+          <span className="jarvis-panel__tag">query</span>
           <p className="jarvis-panel__query">{beat.query}</p>
           <p className="jarvis-panel__meta">
             <span className="jarvis-panel__route">{beat.route}</span>
@@ -49,6 +63,7 @@ function Panel({ beat }: { beat: JarvisBeat }) {
     case "excerpt":
       return (
         <div className="jarvis-panel jarvis-panel--excerpt">
+          <span className="jarvis-panel__tag">retrieved</span>
           <p className="jarvis-panel__title">
             {beat.conceptTitle}
             {beat.headingPath.length > 0 && (
@@ -61,6 +76,7 @@ function Panel({ beat }: { beat: JarvisBeat }) {
     case "omission":
       return (
         <div className="jarvis-panel jarvis-panel--omission">
+          <span className="jarvis-panel__tag">dropped</span>
           <p className="jarvis-panel__title">
             <code>{beat.conceptId}</code>
             <span className="jarvis-panel__reason">{beat.reason}</span>
@@ -71,6 +87,7 @@ function Panel({ beat }: { beat: JarvisBeat }) {
     case "caveat":
       return (
         <div className="jarvis-panel jarvis-panel--caveat">
+          <span className="jarvis-panel__tag">caveat</span>
           <p className="jarvis-panel__reason">{beat.caveatKind}</p>
           <p className="jarvis-panel__text">{beat.message}</p>
         </div>
@@ -86,9 +103,32 @@ function Panel({ beat }: { beat: JarvisBeat }) {
   }
 }
 
-export function JarvisStage({ result, onDone, reduceMotion, container }: JarvisStageProps) {
+export function JarvisStage({
+  result,
+  concepts,
+  onDone,
+  reduceMotion,
+  container,
+}: JarvisStageProps) {
   const beats = beatsFor(result);
   const [ticked, setTicked] = useState(0);
+  // three.js is loaded only once someone actually runs a staged turn, so a user
+  // who never enables the mode never downloads it. Null until it lands, and the
+  // stage plays perfectly well without it.
+  const [three, setThree] = useState<typeof Three | null>(null);
+
+  useEffect(() => {
+    // No field under reduced motion: a slowly rotating point cloud is exactly
+    // the kind of continuous background movement that setting exists to stop.
+    if (reduceMotion || !concepts || concepts.length === 0) return;
+    let cancelled = false;
+    void loadThree().then((module) => {
+      if (!cancelled) setThree(module);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reduceMotion, concepts]);
 
   // With motion reduced the whole sequence lands at once: the information is
   // the point, the choreography is the decoration, so the decoration is what
@@ -140,6 +180,13 @@ export function JarvisStage({ result, onDone, reduceMotion, container }: JarvisS
   }, [onDone]);
 
   const visible = beats.slice(0, shown);
+  // Which concepts the sequence has reached, so the field lights the points it
+  // actually touched rather than an arbitrary set.
+  const litIds = visible
+    .map((beat) =>
+      beat.kind === "candidate" || beat.kind === "omission" ? beat.conceptId : null,
+    )
+    .filter((id): id is string => id !== null);
   const target = container ?? document.body;
 
   return createPortal(
@@ -151,6 +198,9 @@ export function JarvisStage({ result, onDone, reduceMotion, container }: JarvisS
       aria-hidden="true"
       onClick={onDone}
     >
+      {three && concepts && (
+        <JarvisField concepts={concepts} litIds={litIds} three={three} />
+      )}
       <div className="jarvis-stage__field">
         {visible.map((beat, index) => (
           <div

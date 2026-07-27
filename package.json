@@ -55,7 +55,8 @@
     "mermaid": "^11.16.0",
     "react": "^19",
     "react-dom": "^19",
-    "shiki": "^4.3.0"
+    "shiki": "^4.3.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -69,6 +70,7 @@
     "@types/dompurify": "^3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.185.1",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@vitejs/plugin-react": "^5",
     "@vitest/browser-playwright": "^4.1.10",

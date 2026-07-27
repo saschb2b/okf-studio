@@ -38,6 +38,13 @@ export interface RetrievalRequest {
   cacheProviderId?: string;
   providerWindowTokens?: number;
   allowRemoteText?: boolean;
+  /**
+   * The date staleness is judged against, `YYYY-MM-DD`. Supplied by the caller
+   * rather than read from a clock in the engine, so a receipt means the same
+   * thing when it is replayed. Use `today()` from features/bundle/trust, which
+   * is the local calendar date the Reader already shows freshness against.
+   */
+  today?: string;
 }
 
 export interface ScoreComponents {
@@ -46,6 +53,10 @@ export interface ScoreComponents {
   graph: number;
   coverage: number;
   authority: number;
+  /** Lifecycle demotion, at or below zero. Small by design: it reorders
+   *  lexical peers and can never bury an exact match, because a deprecated
+   *  concept is kept for links and history rather than hidden. */
+  freshness: number;
   total: number;
 }
 

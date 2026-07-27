@@ -40,6 +40,15 @@ pub struct RetrievalRequest {
     pub provider_window_tokens: Option<usize>,
     #[serde(default)]
     pub allow_remote_text: bool,
+    /// The date staleness is judged against, `YYYY-MM-DD`.
+    ///
+    /// Passed in rather than read from a clock in here, because this module
+    /// produces a signed receipt and a receipt whose meaning changes when it is
+    /// replayed is not a receipt. Absent means nothing is judged stale, which
+    /// is the right failure: a caller that forgot to say what day it is should
+    /// not have concepts quietly demoted underneath it.
+    #[serde(default)]
+    pub today: Option<String>,
 }
 
 impl Default for RetrievalRequest {
@@ -55,6 +64,7 @@ impl Default for RetrievalRequest {
             cache_provider_id: None,
             provider_window_tokens: None,
             allow_remote_text: false,
+            today: None,
         }
     }
 }
@@ -81,7 +91,8 @@ pub fn retrieve_manifest(
         .iter()
         .filter(|unit| unit_matches_filters(unit, &request.filters, &mut omissions))
         .collect::<Vec<_>>();
-    let mut candidates = rank_candidates(&manifest, &eligible, query, route);
+    let mut candidates =
+        rank_candidates(&manifest, &eligible, query, route, request.today.as_deref());
     candidates.truncate(limit);
     let (evidence, compiled_omissions, included_ids) = compile_context(
         &manifest,
@@ -445,6 +456,7 @@ fn rank_candidates(
     eligible: &[&super::RetrievalUnit],
     query: &str,
     route: RetrievalRoute,
+    today: Option<&str>,
 ) -> Vec<RetrievalCandidate> {
     let query_terms = tokenize(query);
     let document_frequencies = document_frequencies(eligible);
@@ -474,8 +486,13 @@ fn rank_candidates(
             let coverage = matches!(route, RetrievalRoute::Coverage) as u8 as f64 * 4.0
                 + structured as u8 as f64 * 25.0;
             let authority = authority_score(unit);
-            let total = exact + lexical + coverage + authority;
-            (total > 0.0 || matches!(route, RetrievalRoute::FullContext)).then(|| {
+            let freshness = freshness_score(unit, today);
+            let total = exact + lexical + coverage + authority + freshness;
+            // Eligibility still keys off the positive stages. A unit that only
+            // matched weakly must not be dropped for being stale — that would
+            // turn the demotion into the exclusion this deliberately is not.
+            let matched = exact + lexical + coverage + authority;
+            (matched > 0.0 || matches!(route, RetrievalRoute::FullContext)).then(|| {
                 RetrievalCandidate {
                     unit: (*unit).clone(),
                     score: ScoreComponents {
@@ -484,6 +501,7 @@ fn rank_candidates(
                         graph: 0.0,
                         coverage,
                         authority,
+                        freshness,
                         total,
                     },
                     matched_terms,
@@ -497,7 +515,7 @@ fn rank_candidates(
         route,
         RetrievalRoute::LexicalGraph | RetrievalRoute::HybridFallback
     ) {
-        expand_graph(manifest, &mut candidates);
+        expand_graph(manifest, &mut candidates, today);
     }
     if matches!(route, RetrievalRoute::Coverage) {
         coverage_balance(&mut candidates);
@@ -604,7 +622,11 @@ fn searchable_text(unit: &super::RetrievalUnit) -> String {
     .to_lowercase()
 }
 
-fn expand_graph(manifest: &RetrievalManifest, candidates: &mut Vec<RetrievalCandidate>) {
+fn expand_graph(
+    manifest: &RetrievalManifest,
+    candidates: &mut Vec<RetrievalCandidate>,
+    today: Option<&str>,
+) {
     let seed_ids = candidates
         .iter()
         .take(4)
@@ -658,6 +680,8 @@ fn expand_graph(manifest: &RetrievalManifest, candidates: &mut Vec<RetrievalCand
                             continue;
                         }
                         let graph = 80.0 / (depth + 1) as f64;
+                        let authority = authority_score(unit);
+                        let freshness = freshness_score(unit, today);
                         added.push(RetrievalCandidate {
                             unit: (*unit).clone(),
                             score: ScoreComponents {
@@ -665,8 +689,9 @@ fn expand_graph(manifest: &RetrievalManifest, candidates: &mut Vec<RetrievalCand
                                 lexical: 0.0,
                                 graph,
                                 coverage: 0.0,
-                                authority: authority_score(unit),
-                                total: graph + authority_score(unit),
+                                authority,
+                                freshness,
+                                total: graph + authority + freshness,
                             },
                             matched_terms: Vec::new(),
                             relationship_path: next_path.clone(),
@@ -695,19 +720,57 @@ fn coverage_balance(candidates: &mut [RetrievalCandidate]) {
             + candidate.score.lexical
             + candidate.score.graph
             + candidate.score.coverage
-            + candidate.score.authority;
+            + candidate.score.authority
+            + candidate.score.freshness;
     }
 }
 
 fn authority_score(unit: &super::RetrievalUnit) -> f64 {
     let source = unit.source_class.as_deref().unwrap_or_default();
-    if matches!(source, "primary" | "authoritative" | "official") {
+    let declared = if matches!(source, "primary" | "authoritative" | "official") {
         20.0
-    } else if unit.resource.is_some() || !unit.citations.is_empty() {
+    } else if unit.resource.is_some() || !unit.citations.is_empty() || unit.source_count > 0 {
         5.0
     } else {
         0.0
+    };
+    // Trust is a bonus, never a penalty. Most bundles predate v0.2 and carry no
+    // `verified` at all; docking them would punish producers for the spec
+    // moving rather than for anything about their content.
+    let reviewed = match unit.trust_tier.as_str() {
+        "human-reviewed" => 15.0,
+        "machine-confirmed" => 5.0,
+        _ => 0.0,
+    };
+    declared + reviewed
+}
+
+/// The lifecycle demotion, at or below zero.
+///
+/// The user-facing decision this encodes: mark and demote, never exclude. The
+/// magnitudes are what make that more than a slogan — an exact id or title
+/// match scores 9,000–10,000, so nothing here can push a concept below one, and
+/// searching a deprecated concept by name still returns it first. What these
+/// move is the ordering among lexically similar peers, which is precisely the
+/// case where "prefer the fresh one" is right and "hide the old one" is not.
+fn freshness_score(unit: &super::RetrievalUnit, today: Option<&str>) -> f64 {
+    let mut score = match unit.status.as_str() {
+        // Kept for links and history (spec 5.4). Still reachable, ranked last
+        // among equals.
+        "deprecated" => -15.0,
+        // Not yet reviewed, possibly incomplete — a mild preference for
+        // reviewed prose, not a judgement that drafts are wrong.
+        "draft" => -5.0,
+        _ => 0.0,
+    };
+    if today.is_some_and(|today| {
+        unit.stale_after
+            .as_deref()
+            .is_some_and(|stale_after| today >= stale_after)
+    }) {
+        score -= 10.0;
     }
+    score
 }
 
 fn candidate_order(left: &RetrievalCandidate, right: &RetrievalCandidate) -> Ordering {
@@ -744,7 +807,7 @@ fn compile_context(
             .map(|unit| evidence_item(unit, Vec::new()))
             .collect::<Vec<_>>();
         let ids = items.iter().map(|item| item.section_id.clone()).collect();
-        let caveats = caveats_for(&items, manifest, route);
+        let caveats = caveats_for(&items, manifest, route, request.today.as_deref());
         let requires_abstention = caveats_require_abstention(&caveats);
         return (
             EvidencePacket {
@@ -791,7 +854,7 @@ fn compile_context(
             candidate.relationship_path.clone(),
         ));
     }
-    let caveats = caveats_for(&items, manifest, route);
+    let caveats = caveats_for(&items, manifest, route, request.today.as_deref());
     let requires_abstention = items.is_empty()
         || caveats_require_abstention(&caveats)
         || ((request.filters.source_class.is_some() || request.filters.owner.is_some())
@@ -839,6 +902,7 @@ fn caveats_for(
     items: &[EvidenceItem],
     manifest: &RetrievalManifest,
     route: RetrievalRoute,
+    today: Option<&str>,
 ) -> Vec<EvidenceCaveat> {
     let mut caveats = Vec::new();
     let included = items
@@ -863,6 +927,45 @@ fn caveats_for(
                 message: format!(
                     "{} has {} unresolved bundle link(s).",
                     unit.concept_title, unit.health.broken_link_count
+                ),
+            });
+        }
+        // --- OKF v0.2 lifecycle and trust ---
+        //
+        // The block below reads `lifecycle`, a producer convention out of
+        // `extra`. These read the spec's own fields, which until now nothing
+        // here consumed.
+        if unit.status == "deprecated" {
+            caveats.push(EvidenceCaveat {
+                kind: EvidenceCaveatKind::Lifecycle,
+                concept_ids: vec![unit.concept_id.clone()],
+                message: format!(
+                    "{} is marked deprecated. OKF keeps deprecated concepts for links and history, so Studio ranked it below current knowledge rather than hiding it.",
+                    unit.concept_title
+                ),
+            });
+        }
+        if let (Some(today), Some(stale_after)) = (today, unit.stale_after.as_deref()) {
+            if today >= stale_after {
+                caveats.push(EvidenceCaveat {
+                    kind: EvidenceCaveatKind::Stale,
+                    concept_ids: vec![unit.concept_id.clone()],
+                    message: format!(
+                        "{} went stale on {stale_after}; its author asked for it to be rechecked by now.",
+                        unit.concept_title
+                    ),
+                });
+            }
+        }
+        // The spec's one explicit consumer rule here: surface, do not silently
+        // drop, a computation whose result cannot be checked (spec 10.5).
+        if unit.computation_ungated {
+            caveats.push(EvidenceCaveat {
+                kind: EvidenceCaveatKind::Uncertain,
+                concept_ids: vec![unit.concept_id.clone()],
+                message: format!(
+                    "{} is an attested computation whose contract declares no attester or no receipt, so a number it reports cannot be checked against the sanctioned computation.",
+                    unit.concept_title
                 ),
             });
         }
@@ -1445,6 +1548,177 @@ mod tests {
         assert!(kinds.contains(&EvidenceCaveatKind::Uncertain));
         assert!(kinds.contains(&EvidenceCaveatKind::Conflict));
         assert!(result.evidence.requires_abstention);
+    }
+
+    /// v0.2's own `status` reaches the caveats, where until now only the
+    /// invented `lifecycle` key did — a bundle following the spec got nothing.
+    #[test]
+    fn spec_status_and_stale_after_qualify_retrieval() {
+        let mut old = concept(
+            "policy/old",
+            "Expenses policy",
+            "Policy",
+            "# Rule\n\nUse the former process.",
+        );
+        old.status = crate::ConceptStatus::Deprecated;
+        old.stale_after = Some("2026-01-01".to_string());
+
+        let result = retrieve(
+            &bundle(vec![old]),
+            &RetrievalRequest {
+                query: "expenses policy".to_string(),
+                today: Some("2026-07-27".to_string()),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        let kinds = result
+            .evidence
+            .caveats
+            .iter()
+            .map(|caveat| caveat.kind)
+            .collect::<Vec<_>>();
+        assert!(kinds.contains(&EvidenceCaveatKind::Lifecycle));
+        assert!(kinds.contains(&EvidenceCaveatKind::Stale));
+        // Marked, not dropped. The whole point of the decision.
+        assert_eq!(result.evidence.items.len(), 1);
+    }
+
+    /// Absent evaluation date means nothing is judged stale, rather than
+    /// everything or a silent read of the wall clock.
+    #[test]
+    fn staleness_needs_an_evaluation_date() {
+        let mut old = concept("policy/old", "Expenses policy", "Policy", "# Rule\n\nText.");
+        old.stale_after = Some("2020-01-01".to_string());
+
+        let result = retrieve(
+            &bundle(vec![old]),
+            &RetrievalRequest {
+                query: "expenses policy".to_string(),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert!(!result
+            .evidence
+            .caveats
+            .iter()
+            .any(|caveat| caveat.kind == EvidenceCaveatKind::Stale));
+    }
+
+    /// The bound that keeps demotion from becoming exclusion: a deprecated
+    /// concept asked for by name still comes back first. If this ever fails,
+    /// the freshness weights have grown into the range where they silently
+    /// hide knowledge OKF deliberately keeps for links and history.
+    #[test]
+    fn demotion_never_outranks_an_exact_match() {
+        let mut deprecated = concept(
+            "metrics/legacy-revenue",
+            "Legacy revenue",
+            "Metric",
+            "# Legacy revenue\n\nThe retired definition.",
+        );
+        deprecated.status = crate::ConceptStatus::Deprecated;
+        deprecated.stale_after = Some("2020-01-01".to_string());
+        // The rival is everything the ranker likes: reviewed by a human,
+        // sourced, current.
+        let mut current = concept(
+            "metrics/revenue",
+            "Revenue",
+            "Metric",
+            "# Revenue\n\nLegacy revenue is superseded by this definition.",
+        );
+        current.verified = vec![crate::Attribution {
+            by: "human:sascha".to_string(),
+            at: Some("2026-07-01".to_string()),
+        }];
+        current.sources = vec![crate::Source {
+            resource: "https://example.invalid/finance".to_string(),
+            ..Default::default()
+        }];
+
+        let result = retrieve(
+            &bundle(vec![deprecated, current]),
+            &RetrievalRequest {
+                query: "Legacy revenue".to_string(),
+                today: Some("2026-07-27".to_string()),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert_eq!(
+            result.receipt.candidates[0].concept_id,
+            "metrics/legacy-revenue"
+        );
+        let score = &result.receipt.candidates[0].score;
+        assert!(score.freshness < 0.0, "it should still be demoted");
+        assert!(score.total > 0.0, "but never scored out of the running");
+    }
+
+    /// Among peers the query does not name, freshness decides — which is the
+    /// case the demotion exists for.
+    #[test]
+    fn freshness_orders_otherwise_comparable_peers() {
+        // Ids chosen so the deprecated one wins the alphabetical tiebreak.
+        // Otherwise this passes without any freshness scoring at all.
+        let mut stale = concept(
+            "guides/a-deploy",
+            "Deploying the service",
+            "Guide",
+            "# Deploying the service\n\nRun the deploy pipeline.",
+        );
+        stale.status = crate::ConceptStatus::Deprecated;
+        let fresh = concept(
+            "guides/b-deploy",
+            "Deploying the service",
+            "Guide",
+            "# Deploying the service\n\nRun the deploy pipeline.",
+        );
+
+        let result = retrieve(
+            &bundle(vec![stale, fresh]),
+            &RetrievalRequest {
+                query: "deploy pipeline".to_string(),
+                today: Some("2026-07-27".to_string()),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        assert_eq!(result.receipt.candidates[0].concept_id, "guides/b-deploy");
+    }
+
+    /// Human review lifts a concept over an otherwise identical unverified one.
+    #[test]
+    fn human_review_outranks_an_unverified_peer() {
+        let unverified = concept(
+            "guides/a-setup",
+            "Setting up the toolchain",
+            "Guide",
+            "# Setting up the toolchain\n\nInstall the toolchain.",
+        );
+        let mut reviewed = concept(
+            "guides/b-setup",
+            "Setting up the toolchain",
+            "Guide",
+            "# Setting up the toolchain\n\nInstall the toolchain.",
+        );
+        reviewed.verified = vec![crate::Attribution {
+            by: "human:sascha".to_string(),
+            at: Some("2026-07-01".to_string()),
+        }];
+
+        let result = retrieve(
+            &bundle(vec![unverified, reviewed]),
+            &RetrievalRequest {
+                query: "install the toolchain".to_string(),
+                today: Some("2026-07-27".to_string()),
+                ..RetrievalRequest::default()
+            },
+        );
+
+        // `guides/a-setup` would win the id tiebreak, so this is the trust
+        // score deciding rather than alphabetical luck.
+        assert_eq!(result.receipt.candidates[0].concept_id, "guides/b-setup");
     }
 
     fn concept(id: &str, title: &str, concept_type: &str, body: &str) -> Concept {

@@ -145,7 +145,10 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
                 token_estimate: estimate_tokens(&section.text),
                 text: section.text,
                 tags: concept.tags.clone(),
-                timestamp: concept.timestamp.clone(),
+                // Through `authored_at`, so a v0.2 concept dated only by
+                // `generated.at` is not treated as undated. health.rs had the
+                // same bug and was fixed; this copy was missed.
+                timestamp: concept.authored_at().map(str::to_string),
                 effective_time: extra_string(concept, "effective_from")
                     .or_else(|| extra_string(concept, "effective_time")),
                 effective_until: extra_string(concept, "effective_until"),
@@ -153,6 +156,11 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
                 lifecycle: extra_string(concept, "lifecycle"),
                 confidence: extra_confidence(concept),
                 source_class: extra_string(concept, "source_class"),
+                status: concept.status.as_str().to_string(),
+                stale_after: concept.stale_after.clone(),
+                trust_tier: concept.trust_tier().as_str().to_string(),
+                source_count: concept.sources.len(),
+                computation_ungated: computation_ungated(concept),
                 owner: extra_string(concept, "owner"),
                 supersedes: extra_strings(concept, "supersedes"),
                 superseded_by: extra_strings(concept, "superseded_by"),
@@ -166,7 +174,7 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
                 health: RetrievalHealth {
                     broken_link_count: concept.broken_links.len(),
                     missing_description: concept.description.trim().is_empty(),
-                    missing_timestamp: concept.timestamp.is_none(),
+                    missing_timestamp: concept.authored_at().is_none(),
                 },
             }
         })
@@ -182,6 +190,26 @@ fn extra_confidence(concept: &Concept) -> Option<String> {
         }
         _ => None,
     }
+}
+
+/// An attested computation that cannot actually gate anything: no attester to
+/// reach a verdict, or no receipt fields for one to inspect. Either way a
+/// consumer quoting its number is trusting an agent's arithmetic, which is the
+/// failure the type was added to prevent.
+///
+/// A concept that declares no contract at all is not this — it is an ordinary
+/// concept, and `false` is the honest answer.
+fn computation_ungated(concept: &Concept) -> bool {
+    concept.computation.as_ref().is_some_and(|contract| {
+        contract
+            .attester
+            .as_ref()
+            .is_none_or(|attester| attester.resource.is_none())
+            || contract
+                .executor
+                .as_ref()
+                .is_none_or(|executor| executor.receipt.is_empty())
+    })
 }
 
 fn extra_string(concept: &Concept, key: &str) -> Option<String> {

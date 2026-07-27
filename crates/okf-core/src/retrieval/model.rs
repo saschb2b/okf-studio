@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-pub const RETRIEVAL_SCHEMA_VERSION: u32 = 1;
+/// 2 since the manifest carries OKF v0.2 trust and lifecycle fields on each unit
+/// and the score breakdown gained a `freshness` term. The manifest is an export
+/// artifact — written, never read back — so this is additive for anything that
+/// reads a field it already knew, and the bump is the signal for anything that
+/// wants the new ones.
+pub const RETRIEVAL_SCHEMA_VERSION: u32 = 2;
 pub const RETRIEVAL_PRODUCER: &str = "okf-core/retrieval-v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,6 +77,28 @@ pub struct RetrievalUnit {
     pub lifecycle: Option<String>,
     pub confidence: Option<String>,
     pub source_class: Option<String>,
+    // --- OKF v0.2 trust and lifecycle ---------------------------------------
+    //
+    // The five fields above are producer conventions read out of `extra`; none
+    // of them are OKF keys. These are, and until now retrieval read none of
+    // them — a bundle writing the spec's `status: deprecated` got no caveat
+    // while one writing the invented `lifecycle: deprecated` did.
+    /// `draft | stable | experimental | deprecated` (spec 5.4), kebab-cased.
+    pub status: String,
+    /// The date this goes stale, absolute (spec 5.4). Compared against the
+    /// request's evaluation date, never against a clock read in here.
+    pub stale_after: Option<String>,
+    /// `unverified | machine-confirmed | human-reviewed`, derived from
+    /// `verified` (spec 5.3).
+    pub trust_tier: String,
+    /// How many `sources` the concept declares. Presence is the signal; judging
+    /// their credibility is the producer's job, not ours.
+    pub source_count: usize,
+    /// An `Attested Computation` whose contract cannot gate anything — no
+    /// attester, or no receipt fields for one to inspect. Quoting a number
+    /// whose sanction is unverifiable is exactly what the type exists to
+    /// prevent, so retrieval says so. Running the attestation is issue #28.
+    pub computation_ungated: bool,
     pub owner: Option<String>,
     pub supersedes: Vec<String>,
     pub superseded_by: Vec<String>,
@@ -164,6 +191,13 @@ pub struct ScoreComponents {
     pub graph: f64,
     pub coverage: f64,
     pub authority: f64,
+    /// Lifecycle demotion, at or below zero. Deliberately small: an exact title
+    /// or id match scores in the thousands, so this can reorder lexical peers
+    /// but can never bury a concept somebody asked for by name. That bound is
+    /// what keeps demotion from becoming exclusion by another route — a
+    /// `deprecated` concept is "kept for links and history" (spec 5.4), and a
+    /// ranker that hid it would break the thing the status preserves.
+    pub freshness: f64,
     pub total: f64,
 }
 

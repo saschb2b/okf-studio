@@ -32,6 +32,7 @@ import type {
 import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import { assessAccessHints } from "@/shared/access.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
+import { today } from "@/features/bundle/trust.ts";
 import type {
   ReceiptDiff,
   RetrievalRequest,
@@ -4653,9 +4654,15 @@ export async function retrieveOkfContext(
   bundleRoot: string,
   request: RetrievalRequest,
 ): Promise<RetrievalResult> {
-  if (!isTauri()) return mockRetrieval(MOCK_BUNDLE, request);
+  // The engine judges `stale_after` against a date it is given rather than a
+  // clock it reads, so that a receipt still means what it said when replayed.
+  // Defaulted here, at the one door every caller goes through, because the
+  // failure mode of forgetting it is silent: staleness simply stops being
+  // noticed. A caller replaying a historical receipt can still pass its own.
+  const dated = request.today ? request : { ...request, today: today() };
+  if (!isTauri()) return mockRetrieval(MOCK_BUNDLE, dated);
   const { invoke } = await import("@tauri-apps/api/core");
-  return invoke<RetrievalResult>("retrieve_okf_context", { bundleRoot, request });
+  return invoke<RetrievalResult>("retrieve_okf_context", { bundleRoot, request: dated });
 }
 
 export async function diffOkfRetrievalReceipts(

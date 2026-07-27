@@ -6,6 +6,21 @@ import type {
   RetrievalRoute,
 } from "./types.ts";
 import { assessReliability } from "@/shared/reliability.ts";
+import { isStale } from "@/features/bundle/trust.ts";
+
+/**
+ * The lifecycle demotion, mirroring `freshness_score` in the Rust engine. Kept
+ * in step deliberately: the mock is what the browser build and the component
+ * tests retrieve through, so if it ranked deprecated knowledge the same as
+ * current knowledge, every test of that behaviour would be testing nothing.
+ */
+function mockFreshness(concept: Bundle["concepts"][number], on: string | undefined): number {
+  let score = concept.status === "deprecated" ? -15 : concept.status === "draft" ? -5 : 0;
+  // No date, nothing stale — mirroring the engine rather than reading a clock
+  // here. `retrieveOkfContext` is the one place that decides what day it is.
+  if (on && isStale(concept, on)) score -= 10;
+  return score;
+}
 
 const MOCK_AS_OF_DAY = new Date().toISOString().slice(0, 10);
 
@@ -25,9 +40,19 @@ export function mockRetrieval(bundle: Bundle, request: RetrievalRequest): Retrie
           : 0;
       const matchedTerms = terms.filter((term) => text.includes(term));
       const lexical = matchedTerms.length * 100;
-      return { concept, exact, lexical, matchedTerms, total: exact + lexical };
+      const freshness = mockFreshness(concept, request.today);
+      return {
+        concept,
+        exact,
+        lexical,
+        freshness,
+        matchedTerms,
+        // Eligibility keys off the match, so a demotion can never drop a unit.
+        matched: exact + lexical,
+        total: exact + lexical + freshness,
+      };
     })
-    .filter((candidate) => candidate.total > 0 || route === "full-context")
+    .filter((candidate) => candidate.matched > 0 || route === "full-context")
     .sort((left, right) => right.total - left.total || left.concept.id.localeCompare(right.concept.id));
   const budget = request.contextBudgetTokens ?? 4096;
   let used = 0;
@@ -67,6 +92,7 @@ export function mockRetrieval(bundle: Bundle, request: RetrievalRequest): Retrie
         graph: 0,
         coverage: 0,
         authority: 0,
+        freshness: candidate.freshness,
         total: candidate.total,
       },
       matchedTerms: candidate.matchedTerms,

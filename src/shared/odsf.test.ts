@@ -1,3 +1,4 @@
+import { NO_PROVENANCE } from "@/mock/conceptFixtures.ts";
 import { describe, it, expect } from "vitest";
 import type { Bundle, Concept } from "@/shared/types.ts";
 import {
@@ -30,6 +31,7 @@ function concept(extra: Record<string, unknown>, type = "Color"): Concept {
     externalLinks: [],
     brokenLinks: [],
     citedBy: [],
+    ...NO_PROVENANCE,
     degree: 0,
   };
 }

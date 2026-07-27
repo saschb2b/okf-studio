@@ -1,3 +1,4 @@
+import { NO_PROVENANCE } from "@/mock/conceptFixtures.ts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import type { Concept } from "@/shared/types.ts";
@@ -17,6 +18,7 @@ const concept: Concept = {
   externalLinks: [],
   brokenLinks: [],
   citedBy: ["index"],
+  ...NO_PROVENANCE,
   degree: 2,
 };
 

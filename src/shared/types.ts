@@ -15,14 +15,92 @@ export interface BundleRoot {
   types: string[];
 }
 
+// --- OKF v0.2 provenance, trust and lifecycle -------------------------------
+//
+// v0.1 answered "what does an agent need to know?". v0.2 adds "should the agent
+// believe it, and is it still true?". These mirror the promoted fields in
+// crates/okf-core/src/model.rs.
+
+/** Where a claim came from, and how credible that origin is (spec 5.1). */
+export interface Source {
+  /** A followable artifact, or a scope descriptor a consumer cannot follow. */
+  resource: string;
+  /** The join key a body footnote label matches. */
+  id: string | null;
+  title: string | null;
+  /** Authority, in the actor convention. */
+  author: string | null;
+  /** Adoption and liveness, over the concept's usageWindow. */
+  usageCount: number | null;
+  /** Recency of the source, distinct from when the concept was written. */
+  lastModified: string | null;
+}
+
+export interface UsageWindow {
+  from: string | null;
+  to: string | null;
+}
+
+/**
+ * An identity: `<producer>/<version>` for agents and tools, `human:<id>` for a
+ * person, `process:<id>` for automation (spec 7).
+ */
+export interface Attribution {
+  by: string;
+  at: string | null;
+}
+
+export type ConceptStatus = "draft" | "stable" | "deprecated";
+
+/**
+ * How much to believe a concept, derived from `verified` (spec 5.3). Ordered
+ * lowest to highest.
+ */
+export type TrustTier = "unverified" | "machine-confirmed" | "human-reviewed";
+
+export interface ComputationParameter {
+  name: string;
+  type: string | null;
+  required: boolean;
+}
+
+export interface ComputationExecutor {
+  resource: string | null;
+  /** The evidence a run must return for the attester to inspect. */
+  receipt: string[];
+}
+
+/** The contract of a `type: Attested Computation` concept (spec 10). */
+export interface ComputationContract {
+  /** How to run it, and therefore how everything else is interpreted. */
+  runtime: string;
+  parameters: ComputationParameter[];
+  /** A path, used instead of an inline body fence. */
+  computation: string | null;
+  executor: ComputationExecutor | null;
+  attester: { resource: string | null } | null;
+}
+
 export interface Concept {
   id: string;
   type: string;
   title: string;
   description: string;
   tags: string[];
+  /**
+   * v0.1's authored-at. Read it through `authoredAt()` rather than directly, so
+   * the `generated.at` fallback applies.
+   */
   timestamp: string | null;
   resource: string | null;
+  sources: Source[];
+  usageWindow: UsageWindow | null;
+  generated: Attribution | null;
+  verified: Attribution[];
+  status: ConceptStatus;
+  staleAfter: string | null;
+  /** Present on a `type: Attested Computation` concept. */
+  computation: ComputationContract | null;
   extra: Record<string, unknown>;
   body: string;
   links: string[];

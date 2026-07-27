@@ -1,3 +1,4 @@
+import { NO_PROVENANCE } from "@/mock/conceptFixtures.ts";
 import { describe, expect, it } from "vitest";
 import { assessReliability, reliabilityFindings } from "@/shared/reliability.ts";
 import type { Concept, ProfileReport } from "@/shared/types.ts";
@@ -17,6 +18,7 @@ function concept(id: string, extra: Record<string, unknown>): Concept {
     externalLinks: [],
     brokenLinks: [],
     citedBy: [],
+    ...NO_PROVENANCE,
     degree: 0,
   };
 }

@@ -5,8 +5,35 @@ import type { Bundle, BundleRoot, Concept, RecentBundle } from "@/shared/types.t
 
 export const MOCK_FOLDER = "/mock/workspace";
 
-type RawConcept = Omit<Concept, "citedBy" | "degree" | "brokenLinks"> &
-  Partial<Pick<Concept, "brokenLinks">>;
+// The v0.2 provenance families are optional here and defaulted in `finalize`,
+// so a fixture entry stays about the knowledge it models. A fixture that is
+// exercising trust or staleness sets them explicitly.
+type RawConcept = Omit<
+  Concept,
+  | "citedBy"
+  | "degree"
+  | "brokenLinks"
+  | "sources"
+  | "usageWindow"
+  | "generated"
+  | "verified"
+  | "status"
+  | "staleAfter"
+  | "computation"
+> &
+  Partial<
+    Pick<
+      Concept,
+      | "brokenLinks"
+      | "sources"
+      | "usageWindow"
+      | "generated"
+      | "verified"
+      | "status"
+      | "staleAfter"
+      | "computation"
+    >
+  >;
 
 const raw: RawConcept[] = [
   {
@@ -146,6 +173,13 @@ function finalize(items: RawConcept[]): Concept[] {
     return {
       ...c,
       brokenLinks: c.brokenLinks ?? [],
+      sources: c.sources ?? [],
+      usageWindow: c.usageWindow ?? null,
+      generated: c.generated ?? null,
+      verified: c.verified ?? [],
+      status: c.status ?? "stable",
+      staleAfter: c.staleAfter ?? null,
+      computation: c.computation ?? null,
       citedBy: back,
       degree: c.links.length + back.length,
     };

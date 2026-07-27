@@ -1,3 +1,4 @@
+import { NO_PROVENANCE } from "@/mock/conceptFixtures.ts";
 import { describe, expect, it } from "vitest";
 import {
   buildVizTree,
@@ -22,6 +23,7 @@ function concept(id: string, over: Partial<Concept> = {}): Concept {
     externalLinks: [],
     brokenLinks: [],
     citedBy: [],
+    ...NO_PROVENANCE,
     degree: 0,
     ...over,
   };

@@ -1,3 +1,4 @@
+import { NO_PROVENANCE } from "@/mock/conceptFixtures.ts";
 import { describe, it, expect } from "vitest";
 import { parseQuery, matchesCompiled } from "@/shared/query.ts";
 import type { Concept } from "@/shared/types.ts";
@@ -17,6 +18,7 @@ function concept(partial: Partial<Concept>): Concept {
     externalLinks: [],
     brokenLinks: [],
     citedBy: [],
+    ...NO_PROVENANCE,
     degree: 0,
     ...partial,
   };

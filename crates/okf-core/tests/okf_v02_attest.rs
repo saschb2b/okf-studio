@@ -452,3 +452,65 @@ mod report {
         fs::remove_dir_all(&root).expect("cleanup");
     }
 }
+
+/// The worked example in Studio's own docs must actually attest, and the
+/// receipt printed in it must be the one that passes.
+///
+/// Without this the example rots silently: someone edits the `.sql`, the
+/// documented receipt stops matching, and the first person to follow the
+/// instructions concludes the gate is broken.
+mod studio_docs_example {
+    use super::*;
+    use okf_core::attest::{attest_run, AttestationVerdict};
+
+    const CONCEPT: &str = "reference/attested-computation-example";
+
+    /// Copied verbatim from the `# Checking a run` section of the example.
+    const DOCUMENTED_SQL: &str = "SELECT SUM(o.amount_usd) AS recognized_revenue FROM `finance.orders` AS o WHERE o.fiscal_year = 2026 AND (NULL IS NULL OR o.region = NULL) AND o.status = 'recognized'";
+
+    #[test]
+    fn the_documented_receipt_passes_against_the_stored_computation() {
+        let root = Path::new("../../docs");
+        let bundle = read_bundle(root);
+        let concept = concept_named(&bundle, CONCEPT);
+
+        let run = receipt(&[
+            ("job_id", "bq:job_abc123"),
+            ("executed_sql", DOCUMENTED_SQL),
+            ("result", "12345"),
+        ]);
+        let report = attest_run(root, concept, &run, "2026-07-27");
+
+        assert_eq!(
+            report.verdict,
+            AttestationVerdict::ProvenanceEstablished,
+            "the receipt printed in the example must be the one that passes"
+        );
+        // File-stored, so this also proves the path resolves inside the bundle.
+        assert!(matches!(
+            report.source,
+            Some(ComputationSource::File { .. })
+        ));
+    }
+
+    #[test]
+    fn an_agent_authored_query_against_the_example_fails() {
+        let root = Path::new("../../docs");
+        let bundle = read_bundle(root);
+        let concept = concept_named(&bundle, CONCEPT);
+
+        let run = receipt(&[
+            ("job_id", "bq:job_bad"),
+            (
+                "executed_sql",
+                "SELECT SUM(amount_usd) FROM `finance.raw_orders`",
+            ),
+            ("result", "99999"),
+        ]);
+
+        assert_eq!(
+            attest_run(root, concept, &run, "2026-07-27").verdict,
+            AttestationVerdict::Failed
+        );
+    }
+}

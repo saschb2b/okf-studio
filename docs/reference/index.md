@@ -8,6 +8,7 @@ External specifications Studio must honor, the OKF ecosystem it builds on, imple
 * [OKF Reference HTML Visualizer](okf-reference-visualizer.md) - Google's single-file HTML consumer and Studio's reference counterpart.
 * [OKF Sample Bundles](okf-sample-bundles.md) - The GA4, Stack Overflow, and Bitcoin bundles used as additional fixtures.
 * [Advisory Profile Contract](advisory-profile-contract.md) - Local, version-pinned descriptors for optional fields, relationships, and health checks.
+* [Attested Computation Example](attested-computation-example.md) - A worked OKF v0.2 attested computation, and the fixture the gate is tested against.
 * [Glossary](glossary.md) - Terms used across this bundle.
 
 # Interoperability experiments

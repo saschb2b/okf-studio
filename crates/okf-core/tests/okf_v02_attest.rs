@@ -323,3 +323,194 @@ fn canonicalization_ignores_comments_case_and_whitespace_only() {
         canonicalize("select a from u")
     );
 }
+
+/// `attest_run` is the entry point both Studio doors use — the reader's manual
+/// paste and the agent's submitted receipt — so the verdict cannot depend on
+/// who knocked.
+mod report {
+    use super::*;
+    use okf_core::attest::{attest_run, AttestationVerdict};
+
+    fn bundle_with_contract(name: &str) -> (PathBuf, okf_core::Bundle) {
+        let root = scratch(name);
+        write(&root, "computations/revenue.md", CONTRACT);
+        let bundle = read_bundle(&root);
+        (root, bundle)
+    }
+
+    const GOOD_SQL: &str =
+        "SELECT SUM(amount) AS revenue FROM finance.recognized WHERE fiscal_year = 2026";
+
+    /// The distinction the verdict exists for. `attested` is the spec's full
+    /// bar and is false here — fidelity needs the runtime — but everything
+    /// Studio can check passed, and a reader has to be able to tell that apart
+    /// from a forged query. If these two ever collapse into one value, the gate
+    /// reports failure for a clean run and stops meaning anything.
+    #[test]
+    fn a_clean_run_establishes_provenance_without_claiming_full_attestation() {
+        let (root, bundle) = bundle_with_contract("report-clean");
+        let concept = concept_named(&bundle, "computations/revenue");
+        let run = receipt(&[
+            ("job_id", "bq:job-1"),
+            ("executed_sql", GOOD_SQL),
+            ("result", "12345"),
+        ]);
+
+        let report = attest_run(&root, concept, &run, "2026-07-01");
+
+        assert_eq!(report.verdict, AttestationVerdict::ProvenanceEstablished);
+        assert!(report.provenance_established());
+        // Still not full attestation, and the report never says it is.
+        assert!(!report.attestation.as_ref().unwrap().attested);
+        assert_eq!(report.runtime.as_deref(), Some("bigquery"));
+        // The sanctioned text travels with the verdict, so judging a failure
+        // does not send the reader looking for what should have run.
+        assert!(report.source.is_some());
+
+        fs::remove_dir_all(&root).expect("cleanup");
+    }
+
+    /// The failure the type exists to catch: an agent ran its own query.
+    #[test]
+    fn a_substituted_computation_fails_rather_than_being_unavailable() {
+        let (root, bundle) = bundle_with_contract("report-substituted");
+        let concept = concept_named(&bundle, "computations/revenue");
+        let run = receipt(&[
+            ("job_id", "bq:job-2"),
+            ("executed_sql", "SELECT SUM(amount) FROM finance.raw_orders"),
+            ("result", "99999"),
+        ]);
+
+        let report = attest_run(&root, concept, &run, "2026-07-01");
+
+        assert_eq!(report.verdict, AttestationVerdict::Failed);
+        assert!(!report.provenance_established());
+        assert!(matches!(
+            report.attestation.as_ref().unwrap().provenance,
+            CheckOutcome::Failed(_)
+        ));
+
+        fs::remove_dir_all(&root).expect("cleanup");
+    }
+
+    /// A missing declared field is a failure, not a pass with a footnote.
+    #[test]
+    fn a_receipt_missing_a_declared_field_fails() {
+        let (root, bundle) = bundle_with_contract("report-missing");
+        let concept = concept_named(&bundle, "computations/revenue");
+        let run = receipt(&[("executed_sql", GOOD_SQL)]);
+
+        let report = attest_run(&root, concept, &run, "2026-07-01");
+
+        assert_eq!(report.verdict, AttestationVerdict::Failed);
+        let attestation = report.attestation.as_ref().unwrap();
+        assert_eq!(attestation.provenance, CheckOutcome::Passed);
+        assert_eq!(attestation.missing_receipt_fields, ["job_id", "result"]);
+
+        fs::remove_dir_all(&root).expect("cleanup");
+    }
+
+    /// A receipt with nothing to compare is unavailable, and unavailable is not
+    /// a pass — this is the case where a gate would silently stop gating.
+    #[test]
+    fn a_receipt_with_nothing_to_compare_does_not_establish_provenance() {
+        let (root, bundle) = bundle_with_contract("report-nothing");
+        let concept = concept_named(&bundle, "computations/revenue");
+        let run = receipt(&[("job_id", "bq:job-3"), ("result", "12345")]);
+
+        let report = attest_run(&root, concept, &run, "2026-07-01");
+
+        assert_eq!(report.verdict, AttestationVerdict::Failed);
+        assert!(matches!(
+            report.attestation.as_ref().unwrap().provenance,
+            CheckOutcome::Unavailable(_)
+        ));
+
+        fs::remove_dir_all(&root).expect("cleanup");
+    }
+
+    /// An unreadable contract is a bundle defect and must not read as a failed
+    /// run — that would send someone to debug a query that was fine.
+    #[test]
+    fn an_ordinary_concept_reports_a_contract_error_not_a_failed_run() {
+        let root = scratch("report-not-a-computation");
+        write(
+            &root,
+            "concepts/plain.md",
+            "---\ntype: Metric\ntitle: Plain\n---\n\n# Plain\n",
+        );
+        let bundle = read_bundle(&root);
+        let concept = concept_named(&bundle, "concepts/plain");
+
+        let report = attest_run(&root, concept, &receipt(&[]), "2026-07-01");
+
+        assert_eq!(report.verdict, AttestationVerdict::ContractUnreadable);
+        assert!(report.attestation.is_none());
+        assert!(report.contract_error.is_some());
+        assert!(!report.provenance_established());
+
+        fs::remove_dir_all(&root).expect("cleanup");
+    }
+}
+
+/// The worked example in Studio's own docs must actually attest, and the
+/// receipt printed in it must be the one that passes.
+///
+/// Without this the example rots silently: someone edits the `.sql`, the
+/// documented receipt stops matching, and the first person to follow the
+/// instructions concludes the gate is broken.
+mod studio_docs_example {
+    use super::*;
+    use okf_core::attest::{attest_run, AttestationVerdict};
+
+    const CONCEPT: &str = "reference/attested-computation-example";
+
+    /// Copied verbatim from the `# Checking a run` section of the example.
+    const DOCUMENTED_SQL: &str = "SELECT SUM(o.amount_usd) AS recognized_revenue FROM `finance.orders` AS o WHERE o.fiscal_year = 2026 AND (NULL IS NULL OR o.region = NULL) AND o.status = 'recognized'";
+
+    #[test]
+    fn the_documented_receipt_passes_against_the_stored_computation() {
+        let root = Path::new("../../docs");
+        let bundle = read_bundle(root);
+        let concept = concept_named(&bundle, CONCEPT);
+
+        let run = receipt(&[
+            ("job_id", "bq:job_abc123"),
+            ("executed_sql", DOCUMENTED_SQL),
+            ("result", "12345"),
+        ]);
+        let report = attest_run(root, concept, &run, "2026-07-27");
+
+        assert_eq!(
+            report.verdict,
+            AttestationVerdict::ProvenanceEstablished,
+            "the receipt printed in the example must be the one that passes"
+        );
+        // File-stored, so this also proves the path resolves inside the bundle.
+        assert!(matches!(
+            report.source,
+            Some(ComputationSource::File { .. })
+        ));
+    }
+
+    #[test]
+    fn an_agent_authored_query_against_the_example_fails() {
+        let root = Path::new("../../docs");
+        let bundle = read_bundle(root);
+        let concept = concept_named(&bundle, CONCEPT);
+
+        let run = receipt(&[
+            ("job_id", "bq:job_bad"),
+            (
+                "executed_sql",
+                "SELECT SUM(amount_usd) FROM `finance.raw_orders`",
+            ),
+            ("result", "99999"),
+        ]);
+
+        assert_eq!(
+            attest_run(root, concept, &run, "2026-07-27").verdict,
+            AttestationVerdict::Failed
+        );
+    }
+}

@@ -3,6 +3,7 @@
 // to an in-memory mock, so the UI runs and tests pass without the backend.
 
 import type {
+  AttestationReport,
   Bundle,
   BundleRoot,
   CompatibilityFinding,
@@ -33,6 +34,12 @@ import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import { assessAccessHints } from "@/shared/access.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
 import { today } from "@/features/bundle/trust.ts";
+import {
+  inlineComputation,
+  mockAttestationFor,
+} from "@/features/bundle/mockAttestation.ts";
+import { RECEIPT_FENCE } from "@/features/agent/receipt.ts";
+import type { AgentReceiptValidation } from "@/features/agent/receipt.ts";
 import type {
   ReceiptDiff,
   RetrievalRequest,
@@ -639,6 +646,103 @@ export async function validateAgentArtifact(
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentArtifactValidation>("validate_agent_artifact", { root, markdown });
+}
+
+/** The `okf-receipt` fence body, matching agent_receipt.rs's extraction. */
+function receiptFenceJson(markdown: string): string | null {
+  const marker = markdown.lastIndexOf(RECEIPT_FENCE);
+  if (marker === -1) return null;
+  const afterMarker = marker + RECEIPT_FENCE.length;
+  const contentStart = markdown.indexOf("\n", afterMarker);
+  if (contentStart === -1) return null;
+  const end = markdown.indexOf("\n```", contentStart + 1);
+  if (end === -1) return null;
+  return markdown.slice(contentStart + 1, end).trim();
+}
+
+/** Mirrors agent_receipt::validate, including which shapes it refuses. */
+function mockReceiptValidation(markdown: string, on: string): AgentReceiptValidation {
+  const json = receiptFenceJson(markdown);
+  if (json === null) return { status: "none" };
+
+  // Parsed as `unknown` and narrowed, rather than assigned straight into a
+  // shape it has not been checked against. This is agent-supplied input on the
+  // authority path, so taking `JSON.parse`'s `any` at its word is exactly the
+  // wrong move here.
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch (error) {
+    return { status: "invalid", message: `The receipt JSON is invalid: ${String(error)}` };
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { status: "invalid", message: "A receipt envelope is a JSON object." };
+  }
+  const envelope = parsed as { schemaVersion?: number; conceptId?: string; receipt?: unknown };
+  if (envelope.schemaVersion !== 1) {
+    return { status: "invalid", message: "Receipt schemaVersion must be 1." };
+  }
+  const conceptId = envelope.conceptId?.trim();
+  if (!conceptId) return { status: "invalid", message: "The receipt names no usable concept." };
+
+  // Looked up in the bundle, never taken from the envelope. An agent that could
+  // supply the computation it is judged against could always pass.
+  const concept = MOCK_BUNDLE.concepts.find((item) => item.id === conceptId);
+  if (!concept) {
+    return {
+      status: "invalid",
+      message: `This bundle has no concept ${conceptId}, so there is no contract to check the run against.`,
+    };
+  }
+
+  const fields = envelope.receipt;
+  if (fields === null || typeof fields !== "object" || Array.isArray(fields)) {
+    return { status: "invalid", message: "That receipt carries no usable fields." };
+  }
+  const receipt: Record<string, string> = {};
+  for (const [name, value] of Object.entries(fields)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "object") {
+      return {
+        status: "invalid",
+        message: `Receipt field ${name} is not a single value, so there is nothing to compare.`,
+      };
+    }
+    receipt[name] = String(value);
+  }
+  if (Object.keys(receipt).length === 0) {
+    return { status: "invalid", message: "That receipt carries no usable fields." };
+  }
+
+  const path = concept.computation?.computation ?? null;
+  const stored = path
+    ? MOCK_ASSETS[path.replace(/^\/+/, "")] ?? null
+    : inlineComputation(concept.body);
+  return {
+    status: "checked",
+    report: mockAttestationFor(concept, stored, path, receipt, on),
+  };
+}
+
+/**
+ * Check an `okf-receipt` fence in agent output against the bundle's contract.
+ *
+ * The browser stand-in performs the real check rather than refusing, unlike the
+ * artifact validator: this is a gate, and a stand-in that answered "cannot
+ * check here" would make every test of the gate a test of nothing.
+ */
+export async function validateAgentReceipt(
+  root: string,
+  markdown: string,
+  on = today(),
+): Promise<AgentReceiptValidation> {
+  if (!isTauri()) return mockReceiptValidation(markdown, on);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentReceiptValidation>("validate_agent_receipt", {
+    root,
+    markdown,
+    today: on,
+  });
 }
 
 export async function prepareAgentArtifactCritic(
@@ -4926,9 +5030,99 @@ export async function readAsset(
   root: string,
   rel: string,
 ): Promise<string | null> {
-  if (!isTauri()) return MOCK_ASSETS[rel.replace(/^\/+/, "")] ?? null;
+  if (!isTauri()) {
+    const key = rel.replace(/^\/+/, "");
+    // The backend serves only `html`, `css` and `svg` here (see
+    // crates/okf-core/src/asset.rs). The mock used to return any key present in
+    // MOCK_ASSETS, which made it quietly more permissive than the app it stands
+    // in for — so a test could not have caught the allowlist widening, and the
+    // browser build would have rendered files the desktop app refuses.
+    const ext = key.split(".").pop()?.toLowerCase() ?? "";
+    if (!["html", "css", "svg"].includes(ext)) return null;
+    return MOCK_ASSETS[key] ?? null;
+  }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<string | null>("read_asset", { root, rel });
+}
+
+/**
+ * Read the computation an Attested Computation concept declares in a file.
+ *
+ * Takes a **concept id, not a path** — deliberately. The backend reads the path
+ * out of that concept's own `computation` field, so the declaration is the
+ * authorization and this cannot be pointed at anything else. A computation is
+ * `.sql`, `.py`, whatever the runtime takes, so the extension allowlist that
+ * guards `readAsset` could not have expressed what is permitted.
+ *
+ * `null` for every miss: no declared computation, an inline one, a missing or
+ * oversized file. Returned for display; Studio never executes it.
+ */
+export async function readDeclaredComputation(
+  bundleRoot: string,
+  conceptId: string,
+): Promise<string | null> {
+  if (!isTauri()) {
+    const concept = MOCK_BUNDLE.concepts.find((item) => item.id === conceptId);
+    const declared = concept?.computation?.computation;
+    return declared ? MOCK_ASSETS[declared.replace(/^\/+/, "")] ?? null : null;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("read_declared_computation", { bundleRoot, conceptId });
+}
+
+/** Resolve the sanctioned computation the same way the backend does, then
+ *  attest against it. Both halves live in mockAttestation.ts; this only finds
+ *  the concept and its stored text. */
+function mockAttestation(
+  conceptId: string,
+  receipt: Record<string, string>,
+  on: string,
+): AttestationReport {
+  const concept = MOCK_BUNDLE.concepts.find((item) => item.id === conceptId);
+  if (!concept) {
+    return {
+      conceptId,
+      conceptTitle: conceptId,
+      runtime: null,
+      source: null,
+      contractError: { reason: "notAComputation" },
+      attestation: null,
+      verdict: "contract-unreadable",
+    };
+  }
+  const path = concept.computation?.computation ?? null;
+  const stored = path
+    ? MOCK_ASSETS[path.replace(/^\/+/, "")] ?? null
+    : inlineComputation(concept.body);
+  return mockAttestationFor(concept, stored, path, receipt, on);
+}
+
+/**
+ * Attest one run of an Attested Computation against the bundle's contract.
+ *
+ * Takes a concept id and a receipt — never a computation. What the run is
+ * checked *against* is read from the bundle by the backend, which is the only
+ * arrangement where the check means anything: a caller supplying both sides
+ * could always make them agree.
+ *
+ * Studio does not execute anything. Fidelity always comes back `unavailable`
+ * because only the executor's runtime can re-read a result by job id, and
+ * `unavailable` is never `passed`.
+ */
+export async function attestComputationRun(
+  bundleRoot: string,
+  conceptId: string,
+  receipt: Record<string, string>,
+  on = today(),
+): Promise<AttestationReport> {
+  if (!isTauri()) return mockAttestation(conceptId, receipt, on);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AttestationReport>("attest_computation_run", {
+    bundleRoot,
+    conceptId,
+    receipt,
+    today: on,
+  });
 }
 
 /**

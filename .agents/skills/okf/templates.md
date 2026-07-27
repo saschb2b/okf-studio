@@ -2,6 +2,30 @@
 
 Copy, fill, validate. Every example uses bundle-absolute links (beginning with `/`) because the spec recommends them for stability. Relative links like `customers.md` are equally valid. Rules behind these shapes are in [spec.md](./spec.md); the form-per-fact table they follow (diagrams for topology, TeX for formulas, definition lists for terms, task lists for stateful checklists, footnotes for caveats) is in [SKILL.md](./SKILL.md).
 
+## Run receipt envelope
+
+When you report a number produced by an `Attested Computation`, end the response with one fenced `okf-receipt` JSON object naming the concept you ran and the evidence the run returned. Studio reads the sanctioned computation out of the bundle itself and compares it against your receipt, then labels the answer with the result.
+
+**Supply only the receipt.** Never include the computation in this envelope. What your run is checked against is the bundle's copy, and that is the entire point: an envelope carrying both sides could always be made to agree.
+
+You may supply values for the declared parameters. You must not author or edit the computation. If you could not run the sanctioned computation, say so in prose and emit no receipt — a wrong receipt is worse than none, because it claims a check that did not happen.
+
+Include every field the contract's `executor.receipt` declares. Values must be single values; a nested object or array is refused, because there is nothing in it to compare.
+
+```okf-receipt
+{
+  "schemaVersion": 1,
+  "conceptId": "metrics/recognized-revenue",
+  "receipt": {
+    "job_id": "bq:job_abc123",
+    "executed_sql": "<the exact text the runtime executed>",
+    "result": 12345
+  }
+}
+```
+
+Studio checks provenance — that what ran is the sanctioned computation with its parameters bound. It cannot check fidelity, which means re-reading the authoritative result by job id, so do not describe an answer as fully attested.
+
 ## Structured work artifact envelope
 
 In OKF Studio, when a capability names an artifact contract and a work surface is useful, end the response with one fenced `okf-artifact` JSON object. Studio validates this object in Rust before rendering it as trusted work. Prose outside the fence remains conversation text. Invalid artifact JSON also remains prose, so do not describe an unvalidated object as a Studio work surface. Outside Studio, return the same substance in ordinary prose, markdown, or a diff unless the caller explicitly asks for this envelope; never fabricate a fingerprint just to fill the template.

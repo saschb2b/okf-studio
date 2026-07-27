@@ -36,6 +36,43 @@ type RawConcept = Omit<
   >;
 
 const raw: RawConcept[] = [
+  // An OKF v0.2 Attested Computation that stores its computation in a file
+  // rather than inline. Present so the browser build and the story and
+  // integration suites exercise the path that used to render nothing at all:
+  // promoting the contract fields out of `extra` made them invisible, and a
+  // file-based computation had no route to the page.
+  {
+    id: "metrics/recognized-revenue",
+    type: "Attested Computation",
+    title: "Recognized revenue",
+    description: "Revenue recognized in a fiscal year, from the sanctioned query.",
+    tags: ["metric", "finance"],
+    timestamp: "2026-07-02T00:00:00Z",
+    resource: null,
+    extra: {},
+    computation: {
+      runtime: "bigquery",
+      parameters: [
+        { name: "fiscal_year", type: "integer", required: true },
+        { name: "region", type: "string", required: false },
+      ],
+      computation: "computations/recognized-revenue.sql",
+      executor: {
+        resource: "references/skills/run-on-bigquery.md",
+        receipt: ["job_id", "executed_sql", "result"],
+      },
+      attester: { resource: "references/attesters/sql-equality.py" },
+    },
+    verified: [{ by: "human:sascha", at: "2026-07-02T00:00:00Z" }],
+    links: [],
+    externalLinks: [],
+    body: [
+      "# Recognized revenue",
+      "",
+      "Revenue recognized in a fiscal year, net of refunds and intercompany.",
+      "An agent may supply `fiscal_year` and `region`. It must not write the query.",
+    ].join("\n"),
+  },
   {
     id: "product/overview",
     type: "Product",
@@ -670,6 +707,19 @@ export const MOCK_BUNDLE: Bundle = {
  * links its stylesheets relatively (`../styles/...`), which the preview inlines.
  */
 export const MOCK_ASSETS: Record<string, string> = {
+  // The sanctioned computation for `metrics/recognized-revenue`. Served through
+  // the declaration-scoped door, not the extension allowlist — `.sql` is
+  // deliberately not a permitted text asset, and that is the point: a
+  // computation is whatever its runtime takes.
+  "computations/recognized-revenue.sql": [
+    "-- Recognized revenue for one fiscal year.",
+    "SELECT",
+    "  SUM(o.amount_usd) AS recognized_revenue",
+    "FROM `finance.orders` AS o",
+    "WHERE o.fiscal_year = @fiscal_year",
+    "  AND (@region IS NULL OR o.region = @region)",
+    "  AND o.status = 'recognized'",
+  ].join("\n"),
   "styles/tokens.css": [
     ":root {",
     "  --bgColor-default: #ffffff;",

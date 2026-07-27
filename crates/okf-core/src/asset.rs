@@ -64,6 +64,37 @@ pub fn read_asset(root: &Path, rel: &str) -> Option<String> {
     std::fs::read_to_string(&target).ok()
 }
 
+/// The largest computation this will serve. A sanctioned query that a human is
+/// expected to read is not megabytes long, and the reader renders this inline.
+const MAX_COMPUTATION_BYTES: usize = 512 * 1024;
+
+/// Read the computation a concept declares, or `None` if it declares none, the
+/// file is absent, it is too large, or it is not valid UTF-8.
+///
+/// This deliberately does **not** consult [`ALLOWED_EXTENSIONS`]. A computation
+/// is `.sql`, `.py`, `.jq` — anything the runtime takes — so an extension
+/// allowlist cannot express what is permitted here. The authorization is the
+/// declaration itself: the caller passes a [`Concept`], and the only path this
+/// will read is the one that concept's own `computation` field names. Widening
+/// the general text door to every extension would have granted far more, since
+/// that door takes a caller-supplied path.
+///
+/// Root confinement still applies, through the same `resolve_in_root` gate as
+/// every other asset read, so a bundle that declares `../../.ssh/id_rsa` gets
+/// `None` rather than a key.
+///
+/// The bytes are returned for display. Studio does not execute them; see
+/// `docs/architecture/okf-parsing.md`.
+pub fn read_declared_computation(root: &Path, concept: &crate::Concept) -> Option<String> {
+    let declared = concept.computation.as_ref()?.computation.as_deref()?;
+    let target = resolve_in_root(root, declared)?;
+    // Checked before reading, so a huge file is not pulled into memory first.
+    if std::fs::metadata(&target).ok()?.len() as usize > MAX_COMPUTATION_BYTES {
+        return None;
+    }
+    std::fs::read_to_string(&target).ok()
+}
+
 /// Read a *local* bundle image and return it as a `data:<mime>;base64,…` URL, or
 /// `None` if it is absent, not a known image type, or escapes the root. Inlining
 /// keeps image rendering offline (no network fetch); a remote image is never
@@ -135,6 +166,71 @@ mod tests {
         assert_eq!(
             read_asset(&root, "/styles/tokens.css").as_deref(),
             Some(":root{--x:1}")
+        );
+    }
+
+    /// Builds a concept declaring `path` as its computation.
+    fn declaring(path: Option<&str>) -> crate::Concept {
+        crate::Concept {
+            concept_type: crate::ATTESTED_COMPUTATION_TYPE.to_string(),
+            computation: Some(crate::ComputationContract {
+                runtime: "bigquery".to_string(),
+                computation: path.map(str::to_string),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    /// The extension allowlist deliberately does not apply — a computation is
+    /// whatever its runtime takes.
+    #[test]
+    fn reads_a_declared_computation_of_any_extension() {
+        let root = tmp();
+        fs::write(root.join("revenue.sql"), "SELECT 1").unwrap();
+        assert_eq!(read_asset(&root, "revenue.sql"), None, "not a text asset");
+        assert_eq!(
+            read_declared_computation(&root, &declaring(Some("revenue.sql"))).as_deref(),
+            Some("SELECT 1"),
+            "but it is a declared computation"
+        );
+    }
+
+    /// The whole security argument: the only readable path is the one the
+    /// concept itself names. A caller cannot ask for anything else, because a
+    /// caller does not supply a path at all.
+    #[test]
+    fn reads_only_what_the_concept_declares() {
+        let root = tmp();
+        fs::write(root.join("revenue.sql"), "SELECT 1").unwrap();
+        fs::write(root.join("secrets.env"), "TOKEN=hunter2").unwrap();
+
+        // A concept declaring the other file cannot reach the first, and a
+        // concept declaring nothing reaches nothing.
+        assert_eq!(
+            read_declared_computation(&root, &declaring(Some("secrets.env"))).as_deref(),
+            Some("TOKEN=hunter2"),
+            "a bundle can only expose its own files, which it already could"
+        );
+        assert_eq!(read_declared_computation(&root, &declaring(None)), None);
+        assert_eq!(
+            read_declared_computation(&root, &crate::Concept::default()),
+            None,
+            "an ordinary concept declares no computation"
+        );
+    }
+
+    /// Root confinement is not bypassed by the declaration. A bundle that names
+    /// a path outside itself gets nothing.
+    #[test]
+    fn a_declared_computation_cannot_escape_the_root() {
+        let root = tmp();
+        fs::write(root.join("outside.sql"), "SELECT 1").unwrap();
+        let inner = root.join("bundle");
+        fs::create_dir_all(&inner).unwrap();
+        assert_eq!(
+            read_declared_computation(&inner, &declaring(Some("../outside.sql"))),
+            None
         );
     }
 

@@ -15,14 +15,14 @@
   "capabilityManifest": {
     "path": "capabilities.json",
     "mediaType": "application/json",
-    "sha256": "8876a103848d376760089c91e269c82b73796aec87b6148554426b161b863018"
+    "sha256": "2e25e76c5289f386f60faa9bbd0e417dd536fb287c88ae6f997f5ef5e328c12d"
   },
   "templates": [
     {
       "id": "okf-markdown-templates",
       "path": "templates.md",
       "mediaType": "text/markdown",
-      "sha256": "191d899cd37ff7649923f1b4718b263ebf5882fee30579f924de8013a3cc31e2"
+      "sha256": "141384afde1716190bfba28344048ab8f7a45214dccf45d3db027dbc1519a6ff"
     }
   ],
   "artifactSchemas": [

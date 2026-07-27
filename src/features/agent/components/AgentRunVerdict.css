@@ -1,0 +1,38 @@
+/* Self-contained; AttestationVerdict brings its own styles. */
+.agent-run-verdict {
+  margin-top: var(--space-8);
+}
+
+.agent-run-verdict--invalid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-10);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--warn);
+  background: var(--bg-sunken);
+}
+
+.agent-run-verdict__headline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-normal);
+}
+
+.agent-run-verdict__headline > svg {
+  flex: none;
+  color: var(--warn);
+}
+
+.agent-run-verdict__detail {
+  margin: 0;
+  max-width: var(--measure-prose);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}

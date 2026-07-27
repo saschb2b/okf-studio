@@ -45,6 +45,24 @@ It does **not execute** the executor or the attester. Running arbitrary code out
 
 A stale definition still attests cleanly. `verified` says the definition matches policy; attestation says one run produced its values correctly. They answer different questions, so staleness warns and does not fail.
 
+## What Studio can claim
+
+`Attestation::attested` is the spec's full bar — provenance **and** fidelity — and it is always false, because fidelity needs the executor's runtime. That is honest and useless to render: a perfect provenance match would look exactly like a forged one, and a badge that never turns green is one users stop reading. So `AttestationReport::verdict` states what Studio actually established — `provenance-established`, `failed`, or `contract-unreadable` — and every surface renders that instead. The unchecked half stays visible rather than being folded into a tick, and the limit is printed on a pass as well as a failure.
+
+A contract that cannot be read is a bundle defect and reads as one, not as a failed run: telling someone their query failed when the contract was never readable sends them to debug the wrong thing.
+
+## Two doors, one verdict
+
+Both call `attest_run`, so the answer cannot depend on who knocked.
+
+The **reader's dialog** takes a pasted receipt. It is a tool for someone who already holds one — Studio runs nothing, so today every receipt was produced elsewhere.
+
+The **agent panel** is the gate. An `okf-receipt` fence in a turn is validated by `agent_receipt.rs` — the third instance of the pattern `agent_artifact` and `agent_critic` already run — and the verdict renders inside the turn, next to the number. This is where it belongs: the failure the type exists to prevent is an agent reporting a figure from a query it wrote itself, and that claim is made here. Security research is consistent that a passive indicator is ignored while one interrupting the task is heeded, so a badge on a concept page nobody consults mid-answer would be the ineffective shape.
+
+The agent supplies **only its receipt**. What the receipt is checked against is read from the bundle, because an agent that could supply both sides could always make them agree. A receipt naming a concept the bundle does not have is refused rather than treated as a contract of the agent's own making.
+
+Studio still renders the agent's prose on a failure. Withholding it would hide the evidence a reader needs to judge the failure and make a false negative far more costly; what changes is that the number arrives already labelled.
+
 # Tolerance contract
 
 Per the [spec](../reference/okf-spec-summary.md), the parser never throws on: missing optional fields, unknown `type`, unknown extra frontmatter keys (preserved as-is), broken links, or missing indexes. It also reads a v0.1 bundle without complaint: `timestamp` still answers "when was this written" when `generated` is absent, and a legacy `# Citations` section is read as `sources`, with no credibility signals invented for entries that carry none. It records issues for [Validation](../features/validation.md) and keeps going.

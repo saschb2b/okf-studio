@@ -19,6 +19,8 @@ mod agent_mcp_grant;
 mod agent_process;
 #[path = "agent/host/agent_protocol.rs"]
 mod agent_protocol;
+#[path = "agent/host/agent_receipt.rs"]
+mod agent_receipt;
 #[path = "agent/host/agent_sandbox.rs"]
 mod agent_sandbox;
 #[path = "agent/host/agent_transcript.rs"]
@@ -964,6 +966,27 @@ async fn validate_agent_artifact(
     .map_err(|_| "Studio could not validate the agent artifact.".to_string())
 }
 
+/// Check an `okf-receipt` fence in agent output against the bundle's contract.
+///
+/// The gate. The agent supplies only its receipt; what that receipt is checked
+/// against is read from the bundle here, because an agent that could supply
+/// both sides could always make them agree.
+#[tauri::command]
+async fn validate_agent_receipt(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    markdown: String,
+    today: String,
+) -> Result<agent_receipt::AgentReceiptValidation, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_receipt::validate(&root, &markdown, &bundle, &today)
+    })
+    .await
+    .map_err(|_| "Studio could not check the run receipt.".to_string())
+}
+
 #[tauri::command]
 async fn prepare_agent_artifact_critic(
     grants: State<'_, bundle_grant::BundleGrantState>,
@@ -1541,6 +1564,90 @@ fn read_asset(
     Ok(okf_core::read_asset(&root, &rel))
 }
 
+/// Read the computation an Attested Computation concept declares, for display.
+///
+/// The webview passes a **concept id, never a path**. The path comes from that
+/// concept's own `computation` field, read back out of the bundle here. That is
+/// the authorization: a computation may be `.sql`, `.py`, anything its runtime
+/// takes, so the extension allowlist that guards `read_asset` cannot express
+/// what is permitted — and widening that door would have granted a great deal
+/// more, since it takes a caller-supplied path.
+///
+/// `None` covers every miss: unknown concept, no declared computation, an
+/// inline one, absent file, oversized, or a path escaping the bundle root.
+///
+/// Studio does not execute what it returns.
+#[tauri::command]
+async fn read_declared_computation(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    concept_id: String,
+) -> Result<Option<String>, String> {
+    let authorized_root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&authorized_root);
+        let concept = bundle
+            .concepts
+            .iter()
+            .find(|concept| concept.id == concept_id)?;
+        okf_core::read_declared_computation(&authorized_root, concept)
+    })
+    .await
+    .map_err(|_| "Studio could not read the declared computation.".to_string())
+}
+
+/// The largest receipt Studio will attest. A run's evidence is a handful of
+/// fields; anything past this is not a receipt, and parsing it would be work
+/// done on behalf of whatever sent it.
+const MAX_RECEIPT_FIELDS: usize = 64;
+const MAX_RECEIPT_VALUE_CHARS: usize = 256 * 1024;
+
+/// Attest one run of an Attested Computation against the bundle's contract.
+///
+/// The webview supplies a concept id and a receipt, never a path or a
+/// computation: what the run is checked *against* is read from the bundle here,
+/// which is the only arrangement where the check means anything. A caller that
+/// could supply both sides could always make them agree.
+///
+/// Studio does not execute the executor or the attester. It compares what a run
+/// reports it did against what the bundle sanctioned, and reports fidelity as
+/// unavailable because only the runtime can re-read a result by job id.
+#[tauri::command]
+async fn attest_computation_run(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    concept_id: String,
+    receipt: std::collections::BTreeMap<String, String>,
+    today: String,
+) -> Result<okf_core::attest::AttestationReport, String> {
+    let authorized_root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    if receipt.len() > MAX_RECEIPT_FIELDS {
+        return Err("That receipt declares more fields than a run's evidence has.".to_string());
+    }
+    if receipt
+        .values()
+        .any(|value| value.len() > MAX_RECEIPT_VALUE_CHARS)
+    {
+        return Err("A receipt field is too large to attest.".to_string());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&authorized_root);
+        let concept = bundle
+            .concepts
+            .iter()
+            .find(|concept| concept.id == concept_id)
+            .ok_or_else(|| "That concept is not in this bundle.".to_string())?;
+        Ok(okf_core::attest::attest_run(
+            &authorized_root,
+            concept,
+            &receipt,
+            &today,
+        ))
+    })
+    .await
+    .map_err(|_| "Studio could not complete the attestation.".to_string())?
+}
+
 /// Read a local bundle image as a `data:` URL so the reader can render it inline
 /// without a network fetch (the offline stance). Returns `null` when the image
 /// is absent, not an image type, or escapes the bundle root.
@@ -1857,6 +1964,7 @@ pub fn run() {
             federated_sources,
             federated_relationship_candidates,
             validate_agent_artifact,
+            validate_agent_receipt,
             prepare_agent_artifact_critic,
             validate_agent_artifact_critic,
             agent_catalog,
@@ -1917,6 +2025,8 @@ pub fn run() {
             fetch_remote_bundle,
             read_asset,
             read_asset_data_url,
+            read_declared_computation,
+            attest_computation_run,
             start_watch,
             stop_watch,
             can_self_update,

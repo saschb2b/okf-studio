@@ -13,7 +13,11 @@ import { titleOf, conceptById, indexIdForDir, indexNodeForId } from "@/shared/se
 import { FolderHome } from "@/features/bundle/components/FolderHome.tsx";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
 import { renderMarkdown, resolveAssetHref, resolveHref } from "@/shared/render/markdown.ts";
-import { readAssetDataUrl } from "@/shared/ipc.ts";
+import { readAssetDataUrl, readDeclaredComputation } from "@/shared/ipc.ts";
+import {
+  declaredComputationPath,
+  materializeFileComputation,
+} from "@/features/bundle/computation.ts";
 import { highlightCodeBlocks } from "@/shared/render/highlight.ts";
 import { renderMathBlocks } from "@/shared/render/math.ts";
 import { renderMermaidBlocks } from "@/shared/render/mermaid.ts";
@@ -306,6 +310,10 @@ export function Reader() {
   // Body HTML with images resolved, paired with the source html it derives from
   // (so a concept switch never renders the previous body while the new one loads).
   const [processed, setProcessed] = useState<{ src: string; html: string } | null>(null);
+  // A file-stored computation, keyed by concept so a stale read from the
+  // previous concept can never be rendered under the current one.
+  const [computationSource, setComputationSource] =
+    useState<{ conceptId: string; text: string | null } | null>(null);
   const [moveOpen, setMoveOpen] = useState(false);
   const [retirementOpen, setRetirementOpen] = useState(false);
 
@@ -320,7 +328,11 @@ export function Reader() {
   const bodyHtml = c
     ? classifyBodyLinks(
         renderMarkdown(
-          materializeEvidenceFootnotes(c.body, conceptEvidence),
+          materializeFileComputation(
+            materializeEvidenceFootnotes(c.body, conceptEvidence),
+            c,
+            computationSource?.conceptId === c.id ? computationSource.text : null,
+          ),
           tokenIndex,
         ),
         c.id,
@@ -432,6 +444,32 @@ export function Reader() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c?.id, bodyHtml, bundle?.root]);
+
+  // Load a file-stored computation so the body can render it under the same
+  // `# Computation` heading an inline one uses. Keyed by concept id rather than
+  // just cancelled, because the body is derived from this during render: an
+  // unkeyed value would let the previous concept's SQL appear under the new
+  // concept's heading for one frame.
+  //
+  // `null` text is a resolved miss (absent, oversized, unreadable), not a
+  // pending read. The rail panel is what tells the reader the file could not be
+  // read; the body simply omits the section rather than showing an empty fence.
+  // Nothing is cleared on the way out. Clearing here would be a synchronous
+  // setState inside an effect — a cascading render — and it would buy nothing:
+  // the body reads this only when `conceptId` matches the concept on screen, so
+  // a leftover value from a previous concept is already unreachable.
+  useEffect(() => {
+    let cancelled = false;
+    if (c && bundle && declaredComputationPath(c)) {
+      const conceptId = c.id;
+      void readDeclaredComputation(bundle.root, conceptId).then((text) => {
+        if (!cancelled) setComputationSource({ conceptId, text });
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [c, bundle]);
 
   // Image spotlight focus management: move focus into the dialog on open, trap
   // Tab (the close button is the only focusable element), close on Escape, and
@@ -973,7 +1011,7 @@ export function Reader() {
             metadata it happens to carry. */}
         {hasComputation(c) && (
           <RailModule title="Computation contract">
-            <ConceptComputation concept={c} />
+            <ConceptComputation concept={c} bundleRoot={bundle?.root} />
           </RailModule>
         )}
 

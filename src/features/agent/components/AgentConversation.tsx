@@ -12,7 +12,7 @@ import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShe
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { Check, CircleAlert, Crosshair, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
-import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordAgentThreadPrompt, recordWorkspaceTaskObservation, rememberedAuthMethod, respondAgentPermission, retrieveOkfContext, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
+import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordAgentThreadPrompt, recordWorkspaceTaskObservation, rememberedAuthMethod, respondAgentPermission, retrieveOkfContext, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentReceipt, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
 import { parseBundleProposal } from "@/features/agent/bundleProposal.ts";
 import { startTransition, useActionState, useEffect, useEffectEvent, useId, useRef, useState } from "react";
@@ -40,6 +40,9 @@ import { ConversationToolbar } from "@/features/agent/components/conversation/Co
 import { AgentArtifactWorkspace } from "@/features/agent/components/AgentArtifactWorkspace.tsx";
 import { RetrievalLab } from "@/features/agent/components/retrieval/RetrievalLab.tsx";
 import { RetrievalEvidenceSummary } from "@/features/agent/components/retrieval/RetrievalEvidenceSummary.tsx";
+import { AgentRunVerdict } from "@/features/agent/components/AgentRunVerdict.tsx";
+import { claimsARun } from "@/features/agent/receipt.ts";
+import type { AgentReceiptValidation } from "@/features/agent/receipt.ts";
 import { RetrievalInspector } from "@/features/agent/components/retrieval/RetrievalInspector.tsx";
 import type { RetrievalResult, RetrievalRoute } from "@/features/agent/retrieval/types.ts";
 import { buildRetrievalEvidenceSource } from "@/features/agent/retrieval/evidenceSource.ts";
@@ -353,6 +356,18 @@ export function AgentConversation({
   const notificationStatusRef = useRef<AgentThreadStatus>("idle");
   const savedThreadActionRef = useRef<HTMLButtonElement>(null);
   const initialSessionLoadStartedRef = useRef(false);
+  // The most recent agent message claiming a run of a sanctioned computation.
+  // Checked before the figure it reports is taken at face value — the gate.
+  let receiptMessageId: string | null = null;
+  let receiptMarkdown: string | null = null;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const item = messages[index];
+    if (item.role !== "agent" || !claimsARun(item.text)) continue;
+    receiptMessageId = item.id;
+    receiptMarkdown = item.text;
+    break;
+  }
+
   let artifactMessageId: string | null = null;
   let artifactEnvelope: string | null = null;
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -367,6 +382,29 @@ export function AgentConversation({
 
   bundleRootRef.current = bundleRoot;
   connectionIdRef.current = connection.connectionId;
+
+  // Keyed by message, so a verdict can never be shown against a later turn that
+  // did not claim a run — which would be the worst possible failure here.
+  const [receiptCheck, setReceiptCheck] = useState<
+    { messageId: string; validation: AgentReceiptValidation } | null
+  >(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!bundleRoot || !receiptMessageId || !receiptMarkdown) {
+      setReceiptCheck(null);
+      return;
+    }
+    const messageId = receiptMessageId;
+    void validateAgentReceipt(bundleRoot, receiptMarkdown).then((validation) => {
+      if (!cancelled && validation.status !== "none") {
+        setReceiptCheck({ messageId, validation });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bundleRoot, receiptMessageId, receiptMarkdown]);
 
   useEffect(() => {
     if (savedThread.status === "error") savedThreadActionRef.current?.focus();
@@ -2634,6 +2672,13 @@ export function AgentConversation({
                         </div>
                       );
                     })}
+                    {/* Above the evidence summary and inside the turn, because
+                        this is a claim about the answer just given. A reader
+                        scrolling to the figure meets the verdict on the way. */}
+                    {receiptCheck &&
+                      turn.items.some((item) => item.id === receiptCheck.messageId) && (
+                        <AgentRunVerdict validation={receiptCheck.validation} />
+                      )}
                     {turnId && retrievalResult && (
                       <RetrievalEvidenceSummary
                         result={retrievalResult}

@@ -10,9 +10,13 @@
  * Tokens only, except the accent alphas, which are mixed from --accent. */
 
 .jarvis-stage {
-  --jarvis-line: color-mix(in oklch, var(--accent) 55%, transparent);
-  --jarvis-line-dim: color-mix(in oklch, var(--accent) 22%, transparent);
-  --jarvis-glass: color-mix(in oklch, var(--bg) 62%, transparent);
+  /* The field is amber, so the chrome around it is too. Held locally rather
+     than added to the app's token layer: this is one mode's look, not a role
+     the rest of Studio has. */
+  --jarvis-hot: oklch(78% 0.16 62);
+  --jarvis-line: color-mix(in oklch, var(--jarvis-hot) 45%, transparent);
+  --jarvis-line-dim: color-mix(in oklch, var(--jarvis-hot) 18%, transparent);
+  --jarvis-glass: color-mix(in oklch, #05070c 72%, transparent);
   --jarvis-chamfer: 10px;
 
   position: fixed;
@@ -20,13 +24,9 @@
   z-index: 80;
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(
-      ellipse at center,
-      color-mix(in oklch, var(--bg) 55%, transparent),
-      color-mix(in oklch, var(--bg) 92%, transparent) 70%
-    );
-  backdrop-filter: blur(2px);
+  /* Near-black, so the bloom has somewhere to glow against. A lighter ground
+     turns filaments into grey lines. */
+  background: radial-gradient(ellipse at center, #05070ce0, #010206f7 72%);
   /* Never steals the caret. The composer keeps focus while this plays, which is
      the whole reason this is an overlay and not an OS window. */
   pointer-events: none;
@@ -149,15 +149,15 @@
 /* Kind is carried by a micro-label and stroke weight, not by a coloured rail. */
 .jarvis-panel__tag {
   align-self: flex-start;
-  color: var(--accent);
+  color: var(--jarvis-hot);
   font-family: var(--mono);
   font-size: 0.625rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-.jarvis-panel--excerpt .jarvis-panel__tag { color: var(--ok); }
-.jarvis-panel--caveat .jarvis-panel__tag { color: var(--warn); }
+.jarvis-panel--excerpt .jarvis-panel__tag { color: oklch(86% 0.14 88); }
+.jarvis-panel--caveat .jarvis-panel__tag { color: oklch(72% 0.17 38); }
 .jarvis-panel--omission .jarvis-panel__tag,
 .jarvis-panel--more .jarvis-panel__tag { color: var(--text-dim); }
 
@@ -203,7 +203,7 @@
 }
 
 .jarvis-panel__route {
-  color: var(--accent);
+  color: var(--jarvis-hot);
   font-family: var(--mono);
   font-size: 0.625rem;
   letter-spacing: 0.12em;
@@ -216,7 +216,7 @@
 }
 
 .jarvis-panel__score {
-  color: var(--accent);
+  color: var(--jarvis-hot);
   font-variant-numeric: tabular-nums;
 }
 
@@ -258,11 +258,51 @@
 
 .jarvis-stage__dismiss {
   position: absolute;
-  bottom: var(--space-20);
+  bottom: var(--space-24);
   margin: 0;
-  color: var(--text-dim);
+  color: var(--jarvis-line);
   font-family: var(--mono);
   font-size: 0.625rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+/* --- Housing ---------------------------------------------------------------
+ * The reference frames its sphere: bracketed corners and a ruled bar. Without
+ * a frame a glowing ball floats in a void and reads as a screensaver; with one
+ * it reads as something being *displayed*, which is the whole difference. */
+.jarvis-stage__housing {
+  position: absolute;
+  inset: var(--space-16);
+  pointer-events: none;
+}
+
+.jarvis-stage__housing span {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--jarvis-line);
+  opacity: 0.65;
+}
+
+.jarvis-stage__housing span:nth-child(1) { top: 0; left: 0; border-right: none; border-bottom: none; }
+.jarvis-stage__housing span:nth-child(2) { top: 0; right: 0; border-left: none; border-bottom: none; }
+.jarvis-stage__housing span:nth-child(3) { bottom: 0; left: 0; border-right: none; border-top: none; }
+.jarvis-stage__housing span:nth-child(4) { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+/* A ruled bar under the housing. Repeating-gradient ticks rather than markup,
+   so it costs one element. */
+.jarvis-stage__rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 7px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      var(--jarvis-line) 0 1px,
+      transparent 1px 14px
+    );
+  opacity: 0.4;
 }

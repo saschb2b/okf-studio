@@ -13,22 +13,14 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { RetrievalResult } from "@/features/agent/retrieval/types.ts";
-import type * as Three from "three";
 import { JarvisField, type JarvisFieldConcept } from "./JarvisField.tsx";
-
-/** Loaded once, on the first staged turn. At module scope because the React
- *  Compiler cannot lower an `import()` expression inside a component. */
-let threePromise: Promise<typeof Three> | null = null;
-function loadThree(): Promise<typeof Three> {
-  threePromise ??= import("three");
-  return threePromise;
-}
+import { loadJarvisThree, type JarvisThree } from "./jarvisThree.ts";
 import { BEAT_MS, beatsFor, type JarvisBeat } from "./jarvisBeats.ts";
 import "./JarvisStage.css";
 
 interface JarvisStageProps {
   result: RetrievalResult;
-  /** The open bundle's concepts, rendered as the field behind the stage. Empty
+  /** The open bundle's concepts, rendered as the graph behind the stage. Empty
    *  or absent simply means no field: the panels are the feature. */
   concepts?: readonly JarvisFieldConcept[];
   /** Cleared when the sequence finishes or the viewer dismisses it. */
@@ -115,15 +107,15 @@ export function JarvisStage({
   // three.js is loaded only once someone actually runs a staged turn, so a user
   // who never enables the mode never downloads it. Null until it lands, and the
   // stage plays perfectly well without it.
-  const [three, setThree] = useState<typeof Three | null>(null);
+  const [loaded, setLoaded] = useState<JarvisThree | null>(null);
 
   useEffect(() => {
     // No field under reduced motion: a slowly rotating point cloud is exactly
     // the kind of continuous background movement that setting exists to stop.
     if (reduceMotion || !concepts || concepts.length === 0) return;
     let cancelled = false;
-    void loadThree().then((module) => {
-      if (!cancelled) setThree(module);
+    void loadJarvisThree().then((modules) => {
+      if (!cancelled) setLoaded(modules);
     });
     return () => {
       cancelled = true;
@@ -184,7 +176,9 @@ export function JarvisStage({
   // actually touched rather than an arbitrary set.
   const litIds = visible
     .map((beat) =>
-      beat.kind === "candidate" || beat.kind === "omission" ? beat.conceptId : null,
+      beat.kind === "candidate" || beat.kind === "omission" || beat.kind === "excerpt"
+        ? beat.conceptId
+        : null,
     )
     .filter((id): id is string => id !== null);
   const target = container ?? document.body;
@@ -198,8 +192,8 @@ export function JarvisStage({
       aria-hidden="true"
       onClick={onDone}
     >
-      {three && concepts && (
-        <JarvisField concepts={concepts} litIds={litIds} three={three} />
+      {loaded && concepts && (
+        <JarvisField concepts={concepts} litIds={litIds} loaded={loaded} />
       )}
       <div className="jarvis-stage__field">
         {visible.map((beat, index) => (
@@ -218,6 +212,13 @@ export function JarvisStage({
             <Panel beat={beat} />
           </div>
         ))}
+      </div>
+      <div className="jarvis-stage__housing">
+        <span />
+        <span />
+        <span />
+        <span />
+        <div className="jarvis-stage__rule" />
       </div>
       <p className="jarvis-stage__dismiss">Esc to skip</p>
     </div>,

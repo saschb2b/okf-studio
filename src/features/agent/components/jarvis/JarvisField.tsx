@@ -1,49 +1,59 @@
-// The field behind the stage: the open bundle, as points.
+// The field behind the stage: the bundle's concept graph as a lit sphere.
 //
-// Not decoration. Every point is a concept, and a point ignites when a beat
-// touches the concept it stands for. That keeps the stage's one rule intact —
-// nothing on screen without a referent — and it is the reason the background is
-// worth rendering at all: it makes the sweep look like a search *through this
-// bundle* rather than a generic sci-fi loop.
+// The real graph, from the real links — nodes force-laid onto a spherical
+// shell, every authored link drawn as a filament. A node ignites when a beat
+// reaches the concept it stands for, and an edge lights only when both of its
+// ends are lit, so the retrieval burns a visible path along authored links
+// rather than dotting the field at random.
 //
-// three.js is dynamically imported by the caller so a user who never turns
-// Jarvis Mode on never downloads it.
+// Two earlier passes were wrong in instructive ways. The first hashed ids onto
+// a sphere and drew no edges, which is a starfield wearing a graph's name. The
+// second drew the real graph but let it float free and coloured nodes by type,
+// which reads as scattered confetti rather than as one object.
+//
+// This one holds three properties the reference look depends on:
+//   - a shell, so the graph is a *ball* with structure on its surface;
+//   - a single hot hue, so it reads as one instrument rather than a legend; and
+//   - real bloom, which is what makes filaments glow instead of merely being
+//     thin bright lines.
+//
+// Type colour is deliberately dropped. It tied the field to the Graph View's
+// palette, but a dozen hues at once is the difference between a diagram and a
+// brain, and the brain is what this is for.
 
 import { useEffect, useRef } from "react";
-import type * as Three from "three";
+import type { JarvisThree } from "./jarvisThree.ts";
+import { buildLayout, MAX_LAYOUT_NODES, SHELL_RADIUS } from "./jarvisLayout.ts";
 
-/** All the field reads. Narrower than `Concept` on purpose: the stage is handed
- *  whatever the panel already has, and asking for more than is used would make
- *  this harder to call than it needs to be. */
+/** All the field reads. Narrower than `Concept` on purpose. */
 export interface JarvisFieldConcept {
   id: string;
-  degree?: number;
+  links?: readonly string[];
 }
 
 interface JarvisFieldProps {
   concepts: readonly JarvisFieldConcept[];
-  /** Concept ids the sequence has reached so far. Points for these ignite. */
+  /** Concept ids the sequence has reached. Their nodes, and the edges between
+   *  them, ignite. */
   litIds: readonly string[];
-  three: typeof Three;
+  loaded: JarvisThree;
 }
 
-/** Points past this stop reading as a field and start costing frames. */
-const MAX_POINTS = 1600;
+/** Layout ticks per frame. Enough that the sphere forms within the first
+ *  seconds of a turn, few enough to hold the frame rate while it does. */
+const TICKS_PER_FRAME = 2;
 
-/** Deterministic 0..1 from a concept id, so the same bundle always lays out the
- *  same way. A random layout would make each turn look unrelated to the last. */
-function hashUnit(text: string, salt: number): number {
-  let hash = salt * 2654435761;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = Math.imul(hash ^ text.charCodeAt(index), 2246822519);
-    hash = (hash << 13) | (hash >>> 19);
-  }
-  return ((hash >>> 0) % 100000) / 100000;
-}
+/** The resting hue: deep amber, well below full brightness so bloom has
+ *  somewhere to climb to. */
+const EMBER = [0.42, 0.16, 0.03] as const;
+/** A node the turn touched. White-hot, which is what makes ignition read as
+ *  heat rather than as a colour change. */
+const IGNITED = [1, 0.72, 0.32] as const;
+const EDGE_REST = [0.24, 0.09, 0.02] as const;
+const EDGE_LIT = [1, 0.58, 0.18] as const;
 
-export function JarvisField({ concepts, litIds, three }: JarvisFieldProps) {
+export function JarvisField({ concepts, litIds, loaded }: JarvisFieldProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  // The running scene, so beat updates repaint rather than rebuild.
   const sceneRef = useRef<{
     dispose: () => void;
     ignite: (ids: readonly string[]) => void;
@@ -52,59 +62,47 @@ export function JarvisField({ concepts, litIds, three }: JarvisFieldProps) {
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-
-    const points = concepts.slice(0, MAX_POINTS);
+    const { three, EffectComposer, RenderPass, UnrealBloomPass } = loaded;
 
     // WebGL is not guaranteed: a headless browser, a blocklisted driver, or a
-    // machine with no GPU acceleration all throw here. The field is the
-    // decoration and the panels are the feature, so a failure degrades to no
-    // field rather than taking the stage down with it.
-    let renderer: Three.WebGLRenderer;
+    // machine with no acceleration all throw here. The field is decoration and
+    // the panels are the feature, so this degrades to no field rather than
+    // taking the stage down.
+    let renderer: InstanceType<typeof three.WebGLRenderer>;
     try {
       renderer = new three.WebGLRenderer({ alpha: true, antialias: true });
     } catch {
       return;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(host.clientWidth, host.clientHeight);
+    const width = Math.max(host.clientWidth, 1);
+    const height = Math.max(host.clientHeight, 1);
+    // Bloom renders the scene several times over, so the pixel ratio is capped
+    // harder here than it would be for a plain pass.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setSize(width, height);
     host.appendChild(renderer.domElement);
 
     const scene = new three.Scene();
-    const camera = new three.PerspectiveCamera(
-      52,
-      host.clientWidth / Math.max(host.clientHeight, 1),
-      0.1,
-      100,
-    );
-    camera.position.z = 15;
+    const camera = new three.PerspectiveCamera(48, width / height, 0.1, 200);
+    camera.position.z = 23;
 
-    // Concepts on a sphere shell, jittered by degree so hubs sit inward. The
-    // layout is meaningless as analysis and is not presented as any; it exists
-    // so the field has structure instead of being noise.
-    const positions = new Float32Array(points.length * 3);
-    const colors = new Float32Array(points.length * 3);
-    const sizes = new Float32Array(points.length);
-    const indexById = new Map<string, number>();
+    const used = concepts.slice(0, MAX_LAYOUT_NODES);
+    const layout = buildLayout(used);
+    const nodeCount = layout.nodes.length;
 
-    points.forEach((concept, index) => {
-      indexById.set(concept.id, index);
-      const theta = hashUnit(concept.id, 1) * Math.PI * 2;
-      const phi = Math.acos(2 * hashUnit(concept.id, 2) - 1);
-      const radius = 6.5 + hashUnit(concept.id, 3) * 3.5 - Math.min(concept.degree ?? 0, 8) * 0.22;
-      positions[index * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      positions[index * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-      positions[index * 3 + 2] = radius * Math.cos(phi);
-      colors.set([0.22, 0.28, 0.38], index * 3);
-      sizes[index] = 0.06;
-    });
+    const nodePositions = new Float32Array(nodeCount * 3);
+    const nodeColors = new Float32Array(nodeCount * 3);
+    for (let index = 0; index < nodeCount; index += 1) {
+      nodeColors.set(EMBER, index * 3);
+    }
 
-    const geometry = new three.BufferGeometry();
-    geometry.setAttribute("position", new three.BufferAttribute(positions, 3));
-    geometry.setAttribute("color", new three.BufferAttribute(colors, 3));
-    const cloud = new three.Points(
-      geometry,
+    const nodeGeometry = new three.BufferGeometry();
+    nodeGeometry.setAttribute("position", new three.BufferAttribute(nodePositions, 3));
+    nodeGeometry.setAttribute("color", new three.BufferAttribute(nodeColors, 3));
+    const nodes = new three.Points(
+      nodeGeometry,
       new three.PointsMaterial({
-        size: 0.1,
+        size: 0.2,
         vertexColors: true,
         transparent: true,
         opacity: 0.95,
@@ -113,30 +111,134 @@ export function JarvisField({ concepts, litIds, three }: JarvisFieldProps) {
         blending: three.AdditiveBlending,
       }),
     );
-    scene.add(cloud);
+    scene.add(nodes);
 
-    // Two slow rings on different axes. The single most legible "this is an
-    // instrument" cue, and cheap.
-    const rings: Three.LineLoop[] = [];
-    for (const [radius, tilt] of [[9.4, 0.42], [11.2, -0.9]] as const) {
-      const segments = 128;
-      const ringPositions = new Float32Array(segments * 3);
-      for (let index = 0; index < segments; index += 1) {
-        const angle = (index / segments) * Math.PI * 2;
-        ringPositions[index * 3] = Math.cos(angle) * radius;
-        ringPositions[index * 3 + 1] = Math.sin(angle) * radius;
-        ringPositions[index * 3 + 2] = 0;
-      }
-      const ringGeometry = new three.BufferGeometry();
-      ringGeometry.setAttribute("position", new three.BufferAttribute(ringPositions, 3));
-      const ring = new three.LineLoop(
-        ringGeometry,
-        new three.LineBasicMaterial({ color: 0x4c7dff, transparent: true, opacity: 0.16 }),
-      );
-      ring.rotation.x = tilt;
-      rings.push(ring);
-      scene.add(ring);
+    // Edges as filaments. Per-vertex colour so a lit pair brightens its own
+    // line without a second draw call.
+    const edgePositions = new Float32Array(layout.edges.length * 6);
+    const edgeColors = new Float32Array(layout.edges.length * 6);
+    for (let index = 0; index < layout.edges.length; index += 1) {
+      edgeColors.set([...EDGE_REST, ...EDGE_REST], index * 6);
     }
+    const edgeGeometry = new three.BufferGeometry();
+    edgeGeometry.setAttribute("position", new three.BufferAttribute(edgePositions, 3));
+    edgeGeometry.setAttribute("color", new three.BufferAttribute(edgeColors, 3));
+    const edges = new three.LineSegments(
+      edgeGeometry,
+      new three.LineBasicMaterial({
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        blending: three.AdditiveBlending,
+      }),
+    );
+    scene.add(edges);
+
+    const globe = new three.Group();
+    globe.add(nodes);
+    globe.add(edges);
+    scene.add(globe);
+
+    // Sweeping arcs behind the sphere. Partial rather than closed rings, which
+    // is what suggests an instrument housing rather than an orbit diagram.
+    const arcs: InstanceType<typeof three.Line>[] = [];
+    for (const [radius, sweep, tilt, spin] of [
+      [SHELL_RADIUS * 1.5, 2.3, 0.34, 0.05],
+      [SHELL_RADIUS * 1.72, 1.5, -0.72, -0.035],
+      [SHELL_RADIUS * 1.28, 0.9, 1.1, 0.07],
+    ] as const) {
+      const segments = 96;
+      const points = new Float32Array((segments + 1) * 3);
+      for (let index = 0; index <= segments; index += 1) {
+        const angle = (index / segments) * sweep;
+        points[index * 3] = Math.cos(angle) * radius;
+        points[index * 3 + 1] = Math.sin(angle) * radius;
+      }
+      const geometry = new three.BufferGeometry();
+      geometry.setAttribute("position", new three.BufferAttribute(points, 3));
+      const arc = new three.Line(
+        geometry,
+        new three.LineBasicMaterial({
+          color: 0xff8a2b,
+          transparent: true,
+          opacity: 0.22,
+          blending: three.AdditiveBlending,
+        }),
+      );
+      arc.rotation.x = tilt;
+      arc.userData.spin = spin;
+      arcs.push(arc);
+      scene.add(arc);
+    }
+
+    // Bloom is the single biggest contributor to the look: without it these are
+    // thin bright lines, with it they are filaments that glow.
+    //
+    // Guarded separately from the renderer. The composer and the bloom pass
+    // allocate their own render targets, so they can fail where renderer
+    // construction succeeded — a real hole in the first version, which only
+    // wrapped `new WebGLRenderer`. A failure here degrades to the graph without
+    // glow rather than to no graph at all.
+    let composer: InstanceType<typeof EffectComposer> | null = null;
+    let bloom: InstanceType<typeof UnrealBloomPass> | null = null;
+    try {
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      bloom = new UnrealBloomPass(
+        new three.Vector2(width, height),
+        1.05, // strength
+        0.62, // radius
+        0.14, // threshold, low so the dim resting graph still catches a little
+      );
+      composer.addPass(bloom);
+      composer.setSize(width, height);
+    } catch {
+      composer?.dispose();
+      composer = null;
+      bloom = null;
+    }
+
+    const litIndices = new Set<number>();
+
+    const writePositions = () => {
+      for (let index = 0; index < nodeCount; index += 1) {
+        const node = layout.nodes[index];
+        nodePositions[index * 3] = node.x;
+        nodePositions[index * 3 + 1] = node.y;
+        nodePositions[index * 3 + 2] = node.z;
+      }
+      for (let index = 0; index < layout.edges.length; index += 1) {
+        const edge = layout.edges[index];
+        const source = layout.nodes[edge.source];
+        const target = layout.nodes[edge.target];
+        edgePositions.set([source.x, source.y, source.z], index * 6);
+        edgePositions.set([target.x, target.y, target.z], index * 6 + 3);
+      }
+      nodeGeometry.getAttribute("position").needsUpdate = true;
+      edgeGeometry.getAttribute("position").needsUpdate = true;
+      nodeGeometry.computeBoundingSphere();
+    };
+
+    const paintIgnition = () => {
+      if (litIndices.size === 0) return;
+      const nodeAttribute = nodeGeometry.getAttribute("color");
+      for (const index of litIndices) {
+        nodeAttribute.setXYZ(index, IGNITED[0], IGNITED[1], IGNITED[2]);
+      }
+      nodeAttribute.needsUpdate = true;
+
+      const edgeAttribute = edgeGeometry.getAttribute("color");
+      for (let index = 0; index < layout.edges.length; index += 1) {
+        const edge = layout.edges[index];
+        // Both ends, so the trail follows an authored link rather than glowing
+        // wherever a single hit happens to land.
+        if (!litIndices.has(edge.source) || !litIndices.has(edge.target)) continue;
+        edgeAttribute.setXYZ(index * 2, EDGE_LIT[0], EDGE_LIT[1], EDGE_LIT[2]);
+        edgeAttribute.setXYZ(index * 2 + 1, EDGE_LIT[0], EDGE_LIT[1], EDGE_LIT[2]);
+      }
+      edgeAttribute.needsUpdate = true;
+    };
 
     let frame = 0;
     let elapsed = 0;
@@ -146,46 +248,56 @@ export function JarvisField({ concepts, litIds, three }: JarvisFieldProps) {
       const delta = Math.min((now - previous) / 1000, 0.1);
       previous = now;
       elapsed += delta;
+
+      for (let tick = 0; tick < TICKS_PER_FRAME; tick += 1) layout.step();
+      writePositions();
+      paintIgnition();
+
       // Slow enough to read as drift rather than spin. A fast rotation is the
       // difference between an instrument and a screensaver.
-      cloud.rotation.y += delta * 0.055;
-      cloud.rotation.x = Math.sin(elapsed * 0.11) * 0.12;
-      rings[0].rotation.z += delta * 0.12;
-      rings[1].rotation.z -= delta * 0.08;
-      renderer.render(scene, camera);
+      globe.rotation.y = elapsed * 0.05;
+      globe.rotation.x = Math.sin(elapsed * 0.1) * 0.09;
+      for (const arc of arcs) {
+        arc.rotation.z += delta * (arc.userData.spin as number);
+      }
+
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
 
     const onResize = () => {
-      if (!host.clientWidth || !host.clientHeight) return;
-      camera.aspect = host.clientWidth / host.clientHeight;
+      const nextWidth = Math.max(host.clientWidth, 1);
+      const nextHeight = Math.max(host.clientHeight, 1);
+      camera.aspect = nextWidth / nextHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(host.clientWidth, host.clientHeight);
+      renderer.setSize(nextWidth, nextHeight);
+      composer?.setSize(nextWidth, nextHeight);
     };
     const observer = new ResizeObserver(onResize);
     observer.observe(host);
 
     sceneRef.current = {
       ignite: (ids) => {
-        const attribute = geometry.getAttribute("color") as Three.BufferAttribute;
         for (const id of ids) {
-          const index = indexById.get(id);
-          if (index === undefined) continue;
-          attribute.setXYZ(index, 0.45, 0.62, 1);
-          sizes[index] = 0.3;
+          const index = layout.indexById.get(id);
+          if (index !== undefined) litIndices.add(index);
         }
-        attribute.needsUpdate = true;
       },
       dispose: () => {
         cancelAnimationFrame(frame);
         observer.disconnect();
-        geometry.dispose();
-        cloud.material.dispose();
-        for (const ring of rings) {
-          ring.geometry.dispose();
-          (ring.material as Three.Material).dispose();
+        nodeGeometry.dispose();
+        nodes.material.dispose();
+        edgeGeometry.dispose();
+        edges.material.dispose();
+        for (const arc of arcs) {
+          arc.geometry.dispose();
+          (arc.material as InstanceType<typeof three.Material>).dispose();
         }
+        bloom?.dispose();
+        composer?.dispose();
         renderer.dispose();
         renderer.domElement.remove();
       },
@@ -195,7 +307,7 @@ export function JarvisField({ concepts, litIds, three }: JarvisFieldProps) {
       sceneRef.current?.dispose();
       sceneRef.current = null;
     };
-  }, [concepts, three]);
+  }, [concepts, loaded]);
 
   useEffect(() => {
     sceneRef.current?.ignite(litIds);

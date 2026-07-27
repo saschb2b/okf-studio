@@ -19,7 +19,7 @@ const meta = {
     onDone: fn(),
     reduceMotion: false,
     result: receiptFor("recognized revenue"),
-    // The field renders the open bundle, so the stories pass the mock one.
+    // The field renders the open bundle's graph, so the stories pass the mock one.
     concepts: MOCK_BUNDLE.concepts,
   },
 } satisfies Meta<typeof JarvisStage>;

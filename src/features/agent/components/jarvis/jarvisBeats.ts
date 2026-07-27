@@ -23,7 +23,14 @@ export type JarvisBeat =
   /** A candidate that ranked. Flickers past — density is the point, not the text. */
   | { kind: "candidate"; id: string; conceptId: string; score: number; matched: string[] }
   /** A candidate that made it into the evidence, with its text. */
-  | { kind: "excerpt"; id: string; conceptTitle: string; headingPath: string[]; text: string }
+  | {
+      kind: "excerpt";
+      id: string;
+      conceptId: string;
+      conceptTitle: string;
+      headingPath: string[];
+      text: string;
+    }
   /** Something deliberately left out, with the reason. */
   | { kind: "omission"; id: string; conceptId: string; reason: string; detail: string }
   /** A warning attached to what was kept. */
@@ -84,6 +91,7 @@ export function beatsFor(result: RetrievalResult): JarvisBeat[] {
     beats.push({
       kind: "excerpt",
       id: `excerpt:${item.sectionId}`,
+      conceptId: item.conceptId,
       conceptTitle: item.conceptTitle,
       headingPath: item.headingPath,
       text: item.text,

@@ -2448,3 +2448,43 @@
 .bundle-proposal :is(p, li, dd) {
   max-width: var(--measure-prose);
 }
+
+/* --- Selectable transcript --------------------------------------------------
+ * The app disables selection globally so dragging across chrome selects nothing
+ * (src/styles.css), and opts real content back in. The agent transcript was
+ * never on that list, so none of an answer could be selected or copied — you
+ * could only take the whole response via the copy button.
+ *
+ * That also left an affordance stranded: ResponseActions has a "Copy selection"
+ * button gated on a selection existing inside the response, which with
+ * `user-select: none` could never happen. Opting in here is what makes it
+ * reachable.
+ *
+ * Scoped to the message prose rather than the whole transcript, so drag-select
+ * picks up the answer and the prompt without hoovering up button labels and
+ * badge text on the way past. */
+.agent-message__markdown,
+.agent-message p,
+.agent-message--user,
+.agent-message__markdown code,
+.agent-message__markdown pre,
+.streaming-tail {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Interactive children stay unselectable even inside a selectable message: a
+   drag across an answer should not collect the words on its buttons. */
+.agent-message button,
+.agent-message__user-actions,
+.agent-message__icon {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The caret is decoration, and a selection that swallows it would paste a stray
+   character into whatever the text is going to. */
+.streaming-caret {
+  -webkit-user-select: none;
+  user-select: none;
+}

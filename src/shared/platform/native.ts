@@ -16,8 +16,16 @@ export const ZOOM_EVENT = "okf:zoom";
 
 /** Selectors that own their own zoom (the graph canvas) — leave their events alone. */
 const GRAPH_SELECTOR = ".graph-canvas, .graph";
-/** The reader keeps a useful native context menu (copy / select-all). */
-const READER_SELECTOR = ".reader";
+/**
+ * Where the native context menu stays, because these are the surfaces whose
+ * text is selectable and therefore worth copying.
+ *
+ * Kept in step with the `user-select: text` opt-ins by hand — the reader's in
+ * src/styles.css, the agent message's in AgentConversation.css. A surface that
+ * allows selection but suppresses the menu is half a feature: the text
+ * highlights and then there is no obvious way to take it.
+ */
+const SELECTABLE_SELECTOR = ".reader, .agent-message";
 
 function isInside(target: EventTarget | null, selector: string): boolean {
   return target instanceof Element && target.closest(selector) !== null;
@@ -79,9 +87,10 @@ export function installNativeBehaviors(): () => void {
   };
 
   // --- Suppress the default browser context menu on the app chrome. ---------
-  // The reader keeps its menu so text stays copyable / selectable there.
+  // Selectable surfaces keep theirs, so text stays copyable where it is
+  // selectable at all.
   const onContextMenu = (e: MouseEvent): void => {
-    if (isInside(e.target, READER_SELECTOR)) return;
+    if (isInside(e.target, SELECTABLE_SELECTOR)) return;
     e.preventDefault();
   };
 

@@ -71,6 +71,8 @@ export interface AgentConversationProps {
   bundleRoot: string | null;
   bundleName: string | null;
   activeConcept: { id: string; title: string } | null;
+  /** Streaming text appears without fading when this is on. */
+  reduceMotion?: boolean;
   onCaptureReaderSelection: () => ReaderSelectionCapture;
   concepts: readonly {
     id: string;
@@ -107,6 +109,7 @@ export function AgentConversation({
   bundleRoot,
   bundleName,
   activeConcept,
+  reduceMotion = false,
   onCaptureReaderSelection,
   concepts,
   onOpenConcept,
@@ -379,6 +382,15 @@ export function AgentConversation({
     artifactEnvelope = envelope;
     break;
   }
+
+  // The message still being written, if any: the newest agent segment of the
+  // live turn. Only this one gets the smoothed, per-word reveal — every settled
+  // message renders as one parsed document with no streaming overhead at all.
+  const streamingMessageId = activeTurn
+    ? messages.findLast(
+        (item) => item.role === "agent" && item.turnId === activeTurn.turnId,
+      )?.id ?? null
+    : null;
 
   bundleRootRef.current = bundleRoot;
   connectionIdRef.current = connection.connectionId;
@@ -2668,6 +2680,8 @@ export function AgentConversation({
                               (isSubmitting || isPreparingGeneration)
                             }
                             showResponseActions={false}
+                            isStreaming={item.id === streamingMessageId}
+                            reduceMotion={reduceMotion}
                           />
                         </div>
                       );

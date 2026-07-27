@@ -9,6 +9,8 @@ import { useRef, useState } from "react";
 import type { ConversationMessage, ConversationPlan, ConversationTool, ConversationItem, PendingPermission } from "./types.ts";
 import { errorMessage } from "./helpers.ts";
 import { ResponseActions } from "./ResponseActions.tsx";
+import { StreamingMarkdown } from "./StreamingMarkdown.tsx";
+import { useSmoothedStream } from "./useSmoothedStream.ts";
 import { conceptIdForToolLocation } from "./toolLocation.ts";
 import "@/features/agent/components/AgentConversation.css";
 
@@ -226,6 +228,9 @@ export interface ConversationItemViewProps {
   generationError: string | null;
   isGeneratingProposal: boolean;
   showResponseActions?: boolean;
+  /** Still being written; only the live message gets the smoothed reveal. */
+  isStreaming?: boolean;
+  reduceMotion?: boolean;
 }
 
 export function ConversationItemView({
@@ -240,6 +245,8 @@ export function ConversationItemView({
   generationError,
   isGeneratingProposal,
   showResponseActions = true,
+  isStreaming = false,
+  reduceMotion = false,
 }: ConversationItemViewProps) {
   if (item.role === "plan") return <PlanCard plan={item} />;
   if (item.role === "tool") {
@@ -262,6 +269,8 @@ export function ConversationItemView({
       generationError={generationError}
       isGeneratingProposal={isGeneratingProposal}
       showResponseActions={showResponseActions}
+      isStreaming={isStreaming}
+      reduceMotion={reduceMotion}
     />
   );
 }
@@ -630,6 +639,10 @@ export interface MessageProps {
   isGeneratingProposal: boolean;
   showResponseActions?: boolean;
   onReusePrompt?: () => void;
+  /** Still being written. Drives the smoothed reveal; a settled message renders
+   *  as one parsed document with no spans and no animation. */
+  isStreaming?: boolean;
+  reduceMotion?: boolean;
 }
 
 export function Message({
@@ -643,12 +656,21 @@ export function Message({
   isGeneratingProposal,
   showResponseActions = true,
   onReusePrompt,
+  isStreaming = false,
+  reduceMotion = false,
 }: MessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   const agentNarrative = message.role === "agent"
     ? bundleProposalNarrative(message.text)
     : message.text;
-  const renderedAgentText = message.role === "agent"
+  const streaming = message.role === "agent" && isStreaming;
+  // Smoothed only while streaming. The hook returns the full text the moment
+  // that stops, so a finished answer never waits for a buffer to drain.
+  const visibleNarrative = useSmoothedStream(agentNarrative, streaming);
+  // Only parsed once streaming ends: the growing edge goes through
+  // StreamingMarkdown instead, which parses the settled part per closed block
+  // rather than per chunk.
+  const renderedAgentText = message.role === "agent" && !streaming
     ? { __html: renderMarkdown(agentNarrative) }
     : null;
   const bundleProposal = message.role === "agent"
@@ -676,7 +698,9 @@ export function Message({
           </p>
         )}
         {message.role === "agent" ? (
-          agentNarrative ? (
+          streaming ? (
+            <StreamingMarkdown text={visibleNarrative} animate={!reduceMotion} />
+          ) : agentNarrative ? (
             <div
               ref={markdownRef}
               className="markdown agent-message__markdown"

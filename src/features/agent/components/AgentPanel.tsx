@@ -423,6 +423,7 @@ export function AgentPanel() {
                   onOpenFolder={() => actions.openFolder()}
                   notificationsEnabled={state.settings.agentNotifications}
                   notificationSound={state.settings.agentNotificationSound}
+                  reduceMotion={state.settings.reduceMotion}
                   onConnectionStatusChange={(status) => {
                     setConnectionStatuses((current) => {
                       if (current.get(connection.connectionId) === status) return current;

@@ -5,7 +5,7 @@ description: OS-specific download CTA: platform glyph, label, and a mono file/fo
 tags: [components, download, button]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-11T04:45:00Z
+generated: { by: claude/unrecorded, at: 2026-07-11T04:45:00Z }
 examples:
   - /components/download-button.example.html
 tokens:

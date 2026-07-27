@@ -5,7 +5,7 @@ description: "A floating pill bar: brand mark on the left, route links with one 
 tags: [components, navigation]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /components/nav.example.html
 tokens:

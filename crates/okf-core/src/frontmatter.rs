@@ -14,13 +14,32 @@ use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
 /// Keys the data model promotes to typed fields; everything else goes to `extra`.
-pub const KNOWN_KEYS: [&str; 6] = [
+///
+/// The v0.2 additions are promoted rather than left in `extra` because the model
+/// reads them structurally — a trust tier is computed over `verified`, staleness
+/// compares `stale_after` — and that cannot be done through an untyped value.
+pub const KNOWN_KEYS: [&str; 17] = [
     "type",
     "title",
     "description",
     "resource",
     "tags",
     "timestamp",
+    // OKF v0.2 provenance, trust and lifecycle
+    "sources",
+    "usage_window",
+    "generated",
+    "verified",
+    "status",
+    "stale_after",
+    // OKF v0.2 Attested Computation. Promoted as a set: leaving some of the
+    // contract in `extra` would show spec fields alongside producer extensions
+    // in the metadata inspector, which is exactly the distinction it draws.
+    "runtime",
+    "parameters",
+    "computation",
+    "executor",
+    "attester",
 ];
 
 /// The parsed result: known keys are kept as raw value strings/lists keyed by
@@ -56,6 +75,46 @@ impl ParsedFrontmatter {
                 .collect(),
             // A scalar where a list was expected is tolerated as a one-element list.
             Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
+            _ => Vec::new(),
+        }
+    }
+
+    /// A key's raw parsed value, promoted or preserved.
+    ///
+    /// The v0.2 field families are nested maps and lists, so they cannot be read
+    /// through `scalar` or `list`; callers walk the value instead.
+    pub fn value(&self, key: &str) -> Option<&Value> {
+        self.fields.get(key).or_else(|| self.extra.get(key))
+    }
+
+    /// A `{ by, at }` mapping, as `generated` and each `verified` entry are.
+    pub fn attribution(value: &Value) -> Option<crate::model::Attribution> {
+        let map = value.as_object()?;
+        let by = map.get("by").and_then(Value::as_str)?.trim();
+        if by.is_empty() {
+            return None;
+        }
+        Some(crate::model::Attribution {
+            by: by.to_string(),
+            at: map
+                .get("at")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|at| !at.is_empty())
+                .map(str::to_owned),
+        })
+    }
+
+    /// Every entry of a list-valued key, tolerating a bare mapping as a
+    /// one-element list.
+    ///
+    /// The spec requires this for `verified`: a single verifier MAY be written
+    /// without the list dash and consumers MUST treat it as one element. The
+    /// same tolerance costs nothing on `sources` and `parameters`.
+    pub fn entries(&self, key: &str) -> Vec<&Value> {
+        match self.value(key) {
+            Some(Value::Array(items)) => items.iter().collect(),
+            Some(value @ Value::Object(_)) => vec![value],
             _ => Vec::new(),
         }
     }
@@ -217,8 +276,20 @@ fn parse_nested(lines: &[&str], i: &mut usize, parent_indent: usize) -> Value {
     }
 }
 
-/// Parse a block list whose `- item` lines sit at exactly `indent`. Items are
-/// scalars (the use ODSF makes of lists: paths, platform names, tags).
+/// Parse a block list whose `- item` lines sit at exactly `indent`.
+///
+/// Items are scalars (ODSF's paths, platform names, tags), inline flow maps, or
+/// **maps spread over the item's own lines**, which is how OKF v0.2 writes
+/// `sources`, `verified` and `parameters`:
+///
+/// ```yaml
+/// sources:
+///   - id: ga4-schema
+///     resource: https://example.com/ga4
+/// ```
+///
+/// Before this handled item maps, that list parsed to `["id: ga4-schema"]` — the
+/// first pair kept as a raw string and the rest of the entry silently dropped.
 fn parse_list(lines: &[&str], i: &mut usize, indent: usize) -> Vec<Value> {
     let mut items = Vec::new();
     while *i < lines.len() {
@@ -238,10 +309,124 @@ fn parse_list(lines: &[&str], i: &mut usize, indent: usize) -> Vec<Value> {
         } else {
             break;
         };
+        // `- key: value` opens a mapping whose remaining keys are indented to
+        // where this one starts, past the dash.
+        if let Some(entry) = list_item_map(lines, i, indent, item) {
+            items.push(entry);
+            continue;
+        }
         items.push(Value::String(unquote(item)));
         *i += 1;
     }
     items
+}
+
+/// A list entry that is a mapping, either inline or spread over the entry's own
+/// lines. Returns `None` when the entry is an ordinary scalar, and only then
+/// advances nothing, so the caller can fall through.
+fn list_item_map(lines: &[&str], i: &mut usize, indent: usize, item: &str) -> Option<Value> {
+    if let Some(flow) = parse_flow_map(item) {
+        *i += 1;
+        return Some(Value::Object(flow));
+    }
+    // A block entry: the dash line carries the first pair, and any further pairs
+    // are indented to the column where that first key started.
+    let colon = item.find(':')?;
+    let key = item[..colon].trim();
+    if key.is_empty() || key.contains(' ') {
+        // `- some prose: with a colon` is a scalar, not a mapping. Requiring a
+        // space-free key keeps a citation line like
+        // "internal interview, 2026-01-10: see notes" from becoming a map.
+        return None;
+    }
+    let mut map = Map::new();
+    let rest = item[colon + 1..].trim();
+    // "- " is two characters, so the entry's keys align there.
+    let child_indent = indent + 2;
+    *i += 1;
+    map.insert(
+        key.to_string(),
+        if rest.is_empty() {
+            parse_nested(lines, i, child_indent)
+        } else {
+            scalar_or_inline_list(rest)
+        },
+    );
+    for (key, value) in parse_map(lines, i, child_indent) {
+        map.insert(key, value);
+    }
+    Some(Value::Object(map))
+}
+
+/// An inline `{ k: v, k2: v2 }` flow mapping.
+///
+/// OKF v0.2 writes `generated`, `verified` entries, `usage_window` and
+/// `parameters` this way, and the spec's own examples use it throughout, so a
+/// consumer that keeps it as a raw string reads none of those fields.
+fn parse_flow_map(rest: &str) -> Option<Map<String, Value>> {
+    let inner = rest.strip_prefix('{')?.strip_suffix('}')?;
+    let mut map = Map::new();
+    for pair in split_flow_entries(inner) {
+        let pair = pair.trim();
+        if pair.is_empty() {
+            continue;
+        }
+        let Some(colon) = pair.find(':') else {
+            continue;
+        };
+        let key = pair[..colon].trim();
+        if key.is_empty() {
+            continue;
+        }
+        map.insert(
+            key.to_string(),
+            scalar_or_inline_list(pair[colon + 1..].trim()),
+        );
+    }
+    // Braces alone do not make a mapping. An ODSF token reference is a braced
+    // scalar — `{colors.bgColor-success-emphasis}` — and must survive verbatim
+    // for the consumer to resolve, so a brace pair yielding no `key: value` pair
+    // is not a flow map.
+    (!map.is_empty()).then_some(map)
+}
+
+/// Split a flow mapping's body on commas that are not inside a nested `{}`,
+/// `[]`, or a quoted string. An actor like `reference_agent/gemini-2.5-pro` has
+/// no comma, but a title legitimately does.
+fn split_flow_entries(inner: &str) -> Vec<String> {
+    let mut entries = Vec::new();
+    let mut current = String::new();
+    let mut depth = 0_usize;
+    let mut quote: Option<char> = None;
+    for character in inner.chars() {
+        match (quote, character) {
+            (Some(open), c) if c == open => {
+                quote = None;
+                current.push(c);
+            }
+            (Some(_), c) => current.push(c),
+            (None, c @ ('"' | '\'')) => {
+                quote = Some(c);
+                current.push(c);
+            }
+            (None, c @ ('{' | '[')) => {
+                depth += 1;
+                current.push(c);
+            }
+            (None, c @ ('}' | ']')) => {
+                depth = depth.saturating_sub(1);
+                current.push(c);
+            }
+            (None, ',') if depth == 0 => {
+                entries.push(std::mem::take(&mut current));
+            }
+            (None, c) => current.push(c),
+        }
+    }
+    if !current.trim().is_empty() {
+        entries.push(current);
+    }
+    entries
 }
 
 /// An inline `[a, b]` list, or a scalar string (quotes stripped).
@@ -253,6 +438,9 @@ fn scalar_or_inline_list(rest: &str) -> Value {
                 .map(Value::String)
                 .collect(),
         )
+    } else if let Some(flow) = parse_flow_map(rest) {
+        // `generated: { by: …, at: … }` and `usage_window: { from: …, to: … }`.
+        Value::Object(flow)
     } else {
         Value::String(unquote(rest))
     }
@@ -391,10 +579,11 @@ mod tests {
     #[test]
     fn parses_status_and_applies_to() {
         let fm = parse("type: Component\nstatus: stable\napplies_to: [web, ios]\n");
-        assert_eq!(
-            fm.extra.get("status"),
-            Some(&Value::String("stable".into()))
-        );
+        // `status` is a promoted OKF v0.2 lifecycle field, and ODSF is a profile
+        // of OKF, so a component's status reads as the spec field rather than as
+        // a producer extension. `applies_to` stays an ODSF extension.
+        assert_eq!(fm.scalar("status"), Some("stable"));
+        assert!(!fm.extra.contains_key("status"));
         assert_eq!(
             fm.extra["applies_to"],
             Value::Array(vec![

@@ -3,7 +3,7 @@ type: Feature
 title: Compatibility Clinic
 description: Explain how a bundle will travel across OKF consumers without confusing portability advice with conformance.
 tags: [feature, compatibility, validation, portability, diagnostics]
-timestamp: 2026-07-23T00:28:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T00:28:00Z }
 ---
 
 # What it does

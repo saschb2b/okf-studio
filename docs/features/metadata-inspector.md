@@ -3,7 +3,7 @@ type: Feature
 title: Metadata Inspector
 description: Inspect producer-defined bundle and concept fields safely without requiring a custom renderer.
 tags: [feature, metadata, extensions, reader, portability]
-timestamp: 2026-07-23T21:24:41+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 ---
 
 # What it does

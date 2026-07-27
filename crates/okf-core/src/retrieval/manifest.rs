@@ -473,6 +473,7 @@ mod tests {
                 broken_links: Vec::new(),
                 cited_by: Vec::new(),
                 degree: 0,
+                ..Default::default()
             }],
             indexes: Vec::new(),
             log: Vec::new(),

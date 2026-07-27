@@ -3,7 +3,7 @@ type: Reference
 title: Keyboard Shortcuts
 description: The default keybindings; every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
-timestamp: 2026-07-23T20:25:48+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T20:25:48+02:00 }
 ---
 
 # Defaults

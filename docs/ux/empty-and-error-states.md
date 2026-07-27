@@ -3,7 +3,7 @@ type: UX Flow
 title: Empty & Error States
 description: Every no-content, loading, and failure state — what it shows and how to recover.
 tags: [ux, flow, errors, empty-states]
-timestamp: 2026-07-17T00:10:00Z
+generated: { by: claude/unrecorded, at: 2026-07-17T00:10:00Z }
 ---
 
 # Stance

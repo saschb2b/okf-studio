@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Git Integration Architecture
 description: A bounded installed-Git service, repository watcher, and typed frontend state for integrated Git support.
 tags: [architecture, git, tauri, security]
-timestamp: 2026-07-19T18:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T18:30:00Z }
 ---
 
 # Decision

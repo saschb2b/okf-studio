@@ -3,7 +3,7 @@ type: UX Contract
 title: Retrieval Experience Contract
 description: Defines the surface ownership, disclosure levels, layout invariants, state coverage, and prototype gates for retrieval intelligence.
 tags: [product, ux, retrieval, context, agents, storybook]
-timestamp: 2026-07-19T11:22:06Z
+generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
 ---
 
 # Decision

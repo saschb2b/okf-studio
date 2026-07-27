@@ -4,7 +4,14 @@ title: Function first, edge to edge
 description: Docked tool surfaces run edge-to-edge behind a hairline; radius and padding are reserved for things that float.
 tags: [guidelines, layout, density, zed]
 status: stable
-timestamp: 2026-07-16T21:45:00Z
+generated: { by: claude/unrecorded, at: 2026-07-16T21:45:00Z }
+sources:
+  - id: zed
+    resource: https://zed.dev
+    title: zed.dev — the register this system builds from
+  - id: dark-first
+    resource: /guidelines/dark-first.md
+    title: Dark-first, never flat black — the companion surface rule
 ---
 
 # Rule
@@ -26,7 +33,3 @@ This is Zed's design stance, and the reason its panels read as instruments inste
 
 # Applies to
 The desktop app's agent composer is the worked case (`.agent-composer` in the app's `AgentConversation.css`); the same rule governs the status bar, the live-work shelf, and any future docked chrome, and the marketing site's product depictions must show the app this way.
-
-# Citations
-[1] [zed.dev](https://zed.dev) — the register this system builds from; see the agent panel's message editor.
-[2] [Dark-first, never flat black](/guidelines/dark-first.md) — the companion surface rule: definition comes from near-black layering and hairlines, not enclosure.

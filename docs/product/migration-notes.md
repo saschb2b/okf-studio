@@ -3,7 +3,7 @@ type: Migration Guide
 title: OKF Viewer to OKF Studio
 description: What changes, including bundle-folder grants, and what stays compatible when OKF Viewer upgrades to OKF Studio.
 tags: [product, migration, upgrade, compatibility, credentials]
-timestamp: 2026-07-19T11:22:06Z
+generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
 ---
 
 # Upgrade in place

@@ -1,6 +1,6 @@
 ---
-odsf_version: "0.1"
-okf_version: "0.1"
+odsf_version: "0.2"
+okf_version: "0.2"
 ---
 
 # OKF Studio Design System

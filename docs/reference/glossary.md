@@ -3,7 +3,7 @@ type: Glossary
 title: Glossary
 description: Terms used across the OKF Studio bundle.
 tags: [reference, glossary]
-timestamp: 2026-07-13T19:21:18Z
+generated: { by: claude/unrecorded, at: 2026-07-13T19:21:18Z }
 ---
 
 # Terms

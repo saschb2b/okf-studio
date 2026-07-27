@@ -3,7 +3,7 @@ type: UX Flow
 title: First Run
 description: The flow from launching the app with nothing open to browsing a detected bundle.
 tags: [ux, flow, onboarding]
-timestamp: 2026-07-17T00:10:00Z
+generated: { by: claude/unrecorded, at: 2026-07-17T00:10:00Z }
 ---
 
 # Goal

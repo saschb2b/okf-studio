@@ -3,7 +3,7 @@ type: Feature
 title: Navigation
 description: Move through a bundle by progressive disclosure — the index tree, link following, and back/forward history.
 tags: [feature, navigation]
-timestamp: 2026-07-23T22:37:54+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T22:37:54+02:00 }
 ---
 
 # What it does

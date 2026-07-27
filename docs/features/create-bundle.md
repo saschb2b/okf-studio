@@ -3,7 +3,10 @@ type: Feature
 title: Create Bundle
 description: A form-driven, agent-free way to start a new conformant OKF bundle and open it immediately.
 tags: [feature, create, bundle, first-run]
-timestamp: 2026-07-16T23:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-16T23:30:00Z }
+sources:
+  - resource: ../reference/okf-spec-summary.md
+    title: OKF spec summary
 ---
 
 # What it does
@@ -57,7 +60,3 @@ The created folder is granted read scope exactly like a picked folder.
 Not a template gallery and not agent authoring — the [Agent Panel](agent-panel.md)'s
 Create flow covers proposal-driven bundle drafts with review. This feature is
 the fast, deterministic floor: a correct empty-ish bundle in seconds.
-
-# Citations
-
-[1] [OKF spec summary](../reference/okf-spec-summary.md) — the conformance rules the generator honors.

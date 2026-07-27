@@ -4,7 +4,7 @@ title: Elevation
 description: Three black shadows for the few surfaces that genuinely float; depth on dark comes from layered near-blacks and hairlines instead.
 tags: [foundations, elevation, shadow, tokens]
 status: stable
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 tokens:
   shadow:
     sm: "0 1px 2px rgba(0,0,0,0.5)"

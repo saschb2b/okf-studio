@@ -3,7 +3,7 @@ type: Feature
 title: Integrated Git
 description: Review, stage, commit, inspect history, and explicitly synchronize the repository around an OKF bundle.
 tags: [feature, git, repository, review]
-timestamp: 2026-07-19T18:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T18:30:00Z }
 ---
 
 # Why this exists

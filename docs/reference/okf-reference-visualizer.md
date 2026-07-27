@@ -4,7 +4,12 @@ title: OKF Reference HTML Visualizer
 description: Google's single self-contained HTML consumer that renders any OKF bundle as a force-directed graph — the reference implementation OKF Studio is the native desktop counterpart to.
 resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf
 tags: [reference, okf, visualizer, consumer, external]
-timestamp: 2026-07-11T04:45:00Z
+generated: { by: claude/unrecorded, at: 2026-07-11T04:45:00Z }
+sources:
+  - resource: "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf"
+    title: OKF reference repository (okf subdirectory)
+  - resource: ../reference/okf-spec-summary.md
+    title: OKF Spec Summary
 ---
 
 # Summary
@@ -46,8 +51,3 @@ The reference visualizer is deliberately minimal:
 # Significance
 
 That a tiny, independent HTML file can faithfully render a bundle authored by an entirely separate producer is the proof of OKF's **producer/consumer independence**: the format, not any one tool, carries the meaning. OKF Studio and this visualizer reading the same bundles is that principle in practice.
-
-# Citations
-
-[1] [OKF reference repository (okf subdirectory)](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf)
-[2] [OKF Spec Summary](../reference/okf-spec-summary.md)

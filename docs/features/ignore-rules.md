@@ -3,7 +3,7 @@ type: Feature
 title: Ignore Rules
 description: Keep generated, private, or irrelevant paths out of Studio's bundle views and agent context through one visible root rule file.
 tags: [feature, privacy, ignore, filesystem, agents]
-timestamp: 2026-07-23T20:15:52+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T20:15:52+02:00 }
 ---
 
 # What it does

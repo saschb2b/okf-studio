@@ -1,3 +1,4 @@
+import { NO_PROVENANCE } from "@/mock/conceptFixtures.ts";
 import { describe, it, expect } from "vitest";
 import {
   explainedPathBetween,
@@ -23,6 +24,7 @@ function concept(partial: Partial<Concept> & { id: string }): Concept {
     externalLinks: [],
     brokenLinks: [],
     citedBy: [],
+    ...NO_PROVENANCE,
     degree: 0,
     ...partial,
   };

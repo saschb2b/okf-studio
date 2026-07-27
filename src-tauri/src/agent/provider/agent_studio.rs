@@ -136,7 +136,7 @@ mod tests {
     fn builds_a_progressive_catalog_from_the_versioned_capability() {
         let message = native_system_message();
         assert_eq!(message.role, "system");
-        assert!(message.content.contains("- okf-core@0.5.1 [okf_inventory"));
+        assert!(message.content.contains("- okf-core@0.6.0 [okf_inventory"));
         assert!(message.content.contains("- okf-inspect@0.3.0"));
         assert!(message.content.contains("- okf-retrieve@0.1.1"));
         assert!(message.content.contains("- okf-migrate@0.2.0"));
@@ -187,10 +187,10 @@ mod tests {
             }),
         };
         let result = execute_skill_tool(&call).expect("load commands");
-        assert!(result.contains("Capability: okf-core@0.5.1"));
-        assert!(result.contains("okf-studio://capability/okf-core/v0.5.1/commands"));
+        assert!(result.contains("Capability: okf-core@0.6.0"));
+        assert!(result.contains("okf-studio://capability/okf-core/v0.6.0/commands"));
         assert!(result
-            .contains("SHA-256: 236869830d18c0110c6c1c226f72aa94c890cc9b88d2be492c49983e719e5951"));
+            .contains("SHA-256: d786de1469b270dd7a0da1f93f93459023e85d036393eb4b5451a4a1b8feb794"));
         assert!(result.contains("## `init`"));
         assert!(!result.contains("The one rule"));
         assert_eq!(skill_tool_title(&call), "Load OKF commands");
@@ -198,7 +198,7 @@ mod tests {
             capability_resource_identity(&call).expect("resource identity"),
             (
                 "okf-core".to_string(),
-                "0.5.1".to_string(),
+                "0.6.0".to_string(),
                 "commands".to_string()
             )
         );

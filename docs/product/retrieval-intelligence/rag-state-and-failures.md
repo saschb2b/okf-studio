@@ -3,7 +3,28 @@ type: Research Brief
 title: State of RAG Systems
 description: Evidence review of retrieval failure modes, long-context and graph alternatives, evaluation gaps, and the product openings they create for OKF Studio.
 tags: [product, research, rag, retrieval, context, evaluation]
-timestamp: 2026-07-18T21:08:21Z
+generated: { by: claude/unrecorded, at: 2026-07-18T21:08:21Z }
+sources:
+  - resource: "https://www.anthropic.com/engineering/contextual-retrieval"
+    title: "Anthropic: Introducing Contextual Retrieval"
+  - resource: "https://arxiv.org/abs/2407.12883"
+    title: "BRIGHT: A Realistic and Challenging Benchmark for Reasoning-Intensive Retrieval"
+  - resource: "https://www.microsoft.com/en-us/research/publication/from-local-to-global-a-graph-rag-approach-to-query-focused-summarization/"
+    title: "Microsoft Research: From Local to Global, A Graph RAG Approach to Query-Focused Summarization"
+  - resource: "https://arxiv.org/abs/2408.08067"
+    title: "RAGChecker: A Fine-grained Framework for Diagnosing Retrieval-Augmented Generation"
+  - resource: "https://arxiv.org/abs/2407.16833"
+    title: "Retrieval Augmented Generation or Long-Context LLMs? A Comprehensive Study and Hybrid Approach"
+  - resource: "https://arxiv.org/abs/2412.15605"
+    title: "Don't Do RAG: When Cache-Augmented Generation Is All You Need for Knowledge Tasks"
+  - resource: "https://arxiv.org/abs/2410.10813"
+    title: "LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory"
+  - resource: "https://arxiv.org/abs/2506.12071"
+    title: "T2-RAGBench: Text-and-Table Benchmark for Evaluating Retrieval-Augmented Generation"
+  - resource: "https://arxiv.org/abs/2506.08364"
+    title: "CC-RAG: Structured Multi-Hop Reasoning via Theme-Based Causal Graphs"
+  - resource: "https://arxiv.org/abs/2509.14608"
+    title: Enterprise AI Must Enforce Participant-Aware Access Control
 ---
 
 # Question
@@ -140,18 +161,3 @@ Repair loop
 - Can provider prefix-cache support be negotiated through ACP, or should cached-context mode remain Studio Agent only?
 - Which retrieval receipt fields belong in the transcript, the work shelf, app data, or an exported artifact?
 - What corpus and queries can establish a meaningful baseline before implementation begins?
-
-# Citations
-
-1. [Anthropic: Introducing Contextual Retrieval](https://www.anthropic.com/engineering/contextual-retrieval)
-2. [BRIGHT: A Realistic and Challenging Benchmark for Reasoning-Intensive Retrieval](https://arxiv.org/abs/2407.12883)
-3. [Microsoft Research: From Local to Global, A Graph RAG Approach to Query-Focused Summarization](https://www.microsoft.com/en-us/research/publication/from-local-to-global-a-graph-rag-approach-to-query-focused-summarization/)
-4. [RAGChecker: A Fine-grained Framework for Diagnosing Retrieval-Augmented Generation](https://arxiv.org/abs/2408.08067)
-5. [Retrieval Augmented Generation or Long-Context LLMs? A Comprehensive Study and Hybrid Approach](https://arxiv.org/abs/2407.16833)
-6. [Don't Do RAG: When Cache-Augmented Generation Is All You Need for Knowledge Tasks](https://arxiv.org/abs/2412.15605)
-7. [LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory](https://arxiv.org/abs/2410.10813)
-8. [T2-RAGBench: Text-and-Table Benchmark for Evaluating Retrieval-Augmented Generation](https://arxiv.org/abs/2506.12071)
-9. [CC-RAG: Structured Multi-Hop Reasoning via Theme-Based Causal Graphs](https://arxiv.org/abs/2506.08364)
-10. [Enterprise AI Must Enforce Participant-Aware Access Control](https://arxiv.org/abs/2509.14608)
-
-Related product direction: [OKF retrieval thesis](okf-retrieval-thesis.md) and [Retrieval intelligence roadmap](retrieval-intelligence-roadmap.md).

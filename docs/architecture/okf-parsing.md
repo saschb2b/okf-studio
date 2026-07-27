@@ -3,7 +3,7 @@ type: Reference
 title: OKF Parsing
 description: How a bundle root is turned into concepts, resolved links, backlinks, and an index tree.
 tags: [architecture, parsing, links]
-timestamp: 2026-07-23T20:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T20:30:00Z }
 ---
 
 # Pipeline
@@ -31,8 +31,22 @@ After parsing, the same pure core can derive a bounded compatibility report with
 
 A safe normalization names both the authored target and its relative replacement. The core exposes a repair function that accepts only supported relative-link declarations and matches them back to parser-confirmed inline-link source ranges. It replaces destination bytes in descending source order, so identical text in prose, code, titles, and reference definitions is not changed. Reference-style destinations remain reportable but are not automatically repairable. The native host passes the resulting complete file through [reviewed staging](../features/compatibility-clinic.md#reviewed-normalization) before Apply.
 
+# Attested computations
+
+An OKF v0.2 `type: Attested Computation` concept exists so a consumer can verify that a reported number came from the blessed computation rather than from an agent writing plausible SQL. Studio does the part of that it can do honestly, and reports the rest as unavailable rather than as passed.
+
+It **resolves** the computation from an inline fence under `# Computation` or from a containment-checked `computation` path, and refuses a contract carrying both — which one ran would be a guess. The fence is found under that heading rather than by taking the body's first fence, since a concept may show an example query in its prose.
+
+It **checks the receipt's shape** against the fields `executor.receipt` declares, because an attester cannot inspect evidence a run never returned.
+
+It **checks provenance**: the executed text against the stored computation, canonicalized to ignore comments, repeated whitespace and case. This is the check that catches agent-authored SQL, and it needs no database and no code execution, which is why it belongs in a reader. A stored computation with parameter holes is compared with those holes wildcarded, because binding semantics follow the runtime — Studio compares a shape rather than pretending to know how a runtime binds. The limit is deliberate: a rewrite that only reorders or renames will pass, so this is a provenance check and not a proof of semantic equivalence.
+
+It does **not execute** the executor or the attester. Running arbitrary code out of a bundle is not something a reader should do, and the spec puts the executor outside the bundle for the same reason. It does **not check fidelity** — re-reading the authoritative result by job id, which only the runtime can do — and reports that as `Unavailable`, never `Passed`. A run with an unavailable check is not attested: collapsing those two is how a gate silently stops gating.
+
+A stale definition still attests cleanly. `verified` says the definition matches policy; attestation says one run produced its values correctly. They answer different questions, so staleness warns and does not fail.
+
 # Tolerance contract
 
-Per the [spec](../reference/okf-spec-summary.md), the parser never throws on: missing optional fields, unknown `type`, unknown extra frontmatter keys (preserved as-is), broken links, or missing indexes. It records issues for [Validation](../features/validation.md) and keeps going.
+Per the [spec](../reference/okf-spec-summary.md), the parser never throws on: missing optional fields, unknown `type`, unknown extra frontmatter keys (preserved as-is), broken links, or missing indexes. It also reads a v0.1 bundle without complaint: `timestamp` still answers "when was this written" when `generated` is absent, and a legacy `# Citations` section is read as `sources`, with no credibility signals invented for entries that carry none. It records issues for [Validation](../features/validation.md) and keeps going.
 
 This whole pipeline runs in the core, off the UI thread, and is parsed lazily per bundle — see [Performance & Scale](performance.md) for the parsing-cost and incremental-reparse strategy.

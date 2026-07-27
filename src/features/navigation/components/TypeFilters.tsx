@@ -8,6 +8,7 @@ import { Toggle } from "@base-ui/react/toggle";
 import { useApp } from "@/shared/store.tsx";
 import { distinctTypes } from "@/shared/selectors.ts";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
+import "@/shared/styles/chrome.css";
 
 export function TypeFilters() {
   const { state, actions } = useApp();

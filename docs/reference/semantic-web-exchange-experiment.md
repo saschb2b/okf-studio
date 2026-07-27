@@ -3,7 +3,7 @@ type: Research
 title: Semantic-Web Exchange Experiment
 description: Source subset, round-trip evidence, loss accounting, and adoption gate for JSON-LD relationship exchange.
 tags: [research, interoperability, json-ld, rdf, relationships, experiment]
-timestamp: 2026-07-23T23:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T23:30:00Z }
 ---
 
 # Source record

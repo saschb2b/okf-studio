@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Frontend Architecture
 description: How the React + TypeScript frontend is organized as a thin client over the Rust command and event surface.
 tags: [architecture, decision, frontend, state, react, typescript]
-timestamp: 2026-07-23T21:24:41+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 ---
 
 # Decision

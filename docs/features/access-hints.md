@@ -3,7 +3,7 @@ type: Feature
 title: Access Hints
 description: Show intended audience, sensitivity, and handling guidance without turning metadata into authorization.
 tags: [feature, privacy, profiles, audience, sensitivity, agents]
-timestamp: 2026-07-23T22:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T22:30:00Z }
 audience: [maintainers, agent-builders]
 sensitivity: public
 handling_notes: These labels are public examples, not an authorization policy.

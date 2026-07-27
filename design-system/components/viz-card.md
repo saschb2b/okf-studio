@@ -5,7 +5,7 @@ description: A screenshot with its caption on one surface, the unit of the visua
 tags: [components, card, media]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /components/viz-card.example.html
 tokens:

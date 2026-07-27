@@ -4,7 +4,7 @@ title: Showcase section
 description: "A product story: a two-column copy header over one full-width piece of evidence, sized so the screenshot inside it can actually be read."
 tags: [patterns, showcase, landing]
 status: stable
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /patterns/showcase.example.html
 ---

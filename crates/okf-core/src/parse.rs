@@ -7,8 +7,12 @@
 
 use crate::frontmatter::{self, ParsedFrontmatter};
 use crate::links;
-use crate::model::{Bundle, Concept, Confidence};
+use crate::model::{
+    Bundle, ComputationAttester, ComputationContract, ComputationExecutor, ComputationParameter,
+    Concept, ConceptStatus, Confidence, Source, UsageWindow, ATTESTED_COMPUTATION_TYPE,
+};
 use crate::{graph, index_tree, logfile, validate};
+use serde_json::Value;
 use std::collections::HashSet;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -140,6 +144,22 @@ fn concept_from_file(root: &Path, path: &Path) -> Option<Concept> {
         tags: fm.list("tags"),
         timestamp: fm.scalar("timestamp").map(str::to_owned),
         resource: fm.scalar("resource").map(str::to_owned),
+        sources: concept_sources(&fm, body),
+        usage_window: fm.value("usage_window").and_then(usage_window),
+        generated: fm
+            .value("generated")
+            .and_then(frontmatter::ParsedFrontmatter::attribution),
+        verified: fm
+            .entries("verified")
+            .into_iter()
+            .filter_map(frontmatter::ParsedFrontmatter::attribution)
+            .collect(),
+        status: fm
+            .scalar("status")
+            .map(ConceptStatus::parse)
+            .unwrap_or_default(),
+        stale_after: fm.scalar("stale_after").map(str::to_owned),
+        computation: computation_contract(&fm),
         extra: fm.extra,
         body: body.to_owned(),
         links: Vec::new(),
@@ -147,6 +167,192 @@ fn concept_from_file(root: &Path, path: &Path) -> Option<Concept> {
         broken_links: Vec::new(),
         cited_by: Vec::new(),
         degree: 0,
+    })
+}
+
+/// The concept's provenance, preferring `sources` and falling back to a legacy
+/// `# Citations` body section.
+///
+/// v0.2 moved provenance out of the body and into frontmatter, and says a
+/// consumer SHOULD read `sources` and MAY still parse the legacy list. Reading
+/// both here means the rest of Studio works off one field and never has to know
+/// which spec version a bundle was written against.
+fn concept_sources(fm: &frontmatter::ParsedFrontmatter, body: &str) -> Vec<Source> {
+    let declared = fm
+        .entries("sources")
+        .into_iter()
+        .filter_map(source_entry)
+        .collect::<Vec<_>>();
+    if !declared.is_empty() {
+        return declared;
+    }
+    legacy_citations(body)
+}
+
+/// One `sources` entry. `resource` is required, so an entry without one is
+/// dropped rather than invented; the validator reports it separately.
+fn source_entry(value: &Value) -> Option<Source> {
+    let map = value.as_object()?;
+    let text = |key: &str| {
+        map.get(key)
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+    };
+    let resource = text("resource")?;
+    Some(Source {
+        resource,
+        id: text("id"),
+        title: text("title"),
+        author: text("author"),
+        // Tolerated as a number or a numeric string, because a YAML subset that
+        // quotes scalars is normal and dropping the signal over quoting is not.
+        usage_count: map.get("usage_count").and_then(|count| {
+            count
+                .as_u64()
+                .or_else(|| count.as_str().and_then(|text| text.trim().parse().ok()))
+        }),
+        last_modified: text("last_modified"),
+    })
+}
+
+fn usage_window(value: &Value) -> Option<UsageWindow> {
+    let map = value.as_object()?;
+    let text = |key: &str| {
+        map.get(key)
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+    };
+    let window = UsageWindow {
+        from: text("from"),
+        to: text("to"),
+    };
+    (window.from.is_some() || window.to.is_some()).then_some(window)
+}
+
+/// A v0.1 `# Citations` section, read as sources.
+///
+/// The section is a bulleted list, so each item becomes a source whose
+/// `resource` is the link target when the item is a markdown link and the item
+/// text otherwise — a v0.1 citation carries no credibility signals, and
+/// inventing them would be worse than leaving them absent.
+fn legacy_citations(body: &str) -> Vec<Source> {
+    let mut sources = Vec::new();
+    let mut inside = false;
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if let Some(heading) = trimmed.strip_prefix('#') {
+            let heading = heading.trim_start_matches('#').trim();
+            // Any following heading closes the section, including a deeper one:
+            // a citation list does not have subsections.
+            inside = heading.eq_ignore_ascii_case("citations");
+            continue;
+        }
+        if !inside {
+            continue;
+        }
+        let Some(item) = trimmed
+            .strip_prefix("- ")
+            .or_else(|| trimmed.strip_prefix("* "))
+        else {
+            continue;
+        };
+        let item = item.trim();
+        if item.is_empty() {
+            continue;
+        }
+        let (title, resource) = match markdown_link(item) {
+            Some((text, href)) => (Some(text.to_string()), href.to_string()),
+            None => (None, item.to_string()),
+        };
+        sources.push(Source {
+            resource,
+            title,
+            ..Source::default()
+        });
+    }
+    sources
+}
+
+/// `[text](href)` split, when a list item is a single markdown link.
+fn markdown_link(item: &str) -> Option<(&str, &str)> {
+    let rest = item.strip_prefix('[')?;
+    let (text, rest) = rest.split_once("](")?;
+    let href = rest.strip_suffix(')')?;
+    (!href.trim().is_empty()).then_some((text.trim(), href.trim()))
+}
+
+/// The contract on a `type: Attested Computation` concept.
+///
+/// Built only for that type: `runtime` and `parameters` are ordinary producer
+/// keys on any other concept, and promoting them into a contract there would
+/// invent a computation that the bundle never declared.
+fn computation_contract(fm: &frontmatter::ParsedFrontmatter) -> Option<ComputationContract> {
+    if fm.scalar("type").map(str::trim) != Some(ATTESTED_COMPUTATION_TYPE) {
+        return None;
+    }
+    Some(ComputationContract {
+        runtime: fm.scalar("runtime").unwrap_or_default().trim().to_owned(),
+        parameters: fm
+            .entries("parameters")
+            .into_iter()
+            .filter_map(computation_parameter)
+            .collect(),
+        computation: fm.scalar("computation").map(str::to_owned),
+        executor: fm.value("executor").and_then(|value| {
+            let map = value.as_object()?;
+            Some(ComputationExecutor {
+                resource: map
+                    .get("resource")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned),
+                receipt: match map.get("receipt") {
+                    Some(Value::Array(items)) => items
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_owned)
+                        .collect(),
+                    Some(Value::String(single)) => vec![single.clone()],
+                    _ => Vec::new(),
+                },
+            })
+        }),
+        attester: fm.value("attester").and_then(|value| {
+            let resource = value
+                .as_object()?
+                .get("resource")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+            Some(ComputationAttester { resource })
+        }),
+    })
+}
+
+fn computation_parameter(value: &Value) -> Option<ComputationParameter> {
+    let map = value.as_object()?;
+    let name = map
+        .get("name")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())?;
+    Some(ComputationParameter {
+        name: name.to_owned(),
+        parameter_type: map.get("type").and_then(Value::as_str).map(str::to_owned),
+        // Absent means optional, which is the safer default: a consumer that
+        // treats an unmarked parameter as required refuses runs the contract
+        // actually permits. Accepted as a bool or as the string the tolerant
+        // scalar reader produces, since it keeps every scalar as text.
+        required: map
+            .get("required")
+            .map(|value| match value {
+                Value::Bool(flag) => *flag,
+                Value::String(text) => text.trim().eq_ignore_ascii_case("true"),
+                _ => false,
+            })
+            .unwrap_or(false),
     })
 }
 

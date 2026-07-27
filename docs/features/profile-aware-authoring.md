@@ -3,7 +3,7 @@ type: Feature
 title: Profile-Aware Authoring
 description: Carry selected advisory conventions into bounded agent tasks and check staged drafts without changing OKF conformance.
 tags: [feature, profiles, agents, authoring, validation, staging]
-timestamp: 2026-07-23T15:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T15:15:00Z }
 ---
 
 # User job

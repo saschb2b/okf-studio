@@ -1,0 +1,165 @@
+.concept-trust {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* The one line that should stop a reader, so it gets a tinted well rather than
+   the quiet treatment the facts below it use. */
+.concept-trust__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-6) var(--space-8);
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.concept-trust__notice > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* Deprecated is not a warning about age, it is a statement that the concept is
+   out of service, so it reads in the error role. */
+.concept-trust__notice[data-severity="deprecated"] {
+  color: var(--error);
+  background: var(--error-soft);
+}
+
+.concept-trust__tier {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+/* The tier is a scale, so it is coloured as one: absent confirmation is quiet
+   rather than alarming — unverified is the default state of new knowledge, not a
+   fault — and a human review is the only one that earns the accent. */
+.concept-trust__tier[data-tier="unverified"] {
+  color: var(--text-dim);
+}
+
+.concept-trust__tier[data-tier="machine-confirmed"] {
+  color: var(--text);
+}
+
+.concept-trust__tier[data-tier="human-reviewed"] {
+  color: var(--accent);
+}
+
+.concept-trust__tier > svg {
+  flex: none;
+}
+
+.concept-trust__meaning {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.concept-trust__facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+/* Its own layout rather than the Reader's `.meta-row`: this panel is rendered in
+   isolation too, and borrowing a sibling stylesheet's class is what left the
+   values sitting on the browser's default dd indent. */
+.concept-trust__fact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.concept-trust__fact dt {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.concept-trust__fact dd {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+
+.concept-trust__fact code {
+  font-size: var(--fs-xs);
+}
+
+.concept-trust__verifiers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The human verifier is what raises the tier, so it is the one worth picking out
+   of a list that may hold several processes. */
+.concept-trust__verifiers code[data-human="true"] {
+  color: var(--accent);
+}
+
+.concept-trust__sources h4 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.concept-trust__sources ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concept-trust__sources li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.concept-trust__source-title {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+
+.concept-trust__source-resource,
+.concept-trust__signals {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+
+/* Its own line rather than a link inside a sentence, so WCAG 2.5.8's inline-text
+   exemption does not apply and it has to reach the 24px floor by itself. */
+.concept-trust__open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}

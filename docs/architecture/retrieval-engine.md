@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Retrieval Engine
 description: A revision-bound, provider-neutral retrieval pipeline shared by ordinary chat, Studio Agent, and granted MCP clients.
 tags: [architecture, retrieval, rust, agents, mcp, privacy]
-timestamp: 2026-07-19T11:22:06Z
+generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
 ---
 
 # Decision

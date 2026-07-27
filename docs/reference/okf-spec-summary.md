@@ -4,7 +4,12 @@ title: OKF Spec Summary
 description: The Open Knowledge Format v0.1 rules Studio must honor — conformance, the consumer contract, reserved files, links, and versioning.
 resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md
 tags: [reference, okf, spec, external]
-timestamp: 2026-07-13T19:42:50Z
+generated: { by: claude/unrecorded, at: 2026-07-13T19:42:50Z }
+sources:
+  - resource: "https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md"
+    title: OKF Specification (v0.1)
+  - resource: "https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/"
+    title: How the Open Knowledge Format can improve data sharing
 ---
 
 # Summary
@@ -46,8 +51,3 @@ The reference repo ships its own consumer — the [OKF Reference HTML Visualizer
 ## Versioning
 
 `okf_version` is a `<major>.<minor>` string (e.g. `"0.1"`), declared only in the bundle-root `index.md`. Minor versions are backward-compatible.
-
-# Citations
-
-[1] [OKF Specification (v0.1)](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
-[2] [How the Open Knowledge Format can improve data sharing](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/)

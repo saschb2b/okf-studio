@@ -3,7 +3,7 @@ type: Feature
 title: Guarded External Entry Points
 description: Review bounded deep-link and CLI requests before Studio opens a bundle, prepares an OKF task, or issues a one-shot read-only MCP grant.
 tags: [feature, agents, cli, deep-link, mcp, security]
-timestamp: 2026-07-18T14:20:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T14:20:00Z }
 ---
 
 # Purpose

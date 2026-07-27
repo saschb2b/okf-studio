@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Performance & Scale
 description: How the "Fast" principle is achieved end to end, from the bounded directory walk to interactive graph rendering.
 tags: [architecture, decision, performance, scale]
-timestamp: 2026-06-29T18:00:00Z
+generated: { by: claude/unrecorded, at: 2026-06-29T18:00:00Z }
 ---
 
 # Decision

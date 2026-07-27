@@ -3,7 +3,7 @@ type: Proposal
 title: Lineage & Traversal
 description: Turn the graph from a picture into a tool — expand neighbors incrementally, trace upstream/downstream lineage, highlight the path between two concepts, and surface unlinked mentions.
 tags: [proposal, graph, traversal, lineage]
-timestamp: 2026-07-05T12:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-05T12:00:00Z }
 ---
 
 # Problem

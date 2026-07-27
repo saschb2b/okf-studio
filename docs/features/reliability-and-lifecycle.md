@@ -3,7 +3,7 @@ type: Feature
 title: Reliability and Lifecycle
 description: Qualify knowledge with optional lifecycle, confidence, effective-time, review, contradiction, and replacement signals.
 tags: [feature, reliability, lifecycle, profiles, retrieval, health]
-timestamp: 2026-07-23T16:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T16:15:00Z }
 lifecycle: active
 confidence: 0.9
 review_after: 2026-10-01

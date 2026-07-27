@@ -3,7 +3,7 @@ type: Reference
 title: Retrieval Schema Adapters
 description: Provider-neutral retrieval manifest and receipt fields, with mappings for the built-in local engine and an external vector store.
 tags: [reference, retrieval, jsonl, adapters, vector-store]
-timestamp: 2026-07-19T14:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-19T14:00:00Z }
 ---
 
 # Purpose

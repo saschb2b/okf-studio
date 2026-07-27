@@ -4,7 +4,36 @@ title: Specialized Agent Systems Research
 description: Primary-source findings that inform the transformation from a general agent panel into an OKF-specialized knowledge workspace.
 resource: https://docs.github.com/en/copilot/concepts/agents/github-copilot-app
 tags: [reference, agents, skills, specialization, copilot, okf]
-timestamp: 2026-07-18T13:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T13:30:00Z }
+sources:
+  - resource: "https://docs.github.com/en/copilot/concepts/agents/github-copilot-app"
+    title: GitHub Copilot app
+  - resource: "https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app"
+    title: Customizing the GitHub Copilot app
+  - resource: "https://docs.github.com/en/copilot/concepts/agents/about-agent-skills"
+    title: GitHub agent skills
+  - resource: "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/overview"
+    title: Copilot CLI customization layers
+  - resource: "https://docs.github.com/en/copilot/how-tos/github-copilot-app/agent-sessions"
+    title: GitHub Copilot app sessions
+  - resource: "https://docs.github.com/en/copilot/how-tos/github-copilot-app/working-with-canvas-extensions"
+    title: GitHub canvas extensions
+  - resource: "https://docs.github.com/en/copilot/how-tos/github-copilot-app/using-automations"
+    title: GitHub Copilot automations
+  - resource: "https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/github-copilot-app/open-with-deep-links"
+    title: GitHub Copilot app deep links
+  - resource: "https://docs.github.com/en/copilot/concepts/agents/hooks"
+    title: GitHub Copilot hooks
+  - resource: "https://docs.github.com/en/copilot/concepts/agents/about-plugins"
+    title: GitHub Copilot plugins
+  - resource: "https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/agents/copilot-memory"
+    title: GitHub Copilot Memory
+  - resource: "https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/"
+    title: Open Knowledge Format announcement
+  - resource: "https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md"
+    title: Open Knowledge Format specification
+  - resource: "https://cloud.google.com/blog/products/data-analytics/introducing-the-google-cloud-knowledge-catalog"
+    title: Google Cloud Knowledge Catalog
 ---
 
 # Research question
@@ -116,20 +145,3 @@ Reject:
 - hidden memory presented as bundle knowledge
 - general shell access as an OKF feature
 - cloud sync as a prerequisite for recall or automation
-
-# Citations
-
-- [GitHub Copilot app](https://docs.github.com/en/copilot/concepts/agents/github-copilot-app)
-- [Customizing the GitHub Copilot app](https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app)
-- [GitHub agent skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills)
-- [Copilot CLI customization layers](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/overview)
-- [GitHub Copilot app sessions](https://docs.github.com/en/copilot/how-tos/github-copilot-app/agent-sessions)
-- [GitHub canvas extensions](https://docs.github.com/en/copilot/how-tos/github-copilot-app/working-with-canvas-extensions)
-- [GitHub Copilot automations](https://docs.github.com/en/copilot/how-tos/github-copilot-app/using-automations)
-- [GitHub Copilot app deep links](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/github-copilot-app/open-with-deep-links)
-- [GitHub Copilot hooks](https://docs.github.com/en/copilot/concepts/agents/hooks)
-- [GitHub Copilot plugins](https://docs.github.com/en/copilot/concepts/agents/about-plugins)
-- [GitHub Copilot Memory](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/agents/copilot-memory)
-- [Open Knowledge Format announcement](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing/)
-- [Open Knowledge Format specification](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
-- [Google Cloud Knowledge Catalog](https://cloud.google.com/blog/products/data-analytics/introducing-the-google-cloud-knowledge-catalog)

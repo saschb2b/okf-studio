@@ -3,7 +3,7 @@ type: Reference
 title: Advisory Profile Contract
 description: The local, version-pinned descriptor contract for optional bundle conventions and diagnostics.
 tags: [reference, profiles, extensions, validation, security]
-timestamp: 2026-07-23T14:45:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T14:45:00Z }
 ---
 
 # Purpose

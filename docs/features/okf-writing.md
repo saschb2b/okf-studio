@@ -3,7 +3,7 @@ type: Feature
 title: OKF Writing
 description: Author and revise OKF concepts from a named reader job while preserving every supported claim, qualifier, citation, link, formula, code sample, and domain term.
 tags: [feature, agents, writing, revision, evidence, review]
-timestamp: 2026-07-18T20:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T20:30:00Z }
 ---
 
 # What it does

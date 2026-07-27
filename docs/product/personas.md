@@ -3,7 +3,7 @@ type: Product
 title: Personas & Use Cases
 description: The handful of concrete people OKF Studio is built for, framed by the job each hires it to do.
 tags: [product, personas, use-cases]
-timestamp: 2026-07-13T18:51:16Z
+generated: { by: claude/unrecorded, at: 2026-07-13T18:51:16Z }
 ---
 
 # Who this is for

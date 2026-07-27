@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Retrieval Intelligence
 description: Sequenced research, experience gates, and work packages for turning connected OKF bundles into inspectable, routed, and provider-neutral model context.
 tags: [product, roadmap, rag, retrieval, context, search, agents, ux, storybook]
-timestamp: 2026-07-19T11:22:06Z
+generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
 ---
 
 # Outcome

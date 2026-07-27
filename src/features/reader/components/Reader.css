@@ -292,24 +292,9 @@
 
 /* A button styled as a link — used for the resource so we can route it through
    actions.openExternal instead of a raw <a href>. */
-.link-btn {
-  font: inherit;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  cursor: pointer;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-.link-btn:hover {
-  text-decoration: underline;
-}
-.link-btn:focus-visible {
-  outline: var(--focus-w) solid var(--accent);
-  outline-offset: var(--focus-offset);
-  border-radius: var(--radius-sm);
-}
+/* .link-btn moved to shared/styles/chrome.css: the Sidebar, the type filters
+   and the trust panel use it too, and a shared control cannot live in one
+   feature's stylesheet. */
 
 /* Rendered markdown body --------------------------------------------------- */
 /* Override the stub's monospace <pre> look: this is real rendered prose now. */

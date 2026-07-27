@@ -3,7 +3,7 @@ type: Research
 title: Multilingual Variants Experiment
 description: Source, hypothesis, tested conventions, and adoption gate for language variants.
 tags: [research, interoperability, multilingual, experiment]
-timestamp: 2026-07-23T23:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T23:30:00Z }
 ---
 
 # Source record

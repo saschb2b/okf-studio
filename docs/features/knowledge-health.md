@@ -3,7 +3,7 @@ type: Feature
 title: Knowledge Health
 description: Give agents deterministic, revision-bound evidence about bundle quality without turning heuristics into OKF conformance rules.
 tags: [feature, agents, health, validation, graph, provenance]
-timestamp: 2026-07-23T18:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T18:30:00Z }
 ---
 
 # What it does

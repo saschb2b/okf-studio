@@ -3,7 +3,7 @@ type: Research
 title: Sidecar Resources Experiment
 description: Source, safe-open policy, digest evidence, and adoption gate for files that accompany a concept.
 tags: [research, interoperability, resources, sidecars, media, experiment]
-timestamp: 2026-07-23T23:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T23:30:00Z }
 ---
 
 # Source record

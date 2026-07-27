@@ -3,7 +3,7 @@ type: Reference
 title: How It Compares
 description: Where OKF Studio sits relative to the OKF reference visualizer, PKM tools, static-site generators, editors, and agent chat surfaces.
 tags: [product, comparison, positioning]
-timestamp: 2026-07-13T18:51:16Z
+generated: { by: claude/unrecorded, at: 2026-07-13T18:51:16Z }
 ---
 
 # The short version

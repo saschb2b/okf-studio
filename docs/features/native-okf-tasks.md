@@ -3,7 +3,7 @@ type: Feature
 title: Native OKF Tasks
 description: Start a bounded, curated OKF task from the concept, finding, citation, graph object, search result, or source already in view.
 tags: [feature, agents, tasks, context, launcher, keyboard]
-timestamp: 2026-07-23T13:55:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T13:55:00Z }
 ---
 
 # Purpose

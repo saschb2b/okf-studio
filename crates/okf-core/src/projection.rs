@@ -938,6 +938,7 @@ mod tests {
             broken_links: vec![],
             cited_by: vec![],
             degree: 0,
+            ..Default::default()
         };
         let input = ProjectionInput {
             recipient: "Research group".to_string(),

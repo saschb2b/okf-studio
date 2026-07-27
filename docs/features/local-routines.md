@@ -3,7 +3,7 @@ type: Feature
 title: Local OKF Routines and Attention Inbox
 description: Run bounded offline bundle checks on demand or on a local schedule, with a Rust-owned recovery ledger and content-free attention notices.
 tags: [feature, agents, routines, automation, health, local-first]
-timestamp: 2026-07-18T14:20:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T14:20:00Z }
 ---
 
 # Purpose

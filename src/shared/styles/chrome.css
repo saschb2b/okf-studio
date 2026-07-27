@@ -186,3 +186,26 @@ a.heading-anchor:hover {
 .muted {
   color: var(--text-dim);
 }
+
+/* A button that reads as a link. Shared, because the Sidebar, the type filters,
+   the Reader and the trust panel all need it — and in a webview an external
+   target has to be a button so it opens in the browser rather than navigating
+   the app away from itself. */
+.link-btn {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}
+.link-btn:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-sm);
+}

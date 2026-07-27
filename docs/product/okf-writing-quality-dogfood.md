@@ -3,7 +3,7 @@ type: Evaluation Record
 title: OKF Writing Quality Dogfood
 description: The retained implementation, component, provider, and packaging evidence for the first OKF Writing release.
 tags: [product, agents, writing, evaluation, dogfood]
-timestamp: 2026-07-18T20:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T20:30:00Z }
 ---
 
 # Scope

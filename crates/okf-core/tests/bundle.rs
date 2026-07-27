@@ -41,7 +41,7 @@ fn scan_detects_docs_as_confident_root() {
         .expect("docs/ should be detected as a bundle root");
 
     assert_eq!(docs_root.confidence, Confidence::Confident);
-    assert_eq!(docs_root.okf_version.as_deref(), Some("0.1"));
+    assert_eq!(docs_root.okf_version.as_deref(), Some("0.2"));
     assert_eq!(
         docs_root.concept_count as usize,
         concept_file_count(&docs),
@@ -80,7 +80,7 @@ fn read_bundle_docs_full_shape() {
         concept_file_count(&docs),
         "every non-reserved Markdown file should parse as a concept"
     );
-    assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
+    assert_eq!(bundle.okf_version.as_deref(), Some("0.2"));
     assert_eq!(bundle.confidence, Confidence::Confident);
 
     // Zero error-level issues: the bundle is conformant.
@@ -221,6 +221,9 @@ fn root_index_versions_are_read() {
         "---\ntype: Component\n---\nA button.\n",
     );
     let bundle = read_bundle(&dir);
+    // Whatever the fixture declares, read back verbatim. This test is about the
+    // reader, not about which version is current, so it stays on 0.1 — a
+    // consumer must keep reading a bundle that has not migrated.
     assert_eq!(bundle.okf_version.as_deref(), Some("0.1"));
     assert_eq!(bundle.odsf_version.as_deref(), Some("0.1"));
 

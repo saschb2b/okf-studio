@@ -3,7 +3,7 @@ type: Proposal
 title: Multi-View — Tabs & Windows
 description: Break the one-concept-at-a-time limit — reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own OS window.
 tags: [proposal, ux, navigation, tabs, windows]
-timestamp: 2026-07-06T12:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-06T12:00:00Z }
 ---
 
 # Problem

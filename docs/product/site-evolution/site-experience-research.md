@@ -3,7 +3,7 @@ type: Research Brief
 title: OKF Studio Site Experience Research
 description: Evidence and recommendations for evolving the one-page launch site into a scalable product site.
 tags: [product, site, ux, information-architecture, research]
-timestamp: 2026-07-19T19:24:23Z
+generated: { by: claude/unrecorded, at: 2026-07-19T19:24:23Z }
 ---
 
 # Question

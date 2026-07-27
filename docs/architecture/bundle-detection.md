@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Bundle Detection
 description: The algorithm that walks a chosen folder and decides which directories are OKF bundle roots.
 tags: [architecture, decision, discovery, algorithm]
-timestamp: 2026-07-04T18:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-04T18:30:00Z }
 ---
 
 # Problem

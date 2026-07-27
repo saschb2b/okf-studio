@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Tech Stack
 description: Tauri 2.0 with a Rust core and a React + TypeScript frontend — the chosen stack and the reasoning behind it.
 tags: [architecture, decision, tauri, rust, react, typescript]
-timestamp: 2026-07-22T23:30:48Z
+generated: { by: claude/unrecorded, at: 2026-07-22T23:30:48Z }
 ---
 
 # Decision

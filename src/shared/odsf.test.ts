@@ -1,3 +1,4 @@
+import { mockConcept, NO_PROVENANCE } from "@/mock/conceptFixtures.ts";
 import { describe, it, expect } from "vitest";
 import type { Bundle, Concept } from "@/shared/types.ts";
 import {
@@ -30,6 +31,7 @@ function concept(extra: Record<string, unknown>, type = "Color"): Concept {
     externalLinks: [],
     brokenLinks: [],
     citedBy: [],
+    ...NO_PROVENANCE,
     degree: 0,
   };
 }
@@ -60,8 +62,12 @@ describe("conceptExamples / status / appliesTo", () => {
   });
 
   it("reads status and applies_to", () => {
-    expect(conceptStatus(concept({ status: "stable" }))).toBe("stable");
-    expect(conceptStatus(concept({}))).toBeNull();
+    // `status` is a promoted OKF v0.2 field now, not a producer extra, so it is
+    // set on the concept rather than passed through `extra` — and absent means
+    // `stable` in both OKF and ODSF, so there is no null case any more.
+    expect(conceptStatus(mockConcept({ status: "stable" }))).toBe("stable");
+    expect(conceptStatus(mockConcept({ status: "experimental" }))).toBe("experimental");
+    expect(conceptStatus(mockConcept())).toBe("stable");
     expect(conceptAppliesTo(concept({ applies_to: ["web", "ios"] }))).toEqual(["web", "ios"]);
     expect(conceptAppliesTo(concept({ applies_to: "web" }))).toEqual(["web"]);
   });

@@ -12,6 +12,8 @@ Match the bundle's language and established register. Keep exact terminology fro
 
 Inventory claims before drafting or revision. Keep each fact, number, qualifier, uncertainty marker, citation, link, formula, code sample, and domain term unless the accepted task explicitly changes it. Distinguish sourced facts, user decisions, inferences, and unknowns.
 
+Carry that distinction into the frontmatter rather than only into the prose. A sourced fact gets a `sources` entry and, where one sentence rests on one source, a footnote keyed to that entry's `id`. An inference or something you supplied from your own knowledge gets its own `sources` entry whose `resource` is a scope descriptor rather than a link, so a reader can tell recalled from read. Refresh `generated` when you revise, and drop a `verified` event whose subject you materially changed, since it was a confirmation of text that no longer exists.
+
 A style-only revision cannot add or remove a factual claim. Route either change through enrichment and attach evidence. A shorter result that loses knowledge is wrong.
 
 ## Choose the information shape
@@ -22,7 +24,7 @@ Use prose for reasoning and causal explanation. Use a table for field-by-field f
 
 - Start at the point. Remove throat-clearing and chatbot narration.
 - Prefer a named subject and active verb over abstract claims of value.
-- Replace vague authority with a named source or remove the claim.
+- Replace vague authority with a named source or remove the claim. "Widely regarded" is not a `sources` entry; a URL, a bundle path, or an explicit scope descriptor is.
 - Remove repeated conclusions, summary echoes, inflated significance, and generic closing claims.
 - Use transitions only when they carry logic.
 - Vary sentence length without clipping the prose into fragments.

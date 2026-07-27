@@ -4,7 +4,7 @@ title: Download grid
 description: "The per-OS download section: a rounded band (the closing echo of the hero canvas) holding a row of platform download buttons over a mono note about signing/updates."
 tags: [patterns, download, band]
 status: stable
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /patterns/download.example.html
 ---

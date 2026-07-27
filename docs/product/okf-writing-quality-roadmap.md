@@ -3,7 +3,7 @@ type: Product Roadmap
 title: OKF Writing Quality
 description: The sequenced work to make agent-authored OKF concepts precise, evidence-preserving, readable, and visibly revised without turning style into conformance.
 tags: [product, roadmap, agents, writing, quality, skills]
-timestamp: 2026-07-18T20:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-18T20:30:00Z }
 ---
 
 # Outcome

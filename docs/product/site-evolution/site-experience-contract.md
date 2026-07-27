@@ -3,7 +3,7 @@ type: UX Specification
 title: OKF Studio Site Experience Contract
 description: Target site map, navigation, homepage story, content ownership, and implementation sequence for the Studio product site.
 tags: [product, site, ux, information-architecture, navigation]
-timestamp: 2026-07-19T19:24:23Z
+generated: { by: claude/unrecorded, at: 2026-07-19T19:24:23Z }
 ---
 
 # Outcome

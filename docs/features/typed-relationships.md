@@ -3,7 +3,7 @@ type: Feature
 title: Typed Relationships
 description: Add profile-defined meaning to portable Markdown links, then inspect and trace those connections without hiding unknown annotations.
 tags: [feature, relationships, profiles, reader, lineage, portability]
-timestamp: 2026-07-24T12:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-24T12:30:00Z }
 ---
 
 # User job

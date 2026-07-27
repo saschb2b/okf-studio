@@ -3,7 +3,7 @@ type: Feature
 title: Advisory Profiles
 description: Resolve optional team conventions from local version-pinned descriptors without changing OKF conformance.
 tags: [feature, profiles, metadata, diagnostics, authoring]
-timestamp: 2026-07-23T20:15:52+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T20:15:52+02:00 }
 ---
 
 # User job

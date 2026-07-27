@@ -3,7 +3,7 @@ type: Reference
 title: Theming
 description: Light/dark theming that follows the OS, the surface and state token layer behind it, and the deterministic palette that colors concepts by type.
 tags: [ux, theme, color, accessibility]
-timestamp: 2026-07-26T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-26T00:00:00Z }
 ---
 
 # Design tokens (one scale layer)

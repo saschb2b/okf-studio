@@ -3,7 +3,7 @@ type: Reference
 title: IPC & Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
-timestamp: 2026-07-24T12:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
 ---
 
 # Command & event surface

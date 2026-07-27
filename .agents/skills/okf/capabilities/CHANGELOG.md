@@ -2,6 +2,10 @@
 
 Capability changes are benchmarked and reviewed like tool changes. Versions are independent; changing one capability does not imply that every capability changed.
 
+## 2026-07-27
+
+- Updated `okf-core` to `0.6.0` and `okf-foundation` to `1.4.0` for OKF v0.2. The methods now carry provenance, trust and lifecycle as frontmatter rather than prose: `sources` with credibility signals replaces the `# Citations` body section, `generated` replaces `timestamp`, and `verified`, `status` and `stale_after` let a consumer decide whether to believe a concept and whether it is still current. Adds the `attest` method for the `Attested Computation` type, and the `migrate` method for moving a v0.1 bundle across. A v0.1 bundle stays consumable under the two documented fallbacks, so migration is not urgent.
+
 ## 2026-07-19
 
 - Updated `okf-core` to `0.5.1`, `okf-retrieve` to `0.1.1`, and `okf-foundation` to `1.3.1`. Ordinary Studio answers now keep retrieval identities internal and leave the evidence inventory to the compact receipt and Inspect surface. Diagnostic artifacts retain the complete identities and receipt.

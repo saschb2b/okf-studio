@@ -30,6 +30,10 @@ import {
   MetadataInspector,
   ODSF_METADATA_KEYS,
 } from "@/features/reader/components/MetadataInspector.tsx";
+import {
+  ConceptTrust,
+  hasTrustSignals,
+} from "@/features/reader/components/ConceptTrust.tsx";
 import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
 import { ConceptRetirementDialog } from "@/features/reader/components/ConceptRetirementDialog.tsx";
 import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
@@ -47,6 +51,7 @@ import {
   inspectConceptEvidence,
   materializeEvidenceFootnotes,
 } from "@/shared/evidence.ts";
+import "@/shared/styles/chrome.css";
 import "./Reader.css";
 
 /** Dwell before a hovered concept link shows its peek card (ms) — long enough
@@ -945,6 +950,19 @@ export function Reader() {
             </div>
           </dl>
         </RailModule>
+
+        {/* Above the metadata panels on purpose: whether to believe a concept
+            and whether it is still current outrank the producer keys it
+            happens to carry. Renders nothing on a concept that declares none of
+            it, so a v0.1 bundle does not grow an empty panel per concept. */}
+        {hasTrustSignals(c) && (
+          <RailModule title="Trust and provenance">
+            <ConceptTrust
+              concept={c}
+              onOpenResource={(resource) => actions.openExternal(resource)}
+            />
+          </RailModule>
+        )}
 
         {bundle ? (
           <MetadataInspector

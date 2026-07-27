@@ -4,7 +4,11 @@ title: Dark-first, never flat black
 description: Build on near-black surfaces with defined edges, not pure #000.
 tags: [guidelines, color, dark]
 status: stable
-timestamp: 2026-07-01T16:31:45Z
+generated: { by: claude/unrecorded, at: 2026-07-01T16:31:45Z }
+sources:
+  - id: apple-hig-icons
+    resource: https://developer.apple.com/design/human-interface-guidelines/app-icons
+    title: "Apple Human Interface Guidelines: App icons"
 ---
 
 # Rule
@@ -18,6 +22,3 @@ Fill the page with `colors.bg`; give hero/product tiles `colors.gradient-tile`.
 
 # Don't
 Set `background: #000` on the page or large panels.
-
-# Citations
-[1] [Apple HIG: App icons](https://developer.apple.com/design/human-interface-guidelines/app-icons)

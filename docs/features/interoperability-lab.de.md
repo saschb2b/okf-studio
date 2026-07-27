@@ -3,7 +3,7 @@ type: Feature
 title: Bundle-Verbindungen
 description: Verwaltet externe Quellen, Austauschbeziehungen und optionale Konventionen in ihrem jeweiligen Arbeitskontext.
 tags: [feature, interoperabilität, experiment]
-timestamp: 2026-07-23T21:24:41+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 language: de
 translation_of: features/interoperability-lab
 relationships:

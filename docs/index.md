@@ -1,5 +1,5 @@
 ---
-okf_version: "0.1"
+okf_version: "0.2"
 profiles:
   io.okf.access:
     version: "1.0.0"

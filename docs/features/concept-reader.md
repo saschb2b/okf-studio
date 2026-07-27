@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-timestamp: 2026-07-23T22:27:47+02:00
+generated: { by: claude/unrecorded, at: 2026-07-23T22:27:47+02:00 }
 ---
 
 # What it does

@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-timestamp: 2026-07-22T23:58:00Z
+generated: { by: claude/unrecorded, at: 2026-07-22T23:58:00Z }
 ---
 
 # Decision

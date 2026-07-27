@@ -3,7 +3,7 @@ type: Feature
 title: Safe Concept Move
 description: Relocate a concept with parser-confirmed link repairs, a portable redirect, isolated validation, reviewed Apply, and Restore.
 tags: [feature, maintenance, identity, links, navigation, staging]
-timestamp: 2026-07-23T14:15:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T14:15:00Z }
 ---
 
 # User job

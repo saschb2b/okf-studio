@@ -3,7 +3,7 @@ type: Feature
 title: Erasure Audit
 description: Block a recipient projection when excluded identities or reviewed sensitive terms remain in its output.
 tags: [feature, privacy, audit, sharing, diagnostics]
-timestamp: 2026-07-23T22:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T22:30:00Z }
 audience: [maintainers, knowledge-owners, security-reviewers]
 sensitivity: public
 ---

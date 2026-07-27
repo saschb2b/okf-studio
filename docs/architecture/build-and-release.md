@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check and user-initiated installs.
 tags: [architecture, decision, build, release, packaging]
-timestamp: 2026-07-24T12:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
 ---
 
 # Decision

@@ -3,7 +3,7 @@ type: Research
 title: External Bundle References Experiment
 description: Source, trust boundary, identity rule, and adoption gate for references to separately owned bundles.
 tags: [research, interoperability, federation, external, experiment]
-timestamp: 2026-07-23T23:30:00Z
+generated: { by: claude/unrecorded, at: 2026-07-23T23:30:00Z }
 ---
 
 # Source record

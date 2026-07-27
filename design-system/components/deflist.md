@@ -5,7 +5,7 @@ description: A set of named claims on one hairline-divided surface, term on the 
 tags: [components, list, layout]
 status: stable
 applies_to: [web]
-timestamp: 2026-07-25T00:00:00Z
+generated: { by: claude/unrecorded, at: 2026-07-25T00:00:00Z }
 examples:
   - /components/deflist.example.html
 tokens:

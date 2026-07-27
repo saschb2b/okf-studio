@@ -65,7 +65,7 @@ export function ConceptComputation({ concept, bundleRoot }: ConceptComputationPr
       <div className="concept-computation__section">
         <h4>Parameters</h4>
         {contract.parameters.length === 0
-          ? <p className="concept-computation__empty">None — the computation takes no inputs.</p>
+          ? <p className="concept-computation__empty">None. The computation takes no inputs.</p>
           : (
             <ul className="concept-computation__parameters">
               {contract.parameters.map((parameter) => (

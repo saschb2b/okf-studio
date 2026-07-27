@@ -108,7 +108,7 @@ export function AttestationVerdict({ report }: { report: AttestationReport }) {
           check, and the honest limit is short enough to always show. */}
       <p className="attestation__detail">
         {established
-          ? "Studio compared what ran against what the bundle sanctions. It cannot confirm the reported number matches the run's own result — only the executor's runtime can do that."
+          ? "Studio compared what ran against what the bundle sanctions. It cannot confirm the reported number matches the run's own result. Only the executor's runtime can do that."
           : "A check Studio can run said no. The reported number should not be presented as coming from the sanctioned computation."}
       </p>
 

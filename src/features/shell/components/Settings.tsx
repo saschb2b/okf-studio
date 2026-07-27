@@ -380,7 +380,7 @@ function AppearanceSettings({
       <SettingRow
         id="setting-jarvis-mode"
         title="Jarvis Mode"
-        description="Stage each agent turn as a sequence of panels — every excerpt, omission and caveat it actually used. A spectacle; Reduce motion still applies."
+        description="Stage each agent turn as a sequence of panels naming what it retrieved, what it dropped, and why. Reduce motion still applies."
         control={(
           <SettingsToggle
             label="Jarvis Mode"

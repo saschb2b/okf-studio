@@ -378,6 +378,18 @@ function AppearanceSettings({
         control={<ThemeSelect value={settings.theme} onChange={(theme) => onUpdate({ theme })} />}
       />
       <SettingRow
+        id="setting-jarvis-mode"
+        title="Jarvis Mode"
+        description="Stage each agent turn as a sequence of panels — every excerpt, omission and caveat it actually used. A spectacle; Reduce motion still applies."
+        control={(
+          <SettingsToggle
+            label="Jarvis Mode"
+            checked={settings.jarvisMode}
+            onCheckedChange={(jarvisMode) => onUpdate({ jarvisMode })}
+          />
+        )}
+      />
+      <SettingRow
         id="setting-reduce-motion"
         title="Reduce motion"
         description="Limit transitions and animated movement throughout the interface."

@@ -41,6 +41,7 @@ import { AgentArtifactWorkspace } from "@/features/agent/components/AgentArtifac
 import { RetrievalLab } from "@/features/agent/components/retrieval/RetrievalLab.tsx";
 import { RetrievalEvidenceSummary } from "@/features/agent/components/retrieval/RetrievalEvidenceSummary.tsx";
 import { AgentRunVerdict } from "@/features/agent/components/AgentRunVerdict.tsx";
+import { JarvisStage } from "@/features/agent/components/jarvis/JarvisStage.tsx";
 import { claimsARun } from "@/features/agent/receipt.ts";
 import type { AgentReceiptValidation } from "@/features/agent/receipt.ts";
 import { RetrievalInspector } from "@/features/agent/components/retrieval/RetrievalInspector.tsx";
@@ -71,6 +72,10 @@ export interface AgentConversationProps {
   bundleRoot: string | null;
   bundleName: string | null;
   activeConcept: { id: string; title: string } | null;
+  /** Stage each turn as a sequence of panels. Off by default; see
+   *  docs/proposals/jarvis-mode.md. */
+  jarvisMode?: boolean;
+  reduceMotion?: boolean;
   onCaptureReaderSelection: () => ReaderSelectionCapture;
   concepts: readonly {
     id: string;
@@ -107,6 +112,8 @@ export function AgentConversation({
   bundleRoot,
   bundleName,
   activeConcept,
+  jarvisMode = false,
+  reduceMotion = false,
   onCaptureReaderSelection,
   concepts,
   onOpenConcept,
@@ -385,6 +392,11 @@ export function AgentConversation({
 
   // Keyed by message, so a verdict can never be shown against a later turn that
   // did not claim a run — which would be the worst possible failure here.
+  // The turn currently being staged by Jarvis Mode, or null. Held separately
+  // from `retrievalByTurn` because the stage is transient: it plays once and is
+  // gone, while the receipt stays inspectable afterwards.
+  const [stagedTurn, setStagedTurn] = useState<RetrievalResult | null>(null);
+
   const [receiptCheck, setReceiptCheck] = useState<
     { messageId: string; validation: AgentReceiptValidation } | null
   >(null);
@@ -830,6 +842,9 @@ export function AgentConversation({
             if (retrievalResult.evidence.items.length > 0) {
               sources.push(await buildRetrievalEvidenceSource(retrievalResult));
             }
+            // The spectacle. Nothing here changes what is sent — the stage is a
+            // dramatization of a receipt that was produced either way.
+            if (jarvisMode) setStagedTurn(retrievalResult);
           } catch {
             setRetrievalNotice("Local retrieval was unavailable. Studio sent the message without automatic bundle evidence.");
           }
@@ -2696,6 +2711,15 @@ export function AgentConversation({
             </TranscriptSurface>
             </div>
             </>
+          )}
+          {/* The stage renders through a portal to the body, so it is not
+              clipped by the panel it is launched from. */}
+          {stagedTurn && (
+            <JarvisStage
+              result={stagedTurn}
+              reduceMotion={reduceMotion}
+              onDone={() => setStagedTurn(null)}
+            />
           )}
           {!artifactOpen && !retrievalInspector && hasLiveWork && (
             <AgentLiveWorkShelf

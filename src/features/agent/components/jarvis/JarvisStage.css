@@ -1,0 +1,198 @@
+/* Jarvis Mode's stage. Tokens only, and the app's own chrome — this is Studio
+   behaving theatrically, not a skin pretending to be another product. */
+
+.jarvis-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  /* Dimmed, not replaced: keeping the reader faintly visible underneath is less
+     disorienting than a cut to black, and it keeps the sequence feeling like
+     something happening *to* the app. */
+  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  backdrop-filter: blur(3px);
+  /* Never steals the caret — the composer keeps focus while this plays, which
+     is the whole reason this is an overlay and not an OS window. */
+  pointer-events: none;
+  animation: jarvis-wake var(--dur) var(--ease);
+}
+
+/* Clicking anywhere skips, so the one interactive affordance takes pointers
+   back. Everything else stays transparent to the mouse. */
+.jarvis-stage,
+.jarvis-stage__dismiss {
+  cursor: default;
+}
+
+.jarvis-stage__field {
+  position: relative;
+  width: min(72rem, 92vw);
+  height: min(40rem, 78vh);
+  pointer-events: auto;
+}
+
+.jarvis-stage__slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(30rem, 62vw);
+  translate: calc(-50% + var(--jarvis-x)) calc(-50% + var(--jarvis-y));
+  /* Depth: older panels sink back and dim, so the newest reads as the subject
+     without anything having to move out of the way. Pattern at a glance — the
+     eye finds the front of the stack without being told. */
+  opacity: var(--jarvis-depth);
+  scale: calc(0.86 + var(--jarvis-depth) * 0.14);
+  animation: jarvis-arrive 260ms var(--ease) backwards;
+}
+
+.jarvis-stage__slot[data-latest] {
+  z-index: 2;
+}
+
+@keyframes jarvis-wake {
+  from { opacity: 0; }
+}
+
+@keyframes jarvis-arrive {
+  from {
+    opacity: 0;
+    scale: 0.92;
+    translate: calc(-50% + var(--jarvis-x)) calc(-50% + var(--jarvis-y) + 10px);
+  }
+}
+
+/* Reduced motion: everything lands at once, still legible, no movement. The
+   information survives; only the choreography goes. */
+.jarvis-stage--still,
+.jarvis-stage--still .jarvis-stage__slot {
+  animation: none;
+}
+
+.jarvis-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-12);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.jarvis-panel__query {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+  text-wrap: pretty;
+}
+
+.jarvis-panel__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.jarvis-panel__route {
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* A candidate is a glance, not a read: small, monospaced, gone in ~110ms. */
+.jarvis-panel--candidate {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-10);
+  border-left-color: var(--border);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+.jarvis-panel--candidate code {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.jarvis-panel__score {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.jarvis-panel--excerpt {
+  border-left-color: var(--ok);
+}
+
+.jarvis-panel--omission {
+  border-left-color: var(--border-variant);
+  opacity: 0.85;
+}
+
+.jarvis-panel--caveat {
+  border-left-color: var(--warn);
+}
+
+.jarvis-panel--more {
+  border-left-color: var(--border-variant);
+  align-items: center;
+}
+
+.jarvis-panel__title {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-6);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.jarvis-panel__path {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.jarvis-panel__reason {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.jarvis-panel__text {
+  margin: 0;
+  max-height: 7.5rem;
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  /* Fades rather than clipping mid-word, so a long excerpt reads as continuing
+     rather than as broken. */
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  text-wrap: pretty;
+}
+
+.jarvis-stage__dismiss {
+  position: absolute;
+  bottom: var(--space-20);
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

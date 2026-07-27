@@ -437,6 +437,15 @@ export interface Settings {
   readerFont: ReaderFont;
   /** Dyslexia-friendly letter/word spacing in the reader body. */
   readerAids: boolean;
+  /**
+   * Stage each agent turn as a sequence of panels — every excerpt, tool call
+   * and caveat the turn actually used, in the order it used them.
+   *
+   * A spectacle, off by default. `reduceMotion` still wins: the panels appear
+   * without the motion rather than the feature switching itself off, because
+   * vestibular safety is not a style preference.
+   */
+  jarvisMode: boolean;
   /** Look for a new release once shortly after launch and show a quiet badge
    *  on the settings icon when one exists. Installing stays user-initiated. */
   updateNotify: boolean;
@@ -453,6 +462,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readerLeading: 1.7,
   readerFont: "sans",
   readerAids: false,
+  jarvisMode: false,
   updateNotify: true,
 };
 

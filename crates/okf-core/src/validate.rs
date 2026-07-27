@@ -171,12 +171,12 @@ fn v02_issues(concept: &Concept, fm: &frontmatter::ParsedFrontmatter) -> Vec<Iss
                 .iter()
                 .map(|verified| ("verified.by", verified.by.as_str())),
         )
-        .chain(
-            concept
-                .sources
-                .iter()
-                .filter_map(|source| source.author.as_deref().map(|author| ("sources.author", author))),
-        )
+        .chain(concept.sources.iter().filter_map(|source| {
+            source
+                .author
+                .as_deref()
+                .map(|author| ("sources.author", author))
+        }))
     {
         if !is_actor(actor) {
             issues.push(warn(format!(
@@ -375,7 +375,10 @@ fn has_computation_fence(body: &str) -> bool {
     for line in body.lines() {
         let trimmed = line.trim();
         if let Some(heading) = trimmed.strip_prefix('#') {
-            inside = heading.trim_start_matches('#').trim().eq_ignore_ascii_case("computation");
+            inside = heading
+                .trim_start_matches('#')
+                .trim()
+                .eq_ignore_ascii_case("computation");
             continue;
         }
         if inside && trimmed.starts_with("```") {

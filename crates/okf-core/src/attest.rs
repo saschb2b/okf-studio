@@ -24,7 +24,7 @@
 //!   unavailable rather than passed, because a check that cannot run has not
 //!   succeeded.
 
-use crate::model::{Concept, ComputationContract};
+use crate::model::{ComputationContract, Concept};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

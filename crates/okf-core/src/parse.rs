@@ -11,8 +11,8 @@ use crate::model::{
     Bundle, ComputationAttester, ComputationContract, ComputationExecutor, ComputationParameter,
     Concept, ConceptStatus, Confidence, Source, UsageWindow, ATTESTED_COMPUTATION_TYPE,
 };
-use serde_json::Value;
 use crate::{graph, index_tree, logfile, validate};
+use serde_json::Value;
 use std::collections::HashSet;
 use std::path::Path;
 use walkdir::WalkDir;

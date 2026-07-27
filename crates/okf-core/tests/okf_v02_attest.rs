@@ -5,7 +5,10 @@
 //! that, and about the cases where a check must report itself unavailable rather
 //! than quietly passing.
 
-use okf_core::attest::{attest, canonicalize, resolve_computation, CheckOutcome, ComputationSource, ContractError, Receipt};
+use okf_core::attest::{
+    attest, canonicalize, resolve_computation, CheckOutcome, ComputationSource, ContractError,
+    Receipt,
+};
 use okf_core::parse::read_bundle;
 use std::collections::BTreeMap;
 use std::fs;
@@ -26,7 +29,10 @@ fn write(root: &Path, rel: &str, body: &str) {
     fs::write(path, body).expect("write file");
 }
 
-fn concept_named<'a>(bundle: &'a okf_core::model::Bundle, id: &str) -> &'a okf_core::model::Concept {
+fn concept_named<'a>(
+    bundle: &'a okf_core::model::Bundle,
+    id: &str,
+) -> &'a okf_core::model::Concept {
     bundle
         .concepts
         .iter()
@@ -216,7 +222,8 @@ fn resolves_a_file_computation_and_refuses_one_outside_the_bundle() {
     let bundle = read_bundle(&root);
 
     let (_, computation) =
-        resolve_computation(&root, concept_named(&bundle, "computations/revenue")).expect("contract");
+        resolve_computation(&root, concept_named(&bundle, "computations/revenue"))
+            .expect("contract");
     match computation {
         ComputationSource::File { path, text } => {
             assert_eq!(path, "references/revenue.sql");
@@ -243,8 +250,16 @@ fn refuses_a_contract_that_is_ambiguous_or_incomplete() {
         "---\ntype: Attested Computation\nruntime: bigquery\ncomputation: references/revenue.sql\n---\n\n# Computation\n\n```sql\nSELECT 1\n```\n",
     );
     write(&root, "references/revenue.sql", "SELECT 1\n");
-    write(&root, "neither.md", "---\ntype: Attested Computation\nruntime: bigquery\n---\n");
-    write(&root, "no-runtime.md", "---\ntype: Attested Computation\n---\n\n# Computation\n\n```sql\nSELECT 1\n```\n");
+    write(
+        &root,
+        "neither.md",
+        "---\ntype: Attested Computation\nruntime: bigquery\n---\n",
+    );
+    write(
+        &root,
+        "no-runtime.md",
+        "---\ntype: Attested Computation\n---\n\n# Computation\n\n```sql\nSELECT 1\n```\n",
+    );
     write(&root, "ordinary.md", "---\ntype: Table\n---\n");
     let bundle = read_bundle(&root);
 
@@ -303,5 +318,8 @@ fn canonicalization_ignores_comments_case_and_whitespace_only() {
         canonicalize("select a from t")
     );
     // What it must not forgive: a different table is a different computation.
-    assert_ne!(canonicalize("select a from t"), canonicalize("select a from u"));
+    assert_ne!(
+        canonicalize("select a from t"),
+        canonicalize("select a from u")
+    );
 }

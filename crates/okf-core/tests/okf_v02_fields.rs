@@ -74,7 +74,9 @@ The `events_` table is sharded daily.[^ga4-schema]
 
     // The footnote label is a join key into sources, not prose to parse.
     assert_eq!(
-        concept.source_by_id("ga4-schema").map(|s| s.resource.as_str()),
+        concept
+            .source_by_id("ga4-schema")
+            .map(|s| s.resource.as_str()),
         Some("https://example.com/ga4")
     );
     assert!(concept.source_by_id("absent").is_none());
@@ -205,7 +207,10 @@ sources:
     let modern = concept("modern");
     assert_eq!(modern.authored_at(), Some("2026-06-20T22:53:05Z"));
     assert_eq!(modern.sources.len(), 1);
-    assert_eq!(modern.sources[0].resource, "https://example.com/authoritative");
+    assert_eq!(
+        modern.sources[0].resource,
+        "https://example.com/authoritative"
+    );
 
     fs::remove_dir_all(&root).expect("cleanup");
 }
@@ -213,11 +218,7 @@ sources:
 #[test]
 fn reads_lifecycle_and_compares_staleness_as_a_date() {
     let root = scratch("lifecycle");
-    write(
-        &root,
-        "draft.md",
-        "---\ntype: Table\nstatus: draft\n---\n",
-    );
+    write(&root, "draft.md", "---\ntype: Table\nstatus: draft\n---\n");
     write(
         &root,
         "deprecated.md",
@@ -231,7 +232,11 @@ fn reads_lifecycle_and_compares_staleness_as_a_date() {
     // Absent status means stable, and an unrecognized one is not an error at the
     // model layer — it reads as the default and the validator reports it.
     write(&root, "absent.md", "---\ntype: Table\n---\n");
-    write(&root, "bogus.md", "---\ntype: Table\nstatus: retired\n---\n");
+    write(
+        &root,
+        "bogus.md",
+        "---\ntype: Table\nstatus: retired\n---\n",
+    );
 
     let bundle = read_bundle(&root);
     let concept = |id: &str| {
@@ -316,7 +321,10 @@ stale_after: 2026-09-23
 
     assert_eq!(contract.parameters.len(), 2);
     assert_eq!(contract.parameters[0].name, "year");
-    assert_eq!(contract.parameters[0].parameter_type.as_deref(), Some("integer"));
+    assert_eq!(
+        contract.parameters[0].parameter_type.as_deref(),
+        Some("integer")
+    );
     assert!(contract.parameters[0].required);
     // Absent `required` means optional: treating it as required would refuse
     // runs the contract permits.
@@ -325,7 +333,10 @@ stale_after: 2026-09-23
     let executor = contract.executor.as_ref().expect("executor");
     assert_eq!(executor.receipt, ["job_id", "executed_sql", "result"]);
     assert_eq!(
-        contract.attester.as_ref().and_then(|a| a.resource.as_deref()),
+        contract
+            .attester
+            .as_ref()
+            .and_then(|a| a.resource.as_deref()),
         Some("references/attesters/revenue.py")
     );
 

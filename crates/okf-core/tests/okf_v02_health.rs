@@ -28,10 +28,16 @@ fn write(root: &Path, rel: &str, body: &str) {
 
 fn rules_for(root: &Path, concept_id: &str) -> Vec<String> {
     let bundle = read_bundle(root);
-    analyze(&bundle).expect("health report")
+    analyze(&bundle)
+        .expect("health report")
         .findings
         .into_iter()
-        .filter(|finding| finding.affected_concept_ids.iter().any(|id| id == concept_id))
+        .filter(|finding| {
+            finding
+                .affected_concept_ids
+                .iter()
+                .any(|id| id == concept_id)
+        })
         .map(|finding| finding.rule_id.to_string())
         .collect()
 }
@@ -67,7 +73,9 @@ One row per order.[^schema]
         "generated.at is a date; reading timestamp alone reported every migrated concept as undated: {rules:?}"
     );
     assert!(
-        !rules.iter().any(|rule| rule == "okf.provenance.no-source-signal"),
+        !rules
+            .iter()
+            .any(|rule| rule == "okf.provenance.no-source-signal"),
         "declared sources are the spec's own source signal: {rules:?}"
     );
 
@@ -77,10 +85,19 @@ One row per order.[^schema]
 #[test]
 fn a_concept_with_no_date_at_all_is_still_reported() {
     let root = scratch("undated");
-    write(&root, "a.md", "---\ntype: Table\ntitle: Undated\nsources:\n  - resource: https://example.com/x\n---\n");
+    write(
+        &root,
+        "a.md",
+        "---\ntype: Table\ntitle: Undated\nsources:\n  - resource: https://example.com/x\n---\n",
+    );
 
     let rules = rules_for(&root, "a");
-    assert!(rules.iter().any(|rule| rule == "okf.freshness.missing-timestamp"), "{rules:?}");
+    assert!(
+        rules
+            .iter()
+            .any(|rule| rule == "okf.freshness.missing-timestamp"),
+        "{rules:?}"
+    );
 
     fs::remove_dir_all(&root).expect("cleanup");
 }
@@ -147,11 +164,21 @@ fn reports_a_current_concept_that_links_to_deprecated_knowledge() {
         .filter(|finding| finding.rule_id == "okf.freshness.links-deprecated")
         .collect::<Vec<_>>();
 
-    assert_eq!(linking.len(), 1, "only the current concept's link is reported");
-    assert!(linking[0].affected_concept_ids.iter().any(|id| id == "current"));
+    assert_eq!(
+        linking.len(),
+        1,
+        "only the current concept's link is reported"
+    );
+    assert!(linking[0]
+        .affected_concept_ids
+        .iter()
+        .any(|id| id == "current"));
     // The retired target is named too, because repairing this means deciding what
     // the link should point at.
-    assert!(linking[0].affected_concept_ids.iter().any(|id| id == "legacy"));
+    assert!(linking[0]
+        .affected_concept_ids
+        .iter()
+        .any(|id| id == "legacy"));
 
     fs::remove_dir_all(&root).expect("cleanup");
 }

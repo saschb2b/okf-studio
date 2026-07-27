@@ -371,7 +371,9 @@ fn parse_flow_map(rest: &str) -> Option<Map<String, Value>> {
         if pair.is_empty() {
             continue;
         }
-        let Some(colon) = pair.find(':') else { continue };
+        let Some(colon) = pair.find(':') else {
+            continue;
+        };
         let key = pair[..colon].trim();
         if key.is_empty() {
             continue;

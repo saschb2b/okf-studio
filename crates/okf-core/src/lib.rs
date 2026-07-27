@@ -57,6 +57,13 @@ pub fn read_asset(root: &Path, rel: &str) -> Option<String> {
     asset::read_asset(root, rel)
 }
 
+/// Read the computation a concept declares, for display only. Authorized by the
+/// declaration rather than by file extension, since a computation may be any
+/// language its runtime accepts. See [`asset::read_declared_computation`].
+pub fn read_declared_computation(root: &Path, concept: &Concept) -> Option<String> {
+    asset::read_declared_computation(root, concept)
+}
+
 /// Read a *local* bundle image as a `data:` URL (offline-safe inlining), or
 /// `None` if it is absent, not an image, or escapes the root. See
 /// [`asset::read_asset_data_url`].

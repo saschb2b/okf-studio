@@ -61,8 +61,9 @@ export const InlineComputation: Story = {
 };
 
 /**
- * Stored in a file. Named rather than inlined: reading it needs a door that
- * currently serves only renderable companion files.
+ * Stored in a file. The panel names the path; the reading column renders its
+ * text under the same `# Computation` heading the inline form uses, so a reader
+ * cannot tell which form the producer chose.
  */
 export const FileComputation: Story = {
   args: {
@@ -78,6 +79,7 @@ export const FileComputation: Story = {
     await expect(
       canvas.getByText("references/computations/lib/revenue.sql"),
     ).toBeVisible();
+    await expect(canvas.getByText(/shown under the/)).toBeVisible();
   },
 };
 

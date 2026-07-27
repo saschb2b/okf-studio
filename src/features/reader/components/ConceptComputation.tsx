@@ -77,12 +77,18 @@ export function ConceptComputation({ concept }: ConceptComputationProps) {
         <h4>Computation</h4>
         <p className="concept-computation__where">
           <FileCode2 size={13} aria-hidden="true" />
+          {/* Both forms land under the same heading in the reading column, so a
+              reader never has to care which one the producer chose. The path is
+              still named here, because "which file runs" is part of the
+              contract even once its text is on screen. */}
           {inline
             ? <span>Inline, under the <code>#&nbsp;Computation</code> heading below.</span>
-            // Named rather than inlined: reading it needs a door that currently
-            // serves only renderable companion files, and widening that
-            // allowlist is not something this panel should decide.
-            : <span>Stored at <code>{contract.computation}</code>.</span>}
+            : (
+              <span>
+                Stored at <code>{contract.computation}</code>, shown under the{" "}
+                <code>#&nbsp;Computation</code> heading below.
+              </span>
+            )}
         </p>
       </div>
 

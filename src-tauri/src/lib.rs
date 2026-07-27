@@ -1541,6 +1541,38 @@ fn read_asset(
     Ok(okf_core::read_asset(&root, &rel))
 }
 
+/// Read the computation an Attested Computation concept declares, for display.
+///
+/// The webview passes a **concept id, never a path**. The path comes from that
+/// concept's own `computation` field, read back out of the bundle here. That is
+/// the authorization: a computation may be `.sql`, `.py`, anything its runtime
+/// takes, so the extension allowlist that guards `read_asset` cannot express
+/// what is permitted — and widening that door would have granted a great deal
+/// more, since it takes a caller-supplied path.
+///
+/// `None` covers every miss: unknown concept, no declared computation, an
+/// inline one, absent file, oversized, or a path escaping the bundle root.
+///
+/// Studio does not execute what it returns.
+#[tauri::command]
+async fn read_declared_computation(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    concept_id: String,
+) -> Result<Option<String>, String> {
+    let authorized_root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&authorized_root);
+        let concept = bundle
+            .concepts
+            .iter()
+            .find(|concept| concept.id == concept_id)?;
+        okf_core::read_declared_computation(&authorized_root, concept)
+    })
+    .await
+    .map_err(|_| "Studio could not read the declared computation.".to_string())
+}
+
 /// Read a local bundle image as a `data:` URL so the reader can render it inline
 /// without a network fetch (the offline stance). Returns `null` when the image
 /// is absent, not an image type, or escapes the bundle root.
@@ -1917,6 +1949,7 @@ pub fn run() {
             fetch_remote_bundle,
             read_asset,
             read_asset_data_url,
+            read_declared_computation,
             start_watch,
             stop_watch,
             can_self_update,

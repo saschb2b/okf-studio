@@ -4926,9 +4926,44 @@ export async function readAsset(
   root: string,
   rel: string,
 ): Promise<string | null> {
-  if (!isTauri()) return MOCK_ASSETS[rel.replace(/^\/+/, "")] ?? null;
+  if (!isTauri()) {
+    const key = rel.replace(/^\/+/, "");
+    // The backend serves only `html`, `css` and `svg` here (see
+    // crates/okf-core/src/asset.rs). The mock used to return any key present in
+    // MOCK_ASSETS, which made it quietly more permissive than the app it stands
+    // in for — so a test could not have caught the allowlist widening, and the
+    // browser build would have rendered files the desktop app refuses.
+    const ext = key.split(".").pop()?.toLowerCase() ?? "";
+    if (!["html", "css", "svg"].includes(ext)) return null;
+    return MOCK_ASSETS[key] ?? null;
+  }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<string | null>("read_asset", { root, rel });
+}
+
+/**
+ * Read the computation an Attested Computation concept declares in a file.
+ *
+ * Takes a **concept id, not a path** — deliberately. The backend reads the path
+ * out of that concept's own `computation` field, so the declaration is the
+ * authorization and this cannot be pointed at anything else. A computation is
+ * `.sql`, `.py`, whatever the runtime takes, so the extension allowlist that
+ * guards `readAsset` could not have expressed what is permitted.
+ *
+ * `null` for every miss: no declared computation, an inline one, a missing or
+ * oversized file. Returned for display; Studio never executes it.
+ */
+export async function readDeclaredComputation(
+  bundleRoot: string,
+  conceptId: string,
+): Promise<string | null> {
+  if (!isTauri()) {
+    const concept = MOCK_BUNDLE.concepts.find((item) => item.id === conceptId);
+    const declared = concept?.computation?.computation;
+    return declared ? MOCK_ASSETS[declared.replace(/^\/+/, "")] ?? null : null;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string | null>("read_declared_computation", { bundleRoot, conceptId });
 }
 
 /**

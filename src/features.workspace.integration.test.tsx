@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
 import { fillText, openBundle, renderApp } from "@/test/appHarness.tsx";
+import { MOCK_BUNDLE } from "@/mock/fixture.ts";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -188,7 +189,12 @@ describe("OKF Studio workspace features", () => {
     await user.click(detailsButton);
 
     const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
-    expect(within(dialog).getByText("45 concepts")).toBeInTheDocument();
+    // Derived from the fixture rather than frozen. The literal that used to sit
+    // here broke whenever a concept was added to the mock bundle for an
+    // unrelated feature, which tests the fixture's size rather than the dialog.
+    expect(
+      within(dialog).getByText(`${MOCK_BUNDLE.concepts.length} concepts`),
+    ).toBeInTheDocument();
     expect(within(dialog).getByText("Conformant with warnings")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", {
       name: /open validation report: conformant with warnings, 1 warning/i,

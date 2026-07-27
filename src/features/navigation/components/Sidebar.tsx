@@ -17,6 +17,7 @@ import { filteredConceptIds } from "@/shared/selectors.ts";
 import { TypeFilters } from "@/features/navigation/components/TypeFilters.tsx";
 import { TagBrowser } from "@/features/navigation/components/TagBrowser.tsx";
 import { IndexTree } from "@/features/navigation/components/IndexTree.tsx";
+import "@/shared/styles/chrome.css";
 
 /** A collapsible top-level sidebar section with a chevron + title trigger. */
 function Section({

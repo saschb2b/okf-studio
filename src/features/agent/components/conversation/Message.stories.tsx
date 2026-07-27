@@ -2,6 +2,7 @@
 // bordered editor-like block, agent markdown as plain document prose, and
 // quiet status notices per tone.
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect } from "storybook/test";
 import { Message } from "./items.tsx";
 
 const meta = {
@@ -99,5 +100,40 @@ export const StatusRetryFailed: Story = {
     },
     onRetry: () => undefined,
     retryError: "The connection is no longer active.",
+  },
+};
+
+/**
+ * An answer must be selectable so parts of it can be copied elsewhere.
+ *
+ * The app disables selection globally so dragging across chrome selects
+ * nothing; the transcript was never opted back in, so no part of an answer could
+ * be highlighted at all. Asserted against computed style in a real browser,
+ * because that is the only place a stylesheet actually applies — a jsdom test
+ * would pass whatever the CSS said.
+ */
+export const SelectableProse: Story = {
+  args: {
+    message: {
+      id: "agent-selectable",
+      role: "agent",
+      turnId: "turn-selectable",
+      text: "The sanctioned computation lives in the bundle, and a run is checked against it.",
+    },
+    showResponseActions: true,
+  },
+  play: async ({ canvasElement }) => {
+    // Narrowed by a throw rather than by an assertion: the repo bans both `!`
+    // and `as`, and a missing element is a real failure worth naming.
+    const prose = canvasElement.querySelector(".agent-message__markdown");
+    if (!prose) throw new Error("expected the agent message to render prose");
+    await expect(getComputedStyle(prose).userSelect).toBe("text");
+
+    // Interactive chrome inside a selectable message stays unselectable, so a
+    // drag across the answer does not collect the words on its buttons.
+    const button = canvasElement.querySelector(".agent-message button");
+    if (button) {
+      await expect(getComputedStyle(button).userSelect).toBe("none");
+    }
   },
 };

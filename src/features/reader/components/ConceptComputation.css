@@ -118,3 +118,12 @@
   line-height: var(--lh-normal);
   text-wrap: pretty;
 }
+
+/* A 24px floor is the audit's, and a full-width target reads as the panel's own
+   action rather than a stray control in the rail. */
+.concept-computation__check {
+  align-self: stretch;
+  justify-content: center;
+  min-height: 28px;
+  font-size: var(--fs-xs);
+}

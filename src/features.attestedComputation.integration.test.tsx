@@ -49,6 +49,74 @@ describe("attested computation", () => {
     });
   });
 
+  it("gives the attestation engine a caller: a clean run and a substituted one", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    await user.click(
+      await screen.findByRole("button", { name: /search and commands/i }),
+    );
+    const combo = await screen.findByRole("combobox");
+    await user.type(combo, "Recognized revenue");
+    const results = await screen.findAllByRole("option", { name: /Recognized revenue/i });
+    await user.click(results[0]);
+
+    await user.click(await screen.findByRole("button", { name: /check a run/i }));
+    const receiptField = await screen.findByLabelText(/receipt json/i);
+
+    // A run of the sanctioned query. The SQL is deliberately reformatted and
+    // its comment stripped: canonicalization forgives that, and a check that
+    // demanded byte equality would fail every honest run.
+    // Pasted rather than typed: `user.type` reads `{` as a key descriptor, and
+    // pasting is what this dialog is for anyway.
+    await user.click(receiptField);
+    await user.paste(
+      JSON.stringify({
+        job_id: "bq:job-1",
+        executed_sql:
+          "SELECT SUM(o.amount_usd) AS recognized_revenue FROM `finance.orders` AS o WHERE o.fiscal_year = 2026 AND (NULL IS NULL OR o.region = NULL) AND o.status = 'recognized'",
+        result: "12345",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: /^check$/i }));
+
+    // Provenance established — and the panel still says fidelity was not
+    // checked, because Studio cannot re-read the result by job id.
+    expect(await screen.findByText(/used the sanctioned computation/i)).toBeVisible();
+    expect(screen.getByText(/Not checked here/)).toBeVisible();
+  });
+
+  it("refuses a run whose query the agent wrote", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    await user.click(
+      await screen.findByRole("button", { name: /search and commands/i }),
+    );
+    const combo = await screen.findByRole("combobox");
+    await user.type(combo, "Recognized revenue");
+    const results = await screen.findAllByRole("option", { name: /Recognized revenue/i });
+    await user.click(results[0]);
+
+    await user.click(await screen.findByRole("button", { name: /check a run/i }));
+    const receiptField = await screen.findByLabelText(/receipt json/i);
+
+    // The failure the whole type exists to catch.
+    await user.click(receiptField);
+    await user.paste(
+      JSON.stringify({
+        job_id: "bq:job-2",
+        executed_sql: "SELECT SUM(amount_usd) FROM `finance.raw_orders`",
+        result: "99999",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: /^check$/i }));
+
+    expect(await screen.findByText(/cannot be trusted/i)).toBeVisible();
+  });
+
   it("serves the computation only through the declaration-scoped door", async () => {
     // `.sql` is deliberately not a permitted text asset, so the general door
     // refuses it. That refusal is the reason the scoped door exists: it is

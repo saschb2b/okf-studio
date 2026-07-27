@@ -3,6 +3,7 @@
 // to an in-memory mock, so the UI runs and tests pass without the backend.
 
 import type {
+  AttestationReport,
   Bundle,
   BundleRoot,
   CompatibilityFinding,
@@ -33,6 +34,10 @@ import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import { assessAccessHints } from "@/shared/access.ts";
 import { mockReceiptDiff, mockRetrieval } from "@/features/agent/retrieval/mockRetrieval.ts";
 import { today } from "@/features/bundle/trust.ts";
+import {
+  inlineComputation,
+  mockAttestationFor,
+} from "@/features/bundle/mockAttestation.ts";
 import type {
   ReceiptDiff,
   RetrievalRequest,
@@ -4964,6 +4969,61 @@ export async function readDeclaredComputation(
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<string | null>("read_declared_computation", { bundleRoot, conceptId });
+}
+
+/** Resolve the sanctioned computation the same way the backend does, then
+ *  attest against it. Both halves live in mockAttestation.ts; this only finds
+ *  the concept and its stored text. */
+function mockAttestation(
+  conceptId: string,
+  receipt: Record<string, string>,
+  on: string,
+): AttestationReport {
+  const concept = MOCK_BUNDLE.concepts.find((item) => item.id === conceptId);
+  if (!concept) {
+    return {
+      conceptId,
+      conceptTitle: conceptId,
+      runtime: null,
+      source: null,
+      contractError: { reason: "notAComputation" },
+      attestation: null,
+      verdict: "contract-unreadable",
+    };
+  }
+  const path = concept.computation?.computation ?? null;
+  const stored = path
+    ? MOCK_ASSETS[path.replace(/^\/+/, "")] ?? null
+    : inlineComputation(concept.body);
+  return mockAttestationFor(concept, stored, path, receipt, on);
+}
+
+/**
+ * Attest one run of an Attested Computation against the bundle's contract.
+ *
+ * Takes a concept id and a receipt — never a computation. What the run is
+ * checked *against* is read from the bundle by the backend, which is the only
+ * arrangement where the check means anything: a caller supplying both sides
+ * could always make them agree.
+ *
+ * Studio does not execute anything. Fidelity always comes back `unavailable`
+ * because only the executor's runtime can re-read a result by job id, and
+ * `unavailable` is never `passed`.
+ */
+export async function attestComputationRun(
+  bundleRoot: string,
+  conceptId: string,
+  receipt: Record<string, string>,
+  on = today(),
+): Promise<AttestationReport> {
+  if (!isTauri()) return mockAttestation(conceptId, receipt, on);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AttestationReport>("attest_computation_run", {
+    bundleRoot,
+    conceptId,
+    receipt,
+    today: on,
+  });
 }
 
 /**

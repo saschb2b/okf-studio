@@ -1573,6 +1573,58 @@ async fn read_declared_computation(
     .map_err(|_| "Studio could not read the declared computation.".to_string())
 }
 
+/// The largest receipt Studio will attest. A run's evidence is a handful of
+/// fields; anything past this is not a receipt, and parsing it would be work
+/// done on behalf of whatever sent it.
+const MAX_RECEIPT_FIELDS: usize = 64;
+const MAX_RECEIPT_VALUE_CHARS: usize = 256 * 1024;
+
+/// Attest one run of an Attested Computation against the bundle's contract.
+///
+/// The webview supplies a concept id and a receipt, never a path or a
+/// computation: what the run is checked *against* is read from the bundle here,
+/// which is the only arrangement where the check means anything. A caller that
+/// could supply both sides could always make them agree.
+///
+/// Studio does not execute the executor or the attester. It compares what a run
+/// reports it did against what the bundle sanctioned, and reports fidelity as
+/// unavailable because only the runtime can re-read a result by job id.
+#[tauri::command]
+async fn attest_computation_run(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    bundle_root: String,
+    concept_id: String,
+    receipt: std::collections::BTreeMap<String, String>,
+    today: String,
+) -> Result<okf_core::attest::AttestationReport, String> {
+    let authorized_root = grants.authorize_bundle(Path::new(&bundle_root))?;
+    if receipt.len() > MAX_RECEIPT_FIELDS {
+        return Err("That receipt declares more fields than a run's evidence has.".to_string());
+    }
+    if receipt
+        .values()
+        .any(|value| value.len() > MAX_RECEIPT_VALUE_CHARS)
+    {
+        return Err("A receipt field is too large to attest.".to_string());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&authorized_root);
+        let concept = bundle
+            .concepts
+            .iter()
+            .find(|concept| concept.id == concept_id)
+            .ok_or_else(|| "That concept is not in this bundle.".to_string())?;
+        Ok(okf_core::attest::attest_run(
+            &authorized_root,
+            concept,
+            &receipt,
+            &today,
+        ))
+    })
+    .await
+    .map_err(|_| "Studio could not complete the attestation.".to_string())?
+}
+
 /// Read a local bundle image as a `data:` URL so the reader can render it inline
 /// without a network fetch (the offline stance). Returns `null` when the image
 /// is absent, not an image type, or escapes the bundle root.
@@ -1950,6 +2002,7 @@ pub fn run() {
             read_asset,
             read_asset_data_url,
             read_declared_computation,
+            attest_computation_run,
             start_watch,
             stop_watch,
             can_self_update,

@@ -115,6 +115,74 @@ export interface Concept {
   degree: number;
 }
 
+// --- Attestation (spec 10.5) -------------------------------------------------
+//
+// Mirrors crates/okf-core/src/attest.rs. Studio never executes a computation or
+// an attester; it compares what a run reports it did against what the bundle
+// sanctioned.
+
+/**
+ * The result of one check. `unavailable` is deliberately not `passed` — a check
+ * that could not run has not succeeded, and collapsing the two is how a gate
+ * silently stops gating. Anything rendering this must keep them distinct.
+ */
+export type CheckOutcome =
+  | { state: "passed" }
+  | { state: "failed"; detail: string }
+  | { state: "unavailable"; detail: string };
+
+/** Where the sanctioned computation's text came from. */
+export type ComputationSource =
+  | { kind: "inline"; text: string }
+  | { kind: "file"; path: string; text: string };
+
+/** Why a contract could not be read. Each is a bundle defect, not a failed run. */
+export type ContractError =
+  | { reason: "notAComputation" }
+  | { reason: "missingRuntime" }
+  | { reason: "noComputation" }
+  | { reason: "ambiguousComputation" }
+  | { reason: "unreadableComputation"; detail: string };
+
+export interface Attestation {
+  /** Fields `executor.receipt` declares that the receipt did not carry. */
+  missingReceiptFields: string[];
+  provenance: CheckOutcome;
+  fidelity: CheckOutcome;
+  /** True only when every check that could run passed and none was skipped. */
+  attested: boolean;
+  /** Past `stale_after`. A stale definition can still attest cleanly, so this
+   *  warns rather than fails. */
+  stale: boolean;
+}
+
+/**
+ * What Studio can say about a run.
+ *
+ * `Attestation.attested` is the spec's full bar — provenance *and* fidelity —
+ * and it is **always false**, because fidelity means re-reading the
+ * authoritative result by job id and only the executor's runtime can do that.
+ * Honest, and useless for display: a perfect provenance match would render
+ * exactly like a forged one, and a badge that never turns green is one users
+ * stop reading. Render this instead.
+ */
+export type AttestationVerdict =
+  | "contract-unreadable"
+  | "failed"
+  | "provenance-established";
+
+export interface AttestationReport {
+  conceptId: string;
+  conceptTitle: string;
+  runtime: string | null;
+  source: ComputationSource | null;
+  /** Set when the contract itself is unusable; `attestation` is then null. */
+  contractError: ContractError | null;
+  attestation: Attestation | null;
+  /** The claim to present. Not `attestation.attested` — see the type. */
+  verdict: AttestationVerdict;
+}
+
 export interface IndexEntry {
   title: string;
   target: string;

@@ -210,6 +210,111 @@ pub fn attest(
     }
 }
 
+/// What Studio is able to say about a run.
+///
+/// `Attestation::attested` is the spec's full bar — provenance *and* fidelity —
+/// and it is **always false here**, because fidelity means re-reading the
+/// authoritative result by job id and only the executor's runtime can do that.
+/// That is honest, and it is useless as a display signal: a perfect provenance
+/// match would render exactly like a forged one, and a badge that never turns
+/// green is a badge users stop reading.
+///
+/// So this states the claim a reader can actually act on, and keeps the part
+/// Studio cannot check visible instead of folding it into a pass or a failure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AttestationVerdict {
+    /// The contract could not be read: a defect in the bundle, not in the run.
+    ContractUnreadable,
+    /// A check Studio *can* run said no — the executed computation is not the
+    /// sanctioned one, or declared receipt fields are missing. The reported
+    /// number must not be trusted.
+    Failed,
+    /// Everything Studio can check passed. Fidelity is still outstanding, so
+    /// this is deliberately not "attested" — it is the strongest claim
+    /// available without the executor's runtime.
+    ProvenanceEstablished,
+}
+
+/// One run's verdict, with the context a consumer needs to show it.
+///
+/// The single entry point every caller uses, so the manual paste door and the
+/// agent's submitted receipt cannot drift into judging the same run
+/// differently — the point of a gate is that it answers the same way whoever
+/// knocks.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttestationReport {
+    pub concept_id: String,
+    pub concept_title: String,
+    /// Absent when the contract could not be read.
+    pub runtime: Option<String>,
+    /// Where the sanctioned computation came from. The text is included: a
+    /// reader judging a failed provenance check needs to see what *should* have
+    /// run, and finding that out should not be a second errand.
+    pub source: Option<ComputationSource>,
+    /// Set when the contract itself is unusable. A defect in the bundle, not in
+    /// the run, and reported as such rather than as a failed attestation —
+    /// telling someone their run failed when the contract was never readable
+    /// sends them to debug the wrong thing.
+    pub contract_error: Option<ContractError>,
+    /// Absent exactly when `contract_error` is set.
+    pub attestation: Option<Attestation>,
+    /// The claim a consumer should present. See [`AttestationVerdict`] for why
+    /// this is not simply `attestation.attested`.
+    pub verdict: AttestationVerdict,
+}
+
+impl AttestationReport {
+    /// Whether this run cleared every check Studio can run. Never a claim of
+    /// full attestation — that needs fidelity, and fidelity needs the runtime.
+    pub fn provenance_established(&self) -> bool {
+        matches!(self.verdict, AttestationVerdict::ProvenanceEstablished)
+    }
+}
+
+/// Resolve the contract and attest one run against it.
+///
+/// `today` is supplied rather than read from a clock, so a verdict is a
+/// function of its inputs and means the same thing when it is re-examined.
+pub fn attest_run(
+    root: &Path,
+    concept: &Concept,
+    receipt: &Receipt,
+    today: &str,
+) -> AttestationReport {
+    let mut report = AttestationReport {
+        concept_id: concept.id.clone(),
+        concept_title: concept.title.clone(),
+        runtime: None,
+        source: None,
+        contract_error: None,
+        attestation: None,
+        verdict: AttestationVerdict::ContractUnreadable,
+    };
+    match resolve_computation(root, concept) {
+        Ok((contract, source)) => {
+            let attestation = attest(&contract, &source, concept, receipt, today);
+            // Fidelity is excluded deliberately: it is `Unavailable` by
+            // construction, so requiring it would make every verdict a failure
+            // and tell a reader nothing. What is required is that no check
+            // Studio *can* run said no.
+            report.verdict = if attestation.missing_receipt_fields.is_empty()
+                && attestation.provenance.passed()
+            {
+                AttestationVerdict::ProvenanceEstablished
+            } else {
+                AttestationVerdict::Failed
+            };
+            report.attestation = Some(attestation);
+            report.runtime = Some(contract.runtime);
+            report.source = Some(source);
+        }
+        Err(error) => report.contract_error = Some(error),
+    }
+    report
+}
+
 /// Compare what ran against what was stored.
 ///
 /// The receipt field is whichever declared field holds the executed text; the

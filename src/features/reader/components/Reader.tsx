@@ -1009,7 +1009,7 @@ export function Reader() {
             metadata it happens to carry. */}
         {hasComputation(c) && (
           <RailModule title="Computation contract">
-            <ConceptComputation concept={c} />
+            <ConceptComputation concept={c} bundleRoot={bundle?.root} />
           </RailModule>
         )}
 

@@ -1,0 +1,169 @@
+/* Self-contained: this renders in its own stories and inside a dialog, and
+   borrowing a class from a sibling's stylesheet is what has repeatedly left
+   components looking unstyled wherever that sibling was not loaded. */
+.attestation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-10);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+/* Colour carries the verdict, and never alone — each state also has its own
+   icon and its own words, so this reads the same without colour vision. */
+.attestation--provenance-established {
+  border-left-color: var(--success, var(--accent));
+}
+
+.attestation--failed {
+  border-left-color: var(--danger);
+}
+
+.attestation--contract-unreadable {
+  border-left-color: var(--warning, var(--text-dim));
+}
+
+.attestation__headline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-normal);
+}
+
+.attestation__headline > svg {
+  flex: none;
+}
+
+.attestation--provenance-established .attestation__headline > svg {
+  color: var(--success, var(--accent));
+}
+
+.attestation--failed .attestation__headline > svg {
+  color: var(--danger);
+}
+
+.attestation--contract-unreadable .attestation__headline > svg {
+  color: var(--warning, var(--text-dim));
+}
+
+.attestation__detail {
+  margin: 0;
+  max-width: var(--measure-prose);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.attestation__checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attestation-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.attestation-check__icon {
+  display: flex;
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-dim);
+}
+
+.attestation-check--passed .attestation-check__icon {
+  color: var(--success, var(--accent));
+}
+
+.attestation-check--failed .attestation-check__icon {
+  color: var(--danger);
+}
+
+.attestation-check__label {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+/* The state is a word, not only a colour and an icon. "Not checked here" is
+   deliberately not a shade of green. */
+.attestation-check__state {
+  margin-left: var(--space-4);
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.attestation-check--passed .attestation-check__state {
+  color: var(--success, var(--accent));
+}
+
+.attestation-check--failed .attestation-check__state {
+  color: var(--danger);
+}
+
+.attestation-check__detail {
+  margin: var(--space-2) 0 0;
+  max-width: var(--measure-prose);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.attestation__missing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.attestation__missing-label {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.attestation__missing ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attestation__missing code {
+  padding: var(--space-2) var(--space-6);
+  background: var(--bg-elev);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+.attestation__stale {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  margin: 0;
+  max-width: var(--measure-prose);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.attestation__stale > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warning, var(--text-dim));
+}

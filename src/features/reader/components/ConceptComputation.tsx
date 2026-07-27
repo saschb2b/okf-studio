@@ -11,16 +11,23 @@
 // `extra` — so without this panel these concepts showed *less* than before v0.2
 // support landed. This closes that.
 //
-// Running an attestation is not here. The engine exists in okf-core and has no
-// caller yet; see issue #28.
+// Checking a run against this contract is the button at the foot of the panel.
+// That is a tool for someone who already holds a receipt, not a gate — Studio
+// does not run computations, so a receipt is produced elsewhere. The gate
+// belongs where a number is actually asserted, which is the agent panel.
 
 import { FileCode2, Play, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import type { Concept } from "@/shared/types.ts";
+import { AttestRunDialog } from "@/features/bundle/components/AttestRunDialog.tsx";
 import "@/shared/styles/chrome.css";
 import "./ConceptComputation.css";
 
 interface ConceptComputationProps {
   concept: Concept;
+  /** Absent in stories that render the contract alone; the check needs a
+   *  bundle to read the sanctioned computation back out of. */
+  bundleRoot?: string;
 }
 
 /** Whether this concept carries a computation contract worth showing. */
@@ -28,7 +35,8 @@ export function hasComputation(concept: Concept): boolean {
   return concept.computation !== null;
 }
 
-export function ConceptComputation({ concept }: ConceptComputationProps) {
+export function ConceptComputation({ concept, bundleRoot }: ConceptComputationProps) {
+  const [attesting, setAttesting] = useState(false);
   const contract = concept.computation;
   if (!contract) return null;
 
@@ -121,6 +129,24 @@ export function ConceptComputation({ concept }: ConceptComputationProps) {
             : <span className="concept-computation__empty">None declared, so nothing turns a receipt into a verdict.</span>}
         </p>
       </div>
+
+      {bundleRoot && (
+        <>
+          <button
+            type="button"
+            className="btn concept-computation__check"
+            onClick={() => setAttesting(true)}
+          >
+            Check a run…
+          </button>
+          <AttestRunDialog
+            open={attesting}
+            onOpenChange={setAttesting}
+            bundleRoot={bundleRoot}
+            concept={concept}
+          />
+        </>
+      )}
     </div>
   );
 }

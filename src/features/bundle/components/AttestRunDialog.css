@@ -1,0 +1,84 @@
+/* Self-contained, per the repeated lesson that a component borrowing a
+   sibling's stylesheet renders unstyled wherever that sibling is not loaded. */
+.attest-run-dialog {
+  width: min(680px, calc(100vw - var(--space-32)));
+}
+
+.attest-run-dialog__description {
+  margin: var(--space-4) 0 0;
+  max-width: var(--measure-prose);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-wrap: pretty;
+}
+
+.attest-run-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12);
+}
+
+.attest-run-dialog__declared {
+  margin: 0;
+  max-width: var(--measure-prose);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.attest-run-dialog__declared code,
+.attest-run-dialog__dropped code {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+}
+
+.attest-run-dialog__label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.attest-run-dialog__input {
+  width: 100%;
+  padding: var(--space-8);
+  color: var(--text);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  resize: vertical;
+}
+
+.attest-run-dialog__input:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.attest-run-dialog__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.attest-run-dialog__dropped {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  margin: 0;
+  max-width: var(--measure-prose);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.attest-run-dialog__actions {
+  display: flex;
+  gap: var(--space-8);
+}

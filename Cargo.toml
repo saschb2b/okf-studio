@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.6.0"
+version = "0.7.0"
 license = "MIT"
 
 [workspace.dependencies]
@@ -13,6 +13,19 @@ serde = { version = "1", features = ["derive"] }
 # across IPC, so e.g. color swatches render in the order the author wrote them
 # rather than alphabetized.
 serde_json = { version = "1", features = ["preserve_order"] }
+
+# The dev profile's defaults are `debug = 2` and incremental compilation, and
+# together they are expensive here: a full DWARF/PDB copy per crate per target
+# kind, and `--all-targets` builds every test binary separately. Left alone, this
+# workspace's `target/` reached 68 GB — 35 GB of incremental cache and 30 GB of
+# artifacts — and filled a disk mid-session.
+#
+# Line tables keep what the tests actually need: a panic still reports its file
+# and line, and a backtrace still resolves. What goes is the type and variable
+# detail a step-through debugger wants, so raise this to `debug = 2` locally if
+# you are attaching one — it is a size trade, not a correctness one.
+[profile.dev]
+debug = "line-tables-only"
 
 [profile.release]
 panic = "abort"

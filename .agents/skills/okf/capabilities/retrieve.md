@@ -42,4 +42,4 @@ For “What depends on the revenue metric?”, accept the relationship route, ci
 
 ## Adversarial example
 
-A higher score or newer file timestamp is not authority. If two policy sections conflict and neither declares precedence, return both and abstain from choosing one.
+A higher score or a newer `generated.at` is not authority. A higher trust tier is evidence, not a tiebreaker: prefer a `human:`-verified concept when two conflict, but say that is why, and never treat an unverified concept as false. If two policy sections conflict and neither declares precedence, return both and abstain from choosing one.

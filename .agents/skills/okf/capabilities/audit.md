@@ -41,4 +41,4 @@ Report a missing dashboard target and an unlinked retention note as separate fin
 
 ## Adversarial example
 
-Do not label an old timestamp as a conformance error. It is a freshness signal unless a bundle-specific policy says otherwise.
+Do not label an old `generated.at` as a conformance error. It is a freshness signal unless a bundle-specific policy says otherwise. `stale_after` is the one freshness fact the bundle asserts about itself, so report a passed `stale_after` as the producer's own statement rather than as your judgment. Report trust tiers as they are recorded (absent `verified` means unverified, not untrustworthy) and never add a `verified` event to resolve a finding.

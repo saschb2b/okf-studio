@@ -1,15 +1,59 @@
 [
   {
     "path": "SKILL.md",
-    "sha256": "8d4922e1332f99b06c6dea852dc060d6896a3d47f0ae2f985c50b2f9076377a9"
+    "sha256": "4cefcee6fe7b71ae3d17f314984c8a446c025cf5fe9c9117bf54b05cbde5da0a"
+  },
+  {
+    "path": "capabilities/audit.md",
+    "sha256": "cc329121202af4d7586687d1ac36e200afac20fe12e96dc0d3679c9af7f16793"
+  },
+  {
+    "path": "capabilities/author.md",
+    "sha256": "febd3c433afdaa645873632f2f297430412115188533ff7e9e83aa7da25d3e60"
+  },
+  {
+    "path": "capabilities/change-impact.md",
+    "sha256": "f4e1a0097d77b07e249aa8c65d86e513bb56df7ae6f146c33188566577e3dc17"
+  },
+  {
+    "path": "capabilities/create.md",
+    "sha256": "c9a2208ec36d872f70da46728a17abf45df4ea02ba7b879aefec6fcc8bfba706"
+  },
+  {
+    "path": "capabilities/enrich.md",
+    "sha256": "ae3ed602b1664ccf10fd80ff421660fc5ef3068758ff86be06b57705714415fb"
+  },
+  {
+    "path": "capabilities/inspect.md",
+    "sha256": "f88640c4f2f087dab2a72fd49e162af336f2bfa6cc6456ddb27dd3715512b6d8"
+  },
+  {
+    "path": "capabilities/migrate.md",
+    "sha256": "e2763a7130c4cc7e56e10baadf98b526f46db53faea45354b6bb3478baa7c000"
+  },
+  {
+    "path": "capabilities/repair.md",
+    "sha256": "2dc58d286fbf10d8fd049b48098ed45861492cf1cfc6d0e1f661f5d2a948912b"
+  },
+  {
+    "path": "capabilities/research.md",
+    "sha256": "0d2d3fd2ec74394eecc3d258303cea5585cc6c74ac5bc42b3e21f4c73e142772"
+  },
+  {
+    "path": "capabilities/retrieve.md",
+    "sha256": "0e8bc686fbf390ac51b6deb88a0ac0fe6eaec516d683208068518421851b533f"
+  },
+  {
+    "path": "capabilities/revise.md",
+    "sha256": "785a4db087627ac22cc4bd5b79596ede0814255009e3336c5a4ac2e80507f891"
   },
   {
     "path": "commands.md",
-    "sha256": "630aab4e25256389b682e75ce1c45d1c1213bd7e4fb5ebc05dfe3cae6e06535e"
+    "sha256": "d786de1469b270dd7a0da1f93f93459023e85d036393eb4b5451a4a1b8feb794"
   },
   {
     "path": "okf-validate.mjs",
-    "sha256": "11110fe73744ab6156b6764e77f4f12d5ff9aeb5101cdc86eff9ec30d375a93a"
+    "sha256": "0e4ae2215fe536b8653798e6f189fd37e0d7a09d05b99b757f9f08b432c5eae3"
   },
   {
     "path": "permissions.yaml",
@@ -17,10 +61,14 @@
   },
   {
     "path": "spec.md",
-    "sha256": "c2fe6581903cb003c5a2040d6e28e478a2937e8ae60e1411fb154c58b1fc7201"
+    "sha256": "0666fce316f4fc4a0a2f20218d1b3f0f4a1cefa22ecea8cb4ca36ad809a49d94"
   },
   {
     "path": "templates.md",
-    "sha256": "b9a3a5150fda3d222007e305790a166a3b00295e9c607e0f6a8a7bbf638fb3fe"
+    "sha256": "191d899cd37ff7649923f1b4718b263ebf5882fee30579f924de8013a3cc31e2"
+  },
+  {
+    "path": "writing.md",
+    "sha256": "5f49869a059504fa0592810cce129527cd5cd0c31443cd8a50be4377fcfdf34f"
   }
 ]

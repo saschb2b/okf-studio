@@ -486,7 +486,7 @@ const MOCK_OKF_CAPABILITY_RISKS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number]
 };
 
 const MOCK_OKF_CAPABILITY_VERSIONS: Record<(typeof MOCK_OKF_CAPABILITY_IDS)[number], string> = {
-  "okf-core": "0.5.1",
+  "okf-core": "0.6.0",
   "okf-inspect": "0.3.0",
   "okf-retrieve": "0.1.1",
   "okf-create": "0.3.0",

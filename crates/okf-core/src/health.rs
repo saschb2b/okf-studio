@@ -193,8 +193,10 @@ pub fn suggested_repair(finding: &HealthFinding) -> Option<HealthRepair> {
             "Remove the YAML frontmatter block from this non-root index.md.",
         ),
         "okf.conformance.root-version" => (
+            // The current spec. Advising 0.1 would steer a bundle that has not
+            // declared a version yet onto the older one.
             "declare-okf-version",
-            "Add okf_version: \"0.1\" to the root index.md frontmatter.",
+            "Add okf_version: \"0.2\" to the root index.md frontmatter.",
         ),
         "okf.navigation.synthesized-index" => (
             "create-index",

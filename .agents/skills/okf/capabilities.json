@@ -4,7 +4,7 @@
   "capabilities": [
     {
       "id": "okf-core",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "description": "Inspect, author, validate, and maintain conformant Open Knowledge Format bundles.",
       "riskClass": "stage",
       "requiredTools": [
@@ -36,42 +36,42 @@
           "label": "instructions",
           "path": "SKILL.md",
           "mediaType": "text/markdown",
-          "sha256": "f85b3b0344a2e8f2b2179b4863b5a25c4abc49fa19a2a7f65d95a77233227351"
+          "sha256": "4cefcee6fe7b71ae3d17f314984c8a446c025cf5fe9c9117bf54b05cbde5da0a"
         },
         {
           "id": "specification",
           "label": "specification",
           "path": "spec.md",
           "mediaType": "text/markdown",
-          "sha256": "c2fe6581903cb003c5a2040d6e28e478a2937e8ae60e1411fb154c58b1fc7201"
+          "sha256": "0666fce316f4fc4a0a2f20218d1b3f0f4a1cefa22ecea8cb4ca36ad809a49d94"
         },
         {
           "id": "commands",
           "label": "commands",
           "path": "commands.md",
           "mediaType": "text/markdown",
-          "sha256": "236869830d18c0110c6c1c226f72aa94c890cc9b88d2be492c49983e719e5951"
+          "sha256": "d786de1469b270dd7a0da1f93f93459023e85d036393eb4b5451a4a1b8feb794"
         },
         {
           "id": "templates",
           "label": "templates",
           "path": "templates.md",
           "mediaType": "text/markdown",
-          "sha256": "6bf95eb019bb6fbff7092086dfaa856972423a34c8da53d75b2bc182709e71d1"
+          "sha256": "191d899cd37ff7649923f1b4718b263ebf5882fee30579f924de8013a3cc31e2"
         },
         {
           "id": "changelog",
           "label": "capability changelog",
           "path": "capabilities/CHANGELOG.md",
           "mediaType": "text/markdown",
-          "sha256": "d6a7055bd011ad250b97d98292a4859ae21fd816430cfbd07bae553396e9ce55"
+          "sha256": "a45ff8b367524949b03f7ece9022043a767b1f54929464e3a2595bf7304bd8e5"
         },
         {
           "id": "writing",
           "label": "OKF writing contract",
           "path": "writing.md",
           "mediaType": "text/markdown",
-          "sha256": "ce929f21a0620e02b59d0efd93f3bafb6082e2dddeda6b4791621d2a40ca3e35"
+          "sha256": "5f49869a059504fa0592810cce129527cd5cd0c31443cd8a50be4377fcfdf34f"
         }
       ]
     },
@@ -102,7 +102,7 @@
         "label": "retrieval method",
         "path": "capabilities/retrieve.md",
         "mediaType": "text/markdown",
-        "sha256": "207252ea046fe3db4876652ed0222dba650c35e176151e1d869a817430cad3c4"
+        "sha256": "0e8bc686fbf390ac51b6deb88a0ac0fe6eaec516d683208068518421851b533f"
       }]
     },
     {
@@ -147,7 +147,7 @@
         "label": "audit method",
         "path": "capabilities/audit.md",
         "mediaType": "text/markdown",
-        "sha256": "3d7699f8c4a53da1d4cfa63520b6111237892f3c4dfe150f08cc9db5b3e06940"
+        "sha256": "cc329121202af4d7586687d1ac36e200afac20fe12e96dc0d3679c9af7f16793"
       }]
     },
     {

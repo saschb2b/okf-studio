@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "okf-foundation",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "name": "OKF Foundation",
   "description": "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
   "publisher": "OKF Studio",
@@ -15,14 +15,14 @@
   "capabilityManifest": {
     "path": "capabilities.json",
     "mediaType": "application/json",
-    "sha256": "9fee0f646d4f1a102cf2022e7f75faf483d268f5250a6f6f289bd73e5e01d628"
+    "sha256": "8876a103848d376760089c91e269c82b73796aec87b6148554426b161b863018"
   },
   "templates": [
     {
       "id": "okf-markdown-templates",
       "path": "templates.md",
       "mediaType": "text/markdown",
-      "sha256": "6bf95eb019bb6fbff7092086dfaa856972423a34c8da53d75b2bc182709e71d1"
+      "sha256": "191d899cd37ff7649923f1b4718b263ebf5882fee30579f924de8013a3cc31e2"
     }
   ],
   "artifactSchemas": [

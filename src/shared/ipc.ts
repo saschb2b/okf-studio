@@ -38,6 +38,8 @@ import {
   inlineComputation,
   mockAttestationFor,
 } from "@/features/bundle/mockAttestation.ts";
+import { RECEIPT_FENCE } from "@/features/agent/receipt.ts";
+import type { AgentReceiptValidation } from "@/features/agent/receipt.ts";
 import type {
   ReceiptDiff,
   RetrievalRequest,
@@ -644,6 +646,95 @@ export async function validateAgentArtifact(
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<AgentArtifactValidation>("validate_agent_artifact", { root, markdown });
+}
+
+/** The `okf-receipt` fence body, matching agent_receipt.rs's extraction. */
+function receiptFenceJson(markdown: string): string | null {
+  const marker = markdown.lastIndexOf(RECEIPT_FENCE);
+  if (marker === -1) return null;
+  const afterMarker = marker + RECEIPT_FENCE.length;
+  const contentStart = markdown.indexOf("\n", afterMarker);
+  if (contentStart === -1) return null;
+  const end = markdown.indexOf("\n```", contentStart + 1);
+  if (end === -1) return null;
+  return markdown.slice(contentStart + 1, end).trim();
+}
+
+/** Mirrors agent_receipt::validate, including which shapes it refuses. */
+function mockReceiptValidation(markdown: string, on: string): AgentReceiptValidation {
+  const json = receiptFenceJson(markdown);
+  if (json === null) return { status: "none" };
+
+  let envelope: { schemaVersion?: number; conceptId?: string; receipt?: unknown };
+  try {
+    envelope = JSON.parse(json);
+  } catch (error) {
+    return { status: "invalid", message: `The receipt JSON is invalid: ${String(error)}` };
+  }
+  if (envelope.schemaVersion !== 1) {
+    return { status: "invalid", message: "Receipt schemaVersion must be 1." };
+  }
+  const conceptId = envelope.conceptId?.trim();
+  if (!conceptId) return { status: "invalid", message: "The receipt names no usable concept." };
+
+  // Looked up in the bundle, never taken from the envelope. An agent that could
+  // supply the computation it is judged against could always pass.
+  const concept = MOCK_BUNDLE.concepts.find((item) => item.id === conceptId);
+  if (!concept) {
+    return {
+      status: "invalid",
+      message: `This bundle has no concept ${conceptId}, so there is no contract to check the run against.`,
+    };
+  }
+
+  const fields = envelope.receipt;
+  if (fields === null || typeof fields !== "object" || Array.isArray(fields)) {
+    return { status: "invalid", message: "That receipt carries no usable fields." };
+  }
+  const receipt: Record<string, string> = {};
+  for (const [name, value] of Object.entries(fields)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "object") {
+      return {
+        status: "invalid",
+        message: `Receipt field ${name} is not a single value, so there is nothing to compare.`,
+      };
+    }
+    receipt[name] = String(value);
+  }
+  if (Object.keys(receipt).length === 0) {
+    return { status: "invalid", message: "That receipt carries no usable fields." };
+  }
+
+  const path = concept.computation?.computation ?? null;
+  const stored = path
+    ? MOCK_ASSETS[path.replace(/^\/+/, "")] ?? null
+    : inlineComputation(concept.body);
+  return {
+    status: "checked",
+    report: mockAttestationFor(concept, stored, path, receipt, on),
+  };
+}
+
+/**
+ * Check an `okf-receipt` fence in agent output against the bundle's contract.
+ *
+ * The browser stand-in performs the real check rather than refusing, unlike the
+ * artifact validator: this is a gate, and a stand-in that answered "cannot
+ * check here" would make every test of the gate a test of nothing.
+ */
+export async function validateAgentReceipt(
+  root: string,
+  markdown: string,
+  on = today(),
+): Promise<AgentReceiptValidation> {
+  if (!isTauri()) return mockReceiptValidation(markdown, on);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentReceiptValidation>("validate_agent_receipt", {
+    root,
+    markdown,
+    today: on,
+  });
 }
 
 export async function prepareAgentArtifactCritic(

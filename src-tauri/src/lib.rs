@@ -19,6 +19,8 @@ mod agent_mcp_grant;
 mod agent_process;
 #[path = "agent/host/agent_protocol.rs"]
 mod agent_protocol;
+#[path = "agent/host/agent_receipt.rs"]
+mod agent_receipt;
 #[path = "agent/host/agent_sandbox.rs"]
 mod agent_sandbox;
 #[path = "agent/host/agent_transcript.rs"]
@@ -962,6 +964,27 @@ async fn validate_agent_artifact(
     })
     .await
     .map_err(|_| "Studio could not validate the agent artifact.".to_string())
+}
+
+/// Check an `okf-receipt` fence in agent output against the bundle's contract.
+///
+/// The gate. The agent supplies only its receipt; what that receipt is checked
+/// against is read from the bundle here, because an agent that could supply
+/// both sides could always make them agree.
+#[tauri::command]
+async fn validate_agent_receipt(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    markdown: String,
+    today: String,
+) -> Result<agent_receipt::AgentReceiptValidation, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        agent_receipt::validate(&root, &markdown, &bundle, &today)
+    })
+    .await
+    .map_err(|_| "Studio could not check the run receipt.".to_string())
 }
 
 #[tauri::command]
@@ -1941,6 +1964,7 @@ pub fn run() {
             federated_sources,
             federated_relationship_candidates,
             validate_agent_artifact,
+            validate_agent_receipt,
             prepare_agent_artifact_critic,
             validate_agent_artifact_critic,
             agent_catalog,

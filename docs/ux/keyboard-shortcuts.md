@@ -3,7 +3,7 @@ type: Reference
 title: Keyboard Shortcuts
 description: The default keybindings; every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
-generated: { by: claude/unrecorded, at: 2026-07-23T20:25:48+02:00 }
+generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---
 
 # Defaults
@@ -37,6 +37,12 @@ generated: { by: claude/unrecorded, at: 2026-07-23T20:25:48+02:00 }
 | `F` | Fit graph to view |
 | `Ctrl/Cmd + +` `-` `0` | Reader text size: bigger / smaller / reset (content zoom, not page zoom) |
 | `[` `]` | Collapse / expand the sidebar and reader |
+| `S` | Start [speed reading](../features/speed-reading.md) the active concept (focus player) |
+| `Space` | Play / pause the speed reader (inside the player) |
+| `←` `→` | Back / forward one word (inside the speed reader) |
+| `↑` `↓` | Back / forward one sentence (inside the speed reader) |
+| `+` `-` | Faster / slower pace (inside the speed reader) |
+| `Space` or `Enter` | Continue past a code block, table, equation, or diagram the player stopped at |
 | `O` | Toggle [Bundle Home](../features/bundle-home.md) |
 | `T` | Toggle the [lineage](../proposals/lineage-and-traversal.md) panel — trace the active concept |
 | `L` | Toggle the `log.md` view |

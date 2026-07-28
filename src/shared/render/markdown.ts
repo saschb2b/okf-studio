@@ -448,6 +448,198 @@ function slugifyHeadings(html: string): string {
   return tpl.innerHTML;
 }
 
+/** What kind of thing a `PlainBlock` was in the source. */
+export type PlainBlockKind =
+  // Prose — carries readable text.
+  | "paragraph"
+  | "heading"
+  | "listItem"
+  | "quote"
+  // Not prose — carries source that only means anything rendered as itself.
+  | "code"
+  | "table"
+  | "math"
+  | "mermaid";
+
+/** The prose kinds, i.e. the blocks whose `text` is worth reading aloud. */
+export const PROSE_BLOCK_KINDS: ReadonlySet<PlainBlockKind> = new Set<PlainBlockKind>([
+  "paragraph",
+  "heading",
+  "listItem",
+  "quote",
+]);
+
+/** One block of a markdown body, split before syntax is stripped. */
+export interface PlainBlock {
+  kind: PlainBlockKind;
+  /** Prose with markdown syntax stripped; empty for the non-prose kinds. */
+  text: string;
+  /** The authored source, verbatim — what a non-prose block renders from. */
+  source: string;
+  /** Heading depth (1–6) for `heading`; 0 otherwise. */
+  level: number;
+}
+
+/** Inline markdown → bare text. Block-level markers are stripped by the
+ *  splitter, which knows which construct a line belongs to. */
+function stripInline(s: string): string {
+  return (
+    s
+      // Inline math keeps its TeX minus the delimiters. Currency is safe: the
+      // pattern needs a non-space on both inner edges.
+      .replace(/\$(\S(?:[^$\n]*?\S)?)\$/g, "$1")
+      // Embedded HTML: tags drop but keep their text content (`<kbd>Ctrl</kbd>`
+      // reads as `Ctrl`). Prose like "a < b" is untouched — the tag pattern
+      // requires a letter (or /) right after the bracket.
+      .replace(/<\/?[a-zA-Z][^>\n]*>/g, "")
+      // Images (before links: same bracket syntax) and links → their alt/text.
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      // Footnotes: a [^ref] marker vanishes; a definition keeps only its prose.
+      .replace(/\[\^[^\]\s]+\]:?/g, "")
+      // GFM alert markers ([!NOTE] etc.) read as noise without their styling.
+      .replace(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/gi, "")
+      // Emoji shortcodes read as their character (unknown names stay literal).
+      .replace(EMOJI_RE, (m, name: string) => EMOJIS[name] ?? m)
+      // Inline emphasis/code tokens → bare text.
+      .replace(/(\*\*|__|[*_~`])/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+const FENCE_RE = /^ {0,3}(```+|~~~+)[ \t]*([^\s`]*)/;
+const FENCE_END_RE = /^ {0,3}(```+|~~~+)[ \t]*$/;
+const TABLE_RE = /^ {0,3}\|/;
+const RULE_RE = /^ {0,3}([-=_*][ \t]*){3,}$/;
+const HEADING_RE = /^ {0,3}(#{1,6})[ \t]+(.*)$/;
+const QUOTE_RE = /^ {0,3}> ?/;
+const LIST_RE = /^[ \t]*([-*+]|\d+[.)])[ \t]+(\[[ xX]\][ \t]+)?/;
+const DEF_MARKER_RE = /^ {0,3}:[ \t]+/;
+const BLOCK_MATH_OPEN_RE = /^ {0,3}\$\$/;
+
+/**
+ * Split a markdown body into ordered blocks, keeping prose and non-prose apart.
+ *
+ * Splitting *before* stripping is what lets a consumer treat a code fence, a
+ * table, or a display equation as an object rather than as a run of words: the
+ * reader's [speed-reading mode](../../features/reader/speedread.ts) stops at
+ * those blocks instead of tokenizing them, and `plainExcerpt` simply drops them.
+ * Pure string work (no DOM), so it runs anywhere.
+ */
+export function plainBlocks(md: string): PlainBlock[] {
+  // Comments can span blocks, so they go before any line work.
+  const lines = md.replace(/<!--[\s\S]*?(-->|$)/g, " ").split(/\r?\n/);
+  const out: PlainBlock[] = [];
+  let para: string[] = [];
+
+  // Only ever called for the prose kinds; a block that stripped down to nothing
+  // (a bare `>` line, a marker with no words) is not a block worth carrying.
+  const push = (kind: PlainBlockKind, text: string, source: string, level = 0) => {
+    if (text) out.push({ kind, text, source, level });
+  };
+  const flushPara = () => {
+    if (para.length === 0) return;
+    const source = para.join("\n");
+    // A definition-list line (`: definition`) is the one block-level marker
+    // that can appear inside an ordinary paragraph run.
+    const text = stripInline(para.map((l) => l.replace(DEF_MARKER_RE, "")).join("\n"));
+    para = [];
+    if (text) out.push({ kind: "paragraph", text, source, level: 0 });
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (!line.trim()) {
+      flushPara();
+      i++;
+      continue;
+    }
+
+    const fence = FENCE_RE.exec(line);
+    if (fence) {
+      flushPara();
+      const start = i;
+      i++;
+      while (i < lines.length && !FENCE_END_RE.test(lines[i])) i++;
+      if (i < lines.length) i++; // consume the closing fence
+      const source = lines.slice(start, i).join("\n");
+      out.push({
+        kind: fence[2].toLowerCase() === "mermaid" ? "mermaid" : "code",
+        text: "",
+        source,
+        level: 0,
+      });
+      continue;
+    }
+
+    if (BLOCK_MATH_OPEN_RE.test(line)) {
+      flushPara();
+      const start = i;
+      // `$$ x $$` on one line closes itself; otherwise scan for the closer.
+      const closesHere = line.trim().length > 2 && line.trimEnd().endsWith("$$");
+      i++;
+      if (!closesHere) {
+        while (i < lines.length && !lines[i].includes("$$")) i++;
+        if (i < lines.length) i++;
+      }
+      out.push({ kind: "math", text: "", source: lines.slice(start, i).join("\n"), level: 0 });
+      continue;
+    }
+
+    if (TABLE_RE.test(line)) {
+      flushPara();
+      const start = i;
+      while (i < lines.length && TABLE_RE.test(lines[i])) i++;
+      out.push({ kind: "table", text: "", source: lines.slice(start, i).join("\n"), level: 0 });
+      continue;
+    }
+
+    if (RULE_RE.test(line)) {
+      flushPara();
+      i++;
+      continue;
+    }
+
+    const heading = HEADING_RE.exec(line);
+    if (heading) {
+      flushPara();
+      push("heading", stripInline(heading[2]), line, heading[1].length);
+      i++;
+      continue;
+    }
+
+    if (QUOTE_RE.test(line)) {
+      flushPara();
+      const start = i;
+      while (i < lines.length && lines[i].trim() && QUOTE_RE.test(lines[i])) i++;
+      const raw = lines.slice(start, i);
+      push("quote", stripInline(raw.map((l) => l.replace(QUOTE_RE, "")).join("\n")), raw.join("\n"));
+      continue;
+    }
+
+    if (LIST_RE.test(line)) {
+      flushPara();
+      const start = i;
+      i++;
+      // Indented continuations belong to the item; a new marker starts a new one.
+      while (i < lines.length && lines[i].trim() && !LIST_RE.test(lines[i]) && /^[ \t]+\S/.test(lines[i])) {
+        i++;
+      }
+      const raw = lines.slice(start, i);
+      push("listItem", stripInline(raw.join("\n").replace(LIST_RE, "")), raw.join("\n"));
+      continue;
+    }
+
+    para.push(line);
+    i++;
+  }
+  flushPara();
+  return out;
+}
+
 /**
  * A plain-text excerpt of a markdown body for the reader's peek card — the
  * first real prose, markdown syntax stripped, clamped to `max` characters at a
@@ -455,34 +647,10 @@ function slugifyHeadings(html: string): string {
  * enough to compute on hover. See docs/proposals/multi-view.md.
  */
 export function plainExcerpt(md: string, max = 280): string {
-  const text = md
-    // Fenced code blocks: drop wholesale — code is noise in a glimpse.
-    .replace(/```[\s\S]*?(```|$)/g, " ")
-    // Display math likewise; inline math keeps its TeX minus the delimiters.
-    .replace(/\$\$[\s\S]*?(\$\$|$)/g, " ")
-    .replace(/\$(\S(?:[^$\n]*?\S)?)\$/g, "$1")
-    // Embedded HTML: comments vanish, tags drop but keep their text content
-    // (`<kbd>Ctrl</kbd>` reads as `Ctrl`). Prose like "a < b" is untouched —
-    // the tag pattern requires a letter (or /) right after the bracket.
-    .replace(/<!--[\s\S]*?(-->|$)/g, " ")
-    .replace(/<\/?[a-zA-Z][^>\n]*>/g, "")
-    // Images (before links: same bracket syntax) and links → their alt/text.
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    // Footnotes: a [^ref] marker vanishes; a definition keeps only its prose.
-    .replace(/\[\^[^\]\s]+\]:?/g, "")
-    // Heading/blockquote/list/definition markers at line starts, and
-    // table/rule lines. The task-list checkbox goes with its list marker.
-    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+(\[[ xX]\]\s+)?|\d+\.\s+|:\s+)/gm, "")
-    .replace(/^\s*\|.*\|\s*$/gm, " ")
-    .replace(/^\s*([-=_*]\s*){3,}$/gm, " ")
-    // GFM alert markers ([!NOTE] etc.) read as noise without their styling.
-    .replace(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/gi, "")
-    // Emoji shortcodes read as their character (unknown names stay literal).
-    .replace(EMOJI_RE, (m, name: string) => EMOJIS[name] ?? m)
-    // Inline emphasis/code tokens → bare text.
-    .replace(/(\*\*|__|[*_~`])/g, "")
-    .replace(/\s+/g, " ")
+  const text = plainBlocks(md)
+    .filter((b) => PROSE_BLOCK_KINDS.has(b.kind))
+    .map((b) => b.text)
+    .join(" ")
     .trim();
   if (text.length <= max) return text;
   // Clamp at a word boundary, then signal the cut.

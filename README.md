@@ -112,7 +112,7 @@ The site under [`site/`](site/) builds separately with `pnpm --dir site build` a
 
 ## Contributing
 
-Issues and pull requests are welcome. [`AGENTS.md`](AGENTS.md) carries the full conventions; the short version:
+Issues and pull requests are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for what a complete change looks like, and [`AGENTS.md`](AGENTS.md) for the full architecture and conventions. The short version:
 
 - A user-facing change lands on three surfaces in one change: code, the `docs/` spec, and the site's copy.
 - Run the gate above locally before opening a pull request. CI runs the same checks.

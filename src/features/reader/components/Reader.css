@@ -251,9 +251,31 @@
   margin-inline-start: auto;
 }
 
+/* Controls that share a job sit tighter to each other than to the next group,
+   so the row reads as two sets rather than one undifferentiated queue. */
+.reader-action-group {
+  display: inline-flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.reader-action-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+}
+
+/* The divider earns nothing once the row wraps. Keyed to the READER PANE, not
+   the window: in the split layout the pane can be narrow while the window is
+   wide, and the rest of this file already sizes off the same container. */
+@container (max-width: 640px) {
+  .reader-action-divider {
+    display: none;
+  }
+}
+
 .reader-okf-task,
-.reader-concept-move,
-.reader-concept-retirement,
+.reader-speed-read,
 .reader-resource-agent {
   display: inline-flex;
   gap: var(--space-6);
@@ -268,8 +290,7 @@
 }
 
 .reader-okf-task:hover,
-.reader-concept-move:hover,
-.reader-concept-retirement:hover,
+.reader-speed-read:hover,
 .reader-resource-agent:hover {
   color: var(--text);
   background: var(--ghost-hover);

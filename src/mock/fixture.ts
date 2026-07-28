@@ -169,6 +169,39 @@ const raw: RawConcept[] = [
     brokenLinks: ["features/does-not-exist"],
   },
   {
+    // Long enough to actually pace: the speed reader needs several substantial
+    // paragraphs plus a code fence and a table to exercise both the word stream
+    // and the stops. See docs/features/speed-reading.md.
+    id: "features/speed-reading",
+    type: "Feature",
+    title: "Speed Reading",
+    description: "Paces a concept word by word, with rereading kept in reach.",
+    tags: ["feature", "reader", "reading"],
+    timestamp: "2026-07-28T00:00:00Z",
+    resource: null,
+    extra: {},
+    body:
+      "# What it does\n\n" +
+      "Speed reading paces this concept instead of leaving you to scroll it. The focus player clears the screen and shows one word at a time, holding each word's optimal recognition point at a fixed position so your eye never has to travel to find where the next word begins. That is the whole mechanical trick behind presenting text serially: ordinary reading spends a large share of its time on the small jumps between words, and a player that keeps the landing point still gives that time back.\n\n" +
+      "The catch is well documented and worth stating plainly. Reading is not a one-way process. A substantial share of eye movements during normal reading go backwards, and most of those regressions exist to repair a sentence that was misparsed the first time. A player that only ever moves forward removes the repair mechanism along with the wasted travel, which is why studies of serial presentation measure a comprehension cost that grows with the rate.\n\n" +
+      "# How this player answers that\n\n" +
+      "The sentence you are inside stays printed beneath the word, so a word that failed to land can be recovered with a glance instead of a restart. The left and right arrows step a word at a time and the up and down arrows step a sentence at a time, both of which pause the player, because a deliberate move backwards should not be fighting a clock. Pausing and resuming rewinds a few words rather than dropping you exactly where attention lapsed.\n\n" +
+      "Pace defaults to three hundred words per minute, which sits inside the band where comprehension generally holds. Past roughly five hundred the player says so rather than letting the number climb quietly.\n\n" +
+      "```ts\n" +
+      "const stream = buildReadingStream(concept.body, { chunk: 1 });\n" +
+      "const ms = durationFor(stream.tokens[0], 300);\n" +
+      "```\n\n" +
+      "# What it refuses to do\n\n" +
+      "One word at a time cannot show a table, a code fence, an equation, or a diagram, so the player does not pretend otherwise. It stops at each of them and renders the block as itself, and you continue when you are ready.\n\n" +
+      "| Mode | Shows | Best for |\n" +
+      "| --- | --- | --- |\n" +
+      "| Focus | One word, centred | A first pass over prose |\n" +
+      "| Guided | The page, with a marker | Dense or technical material |\n\n" +
+      "Guided pacing is the second mode and the more forgiving one. The concept stays exactly where it is and a marker sweeps through the real text at the same rate, so every sentence around the current one is still on screen. Nothing here starts on its own: both modes begin with a press, and both can be paused at any moment.",
+    links: ["features/concept-reader"],
+    externalLinks: [],
+  },
+  {
     id: "architecture/data-model",
     type: "Reference",
     title: "Data Model",
@@ -545,6 +578,12 @@ export const MOCK_BUNDLE: Bundle = {
               description: "Rendered markdown with backlinks.",
               kind: "concept",
             },
+            {
+              title: "Speed Reading",
+              target: "features/speed-reading",
+              description: "Paces a concept word by word.",
+              kind: "concept",
+            },
           ],
         },
         {
@@ -620,6 +659,12 @@ export const MOCK_BUNDLE: Bundle = {
               title: "Concept Reader",
               target: "features/concept-reader",
               description: "Rendered markdown with backlinks.",
+              kind: "concept",
+            },
+            {
+              title: "Speed Reading",
+              target: "features/speed-reading",
+              description: "Paces a concept word by word.",
               kind: "concept",
             },
           ],

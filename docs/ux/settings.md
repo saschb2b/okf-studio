@@ -3,7 +3,7 @@ type: Reference
 title: Settings and preferences
 description: The searchable local settings workspace for appearance, reading, agents, bundle knowledge, discovery, updates, and reset.
 tags: [ux, settings, preferences]
-generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
+generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---
 
 # Why Settings is a workspace
@@ -24,7 +24,7 @@ Preferences take effect immediately and persist on this device. The fixed footer
 | --- | --- | --- |
 | General | Control bundle discovery | Scan depth |
 | Appearance | Control the interface | Theme, reduce motion |
-| Reading | Control concept prose | Reader text size |
+| Reading | Control concept prose and its pace | Reader text size, speed-reading pace |
 | Agents | Control agent attention and inspect supplied methods | Background notifications, notification sound, OKF capability pack |
 | Knowledge | Manage state and access for the open bundle | Workspace memory, local routines, one-shot OKF MCP grant |
 | Updates | Notice and apply a new release | New release badge, check, install and restart, or download |
@@ -56,6 +56,8 @@ Theme supports System, Light, and Dark and follows the operating system by defau
 Reader text size scales the [concept reader](../features/concept-reader.md) without scaling the graph or application chrome. `Ctrl/Cmd +`, `-`, and `0` change the same value when focus is outside the graph. Browser page zoom remains suppressed, including the GTK gesture path described in [Theming](theming.md).
 
 The reader's `Aa` control owns measure width, line spacing, font choice, and dyslexia-friendly reading aids. Those preferences use the same local settings store but remain next to the content they change.
+
+[Speed reading](../features/speed-reading.md) keeps its pace, frame size, and word-start cue in the same store. Its *mode* is deliberately absent from it: text that advances on its own has to follow a press every time, so no setting can leave a player armed for the next concept.
 
 ## Agents
 

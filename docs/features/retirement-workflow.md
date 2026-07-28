@@ -3,12 +3,12 @@ type: Feature
 title: Retirement Workflow
 description: Deprecate, redirect, tombstone, or delete a concept through one impact-aware, reviewed, restorable graph transaction.
 tags: [feature, maintenance, lifecycle, retirement, deletion, staging]
-generated: { by: claude/unrecorded, at: 2026-07-23T16:15:00Z }
+generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---
 
 # User job
 
-A maintainer needs to stop readers and agents from treating a concept as current without leaving an unexplained gap in the graph. The Concept Reader exposes **Retire** beside **Move**. Before any file changes, the maintainer chooses the intended outcome, names the reason and decision date, and sees the affected links, indexes, files, and retrieval consequence.
+A maintainer needs to stop readers and agents from treating a concept as current without leaving an unexplained gap in the graph. The Concept Reader exposes **Retire** in the header's [More concept actions](concept-reader.md) menu, beside **Move**. Before any file changes, the maintainer chooses the intended outcome, names the reason and decision date, and sees the affected links, indexes, files, and retrieval consequence.
 
 # Four explicit outcomes
 

@@ -38,6 +38,9 @@
 .prefs-step:hover {
   border-color: var(--accent);
 }
+.prefs-value.is-wide {
+  min-width: 8ch;
+}
 .prefs-value {
   min-width: 3ch;
   font-size: var(--fs-xs);
@@ -72,6 +75,50 @@
 .prefs-check {
   justify-content: flex-start;
   cursor: pointer;
+}
+
+/* Pace sits below comfort, separated by a rule: they are two different jobs
+   and the popover should not read as one long list of switches. */
+.prefs-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border);
+}
+
+.prefs-section-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.prefs-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-dim);
+  text-wrap: pretty;
+}
+
+.prefs-start {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.prefs-start .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.prefs-step:disabled {
+  color: var(--text-dim);
+  cursor: default;
+  opacity: 0.55;
+}
+
+.prefs-step:disabled:hover {
+  border-color: var(--border);
 }
 
 .prefs-reset {

@@ -57,9 +57,13 @@ export default tseslint.config(
       // Numbers in template literals are safe and idiomatic (`${count} items`).
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
       // A focusable `separator` is a valid window-splitter widget (WAI-ARIA APG).
+      // A focusable named `region` is how an overflow container is reached
+      // without a mouse — the treatment the reader already gives its wide
+      // tables and code blocks (markdown.ts `containTables`); a scroll area the
+      // keyboard cannot enter is content the keyboard cannot read.
       "jsx-a11y/no-noninteractive-tabindex": [
         "error",
-        { tags: [], roles: ["tabpanel", "separator"], allowExpressionValues: true },
+        { tags: [], roles: ["tabpanel", "separator", "region"], allowExpressionValues: true },
       ],
       // Base UI's headless controls are the real (accessible) control inside a label.
       "jsx-a11y/label-has-associated-control": [

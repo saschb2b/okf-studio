@@ -1,14 +1,17 @@
-// The reader's "Aa" reading-preferences popover: text size, measure width,
-// line spacing, font (sans/serif), and dyslexia-friendly reading aids. Each maps
-// to a reader-scoped CSS variable and persists in settings. The keyboard zoom
-// (Ctrl/Cmd +/-/0) drives the same text-size value. See
-// docs/features/concept-reader.md.
+// The reader's "Aa" reading-preferences popover. Two halves: reading comfort —
+// text size, measure width, line spacing, font (sans/serif), dyslexia-friendly
+// aids — and reading pace, where speed reading is started. Each comfort setting
+// maps to a reader-scoped CSS variable; all of them persist in settings, and the
+// keyboard zoom (Ctrl/Cmd +/-/0) drives the same text-size value. See
+// docs/features/concept-reader.md and docs/features/speed-reading.md.
 
-import { Check } from "lucide-react";
+import { Check, Gauge, Rows3 } from "lucide-react";
 import { Popover } from "@base-ui/react/popover";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { useApp } from "@/shared/store.tsx";
-import type { ReaderFont } from "@/shared/types.ts";
+import { clampWpm, WPM_MAX, WPM_MIN, WPM_STEP } from "@/features/reader/speedread.ts";
+import type { SpeedReadMode } from "@/features/reader/speedReadStart.ts";
+import type { ReaderChunk, ReaderFont } from "@/shared/types.ts";
 import "@/shared/styles/baseui.css";
 import "./ReaderPrefs.css";
 
@@ -30,10 +33,19 @@ const FONTS: { label: string; v: ReaderFont }[] = [
   { label: "Sans", v: "sans" },
   { label: "Serif", v: "serif" },
 ];
+const FRAMES: { label: string; v: ReaderChunk }[] = [
+  { label: "Word", v: 1 },
+  { label: "Phrase", v: 2 },
+];
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
-export function ReaderPrefs() {
+export interface ReaderPrefsProps {
+  /** Starts a pacing mode on the concept the reader is showing. */
+  onStartSpeedRead: (mode: SpeedReadMode) => void;
+}
+
+export function ReaderPrefs({ onStartSpeedRead }: ReaderPrefsProps) {
   const { state, actions } = useApp();
   const s = state.settings;
 
@@ -125,6 +137,94 @@ export function ReaderPrefs() {
               <span className="prefs-label">Reading aids</span>
             </label>
 
+            {/* Pace. Nothing here starts on its own: the two buttons are the
+                only way in, so auto-advancing text always follows a press. */}
+            <div className="prefs-section">
+              <span className="prefs-section-title">Speed reading</span>
+              <div className="prefs-start">
+                <Popover.Close
+                  render={
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => onStartSpeedRead("focus")}
+                    >
+                      <Gauge size={14} aria-hidden="true" />
+                      Focus
+                    </button>
+                  }
+                />
+                <Popover.Close
+                  render={
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => onStartSpeedRead("guided")}
+                    >
+                      <Rows3 size={14} aria-hidden="true" />
+                      Guided
+                    </button>
+                  }
+                />
+              </div>
+              <p className="prefs-note">
+                Focus shows one word at a time on its own screen. Guided keeps
+                the page and sweeps a marker through it. Either way you can step
+                back a word or a sentence, and tables and code are shown whole.
+              </p>
+            </div>
+
+            <div className="prefs-row">
+              <span className="prefs-label">Pace</span>
+              <div className="prefs-stepper">
+                <button
+                  type="button"
+                  className="prefs-step"
+                  aria-label="Slower pace"
+                  onClick={() =>
+                    actions.updateSettings({ speedReadWpm: clampWpm(s.speedReadWpm - WPM_STEP) })
+                  }
+                  disabled={s.speedReadWpm <= WPM_MIN}
+                >
+                  −
+                </button>
+                <span className="prefs-value is-wide">{s.speedReadWpm} wpm</span>
+                <button
+                  type="button"
+                  className="prefs-step"
+                  aria-label="Faster pace"
+                  onClick={() =>
+                    actions.updateSettings({ speedReadWpm: clampWpm(s.speedReadWpm + WPM_STEP) })
+                  }
+                  disabled={s.speedReadWpm >= WPM_MAX}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <Seg
+              label="Frame"
+              value={s.speedReadChunk}
+              options={FRAMES}
+              onChange={(v) => actions.updateSettings({ speedReadChunk: v })}
+            />
+
+            <label className="prefs-row prefs-check">
+              <Checkbox.Root
+                className="ui-checkbox"
+                checked={s.speedReadBoldStart}
+                onCheckedChange={(checked) =>
+                  actions.updateSettings({ speedReadBoldStart: checked })
+                }
+              >
+                <Checkbox.Indicator className="ui-checkbox-indicator" aria-hidden="true">
+                  <Check size={13} />
+                </Checkbox.Indicator>
+              </Checkbox.Root>
+              <span className="prefs-label">Bold word starts</span>
+            </label>
+
             <button
               type="button"
               className="prefs-reset"
@@ -135,6 +235,9 @@ export function ReaderPrefs() {
                   readerLeading: 1.7,
                   readerFont: "sans",
                   readerAids: false,
+                  speedReadWpm: 300,
+                  speedReadChunk: 1,
+                  speedReadBoldStart: false,
                 })
               }
             >

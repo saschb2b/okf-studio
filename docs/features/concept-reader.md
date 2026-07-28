@@ -3,7 +3,7 @@ type: Feature
 title: Concept Reader
 description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
-generated: { by: claude/unrecorded, at: 2026-07-23T22:27:47+02:00 }
+generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---
 
 # What it does
@@ -14,9 +14,21 @@ Selected reader text can be added explicitly to the [Agent Panel](agent-panel.md
 
 The header's **Work with agent** action opens [Native OKF Tasks](native-okf-tasks.md) for this concept. A `resource` citation in the Details module has the same action scoped to that URL and concept. Both routes show the bounded context plan before a prompt is prepared; cancelling returns focus to the action that opened it.
 
-The neighboring **Move** action opens [Safe Concept Move](safe-concept-move.md). Move computes the affected graph, keeps a portable redirect at the old path, and requires per-hunk review, isolated validation, and explicit Apply. It never renames or rewrites a file directly from the reader.
+The **Speed read** action starts [Speed Reading](speed-reading.md)'s focus player on this concept — one word at a time, its recognition point pinned in place. Guided pacing and the pace itself live in the `Aa` popover with the other reading preferences.
 
-The **Retire** action opens the [Retirement Workflow](retirement-workflow.md). A maintainer chooses deprecate, redirect, tombstone, or delete; names a reason and date; sees link, index, file, and retrieval consequences; and reviews the derived `log.md` entry with the rest of the graph transaction. Delete requires a separate acknowledgement and a replacement while inbound links remain.
+The **More concept actions** menu at the right of the row holds **Move** and **Retire**. **Move** opens [Safe Concept Move](safe-concept-move.md): it computes the affected graph, keeps a portable redirect at the old path, and requires per-hunk review, isolated validation, and explicit Apply. **Retire** opens the [Retirement Workflow](retirement-workflow.md), where a maintainer chooses deprecate, redirect, tombstone, or delete; names a reason and date; sees link, index, file, and retrieval consequences; and reviews the derived `log.md` entry with the rest of the graph transaction. Delete requires a separate acknowledgement and a replacement while inbound links remain. Neither ever renames or rewrites a file directly from the reader, and cancelling either returns focus to the menu that opened it.
+
+## Why the header is grouped, and why two actions moved into a menu
+
+The row had grown to five peer buttons — Retire, Move, Work with agent, Speed read, Aa — and stopped being scanned. The guidance here is old and consistent: decision time rises with the number of visible choices, and the remedies are **chunking** and **progressive disclosure** rather than shrinking everything. Design systems put the number bluntly, exposing roughly two buttons and sending the rest to an overflow; the counter-guidance is equally clear that an overflow costs discoverability, so *what* goes into it matters more than how many.
+
+The split is therefore by job and frequency, not by taste:
+
+- **Reading controls stay visible and sit together** — Speed read and `Aa`, separated from the rest by a hairline. This is a reading pane, and these are the controls a person reaches for repeatedly. Speed reading in particular was undiscoverable while it lived only behind a keyboard shortcut and a section of a popover.
+- **Work with agent stays visible.** It is the product's headline capability and belongs in view.
+- **Move and Retire moved into the overflow.** Both are infrequent maintenance, both open a reviewed transaction rather than acting on click, and neither is something a reader needs at a glance. Burying an action that must be obvious is the misuse of this pattern; these are the opposite case.
+
+The menu owns both dialogs, so the focus contract survives the move: the item that opened a dialog unmounts with the menu, and each dialog names the overflow trigger as its final focus instead.
 
 When a concept carries [Reliability and Lifecycle](reliability-and-lifecycle.md) metadata, the header shows one advisory status with the authored confidence, review, effective-time, contradiction, or replacement details. It explicitly says Studio has not verified the claim. Concepts without that optional metadata keep the ordinary reading surface.
 
@@ -81,3 +93,5 @@ Every relationship row is clickable and drives the **single shared selection**, 
 # Reading preferences
 
 An **"Aa" control** at the **top-right of the reader's header** (with the content, not in the title bar — reading is a reader concern, used sparingly) opens a small popover (built on [Base UI](../architecture/frontend-architecture.md)) to tune reading comfort: **text size**, **measure width**, **line spacing**, **font** (the humanist UI sans by default, with an opt-in reading **serif**), and a **reading-aids** toggle (dyslexia-friendly letter/word spacing). Each maps to a CSS variable on the reader and **persists** alongside the other [settings](../ux/settings.md); the keyboard text-size shortcuts (`Ctrl/Cmd +/-/0`) drive the same size control. This is the content-scoped reading layer, distinct from page zoom (suppressed for a [native feel](../ux/theming.md)).
+
+The same popover owns the other half of reading — **pace**. [Speed Reading](speed-reading.md) starts from here: a focus player showing one word at a time with its recognition point pinned in place, or a guided marker paced through the prose where it sits. Rate, frame size, and the word-start cue persist with the comfort settings; the *mode* never does, so auto-advancing text always follows a press.

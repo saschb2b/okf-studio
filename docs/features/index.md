@@ -11,6 +11,7 @@ One concept per user-facing capability. The sections follow Studio's normal work
 * [Graph View](graph-view.md) - See concepts as a force-directed network, colored by type and connected by cross-references.
 * [Visualization Views](viz-views.md) - Compare bundle composition through a treemap, sunburst, or circle packing.
 * [Concept Reader](concept-reader.md) - Read rendered Markdown with metadata, citations, and navigable links.
+* [Speed Reading](speed-reading.md) - Pace a concept word by word, keeping rereading and non-prose blocks in reach.
 * [Design-System Rendering](design-system-rendering.md) - Inspect an ODSF bundle's tokens and example assets in their native forms.
 * [Search & Filter](search-and-filter.md) - Find concepts through full-text search, type filters, and tag browsing.
 * [Navigation](navigation.md) - Move through authored indexes, links, and history.

@@ -3,7 +3,7 @@ type: Reference
 title: Accessibility
 description: The app's accessibility commitments — keyboard operability, focus, screen-reader semantics, contrast, and motion.
 tags: [ux, accessibility, a11y]
-generated: { by: claude/unrecorded, at: 2026-07-14T13:30:00Z }
+generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---
 
 # Keyboard operability
@@ -34,6 +34,7 @@ Both themes meet **WCAG AA** contrast for text, graph nodes, and edges. See [The
 
 - The app honors the OS **"reduce motion"** setting: the [graph](../features/graph-view.md) animation is damped (layout snaps rather than springs) and [live-reload](../features/live-reload.md) settling is calmed so re-layouts don't lurch.
 - The reduce-motion behavior can be overridden in [Settings](settings.md).
+- **Moving text always has a stop.** [Speed reading](../features/speed-reading.md) is the one surface that advances text on its own, and it is held to [WCAG 2.2.2](https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html): no pacing mode is persisted, so every session begins with a press; pause is one key or one button away; with reduce motion on the player opens paused and never animates between frames; and the ticking frame is hidden from assistive technology, which reads the unchanged prose instead.
 
 # Sizing
 

@@ -3,12 +3,12 @@ type: Feature
 title: Safe Concept Move
 description: Relocate a concept with parser-confirmed link repairs, a portable redirect, isolated validation, reviewed Apply, and Restore.
 tags: [feature, maintenance, identity, links, navigation, staging]
-generated: { by: claude/unrecorded, at: 2026-07-23T14:15:00Z }
+generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---
 
 # User job
 
-A maintainer wants to reorganize a bundle without breaking inbound links, outgoing relative links, navigation indexes, citations, or a reader tab that still points to the old path. The Concept Reader exposes **Move** beside the agent action. The maintainer enters a bundle-relative Markdown destination and reviews the complete graph change before any file changes.
+A maintainer wants to reorganize a bundle without breaking inbound links, outgoing relative links, navigation indexes, citations, or a reader tab that still points to the old path. The Concept Reader exposes **Move** in the header's [More concept actions](concept-reader.md) menu, beside Retire. The maintainer enters a bundle-relative Markdown destination and reviews the complete graph change before any file changes.
 
 # Move plan
 

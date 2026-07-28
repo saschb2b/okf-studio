@@ -418,6 +418,9 @@ export type ThemeMode = "system" | "light" | "dark";
 
 export type ReaderFont = "sans" | "serif";
 
+/** Words per frame in the speed reader — one word, or a two-word phrase. */
+export type ReaderChunk = 1 | 2;
+
 export interface Settings {
   theme: ThemeMode;
   reduceMotion: boolean;
@@ -437,6 +440,16 @@ export interface Settings {
   readerFont: ReaderFont;
   /** Dyslexia-friendly letter/word spacing in the reader body. */
   readerAids: boolean;
+  /**
+   * Speed-reading pace in words per minute. A preference only — no pacing mode
+   * is persisted, because auto-advancing text must never start on its own
+   * (WCAG 2.2.2). See docs/features/speed-reading.md.
+   */
+  speedReadWpm: number;
+  /** Words shown per frame in the focus player: one word, or a short phrase. */
+  speedReadChunk: ReaderChunk;
+  /** Bold the opening letters of each word while pacing. Off by default. */
+  speedReadBoldStart: boolean;
   /** Look for a new release once shortly after launch and show a quiet badge
    *  on the settings icon when one exists. Installing stays user-initiated. */
   updateNotify: boolean;
@@ -453,6 +466,9 @@ export const DEFAULT_SETTINGS: Settings = {
   readerLeading: 1.7,
   readerFont: "sans",
   readerAids: false,
+  speedReadWpm: 300,
+  speedReadChunk: 1,
+  speedReadBoldStart: false,
   updateNotify: true,
 };
 

@@ -1,0 +1,320 @@
+/* The focus player. Everything here serves one goal: the pivot letter must not
+   move between frames, and nothing else on screen may compete with it. */
+
+.speedread {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  gap: var(--space-16);
+  padding: var(--space-20) var(--space-24) var(--space-24);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.speedread-top {
+  display: flex;
+  gap: var(--space-16);
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.speedread-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.speedread-count {
+  flex: none;
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.speedread-close {
+  flex: none;
+  gap: var(--space-6);
+}
+
+.speedread-progress {
+  height: 2px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.speedread-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+
+.speedread-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+/* The playing state. The frame is anchored to the middle of this box and the
+   sentence hangs off that anchor, so neither one can push the other: a
+   three-line sentence following a one-line sentence extends downward instead of
+   re-centring the pair and moving the word the eye is fixated on. */
+.speedread-live {
+  position: absolute;
+  inset: 0;
+}
+
+/* The frame. A three-column grid pins the pivot column at a fixed x: the
+   letters before it right-align into it and the letters after it left-align out
+   of it, so the eye never has to hunt for where the next word begins. The
+   pivot sits left of centre because a word has more letters after it than
+   before it. */
+.speedread-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  display: grid;
+  /* The pivot column is a FIXED width, not `auto`. With `auto` only the
+     column's left edge stays put, so a wide letter's centre sits further right
+     than a narrow one's — a ~15px swing at this size, which is the one thing
+     this layout exists to prevent. A fixed cell with the letter centred in it
+     costs a little air around narrow letters and keeps the anchor exact. */
+  grid-template-columns: 40% 1.15ch 1fr;
+  grid-template-rows: var(--space-12) auto var(--space-12);
+  align-items: center;
+  justify-items: center;
+  width: min(100%, 42rem);
+  /* The display type is set HERE, not on the word, because `1ch` above is
+     resolved against this element's font. Declared on the child it resolved
+     against the ambient 16px instead, making the pivot cell a third of a letter
+     wide and lapping each word's neighbouring glyphs over the pivot. */
+  font-family: var(--reader-font, var(--ui));
+  font-size: clamp(var(--fs-xl), 6vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: pre;
+}
+
+.speedread-word {
+  display: contents;
+  margin: 0;
+}
+
+.speedread-pre,
+.speedread-orp,
+.speedread-post {
+  grid-row: 2;
+  /* A fixed row box, so a descender or a tall cap never shifts the baseline
+     the eye has settled on. */
+  display: flex;
+  align-items: center;
+  height: 1.3em;
+}
+
+.speedread-pre {
+  grid-column: 1;
+  justify-self: end;
+}
+
+.speedread-orp {
+  grid-column: 2;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.speedread-post {
+  grid-column: 3;
+  justify-self: start;
+}
+
+/* Two ticks bracket the pivot column. During the blank between frames they are
+   what the eye holds onto, so the anchor is positional and not only colored. */
+.speedread-tick {
+  grid-column: 2;
+  width: 1px;
+  height: 100%;
+  background: var(--border-strong, var(--border));
+}
+
+.speedread-tick:first-of-type {
+  grid-row: 1;
+  align-self: end;
+}
+
+.speedread-tick:last-of-type {
+  grid-row: 3;
+  align-self: start;
+}
+
+/* The sentence being read, kept whole beneath the frame. This is what makes a
+   word that did not land recoverable without leaving the player. */
+.speedread-context {
+  /* Hung from a fixed offset below the frame's centre and growing downward, so
+     its line count never reaches back up into the word. */
+  position: absolute;
+  top: calc(50% + 3.5rem);
+  left: 50%;
+  translate: -50% 0;
+  width: min(100%, var(--reader-measure, 72ch));
+  margin: 0;
+  font-family: var(--reader-font, var(--ui));
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+  color: var(--text-dim);
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* Words already shown are not dimmed further: the whole sentence has to stay
+   legible for the reread to be worth anything. Only the current word is
+   marked, and by weight as well as color. */
+.speedread-context .is-current {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* A block the player will not tokenize: shown as itself, at the reader's pace. */
+.speedread-stop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  align-items: center;
+  width: min(100%, 52rem);
+  max-height: 100%;
+  min-height: 0;
+}
+
+.speedread-stop-label {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+/* No surface of its own: a code block and a table already carry one, and a box
+   inside a box reads as two objects where there is one. Focusable, so a long
+   block can be scrolled without a mouse. */
+.speedread-stop-body {
+  width: 100%;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  border-radius: var(--radius);
+}
+
+.speedread-stop-body:focus-visible {
+  outline: var(--focus-w) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.speedread-continue {
+  gap: var(--space-8);
+}
+
+.speedread-end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  align-items: center;
+  font-size: var(--fs-lg);
+  color: var(--text-dim);
+}
+
+.speedread-end p {
+  margin: 0;
+}
+
+.speedread-end-actions {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+/* One centred cluster rather than controls flung into opposite corners: at a
+   wide window, space-between put the play button in the bottom-left while the
+   reader was looking at the middle of the screen. */
+.speedread-transport {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16) var(--space-24);
+  align-items: center;
+  justify-content: center;
+}
+
+.speedread-group {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.speedread-play {
+  min-width: 96px;
+  justify-content: center;
+}
+
+/* The second chevron of a "jump a sentence" control tucks against the first. */
+.speedread-chevron-2 {
+  margin-inline-start: -10px;
+}
+
+.speedread-pace {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.speedread-pace input[type="range"] {
+  width: 160px;
+  /* The native track is ~16px tall; the control still has to be grabbable. */
+  height: 24px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.speedread-wpm {
+  min-width: 72px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* Always in the layout, empty or not — see the note in SpeedReader.tsx. */
+.speedread-advisory {
+  min-height: 1lh;
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* Narrow window: the transport stacks and the pivot moves toward the middle,
+   because at this width there is no room for a 40% left gutter. */
+@media (width <= 560px) {
+  .speedread {
+    padding: var(--space-16) var(--space-12) var(--space-16);
+  }
+
+  .speedread-frame {
+    grid-template-columns: 34% auto 1fr;
+  }
+
+  .speedread-transport {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .speedread-group,
+  .speedread-pace {
+    justify-content: center;
+  }
+
+  .speedread-pace input[type="range"] {
+    flex: 1;
+    width: auto;
+  }
+}

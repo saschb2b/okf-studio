@@ -1,0 +1,95 @@
+/* The beam and its transport bar. The beam is drawn *over* the prose and never
+   in it: the reader bakes its body HTML and re-applies it wholesale, so a
+   highlight inserted into the text would be wiped on the next render. */
+
+.reading-beam {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  /* A wash plus a baseline rule, not a block of color: the word underneath has
+     to stay as readable as the rest of the sentence. */
+  background: var(--accent-soft);
+  border-bottom: 2px solid var(--accent);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: top 90ms linear, left 90ms linear, width 90ms linear;
+}
+
+/* Stopped on a table, code block, or diagram: outline the whole thing instead
+   of pretending a word inside it is the place to look. */
+.reading-beam[data-block="on"] {
+  background: transparent;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reading-beam {
+    transition: none;
+  }
+}
+
+/* Centred over the reading pane (the component supplies the `left`), not over
+   the window: in the split layout the window's middle is the graph. */
+.pacer-bar {
+  position: fixed;
+  bottom: var(--space-32);
+  left: 50%;
+  z-index: 61;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: min(calc(100vw - var(--space-32)), 30rem);
+  padding: var(--space-10) var(--space-12) var(--space-12);
+  background: var(--bg-overlay, var(--bg-elev));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.pacer-progress {
+  height: 2px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.pacer-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+
+.pacer-controls {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.pacer-play {
+  min-width: 88px;
+  justify-content: center;
+}
+
+.pacer-pace {
+  display: flex;
+  flex: 1;
+  min-width: 64px;
+  align-items: center;
+}
+
+.pacer-pace input[type="range"] {
+  width: 100%;
+  /* The native track is ~16px tall; the control still has to be grabbable. */
+  height: 24px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.pacer-wpm {
+  min-width: 68px;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  text-align: end;
+}

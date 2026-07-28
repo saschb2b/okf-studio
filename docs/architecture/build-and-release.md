@@ -1,9 +1,9 @@
 ---
 type: Architecture Decision
 title: Build & Release
-description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check and user-initiated installs.
-tags: [architecture, decision, build, release, packaging]
-generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
+description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check, user-initiated installs, and a signed APT repository for Ubuntu.
+tags: [architecture, decision, build, release, packaging, apt]
+generated: { by: claude/unrecorded, at: 2026-07-29T01:10:00+02:00 }
 ---
 
 # Decision
@@ -54,7 +54,19 @@ Installing updates is **user-initiated**, via Tauri's updater plugin. Checking h
 The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)): a version-file read with no identity attached, added because releases went unnoticed when discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.
 
 - **Signing is mandatory.** The updater verifies a **minisign** signature on each artifact (it cannot be disabled). The public key lives in `tauri.conf.json`; the private key + password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing (which is still not done — see above).
-- **Update vehicles:** the **AppImage** (Linux) and **NSIS** (Windows) self-install in place. A **`.deb` install can't self-replace** (the OS package manager owns it), so it is detected (a small `can_self_update` command checks for the AppImage runtime) and given the **same in-app "version X available" hint plus a Download link** to the releases page — rather than a failing in-app install. So `.deb` users still find out about updates; they just install by downloading the new package.
+- **Update vehicles:** the **AppImage** (Linux) and **NSIS** (Windows) self-install in place. A **`.deb` install can't self-replace** (the OS package manager owns it), so it is detected (a small `can_self_update` command checks for the AppImage runtime) and given the **same in-app "version X available" hint plus a Download link** to the releases page — rather than a failing in-app install. So `.deb` users still find out about updates; they just install by downloading the new package, or subscribe to the APT repository below and let `apt` do it.
+
+# The APT repository
+
+The `.deb` is the best-integrated Linux build: it installs a desktop entry and icons, so it gets a real name, a real icon, and a dock pin, none of which a bare AppImage has. What it lacked was updates. `scripts/build-apt-repo.mjs` closes that gap without changing the package, by publishing a signed APT repository at `https://saschb2b.github.io/okf-studio/apt`.
+
+- **Releases stay the source of truth.** The repository is derived: the generator reads the `.deb` assets off the most recent published releases (drafts and prereleases excluded), so nothing new is built and nothing is committed. Every run rebuilds the tree from scratch.
+- **It rides the Pages artifact.** GitHub Pages deploys one artifact for the whole site, so the tree is written into `site/public/apt` *before* the Astro build, which copies `public/` into `dist/` verbatim. The site and the repository therefore deploy together or not at all, and the download page cannot advertise a suite that is not there. It also means a new release only enters the repository once the Pages workflow reruns, which `pages.yml` triggers on the `Release` workflow completing successfully.
+- **The packages are served from the same origin as the index.** A `Filename:` in a `Packages` file resolves against the repository base URL, so the `.deb` files are copied into the artifact rather than pointed at their release download URLs. That is what bounds the pool: the newest few releases, indexed with `--multiversion` so every carried version can be installed or pinned, not just the newest.
+- **Signing is a different key from the updater's.** apt verifies an **OpenPGP** signature over the repository index (`InRelease` and `Release.gpg`), not over the package; `dpkg` checks no signature at all. The updater's **minisign** key cannot be used, because apt has no minisign support and the object being signed is different. The private key is the `APT_GPG_PRIVATE_KEY` secret (with `APT_GPG_PASSPHRASE` where the key has one), and the armored public half is published next to the repository as `okf-studio.asc`.
+- **An unsigned repository is not the fallback.** apt rejects an unsigned source unless the user writes `[trusted=yes]`, which disables the verification the repository exists to provide. With no key in the environment the generator skips the tree entirely and says so; the site still deploys.
+
+Users add it with a `deb822` `.sources` file naming the key by path in `Signed-By`, which is the current format and keeps the key out of the deprecated `trusted.gpg.d` pile. The install block lives on the [download page](https://saschb2b.github.io/okf-studio/download/), built from the same constants in `site/src/data/site.ts` that the repository is published under.
 
 Silent/automatic **installs** remain out of scope: bytes only ever download and apply on an explicit user action. The automatic part stops at "a newer version exists", rendered as a quiet badge.
 

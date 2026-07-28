@@ -3,17 +3,30 @@ name: Deploy site to GitHub Pages
 # Builds the Astro marketing/download site (site/) and deploys it to GitHub
 # Pages at https://saschb2b.github.io/okf-studio/. Pages source must be set to
 # "GitHub Actions" in the repo settings.
+#
+# This also publishes the APT repository, because Pages deploys one artifact for
+# the whole site: the repository has to be built into site/public before Astro
+# copies it into site/dist, not deployed alongside. Practically that means a new
+# release has to re-run this workflow to enter the repository, which is what the
+# workflow_run trigger below is for.
 on:
   push:
     branches: [main]
     paths:
       - "site/**"
       - "design-system/**"
+      - "scripts/build-apt-repo.mjs"
       - ".github/workflows/pages.yml"
+  # A published release only carries its .deb once the release matrix has built
+  # it, so the repository is rebuilt when Release finishes rather than when the
+  # release is published.
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: read # the APT step reads .deb assets off past releases
   pages: write
   id-token: write
 
@@ -25,11 +38,43 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # workflow_run fires on failure too; a failed release build has no .deb to
+    # index and would republish the site for no reason.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     steps:
       - uses: actions/checkout@v7
+
+      # dpkg-scanpackages (dpkg-dev) writes the Packages index; apt-ftparchive
+      # (apt-utils) writes the Release file with its hashes.
+      - name: Install APT repository tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev apt-utils
+
+      # Absent secret is not an error: the generator skips the repository and the
+      # site still deploys. See scripts/build-apt-repo.mjs for why an unsigned
+      # repository is not the fallback.
+      - name: Import the repository signing key
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APT_GPG_PRIVATE_KEY" ]; then
+            echo "::warning::No APT_GPG_PRIVATE_KEY secret set; skipping the APT repository."
+            exit 0
+          fi
+          printf '%s' "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+
+      - name: Build the APT repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        run: node scripts/build-apt-repo.mjs
+
       # Installs deps (auto-detects pnpm from site/pnpm-lock.yaml), runs the
       # `build` script (which syncs the design-system CSS first), and uploads
-      # site/dist as the Pages artifact.
+      # site/dist as the Pages artifact. site/public/apt rides along, because
+      # Astro copies public/ into dist verbatim.
       - name: Build Astro site
         uses: withastro/action@v3
         with:

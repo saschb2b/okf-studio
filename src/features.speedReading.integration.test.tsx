@@ -42,6 +42,13 @@ describe("speed reading", () => {
 
     const controls = within(player);
     await user.click(controls.getByRole("button", { name: "Pause" }));
+    // The player is running when it opens, so the pause lands wherever the
+    // machine got to. Rewind to the first word rather than assuming it.
+    for (let i = 0; i < 10 && !word().includes("What"); i++) {
+      await user.click(controls.getByRole("button", { name: "Previous sentence" }));
+    }
+    await waitFor(() => expect(word()).toContain("What"));
+
     await user.click(controls.getByRole("button", { name: "Next word" }));
     await user.click(controls.getByRole("button", { name: "Next word" }));
     await waitFor(() => expect(word()).toContain("does"));

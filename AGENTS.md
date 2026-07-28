@@ -92,6 +92,28 @@ A feature that exists only in code is invisible to the spec and unsold to visito
 - **Gate it separately:** `pnpm --dir site build` (it deploys via the [Pages workflow](.github/workflows/pages.yml), not the app CI). The bundle's own conformance check, `node .claude/skills/odsf/odsf-validate.mjs design-system`, **now runs in app CI** rather than only here: since its brand roles are declared to track `src/styles.css`, an app theme change can break it, so the two are no longer separable.
 - **A theme change is two changes.** [`design-system/`](design-system/) was derived from the app's dark theme, and its brand roles — `primary`, `primary-hover`, `focus`, `error`, `warning`, `success` — are declared to track `src/styles.css`. **Touching a color role in the app means updating the bundle in the same change**, or moving the row into the "deliberately differ" table in [`foundations/color.md`](design-system/foundations/color.md) with the reason. Its surfaces and text roles are deliberately not shared: a marketing page is one scroll on a near-black canvas, the app is a dense tool window with five stacked surfaces. `pnpm check:ds` enforces the tracking table, the frontmatter-to-`tokens.css` projection, and the documented contrast ratios, so this is a gate rather than a note.
 
+## Writing for the repository, not for the thread
+
+Everything published to GitHub is read by strangers, months later, with no access to the conversation that produced it: commit messages, pull request titles and descriptions, issue text, review comments, and release notes. Write for that reader. This is a public repository, and the working session is not part of the record. The **`no-slop`** skill applies to all of it.
+
+1. **Address the change, never a person.** No second person, no "yours to do", no offers or questions directed at whoever opens the page. A requirement is stated as a requirement ("Requires a new `APT_GPG_PRIVATE_KEY` repository secret"), not as an instruction to a reader. Work that needs a human decision is a stated prerequisite or an issue, not a question in a description.
+2. **Keep the session out of it.** Nothing that only parses from inside the working context: no "as discussed", "as I mentioned", "I ran it four times", "fails here", "on this machine", "still running". A local observation is either generalized into a fact about the repository or dropped. A check that fails for reasons specific to one developer's machine is not pull-request material at all.
+3. **A description is not a transcript.** A pull request answers four things: what changed, why, what a reviewer should check, and what is not covered. Investigation narrative, every alternative weighed in order, and everything learned along the way are not part of that. A rejected alternative gets one line and its reason, not a section. Reasoning that deserves to survive belongs in the relevant `docs/` concept and a `log.md` entry, which the description links to; that split is the one this repo already uses (see [Always read `docs/`](#always-read-docs-and-keep-it-in-sync)).
+4. **Write what stays true after the merge.** A description is a permanent record, not a status bulletin. Drop anything that expires: what is currently running, what was just fixed mid-review, what happens next in the session. Prerequisites and follow-up work are fine when phrased as standing facts rather than as this moment's state.
+5. **Claims name their evidence.** "Verified" means the command and its result, so a reader can rerun it. Not "I tested it", not "works as expected". State what is not covered with the same directness.
+6. **Release notes are written for users.** They describe what a person can now do, what visibly changed, and what upgrading requires. They are not the commit list, not internal module names, and not the build's own history. Version numbers follow semver against user-visible impact, and a release that reorders results or changes an exported format says so under upgrading.
+
+House style for all of it: conventional-commit titles (`feat(reader): …`, `fix(agent): …`), plain and concrete prose, no em dashes, no marketing register, no emoji headings, no badge walls, and no bold-everything. A pull request description fits this shape:
+
+```markdown
+One or two sentences: what this changes and why it exists.
+
+## Background            # only when the reason is not obvious from the title
+## Implementation        # behaviour and structure, not a diff walkthrough
+## Verification          # commands run and their results; what is not covered
+## Prerequisites         # secrets, migrations, ordering; only if any exist
+```
+
 ## Reviewing your own work (be the critic, not the cheerleader)
 
 Default stance: **assume the first attempt is mediocre** — code and UI both regress to the mean of training data — until proven otherwise against explicit criteria. The job of review is to find what is wrong, not to confirm what is right. A first-pass review that finds nothing is itself suspect; scan again.

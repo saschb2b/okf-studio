@@ -2,7 +2,7 @@ import { ArrowDownToLine, ArrowUpToLine, ChevronDown, ChevronUp } from "lucide-r
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode, UIEvent } from "react";
 
-/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- The independently scrollable transcript must be focusable for Home and End without claiming an interactive ARIA role. */
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions -- The independently scrollable transcript must be focusable for Home and End without claiming an interactive ARIA role. Its focusable `region` is now allowed by the rule's config rather than by a local exemption. */
 
 const TAIL_TOLERANCE_PX = 24;
 

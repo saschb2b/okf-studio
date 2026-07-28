@@ -323,8 +323,8 @@ function InstallableAgentRow({
     }
   }
 
-  let zone: React.ReactNode = null;
-  let action: React.ReactNode = null;
+  let zone: React.ReactNode;
+  let action: React.ReactNode;
 
   if (activity.status === "installing") {
     zone = (

@@ -5324,7 +5324,7 @@ export function onWorkspaceMemoryChange(listener: () => void): () => void {
 }
 
 async function readWorkspaceMemory(): Promise<WorkspaceMemoryItem[]> {
-  let raw: unknown = null;
+  let raw: unknown;
   if (!isTauri()) {
     try {
       raw = JSON.parse(localStorage.getItem(MOCK_WORKSPACE_MEMORY_KEY) ?? "null");

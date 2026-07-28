@@ -1,0 +1,50 @@
+/* The reader header's overflow trigger and its menu. The trigger matches the
+   header's other actions in height and border so the row still reads as one
+   set of controls rather than a button with a stray glyph after it. */
+
+.reader-concept-actions {
+  display: inline-flex;
+  min-width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) var(--space-6);
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.reader-concept-actions:hover,
+.reader-concept-actions[data-popup-open] {
+  color: var(--text);
+  background: var(--ghost-hover);
+}
+
+.reader-actions-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: var(--space-4);
+}
+
+.reader-actions-menu__item {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  padding: var(--space-6) var(--space-8);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.reader-actions-menu__item[data-highlighted] {
+  background: var(--ghost-hover);
+}
+
+.reader-actions-menu__item[data-disabled] {
+  color: var(--text-dim);
+  cursor: default;
+}

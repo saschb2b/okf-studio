@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useApp } from "@/shared/store.tsx";
 import { focusAgentPanel, focusAgentPanelOpener } from "@/features/agent/agentPanelFocus.ts";
 import { focusGitPanel, focusGitPanelOpener } from "@/features/git/gitPanelFocus.ts";
+import { requestSpeedRead } from "@/features/reader/speedReadStart.ts";
 
 export function useGlobalKeys() {
   const { state, actions } = useApp();
@@ -102,6 +103,12 @@ export function useGlobalKeys() {
       } else if (!typing && !mod && k === "t" && state.bundle) {
         // Toggle the Lineage panel — trace what depends on the active concept.
         actions.togglePanel("lineage");
+      } else if (!typing && !mod && k === "s" && state.bundle) {
+        // Start the reader's focus speed-reading player on the active concept.
+        // Nothing paces on its own: this press is the start (WCAG 2.2.2).
+        // See docs/features/speed-reading.md.
+        e.preventDefault();
+        requestSpeedRead("focus");
       } else if (!typing && !mod && k === "l") {
         actions.togglePanel("log");
       } else if (!typing && !mod && k === "r") {

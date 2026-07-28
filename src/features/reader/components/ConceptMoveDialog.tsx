@@ -1,6 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { ArrowRight, Check, RotateCcw, X } from "lucide-react";
 import { useRef, useState } from "react";
+import type { RefObject } from "react";
 import type { AgentStagedFileDiff, AgentStagedValidationInfo } from "@/features/agent/connection.ts";
 import {
   applyConceptMove,
@@ -26,12 +27,16 @@ export function ConceptMoveDialog({
   open,
   bundleRoot,
   concept,
+  finalFocus,
   onOpenChange,
   onOpenMovedConcept,
 }: {
   open: boolean;
   bundleRoot: string;
   concept: Concept;
+  /** Where focus lands on close. Named explicitly because the control that
+   *  opens this lives in a menu, and that item is gone by the time it shuts. */
+  finalFocus?: RefObject<HTMLElement | null>;
   onOpenChange: (open: boolean) => void;
   onOpenMovedConcept: (conceptId: string) => void;
 }) {
@@ -163,6 +168,7 @@ export function ConceptMoveDialog({
         <Dialog.Popup
           className="ui-dialog concept-move-dialog"
           initialFocus={destinationRef}
+          finalFocus={finalFocus}
         >
           <header className="concept-move-dialog__header">
             <div>

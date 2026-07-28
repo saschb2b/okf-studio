@@ -13,8 +13,11 @@ describe("native OKF task entry points", () => {
       name: /Overview What OKF Studio is and who it's for/i,
     }));
 
-    const origin = screen.getByRole("button", { name: "Move concept" });
+    // Move lives in the reader header's overflow menu — rare, reviewed, and one
+    // click away from the actions a reader uses constantly.
+    const origin = screen.getByRole("button", { name: "More concept actions" });
     await user.click(origin);
+    await user.click(await screen.findByRole("menuitem", { name: /Move concept/ }));
     const dialog = await screen.findByRole("dialog", { name: "Move concept" });
     expect(within(dialog).getByLabelText("Destination path"))
       .toHaveValue("archive/overview.md");
@@ -51,8 +54,9 @@ describe("native OKF task entry points", () => {
       name: /Overview What OKF Studio is and who it's for/i,
     }));
 
-    const origin = screen.getByRole("button", { name: "Retire concept" });
+    const origin = screen.getByRole("button", { name: "More concept actions" });
     await user.click(origin);
+    await user.click(await screen.findByRole("menuitem", { name: /Retire concept/ }));
     const dialog = await screen.findByRole("dialog", { name: "Retire concept" });
     expect(within(dialog).getByRole("radio", { name: /Deprecate/i })).toBeChecked();
     await user.type(

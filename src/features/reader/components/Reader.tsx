@@ -5,7 +5,7 @@
 // side in reader-only mode and falls below the article when space is tight (the
 // split layout, or a narrow pane). See docs/features/concept-reader.md.
 
-import { Archive, MoveRight, Sparkles, X } from "lucide-react";
+import { Gauge, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, MouseEvent, ReactNode } from "react";
 import { useActiveConcept, useApp } from "@/shared/store.tsx";
@@ -26,6 +26,12 @@ import { useProfileReport } from "@/shared/useProfileReport.ts";
 import { useInteropReport } from "@/shared/useInteropReport.ts";
 import { buildTokenIndex, conceptAppliesTo, conceptStatus } from "@/shared/odsf.ts";
 import { ReaderPrefs } from "@/features/reader/components/ReaderPrefs.tsx";
+import { SpeedReader } from "@/features/reader/components/SpeedReader.tsx";
+import { ReadingPacer } from "@/features/reader/components/ReadingPacer.tsx";
+import { buildReadingStream } from "@/features/reader/speedread.ts";
+import { matchBlockElements } from "@/features/reader/pacerLocate.ts";
+import { onSpeedReadRequest } from "@/features/reader/speedReadStart.ts";
+import type { SpeedReadMode } from "@/features/reader/speedReadStart.ts";
 import { TokenViz } from "@/features/viz/components/TokenViz.tsx";
 import { ExamplePreview } from "@/features/bundle/components/ExamplePreview.tsx";
 import { PeekCard } from "@/features/reader/components/PeekCard.tsx";
@@ -42,8 +48,7 @@ import {
   ConceptComputation,
   hasComputation,
 } from "@/features/reader/components/ConceptComputation.tsx";
-import { ConceptMoveDialog } from "@/features/reader/components/ConceptMoveDialog.tsx";
-import { ConceptRetirementDialog } from "@/features/reader/components/ConceptRetirementDialog.tsx";
+import { ConceptActionsMenu } from "@/features/reader/components/ConceptActionsMenu.tsx";
 import { TypedRelationships } from "@/features/reader/components/TypedRelationships.tsx";
 import { ReliabilityNotice } from "@/features/reader/components/ReliabilityNotice.tsx";
 import { EvidencePanel } from "@/features/reader/components/EvidencePanel.tsx";
@@ -314,8 +319,14 @@ export function Reader() {
   // previous concept can never be rendered under the current one.
   const [computationSource, setComputationSource] =
     useState<{ conceptId: string; text: string | null } | null>(null);
-  const [moveOpen, setMoveOpen] = useState(false);
-  const [retirementOpen, setRetirementOpen] = useState(false);
+  // Which pacing mode is running, if any. Deliberately not persisted: text that
+  // advances on its own has to follow a press every time (WCAG 2.2.2). Tagged
+  // with the concept it was started on, so opening another concept ends the
+  // session by derivation rather than by an effect racing the render.
+  const [speedRequest, setSpeedRequest] = useState<{
+    conceptId: string;
+    mode: SpeedReadMode;
+  } | null>(null);
 
   // Bundle-wide design-token index (empty for a plain OKF bundle); drives both
   // the body's `{ref}` resolution and the TokenViz below.
@@ -492,6 +503,31 @@ export function Reader() {
       returnTo?.focus();
     };
   }, [lightbox]);
+
+  // ---- Speed reading ------------------------------------------------------
+  // A new concept is a new text: the request only counts for the concept it was
+  // made on, so navigating away ends pacing without an effect.
+  const speedMode = speedRequest && speedRequest.conceptId === c?.id ? speedRequest.mode : null;
+
+  // The global shortcut asks for a mode from outside the reader.
+  const activeConceptId = c?.id;
+  useEffect(() => {
+    if (!activeConceptId) return;
+    return onSpeedReadRequest((mode) => setSpeedRequest({ conceptId: activeConceptId, mode }));
+  }, [activeConceptId]);
+
+  /** Leave the focus player, putting the prose back where reading stopped. */
+  function closeSpeedReader(blockIndex: number) {
+    setSpeedRequest(null);
+    const el = bodyRef.current;
+    if (!el || !c || blockIndex < 0) return;
+    const stream = buildReadingStream(c.body, { chunk: state.settings.speedReadChunk });
+    const target = matchBlockElements(el, stream)[blockIndex];
+    target?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center",
+    });
+  }
 
   // ---- Peek card (hover/focus preview of a concept link) ------------------
   // Declared before the no-concept early return: the effects below are hooks.
@@ -761,27 +797,41 @@ export function Reader() {
             ) : (
               <span />
             )}
+            {/* Two chunks, not one row of five. A toolbar stops being scanned
+                somewhere past three or four peers, and the fix is to group by
+                job and push the infrequent actions one click away rather than
+                to shrink everything: reading controls first (this is a reader),
+                the agent action next, and the rare reviewed transactions —
+                Move, Retire — behind the overflow at the right edge. See
+                docs/features/concept-reader.md. */}
             <div className="reader-header-actions">
-              <button
-                id="reader-concept-retirement"
-                type="button"
-                className="reader-concept-retirement"
-                aria-label="Retire concept"
-                onClick={() => setRetirementOpen(true)}
-              >
-                <Archive size={14} aria-hidden="true" />
-                Retire
-              </button>
-              <button
-                id="reader-concept-move"
-                type="button"
-                className="reader-concept-move"
-                aria-label="Move concept"
-                onClick={() => setMoveOpen(true)}
-              >
-                <MoveRight size={14} aria-hidden="true" />
-                Move
-              </button>
+              <div className="reader-action-group" role="group" aria-label="Reading">
+                {/* Speed reading needs a visible way in, not only the `S` key
+                    and a control inside the "Aa" popover — a mode nobody can
+                    see is a mode nobody starts. This runs the focus player;
+                    guided pacing and the pace itself stay in the popover. */}
+                <button
+                  id="reader-speed-read"
+                  type="button"
+                  className="reader-speed-read"
+                  aria-label="Speed-read this concept"
+                  title="Speed-read this concept (S)"
+                  onClick={() => setSpeedRequest({ conceptId: c.id, mode: "focus" })}
+                >
+                  <Gauge size={14} aria-hidden="true" />
+                  Speed read
+                  {/* The key printed on the control, per the cap convention in
+                      shared/styles/chrome.css: a boxed .kbd names a key someone
+                      should press, so it need not be looked up on the sheet. */}
+                  <kbd className="kbd" aria-hidden="true">
+                    S
+                  </kbd>
+                </button>
+                <ReaderPrefs
+                  onStartSpeedRead={(mode) => setSpeedRequest({ conceptId: c.id, mode })}
+                />
+              </div>
+              <span className="reader-action-divider" aria-hidden="true" />
               <button
                 id="reader-okf-task"
                 type="button"
@@ -796,7 +846,11 @@ export function Reader() {
                 <Sparkles size={14} aria-hidden="true" />
                 Work with agent
               </button>
-              <ReaderPrefs />
+              <ConceptActionsMenu
+                bundle={bundle}
+                concept={c}
+                onSelectConcept={(conceptId) => actions.selectConcept(conceptId)}
+              />
             </div>
           </div>
           {/* One quiet meta line, not a row of pills: the type carries its
@@ -1053,6 +1107,37 @@ export function Reader() {
         )}
       </aside>
 
+      {/* Speed reading. Focus replaces the screen with one word at a time;
+          guided leaves the concept in place and paces a beam through it. Both
+          are started by hand from the "Aa" popover — see speed-reading.md. */}
+      {speedMode === "focus" && (
+        <SpeedReader
+          // A different text (or a different frame size) is a different reading
+          // session, not the old cursor pointed at new words.
+          key={`${c.id}:${state.settings.speedReadChunk}`}
+          title={c.title}
+          body={c.body}
+          wpm={state.settings.speedReadWpm}
+          chunk={state.settings.speedReadChunk}
+          boldStart={state.settings.speedReadBoldStart}
+          reduceMotion={reduceMotion}
+          onWpmChange={(speedReadWpm) => actions.updateSettings({ speedReadWpm })}
+          onClose={closeSpeedReader}
+        />
+      )}
+      {speedMode === "guided" && (
+        <ReadingPacer
+          key={`${c.id}:${state.settings.speedReadChunk}`}
+          body={c.body}
+          bodyRef={bodyRef}
+          wpm={state.settings.speedReadWpm}
+          chunk={state.settings.speedReadChunk}
+          reduceMotion={reduceMotion}
+          onWpmChange={(speedReadWpm) => actions.updateSettings({ speedReadWpm })}
+          onClose={() => setSpeedRequest(null)}
+        />
+      )}
+
       {/* Peek card: a hover/focus preview of a concept link — see PeekCard. */}
       {peek && (
         <PeekCard
@@ -1062,31 +1147,6 @@ export function Reader() {
         />
       )}
 
-      {moveOpen && bundle ? (
-        <ConceptMoveDialog
-          open
-          bundleRoot={bundle.root}
-          concept={c}
-          onOpenChange={setMoveOpen}
-          onOpenMovedConcept={(conceptId) => {
-            setMoveOpen(false);
-            actions.selectConcept(conceptId);
-          }}
-        />
-      ) : null}
-
-      {retirementOpen && bundle ? (
-        <ConceptRetirementDialog
-          open
-          bundle={bundle}
-          concept={c}
-          onOpenChange={setRetirementOpen}
-          onOpenConcept={(conceptId) => {
-            setRetirementOpen(false);
-            actions.selectConcept(conceptId);
-          }}
-        />
-      ) : null}
 
       {/* Image spotlight. Click anywhere or the close button to dismiss; Escape
           is handled by an effect. Keyboard-accessible via the close button. */}

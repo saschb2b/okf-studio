@@ -62,6 +62,19 @@ const GROUPS: Group[] = [
       { keys: [mod, "+"], label: "Bigger reader text" },
       { keys: [mod, "-"], label: "Smaller reader text" },
       { keys: [mod, "0"], label: "Reset text size" },
+      { keys: ["S"], label: "Speed-read this concept" },
+    ],
+  },
+  {
+    title: "Speed reading",
+    items: [
+      { keys: ["Space"], label: "Play or pause" },
+      { keys: ["←", "→"], label: "Back or forward a word" },
+      { keys: ["↑", "↓"], label: "Back or forward a sentence" },
+      { keys: ["+", "-"], label: "Faster or slower" },
+      { keys: ["Space"], alt: ["Enter"], label: "Continue past a code block or table" },
+      { keys: ["Tab"], label: "Move between the player's controls" },
+      { keys: ["Esc"], label: "Leave the player" },
     ],
   },
   {

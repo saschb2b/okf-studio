@@ -124,6 +124,38 @@ describe("OKF Studio navigation features", () => {
     scrollSpy.mockRestore();
   });
 
+  it("plans delegated work from the launcher without connecting an agent", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // Planning needs no agent and no connection: it reads the parsed bundle.
+    // That is the point of the screen, so the test reaches it the way a user
+    // would, from the launcher, with nothing else set up.
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await fillText(user, combo, "Plan delegated");
+    await user.keyboard("{Enter}");
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Plan delegated work" })).toBeInTheDocument();
+
+    // The summary is the answer: how many runs, over how many concepts.
+    const summary = await within(dialog).findByText(/of \d+ concepts/);
+    expect(summary).toBeInTheDocument();
+
+    // Switching the decomposition replans rather than leaving a stale answer.
+    const before = summary.textContent;
+    await user.click(within(dialog).getByRole("button", { name: "By folder" }));
+    await waitFor(() =>
+      expect(within(dialog).getByText(/of \d+ concepts/).textContent).not.toBe(before),
+    );
+
+    // Every plan states what it was computed against, so a stale one can be
+    // recognised rather than trusted.
+    expect(within(dialog).getByText(/Computed against/)).toBeInTheDocument();
+  });
+
   it("survives an index that links back to its parent", async () => {
     const user = userEvent.setup();
     renderApp();

@@ -315,6 +315,8 @@ export interface State {
   bundleDetailsOpen: boolean;
   /** External sources, relationship exchange, and interoperability diagnostics. */
   connectionsOpen: boolean;
+  /** How a bundle-sized job would divide into delegated runs. Read-only. */
+  delegationPlanOpen: boolean;
   maximized: boolean;
   activeRoot: string | null;
   bundle: Bundle | null;
@@ -378,6 +380,7 @@ function makeInitialState(): State {
   projectionOpen: false,
   bundleDetailsOpen: false,
   connectionsOpen: false,
+  delegationPlanOpen: false,
   maximized: false,
   activeRoot: null,
   bundle: null,
@@ -436,6 +439,7 @@ type Msg =
   | { t: "projectionOpen"; v: boolean }
   | { t: "bundleDetailsOpen"; v: boolean }
   | { t: "connectionsOpen"; v: boolean }
+  | { t: "delegationPlanOpen"; v: boolean }
   | { t: "maximized"; v: boolean }
   | { t: "setBundle"; root: string; bundle: Bundle }
   | { t: "select"; id: string | null }
@@ -539,6 +543,8 @@ function reducer(s: State, m: Msg): State {
       return { ...s, bundleDetailsOpen: m.v };
     case "connectionsOpen":
       return { ...s, connectionsOpen: m.v };
+    case "delegationPlanOpen":
+      return { ...s, delegationPlanOpen: m.v };
     case "maximized":
       return { ...s, maximized: m.v };
     case "setBundle": {
@@ -814,6 +820,7 @@ export interface Actions {
   setProjectionOpen(open: boolean): void;
   setBundleDetailsOpen(open: boolean): void;
   setConnectionsOpen(open: boolean): void;
+  setDelegationPlanOpen(open: boolean): void;
   /** Static new-bundle generation (see docs/features/create-bundle.md):
    *  Rust shows the parent-folder picker, writes the conformant starter, and
    *  the result opens like any picked folder. Resolves false when the user
@@ -1048,6 +1055,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setBundleDetailsOpen(open) {
       dispatch({ t: "bundleDetailsOpen", v: open });
+    },
+    setDelegationPlanOpen(open) {
+      dispatch({ t: "delegationPlanOpen", v: open });
     },
     setConnectionsOpen(open) {
       dispatch({ t: "connectionsOpen", v: open });

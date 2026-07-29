@@ -87,11 +87,12 @@ Gate: a provider that reports no usage produces a job that runs to completion wi
 
 ## HP5: The orchestration surface
 
-- [ ] Show a job as visible rows: slice, capability, budget, consumption, artifact, outcome.
-- [ ] Let the user approve, narrow, or cancel a job from its preview, and cancel a run from its row.
+- [x] Show the plan before anything runs, reachable from the launcher with no agent connected, because planning reads the parsed bundle and needs neither. Each run is a row with its name, a bar, and its concept count; caps and skipped concepts are named under "Not covered"; and the plan states the fingerprint it was computed against.
+- [ ] Show a running job as rows: capability, budget, consumption, artifact, outcome. Waits on run execution in HP2.
+- [ ] Let the user approve, narrow, or cancel a job from its preview, and cancel a run from its row. The preview exists; there is nothing yet to approve it into.
 - [ ] Keep the job surface inside the existing panel layout and its 360, 440, and 560 pixel fixtures, with the shared focus ring and control floor.
 - [ ] Label an external agent's own tool activity as that agent's, never as Studio-managed runs.
-- [ ] Cover ready, previewing, running, partial, stopped-at-budget, stale, and failed states in Storybook with interaction checks.
+- [x] Cover the preview states in Storybook with interaction checks: each decomposition, switching between them, and no bundle open. Running, partial, stopped-at-budget, and failed wait on execution.
 
 Gate: the story lane passes the visual-consistency assertions, and a user reading only the surface can say what each run was asked and what it returned.
 

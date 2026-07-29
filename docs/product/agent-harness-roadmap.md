@@ -78,10 +78,10 @@ Gate: a fan-out over a fixture bundle with an induced mid-job bundle change prod
 
 ## HP4: Budgets and honest cost
 
-- [ ] Ingest the ACP usage update, and use the native provider's own accounting where there is no ACP counterpart.
-- [ ] Enforce a per-run and a per-job ceiling, stop cleanly at the ceiling, and keep what completed.
+- [x] Fold usage reports into a spend figure, taking the maximum of cumulative totals rather than summing them, and adding cost across runs while carrying the largest context any single run reached.
+- [x] Decide whether a ceiling has been reached, naming which one. Stopping a live run at that decision waits on run execution in HP2.
 - [ ] Show projected cost before a job starts and actual cost during and after it.
-- [ ] Mark cost unavailable where the provider reports none, and never estimate it into a number that looks measured.
+- [x] Mark spend unavailable where the provider reports none, and treat "we cannot check" as a different answer from "we checked and it is fine". Nonsense values are ignored rather than recorded.
 
 Gate: a provider that reports no usage produces a job that runs to completion with cost marked unavailable, and a ceiling reached mid-job stops the job without discarding completed runs.
 

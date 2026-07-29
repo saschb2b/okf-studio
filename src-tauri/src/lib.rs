@@ -16,6 +16,8 @@ mod agent_events;
 // orchestration — delegated runs over deterministic slices.
 #[path = "agent/orchestration/agent_assembly.rs"]
 mod agent_assembly;
+#[path = "agent/orchestration/agent_budget.rs"]
+mod agent_budget;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_mcp_grant.rs"]
@@ -956,6 +958,37 @@ fn federated_relationship_candidates(
     limit: usize,
 ) -> Result<bundle_library::FederatedRelationshipPage, String> {
     library.relationships(&grants, selections, limit)
+}
+
+/// Fold each run's usage reports into a job spend, and say whether the budget
+/// still allows work to continue.
+///
+/// `runs` is per-run so the two aggregations stay distinct: cost is spent per
+/// session and adds across runs, while context is a window each session has to
+/// itself, so the job carries the largest any one run reached. Summing context
+/// would describe a context nobody ever used. One run is a single inner list.
+///
+/// Pure: it reads what providers reported and answers. The two answers that are
+/// not the same are `within` and `unmeasured`. "We checked and it is fine" and
+/// "we cannot check" mean different things to whoever is reading, and only one
+/// of them should reassure anyone.
+#[tauri::command]
+fn evaluate_agent_budget(
+    budget: agent_run::RunBudget,
+    runs: Vec<Vec<agent_budget::UsageReport>>,
+) -> agent_budget::BudgetEvaluation {
+    let mut job = agent_budget::BudgetLedger::new();
+    for reports in runs {
+        let mut run = agent_budget::BudgetLedger::new();
+        for report in reports {
+            run.record(report);
+        }
+        job.absorb(&run);
+    }
+    agent_budget::BudgetEvaluation {
+        spend: job.spend().clone(),
+        state: job.state(&budget),
+    }
 }
 
 /// Assemble what a fan-out returned into one reviewable result.
@@ -2062,6 +2095,7 @@ pub fn run() {
             federated_relationship_candidates,
             plan_agent_slices,
             assemble_agent_runs,
+            evaluate_agent_budget,
             resolve_agent_run,
             validate_agent_artifact,
             validate_agent_receipt,

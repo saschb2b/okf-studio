@@ -45,8 +45,8 @@ The reference repo ships its own consumer — the [OKF Reference HTML Visualizer
 
 ## Reserved files
 
-- **`index.md`** — directory listing for progressive disclosure; carries no frontmatter, except the bundle-root `index.md`, which may declare `okf_version`.
-- **`log.md`** — dated change history, newest first, ISO `YYYY-MM-DD` headings.
+- **`index.md`**: directory listing for progressive disclosure; carries no frontmatter, except the bundle-root `index.md`, which may declare `okf_version`.
+- **`log.md`**: dated change history, newest first, ISO `YYYY-MM-DD` headings.
 
 ## Versioning
 

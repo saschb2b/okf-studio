@@ -97,8 +97,8 @@ The profile report returns every structurally valid annotation with its source, 
 
 The Rust core resolves descriptors from the open bundle only. It does not search registries, follow URLs, load libraries, evaluate expressions, or run hooks. Each declaration becomes either:
 
-- **Active** — identity and version match, the descriptor passes structural checks, and its advisory diagnostics are available.
-- **Unavailable** — the report names the exact declaration problem, missing file, containment failure, size limit, parse failure, unsupported schema, identity mismatch, or invalid descriptor item.
+- **Active**: identity and version match, the descriptor passes structural checks, and its advisory diagnostics are available.
+- **Unavailable**: the report names the exact declaration problem, missing file, containment failure, size limit, parse failure, unsupported schema, identity mismatch, or invalid descriptor item.
 
 An unavailable profile produces no profile diagnostics because Studio cannot claim its rules are understood. Its declaration and all producer metadata remain available through the [Metadata Inspector](../features/metadata-inspector.md).
 

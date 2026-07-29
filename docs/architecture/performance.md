@@ -30,10 +30,10 @@ A folder may contain many bundles, but only the active one needs to be parsed. T
 
 The [graph](../features/graph-view.md) renders on a **canvas**, with node positions and the force simulation kept out of React's render path (a requestAnimationFrame loop mutates refs and repaints). Scale comes from:
 
-- **Barnes–Hut quad-tree repulsion** — the many-body force is approximated per cell (accuracy set by a theta threshold), reducing the O(n²) step toward **O(n log n)**, so thousands of nodes stay interactive. Each body's mass is **degree-weighted** and link attraction uses ForceAtlas2's **LinLog** model (a gentle log pull, not Hooke) so hubs spread their neighbours and clusters separate into a neat distribution — no separate community-detection pass, and no central tangle.
-- **Collision** — a short-range pass over the same spatial structure keeps nodes from overlapping without scanning every pair.
-- **A cooling schedule** — every force scales by a decaying `alpha`; the loop stops once the layout settles (an idle graph costs nothing), and a hard velocity cap keeps it numerically stable instead of exploding.
-- **Level-of-detail labels** — only dots when zoomed out; labels fade in past a threshold and for the selection/hover, so text never dominates the frame.
+- **Barnes–Hut quad-tree repulsion**: the many-body force is approximated per cell (accuracy set by a theta threshold), reducing the O(n²) step toward **O(n log n)**, so thousands of nodes stay interactive. Each body's mass is **degree-weighted** and link attraction uses ForceAtlas2's **LinLog** model (a gentle log pull, not Hooke) so hubs spread their neighbours and clusters separate into a neat distribution — no separate community-detection pass, and no central tangle.
+- **Collision**: a short-range pass over the same spatial structure keeps nodes from overlapping without scanning every pair.
+- **A cooling schedule**: every force scales by a decaying `alpha`; the loop stops once the layout settles (an idle graph costs nothing), and a hard velocity cap keeps it numerically stable instead of exploding.
+- **Level-of-detail labels**: only dots when zoomed out; labels fade in past a threshold and for the selection/hover, so text never dominates the frame.
 
 # Client-side filtering and virtualized lists
 

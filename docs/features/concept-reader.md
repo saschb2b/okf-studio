@@ -24,7 +24,7 @@ The row had grown to five peer buttons — Retire, Move, Work with agent, Speed 
 
 The split is therefore by job and frequency, not by taste:
 
-- **Reading controls stay visible and sit together** — Speed read and `Aa`, separated from the rest by a hairline. This is a reading pane, and these are the controls a person reaches for repeatedly. Speed reading in particular was undiscoverable while it lived only behind a keyboard shortcut and a section of a popover.
+- **Reading controls stay visible and sit together**: Speed read and `Aa`, separated from the rest by a hairline. This is a reading pane, and these are the controls a person reaches for repeatedly. Speed reading in particular was undiscoverable while it lived only behind a keyboard shortcut and a section of a popover.
 - **Work with agent stays visible.** It is the product's headline capability and belongs in view.
 - **Move and Retire moved into the overflow.** Both are infrequent maintenance, both open a reviewed transaction rather than acting on click, and neither is something a reader needs at a glance. Burying an action that must be obvious is the misuse of this pattern; these are the opposite case.
 
@@ -77,16 +77,16 @@ Rendered for pleasant reading, sanitized before injection ([security](../archite
 
 Stacked, titled modules — quiet navigation context kept beside the prose instead of stranded at the bottom:
 
-- **On this page** — an outline of the body's headings with **scroll-spy** (the current section highlights as you read, and the last section stays highlighted once you reach the end of the page); clicking jumps to the anchored heading.
-- **Cited by** — the backlinks: every concept that links *to* this one ([computed by the core](../architecture/data-model.md)). The reverse-index a flat file tree hides; listed first because it is the context the file system cannot give.
-- **Links to** — the outbound references.
-- **Typed relationships** — incoming and outgoing [profile annotations](typed-relationships.md) over portable Markdown links, with resolved labels, inverses, unknown types, and missing-target or missing-prose-link states kept visible.
-- **Handling guidance** — optional [audience, sensitivity, and handling hints](access-hints.md), visibly advisory and never treated as a filesystem permission.
-- **Lineage** — the status-bar panel traces [filtered multi-hop dependencies and downstream impact](lineage.md), exposes cycles, hubs, missing targets, reliability states, and traversal limits, and explains the labelled shortest path to another concept.
-- **Related by tag** — other concepts sharing this one's tags (synthesized from frontmatter), a relationship dimension beyond explicit links.
-- **Details** — type, Concept ID, **Updated** timestamp, and the `resource` link.
-- **Bundle and concept metadata** — the bounded, source-labelled [Metadata Inspector](metadata-inspector.md). ODSF-owned fields stay in their dedicated rendering rather than appearing twice.
-- **Broken links** — unresolved targets, de-emphasized, surfaced (never hidden) per the [tolerant-consumer principle](../product/principles.md) and [Validation](validation.md).
+- **On this page**: an outline of the body's headings with **scroll-spy** (the current section highlights as you read, and the last section stays highlighted once you reach the end of the page); clicking jumps to the anchored heading.
+- **Cited by**: the backlinks: every concept that links *to* this one ([computed by the core](../architecture/data-model.md)). The reverse-index a flat file tree hides; listed first because it is the context the file system cannot give.
+- **Links to**: the outbound references.
+- **Typed relationships**: incoming and outgoing [profile annotations](typed-relationships.md) over portable Markdown links, with resolved labels, inverses, unknown types, and missing-target or missing-prose-link states kept visible.
+- **Handling guidance**: optional [audience, sensitivity, and handling hints](access-hints.md), visibly advisory and never treated as a filesystem permission.
+- **Lineage**: the status-bar panel traces [filtered multi-hop dependencies and downstream impact](lineage.md), exposes cycles, hubs, missing targets, reliability states, and traversal limits, and explains the labelled shortest path to another concept.
+- **Related by tag**: other concepts sharing this one's tags (synthesized from frontmatter), a relationship dimension beyond explicit links.
+- **Details**: type, Concept ID, **Updated** timestamp, and the `resource` link.
+- **Bundle and concept metadata**: the bounded, source-labelled [Metadata Inspector](metadata-inspector.md). ODSF-owned fields stay in their dedicated rendering rather than appearing twice.
+- **Broken links**: unresolved targets, de-emphasized, surfaced (never hidden) per the [tolerant-consumer principle](../product/principles.md) and [Validation](validation.md).
 
 Every relationship row is clickable and drives the **single shared selection**, so the [graph](graph-view.md), reader, and [sidebar](navigation.md) stay in sync — the rail turns the reader into a second navigator alongside the graph.
 

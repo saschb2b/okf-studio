@@ -38,7 +38,7 @@ scan(folder):
 
 - **Nesting within a bundle:** inside a confident (or candidate) root, inner `index.md` directories are parts of that bundle (sub-directory indexes), not separate bundles — the boundary rule stops at the *top* of the `index.md` chain, so nested section indexes never split a bundle.
 - **A container of bundles is not a bundle:** point at a folder that itself has no `index.md` but holds several bundle directories that do (e.g. `GoogleCloudPlatform/knowledge-catalog`'s `okf/bundles`, whose sub-bundles omit `okf_version`), and detection returns each sub-bundle separately rather than merging their concepts under the container. The [Bundle Switcher](../features/bundle-switcher.md) then lists them (and the [Open-from-URL](../features/bundle-switcher.md) dialog offers a picker).
-- **The chosen folder may itself be a bundle root** — detection includes the root, not just descendants.
+- **The chosen folder may itself be a bundle root**: detection includes the root, not just descendants.
 - **Bound the walk** (depth + ignore list) so pointing at a big monorepo stays [fast](../product/principles.md).
 - **Confidence is recorded** and shown in the [Bundle Switcher](../features/bundle-switcher.md); low-confidence candidates are still offered, since the app is a [tolerant consumer](../product/principles.md).
 - Detection re-runs when [Live Reload](../features/live-reload.md) sees structural changes.

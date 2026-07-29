@@ -54,9 +54,9 @@ Zed splits these the same way (`element.*` and `ghost_element.*`), and for the s
 - **Spacing** (`--space-2 … --space-40`, named by px on a 2/4/8 rhythm) — paddings, margins, and gaps snap to it instead of magic numbers.
 - **Type scale** (`--fs-xs 12 / --fs-sm 14 / --fs-md 16 / --fs-lg 20 / --fs-xl 28`) with paired line-height tokens — a bounded set, not a dozen ad-hoc sizes.
 - **Radius** (`--radius-sm 6 / --radius 8 / --radius-lg 12`; `999px`/`50%` reserved for pills and dots).
-- **Elevation** — one scale, three steps, each a tight contact shadow under a wider ambient one. `--shadow-sm` for a small raised tile (the segmented-control thumb), `--shadow` for popovers and menus, `--shadow-lg` only for modals. `--scrim` is the modal backdrop.
+- **Elevation**: one scale, three steps, each a tight contact shadow under a wider ambient one. `--shadow-sm` for a small raised tile (the segmented-control thumb), `--shadow` for popovers and menus, `--shadow-lg` only for modals. `--scrim` is the modal backdrop.
 - **Focus** (see below) and **motion** — `--dur-fast` / `--dur` on one shared easing curve, `--ease: cubic-bezier(0.2, 0.6, 0.2, 1)`. A fast start that settles slowly is what makes a panel resize read as physical; CSS's default `ease` is symmetric, so it drifts at the start and stops abruptly. All of it is suppressed under `prefers-reduced-motion` (see [Accessibility](accessibility.md)).
-- **Reading layer** — the [Concept Reader](../features/concept-reader.md) adds reader-scoped variables for its prose column: a character-based **measure**, **line-height**, **font** (the UI sans by default, an opt-in serif), and the context-**rail** width, all tunable via its "Aa" control and persisted in [settings](settings.md). Callouts and admonitions reuse the status roles via the `-soft` tints, adding no new color literals.
+- **Reading layer**: the [Concept Reader](../features/concept-reader.md) adds reader-scoped variables for its prose column: a character-based **measure**, **line-height**, **font** (the UI sans by default, an opt-in serif), and the context-**rail** width, all tunable via its "Aa" control and persisted in [settings](settings.md). Callouts and admonitions reuse the status roles via the `-soft` tints, adding no new color literals.
 
 # Light & dark
 

@@ -30,13 +30,13 @@ Components mirror the three panes: a **sidebar** (indexes, concept list, search 
 
 The frontend is organized **domain-first**: `src/features/<domain>/` is the top-level unit, and each domain holds its own `components/` folder beside the logic (hooks, model derivations, ACP calls) that belongs to it. This keeps a feature's UI and its supporting code colocated rather than scattering them across a global `components/` tree and a parallel utilities tree. The domains are:
 
-- **`agent/`** — the ACP client: connection, catalog, install, threads, local models, custom profiles, plus the agent-panel components and the staged-write review previews.
-- **`git/`** — repository snapshot and diff stores, the Git panel, its focus contract, and the dedicated read-only diff workspace.
-- **`viz/`** — visualization: the graph engine (`graph/` — backbone, community, force simulation, render model), the chart helpers (hierarchy, labels, Nivo theme), and every graph/chart component.
-- **`reader/`** — the concept reader, reader preferences, contextual language and resource controls, lineage panel, and peek card, plus lineage derivation.
-- **`bundle/`** — the working Bundle Home, bundle details, sharing, and the demand-loaded Connections workspace, plus bundle browsing and the open-from-URL flow (with its network-free `remoteSource` URL parser).
-- **`navigation/`** — the sidebar shell and its index tree, tag browser, and type filters.
-- **`shell/`** — the window frame and global overlays (top bar, status bar, activity bar, tabs, command palette, settings, validation/log panels).
+- **`agent/`**: the ACP client: connection, catalog, install, threads, local models, custom profiles, plus the agent-panel components and the staged-write review previews.
+- **`git/`**: repository snapshot and diff stores, the Git panel, its focus contract, and the dedicated read-only diff workspace.
+- **`viz/`**: visualization: the graph engine (`graph/` — backbone, community, force simulation, render model), the chart helpers (hierarchy, labels, Nivo theme), and every graph/chart component.
+- **`reader/`**: the concept reader, reader preferences, contextual language and resource controls, lineage panel, and peek card, plus lineage derivation.
+- **`bundle/`**: the working Bundle Home, bundle details, sharing, and the demand-loaded Connections workspace, plus bundle browsing and the open-from-URL flow (with its network-free `remoteSource` URL parser).
+- **`navigation/`**: the sidebar shell and its index tree, tag browser, and type filters.
+- **`shell/`**: the window frame and global overlays (top bar, status bar, activity bar, tabs, command palette, settings, validation/log panels).
 
 Cross-cutting code lives in **`src/shared/`**: the [IPC surface](ipc-and-security.md) (`ipc`), the client `store`, the shared `types`, the model derivations used by every domain (`query`, `selectors`, `odsf`), the `theme`/type-color palette, the content-`render/` pipeline (markdown, math, mermaid, highlighting), the `platform/` host integration (native behaviors, window controls, updater), and the shared `styles/` (`baseui.css`, `chrome.css`). Each component's own stylesheet and test sit beside it. Only the composition root stays at the `src/` top level: `App`, `main`, `keys`, and the cross-cutting integration tests.
 

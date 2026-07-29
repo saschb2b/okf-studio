@@ -12,8 +12,8 @@ Build OKF Studio on **[Tauri 2.0](../reference/tauri-2.md)**: a **Rust core** fo
 
 # Responsibilities
 
-- **Rust core (`src-tauri/`)** — owns all filesystem access: [bundle detection](bundle-detection.md), [OKF parsing](okf-parsing.md), graph/backlink computation, [validation](../features/validation.md), and the [file watcher](../features/live-reload.md). It exposes a small set of [commands and events](ipc-and-security.md) and hands the frontend ready-to-render JSON ([data model](data-model.md)).
-- **Frontend (`src/`)** — owns rendering and interaction: the [graph](../features/graph-view.md), [reader](../features/concept-reader.md), [search/filter](../features/search-and-filter.md), [navigation](../features/navigation.md), and [theming](../ux/theming.md). It holds no filesystem privileges of its own.
+- **Rust core (`src-tauri/`)**: owns all filesystem access: [bundle detection](bundle-detection.md), [OKF parsing](okf-parsing.md), graph/backlink computation, [validation](../features/validation.md), and the [file watcher](../features/live-reload.md). It exposes a small set of [commands and events](ipc-and-security.md) and hands the frontend ready-to-render JSON ([data model](data-model.md)).
+- **Frontend (`src/`)**: owns rendering and interaction: the [graph](../features/graph-view.md), [reader](../features/concept-reader.md), [search/filter](../features/search-and-filter.md), [navigation](../features/navigation.md), and [theming](../ux/theming.md). It holds no filesystem privileges of its own.
 
 # Why Tauri 2.0
 

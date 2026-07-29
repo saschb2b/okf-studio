@@ -32,7 +32,7 @@ Link resolution is the subtlest part of [OKF parsing](okf-parsing.md), so it is 
 - encoded schemes and `..` segments checked after decoding so encoding cannot bypass classification or the bundle boundary,
 - `.`/`..` normalization,
 - trailing `#anchor` stripping,
-- **broken-link tolerance** — a link to a non-existent target is preserved for display but produces no edge,
+- **broken-link tolerance**: a link to a non-existent target is preserved for display but produces no edge,
 - backlink inversion — each `citedBy` list is the exact reverse of the edge set.
 
 The core and rendered reader share `src/test/fixtures/markdown-link-corpus.json`. Rust asserts the graph targets produced by `pulldown-cmark`; Vitest renders the same cases through `marked`, reads the sanitized anchors, and asserts the reader resolves the same concept and external targets. The corpus covers reference links, angle destinations, balanced parentheses, code spans and fences, autolinks, percent encoding, footnote definitions, fragments, and escaped punctuation.
@@ -113,7 +113,7 @@ A strict, **type-aware** ESLint stack (`pnpm lint`) backs the tests as a second 
 - **typescript-eslint** `strictTypeChecked` + `stylisticTypeChecked` — type-aware rules (no floating promises, no needless conditions, exhaustive nullish handling), which require the TypeScript project service.
 - The **React Compiler** ruleset (`eslint-plugin-react-hooks` v7) at error — the correctness rules (refs not read during render, no setState-in-render, purity, immutability) and the dependency rules. Because the [React Compiler](frontend-architecture.md) is on, `react-hooks/rule-suppression` forbids silencing the correctness rules; only the long-standing `exhaustive-deps` may be suppressed, and only for the imperative ref-driven [graph](../features/graph-view.md) effects with a stated reason.
 - **jsx-a11y** (recommended) — the static accessibility rules, complementing the runtime axe gate above. Its latest release still declares a peer of `eslint ^3 || … || ^9`, so running it on ESLint 10 is outside its stated range. The rules were checked to still fire rather than assumed to, and the exception is recorded as a `pnpm.peerDependencyRules` entry so it reads as a decision rather than as an install warning.
-- **Vitest and Testing Library plugins** — focused or disabled tests, assertion-free tests, unawaited async queries, side effects in polling callbacks, and other reliability defects fail lint before the runner starts.
+- **Vitest and Testing Library plugins**: focused or disabled tests, assertion-free tests, unawaited async queries, side effects in polling callbacks, and other reliability defects fail lint before the runner starts.
 - **eslint-config-prettier** last, so formatting is left to a formatter rather than fought by lint rules.
 
 The intent is that the same strictness applies as in sibling projects: catch the class of defect that compiles and passes tests but is still wrong. A handful of rules are tuned, not disabled — numbers are allowed in template literals, and test files relax the no-empty-function and (for polyfilled DOM globals) no-unnecessary-condition rules — each with a comment in `eslint.config.mjs` saying why.

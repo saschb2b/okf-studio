@@ -20,11 +20,11 @@ An **Overview** — a first-class view (alongside graph and reader) that summari
 
 Sections, each a compact card, every item a link that selects the concept (or applies a filter):
 
-- **At a glance** — concept count, distinct [types](../ux/theming.md), tag count, `okf_version`/confidence, last-updated (newest concept `timestamp`).
-- **Composition** — type distribution as a small bar/treemap, each type a filter into the [faceted view](faceted-search.md).
-- **Hubs** — the most-connected concepts (highest `degree`), the natural entry points.
-- **Loose ends** — **orphans** (no links in or out) and near-orphans, the concepts the graph buries.
-- **Health** — [validation](../features/validation.md) issue counts, **broken links**, and **staleness** (oldest `timestamp`s), so a bundle's rough edges are visible before you trust it.
+- **At a glance**: concept count, distinct [types](../ux/theming.md), tag count, `okf_version`/confidence, last-updated (newest concept `timestamp`).
+- **Composition**: type distribution as a small bar/treemap, each type a filter into the [faceted view](faceted-search.md).
+- **Hubs**: the most-connected concepts (highest `degree`), the natural entry points.
+- **Loose ends**: **orphans** (no links in or out) and near-orphans, the concepts the graph buries.
+- **Health**: [validation](../features/validation.md) issue counts, **broken links**, and **staleness** (oldest `timestamp`s), so a bundle's rough edges are visible before you trust it.
 - **Recently changed** *(optional)* — newest concepts by `timestamp`; pairs later with a [live-reload](../features/live-reload.md) change feed.
 
 # Why it's cheap

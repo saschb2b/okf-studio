@@ -25,11 +25,11 @@ Pull-request CI includes a dedicated Ubuntu 24.04 agent-sandbox job. It installs
 
 Two GitHub Actions workflows (`.github/workflows/`):
 
-- **`ci.yml`** — on every push to `main` and every pull request, runs the fast checks: the whole **frontend** (ESLint, `tsc` typecheck, the Vitest [suite](testing.md), and a production `vite build`) and the **Rust core** (`cargo clippy -D warnings` and `cargo test` on `okf-core`). `okf-core` is pure Rust — no WebKitGTK and no built frontend — so this stays quick. The full `src-tauri` compile is left to the release build, which exercises it on each OS.
-- **`release.yml`** — when a GitHub **Release is published**, builds the installers on a runner matrix (the packaged artifacts are produced natively per platform; there is no reliable cross-compilation path), via the official `tauri-apps/tauri-action`, which runs `tauri build` (frontend via the config's `beforeBuildCommand`, then bundling) and **uploads the artifacts to the triggering release**. The matrix is split by how each artifact links its libraries:
-  - **`.deb` on the oldest supported Ubuntu (22.04)** — it links against the *system* WebKitGTK/glib, so an older base keeps it installable on 22.04 and every newer release.
-  - **AppImage on the current Ubuntu LTS** — it *bundles* glib/Mesa, so it must be built on a modern base: an AppImage built on 22.04 fails on newer hosts (a glib symbol mismatch with the host's GVfs modules, then `EGL_BAD_PARAMETER` when WebKit's bundled GL stack can't init). Building on the current LTS makes the bundled libraries match modern systems.
-  - **Windows on `windows-latest`** — `.msi` + NSIS `.exe`.
+- **`ci.yml`**: on every push to `main` and every pull request, runs the fast checks: the whole **frontend** (ESLint, `tsc` typecheck, the Vitest [suite](testing.md), and a production `vite build`) and the **Rust core** (`cargo clippy -D warnings` and `cargo test` on `okf-core`). `okf-core` is pure Rust — no WebKitGTK and no built frontend — so this stays quick. The full `src-tauri` compile is left to the release build, which exercises it on each OS.
+- **`release.yml`**: when a GitHub **Release is published**, builds the installers on a runner matrix (the packaged artifacts are produced natively per platform; there is no reliable cross-compilation path), via the official `tauri-apps/tauri-action`, which runs `tauri build` (frontend via the config's `beforeBuildCommand`, then bundling) and **uploads the artifacts to the triggering release**. The matrix is split by how each artifact links its libraries:
+  - **`.deb` on the oldest supported Ubuntu (22.04)**: it links against the *system* WebKitGTK/glib, so an older base keeps it installable on 22.04 and every newer release.
+  - **AppImage on the current Ubuntu LTS**: it *bundles* glib/Mesa, so it must be built on a modern base: an AppImage built on 22.04 fails on newer hosts (a glib symbol mismatch with the host's GVfs modules, then `EGL_BAD_PARAMETER` when WebKit's bundled GL stack can't init). Building on the current LTS makes the bundled libraries match modern systems.
+  - **Windows on `windows-latest`**: `.msi` + NSIS `.exe`.
 
   Each Linux runner is restricted to its one bundle target (`--bundles deb` / `--bundles appimage`) so it never emits the other's (broken) artifact.
 
@@ -41,8 +41,8 @@ Two GitHub Actions workflows (`.github/workflows/`):
 
 Two version numbers stay deliberately distinct:
 
-- **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Studio app itself, shown in the about/settings surface.
-- **`okf_version`** — the version of the OKF **format** a bundle declares in its root `index.md` (see [OKF Spec Summary](../reference/okf-spec-summary.md)). The app reads and displays this (quietly, in the [status bar](../ux/browsing-layout.md)); it is a property of the data, never of the app. A new app release does not change a bundle's `okf_version`, and vice versa. A bundle that is also an [ODSF](../features/design-system-rendering.md) design system declares an **`odsf_version`** in the same root frontmatter; the core reads it alongside `okf_version` and the app shows both — equally a property of the data.
+- **Application version**: semver (`MAJOR.MINOR.PATCH`) on the OKF Studio app itself, shown in the about/settings surface.
+- **`okf_version`**: the version of the OKF **format** a bundle declares in its root `index.md` (see [OKF Spec Summary](../reference/okf-spec-summary.md)). The app reads and displays this (quietly, in the [status bar](../ux/browsing-layout.md)); it is a property of the data, never of the app. A new app release does not change a bundle's `okf_version`, and vice versa. A bundle that is also an [ODSF](../features/design-system-rendering.md) design system declares an **`odsf_version`** in the same root frontmatter; the core reads it alongside `okf_version` and the app shows both — equally a property of the data.
 
 ## One source of truth, one writer, one gate
 

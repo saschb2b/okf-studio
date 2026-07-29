@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build & Release
 description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check and user-initiated installs.
 tags: [architecture, decision, build, release, packaging]
-generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
+generated: { by: claude/unrecorded, at: 2026-07-29T14:42:58+02:00 }
 ---
 
 # Decision
@@ -41,8 +41,19 @@ Two GitHub Actions workflows (`.github/workflows/`):
 
 Two version numbers stay deliberately distinct:
 
-- **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Studio app itself, set in the Tauri config and shown in the about/settings surface.
+- **Application version** — semver (`MAJOR.MINOR.PATCH`) on the OKF Studio app itself, shown in the about/settings surface.
 - **`okf_version`** — the version of the OKF **format** a bundle declares in its root `index.md` (see [OKF Spec Summary](../reference/okf-spec-summary.md)). The app reads and displays this (quietly, in the [status bar](../ux/browsing-layout.md)); it is a property of the data, never of the app. A new app release does not change a bundle's `okf_version`, and vice versa. A bundle that is also an [ODSF](../features/design-system-rendering.md) design system declares an **`odsf_version`** in the same root frontmatter; the core reads it alongside `okf_version` and the app shows both — equally a property of the data.
+
+## One source of truth, one writer, one gate
+
+The application version cannot live in a single file: Cargo, npm, the marketing site, and the design system each need it in their own format, and no manifest is shared between them. It lives in **nine places**. Three releases in a row were bumped by hand across all of them with nothing checking they agreed, and a disagreement is quiet: the installer filename, the updater manifest, and the download page can each claim a different number, and the first symptom is a user offered an update the updater then refuses to apply.
+
+- **`package.json` is the source of truth.** The Tauri config no longer repeats it; `version` there is the path `../package.json`, which Tauri resolves at build time. That is one fewer literal, and `check:version` rejects a plain number reappearing in that field.
+- **One writer.** `pnpm version:set <version>` bumps every place, including the two `Cargo.lock` entries. Nothing is edited by hand at release time.
+- **One gate.** `pnpm check:version` runs in [CI](testing.md) on every push and pull request. `scripts/check-version.mjs` holds a single table of the places and their patterns, which both the check and the writer read, so a place can never be verified but not written. A pattern that stops matching is a failure, not a silent pass, and a version literal appearing in an undeclared file under the manifests, the site, the design system, the benchmarks, or the workflows is reported as a new place to declare.
+- **A bump needs release notes.** The gate also requires a matching `**Release**: <version>` entry in the bundle's `log.md`, so a version can't be tagged with nothing recorded about what it contains.
+
+Not covered: `src/` and `crates/` are excluded from the undeclared-literal scan, because the app reads its own version from the build rather than a literal, and both carry unrelated third-party version strings. Markdown outside the two declared design-system files is excluded too, since prose cites past releases and should.
 
 # Updates
 

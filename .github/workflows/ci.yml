@@ -42,6 +42,12 @@ jobs:
       # the browser lanes spend minutes.
       - run: pnpm check:theme
 
+      # The release version lives in nine places across four toolchains. Three
+      # releases in a row were bumped by hand with nothing checking they agreed,
+      # and a disagreement is silent until an installer and the updater manifest
+      # claim different numbers.
+      - run: pnpm check:version
+
       # Both knowledge bundles are conformance-checked. docs/ is the product
       # spec AND the app's built-in sample, so a malformed concept ships as
       # content; design-system/ is what the site's styles are generated from.

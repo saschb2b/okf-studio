@@ -137,6 +137,7 @@ Do not push and let CI find failures you could have caught. Before committing or
 ```bash
 pnpm lint        # eslint . (type-aware: parse, type, and a11y issues)
 pnpm check:theme # undefined custom properties · 108 AA pairings/theme · design-system sync
+pnpm check:version # the release version agrees across all nine places that carry it
 pnpm typecheck   # tsc --noEmit
 pnpm test        # fast Node unit + jsdom component lanes
 pnpm test:integration # full-app and axe journeys (bounded two-worker lane)

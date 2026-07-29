@@ -10,7 +10,7 @@ generated: { by: claude/unrecorded, at: 2026-07-23T18:30:00Z }
 
 The optional `io.okf.evidence` profile gives a concept two related maps:
 
-- `provenance` records where selected material came from and how Studio observed it;
+- `provenance` records where selected material came from and how Studio observed it
 - `evidence` gives a stable source ID to a claim marker such as `[^report]`, with an optional locator and source-check observation.
 
 The [Concept Reader](concept-reader.md) resolves a structured claim marker into an ordinary sanitized Markdown footnote. The footnote returns to the claim and, when the source has a public HTTPS URI, links to that source. The Evidence module in the reader rail shows the durable identity, locator, adapter, digest, authored observation, and any advisory problem. The same source records and claim lines travel in [Retrieval Intelligence](retrieval-intelligence.md) evidence packets.
@@ -84,10 +84,10 @@ Opening a bundle, entering the reader, expanding Evidence, or running ordinary h
 
 [Knowledge Health](knowledge-health.md) joins the authored contract into deterministic advice:
 
-- a claim marker without an evidence entry names the concept path and body line;
-- an invalid source entry names the source ID;
-- an evidence entry with no claim marker is a heuristic review hint;
-- a source authored as `changed` or `unavailable` records its last status, time, and fingerprint;
+- a claim marker without an evidence entry names the concept path and body line
+- an invalid source entry names the source ID
+- an evidence entry with no claim marker is a heuristic review hint
+- a source authored as `changed` or `unavailable` records its last status, time, and fingerprint
 - lifecycle, contradiction, replacement, and retrieval conflict findings remain visible beside source findings.
 
 The finding explains what was observed and what cannot be inferred. A failed URL is not a factual-invalidity finding. Evidence repairability remains `guided`, so an agent may propose a source, locator, citation, or refreshed observation, but Studio never invents or applies one mechanically.

@@ -73,11 +73,11 @@ These invariants extend the proven workspace behavior in [Agent Workspace Dogfoo
 
 Every interface-changing package records:
 
-- the existing surface it changes;
-- controls and persistent regions added, removed, or merged;
-- information visible at each disclosure level;
-- the primary action and recovery owner for every blocking state;
-- scroll, focus, keyboard, and narrow-width behavior;
+- the existing surface it changes
+- controls and persistent regions added, removed, or merged
+- information visible at each disclosure level
+- the primary action and recovery owner for every blocking state
+- scroll, focus, keyboard, and narrow-width behavior
 - the unavailable path when an index, provider, cache, or permission is missing.
 
 A new persistent top-level surface requires a product decision and an update to [Browsing Layout](../../ux/browsing-layout.md). An implementation cannot justify a surface only because its backend emits more data. Duplicate bundle, agent, thread, route, or scope labels must be consolidated under their existing owner.
@@ -86,25 +86,25 @@ A new persistent top-level surface requires a product decision and an update to 
 
 An interface-changing package may enter production implementation when:
 
-- [x] the user job and surface owner are named;
-- [x] a composition shows what appears, disappears, or moves;
-- [x] the disclosure level of every new field and control is fixed;
-- [x] loading, ready, empty, partial, stale, conflict, permission, unavailable, cancelled, large, and long-content states are either covered or explicitly inapplicable;
-- [x] focus order, keyboard actions, scroll ownership, and close behavior are specified;
-- [x] 360-pixel and wide Storybook compositions use existing tokens and components where possible;
-- [x] Storybook MCP has been used to inventory overlapping components and screen the proposed states;
+- [x] the user job and surface owner are named
+- [x] a composition shows what appears, disappears, or moves
+- [x] the disclosure level of every new field and control is fixed
+- [x] loading, ready, empty, partial, stale, conflict, permission, unavailable, cancelled, large, and long-content states are either covered or explicitly inapplicable
+- [x] focus order, keyboard actions, scroll ownership, and close behavior are specified
+- [x] 360-pixel and wide Storybook compositions use existing tokens and components where possible
+- [x] Storybook MCP has been used to inventory overlapping components and screen the proposed states
 - [x] the package gate names the behavior that prevents UI accretion.
 
 # Definition of done
 
 An interface-changing package is complete when:
 
-- [x] colocated stories cover every applicable state and interactive stories have `play` assertions;
-- [x] Storybook MCP screening at 360 pixels and wide width finds no horizontal overflow, clipped text, unreachable composer, hidden recovery, or competing primary actions;
-- [x] `pnpm test:stories`, accessibility checks, and the owning integration journey pass;
-- [x] visual-consistency, theme-color, React, and prose reviews have no unresolved Glaring finding;
-- [x] the implementation preserves transcript scroll, draft state, selected evidence, and focus across inspection and recovery;
-- [x] whole-panel dogfood proves the feature under simultaneous live-work pressure instead of only in isolation;
+- [x] colocated stories cover every applicable state and interactive stories have `play` assertions
+- [x] Storybook MCP screening at 360 pixels and wide width finds no horizontal overflow, clipped text, unreachable composer, hidden recovery, or competing primary actions
+- [x] `pnpm test:stories`, accessibility checks, and the owning integration journey pass
+- [x] visual-consistency, theme-color, React, and prose reviews have no unresolved Glaring finding
+- [x] the implementation preserves transcript scroll, draft state, selected evidence, and focus across inspection and recovery
+- [x] whole-panel dogfood proves the feature under simultaneous live-work pressure instead of only in isolation
 - [x] temporary screenshots remain outside `docs/ux/` unless a named UX concept links them as curated evidence.
 
 # First vertical slice

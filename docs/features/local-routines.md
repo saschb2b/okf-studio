@@ -10,7 +10,7 @@ generated: { by: claude/unrecorded, at: 2026-07-18T14:20:00Z }
 
 Local routines turn repeatable OKF maintenance into visible, inspectable work. They do not turn Studio into an always-running service and do not give an agent standing authority. Routine schema v1 supports two deterministic tasks:
 
-- a knowledge-health rescan over the current bundle snapshot;
+- a knowledge-health rescan over the current bundle snapshot
 - a SHA-256 fingerprint check over one or more explicitly named, bundle-relative source files.
 
 Both tasks work without an agent, model, credential, tool call, network request, or staging grant. A routine never applies a bundle change.

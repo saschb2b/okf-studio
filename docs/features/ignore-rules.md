@@ -16,11 +16,11 @@ The same matcher keeps each surface from quietly inventing a different privacy b
 
 The syntax is a bounded Git-ignore-style subset:
 
-- blank lines and lines beginning with `#` are comments;
-- `*` matches within one path segment, `?` matches one character, and `**` crosses directories;
-- a leading `/` anchors a rule to the bundle root;
-- a trailing `/` addresses a directory and its descendants;
-- a leading `!` negates an earlier rule, and the last matching rule wins;
+- blank lines and lines beginning with `#` are comments
+- `*` matches within one path segment, `?` matches one character, and `**` crosses directories
+- a leading `/` anchors a rule to the bundle root
+- a trailing `/` addresses a directory and its descendants
+- a leading `!` negates an earlier rule, and the last matching rule wins
 - `\#` and `\!` address a literal leading marker.
 
 Patterns stay relative to the bundle root. The file is limited to 64 KiB, 512 applied rules, and 512 characters per pattern. Controls, absolute paths, and parent traversal are rejected with visible diagnostics. Matching follows the host filesystem convention: case-sensitive on Linux and macOS, case-insensitive on Windows.

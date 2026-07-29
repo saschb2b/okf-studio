@@ -28,9 +28,9 @@ Selected concepts without a recognized sensitivity label are eligible by default
 
 **Sharing safeguards** remain available in one collapsed optional section:
 
-- an audience filter;
-- the highest recognized sensitivity to include;
-- whether unlabeled or unknown sensitivity values are eligible;
+- an audience filter
+- the highest recognized sensitivity to include
+- whether unlabeled or unknown sensitivity values are eligible
 - exact words or phrases to remove.
 
 An empty audience filter means no audience filtering. Entering one or more audiences narrows eligible concepts to matching authored labels. This prevents an optional blank field from silently excluding selected content.
@@ -39,12 +39,12 @@ An empty audience filter means no audience filtering. Entering one or more audie
 
 Planning performs no filesystem write. Rust computes:
 
-- explicitly selected concepts that pass the reviewed constraints;
-- transitively linked concepts that pass the same constraints;
-- every omitted concept and `.okfignore` path, with one exact reason;
-- retained links that must point to the projection omissions note;
-- broken links that already existed in the source;
-- every occurrence of an exact reviewed redaction term;
+- explicitly selected concepts that pass the reviewed constraints
+- transitively linked concepts that pass the same constraints
+- every omitted concept and `.okfignore` path, with one exact reason
+- retained links that must point to the projection omissions note
+- broken links that already existed in the source
+- every occurrence of an exact reviewed redaction term
 - a destination folder name, source fingerprint, and plan revision.
 
 The second screen leads with the outcome: concepts in the new bundle, concepts left out, link updates, and text removals. Detail sections explain each item in plain language. Source fingerprints, stale-plan protection, validation, and erasure checks remain available under **How Studio protects the source** instead of competing with the sharing decision.

@@ -22,11 +22,11 @@ Knowledge Health gives every provider the same revision-bound evidence before it
 
 Every finding carries:
 
-- a stable rule ID and independent rule version;
-- severity, category, and an explicit `fact` or `heuristic` basis;
-- a plain explanation of why the finding exists;
-- bounded evidence fields and affected concept IDs;
-- `deterministic`, `guided`, or `not-repairable` repairability;
+- a stable rule ID and independent rule version
+- severity, category, and an explicit `fact` or `heuristic` basis
+- a plain explanation of why the finding exists
+- bounded evidence fields and affected concept IDs
+- `deterministic`, `guided`, or `not-repairable` repairability
 - a suppression fingerprint that survives unrelated bundle edits; and
 - the fingerprint of the complete bundle revision that was analyzed.
 

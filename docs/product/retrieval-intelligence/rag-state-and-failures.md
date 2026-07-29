@@ -64,15 +64,15 @@ Technical claims below come from primary papers or first-party engineering repor
 
 The supplied r/RAG snapshot repeats the same concerns in less controlled form:
 
-- orchestration is moving away from one large framework toward lighter graphs, custom pipelines, and MCP-shaped tools;
-- teams want duplicate, metadata, score, filter, and prompt diagnostics because successful requests can still return weak evidence;
-- temporal coherence, updates, and ordered recall matter more than raw vector similarity for agent memory;
-- persistent KV caches and long context are attractive for stable document sets because they remove a retrieval failure point;
-- stale sources, contradictory documents, altered numbers, and incomplete context create confident reliability failures;
-- web retrieval needs extraction, deduplication, reranking, and compact evidence rather than whole scraped pages;
-- graph and causal retrieval can help when the answer depends on a path rather than one passage;
-- PDF tables and other layout-derived structures remain lossy at ingestion;
-- enterprise deployments cannot move or retrieve data without preserving the source permission boundary;
+- orchestration is moving away from one large framework toward lighter graphs, custom pipelines, and MCP-shaped tools
+- teams want duplicate, metadata, score, filter, and prompt diagnostics because successful requests can still return weak evidence
+- temporal coherence, updates, and ordered recall matter more than raw vector similarity for agent memory
+- persistent KV caches and long context are attractive for stable document sets because they remove a retrieval failure point
+- stale sources, contradictory documents, altered numbers, and incomplete context create confident reliability failures
+- web retrieval needs extraction, deduplication, reranking, and compact evidence rather than whole scraped pages
+- graph and causal retrieval can help when the answer depends on a path rather than one passage
+- PDF tables and other layout-derived structures remain lossy at ingestion
+- enterprise deployments cannot move or retrieve data without preserving the source permission boundary
 - similarity ranking and relevance ranking are different operations.
 
 These posts do not prove that any named product or benchmark claim is correct. Their value is convergence: users are debugging corpus quality, routing, structure, time, permissions, and observability after the basic demo already works.
@@ -131,16 +131,16 @@ Repair loop
 
 ## Missing primitives
 
-- stable heading and table-section identities below the concept level;
-- a disposable local retrieval manifest tied to one bundle fingerprint;
-- exact and BM25-style lexical retrieval in the Rust core;
-- optional dense embeddings and reranking with an explicit local or configured provider;
-- query classification and mode routing with deterministic fallbacks;
-- graph-aware neighborhood and path expansion tuned for evidence assembly;
-- temporal, supersession, authority, and contradiction signals that do not overload `timestamp` or ordinary links;
-- context budgeting that preserves coherent sections and orders evidence for reading;
-- a typed retrieval receipt and diffable diagnostic bundle;
-- retrieval benchmarks with known relevant concepts, paths, exclusions, and abstention cases;
+- stable heading and table-section identities below the concept level
+- a disposable local retrieval manifest tied to one bundle fingerprint
+- exact and BM25-style lexical retrieval in the Rust core
+- optional dense embeddings and reranking with an explicit local or configured provider
+- query classification and mode routing with deterministic fallbacks
+- graph-aware neighborhood and path expansion tuned for evidence assembly
+- temporal, supersession, authority, and contradiction signals that do not overload `timestamp` or ordinary links
+- context budgeting that preserves coherent sections and orders evidence for reading
+- a typed retrieval receipt and diffable diagnostic bundle
+- retrieval benchmarks with known relevant concepts, paths, exclusions, and abstention cases
 - agent, MCP, CLI, and export contracts that expose the same retrieval behavior without bypassing grants.
 
 # Conflicts and uncertainties

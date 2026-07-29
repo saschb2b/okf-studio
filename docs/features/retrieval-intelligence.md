@@ -46,10 +46,10 @@ A retrieval unit carries the bundle fingerprint, concept ID, deterministic secti
 
 The versioned receipt records:
 
-- the query class, route, and route reason;
-- every ranked candidate and its exact, lexical, graph, coverage, and authority scores;
-- inclusions, exclusions, matched terms, relationship paths, and filters;
-- estimated context use, whole-unit budget omissions, and elapsed time;
+- the query class, route, and route reason
+- every ranked candidate and its exact, lexical, graph, coverage, and authority scores
+- inclusions, exclusions, matched terms, relationship paths, and filters
+- estimated context use, whole-unit budget omissions, and elapsed time
 - bundle, manifest, cache-scope, and receipt fingerprints; and
 - dense, reranking, and cache provider states, including whether remote text was shared.
 

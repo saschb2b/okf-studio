@@ -82,7 +82,7 @@ The active concept's reader rail lists only its resources, including integrity s
 
 Rust accepts only normal bundle-relative paths whose canonical file remains inside the granted root. It reads at most 64 MiB, computes a SHA-256 digest, compares an optional authored digest, records media type and size, and assigns one of two policies:
 
-- **safe-preview** means the media type can use an existing inert Studio preview path;
+- **safe-preview** means the media type can use an existing inert Studio preview path
 - **download-only** means Studio will never execute it or render it as trusted HTML.
 
 Every ready resource can be copied through an explicit native save dialog outside the open bundle. Missing, oversize, invalid, escaping, or digest-mismatched files cannot be exported.

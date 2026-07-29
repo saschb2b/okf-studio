@@ -14,9 +14,9 @@ The retrieval system should remain quiet during ordinary use. The conversation s
 
 The product is an OKF context engine:
 
-- upstream, it helps people and agents create retrieval-ready knowledge with stable identity, structure, provenance, and links;
-- at query time, it routes among exact, lexical, graph, dense, global, and full-context modes;
-- downstream, it gives any connected agent a coherent evidence packet plus a receipt that explains selection, exclusions, and scope;
+- upstream, it helps people and agents create retrieval-ready knowledge with stable identity, structure, provenance, and links
+- at query time, it routes among exact, lexical, graph, dense, global, and full-context modes
+- downstream, it gives any connected agent a coherent evidence packet plus a receipt that explains selection, exclusions, and scope
 - after a miss, it turns diagnostics into reviewed knowledge repairs rather than hidden index tuning.
 
 The [research brief](rag-state-and-failures.md) supports this position. The [roadmap](retrieval-intelligence-roadmap.md) converts it into measured work packages, with the experience contract as a prerequisite for interface-changing work.

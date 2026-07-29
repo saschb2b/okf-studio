@@ -59,7 +59,7 @@ Not covered: `src/` and `crates/` are excluded from the undeclared-literal scan,
 
 Installing updates is **user-initiated**, via Tauri's updater plugin. Checking has two paths, both hitting the same single stable endpoint, GitHub's `releases/latest/download/latest.json`, which always serves the newest release's updater manifest (`tauri-action` generates and uploads it via `includeUpdaterJson`):
 
-- a **quiet launch check** (once per launch, main window only, gated by the on-by-default "New release badge" setting) whose only output is the badge on the Settings icon; failures and offline launches surface nothing, and pop-out windows and web/dev builds never check;
+- a **quiet launch check** (once per launch, main window only, gated by the on-by-default "New release badge" setting) whose only output is the badge on the Settings icon; failures and offline launches surface nothing, and pop-out windows and web/dev builds never check
 - the explicit **"Check for updates"** action in [Settings](../ux/settings.md).
 
 The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)): a version-file read with no identity attached, added because releases went unnoticed when discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.

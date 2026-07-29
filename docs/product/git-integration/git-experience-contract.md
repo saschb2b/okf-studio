@@ -42,8 +42,8 @@ At 360 pixels, labels may shorten but the stage control, file name, status, prim
 
 Each changed path appears once. Its control has three truthful states:
 
-- unchecked: only unstaged changes exist;
-- checked: all changes for the path are staged;
+- unchecked: only unstaged changes exist
+- checked: all changes for the path are staged
 - mixed: staged and unstaged changes both exist.
 
 The row shows a compact status code so paths retain space at narrow widths. Its full label, such as Modified, Added, Deleted, Renamed, Untracked, or Conflict, remains available to assistive technology and on hover. Selecting the row opens the relevant diff. The stage control changes only that path and remains disabled while its operation is pending.
@@ -54,8 +54,8 @@ Unresolved conflicts remain visible at the top and block commit while any confli
 
 The primary label states its scope:
 
-- **Commit staged** when the index contains changes;
-- **Commit tracked** when no changes are staged but tracked files changed;
+- **Commit staged** when the index contains changes
+- **Commit tracked** when no changes are staged but tracked files changed
 - disabled when there is nothing committable.
 
 Commit tracked mirrors `git commit -a`: it includes modifications and deletions to tracked files and excludes untracked files. The message is required. `Ctrl/Cmd + Enter` invokes the current primary action while the composer is focused. A successful commit clears the draft and shows one recoverable **Undo commit** action until repository state moves past that commit. Undo is a soft reset and never discards working-tree content.
@@ -80,15 +80,15 @@ Git support does not weaken the agent boundary. `.git` remains inaccessible to a
 
 Storybook and integration tests must cover:
 
-- repository with no changes;
-- mixed staged, unstaged, untracked, deleted, renamed, and conflicted entries;
-- long paths and branch names at wide and 360-pixel widths;
-- no enclosing repository;
-- repository outside the persisted folder grant;
-- Git executable unavailable;
-- empty history and unborn branch;
-- pending and failed stage, commit, fetch, pull, and push operations;
-- commit draft with no message and tracked-only scope;
+- repository with no changes
+- mixed staged, unstaged, untracked, deleted, renamed, and conflicted entries
+- long paths and branch names at wide and 360-pixel widths
+- no enclosing repository
+- repository outside the persisted folder grant
+- Git executable unavailable
+- empty history and unborn branch
+- pending and failed stage, commit, fetch, pull, and push operations
+- commit draft with no message and tracked-only scope
 - diff loading, binary file, truncation, and failure.
 
 # Acceptance gate

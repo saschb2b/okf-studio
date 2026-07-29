@@ -347,11 +347,11 @@ flowchart TD
 
 # Deferred decisions
 
-- bundled embedding model versus user-installed local model;
-- concept-level policy overlay and enterprise identity mapping;
-- an optional typed-relationship OKF profile;
-- cross-device index or cache synchronization;
-- a persistent background context service outside the desktop application;
-- remote hosted indexes managed by Studio;
-- automatic web crawling beyond explicit source fetches;
+- bundled embedding model versus user-installed local model
+- concept-level policy overlay and enterprise identity mapping
+- an optional typed-relationship OKF profile
+- cross-device index or cache synchronization
+- a persistent background context service outside the desktop application
+- remote hosted indexes managed by Studio
+- automatic web crawling beyond explicit source fetches
 - learned routing trained from user activity or telemetry.

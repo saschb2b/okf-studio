@@ -42,10 +42,10 @@ Directory fingerprints hash sorted bundle-relative paths and bytes. The generate
 
 The task contracts cover inspect, retrieval, create, enrich, audit, repair, cited research, change impact, migration, concept authoring, and meaning-preserving writing revision. Retrieval has its own conflict fixture contract, so adding `okf_retrieve` to adjacent capabilities cannot pass while the retrieval method itself remains unevaluated. A task declaration contains:
 
-- one stable task and capability ID;
-- one fixture revision;
-- the expected structured artifact kind;
-- the user prompt and bounded tool allowlist;
+- one stable task and capability ID
+- one fixture revision
+- the expected structured artifact kind
+- the user prompt and bounded tool allowlist
 - explicit hard failures; and
 - positive, uniquely named score checks totaling exactly 100 points.
 

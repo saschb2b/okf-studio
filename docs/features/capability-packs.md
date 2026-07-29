@@ -26,11 +26,11 @@ Named tasks alone left a practical gap. A user who typed â€œrewrite this bundleâ
 
 The v1 manifest accepts only:
 
-- stable pack identity, version, name, description, and publisher;
-- `built-in` provenance;
-- minimum Studio, capability-schema, and artifact-schema versions;
-- conflicting pack IDs;
-- one digest-bound capability manifest;
+- stable pack identity, version, name, description, and publisher
+- `built-in` provenance
+- minimum Studio, capability-schema, and artifact-schema versions
+- conflicting pack IDs
+- one digest-bound capability manifest
 - declarative Markdown templates and JSON artifact schemas; and
 - required tool IDs from Studio's compiled allowlist.
 

@@ -22,11 +22,11 @@ Generic chat also has access to every active OKF method. It discovers the capabi
 
 Each origin has a closed task set:
 
-- concepts offer meaning-preserving writing revision, audit, enrichment, cited research, and change impact;
-- graph selections prioritize change impact, then audit and enrichment;
-- search results offer cited research, change impact, and enrichment;
-- validation findings prioritize repair, then audit and cited research;
-- advisory profile findings prioritize a reviewed migration, then revision and audit;
+- concepts offer meaning-preserving writing revision, audit, enrichment, cited research, and change impact
+- graph selections prioritize change impact, then audit and enrichment
+- search results offer cited research, change impact, and enrichment
+- validation findings prioritize repair, then audit and cited research
+- advisory profile findings prioritize a reviewed migration, then revision and audit
 - citations offer cited research, enrichment, and change impact; and
 - sources offer concept authoring, enrichment, cited research, and creation.
 

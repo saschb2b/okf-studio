@@ -39,9 +39,9 @@ After an agent stages a file, isolated validation parses the selected staged tre
 
 These fields are routing and review hints:
 
-- they do not grant a folder, file, agent tool, network request, or Apply capability;
-- they do not change operating-system permissions or encryption;
-- they do not hide evidence from a context plan;
+- they do not grant a folder, file, agent tool, network request, or Apply capability
+- they do not change operating-system permissions or encryption
+- they do not hide evidence from a context plan
 - they do not prove that the author classified the concept correctly.
 
 The root [`.okfignore`](ignore-rules.md) can reduce what Studio reads, but it is also not access control. A [Recipient Projection](recipient-projections.md) uses recognized hints only to propose a least-disclosure copy. The user still reviews its exact inclusion and omission plan before any destination write.

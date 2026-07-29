@@ -131,10 +131,10 @@ A capability earns homepage space only when it is broadly relevant, differentiat
 
 Astro pages should consume small typed content records instead of defining the product inventory inside `index.astro`. The model needs:
 
-* navigation destinations and groups;
-* product families with stable identifiers, summaries, proof assets, documentation links, and related workflows;
-* workflow records referencing product-family identifiers;
-* release and download metadata;
+* navigation destinations and groups
+* product families with stable identifiers, summaries, proof assets, documentation links, and related workflows
+* workflow records referencing product-family identifiers
+* release and download metadata
 * shared trust claims tied to the matching product specification.
 
 Navigation data has one owner. A product claim has one canonical record. Pages compose references to those records and may provide page-specific framing, but they do not fork the factual copy. The implementation may use TypeScript data modules first; Astro content collections become useful only when the number of editorial pages warrants schema validation and authoring outside components.
@@ -145,13 +145,13 @@ The [design-system bundle](../../../design-system/) remains the visual source of
 
 The next layout must meet these floors:
 
-* one shared content edge for comparable sections, with narrower measures for prose;
-* no horizontal page overflow at 320 CSS pixels;
-* body prose at least 16 pixels with a readable line length;
-* visible and consistent focus treatment for every navigation control;
-* at least 24 by 24 CSS-pixel targets, with larger primary targets on touch layouts;
-* explicit media dimensions or aspect ratios;
-* no desktop-only destination hidden at narrow widths;
+* one shared content edge for comparable sections, with narrower measures for prose
+* no horizontal page overflow at 320 CSS pixels
+* body prose at least 16 pixels with a readable line length
+* visible and consistent focus treatment for every navigation control
+* at least 24 by 24 CSS-pixel targets, with larger primary targets on touch layouts
+* explicit media dimensions or aspect ratios
+* no desktop-only destination hidden at narrow widths
 * reduced-motion behavior for nonessential movement.
 
 Repeated cards remain appropriate for genuinely parallel workflow outcomes. They must not become the default container for unrelated product facts.
@@ -204,11 +204,11 @@ Exit: the Astro build, link check, accessibility scan, page metadata check, and 
 
 The rework succeeds when:
 
-* all primary desktop destinations remain available on mobile;
-* each top-level user job is reachable after one navigation choice;
-* each shipped claim has one canonical content owner;
-* a new secondary capability can ship without editing the homepage;
-* task-test participants can identify the product, agent/file boundary, documentation, and correct download path without assistance;
+* all primary desktop destinations remain available on mobile
+* each top-level user job is reachable after one navigation choice
+* each shipped claim has one canonical content owner
+* a new secondary capability can ship without editing the homepage
+* task-test participants can identify the product, agent/file boundary, documentation, and correct download path without assistance
 * homepage length remains a consequence of the story, not the number of shipped features.
 
 # Deferred decisions

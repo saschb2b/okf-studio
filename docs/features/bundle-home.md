@@ -44,9 +44,9 @@ When the bundle is inside an authorized Git repository, Home shows the branch an
 
 The earlier [Bundle Overview & Health proposal](../proposals/bundle-overview.md) emphasized composition, hubs, counts, and a small recent list. Those were useful when no other orientation surfaces existed, but they became repetitive:
 
-- identity, format, concept count, and conformance moved to Bundle details;
-- type composition belongs in [Search and Filter](search-and-filter.md);
-- hubs and topology belong in the [Graph View](graph-view.md);
+- identity, format, concept count, and conformance moved to Bundle details
+- type composition belongs in [Search and Filter](search-and-filter.md)
+- hubs and topology belong in the [Graph View](graph-view.md)
 - the small recent list could not explain why a change mattered.
 
 Home keeps every displayed item as a door into work and removes metrics that cannot change a decision.

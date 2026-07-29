@@ -24,10 +24,10 @@ Generic editing instructions are unsafe for knowledge work. A request to make pr
 
 The versioned `writing` resource is delivered only to capabilities that produce concept prose. It tells the agent to:
 
-- lead with the answer to the reader job;
-- distinguish sourced facts, user decisions, inferences, and unknowns;
-- preserve exact technical, legal, standards, formula, code, and quotation language;
-- use prose, tables, definitions, task lists, diagrams, or formulas according to the shape of the knowledge;
+- lead with the answer to the reader job
+- distinguish sourced facts, user decisions, inferences, and unknowns
+- preserve exact technical, legal, standards, formula, code, and quotation language
+- use prose, tables, definitions, task lists, diagrams, or formulas according to the shape of the knowledge
 - remove generic framing, repeated conclusions, vague authority, inflated significance, and decorative structure; and
 - reconcile every claim after editing.
 

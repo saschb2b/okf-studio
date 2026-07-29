@@ -106,12 +106,12 @@ Desktop thread attention is opt-in in Settings. When Studio is not focused, a ba
 
 # Thread anatomy
 
-- panel header: the Agent workspace and its close action;
-- connection strip: selected agent and one add-connection action;
-- conversation toolbar: selected thread, one add-thread action, rename, follow, security, the task-relevant edit boundary, and one secondary-actions menu;
-- conversation: plans, messages, tools, permissions, citations, and errors;
-- change summary above the composer when edits are staged;
-- composer: attachments, `@` context, agent/model, capability status, send, queue, stop;
+- panel header: the Agent workspace and its close action
+- connection strip: selected agent and one add-connection action
+- conversation toolbar: selected thread, one add-thread action, rename, follow, security, the task-relevant edit boundary, and one secondary-actions menu
+- conversation: plans, messages, tools, permissions, citations, and errors
+- change summary above the composer when edits are staged
+- composer: attachments, `@` context, agent/model, capability status, send, queue, stop
 - connection and thread switchers retain parallel work without repeating their identity in the action row.
 
 The conversation toolbar shows thread number, status, and title without repeating the agent name already owned by the connection strip. The agent remains in the thread navigation's accessible name and add-thread action.
@@ -222,12 +222,12 @@ Tool calls show pending, running, completed, failed, or cancelled state plus any
 
 # Required states
 
-- no connections: explain paths and show Connect an agent;
-- installing: agent/version/source/progress/cancel/disk impact;
-- authentication required: only advertised methods and clear credential owner;
-- offline: retain installed local paths and identify network-dependent actions;
-- crashed: preserve transcript, bounded redacted diagnostics, restart;
-- no bundle: allow setup and offer Open folder for bundle tools;
+- no connections: explain paths and show Connect an agent
+- installing: agent/version/source/progress/cancel/disk impact
+- authentication required: only advertised methods and clear credential owner
+- offline: retain installed local paths and identify network-dependent actions
+- crashed: preserve transcript, bounded redacted diagnostics, restart
+- no bundle: allow setup and offer Open folder for bundle tools
 - read-only thread: research works and write attempts explain the grant.
 - permission pending: show the agent's title and choices, keep Stop available, and retain a response error for retry.
 

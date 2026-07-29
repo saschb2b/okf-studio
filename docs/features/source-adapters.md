@@ -20,13 +20,13 @@ Adapters turn each explicit selection into repeatable evidence with visible orig
 
 Every adapter receipt uses schema version 1 and records:
 
-- adapter ID and version;
-- the UTC time at which Studio observed the selected or fetched bytes;
-- discovery mode: file, folder, image, or URL;
-- bounded visible origin and closed media type;
-- SHA-256 source fingerprint over the original bytes;
-- SHA-256 evidence fingerprint over the exact normalized content sent to the agent;
-- refresh fingerprint over the receipt schema, adapter ID, adapter version, and source fingerprint;
+- adapter ID and version
+- the UTC time at which Studio observed the selected or fetched bytes
+- discovery mode: file, folder, image, or URL
+- bounded visible origin and closed media type
+- SHA-256 source fingerprint over the original bytes
+- SHA-256 evidence fingerprint over the exact normalized content sent to the agent
+- refresh fingerprint over the receipt schema, adapter ID, adapter version, and source fingerprint
 - the fixed trust label `untrusted`; and
 - bounded warning diagnostics with stable codes and recovery text.
 

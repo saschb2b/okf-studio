@@ -16,9 +16,9 @@ A projection reviewer needs evidence that material excluded from a recipient cop
 
 Rust derives a bounded term set from:
 
-- omitted concept IDs, Markdown paths, titles, and stable identities;
-- ignored paths reported by the root `.okfignore`;
-- values under recognized provenance and evidence fields;
+- omitted concept IDs, Markdown paths, titles, and stable identities
+- ignored paths reported by the root `.okfignore`
+- values under recognized provenance and evidence fields
 - exact sensitive terms entered by the reviewer.
 
 The audit scans the complete temporary output after link rewriting, redaction, generated index and log creation, and OKF validation. It reads text and non-text files as bytes, so a leaked term in a Markdown body, YAML frontmatter, JSON diagnostic, index, log, or binary companion file is still detected.

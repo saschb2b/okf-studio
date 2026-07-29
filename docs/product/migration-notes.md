@@ -35,10 +35,10 @@ The application identity was untouched by the move. No user keeps settings, cred
 
 An in-place upgrade continues to use:
 
-- preferences and recent bundle locations in the app store;
-- custom ACP profiles in the app-data `agents/custom-agents.json` file;
-- Studio Agent endpoint profiles in `agents/local-models.json`;
-- opaque current and archived ACP session pointers in the app store;
+- preferences and recent bundle locations in the app store
+- custom ACP profiles in the app-data `agents/custom-agents.json` file
+- Studio Agent endpoint profiles in `agents/local-models.json`
+- opaque current and archived ACP session pointers in the app store
 - managed Node and agent packages in the app cache's `agents` directory; and
 - recoverable Apply transactions and the latest restore checkpoint in app data.
 

@@ -61,14 +61,15 @@ Gate: the same bundle and the same decomposition request produce byte-identical 
 - [x] Define a run as slice, capability, budget, artifact contract, and provenance, resolved before a model is contacted. Resolution starts nothing; it answers whether a run is allowed to exist.
 - [x] Enforce depth one. A run cannot start another run.
 - [x] Deny writing to every run, at resolution rather than at runtime: a stage-class capability is refused, and so is any capability whose declared tools include a staging tool, which the class check alone would pass. Provenance carries the capability version, its digest, and the slice fingerprint.
-- [ ] Execute a resolved run against a provider and return one validated artifact or a bounded summary, never a transcript for another model to read.
-- [ ] Support execution on the native Studio Agent and on an ACP session Studio created, with the same contract on both paths.
+- [x] Execute a resolved run against a provider on an isolated session that carries no write grant, and validate what comes back. A turn that finishes without a usable artifact is its own outcome rather than a failure.
+- [x] Support execution on the native Studio Agent and on an ACP session Studio created, with the same contract on both paths. Unlike the isolated critic, a run is not restricted to the native provider: a critic only reads a packet Rust prepared, while a run is real work, and restricting it would make fan-out a property of which agent you connected.
 
 Gate: a fake native model and a fake ACP agent execute the identical run contract, and a run that attempts a write is refused with the existing staging error rather than a new one.
 
 ## HP3: Fan-out and assembly
 
-- [ ] Run slices concurrently under a bounded width, with cancellation that stops pending runs and lets in-flight runs finish or abort cleanly. Blocked on run execution in HP2.
+- [x] Run every slice and assemble the result, with cancellation that stops pending runs and leaves in-flight ones alone.
+- [ ] Run slices concurrently rather than in sequence. Needs one session per concurrent run, which has not been shown safe under permission prompts and cancellation.
 - [x] Assemble results into one result whose every included run names its slice and fingerprint, and whose completeness is carried rather than left for each surface to derive.
 - [x] Exclude stale results and report them as excluded, rather than mixing generations.
 - [x] Complete with partial results when runs fail, naming each failure, distinguishing a failure from a run that stopped at its ceiling, and naming a planned slice that never reported at all.
@@ -88,8 +89,10 @@ Gate: a provider that reports no usage produces a job that runs to completion wi
 ## HP5: The orchestration surface
 
 - [x] Show the plan before anything runs, reachable from the launcher with no agent connected, because planning reads the parsed bundle and needs neither. Each run is a row with its name, a bar, and its concept count; caps and skipped concepts are named under "Not covered"; and the plan states the fingerprint it was computed against.
-- [ ] Show a running job as rows: capability, budget, consumption, artifact, outcome. Waits on run execution in HP2.
-- [ ] Let the user approve, narrow, or cancel a job from its preview, and cancel a run from its row. The preview exists; there is nothing yet to approve it into.
+- [x] Show a running job in the plan rows: each run reports waiting, running, and its outcome as the job proceeds, and the assembly states coverage against the plan when it finishes.
+- [ ] Show live consumption per run. The ledger exists; nothing feeds it usage during a run yet.
+- [x] Let the user start a job from its preview, with the run control disabled and explained when no agent is connected.
+- [ ] Cancel a job from the surface. The runner accepts an abort signal; no control is wired to it.
 - [ ] Keep the job surface inside the existing panel layout and its 360, 440, and 560 pixel fixtures, with the shared focus ring and control floor.
 - [ ] Label an external agent's own tool activity as that agent's, never as Studio-managed runs.
 - [x] Cover the preview states in Storybook with interaction checks: each decomposition, switching between them, and no bundle open. Running, partial, stopped-at-budget, and failed wait on execution.

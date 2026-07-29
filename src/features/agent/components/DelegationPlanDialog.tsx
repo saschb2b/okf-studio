@@ -10,10 +10,18 @@
 // handed its concepts rather than sent to search for them. See
 // docs/architecture/agent-orchestration.md.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { X } from "lucide-react";
-import { planAgentSlices, type SliceBy, type SlicePlan } from "@/shared/ipc.ts";
+import {
+  activeAgentConnections,
+  planAgentSlices,
+  subscribeAgentConnections,
+  type Assembly,
+  type SliceBy,
+  type SlicePlan,
+} from "@/shared/ipc.ts";
+import { runFanOut, type RunProgress } from "@/features/agent/fanOut.ts";
 import type { Bundle } from "@/shared/types.ts";
 import "./DelegationPlanDialog.css";
 
@@ -43,9 +51,18 @@ export function DelegationPlanDialog({
   root: string | null;
   onOpenChange: (open: boolean) => void;
 }) {
+  // Read from the connection store rather than taking a prop: planning does
+  // not need a connection, so the screen should not require its caller to
+  // know about one just to render.
+  const connections = useSyncExternalStore(subscribeAgentConnections, activeAgentConnections);
+  const connectionId = connections.at(0)?.connectionId ?? null;
   const [by, setBy] = useState<SliceBy>("type");
   const key = `${root ?? ""}:${by}`;
   const [state, setState] = useState<PlanState>({ status: "loading", key });
+  const [progress, setProgress] = useState<RunProgress[] | null>(null);
+  const [assembly, setAssembly] = useState<Assembly | null>(null);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !root) return;
@@ -76,8 +93,36 @@ export function DelegationPlanDialog({
   // one's answer, so it reads as loading until the current request lands.
   const current: PlanState = state.key === key ? state : { status: "loading", key };
   const plan = current.status === "ready" ? current.plan : null;
+  const byKey = new Map((progress ?? []).map((entry) => [entry.sliceKey, entry]));
 
-  const largest = plan?.slices.reduce((most, slice) => Math.max(most, slice.conceptIds.length), 0) ?? 0;
+  const largest =
+    plan?.slices.reduce((most, slice) => Math.max(most, slice.conceptIds.length), 0) ?? 0;
+
+  function run() {
+    if (!plan || !root || !connectionId || running) return;
+    setRunning(true);
+    setAssembly(null);
+    setRunError(null);
+    void runFanOut({
+      root,
+      connectionId,
+      slices: plan.slices,
+      fingerprint: plan.fingerprint,
+      capabilityId: "okf-audit",
+      artifactKind: "health-report",
+      // A ceiling the user can see before it is spent. A run with no
+      // measurable budget is refused, so this is not optional.
+      budget: { maxCost: 1, maxContextTokens: 200_000 },
+      onProgress: setProgress,
+    })
+      .then(setAssembly, (cause: unknown) => {
+        // runFanOut reports run-level problems as outcomes, so reaching here
+        // means the job itself could not proceed. Saying so beats a button
+        // that silently goes idle.
+        setRunError(cause instanceof Error ? cause.message : "The job could not be run.");
+      })
+      .finally(() => setRunning(false));
+  }
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -110,6 +155,41 @@ export function DelegationPlanDialog({
               </button>
             ))}
           </div>
+
+          {plan && plan.slices.length > 0 && (
+            <div className="delegation-plan__actions">
+              <button
+                type="button"
+                className="btn primary"
+                disabled={!connectionId || running}
+                onClick={run}
+              >
+                {running ? "Running…" : `Run ${plan.slices.length} runs`}
+              </button>
+              {!connectionId && (
+                <span className="delegation-plan__note">
+                  Connect an agent to run this plan. Planning needs no connection.
+                </span>
+              )}
+            </div>
+          )}
+
+          {runError && (
+            <p className="delegation-plan__note delegation-plan__note--error" role="alert">
+              {runError}
+            </p>
+          )}
+
+          {assembly && (
+            <p
+              className={`delegation-plan__summary${assembly.complete ? "" : " delegation-plan__summary--partial"}`}
+              role="status"
+            >
+              {assembly.complete
+                ? `Complete: ${assembly.coveredSlices} of ${assembly.plannedSlices} runs covered, ${assembly.itemCount} items.`
+                : `Partial: ${assembly.coveredSlices} of ${assembly.plannedSlices} runs covered. ${assembly.exclusions.length} not counted.`}
+            </p>
+          )}
 
           {!bundle && <p className="delegation-plan__note">Open a bundle to plan work over it.</p>}
           {bundle && current.status === "loading" && (
@@ -147,6 +227,14 @@ export function DelegationPlanDialog({
                         />
                       </span>
                       <span className="delegation-plan__count">
+                        {byKey.get(slice.key)?.state === "running" && (
+                          <span className="delegation-plan__state">running </span>
+                        )}
+                        {byKey.get(slice.key)?.state === "done" && (
+                          <span className="delegation-plan__state">
+                            {byKey.get(slice.key)?.result?.status === "completed" ? "done " : "no artifact "}
+                          </span>
+                        )}
                         {slice.conceptIds.length}
                         {slice.excludedConceptIds.length > 0 && (
                           <span className="delegation-plan__over">

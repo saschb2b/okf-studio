@@ -44,6 +44,13 @@ pub(crate) enum RunResult {
     /// what it produced before stopping may still be worth keeping, and the
     /// user's next move is different.
     StoppedAtBudget { spent_description: String },
+    /// The turn finished, and no artifact came back that could be validated.
+    ///
+    /// Its own outcome rather than a failure, because the turn did not fail:
+    /// the model may have answered in prose, or validation may be unavailable
+    /// on this path. Either way the assembly has nothing to include, and saying
+    /// which of those happened is more useful than calling it broken.
+    CompletedWithoutArtifact { reason: String },
 }
 
 /// One run's report back to the fan-out.
@@ -82,6 +89,11 @@ pub(crate) enum AssemblyExclusion {
         run_id: String,
         slice_key: String,
         spent_description: String,
+    },
+    NoArtifact {
+        run_id: String,
+        slice_key: String,
+        reason: String,
     },
     /// The plan asked for this slice and nothing reported on it. The exclusion
     /// nobody would notice on their own, which is why coverage is computed
@@ -158,6 +170,13 @@ pub(crate) fn assemble(
                     run_id: outcome.run_id.clone(),
                     slice_key: outcome.slice_key.clone(),
                     spent_description: spent_description.clone(),
+                })
+            }
+            RunResult::CompletedWithoutArtifact { reason } => {
+                exclusions.push(AssemblyExclusion::NoArtifact {
+                    run_id: outcome.run_id.clone(),
+                    slice_key: outcome.slice_key.clone(),
+                    reason: reason.clone(),
                 })
             }
             RunResult::Completed { .. } => included.push(outcome),
@@ -304,6 +323,30 @@ mod tests {
         assert!(matches!(
             assembly.exclusions.first(),
             Some(AssemblyExclusion::StoppedAtBudget { .. })
+        ));
+    }
+
+    #[test]
+    fn a_turn_that_finished_without_an_artifact_is_its_own_outcome() {
+        // Not a failure: the turn did not fail. The assembly has nothing to
+        // include, and saying which of those happened beats calling it broken.
+        let assembly = assemble(
+            vec![RunOutcome {
+                run_id: "run-1".to_string(),
+                slice_key: "metrics".to_string(),
+                slice_fingerprint: FINGERPRINT.to_string(),
+                result: RunResult::CompletedWithoutArtifact {
+                    reason: "the response carried no artifact fence".to_string(),
+                },
+            }],
+            &planned(&["metrics"]),
+            FINGERPRINT,
+        );
+        assert!(!assembly.complete);
+        assert_eq!(assembly.included.len(), 0);
+        assert!(matches!(
+            assembly.exclusions.first(),
+            Some(AssemblyExclusion::NoArtifact { .. })
         ));
     }
 

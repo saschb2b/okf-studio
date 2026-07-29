@@ -233,6 +233,49 @@ pub(crate) fn resolve_run(
     })
 }
 
+/// A resolved run plus the prompt that carries it.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PreparedRun {
+    pub run: DelegatedRun,
+    /// Built here rather than in the webview, so what a run is told matches
+    /// what it was resolved to be. A prompt assembled somewhere else could ask
+    /// for work the contract refused.
+    pub prompt: String,
+}
+
+/// The instruction a delegated run receives.
+///
+/// It states the slice rather than describing how to find it. That is the whole
+/// efficiency argument in one paragraph: the concepts are listed because Studio
+/// already parsed the bundle, so the run spends no tokens rediscovering
+/// structure. It is also why the scope line is a limit and not a hint: a run
+/// that wanders outside its slice produces work the assembly cannot attribute.
+pub(crate) fn run_prompt(run: &DelegatedRun) -> String {
+    let concepts = run
+        .concept_ids
+        .iter()
+        .map(|id| format!("- {id}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        "OKF delegated run {run_id}, capability {capability} {version}.\n\n\
+         You are one run of a larger job. Work only on the {count} concept(s) listed below; \
+         they were selected by Studio from the parsed bundle, so you do not need to search for \
+         them and must not widen the set. You have no staging tools and cannot write: return \
+         findings, not changes.\n\n\
+         Return concise prose followed by exactly one {artifact_kind} artifact in an okf-artifact \
+         fence, covering only these concepts.\n\n\
+         Concepts in this run:\n{concepts}\n",
+        run_id = run.run_id,
+        capability = run.provenance.capability_id,
+        version = run.provenance.capability_version,
+        count = run.concept_ids.len(),
+        artifact_kind = run.artifact_kind,
+        concepts = concepts,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -318,6 +361,27 @@ mod tests {
         assert_eq!(run.provenance.capability_version, "1.2.0");
         assert_eq!(run.provenance.capability_digest, "d1gest");
         assert_eq!(run.provenance.slice_fingerprint, FINGERPRINT);
+    }
+
+    #[test]
+    fn the_prompt_lists_the_slice_rather_than_describing_how_to_find_it() {
+        let run = resolve(&request()).expect("run");
+        let prompt = run_prompt(&run);
+        assert!(prompt.contains("- tables/customers"));
+        assert!(prompt.contains("- tables/orders"));
+        assert!(prompt.contains("2 concept(s)"));
+        assert!(prompt.contains("health-report"));
+        assert!(prompt.contains("okf-audit 1.2.0"));
+    }
+
+    #[test]
+    fn the_prompt_says_the_run_cannot_write_or_widen_its_slice() {
+        // Not a substitute for the enforcement, which is the withheld tools and
+        // the refused capability. It is there so the model is not fighting the
+        // boundary it will hit anyway.
+        let prompt = run_prompt(&resolve(&request()).expect("run"));
+        assert!(prompt.contains("cannot write"));
+        assert!(prompt.contains("must not widen"));
     }
 
     #[test]

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { fillText, openBundleAtOverview, openBundle, renderApp } from "@/test/appHarness.tsx";
+import { fillText, openAgentThread, openBundleAtOverview, openBundle, renderApp } from "@/test/appHarness.tsx";
 
 describe("OKF Studio navigation features", () => {
   it("arrow-key navigation in the command palette steps through every result, not just the first two", async () => {
@@ -122,6 +122,34 @@ describe("OKF Studio navigation features", () => {
       expect(scrollSpy.mock.instances).toContain(row);
     });
     scrollSpy.mockRestore();
+  });
+
+  it("runs a planned fan-out against a connected agent and assembles the result", async () => {
+    const { user } = await openAgentThread("Fan-out Harness");
+
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await fillText(user, combo, "Plan delegated");
+    await user.keyboard("{Enter}");
+
+    const dialog = await screen.findByRole("dialog", { name: /plan delegated work/i });
+    await within(dialog).findByText(/of \d+ concepts/);
+
+    // With a connection live, the plan becomes runnable. Without one the button
+    // is disabled and the screen says planning does not need it.
+    const runButton = await within(dialog).findByRole("button", { name: /^Run \d+ runs$/ });
+    expect(runButton).toBeEnabled();
+    await user.click(runButton);
+
+    // The job reports what it could and could not merge, rather than a bare
+    // "done". In the browser mock artifacts cannot be validated, so every run
+    // completes without one and the assembly says so instead of claiming
+    // success.
+    const summary = await within(dialog).findByText(/^(Complete|Partial):/, undefined, {
+      timeout: 15_000,
+    });
+    expect(summary).toBeInTheDocument();
+    expect(summary.textContent).toMatch(/of \d+ runs covered/);
   });
 
   it("plans delegated work from the launcher without connecting an agent", async () => {

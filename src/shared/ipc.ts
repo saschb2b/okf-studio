@@ -2265,6 +2265,219 @@ function mockPlanAgentSlices(by: SliceBy, limits: SliceLimits): SlicePlan {
   return { by, fingerprint: `mock-${MOCK_BUNDLE.concepts.length}`, slices, exclusions };
 }
 
+export interface RunBudget {
+  maxCost: number | null;
+  maxContextTokens: number | null;
+}
+
+export interface RunProvenance {
+  capabilityId: string;
+  capabilityVersion: string;
+  capabilityDigest: string;
+  sliceKey: string;
+  sliceFingerprint: string;
+}
+
+export interface DelegatedRun {
+  runId: string;
+  conceptIds: string[];
+  artifactKind: string;
+  budget: RunBudget;
+  tools: string[];
+  provenance: RunProvenance;
+}
+
+/** A resolved run and the prompt Rust built for it. */
+export interface PreparedRun {
+  run: DelegatedRun;
+  prompt: string;
+}
+
+/** Why a run will not start. Every variant names what to change. */
+export interface RunRefusal {
+  reason: string;
+  [field: string]: unknown;
+}
+
+export type RunResult =
+  | { status: "completed"; artifactKind: string; itemCount: number }
+  | { status: "failed"; message: string }
+  | { status: "stoppedAtBudget"; spentDescription: string }
+  | { status: "completedWithoutArtifact"; reason: string };
+
+export interface RunOutcome {
+  runId: string;
+  sliceKey: string;
+  sliceFingerprint: string;
+  result: RunResult;
+}
+
+export type AssemblyExclusion =
+  | { kind: "staleRun"; runId: string; sliceKey: string; sliceFingerprint: string }
+  | { kind: "failedRun"; runId: string; sliceKey: string; message: string }
+  | { kind: "stoppedAtBudget"; runId: string; sliceKey: string; spentDescription: string }
+  | { kind: "noArtifact"; runId: string; sliceKey: string; reason: string }
+  | { kind: "sliceNeverReported"; sliceKey: string };
+
+export interface Assembly {
+  fingerprint: string;
+  included: RunOutcome[];
+  exclusions: AssemblyExclusion[];
+  plannedSlices: number;
+  coveredSlices: number;
+  itemCount: number;
+  complete: boolean;
+}
+
+/**
+ * Resolve one run and build its prompt, or return why it will not start.
+ *
+ * The outer promise rejects only when the command itself failed. A refusal is a
+ * value: "this run is not allowed" is an answer, not an error.
+ */
+export async function prepareAgentRun(
+  root: string,
+  request: {
+    sliceKey: string;
+    conceptIds: string[];
+    sliceFingerprint: string;
+    capabilityId: string;
+    artifactKind: string;
+    budget: RunBudget;
+    depth?: number;
+  },
+  runId: string,
+): Promise<{ ok: true; prepared: PreparedRun } | { ok: false; refusal: RunRefusal }> {
+  if (!isTauri()) return mockPrepareAgentRun(request, runId);
+  const { invoke } = await import("@tauri-apps/api/core");
+  // Rust returns a Result, which serialises as exactly one of these arms, so
+  // the union narrows without an assertion.
+  const result = await invoke<{ Ok: PreparedRun } | { Err: RunRefusal }>("prepare_agent_run", {
+    root,
+    request: { depth: 0, ...request },
+    runId,
+  });
+  if ("Ok" in result) return { ok: true, prepared: result.Ok };
+  return { ok: false, refusal: result.Err };
+}
+
+/** Send a run's prompt on an isolated session that carries no write grant. */
+export async function promptAgentRun(
+  connectionId: string,
+  sessionId: string,
+  text: string,
+  conceptPaths: string[],
+): Promise<AgentTurnInfo> {
+  if (!isTauri()) return promptAgent(connectionId, sessionId, text);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentTurnInfo>("prompt_agent_run", {
+    connectionId,
+    sessionId,
+    text,
+    conceptPaths,
+  });
+}
+
+/** Assemble what a fan-out returned, naming everything it could not merge. */
+export async function assembleAgentRuns(
+  root: string,
+  outcomes: RunOutcome[],
+  plannedSliceKeys: string[],
+): Promise<Assembly> {
+  if (!isTauri()) return mockAssembleAgentRuns(outcomes, plannedSliceKeys);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<Assembly>("assemble_agent_runs", { root, outcomes, plannedSliceKeys });
+}
+
+/** The browser mock's resolution, mirroring the refusals Rust enforces. */
+function mockPrepareAgentRun(
+  request: Parameters<typeof prepareAgentRun>[1],
+  runId: string,
+): { ok: true; prepared: PreparedRun } | { ok: false; refusal: RunRefusal } {
+  if ((request.depth ?? 0) !== 0) {
+    return { ok: false, refusal: { reason: "nestedDelegation", depth: request.depth } };
+  }
+  if (request.conceptIds.length === 0) {
+    return { ok: false, refusal: { reason: "emptySlice", sliceKey: request.sliceKey } };
+  }
+  const measurable =
+    (request.budget.maxCost ?? 0) > 0 || (request.budget.maxContextTokens ?? 0) > 0;
+  if (!measurable) return { ok: false, refusal: { reason: "unbudgeted" } };
+
+  const conceptIds = [...new Set(request.conceptIds)].sort();
+  const run: DelegatedRun = {
+    runId,
+    conceptIds,
+    artifactKind: request.artifactKind,
+    budget: request.budget,
+    tools: ["okf_inspect", "okf_health_summary"],
+    provenance: {
+      capabilityId: request.capabilityId,
+      capabilityVersion: "1.0.0",
+      capabilityDigest: "mock-digest",
+      sliceKey: request.sliceKey,
+      sliceFingerprint: request.sliceFingerprint,
+    },
+  };
+  return {
+    ok: true,
+    prepared: {
+      run,
+      prompt:
+        `OKF delegated run ${runId}, capability ${request.capabilityId} 1.0.0.\n\n` +
+        `Work only on the ${conceptIds.length} concept(s) listed below. You cannot write.\n\n` +
+        `Concepts in this run:\n${conceptIds.map((id) => `- ${id}`).join("\n")}\n`,
+    },
+  };
+}
+
+function mockAssembleAgentRuns(outcomes: RunOutcome[], plannedSliceKeys: string[]): Assembly {
+  const sorted = [...outcomes].sort(
+    (left, right) => left.sliceKey.localeCompare(right.sliceKey) || left.runId.localeCompare(right.runId),
+  );
+  const fingerprint = sorted.find((outcome) => outcome.sliceFingerprint)?.sliceFingerprint ?? "";
+  const included: RunOutcome[] = [];
+  const exclusions: AssemblyExclusion[] = [];
+  const reported = new Set<string>();
+  for (const outcome of sorted) {
+    reported.add(outcome.sliceKey);
+    const { runId, sliceKey } = outcome;
+    if (outcome.sliceFingerprint !== fingerprint) {
+      exclusions.push({ kind: "staleRun", runId, sliceKey, sliceFingerprint: outcome.sliceFingerprint });
+    } else if (outcome.result.status === "failed") {
+      exclusions.push({ kind: "failedRun", runId, sliceKey, message: outcome.result.message });
+    } else if (outcome.result.status === "stoppedAtBudget") {
+      exclusions.push({
+        kind: "stoppedAtBudget",
+        runId,
+        sliceKey,
+        spentDescription: outcome.result.spentDescription,
+      });
+    } else if (outcome.result.status === "completedWithoutArtifact") {
+      exclusions.push({ kind: "noArtifact", runId, sliceKey, reason: outcome.result.reason });
+    } else {
+      included.push(outcome);
+    }
+  }
+  for (const key of plannedSliceKeys) {
+    if (!reported.has(key)) exclusions.push({ kind: "sliceNeverReported", sliceKey: key });
+  }
+  const coveredSlices = new Set(included.map((outcome) => outcome.sliceKey)).size;
+  const itemCount = included.reduce(
+    (total, outcome) => total + (outcome.result.status === "completed" ? outcome.result.itemCount : 0),
+    0,
+  );
+  return {
+    fingerprint,
+    included,
+    exclusions,
+    plannedSlices: plannedSliceKeys.length,
+    coveredSlices,
+    itemCount,
+    complete: exclusions.length === 0 && coveredSlices === plannedSliceKeys.length,
+  };
+}
+
 export async function onAgentMilestoneUpdate(
   handler: (milestone: AgentMilestone) => void,
 ): Promise<() => void> {
@@ -2925,6 +3138,15 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
 }
 
 function mockAgentResponse(text: string, taskId?: OkfTaskId): string {
+  if (text.startsWith("OKF delegated run ")) {
+    const concepts = [...text.matchAll(/^- (.+)$/gmu)].map((match) => match[1]);
+    return (
+      `Reviewed ${concepts.length} concept(s) in this run.\n\n` +
+      "```okf-artifact\n" +
+      JSON.stringify({ schemaVersion: 1, kind: "health-report", items: concepts }) +
+      "\n```"
+    );
+  }
   if (text.startsWith("OKF critic pass for ")) {
     const artifactId = /"artifactId"\s*:\s*"([^"]+)"/u.exec(text)?.[1] ?? "mock-artifact";
     const artifactRevision = Number(/"revision"\s*:\s*(\d+)/u.exec(text)?.[1] ?? "1");

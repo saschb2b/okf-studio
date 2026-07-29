@@ -71,7 +71,11 @@ Ordering follows the same rule as the rest of the host: one path out to the webv
 
 # Boundaries
 
-Rust owns slice computation, budget enforcement, run lifecycle, provenance, and validation. The webview renders typed state and owns no orchestration. This is the boundary in [IPC and Security](ipc-and-security.md), unchanged.
+Rust owns the authority: whether a run may exist, which tools it gets, what its prompt says, and whether a result is valid. It computes slices, resolves runs, refuses the ones that break a rule, withholds the staging tools from the ones it allows, and assembles the outcomes. This is the boundary in [IPC and Security](ipc-and-security.md), unchanged.
+
+Sequencing is the webview's, and that is a correction to an earlier draft of this decision which said the webview owns no orchestration. It already sequences the [isolated critic](../features/artifact-verification.md): create a session, assert it carries no write grant, prompt it, collect the turn, hand the result back to Rust to validate. A fan-out is that shape repeated, and inventing a second orchestration model in Rust for the same job would leave the codebase with two. Authority is what has to live in Rust, not the loop.
+
+Runs are sequential today. One turn per session is a host rule, so parallel runs need separate sessions, and separate sessions on one connection have not been shown to be safe under permission prompts and cancellation. Sequencing first makes the fan-out honest before it makes it fast.
 
 Studio never claims a delegated run followed its capability. Delivery is recorded; compliance is not asserted. That rule already exists for capability delivery to external agents and applies unchanged to every run in a fan-out.
 

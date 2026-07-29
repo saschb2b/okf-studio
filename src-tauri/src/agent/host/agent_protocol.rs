@@ -508,6 +508,9 @@ enum AgentHostCommand {
 enum AgentPromptMode {
     Standard,
     IsolatedCritic,
+    /// One slice of a fan-out. Unlike a critic, it needs its capability's read
+    /// tools; unlike a standard turn, it may not reach the staged tree.
+    DelegatedRun,
 }
 
 fn local_prompt_tools(
@@ -520,7 +523,13 @@ fn local_prompt_tools(
     let mut tools = agent_studio::native_skill_tools();
     tools.extend(agent_mcp::native_tool_definitions());
     tools.extend(source_tools);
-    tools.extend(agent_native_stage::native_tool_definitions());
+    // A delegated run reads. Withholding the staging tools is the enforcement
+    // half of the rule the run contract states: reading fans out, writing stays
+    // single-threaded. The contract refuses a capability that asks for them;
+    // this makes sure they are absent even if one slipped through.
+    if mode != AgentPromptMode::DelegatedRun {
+        tools.extend(agent_native_stage::native_tool_definitions());
+    }
     tools
 }
 
@@ -2238,6 +2247,62 @@ pub async fn prompt_isolated_critic(
         .await
         .map_err(|_| "Agent connection ended before accepting the critic prompt.".to_string())?;
     command_response(response_rx, "critic prompt").await
+}
+
+/// Send one delegated run's prompt on an isolated session.
+///
+/// Structurally the isolated critic's sibling, with one difference that matters:
+/// a critic has no tools, and a run needs its capability's read tools. What both
+/// refuse is the staged tree. The write-grant check is the same one, for the
+/// same reason: reading fans out, writing stays single-threaded, and delegation
+/// must not be what quietly breaks that.
+///
+/// Unlike the critic, this is available on external ACP agents too. A critic can
+/// be required to run natively because it only reads a packet Rust prepared; a
+/// run is real work, and restricting it to one provider would make the fan-out a
+/// property of which agent you connected rather than of the bundle.
+pub async fn prompt_delegated_run(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: String,
+    text: String,
+    concept_paths: Vec<String>,
+) -> Result<AgentTurnInfo, String> {
+    let text = text.trim().to_string();
+    if text.is_empty() || text.chars().count() > MAX_PROMPT_CHARS {
+        return Err("The prepared run prompt is empty or exceeds the host limit.".to_string());
+    }
+    let commands = {
+        let workers = state
+            .workers
+            .lock()
+            .map_err(|_| "Agent host state is unavailable.".to_string())?;
+        let worker = workers
+            .get(connection_id)
+            .ok_or_else(|| "Agent connection was not found.".to_string())?;
+        if !worker.stages.write_grant_is_denied(&session_id)? {
+            return Err(
+                "Studio refused a delegated run on a session with a write grant.".to_string(),
+            );
+        }
+        worker.commands.clone()
+    };
+    let turn_id = format!("turn-{}", uuid::Uuid::new_v4());
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::Prompt {
+            session_id,
+            turn_id,
+            text,
+            context_paths: concept_paths,
+            sources: Vec::new(),
+            task_context: None,
+            mode: AgentPromptMode::DelegatedRun,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before accepting the run prompt.".to_string())?;
+    command_response(response_rx, "delegated run prompt").await
 }
 
 pub async fn cancel_turn(

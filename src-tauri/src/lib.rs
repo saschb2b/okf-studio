@@ -960,6 +960,28 @@ fn federated_relationship_candidates(
     library.relationships(&grants, selections, limit)
 }
 
+/// Send one delegated run's prompt on an isolated session.
+///
+/// The session must carry no write grant, which Rust checks rather than trusts:
+/// reading fans out, writing stays single-threaded, and a run is reading.
+#[tauri::command]
+async fn prompt_agent_run(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    text: String,
+    concept_paths: Vec<String>,
+) -> Result<agent_protocol::AgentTurnInfo, String> {
+    agent_protocol::prompt_delegated_run(
+        state.inner(),
+        &connection_id,
+        session_id,
+        text,
+        concept_paths,
+    )
+    .await
+}
+
 /// Fold each run's usage reports into a job spend, and say whether the budget
 /// still allows work to continue.
 ///
@@ -1031,7 +1053,7 @@ async fn resolve_agent_run(
     root: String,
     request: agent_run::RunRequest,
     run_id: String,
-) -> Result<Result<agent_run::DelegatedRun, agent_run::RunRefusal>, String> {
+) -> Result<Result<agent_run::PreparedRun, agent_run::RunRefusal>, String> {
     let root = grants.authorize_bundle(Path::new(&root))?;
     tauri::async_runtime::spawn_blocking(move || {
         let bundle = okf_core::read_bundle(&root);
@@ -1042,6 +1064,10 @@ async fn resolve_agent_run(
             &fingerprint,
             &run_id,
         )
+        .map(|run| agent_run::PreparedRun {
+            prompt: agent_run::run_prompt(&run),
+            run,
+        })
     })
     .await
     .map_err(|_| "Studio could not resolve the delegated run.".to_string())
@@ -2096,6 +2122,7 @@ pub fn run() {
             plan_agent_slices,
             assemble_agent_runs,
             evaluate_agent_budget,
+            prompt_agent_run,
             resolve_agent_run,
             validate_agent_artifact,
             validate_agent_receipt,

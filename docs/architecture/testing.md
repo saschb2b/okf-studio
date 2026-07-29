@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing & Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-generated: { by: claude/unrecorded, at: 2026-07-22T23:58:00Z }
+generated: { by: claude/unrecorded, at: 2026-07-29T02:10:00+02:00 }
 ---
 
 # Decision
@@ -112,7 +112,7 @@ A strict, **type-aware** ESLint stack (`pnpm lint`) backs the tests as a second 
 
 - **typescript-eslint** `strictTypeChecked` + `stylisticTypeChecked` — type-aware rules (no floating promises, no needless conditions, exhaustive nullish handling), which require the TypeScript project service.
 - The **React Compiler** ruleset (`eslint-plugin-react-hooks` v7) at error — the correctness rules (refs not read during render, no setState-in-render, purity, immutability) and the dependency rules. Because the [React Compiler](frontend-architecture.md) is on, `react-hooks/rule-suppression` forbids silencing the correctness rules; only the long-standing `exhaustive-deps` may be suppressed, and only for the imperative ref-driven [graph](../features/graph-view.md) effects with a stated reason.
-- **jsx-a11y** (recommended) — the static accessibility rules, complementing the runtime axe gate above.
+- **jsx-a11y** (recommended) — the static accessibility rules, complementing the runtime axe gate above. Its latest release still declares a peer of `eslint ^3 || … || ^9`, so running it on ESLint 10 is outside its stated range. The rules were checked to still fire rather than assumed to, and the exception is recorded as a `pnpm.peerDependencyRules` entry so it reads as a decision rather than as an install warning.
 - **Vitest and Testing Library plugins** — focused or disabled tests, assertion-free tests, unawaited async queries, side effects in polling callbacks, and other reliability defects fail lint before the runner starts.
 - **eslint-config-prettier** last, so formatting is left to a formatter rather than fought by lint rules.
 

@@ -303,7 +303,7 @@ function parseMetadata(value: unknown): AgentThreadMetadata | null {
       : null
   );
   const contextManifest = raw.contextManifest;
-  let serializedManifestBytes = 0;
+  let serializedManifestBytes: number;
   try {
     serializedManifestBytes = contextManifest == null
       ? 0

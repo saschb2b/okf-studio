@@ -18,3 +18,8 @@ target/
 
 # Tauri generated
 /src-tauri/gen/
+
+# Generated at deploy time from the .deb assets on GitHub Releases, which stay
+# the source of truth. Committing it would put ~10 MB of binary per release in
+# git history for a tree that is rebuilt from scratch every run.
+/site/public/apt/

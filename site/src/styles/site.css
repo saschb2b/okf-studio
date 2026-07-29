@@ -562,6 +562,22 @@ pre {
   margin-top: var(--space-8);
 }
 
+/* A block of shell to copy whole. It scrolls rather than wraps, because a
+   wrapped heredoc reads as more lines than it is and a silently broken URL is
+   the expensive kind of typo. */
+.snippet {
+  margin: 0 0 var(--space-16);
+  overflow-x: auto;
+  padding: var(--space-16);
+  border: var(--border-width) solid var(--colors-border);
+  border-radius: var(--radius-md);
+  background: var(--colors-surface-2);
+  color: var(--colors-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
 /* --- Footer: a durable directory, not a repeat of the header. One brand
    column plus one column per destination group. --- */
 .footer {

@@ -40,6 +40,8 @@ Current builds are on the [releases page](https://github.com/saschb2b/okf-studio
 
 There is no macOS build in the release matrix. Builds are not code-signed, so your OS may show an "unverified publisher" prompt on first launch.
 
+On Ubuntu, the [APT repository](https://saschb2b.github.io/okf-studio/download/) is the least work: `apt upgrade` carries each release, and the `.deb` installs its own desktop entry and icon. The AppImage updates itself from inside the app but installs nothing, so it has neither.
+
 ## What it does
 
 **Understand.** A force-directed graph of concepts and links colored by type, beside a Markdown reader with frontmatter, syntax-highlighted code, and a relationship panel showing what a concept links to and what cites it. Treemap, sunburst, and circle-packing views compare a bundle's composition. Full-text search, type and tag filters, a command palette, and live reload when files change on disk. A pacing mode reads a concept word by word, with rereading and non-prose blocks kept in reach.

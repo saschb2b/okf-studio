@@ -2,7 +2,32 @@
 // Download: the canonical download surface. Platforms, version, requirements,
 // and release links come from src/data/site.ts; nothing is duplicated here.
 import Shell from "../components/Shell.astro";
-import { version, repo, releases, migrationNotes, downloads } from "../data/site";
+import {
+  version,
+  repo,
+  releases,
+  migrationNotes,
+  downloads,
+  aptBase,
+  aptKey,
+  aptKeyring,
+  aptSource,
+} from "../data/site";
+
+// One block, so it survives a copy-paste as a unit. Every path and URL comes
+// from site.ts, because a keyring path that drifts from the one the source file
+// names fails with a signature error rather than a missing-file error.
+const aptInstall = `sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL ${aptKey} | sudo tee ${aptKeyring} > /dev/null
+sudo tee ${aptSource} > /dev/null <<'EOF'
+Types: deb
+URIs: ${aptBase}
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: ${aptKeyring}
+EOF
+sudo apt update && sudo apt install okf-studio`;
 ---
 
 <Shell
@@ -36,6 +61,23 @@ import { version, repo, releases, migrationNotes, downloads } from "../data/site
           </div>
           <p class="download__note">
             {version} · builds are unsigned, so your OS may warn on first launch · <a href={releases}>all releases and notes</a>
+          </p>
+        </div>
+
+        <div class="cap-group">
+          <h2 class="cap-group__title">Ubuntu, with updates handled for you</h2>
+          <p class="cap-group__lede">
+            Install from the APT repository and Studio upgrades like the rest of
+            your system: <code>apt upgrade</code> picks up each release, and
+            unattended-upgrades can apply them without you being there. Run this
+            once.
+          </p>
+          <pre class="snippet"><code>{aptInstall}</code></pre>
+          <p class="download__note">
+            The repository is signed. apt refuses it outright if the signature
+            does not match the key you installed, so a tampered mirror fails
+            loudly instead of installing. The direct downloads above stay
+            available if you would rather not add a repository.
           </p>
         </div>
 

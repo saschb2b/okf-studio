@@ -16,6 +16,12 @@ export const migrationNotes = `${repo}/blob/main/docs/product/migration-notes.md
 /** Link a repository doc by path, e.g. doc("features/concept-reader.md"). */
 export const doc = (path: string) => `${repo}/blob/main/docs/${path}`;
 
+/** The APT repository, published into this site by scripts/build-apt-repo.mjs. */
+export const aptBase = "https://saschb2b.github.io/okf-studio/apt";
+export const aptKey = `${aptBase}/okf-studio.asc`;
+export const aptKeyring = "/etc/apt/keyrings/okf-studio.asc";
+export const aptSource = "/etc/apt/sources.list.d/okf-studio.sources";
+
 export const okfSpec =
   "https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf";
 export const odsfSpec = "https://saschb2b.github.io/Open-Design-System-Format/";

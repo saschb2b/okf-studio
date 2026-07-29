@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import * as ipc from "@/shared/ipc.ts";
+import { waitForTurnQuiescent } from "@/shared/agentEvents.ts";
 import { chooseThreadAction, fillText, openAgentThread } from "@/test/appHarness.tsx";
 
 type AppUser = Awaited<ReturnType<typeof openAgentThread>>["user"];
@@ -17,9 +18,13 @@ async function enableWrites(user: AppUser) {
 
 async function stageFile(user: AppUser, path: string) {
   await fillText(user, screen.getByLabelText("Message the agent"), `Stage: ${path}`);
+  // Subscribed before the send: the turn can finish between the click and the
+  // wait, and a milestone missed that way would hang rather than flake.
+  const turnQuiet = waitForTurnQuiescent();
   await user.click(screen.getByRole("button", { name: "Send" }));
   await screen.findByText(`Browser ACP staged: ${path}`);
-  await screen.findByRole("button", { name: "Send" }, { timeout: 5_000 });
+  await turnQuiet;
+  await screen.findByRole("button", { name: "Send" });
 }
 
 describe("OKF Studio reviewed writes", () => {

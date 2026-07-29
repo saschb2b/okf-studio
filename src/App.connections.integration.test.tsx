@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as ipc from "@/shared/ipc.ts";
+import { waitForTurnQuiescent } from "@/shared/agentEvents.ts";
 import type { AgentConnectionInfo } from "@/features/agent/connection.ts";
 import type { LocalModelProfile } from "@/features/agent/local.ts";
 import {
@@ -124,10 +125,14 @@ describe("OKF Studio agent connections", () => {
         within(reviewConversation).getByLabelText("Message the agent"),
         "Review the evidence",
       );
+      // Subscribed before the send, so the milestone cannot be missed between
+      // the click and the wait. This replaced a 5s timeout that was really
+      // asking "has the turn finished yet" without a way to know.
+      const reviewTurnQuiet = waitForTurnQuiescent();
       await user.click(within(reviewConversation).getByRole("button", { name: "Send" }));
-      await waitFor(
-        () => expect(within(reviewConversation).getByRole("button", { name: "Send" })).toBeEnabled(),
-        { timeout: 5_000 },
+      await reviewTurnQuiet;
+      await waitFor(() =>
+        expect(within(reviewConversation).getByRole("button", { name: "Send" })).toBeEnabled(),
       );
       expect(reviewConversation).toHaveTextContent(
         "Browser ACP received: Review the evidence",
@@ -523,12 +528,12 @@ describe("OKF Studio agent connections", () => {
       await user.click(screen.getByRole("button", { name: /Create bundle/ }));
       expect(await screen.findByRole("button", { name: "Allow edits in this thread" }))
         .toBeDisabled();
+      const createTurnQuiet = waitForTurnQuiescent();
       await user.click(screen.getByRole("button", { name: "Send" }));
-      const proposal = await screen.findByRole(
-        "region",
-        { name: "Proposed OKF bundle structure" },
-        { timeout: 10_000 },
-      );
+      await createTurnQuiet;
+      const proposal = await screen.findByRole("region", {
+        name: "Proposed OKF bundle structure",
+      });
       expect(screen.getByText(/I inspected the available evidence/)).toBeInTheDocument();
       const localGrant = screen.getByRole("button", { name: "Allow edits in this thread" });
       await waitFor(() => expect(localGrant).toBeEnabled());

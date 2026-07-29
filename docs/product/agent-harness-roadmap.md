@@ -39,7 +39,7 @@ Each package ends in a focused commit or short reviewable series, and is complet
 - [x] Decode the envelope at the webview boundary, report a malformed payload or a sequence gap as a named diagnostic a test can assert on, and expose a milestone wait.
 - [x] Publish the same milestones from the browser mock, from the same classification, so a test waits on the signal the app actually uses.
 - [x] Remove sleep-based synchronization from the test lanes. The suite now contains none.
-- [ ] Convert the remaining long `waitFor` timeouts in the agent journeys (5s and 10s) to milestone waits.
+- [x] Convert the turn-shaped `waitFor` timeouts in the agent journeys to milestone waits. The waits that remain are condition waits on non-turn state (a resumed composer, a focus move), which is what a condition wait is for.
 - [ ] Hold new clients behind a readiness gate so no surface renders partial host state.
 - [ ] Record the current single-thread cost, token, latency, and quality numbers for the frozen benchmark tasks as the before figure every later package is measured against.
 

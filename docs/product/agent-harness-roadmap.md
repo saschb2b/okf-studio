@@ -33,9 +33,11 @@ Each package ends in a focused commit or short reviewable series, and is complet
 
 ## HP0: Runtime determinism and the measured baseline
 
-- [ ] Give the agent host typed milestone receipts for turn quiescence, artifact validation, and staged-tree settling, and make the queue-backed workers behind them drainable.
-- [ ] Replace polling and timeout waits in the agent test lanes with receipt waits, and record which tests were flaky before the change.
-- [ ] Route agent host events to the webview through one ordered, schema-checked path with a per-connection sequence, and report a decode failure as a structured diagnostic rather than a dropped event.
+- [x] Give the agent host typed milestone receipts for turn quiescence, artifact validation, and staged-tree settling.
+- [x] Route every agent host event out through one bus that stamps a host-wide monotonic sequence and reports a lost or unserializable send instead of discarding it.
+- [ ] Derive turn liveness for delegated runs as well as ACP turns. Today it is derived from the turn event stream, which covers every path that publishes turn events and nothing else.
+- [ ] Replace polling and timeout waits in the agent test lanes with milestone waits, and record which tests were flaky before the change.
+- [ ] Decode the envelope at the webview boundary, report a sequence gap as a structured diagnostic, and expose a milestone wait for tests.
 - [ ] Hold new clients behind a readiness gate so no surface renders partial host state.
 - [ ] Record the current single-thread cost, token, latency, and quality numbers for the frozen benchmark tasks as the before figure every later package is measured against.
 

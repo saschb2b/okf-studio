@@ -142,6 +142,29 @@ pub(crate) enum AgentToolContentInfo {
     },
 }
 
+/// How a turn event reports its own liveness.
+///
+/// The one place the answer lives. A cancelled turn arrives as a completion
+/// carrying the ACP stop reason `cancelled` rather than as its own variant, so
+/// the outcome is read from that string rather than from the shape.
+impl crate::agent_events::TurnLifecycle for AgentTurnEvent {
+    fn turn_key(&self) -> (String, String) {
+        (self.connection_id.clone(), self.turn_id.clone())
+    }
+
+    fn outcome(&self) -> Option<crate::agent_events::MilestoneOutcome> {
+        use crate::agent_events::MilestoneOutcome;
+        match &self.update {
+            AgentTurnUpdate::Completed { stop_reason } if stop_reason == "cancelled" => {
+                Some(MilestoneOutcome::Cancelled)
+            }
+            AgentTurnUpdate::Completed { .. } => Some(MilestoneOutcome::Completed),
+            AgentTurnUpdate::Failed { .. } => Some(MilestoneOutcome::Failed),
+            _ => None,
+        }
+    }
+}
+
 pub(crate) type TurnEventSink = Arc<dyn Fn(AgentTurnEvent) + Send + Sync>;
 
 pub(crate) fn remove_active_turn(

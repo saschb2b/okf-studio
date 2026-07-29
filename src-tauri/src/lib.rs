@@ -11,6 +11,8 @@
 mod agent_artifact;
 #[path = "agent/host/agent_critic.rs"]
 mod agent_critic;
+#[path = "agent/host/agent_events.rs"]
+mod agent_events;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_mcp_grant.rs"]
@@ -953,17 +955,29 @@ fn federated_relationship_candidates(
 
 #[tauri::command]
 async fn validate_agent_artifact(
+    app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
+    host: State<'_, agent_protocol::AgentHostState>,
     root: String,
     markdown: String,
 ) -> Result<agent_artifact::AgentArtifactValidation, String> {
     let root = grants.authorize_bundle(Path::new(&root))?;
-    tauri::async_runtime::spawn_blocking(move || {
+    let events = host.events(&app);
+    let validation = tauri::async_runtime::spawn_blocking(move || {
         let bundle = okf_core::read_bundle(&root);
         agent_artifact::validate(&markdown, &bundle)
     })
     .await
-    .map_err(|_| "Studio could not validate the agent artifact.".to_string())
+    .map_err(|_| "Studio could not validate the agent artifact.".to_string())?;
+    // The milestone is that the pass finished, not that it passed: a caller
+    // waiting for validation has to be released either way.
+    events.milestone(agent_events::AgentMilestone::ArtifactValidated {
+        accepted: matches!(
+            validation,
+            agent_artifact::AgentArtifactValidation::Ready { .. }
+        ),
+    });
+    Ok(validation)
 }
 
 /// Check an `okf-receipt` fence in agent output against the bundle's contract.

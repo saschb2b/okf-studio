@@ -47,12 +47,12 @@ Gate: the agent lanes contain no sleep-based synchronization, two consecutive sh
 
 ## HP1: Deterministic slices
 
-- [ ] Add a Rust slice service that computes a bounded work set from the parsed bundle by folder, type, tag, source, health finding, or link neighbourhood.
-- [ ] Give every slice an identity of bundle grant ID, revision fingerprint, and bundle-relative concept IDs, reusing the existing federation identity contract.
-- [ ] Cap slice count, slice size, and total fan-out width, and report what a cap excluded rather than truncating silently.
-- [ ] Scale the width to the job rather than fixing it. A decomposition that yields one slice runs one run, and the published guidance scales from a single agent to more than ten by task complexity.
+- [x] Add a Rust slice service that computes a bounded work set from the parsed bundle by folder, type, tag, or link neighbourhood. Source and health-finding decomposition wait for the run contract, which is where a finding gets an owner.
+- [ ] Add the bundle grant ID to slice identity. The plan carries the fingerprint and bundle-relative concept ids today; the grant ID belongs at the IPC boundary, where grants live, rather than in `okf-core`.
+- [x] Cap slice count and slice size, and name what each cap excluded rather than truncating silently. A concept that carries nothing to slice by is reported too, because a bundle full of those is a finding about the bundle.
+- [x] Scale the width to the job rather than fixing it. A decomposition that yields one group plans one slice, and nothing pads a plan out to a target width.
 - [ ] Show a slice preview before anything runs: how many runs, which concepts each covers, and what the whole job is expected to cost.
-- [ ] Recompute nothing implicitly. A slice is bound to the fingerprint it was computed against.
+- [x] Recompute nothing implicitly. A plan carries the fingerprint it was computed against.
 
 Gate: the same bundle and the same decomposition request produce byte-identical slices across runs, and a bundle change invalidates them by the existing staleness rule.
 

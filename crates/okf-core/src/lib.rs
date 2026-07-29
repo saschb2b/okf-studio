@@ -25,6 +25,7 @@ pub mod profile;
 pub mod projection;
 pub mod query;
 pub mod retrieval;
+pub mod slice;
 pub mod validate;
 
 pub use model::*;

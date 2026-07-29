@@ -58,11 +58,11 @@ Gate: the same bundle and the same decomposition request produce byte-identical 
 
 ## HP2: One delegated run
 
-- [ ] Define a run as slice, capability, budget, artifact contract, and provenance, resolved before a model is contacted.
-- [ ] Enforce depth one. A run cannot start another run.
-- [ ] Deny staging, apply, and restore to every run, and carry the producing session, capability digest, and slice fingerprint with its result.
-- [ ] Return one validated artifact or a bounded summary, never a transcript for another model to read.
-- [ ] Support a run on the native Studio Agent and on an ACP session Studio created, with the same contract on both paths.
+- [x] Define a run as slice, capability, budget, artifact contract, and provenance, resolved before a model is contacted. Resolution starts nothing; it answers whether a run is allowed to exist.
+- [x] Enforce depth one. A run cannot start another run.
+- [x] Deny writing to every run, at resolution rather than at runtime: a stage-class capability is refused, and so is any capability whose declared tools include a staging tool, which the class check alone would pass. Provenance carries the capability version, its digest, and the slice fingerprint.
+- [ ] Execute a resolved run against a provider and return one validated artifact or a bounded summary, never a transcript for another model to read.
+- [ ] Support execution on the native Studio Agent and on an ACP session Studio created, with the same contract on both paths.
 
 Gate: a fake native model and a fake ACP agent execute the identical run contract, and a run that attempts a write is refused with the existing staging error rather than a new one.
 

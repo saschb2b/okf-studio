@@ -13,6 +13,7 @@ mod agent_artifact;
 mod agent_critic;
 #[path = "agent/host/agent_events.rs"]
 mod agent_events;
+// orchestration — delegated runs over deterministic slices.
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_mcp_grant.rs"]
@@ -23,6 +24,8 @@ mod agent_process;
 mod agent_protocol;
 #[path = "agent/host/agent_receipt.rs"]
 mod agent_receipt;
+#[path = "agent/orchestration/agent_run.rs"]
+mod agent_run;
 #[path = "agent/host/agent_sandbox.rs"]
 mod agent_sandbox;
 #[path = "agent/host/agent_transcript.rs"]
@@ -951,6 +954,38 @@ fn federated_relationship_candidates(
     limit: usize,
 ) -> Result<bundle_library::FederatedRelationshipPage, String> {
     library.relationships(&grants, selections, limit)
+}
+
+/// Resolve one delegated run, or say why it will not start.
+///
+/// Every check happens here, before a model is contacted: a stale slice, an
+/// empty one, an unmeasurable budget, a capability that writes, a capability
+/// that does not produce the requested artifact, and a run trying to start
+/// another run. All of them are cheap now and expensive afterwards. A run that
+/// turns out to be unbudgeted once it has spent money cannot be refused any
+/// more.
+///
+/// Resolution starts nothing. It answers whether a run is allowed to exist.
+#[tauri::command]
+async fn resolve_agent_run(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    request: agent_run::RunRequest,
+    run_id: String,
+) -> Result<Result<agent_run::DelegatedRun, agent_run::RunRefusal>, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        let fingerprint = okf_core::health::bundle_fingerprint(&bundle);
+        agent_run::resolve_run(
+            &request,
+            &agent_capabilities::catalog().capabilities,
+            &fingerprint,
+            &run_id,
+        )
+    })
+    .await
+    .map_err(|_| "Studio could not resolve the delegated run.".to_string())
 }
 
 /// Plan how a bundle-sized job divides into bounded runs.
@@ -2000,6 +2035,7 @@ pub fn run() {
             federated_sources,
             federated_relationship_candidates,
             plan_agent_slices,
+            resolve_agent_run,
             validate_agent_artifact,
             validate_agent_receipt,
             prepare_agent_artifact_critic,

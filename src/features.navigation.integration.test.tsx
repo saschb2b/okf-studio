@@ -124,6 +124,37 @@ describe("OKF Studio navigation features", () => {
     scrollSpy.mockRestore();
   });
 
+  it("survives an index that links back to its parent", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // design/ ends with a link back up to the root index, the shape of every
+    // "Weiter"/"See also" tail, so root and design point at each other. The
+    // reveal walk followed that blindly, bounced root to design to root until
+    // the stack blew, and took the whole window down on startup (an owner's
+    // bundle restored on launch showed nothing but a blank window).
+    // Selecting a concept the index never lists forces the walk down every
+    // branch instead of stopping at the first match.
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await fillText(user, combo, "Recognized revenue");
+    await user.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("heading", { name: "Recognized revenue", level: 1 }),
+    ).toBeInTheDocument();
+
+    // The back-link row is still there and still opens the root's folder home;
+    // it just doesn't nest a second copy of an ancestor beneath itself.
+    await user.click(screen.getByRole("treeitem", { name: /^design\// }));
+    const back = await screen.findByRole("treeitem", { name: "OKF Studio (sample)" });
+    expect(back).not.toHaveAttribute("aria-expanded");
+    await user.click(back);
+    expect(
+      await screen.findByRole("heading", { name: "OKF Studio (sample)", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
   it("explains an expanded directory that holds no concepts", async () => {
     const user = userEvent.setup();
     renderApp();

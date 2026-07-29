@@ -713,6 +713,21 @@ export const MOCK_BUNDLE: Bundle = {
             },
           ],
         },
+        {
+          // The "Weiter" / "See also" tail every hand-written folder index
+          // grows: a link back up to the parent's index.md, which the core
+          // reads as a directory entry. Parent and child then point at each
+          // other, so the tree has a cycle to survive.
+          heading: "More",
+          entries: [
+            {
+              title: "OKF Studio (sample)",
+              target: "",
+              description: "Back to the bundle root.",
+              kind: "directory",
+            },
+          ],
+        },
       ],
     },
   ],

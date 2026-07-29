@@ -725,6 +725,53 @@ mod tests {
         )
     }
 
+    /// The critic report with `omit` dropped and `unavailable` marked, so the
+    /// early-victory shapes can be built without a second fixture.
+    fn critic_markdown_with(bundle: &Bundle, omit: &[&str], unavailable: &[&str]) -> String {
+        let checks: Vec<serde_json::Value> = [
+            (
+                "coverage",
+                "Required fields and declared scope were reviewed.",
+            ),
+            ("contradictions", "No conflict was found."),
+            ("unsupported-claims", "Every claim traced to a source."),
+            (
+                "missed-relationships",
+                "No additional relationship was required.",
+            ),
+        ]
+        .into_iter()
+        .filter(|(category, _)| !omit.contains(category))
+        .map(|(category, detail)| {
+            serde_json::json!({
+                "category": category,
+                "status": if unavailable.contains(&category) { "unavailable" } else { "checked" },
+                "detail": detail,
+            })
+        })
+        .collect();
+        format!(
+            "```okf-critic\n{}\n```",
+            serde_json::json!({
+                "schemaVersion": 1,
+                "artifactId": "critic-seed",
+                "artifactRevision": 2,
+                "bundleFingerprint": health::bundle_fingerprint(bundle),
+                "checks": checks,
+                "findings": [],
+                // An unavailable check has to be named as a limitation, so the
+                // fixture supplies one rather than tripping that separate rule.
+                "limitations": unavailable
+                    .iter()
+                    .map(|category| serde_json::json!({
+                        "code": "evidence-not-available",
+                        "detail": format!("The {category} check could not be run."),
+                    }))
+                    .collect::<Vec<_>>(),
+            })
+        )
+    }
+
     fn writing_artifact_markdown(bundle: &Bundle) -> String {
         format!(
             "```okf-artifact\n{}\n```",
@@ -825,6 +872,59 @@ mod tests {
                 AgentCriticValidation::Invalid { .. }
             ));
         }
+    }
+
+    #[test]
+    fn a_critic_that_skips_a_required_category_is_rejected() {
+        // The early-victory failure mode the multi-agent literature names: a
+        // verifier declaring success after checking one thing. Reporting three
+        // of four categories with no findings would otherwise read exactly like
+        // a clean pass.
+        let bundle = docs();
+        let artifact = artifact_markdown(&bundle, false);
+        let report = validate(
+            &artifact,
+            &critic_markdown_with(&bundle, &["missed-relationships"], &[]),
+            &bundle,
+        );
+        let AgentCriticValidation::Invalid { message } = report else {
+            panic!("a critic that skipped a category was accepted");
+        };
+        assert!(
+            message.contains("every required"),
+            "the refusal did not say what was missing: {message}"
+        );
+    }
+
+    #[test]
+    fn a_check_the_critic_could_not_run_makes_the_result_inconclusive() {
+        // Not NoConcerns. A critic that could not look is not a critic that
+        // looked and found nothing, and only one of those should reassure.
+        let bundle = docs();
+        let artifact = artifact_markdown(&bundle, false);
+        let validation = validate(
+            &artifact,
+            &critic_markdown_with(&bundle, &[], &["contradictions"]),
+            &bundle,
+        );
+        let AgentCriticValidation::Ready { report } = validation else {
+            panic!("a critic with an unavailable check was rejected outright");
+        };
+        assert_eq!(report.outcome, AgentCriticOutcome::Inconclusive);
+    }
+
+    #[test]
+    fn a_complete_critic_with_nothing_to_report_is_a_clean_pass() {
+        // The control for the two above: all four categories checked and no
+        // findings is the one shape that may read as clean.
+        let bundle = docs();
+        let artifact = artifact_markdown(&bundle, false);
+        let validation = validate(&artifact, &critic_markdown_with(&bundle, &[], &[]), &bundle);
+        let AgentCriticValidation::Ready { report } = validation else {
+            panic!("a complete critic report was rejected");
+        };
+        assert_eq!(report.outcome, AgentCriticOutcome::NoConcerns);
+        assert_eq!(report.checks.len(), 4);
     }
 
     #[test]

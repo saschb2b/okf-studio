@@ -97,9 +97,9 @@ Gate: the story lane passes the visual-consistency assertions, and a user readin
 
 ## HP6: Verification over assembled work
 
-- [ ] Run the deterministic pass over the assembly, not only over individual run artifacts, and report coverage gaps between the slice set and the assembled items.
-- [ ] Require the critic to complete its declared checks before reporting a result, closing the early-victory failure mode named in the research.
-- [ ] Keep the separation intact: an assembly cannot be approved by a model, and a critic cannot clear a deterministic block.
+- [x] Report coverage against the plan rather than against whoever answered, so a slice that never reported is named. Lives in the assembly, since that is where the plan and the results meet.
+- [x] Require the critic to complete its declared checks. Already enforced: a report omitting a required category is refused, and an unavailable check makes the outcome inconclusive rather than clean and must be named as a limitation. The rules existed and were untested, so the tests are the change.
+- [x] Keep the separation intact: an assembly cannot be approved by a model, and a critic cannot clear a deterministic block. Covered by the existing blocking test.
 
 Gate: a fixture whose assembly omits a slice is reported as an incomplete assembly by the deterministic pass alone, with the critic disabled.
 

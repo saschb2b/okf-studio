@@ -1,8 +1,8 @@
 // site.ts: the one owner of release metadata and external destinations.
 // Pages import from here; no page repeats a URL or version literal.
 
-export const version = "v0.9.0";
-export const softwareVersion = "0.9.0";
+export const version = "v0.9.1";
+export const softwareVersion = "0.9.1";
 
 export const repo = "https://github.com/saschb2b/okf-studio";
 export const releasesLatest = `${repo}/releases/latest`;

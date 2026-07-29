@@ -2896,7 +2896,7 @@ dependencies = [
 
 [[package]]
 name = "okf-core"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "pulldown-cmark",
  "regex",
@@ -2909,7 +2909,7 @@ dependencies = [
 
 [[package]]
 name = "okf-viewer"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "agent-client-protocol",
  "base64 0.22.1",

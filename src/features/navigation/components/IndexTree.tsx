@@ -33,17 +33,31 @@ function rootNode(indexes: IndexNode[]): IndexNode | null {
   );
 }
 
+/** Find the IndexNode a directory entry points at (match by dir == target). */
+function nodeFor(indexes: IndexNode[], target: string): IndexNode | undefined {
+  return indexes.find((n) => n.dir === target);
+}
+
 /**
- * Find the IndexNode a directory entry points at (match by dir == target).
- * Never resolves to the entry's own node (selfDir), which would cycle.
+ * The node a directory entry opens beneath itself: the node for its target,
+ * unless that node is already on `path`, the chain of directories from the root
+ * down to the entry's own node.
+ *
+ * Index files routinely link back up ("Weiter → [Alle Warengruppen](../index.md)"),
+ * and the parser reads a link to a reserved index.md as a directory entry. So
+ * parent and child point at each other, and walking directory entries blindly
+ * recurses parent to child to parent until the stack blows, which is what took
+ * the whole window down while revealing a selection. An entry like that still
+ * renders and still opens its folder home; it just doesn't nest a second copy
+ * of an ancestor underneath itself.
  */
-function nodeFor(
+function openableChild(
   indexes: IndexNode[],
   target: string,
-  selfDir: string,
+  path: readonly string[],
 ): IndexNode | undefined {
-  if (target === selfDir) return undefined;
-  return indexes.find((n) => n.dir === target);
+  if (path.includes(target)) return undefined;
+  return nodeFor(indexes, target);
 }
 
 /**
@@ -82,7 +96,9 @@ function sectionChildNode(
 ): IndexNode | null {
   const dir = sectionFolderDir(indexes, sec, node.dir);
   if (!dir) return null;
-  const child = nodeFor(indexes, dir, node.dir);
+  // sectionFolderDir already guaranteed `dir` is a strict descendant of the
+  // node's own directory, so a section door can never reach back up.
+  const child = nodeFor(indexes, dir);
   if (!child || child.sections.every((section) => section.entries.length === 0)) {
     return null;
   }
@@ -175,7 +191,9 @@ function expandPathTo(
   node: IndexNode,
   conceptId: string,
   pathKey: string,
+  ancestors: readonly string[],
 ): string[] | null {
+  const path = [...ancestors, node.dir];
   for (const sec of renderableSections(indexes, node)) {
     const sectionChild = sectionChildNode(indexes, node, sec);
     if (sectionChild) {
@@ -184,6 +202,7 @@ function expandPathTo(
         sectionChild,
         conceptId,
         `${pathKey}/section:${sectionChild.dir}`,
+        path,
       );
       if (sub) return sub;
       continue;
@@ -191,10 +210,10 @@ function expandPathTo(
     for (const entry of sec.entries) {
       if (entry.kind === "concept" && entry.target === conceptId) return [];
       if (entry.kind === "directory") {
-        const child = nodeFor(indexes, entry.target, node.dir);
+        const child = openableChild(indexes, entry.target, path);
         if (!child) continue;
         const key = expandKeyOf(pathKey, entry.target);
-        const sub = expandPathTo(indexes, child, conceptId, key);
+        const sub = expandPathTo(indexes, child, conceptId, key, path);
         if (sub) return [key, ...sub];
       }
     }
@@ -221,7 +240,9 @@ function flatten(
   depth: number,
   pathKey: string,
   out: Row[],
+  ancestors: readonly string[],
 ): void {
+  const path = [...ancestors, node.dir];
   const sections = renderableSections(indexes, node);
   for (let si = 0; si < sections.length; si++) {
     const sec = sections[si];
@@ -250,6 +271,7 @@ function flatten(
         depth + 1,
         `${pathKey}/section:${sectionChild.dir}`,
         out,
+        path,
       );
       continue;
     }
@@ -257,7 +279,7 @@ function flatten(
       const entry = sec.entries[ei];
       const key = rowKeyOf(pathKey, si, ei, entry.target);
       if (entry.kind === "directory") {
-        const child = nodeFor(indexes, entry.target, node.dir);
+        const child = openableChild(indexes, entry.target, path);
         const expandKey = child ? expandKeyOf(pathKey, entry.target) : undefined;
         const isOpen = !!expandKey && expanded.has(expandKey);
         out.push({
@@ -269,7 +291,7 @@ function flatten(
           expanded: isOpen,
         });
         if (child && isOpen) {
-          flatten(indexes, child, expanded, depth + 1, expandKey, out);
+          flatten(indexes, child, expanded, depth + 1, expandKey, out, path);
         }
       } else {
         out.push({ key, entry, depth, hasChildren: false, expanded: false });
@@ -298,7 +320,7 @@ function useRevealActiveRow(
     if (!activeId || !bundle) return;
     const root = rootNode(bundle.indexes);
     if (!root) return;
-    const path = expandPathTo(bundle.indexes, root, activeId, "root");
+    const path = expandPathTo(bundle.indexes, root, activeId, "root", []);
     if (path === null || path.length === 0) return;
     // Reacting to an external selection is the point of this effect; the
     // updater bails (returns prev) when the chain is already expanded.
@@ -387,7 +409,7 @@ export function IndexTree() {
     );
 
   const rows: Row[] = [];
-  flatten(bundle.indexes, root, expanded, 0, "root", rows);
+  flatten(bundle.indexes, root, expanded, 0, "root", rows, []);
 
   // The roving tabindex target: the focused row if still visible, else the
   // active concept's row, else the first row.
@@ -552,6 +574,7 @@ export function IndexTree() {
           filtering={filtering}
           dirCounts={dirCounts}
           dotFor={dotFor}
+          ancestors={[]}
           // Plain click selects; Ctrl/Cmd+click opens a background tab (Shift
           // to also switch) — the browser gesture. docs/proposals/multi-view.md
           onOpenConcept={(id, e) => {
@@ -587,6 +610,7 @@ function TreeNode({
   filtering,
   dirCounts,
   dotFor,
+  ancestors,
   onOpenConcept,
 }: {
   indexes: IndexNode[];
@@ -602,9 +626,12 @@ function TreeNode({
   filtering: boolean;
   dirCounts: Map<string, number>;
   dotFor: (id: string) => string | null;
+  /** Directories from the root down to this node. See openableChild(). */
+  ancestors: readonly string[];
   onOpenConcept: (id: string, e?: ReactMouseEvent<HTMLElement>) => void;
 }) {
   const focusedKey = rows[focusIdx]?.key;
+  const path = [...ancestors, node.dir];
 
   return (
     <ul className="sb-tree-group" role="group">
@@ -640,6 +667,7 @@ function TreeNode({
                 filtering={filtering}
                 dirCounts={dirCounts}
                 dotFor={dotFor}
+                ancestors={path}
                 onOpenConcept={onOpenConcept}
               />
             ) : (
@@ -647,7 +675,11 @@ function TreeNode({
                 {sec.entries.map((entry, ei) => {
                   const key = rowKeyOf(pathKey, si, ei, entry.target);
                   if (entry.kind === "directory") {
-                    const child = nodeFor(indexes, entry.target, node.dir);
+                    // `target` is whether the directory exists at all (a row
+                    // for a missing one reads as dim and dead); `child` is
+                    // whether it also opens beneath this row.
+                    const target = nodeFor(indexes, entry.target);
+                    const child = openableChild(indexes, entry.target, path);
                     const expandKey = child
                       ? expandKeyOf(pathKey, entry.target)
                       : undefined;
@@ -665,7 +697,7 @@ function TreeNode({
                           data-row-key={key}
                           tabIndex={key === focusedKey ? 0 : -1}
                           className={`sb-tree-item sb-tree-dir${
-                            child ? "" : " is-missing"
+                            target ? "" : " is-missing"
                           }${dirActive ? " is-active" : ""}`}
                           style={indent(depth)}
                           title={entry.description || entry.title}
@@ -695,7 +727,7 @@ function TreeNode({
                             ) : null}
                           </span>
                           <span className="sb-tree-label">{entry.title}</span>
-                          {child?.synthesized && (
+                          {target?.synthesized && (
                             <span
                               className="sb-synth"
                               title="Synthesized index (no index.md in this directory)"
@@ -722,6 +754,7 @@ function TreeNode({
                               filtering={filtering}
                               dirCounts={dirCounts}
                               dotFor={dotFor}
+                              ancestors={path}
                               onOpenConcept={onOpenConcept}
                             />
                           ) : (

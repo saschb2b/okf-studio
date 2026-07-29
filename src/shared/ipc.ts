@@ -2152,6 +2152,119 @@ async function listenAgentChannel(
  * the same classification applied to the mock's own turn events, so a test
  * waits on one signal either way.
  */
+/** How a bundle-sized job divides into runs. Mirrors `SliceBy` in okf-core. */
+export type SliceBy = "folder" | "type" | "tag" | "link-neighbourhood";
+
+export interface SliceLimits {
+  maxSlices: number;
+  maxConceptsPerSlice: number;
+}
+
+export interface Slice {
+  key: string;
+  title: string;
+  conceptIds: string[];
+  excludedConceptIds: string[];
+}
+
+/** Why something is not in the plan. A cap that truncates silently reads, from
+ *  the outside, exactly like a bundle with less in it. */
+export type SliceExclusion =
+  | { kind: "slicesOverWidth"; droppedKeys: string[]; limit: number }
+  | { kind: "conceptsOverSliceCap"; sliceKey: string; dropped: number; limit: number }
+  | { kind: "unslicable"; conceptIds: string[]; reason: string };
+
+export interface SlicePlan {
+  by: SliceBy;
+  /** The bundle state this plan was computed against. */
+  fingerprint: string;
+  slices: Slice[];
+  exclusions: SliceExclusion[];
+}
+
+export const defaultSliceLimits: SliceLimits = { maxSlices: 12, maxConceptsPerSlice: 40 };
+
+/**
+ * Plan how a job over `root` divides into bounded runs.
+ *
+ * Read-only: this computes a preview and starts nothing.
+ */
+export async function planAgentSlices(
+  root: string,
+  by: SliceBy,
+  limits: SliceLimits = defaultSliceLimits,
+): Promise<SlicePlan> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<SlicePlan>("plan_agent_slices", { root, request: { by, limits } });
+  }
+  return mockPlanAgentSlices(by, limits);
+}
+
+/**
+ * The browser mock, planning over the fixture bundle with the same rules the
+ * Rust service uses: sorted keys, sorted ids, named exclusions.
+ */
+function mockPlanAgentSlices(by: SliceBy, limits: SliceLimits): SlicePlan {
+  const concepts = MOCK_BUNDLE.concepts;
+  const groups = new Map<string, { title: string; ids: Set<string> }>();
+  const unslicable: string[] = [];
+  const add = (key: string, title: string, id: string) => {
+    const group = groups.get(key) ?? { title, ids: new Set<string>() };
+    group.ids.add(id);
+    groups.set(key, group);
+  };
+  for (const concept of concepts) {
+    if (by === "folder") {
+      const cut = concept.id.lastIndexOf("/");
+      const folder = cut === -1 ? "" : concept.id.slice(0, cut);
+      add(folder, folder === "" ? "Bundle root" : folder, concept.id);
+    } else if (by === "type") {
+      if (!concept.type.trim()) unslicable.push(concept.id);
+      else add(concept.type, concept.type, concept.id);
+    } else if (by === "tag") {
+      const tags = concept.tags.filter((tag: string) => tag.trim());
+      if (tags.length === 0) unslicable.push(concept.id);
+      for (const tag of tags) add(tag, tag, concept.id);
+    } else {
+      const neighbourhood = new Set([concept.id, ...concept.links, ...concept.citedBy]);
+      groups.set(concept.id, { title: concept.title, ids: neighbourhood });
+    }
+  }
+
+  const exclusions: SliceExclusion[] = [];
+  if (unslicable.length > 0) {
+    exclusions.push({
+      kind: "unslicable",
+      conceptIds: [...unslicable].sort(),
+      reason: by === "type" ? "the concept declares no type" : "the concept declares no tags",
+    });
+  }
+  const keys = [...groups.keys()].sort();
+  const kept = keys.slice(0, limits.maxSlices);
+  const droppedKeys = keys.slice(limits.maxSlices);
+  if (droppedKeys.length > 0) {
+    exclusions.push({ kind: "slicesOverWidth", droppedKeys, limit: limits.maxSlices });
+  }
+  const slices = kept.flatMap((key) => {
+    const group = groups.get(key);
+    if (!group) return [];
+    const all = [...group.ids].sort();
+    const conceptIds = all.slice(0, limits.maxConceptsPerSlice);
+    const excludedConceptIds = all.slice(limits.maxConceptsPerSlice);
+    if (excludedConceptIds.length > 0) {
+      exclusions.push({
+        kind: "conceptsOverSliceCap",
+        sliceKey: key,
+        dropped: excludedConceptIds.length,
+        limit: limits.maxConceptsPerSlice,
+      });
+    }
+    return [{ key, title: group.title, conceptIds, excludedConceptIds }];
+  });
+  return { by, fingerprint: `mock-${MOCK_BUNDLE.concepts.length}`, slices, exclusions };
+}
+
 export async function onAgentMilestoneUpdate(
   handler: (milestone: AgentMilestone) => void,
 ): Promise<() => void> {

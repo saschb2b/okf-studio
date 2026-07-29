@@ -51,7 +51,7 @@ Gate: the agent lanes contain no sleep-based synchronization, two consecutive sh
 - [ ] Add the bundle grant ID to slice identity. The plan carries the fingerprint and bundle-relative concept ids today; the grant ID belongs at the IPC boundary, where grants live, rather than in `okf-core`.
 - [x] Cap slice count and slice size, and name what each cap excluded rather than truncating silently. A concept that carries nothing to slice by is reported too, because a bundle full of those is a finding about the bundle.
 - [x] Scale the width to the job rather than fixing it. A decomposition that yields one group plans one slice, and nothing pads a plan out to a target width.
-- [ ] Show a slice preview before anything runs: how many runs, which concepts each covers, and what the whole job is expected to cost.
+- [x] Expose the plan over IPC as a read-only preview that starts nothing: how many runs, which concepts each covers, and what each cap excluded. Projected cost joins it in HP4, where cost gets a source.
 - [x] Recompute nothing implicitly. A plan carries the fingerprint it was computed against.
 
 Gate: the same bundle and the same decomposition request produce byte-identical slices across runs, and a bundle change invalidates them by the existing staleness rule.

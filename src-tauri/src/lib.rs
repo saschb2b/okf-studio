@@ -953,6 +953,28 @@ fn federated_relationship_candidates(
     library.relationships(&grants, selections, limit)
 }
 
+/// Plan how a bundle-sized job divides into bounded runs.
+///
+/// Read-only and side-effect free: it computes a plan and returns it. Nothing
+/// starts here, because a preview the user has not seen is not a preview. The
+/// plan carries the fingerprint it was computed against, so a bundle that
+/// changes before the job starts makes it stale by the rule artifacts already
+/// use rather than by a new one.
+#[tauri::command]
+async fn plan_agent_slices(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    request: okf_core::slice::SliceRequest,
+) -> Result<okf_core::slice::SlicePlan, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        okf_core::slice::plan_slices(&bundle, &request)
+    })
+    .await
+    .map_err(|_| "Studio could not plan the delegated runs.".to_string())
+}
+
 #[tauri::command]
 async fn validate_agent_artifact(
     app: AppHandle,
@@ -1977,6 +1999,7 @@ pub fn run() {
             federated_search,
             federated_sources,
             federated_relationship_candidates,
+            plan_agent_slices,
             validate_agent_artifact,
             validate_agent_receipt,
             prepare_agent_artifact_critic,

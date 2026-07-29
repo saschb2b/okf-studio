@@ -2,6 +2,13 @@
 // window it calls Rust commands and plugins; in a browser or test it falls back
 // to an in-memory mock, so the UI runs and tests pass without the backend.
 
+import {
+  acceptAgentEnvelope,
+  emitAgentMilestone,
+  onAgentMilestone,
+  turnMilestoneFor,
+  type AgentMilestone,
+} from "./agentEvents.ts";
 import type {
   AttestationReport,
   Bundle,
@@ -2120,13 +2127,44 @@ export async function respondAgentPermission(
   return true;
 }
 
+/**
+ * Subscribe to one agent channel through the boundary check.
+ *
+ * Every agent event arrives inside an envelope carrying a host-wide sequence.
+ * Unwrapping it here, rather than at each call site, is what makes "a dropped
+ * event is reported" true for all six channels at once.
+ */
+async function listenAgentChannel(
+  channel: string,
+  handler: (data: unknown) => void,
+): Promise<() => void> {
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<unknown>(channel, (event) => {
+    const data = acceptAgentEnvelope(channel, event.payload);
+    if (data !== null) handler(data);
+  });
+}
+
+/**
+ * Subscribe to host milestones.
+ *
+ * Under Tauri these come from the Rust bus; in the browser mock they come from
+ * the same classification applied to the mock's own turn events, so a test
+ * waits on one signal either way.
+ */
+export async function onAgentMilestoneUpdate(
+  handler: (milestone: AgentMilestone) => void,
+): Promise<() => void> {
+  if (!isTauri()) return onAgentMilestone(handler);
+  return listenAgentChannel("agent-milestone", (data) => handler(data as AgentMilestone));
+}
+
 export async function onAgentTurnUpdate(handler: AgentTurnHandler): Promise<() => void> {
   if (!isTauri()) {
     agentTurnHandlers.add(handler);
     return () => agentTurnHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentTurnEvent>("agent-turn-update", (event) => handler(event.payload));
+  return listenAgentChannel("agent-turn-update", (data) => handler(data as AgentTurnEvent));
 }
 
 export async function onAgentPermissionUpdate(
@@ -2136,8 +2174,9 @@ export async function onAgentPermissionUpdate(
     agentPermissionHandlers.add(handler);
     return () => agentPermissionHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentPermissionEvent>("agent-permission-update", (event) => handler(event.payload));
+  return listenAgentChannel("agent-permission-update", (data) =>
+    handler(data as AgentPermissionEvent),
+  );
 }
 
 export async function onAgentStageUpdate(handler: AgentStageHandler): Promise<() => void> {
@@ -2145,8 +2184,7 @@ export async function onAgentStageUpdate(handler: AgentStageHandler): Promise<()
     agentStageHandlers.add(handler);
     return () => agentStageHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentStageEvent>("agent-stage-update", (event) => handler(event.payload));
+  return listenAgentChannel("agent-stage-update", (data) => handler(data as AgentStageEvent));
 }
 
 export async function onAgentSessionConfigUpdate(
@@ -2156,10 +2194,8 @@ export async function onAgentSessionConfigUpdate(
     agentSessionConfigHandlers.add(handler);
     return () => agentSessionConfigHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentSessionConfigEvent>(
-    "agent-session-config-update",
-    (event) => handler(event.payload),
+  return listenAgentChannel("agent-session-config-update", (data) =>
+    handler(data as AgentSessionConfigEvent),
   );
 }
 
@@ -2170,10 +2206,8 @@ export async function onAgentAvailableCommandsUpdate(
     agentAvailableCommandsHandlers.add(handler);
     return () => agentAvailableCommandsHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentAvailableCommandsEvent>(
-    "agent-available-commands-update",
-    (event) => handler(event.payload),
+  return listenAgentChannel("agent-available-commands-update", (data) =>
+    handler(data as AgentAvailableCommandsEvent),
   );
 }
 
@@ -3244,6 +3278,10 @@ function emitAgentPermission(event: AgentPermissionEvent): void {
 
 function emitAgentTurn(event: AgentTurnEvent): void {
   for (const handler of agentTurnHandlers) handler(event);
+  // Mock parity with the Rust bus: the same classification, so a test that
+  // waits on a milestone here is waiting on what the host would publish.
+  const milestone = turnMilestoneFor(event);
+  if (milestone) emitAgentMilestone(milestone);
 }
 
 function emitAgentAvailableCommands(event: AgentAvailableCommandsEvent): void {
@@ -3282,10 +3320,8 @@ export async function onAgentConnectionState(
     return () => agentConnectionHandlers.delete(handler);
   }
   agentConnectionHandlers.add(handler);
-  agentConnectionListener ??= import("@tauri-apps/api/event").then(({ listen }) =>
-    listen<AgentConnectionEvent>("agent-connection-state", (event) => {
-      receiveAgentConnectionEvent(event.payload);
-    }),
+  agentConnectionListener ??= listenAgentChannel("agent-connection-state", (data) =>
+    receiveAgentConnectionEvent(data as AgentConnectionEvent),
   );
   try {
     await agentConnectionListener;

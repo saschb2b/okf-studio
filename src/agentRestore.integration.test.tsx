@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "@/App.tsx";
 import { AppProvider } from "@/shared/store.tsx";
@@ -293,9 +293,10 @@ describe("agent panel restore at launch", () => {
     });
 
     ipc.maybeRestoreLastAgentConnection("/mock/workspace/docs");
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    });
+    // Wait for the subscription to have seen the restored connection, not for
+    // 250ms to pass. The sleep made this a timing bet: long enough on a fast
+    // machine, short enough to flake in CI, and silent about which it was.
+    await waitFor(() => expect(markedWhenFirstSeen).not.toBeNull());
     stop();
 
     expect(markedWhenFirstSeen).toBe(true);
@@ -315,9 +316,6 @@ describe("agent panel restore at launch", () => {
       JSON.stringify({ kind: "local", id: "local-1", name: "Ollama · llama3.1" }),
     );
     ipc.maybeRestoreLastAgentConnection("/mock/workspace/docs");
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    expect(ipc.agentRestoreStatus()).toBe("failed");
+    await waitFor(() => expect(ipc.agentRestoreStatus()).toBe("failed"));
   });
 });

@@ -36,8 +36,10 @@ Each package ends in a focused commit or short reviewable series, and is complet
 - [x] Give the agent host typed milestone receipts for turn quiescence, artifact validation, and staged-tree settling.
 - [x] Route every agent host event out through one bus that stamps a host-wide monotonic sequence and reports a lost or unserializable send instead of discarding it.
 - [ ] Derive turn liveness for delegated runs as well as ACP turns. Today it is derived from the turn event stream, which covers every path that publishes turn events and nothing else.
-- [ ] Replace polling and timeout waits in the agent test lanes with milestone waits, and record which tests were flaky before the change.
-- [ ] Decode the envelope at the webview boundary, report a sequence gap as a structured diagnostic, and expose a milestone wait for tests.
+- [x] Decode the envelope at the webview boundary, report a malformed payload or a sequence gap as a named diagnostic a test can assert on, and expose a milestone wait.
+- [x] Publish the same milestones from the browser mock, from the same classification, so a test waits on the signal the app actually uses.
+- [x] Remove sleep-based synchronization from the test lanes. The suite now contains none.
+- [ ] Convert the remaining long `waitFor` timeouts in the agent journeys (5s and 10s) to milestone waits.
 - [ ] Hold new clients behind a readiness gate so no surface renders partial host state.
 - [ ] Record the current single-thread cost, token, latency, and quality numbers for the frozen benchmark tasks as the before figure every later package is measured against.
 

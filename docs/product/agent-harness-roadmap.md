@@ -68,11 +68,11 @@ Gate: a fake native model and a fake ACP agent execute the identical run contrac
 
 ## HP3: Fan-out and assembly
 
-- [ ] Run slices concurrently under a bounded width, with cancellation that stops pending runs and lets in-flight runs finish or abort cleanly.
-- [ ] Assemble results into one artifact whose every item names its slice, run, and fingerprint.
-- [ ] Exclude stale results from the assembly and report them as excluded, rather than mixing generations.
-- [ ] Complete a fan-out with partial results when some runs fail, naming each failure.
-- [ ] Emit a quiescence receipt when the whole job settles.
+- [ ] Run slices concurrently under a bounded width, with cancellation that stops pending runs and lets in-flight runs finish or abort cleanly. Blocked on run execution in HP2.
+- [x] Assemble results into one result whose every included run names its slice and fingerprint, and whose completeness is carried rather than left for each surface to derive.
+- [x] Exclude stale results and report them as excluded, rather than mixing generations.
+- [x] Complete with partial results when runs fail, naming each failure, distinguishing a failure from a run that stopped at its ceiling, and naming a planned slice that never reported at all.
+- [ ] Emit a quiescence receipt when the whole job settles. The milestone channel from HP0 carries it; the fan-out that would publish it does not exist yet.
 
 Gate: a fan-out over a fixture bundle with an induced mid-job bundle change produces an assembly that names the excluded stale runs, and the same fixture without a change produces a stable assembly across two runs.
 

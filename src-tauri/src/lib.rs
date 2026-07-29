@@ -14,6 +14,8 @@ mod agent_critic;
 #[path = "agent/host/agent_events.rs"]
 mod agent_events;
 // orchestration — delegated runs over deterministic slices.
+#[path = "agent/orchestration/agent_assembly.rs"]
+mod agent_assembly;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_mcp_grant.rs"]
@@ -954,6 +956,30 @@ fn federated_relationship_candidates(
     limit: usize,
 ) -> Result<bundle_library::FederatedRelationshipPage, String> {
     library.relationships(&grants, selections, limit)
+}
+
+/// Assemble what a fan-out returned into one reviewable result.
+///
+/// Reports rather than reconciles. A run computed against an older bundle, a
+/// run that failed, a run that stopped at its ceiling, and a planned slice that
+/// never reported are each named with the reason, and coverage is stated
+/// against the plan rather than against whoever answered. A partial result that
+/// says it is partial is useful; one that does not is worse than nothing.
+#[tauri::command]
+async fn assemble_agent_runs(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    outcomes: Vec<agent_assembly::RunOutcome>,
+    planned_slice_keys: Vec<String>,
+) -> Result<agent_assembly::Assembly, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        let fingerprint = okf_core::health::bundle_fingerprint(&bundle);
+        agent_assembly::assemble(outcomes, &planned_slice_keys, &fingerprint)
+    })
+    .await
+    .map_err(|_| "Studio could not assemble the delegated runs.".to_string())
 }
 
 /// Resolve one delegated run, or say why it will not start.
@@ -2035,6 +2061,7 @@ pub fn run() {
             federated_sources,
             federated_relationship_candidates,
             plan_agent_slices,
+            assemble_agent_runs,
             resolve_agent_run,
             validate_agent_artifact,
             validate_agent_receipt,

@@ -3,7 +3,7 @@ type: Reference
 title: "no-slop: formatting"
 description: "Slop you can see before you read a word."
 tags: [writing, ai-slop, style, editing]
-timestamp: 2026-06-14T00:00:00Z
+generated: { by: claude-code/unversioned, at: 2026-07-29T00:00:00Z }
 ---
 # no-slop: formatting
 
@@ -48,7 +48,7 @@ After:
 
 > The service holds sub-10ms reads as traffic grows.
 
-The repeated "**Label**: sentence" shape is a signature LLM list. When the items restate each other or form one causal chain, write the sentence. Keep the list only for genuinely parallel items.
+The repeated "**Label**: sentence" shape is a signature LLM list. When the items restate each other or form one causal chain, write the sentence. Keep the list only for genuinely parallel items, and for the one case [ste.md](ste.md) actively requires a list, a sequence of actions the reader performs.
 
 ## Emoji and badges
 

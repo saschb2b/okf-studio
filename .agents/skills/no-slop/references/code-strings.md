@@ -3,11 +3,13 @@ type: Reference
 title: "no-slop: strings in code"
 description: "Test names, error messages, and log lines are read by a human at the worst moment, when a test fails or production breaks."
 tags: [writing, ai-slop, style, editing]
-timestamp: 2026-06-14T00:00:00Z
+generated: { by: claude-code/unversioned, at: 2026-07-29T00:00:00Z }
 ---
 # no-slop: strings in code
 
 Test names, error messages, and log lines are read by a human at the worst moment, when a test fails or production breaks. Generic filler there costs the most.
+
+This is the surface that calls for strict mode, since a misread error message costs something and nobody wants voice in one. Apply the caps and the actor rules from [ste.md](ste.md) here, not the relaxed variant.
 
 ## Test names
 

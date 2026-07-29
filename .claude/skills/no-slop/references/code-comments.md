@@ -3,11 +3,11 @@ type: Reference
 title: "no-slop: code comments"
 description: "The slop comment is written for the reviewer of one change and then stranded in code that outlives the review."
 tags: [writing, ai-slop, style, editing]
-timestamp: 2026-06-14T00:00:00Z
+generated: { by: claude-code/unversioned, at: 2026-07-29T00:00:00Z }
 ---
 # no-slop: code comments
 
-The slop comment is written for the reviewer of one change and then stranded in code that outlives the review. The fix is almost always to delete it or move it to the commit message. The "after" has fewer comments than the "before", and the code reads no worse for it.
+The slop comment is written for the reviewer of one change and then stranded in code that outlives the review. The fix is almost always to delete it or move it to the commit message, which has its own tells once the text lands there, catalogued in [commits-and-prs.md](commits-and-prs.md). The "after" has fewer comments than the "before", and the code reads no worse for it.
 
 Two checks catch most of it. First, audience and lifespan: would this comment make sense to someone reading the file later who never saw this change? If it only reads as "here is what I just did," it belongs in the commit message. Second, density: match the file. If the surrounding code is documented, continue at that level like a senior would. If it is not, add nothing unless the comment is load-bearing, meaning a non-obvious *why*, never a *what*.
 

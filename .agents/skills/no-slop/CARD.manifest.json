@@ -1,0 +1,46 @@
+[
+  {
+    "path": "SKILL.md",
+    "sha256": "27067cec234a3549ddb27c41b0813cc74bcf0ebb85e0418539ba9f20635a6b45"
+  },
+  {
+    "path": "permissions.yaml",
+    "sha256": "71845d24730a9bb4543416d384102b10eeea9f80c2f0658c8afe8cda98583512"
+  },
+  {
+    "path": "references/code-comments.md",
+    "sha256": "9f7d0b5a5ddd9c969ad298f92fcf92737f70ea60754c97eeee95ff65ef163ee4"
+  },
+  {
+    "path": "references/code-strings.md",
+    "sha256": "6f8634840c3e936b7c59f955cff296ae28a7daaed57ddb6b788b6dee03817205"
+  },
+  {
+    "path": "references/commits-and-prs.md",
+    "sha256": "ddf242900d7d50caa54326f429d51f27c7acd5b71b7058e628e7da9614a8868e"
+  },
+  {
+    "path": "references/formatting.md",
+    "sha256": "b4ae838104c27b1e695e5128e07a1a6d40f1b6d6dbff68a6bf5d52344bbb4d58"
+  },
+  {
+    "path": "references/index.md",
+    "sha256": "d3ebda7bc939d24e545f8added61a8a17da1a59972328045b8a8ce225eea6bc0"
+  },
+  {
+    "path": "references/log.md",
+    "sha256": "db66932c75db6885982d9a5e00d5028f43810039d76d061f4cf573495484f0d4"
+  },
+  {
+    "path": "references/prose.md",
+    "sha256": "90508d2ac48cc31f75a355f32e2b31b463b865c8a8fd36beb749af2e8f96f70f"
+  },
+  {
+    "path": "references/ste.md",
+    "sha256": "8e7b1ee17c71ce08dc3e5f4f32548bc3ba2879aae7551a49cecdddba648d11fb"
+  },
+  {
+    "path": "slop-lint.mjs",
+    "sha256": "cbb877d7915998b5e5cabf0bc1821f0014887f510ea181997514967d3b68a13f"
+  }
+]

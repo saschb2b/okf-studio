@@ -3,11 +3,13 @@ type: Reference
 title: "no-slop: prose before and after"
 description: "Concrete rewrites for each tell."
 tags: [writing, ai-slop, style, editing]
-timestamp: 2026-06-14T00:00:00Z
+generated: { by: claude-code/unversioned, at: 2026-07-29T00:00:00Z }
 ---
 # no-slop: prose before and after
 
 Concrete rewrites for each tell. The "after" is shorter in almost every case. That is the signal you are doing it right.
+
+These are repairs. The construction rules that stop most of them from being written in the first place are in [ste.md](ste.md), and reaching for this page instead of that one is the expensive order to work in.
 
 ## Em dashes
 

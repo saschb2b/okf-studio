@@ -3,11 +3,13 @@ type: Reference
 title: "no-slop: commit messages and PR descriptions"
 description: "Both describe a change to someone reading it later."
 tags: [writing, ai-slop, style, editing]
-timestamp: 2026-06-14T00:00:00Z
+generated: { by: claude-code/unversioned, at: 2026-07-29T00:00:00Z }
 ---
 # no-slop: commit messages and PR descriptions
 
 Both describe a change to someone reading it later. The slop is text that restates the diff instead of the reason for it, or performs a convention the repo does not use. Match the repo's existing history.
+
+Both take the flavored mode from [ste.md](ste.md). A commit subject is already close to an STE instruction, one action, imperative, under the cap, so the sentence rules cost nothing here.
 
 ## Commit messages
 

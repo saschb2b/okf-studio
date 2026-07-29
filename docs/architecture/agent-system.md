@@ -10,6 +10,8 @@ generated: { by: claude/unrecorded, at: 2026-07-23T00:28:00Z }
 
 One [Agent Panel](../features/agent-panel.md) hosts two boundaries: external agent processes over Agent Client Protocol (ACP), and a native Studio Agent backed by API or local model providers.
 
+Delegating bundle-sized work across several bounded runs is a separate decision: see [Agent Orchestration](agent-orchestration.md).
+
 # Why this decision exists
 
 Studio needs provider choice without duplicating bundle access, permissions, staging, and session behavior for every agent. Separate vendor integrations would drift into different security rules and make OKF specialization depend on one model or subscription. A browser-owned integration would also place process, credential, network, and filesystem authority in the wrong layer.

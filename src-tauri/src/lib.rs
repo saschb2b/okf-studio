@@ -11,6 +11,13 @@
 mod agent_artifact;
 #[path = "agent/host/agent_critic.rs"]
 mod agent_critic;
+#[path = "agent/host/agent_events.rs"]
+mod agent_events;
+// orchestration — delegated runs over deterministic slices.
+#[path = "agent/orchestration/agent_assembly.rs"]
+mod agent_assembly;
+#[path = "agent/orchestration/agent_budget.rs"]
+mod agent_budget;
 #[path = "agent/host/agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent/host/agent_mcp_grant.rs"]
@@ -21,6 +28,8 @@ mod agent_process;
 mod agent_protocol;
 #[path = "agent/host/agent_receipt.rs"]
 mod agent_receipt;
+#[path = "agent/orchestration/agent_run.rs"]
+mod agent_run;
 #[path = "agent/host/agent_sandbox.rs"]
 mod agent_sandbox;
 #[path = "agent/host/agent_transcript.rs"]
@@ -951,19 +960,166 @@ fn federated_relationship_candidates(
     library.relationships(&grants, selections, limit)
 }
 
+/// Send one delegated run's prompt on an isolated session.
+///
+/// The session must carry no write grant, which Rust checks rather than trusts:
+/// reading fans out, writing stays single-threaded, and a run is reading.
+#[tauri::command]
+async fn prompt_agent_run(
+    state: State<'_, agent_protocol::AgentHostState>,
+    connection_id: String,
+    session_id: String,
+    text: String,
+    concept_paths: Vec<String>,
+) -> Result<agent_protocol::AgentTurnInfo, String> {
+    agent_protocol::prompt_delegated_run(
+        state.inner(),
+        &connection_id,
+        session_id,
+        text,
+        concept_paths,
+    )
+    .await
+}
+
+/// Fold each run's usage reports into a job spend, and say whether the budget
+/// still allows work to continue.
+///
+/// `runs` is per-run so the two aggregations stay distinct: cost is spent per
+/// session and adds across runs, while context is a window each session has to
+/// itself, so the job carries the largest any one run reached. Summing context
+/// would describe a context nobody ever used. One run is a single inner list.
+///
+/// Pure: it reads what providers reported and answers. The two answers that are
+/// not the same are `within` and `unmeasured`. "We checked and it is fine" and
+/// "we cannot check" mean different things to whoever is reading, and only one
+/// of them should reassure anyone.
+#[tauri::command]
+fn evaluate_agent_budget(
+    budget: agent_run::RunBudget,
+    runs: Vec<Vec<agent_budget::UsageReport>>,
+) -> agent_budget::BudgetEvaluation {
+    let mut job = agent_budget::BudgetLedger::new();
+    for reports in runs {
+        let mut run = agent_budget::BudgetLedger::new();
+        for report in reports {
+            run.record(report);
+        }
+        job.absorb(&run);
+    }
+    agent_budget::BudgetEvaluation {
+        spend: job.spend().clone(),
+        state: job.state(&budget),
+    }
+}
+
+/// Assemble what a fan-out returned into one reviewable result.
+///
+/// Reports rather than reconciles. A run computed against an older bundle, a
+/// run that failed, a run that stopped at its ceiling, and a planned slice that
+/// never reported are each named with the reason, and coverage is stated
+/// against the plan rather than against whoever answered. A partial result that
+/// says it is partial is useful; one that does not is worse than nothing.
+#[tauri::command]
+async fn assemble_agent_runs(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    outcomes: Vec<agent_assembly::RunOutcome>,
+    planned_slice_keys: Vec<String>,
+) -> Result<agent_assembly::Assembly, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        let fingerprint = okf_core::health::bundle_fingerprint(&bundle);
+        agent_assembly::assemble(outcomes, &planned_slice_keys, &fingerprint)
+    })
+    .await
+    .map_err(|_| "Studio could not assemble the delegated runs.".to_string())
+}
+
+/// Resolve one delegated run, or say why it will not start.
+///
+/// Every check happens here, before a model is contacted: a stale slice, an
+/// empty one, an unmeasurable budget, a capability that writes, a capability
+/// that does not produce the requested artifact, and a run trying to start
+/// another run. All of them are cheap now and expensive afterwards. A run that
+/// turns out to be unbudgeted once it has spent money cannot be refused any
+/// more.
+///
+/// Resolution starts nothing. It answers whether a run is allowed to exist.
+#[tauri::command]
+async fn resolve_agent_run(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    request: agent_run::RunRequest,
+    run_id: String,
+) -> Result<Result<agent_run::PreparedRun, agent_run::RunRefusal>, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        let fingerprint = okf_core::health::bundle_fingerprint(&bundle);
+        agent_run::resolve_run(
+            &request,
+            &agent_capabilities::catalog().capabilities,
+            &fingerprint,
+            &run_id,
+        )
+        .map(|run| agent_run::PreparedRun {
+            prompt: agent_run::run_prompt(&run),
+            run,
+        })
+    })
+    .await
+    .map_err(|_| "Studio could not resolve the delegated run.".to_string())
+}
+
+/// Plan how a bundle-sized job divides into bounded runs.
+///
+/// Read-only and side-effect free: it computes a plan and returns it. Nothing
+/// starts here, because a preview the user has not seen is not a preview. The
+/// plan carries the fingerprint it was computed against, so a bundle that
+/// changes before the job starts makes it stale by the rule artifacts already
+/// use rather than by a new one.
+#[tauri::command]
+async fn plan_agent_slices(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    root: String,
+    request: okf_core::slice::SliceRequest,
+) -> Result<okf_core::slice::SlicePlan, String> {
+    let root = grants.authorize_bundle(Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let bundle = okf_core::read_bundle(&root);
+        okf_core::slice::plan_slices(&bundle, &request)
+    })
+    .await
+    .map_err(|_| "Studio could not plan the delegated runs.".to_string())
+}
+
 #[tauri::command]
 async fn validate_agent_artifact(
+    app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
+    host: State<'_, agent_protocol::AgentHostState>,
     root: String,
     markdown: String,
 ) -> Result<agent_artifact::AgentArtifactValidation, String> {
     let root = grants.authorize_bundle(Path::new(&root))?;
-    tauri::async_runtime::spawn_blocking(move || {
+    let events = host.events(&app);
+    let validation = tauri::async_runtime::spawn_blocking(move || {
         let bundle = okf_core::read_bundle(&root);
         agent_artifact::validate(&markdown, &bundle)
     })
     .await
-    .map_err(|_| "Studio could not validate the agent artifact.".to_string())
+    .map_err(|_| "Studio could not validate the agent artifact.".to_string())?;
+    // The milestone is that the pass finished, not that it passed: a caller
+    // waiting for validation has to be released either way.
+    events.milestone(agent_events::AgentMilestone::ArtifactValidated {
+        accepted: matches!(
+            validation,
+            agent_artifact::AgentArtifactValidation::Ready { .. }
+        ),
+    });
+    Ok(validation)
 }
 
 /// Check an `okf-receipt` fence in agent output against the bundle's contract.
@@ -1963,6 +2119,11 @@ pub fn run() {
             federated_search,
             federated_sources,
             federated_relationship_candidates,
+            plan_agent_slices,
+            assemble_agent_runs,
+            evaluate_agent_budget,
+            prompt_agent_run,
+            resolve_agent_run,
             validate_agent_artifact,
             validate_agent_receipt,
             prepare_agent_artifact_critic,

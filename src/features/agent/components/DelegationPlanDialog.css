@@ -1,0 +1,182 @@
+/* Plan delegated work: a read-only preview of how a bundle divides.
+ *
+ * The run list is a grid rather than a flex row so the bars start at the same
+ * x and the counts end at the same x whatever a group is called. Ragged bars
+ * would make the comparison the screen exists for harder than reading the
+ * numbers, which defeats the point of drawing them. */
+
+.delegation-plan {
+  width: min(40rem, calc(100vw - var(--space-24)));
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.delegation-plan__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.delegation-plan__subtitle {
+  margin: var(--space-4) 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  max-width: 56ch;
+}
+
+.delegation-plan__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.delegation-plan__mode {
+  min-height: 28px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.delegation-plan__mode:hover {
+  background: var(--el-hover);
+  color: var(--text);
+}
+
+.delegation-plan__mode.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.delegation-plan__mode:focus-visible {
+  outline: var(--focus-w) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.delegation-plan__summary {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.delegation-plan__note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+
+.delegation-plan__note--error {
+  color: var(--error);
+}
+
+.delegation-plan__runs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  /* Name, bar, count. The bar takes the slack so every row lines up. */
+  grid-template-columns: minmax(6rem, 14rem) 1fr auto;
+  gap: var(--space-6) var(--space-12);
+  align-items: center;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.delegation-plan__run {
+  display: contents;
+}
+
+.delegation-plan__run-title {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delegation-plan__bar {
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  overflow: hidden;
+}
+
+.delegation-plan__bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+
+.delegation-plan__count {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  /* Digits share a width so the column reads as a column. */
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.delegation-plan__over {
+  color: var(--warn);
+}
+
+.delegation-plan__excluded {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-12);
+}
+
+.delegation-plan__excluded-title {
+  margin: 0 0 var(--space-6);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.delegation-plan__excluded ul {
+  margin: 0;
+  padding-left: var(--space-16);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.delegation-plan__fingerprint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.delegation-plan__fingerprint code {
+  font-family: var(--mono);
+  font-size: inherit;
+}
+
+.delegation-plan__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+/* Live per-run state sits with the count rather than in its own column: it is
+   present for seconds and a permanent column for it would leave a gap the rest
+   of the time. */
+.delegation-plan__state {
+  color: var(--text-dim);
+  font-variant-numeric: normal;
+}
+
+.delegation-plan__summary--partial {
+  color: var(--warn);
+}

@@ -1,3 +1,4 @@
+use crate::agent_events::{AgentEventBus, AgentMilestone};
 use agent_client_protocol::schema::v1::{
     AgentCapabilities, AuthenticateRequest, AvailableCommand, BooleanConfigOptionCapabilities,
     CancelNotification, ClientCapabilities, ClientSessionCapabilities, ContentBlock, ContentChunk,
@@ -25,7 +26,7 @@ use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
@@ -142,12 +143,12 @@ const MAX_AVAILABLE_COMMANDS: usize = 64;
 const MAX_AVAILABLE_COMMAND_NAME_CHARS: usize = 64;
 const MAX_AVAILABLE_COMMAND_DESCRIPTION_CHARS: usize = 512;
 const LEGACY_SESSION_MODE_CONFIG_ID: &str = "__acp_session_mode";
-const CONNECTION_EVENT: &str = "agent-connection-state";
-const TURN_EVENT: &str = "agent-turn-update";
-const PERMISSION_EVENT: &str = "agent-permission-update";
-const STAGE_EVENT: &str = "agent-stage-update";
-const SESSION_CONFIG_EVENT: &str = "agent-session-config-update";
-const AVAILABLE_COMMANDS_EVENT: &str = "agent-available-commands-update";
+// The channel names live in `agent_events` so the bus owns the list; these are
+// re-exported here because the call sites in this file are the only users.
+use crate::agent_events::channel::{
+    AVAILABLE_COMMANDS as AVAILABLE_COMMANDS_EVENT, CONNECTION as CONNECTION_EVENT,
+    PERMISSION as PERMISSION_EVENT, SESSION_CONFIG as SESSION_CONFIG_EVENT, STAGE as STAGE_EVENT,
+};
 type HandshakeResult = Result<AgentConnectionInfo, String>;
 type HandshakeSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<HandshakeResult>>>>;
 
@@ -401,9 +402,19 @@ struct AgentCapabilityInfo {
 pub struct AgentHostState {
     workers: Arc<Mutex<HashMap<String, AgentWorker>>>,
     permissions: Arc<Mutex<HashMap<String, PendingPermission>>>,
+    /// The one publication path out of the host. Created on the first
+    /// connection, because that is the first point an `AppHandle` exists, and
+    /// shared from then on so the sequence is host-wide rather than per
+    /// connection: a client that multiplexes six channels needs one order.
+    events: OnceLock<Arc<AgentEventBus>>,
 }
 
 impl AgentHostState {
+    /// The event bus, created on first use.
+    pub(crate) fn events(&self, app: &AppHandle) -> Arc<AgentEventBus> {
+        Arc::clone(self.events.get_or_init(|| AgentEventBus::new(app.clone())))
+    }
+
     /// Whether any live connection was launched from the given profile.
     /// Fails closed: a poisoned worker registry counts as connected.
     pub(crate) fn has_profile_connection(&self, profile_id: &str) -> bool {
@@ -497,6 +508,9 @@ enum AgentHostCommand {
 enum AgentPromptMode {
     Standard,
     IsolatedCritic,
+    /// One slice of a fan-out. Unlike a critic, it needs its capability's read
+    /// tools; unlike a standard turn, it may not reach the staged tree.
+    DelegatedRun,
 }
 
 fn local_prompt_tools(
@@ -509,7 +523,13 @@ fn local_prompt_tools(
     let mut tools = agent_studio::native_skill_tools();
     tools.extend(agent_mcp::native_tool_definitions());
     tools.extend(source_tools);
-    tools.extend(agent_native_stage::native_tool_definitions());
+    // A delegated run reads. Withholding the staging tools is the enforcement
+    // half of the rule the run contract states: reading fans out, writing stays
+    // single-threaded. The contract refuses a capability that asks for them;
+    // this makes sure they are absent even if one slipped through.
+    if mode != AgentPromptMode::DelegatedRun {
+        tools.extend(agent_native_stage::native_tool_definitions());
+    }
     tools
 }
 
@@ -574,6 +594,7 @@ pub async fn connect_local(
     profile_id: &str,
     model: String,
 ) -> Result<AgentConnectionInfo, String> {
+    let events = state.events(app);
     let app_for_prepare = app.clone();
     let profile_for_prepare = profile_id.to_string();
     let runtime = tokio::task::spawn_blocking(move || {
@@ -596,13 +617,19 @@ pub async fn connect_local(
         .set(native_security_scope.clone())
         .map_err(|_| "Studio produced duplicate native security scope evidence.".to_string())?;
     let worker_stages = Arc::clone(&stages);
-    let turn_app = app.clone();
+    let turn_bus = Arc::clone(&events);
     let turn_events: TurnEventSink = Arc::new(move |event| {
-        let _ = turn_app.emit(TURN_EVENT, event);
+        turn_bus.publish_turn(event);
     });
-    let stage_app = app.clone();
-    let stage_events: StageEventSink = Arc::new(move |event| {
-        let _ = stage_app.emit(STAGE_EVENT, event);
+    let stage_bus = Arc::clone(&events);
+    let stage_events: StageEventSink = Arc::new(move |event: AgentStageEvent| {
+        let settled = AgentMilestone::StageSettled {
+            connection_id: event.connection_id.clone(),
+            session_id: Some(event.changes.session_id.clone()),
+            file_count: event.changes.files.len(),
+        };
+        stage_bus.publish(STAGE_EVENT, event);
+        stage_bus.milestone(settled);
     });
     let worker_id = connection_id.clone();
     let worker_profile_id = runtime.profile_id.clone();
@@ -1216,6 +1243,7 @@ async fn connect_process(
     spec: ProcessSpec,
     source_label: &str,
 ) -> Result<AgentConnectionInfo, String> {
+    let events = state.events(app);
     let connection_id = format!("connection-{}", uuid::Uuid::new_v4());
     let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
     let (command_tx, command_rx) = tokio::sync::mpsc::channel(8);
@@ -1226,13 +1254,13 @@ async fn connect_process(
     let workers = Arc::clone(&state.workers);
     let worker_handshake = Arc::clone(&handshake_tx);
     let worker_app = app.clone();
-    let turn_app = app.clone();
+    let turn_bus = Arc::clone(&events);
     let turn_events: TurnEventSink = Arc::new(move |event| {
-        let _ = turn_app.emit(TURN_EVENT, event);
+        turn_bus.publish_turn(event);
     });
-    let permission_app = app.clone();
+    let permission_bus = Arc::clone(&events);
     let permission_events: PermissionEventSink = Arc::new(move |event| {
-        let _ = permission_app.emit(PERMISSION_EVENT, event);
+        permission_bus.publish(PERMISSION_EVENT, event);
     });
     let checkpoint_directory = app
         .path()
@@ -1242,17 +1270,23 @@ async fn connect_process(
         .join("apply-checkpoints");
     let stages = Arc::new(SessionStages::persistent(checkpoint_directory));
     let worker_stages = Arc::clone(&stages);
-    let stage_app = app.clone();
-    let stage_events: StageEventSink = Arc::new(move |event| {
-        let _ = stage_app.emit(STAGE_EVENT, event);
+    let stage_bus = Arc::clone(&events);
+    let stage_events: StageEventSink = Arc::new(move |event: AgentStageEvent| {
+        let settled = AgentMilestone::StageSettled {
+            connection_id: event.connection_id.clone(),
+            session_id: Some(event.changes.session_id.clone()),
+            file_count: event.changes.files.len(),
+        };
+        stage_bus.publish(STAGE_EVENT, event);
+        stage_bus.milestone(settled);
     });
-    let session_config_app = app.clone();
+    let session_config_bus = Arc::clone(&events);
     let session_config_events: SessionConfigEventSink = Arc::new(move |event| {
-        let _ = session_config_app.emit(SESSION_CONFIG_EVENT, event);
+        session_config_bus.publish(SESSION_CONFIG_EVENT, event);
     });
-    let available_commands_app = app.clone();
+    let available_commands_bus = Arc::clone(&events);
     let available_commands_events: AvailableCommandsEventSink = Arc::new(move |event| {
-        let _ = available_commands_app.emit(AVAILABLE_COMMANDS_EVENT, event);
+        available_commands_bus.publish(AVAILABLE_COMMANDS_EVENT, event);
     });
     let permissions = Arc::clone(&state.permissions);
     let worker_permissions = Arc::clone(&permissions);
@@ -1390,7 +1424,7 @@ pub fn set_write_grant(
 ) -> Result<AgentStagedChangesInfo, String> {
     let (stages, authority) = connection_write_grant_context(state, connection_id)?;
     let changes = stages.set_grant_for_mode(session_id, granted, mode, authority)?;
-    let _ = app.emit(
+    bus(app).publish(
         STAGE_EVENT,
         AgentStageEvent {
             connection_id: connection_id.to_string(),
@@ -1408,7 +1442,7 @@ pub fn set_write_grant(
                 return;
             };
             if let Ok(Some(changes)) = stages.expire_elapsed_unattended_grant(&expiry_session_id) {
-                let _ = expiry_app.emit(
+                bus(&expiry_app).publish(
                     STAGE_EVENT,
                     AgentStageEvent {
                         connection_id: expiry_connection_id,
@@ -1432,7 +1466,7 @@ pub fn set_stage_mode(
 ) -> Result<AgentStagedChangesInfo, String> {
     let stages = connection_stages(state, connection_id)?;
     let changes = stages.set_mode(session_id, mode)?;
-    let _ = app.emit(
+    bus(app).publish(
         STAGE_EVENT,
         AgentStageEvent {
             connection_id: connection_id.to_string(),
@@ -1452,7 +1486,7 @@ pub fn discard_staged_changes(
 ) -> Result<AgentStagedChangesInfo, String> {
     let stages = connection_stages(state, connection_id)?;
     let changes = stages.discard(session_id)?;
-    let _ = app.emit(
+    bus(app).publish(
         STAGE_EVENT,
         AgentStageEvent {
             connection_id: connection_id.to_string(),
@@ -1473,7 +1507,7 @@ pub fn discard_staged_file(
 ) -> Result<AgentStagedChangesInfo, String> {
     let stages = connection_stages(state, connection_id)?;
     let changes = stages.discard_file(session_id, path)?;
-    let _ = app.emit(
+    bus(app).publish(
         STAGE_EVENT,
         AgentStageEvent {
             connection_id: connection_id.to_string(),
@@ -1547,7 +1581,7 @@ pub async fn apply_staged_changes(
     let result = tokio::task::spawn_blocking(move || stages.apply_staged(&session_id, &revision))
         .await
         .map_err(|_| "Staged apply task did not complete.".to_string())??;
-    let _ = app.emit(
+    bus(app).publish(
         STAGE_EVENT,
         AgentStageEvent {
             connection_id: connection_id.to_string(),
@@ -1588,7 +1622,7 @@ pub async fn create_staged_bundle(
     })
     .await
     .map_err(|_| "Fresh bundle creation task did not complete.".to_string())??;
-    let _ = app.emit(
+    bus(app).publish(
         STAGE_EVENT,
         AgentStageEvent {
             connection_id: connection_id.to_string(),
@@ -1609,7 +1643,7 @@ pub async fn restore_staged_checkpoint(
     let result = tokio::task::spawn_blocking(move || stages.restore_checkpoint(&session_id))
         .await
         .map_err(|_| "Checkpoint restore task did not complete.".to_string())??;
-    let _ = app.emit(
+    bus(app).publish(
         STAGE_EVENT,
         AgentStageEvent {
             connection_id: connection_id.to_string(),
@@ -2215,6 +2249,62 @@ pub async fn prompt_isolated_critic(
     command_response(response_rx, "critic prompt").await
 }
 
+/// Send one delegated run's prompt on an isolated session.
+///
+/// Structurally the isolated critic's sibling, with one difference that matters:
+/// a critic has no tools, and a run needs its capability's read tools. What both
+/// refuse is the staged tree. The write-grant check is the same one, for the
+/// same reason: reading fans out, writing stays single-threaded, and delegation
+/// must not be what quietly breaks that.
+///
+/// Unlike the critic, this is available on external ACP agents too. A critic can
+/// be required to run natively because it only reads a packet Rust prepared; a
+/// run is real work, and restricting it to one provider would make the fan-out a
+/// property of which agent you connected rather than of the bundle.
+pub async fn prompt_delegated_run(
+    state: &AgentHostState,
+    connection_id: &str,
+    session_id: String,
+    text: String,
+    concept_paths: Vec<String>,
+) -> Result<AgentTurnInfo, String> {
+    let text = text.trim().to_string();
+    if text.is_empty() || text.chars().count() > MAX_PROMPT_CHARS {
+        return Err("The prepared run prompt is empty or exceeds the host limit.".to_string());
+    }
+    let commands = {
+        let workers = state
+            .workers
+            .lock()
+            .map_err(|_| "Agent host state is unavailable.".to_string())?;
+        let worker = workers
+            .get(connection_id)
+            .ok_or_else(|| "Agent connection was not found.".to_string())?;
+        if !worker.stages.write_grant_is_denied(&session_id)? {
+            return Err(
+                "Studio refused a delegated run on a session with a write grant.".to_string(),
+            );
+        }
+        worker.commands.clone()
+    };
+    let turn_id = format!("turn-{}", uuid::Uuid::new_v4());
+    let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+    commands
+        .send(AgentHostCommand::Prompt {
+            session_id,
+            turn_id,
+            text,
+            context_paths: concept_paths,
+            sources: Vec::new(),
+            task_context: None,
+            mode: AgentPromptMode::DelegatedRun,
+            response: response_tx,
+        })
+        .await
+        .map_err(|_| "Agent connection ended before accepting the run prompt.".to_string())?;
+    command_response(response_rx, "delegated run prompt").await
+}
+
 pub async fn cancel_turn(
     state: &AgentHostState,
     connection_id: &str,
@@ -2431,8 +2521,15 @@ fn disconnect_profile_workers(
     Ok(count)
 }
 
+/// The host's event bus, for call sites that hold an `AppHandle` but not the
+/// state. `AgentHostState` is managed at setup, so this resolves to the same
+/// bus the connection sinks publish through, and the sequence stays host-wide.
+fn bus(app: &AppHandle) -> Arc<AgentEventBus> {
+    app.state::<AgentHostState>().events(app)
+}
+
 fn emit_connection_event(app: &AppHandle, event: AgentConnectionEvent) {
-    let _ = app.emit(CONNECTION_EVENT, event);
+    bus(app).publish(CONNECTION_EVENT, event);
 }
 
 fn connection_message(message: &str) -> String {
@@ -6109,6 +6206,7 @@ mod tests {
         let state = AgentHostState {
             workers: Arc::new(Mutex::new(HashMap::new())),
             permissions: Arc::clone(&permissions),
+            events: OnceLock::new(),
         };
         let (permission_tx, mut permission_rx) = tokio::sync::mpsc::unbounded_channel();
         let permission_sink: PermissionEventSink = Arc::new(move |event| {

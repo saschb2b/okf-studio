@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { fillText, openBundleAtOverview, openBundle, renderApp } from "@/test/appHarness.tsx";
+import { fillText, openAgentThread, openBundleAtOverview, openBundle, renderApp } from "@/test/appHarness.tsx";
 
 describe("OKF Studio navigation features", () => {
   it("arrow-key navigation in the command palette steps through every result, not just the first two", async () => {
@@ -122,6 +122,66 @@ describe("OKF Studio navigation features", () => {
       expect(scrollSpy.mock.instances).toContain(row);
     });
     scrollSpy.mockRestore();
+  });
+
+  it("runs a planned fan-out against a connected agent and assembles the result", async () => {
+    const { user } = await openAgentThread("Fan-out Harness");
+
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await fillText(user, combo, "Plan delegated");
+    await user.keyboard("{Enter}");
+
+    const dialog = await screen.findByRole("dialog", { name: /plan delegated work/i });
+    await within(dialog).findByText(/of \d+ concepts/);
+
+    // With a connection live, the plan becomes runnable. Without one the button
+    // is disabled and the screen says planning does not need it.
+    const runButton = await within(dialog).findByRole("button", { name: /^Run \d+ runs$/ });
+    expect(runButton).toBeEnabled();
+    await user.click(runButton);
+
+    // The job reports what it could and could not merge, rather than a bare
+    // "done". In the browser mock artifacts cannot be validated, so every run
+    // completes without one and the assembly says so instead of claiming
+    // success.
+    const summary = await within(dialog).findByText(/^(Complete|Partial):/, undefined, {
+      timeout: 15_000,
+    });
+    expect(summary).toBeInTheDocument();
+    expect(summary.textContent).toMatch(/of \d+ runs covered/);
+  });
+
+  it("plans delegated work from the launcher without connecting an agent", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await openBundle(user);
+
+    // Planning needs no agent and no connection: it reads the parsed bundle.
+    // That is the point of the screen, so the test reaches it the way a user
+    // would, from the launcher, with nothing else set up.
+    await user.click(screen.getByRole("button", { name: /search and commands/i }));
+    const combo = await screen.findByRole("combobox");
+    await fillText(user, combo, "Plan delegated");
+    await user.keyboard("{Enter}");
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Plan delegated work" })).toBeInTheDocument();
+
+    // The summary is the answer: how many runs, over how many concepts.
+    const summary = await within(dialog).findByText(/of \d+ concepts/);
+    expect(summary).toBeInTheDocument();
+
+    // Switching the decomposition replans rather than leaving a stale answer.
+    const before = summary.textContent;
+    await user.click(within(dialog).getByRole("button", { name: "By folder" }));
+    await waitFor(() =>
+      expect(within(dialog).getByText(/of \d+ concepts/).textContent).not.toBe(before),
+    );
+
+    // Every plan states what it was computed against, so a stale one can be
+    // recognised rather than trusted.
+    expect(within(dialog).getByText(/Computed against/)).toBeInTheDocument();
   });
 
   it("survives an index that links back to its parent", async () => {

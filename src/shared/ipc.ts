@@ -2,6 +2,13 @@
 // window it calls Rust commands and plugins; in a browser or test it falls back
 // to an in-memory mock, so the UI runs and tests pass without the backend.
 
+import {
+  acceptAgentEnvelope,
+  emitAgentMilestone,
+  onAgentMilestone,
+  turnMilestoneFor,
+  type AgentMilestone,
+} from "./agentEvents.ts";
 import type {
   AttestationReport,
   Bundle,
@@ -2120,13 +2127,370 @@ export async function respondAgentPermission(
   return true;
 }
 
+/**
+ * Subscribe to one agent channel through the boundary check.
+ *
+ * Every agent event arrives inside an envelope carrying a host-wide sequence.
+ * Unwrapping it here, rather than at each call site, is what makes "a dropped
+ * event is reported" true for all six channels at once.
+ */
+async function listenAgentChannel(
+  channel: string,
+  handler: (data: unknown) => void,
+): Promise<() => void> {
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<unknown>(channel, (event) => {
+    const data = acceptAgentEnvelope(channel, event.payload);
+    if (data !== null) handler(data);
+  });
+}
+
+/**
+ * Subscribe to host milestones.
+ *
+ * Under Tauri these come from the Rust bus; in the browser mock they come from
+ * the same classification applied to the mock's own turn events, so a test
+ * waits on one signal either way.
+ */
+/** How a bundle-sized job divides into runs. Mirrors `SliceBy` in okf-core. */
+export type SliceBy = "folder" | "type" | "tag" | "link-neighbourhood";
+
+export interface SliceLimits {
+  maxSlices: number;
+  maxConceptsPerSlice: number;
+}
+
+export interface Slice {
+  key: string;
+  title: string;
+  conceptIds: string[];
+  excludedConceptIds: string[];
+}
+
+/** Why something is not in the plan. A cap that truncates silently reads, from
+ *  the outside, exactly like a bundle with less in it. */
+export type SliceExclusion =
+  | { kind: "slicesOverWidth"; droppedKeys: string[]; limit: number }
+  | { kind: "conceptsOverSliceCap"; sliceKey: string; dropped: number; limit: number }
+  | { kind: "unslicable"; conceptIds: string[]; reason: string };
+
+export interface SlicePlan {
+  by: SliceBy;
+  /** The bundle state this plan was computed against. */
+  fingerprint: string;
+  slices: Slice[];
+  exclusions: SliceExclusion[];
+}
+
+export const defaultSliceLimits: SliceLimits = { maxSlices: 12, maxConceptsPerSlice: 40 };
+
+/**
+ * Plan how a job over `root` divides into bounded runs.
+ *
+ * Read-only: this computes a preview and starts nothing.
+ */
+export async function planAgentSlices(
+  root: string,
+  by: SliceBy,
+  limits: SliceLimits = defaultSliceLimits,
+): Promise<SlicePlan> {
+  if (isTauri()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke<SlicePlan>("plan_agent_slices", { root, request: { by, limits } });
+  }
+  return mockPlanAgentSlices(by, limits);
+}
+
+/**
+ * The browser mock, planning over the fixture bundle with the same rules the
+ * Rust service uses: sorted keys, sorted ids, named exclusions.
+ */
+function mockPlanAgentSlices(by: SliceBy, limits: SliceLimits): SlicePlan {
+  const concepts = MOCK_BUNDLE.concepts;
+  const groups = new Map<string, { title: string; ids: Set<string> }>();
+  const unslicable: string[] = [];
+  const add = (key: string, title: string, id: string) => {
+    const group = groups.get(key) ?? { title, ids: new Set<string>() };
+    group.ids.add(id);
+    groups.set(key, group);
+  };
+  for (const concept of concepts) {
+    if (by === "folder") {
+      const cut = concept.id.lastIndexOf("/");
+      const folder = cut === -1 ? "" : concept.id.slice(0, cut);
+      add(folder, folder === "" ? "Bundle root" : folder, concept.id);
+    } else if (by === "type") {
+      if (!concept.type.trim()) unslicable.push(concept.id);
+      else add(concept.type, concept.type, concept.id);
+    } else if (by === "tag") {
+      const tags = concept.tags.filter((tag: string) => tag.trim());
+      if (tags.length === 0) unslicable.push(concept.id);
+      for (const tag of tags) add(tag, tag, concept.id);
+    } else {
+      const neighbourhood = new Set([concept.id, ...concept.links, ...concept.citedBy]);
+      groups.set(concept.id, { title: concept.title, ids: neighbourhood });
+    }
+  }
+
+  const exclusions: SliceExclusion[] = [];
+  if (unslicable.length > 0) {
+    exclusions.push({
+      kind: "unslicable",
+      conceptIds: [...unslicable].sort(),
+      reason: by === "type" ? "the concept declares no type" : "the concept declares no tags",
+    });
+  }
+  const keys = [...groups.keys()].sort();
+  const kept = keys.slice(0, limits.maxSlices);
+  const droppedKeys = keys.slice(limits.maxSlices);
+  if (droppedKeys.length > 0) {
+    exclusions.push({ kind: "slicesOverWidth", droppedKeys, limit: limits.maxSlices });
+  }
+  const slices = kept.flatMap((key) => {
+    const group = groups.get(key);
+    if (!group) return [];
+    const all = [...group.ids].sort();
+    const conceptIds = all.slice(0, limits.maxConceptsPerSlice);
+    const excludedConceptIds = all.slice(limits.maxConceptsPerSlice);
+    if (excludedConceptIds.length > 0) {
+      exclusions.push({
+        kind: "conceptsOverSliceCap",
+        sliceKey: key,
+        dropped: excludedConceptIds.length,
+        limit: limits.maxConceptsPerSlice,
+      });
+    }
+    return [{ key, title: group.title, conceptIds, excludedConceptIds }];
+  });
+  return { by, fingerprint: `mock-${MOCK_BUNDLE.concepts.length}`, slices, exclusions };
+}
+
+export interface RunBudget {
+  maxCost: number | null;
+  maxContextTokens: number | null;
+}
+
+export interface RunProvenance {
+  capabilityId: string;
+  capabilityVersion: string;
+  capabilityDigest: string;
+  sliceKey: string;
+  sliceFingerprint: string;
+}
+
+export interface DelegatedRun {
+  runId: string;
+  conceptIds: string[];
+  artifactKind: string;
+  budget: RunBudget;
+  tools: string[];
+  provenance: RunProvenance;
+}
+
+/** A resolved run and the prompt Rust built for it. */
+export interface PreparedRun {
+  run: DelegatedRun;
+  prompt: string;
+}
+
+/** Why a run will not start. Every variant names what to change. */
+export interface RunRefusal {
+  reason: string;
+  [field: string]: unknown;
+}
+
+export type RunResult =
+  | { status: "completed"; artifactKind: string; itemCount: number }
+  | { status: "failed"; message: string }
+  | { status: "stoppedAtBudget"; spentDescription: string }
+  | { status: "completedWithoutArtifact"; reason: string };
+
+export interface RunOutcome {
+  runId: string;
+  sliceKey: string;
+  sliceFingerprint: string;
+  result: RunResult;
+}
+
+export type AssemblyExclusion =
+  | { kind: "staleRun"; runId: string; sliceKey: string; sliceFingerprint: string }
+  | { kind: "failedRun"; runId: string; sliceKey: string; message: string }
+  | { kind: "stoppedAtBudget"; runId: string; sliceKey: string; spentDescription: string }
+  | { kind: "noArtifact"; runId: string; sliceKey: string; reason: string }
+  | { kind: "sliceNeverReported"; sliceKey: string };
+
+export interface Assembly {
+  fingerprint: string;
+  included: RunOutcome[];
+  exclusions: AssemblyExclusion[];
+  plannedSlices: number;
+  coveredSlices: number;
+  itemCount: number;
+  complete: boolean;
+}
+
+/**
+ * Resolve one run and build its prompt, or return why it will not start.
+ *
+ * The outer promise rejects only when the command itself failed. A refusal is a
+ * value: "this run is not allowed" is an answer, not an error.
+ */
+export async function prepareAgentRun(
+  root: string,
+  request: {
+    sliceKey: string;
+    conceptIds: string[];
+    sliceFingerprint: string;
+    capabilityId: string;
+    artifactKind: string;
+    budget: RunBudget;
+    depth?: number;
+  },
+  runId: string,
+): Promise<{ ok: true; prepared: PreparedRun } | { ok: false; refusal: RunRefusal }> {
+  if (!isTauri()) return mockPrepareAgentRun(request, runId);
+  const { invoke } = await import("@tauri-apps/api/core");
+  // Rust returns a Result, which serialises as exactly one of these arms, so
+  // the union narrows without an assertion.
+  const result = await invoke<{ Ok: PreparedRun } | { Err: RunRefusal }>("prepare_agent_run", {
+    root,
+    request: { depth: 0, ...request },
+    runId,
+  });
+  if ("Ok" in result) return { ok: true, prepared: result.Ok };
+  return { ok: false, refusal: result.Err };
+}
+
+/** Send a run's prompt on an isolated session that carries no write grant. */
+export async function promptAgentRun(
+  connectionId: string,
+  sessionId: string,
+  text: string,
+  conceptPaths: string[],
+): Promise<AgentTurnInfo> {
+  if (!isTauri()) return promptAgent(connectionId, sessionId, text);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<AgentTurnInfo>("prompt_agent_run", {
+    connectionId,
+    sessionId,
+    text,
+    conceptPaths,
+  });
+}
+
+/** Assemble what a fan-out returned, naming everything it could not merge. */
+export async function assembleAgentRuns(
+  root: string,
+  outcomes: RunOutcome[],
+  plannedSliceKeys: string[],
+): Promise<Assembly> {
+  if (!isTauri()) return mockAssembleAgentRuns(outcomes, plannedSliceKeys);
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<Assembly>("assemble_agent_runs", { root, outcomes, plannedSliceKeys });
+}
+
+/** The browser mock's resolution, mirroring the refusals Rust enforces. */
+function mockPrepareAgentRun(
+  request: Parameters<typeof prepareAgentRun>[1],
+  runId: string,
+): { ok: true; prepared: PreparedRun } | { ok: false; refusal: RunRefusal } {
+  if ((request.depth ?? 0) !== 0) {
+    return { ok: false, refusal: { reason: "nestedDelegation", depth: request.depth } };
+  }
+  if (request.conceptIds.length === 0) {
+    return { ok: false, refusal: { reason: "emptySlice", sliceKey: request.sliceKey } };
+  }
+  const measurable =
+    (request.budget.maxCost ?? 0) > 0 || (request.budget.maxContextTokens ?? 0) > 0;
+  if (!measurable) return { ok: false, refusal: { reason: "unbudgeted" } };
+
+  const conceptIds = [...new Set(request.conceptIds)].sort();
+  const run: DelegatedRun = {
+    runId,
+    conceptIds,
+    artifactKind: request.artifactKind,
+    budget: request.budget,
+    tools: ["okf_inspect", "okf_health_summary"],
+    provenance: {
+      capabilityId: request.capabilityId,
+      capabilityVersion: "1.0.0",
+      capabilityDigest: "mock-digest",
+      sliceKey: request.sliceKey,
+      sliceFingerprint: request.sliceFingerprint,
+    },
+  };
+  return {
+    ok: true,
+    prepared: {
+      run,
+      prompt:
+        `OKF delegated run ${runId}, capability ${request.capabilityId} 1.0.0.\n\n` +
+        `Work only on the ${conceptIds.length} concept(s) listed below. You cannot write.\n\n` +
+        `Concepts in this run:\n${conceptIds.map((id) => `- ${id}`).join("\n")}\n`,
+    },
+  };
+}
+
+function mockAssembleAgentRuns(outcomes: RunOutcome[], plannedSliceKeys: string[]): Assembly {
+  const sorted = [...outcomes].sort(
+    (left, right) => left.sliceKey.localeCompare(right.sliceKey) || left.runId.localeCompare(right.runId),
+  );
+  const fingerprint = sorted.find((outcome) => outcome.sliceFingerprint)?.sliceFingerprint ?? "";
+  const included: RunOutcome[] = [];
+  const exclusions: AssemblyExclusion[] = [];
+  const reported = new Set<string>();
+  for (const outcome of sorted) {
+    reported.add(outcome.sliceKey);
+    const { runId, sliceKey } = outcome;
+    if (outcome.sliceFingerprint !== fingerprint) {
+      exclusions.push({ kind: "staleRun", runId, sliceKey, sliceFingerprint: outcome.sliceFingerprint });
+    } else if (outcome.result.status === "failed") {
+      exclusions.push({ kind: "failedRun", runId, sliceKey, message: outcome.result.message });
+    } else if (outcome.result.status === "stoppedAtBudget") {
+      exclusions.push({
+        kind: "stoppedAtBudget",
+        runId,
+        sliceKey,
+        spentDescription: outcome.result.spentDescription,
+      });
+    } else if (outcome.result.status === "completedWithoutArtifact") {
+      exclusions.push({ kind: "noArtifact", runId, sliceKey, reason: outcome.result.reason });
+    } else {
+      included.push(outcome);
+    }
+  }
+  for (const key of plannedSliceKeys) {
+    if (!reported.has(key)) exclusions.push({ kind: "sliceNeverReported", sliceKey: key });
+  }
+  const coveredSlices = new Set(included.map((outcome) => outcome.sliceKey)).size;
+  const itemCount = included.reduce(
+    (total, outcome) => total + (outcome.result.status === "completed" ? outcome.result.itemCount : 0),
+    0,
+  );
+  return {
+    fingerprint,
+    included,
+    exclusions,
+    plannedSlices: plannedSliceKeys.length,
+    coveredSlices,
+    itemCount,
+    complete: exclusions.length === 0 && coveredSlices === plannedSliceKeys.length,
+  };
+}
+
+export async function onAgentMilestoneUpdate(
+  handler: (milestone: AgentMilestone) => void,
+): Promise<() => void> {
+  if (!isTauri()) return onAgentMilestone(handler);
+  return listenAgentChannel("agent-milestone", (data) => handler(data as AgentMilestone));
+}
+
 export async function onAgentTurnUpdate(handler: AgentTurnHandler): Promise<() => void> {
   if (!isTauri()) {
     agentTurnHandlers.add(handler);
     return () => agentTurnHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentTurnEvent>("agent-turn-update", (event) => handler(event.payload));
+  return listenAgentChannel("agent-turn-update", (data) => handler(data as AgentTurnEvent));
 }
 
 export async function onAgentPermissionUpdate(
@@ -2136,8 +2500,9 @@ export async function onAgentPermissionUpdate(
     agentPermissionHandlers.add(handler);
     return () => agentPermissionHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentPermissionEvent>("agent-permission-update", (event) => handler(event.payload));
+  return listenAgentChannel("agent-permission-update", (data) =>
+    handler(data as AgentPermissionEvent),
+  );
 }
 
 export async function onAgentStageUpdate(handler: AgentStageHandler): Promise<() => void> {
@@ -2145,8 +2510,7 @@ export async function onAgentStageUpdate(handler: AgentStageHandler): Promise<()
     agentStageHandlers.add(handler);
     return () => agentStageHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentStageEvent>("agent-stage-update", (event) => handler(event.payload));
+  return listenAgentChannel("agent-stage-update", (data) => handler(data as AgentStageEvent));
 }
 
 export async function onAgentSessionConfigUpdate(
@@ -2156,10 +2520,8 @@ export async function onAgentSessionConfigUpdate(
     agentSessionConfigHandlers.add(handler);
     return () => agentSessionConfigHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentSessionConfigEvent>(
-    "agent-session-config-update",
-    (event) => handler(event.payload),
+  return listenAgentChannel("agent-session-config-update", (data) =>
+    handler(data as AgentSessionConfigEvent),
   );
 }
 
@@ -2170,10 +2532,8 @@ export async function onAgentAvailableCommandsUpdate(
     agentAvailableCommandsHandlers.add(handler);
     return () => agentAvailableCommandsHandlers.delete(handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<AgentAvailableCommandsEvent>(
-    "agent-available-commands-update",
-    (event) => handler(event.payload),
+  return listenAgentChannel("agent-available-commands-update", (data) =>
+    handler(data as AgentAvailableCommandsEvent),
   );
 }
 
@@ -2778,6 +3138,15 @@ function mockBundleGeneration(info: AgentTurnInfo, text: string): string | null 
 }
 
 function mockAgentResponse(text: string, taskId?: OkfTaskId): string {
+  if (text.startsWith("OKF delegated run ")) {
+    const concepts = [...text.matchAll(/^- (.+)$/gmu)].map((match) => match[1]);
+    return (
+      `Reviewed ${concepts.length} concept(s) in this run.\n\n` +
+      "```okf-artifact\n" +
+      JSON.stringify({ schemaVersion: 1, kind: "health-report", items: concepts }) +
+      "\n```"
+    );
+  }
   if (text.startsWith("OKF critic pass for ")) {
     const artifactId = /"artifactId"\s*:\s*"([^"]+)"/u.exec(text)?.[1] ?? "mock-artifact";
     const artifactRevision = Number(/"revision"\s*:\s*(\d+)/u.exec(text)?.[1] ?? "1");
@@ -3244,6 +3613,10 @@ function emitAgentPermission(event: AgentPermissionEvent): void {
 
 function emitAgentTurn(event: AgentTurnEvent): void {
   for (const handler of agentTurnHandlers) handler(event);
+  // Mock parity with the Rust bus: the same classification, so a test that
+  // waits on a milestone here is waiting on what the host would publish.
+  const milestone = turnMilestoneFor(event);
+  if (milestone) emitAgentMilestone(milestone);
 }
 
 function emitAgentAvailableCommands(event: AgentAvailableCommandsEvent): void {
@@ -3282,10 +3655,8 @@ export async function onAgentConnectionState(
     return () => agentConnectionHandlers.delete(handler);
   }
   agentConnectionHandlers.add(handler);
-  agentConnectionListener ??= import("@tauri-apps/api/event").then(({ listen }) =>
-    listen<AgentConnectionEvent>("agent-connection-state", (event) => {
-      receiveAgentConnectionEvent(event.payload);
-    }),
+  agentConnectionListener ??= listenAgentChannel("agent-connection-state", (data) =>
+    receiveAgentConnectionEvent(data as AgentConnectionEvent),
   );
   try {
     await agentConnectionListener;

@@ -225,6 +225,14 @@ export function CommandPalette() {
     },
     {
       kind: "action",
+      id: "act:delegation-plan",
+      label: "Plan delegated work",
+      hint: "",
+      needs: "bundle",
+      run: () => actions.setDelegationPlanOpen(true),
+    },
+    {
+      kind: "action",
       id: "act:bundle-connections",
       label: "Manage bundle connections",
       hint: "",

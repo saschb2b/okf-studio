@@ -282,4 +282,4 @@ flowchart TD
 
 # Follow-on transformation
 
-This roadmap completed the domain task, context, safety, artifact, and integration foundation. It did not yet define how agents should write or revise the prose inside OKF concepts. [OKF Writing Quality](okf-writing-quality-roadmap.md) plans that follow-on work around reader purpose, evidence-preserving revision, advisory diagnostics, and provider benchmarks based on real writing rather than fluent output alone.
+This roadmap completed the domain task, context, safety, artifact, and integration foundation. It did not yet define how agents should write or revise the prose inside OKF concepts. [OKF Writing Quality](okf-writing-quality-roadmap.md) plans that follow-on work around reader purpose, evidence-preserving revision, advisory diagnostics, and provider benchmarks based on real writing rather than fluent output alone. [Agent Harness Evolution](agent-harness-roadmap.md) plans the layer above it: decomposing a bundle-sized job into budgeted parallel runs instead of one long thread.

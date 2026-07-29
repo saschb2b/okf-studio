@@ -30,6 +30,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Studio Transformation](product/studio-roadmap.md) - Sequenced work packages for creation, curation, querying, reviewed writes, and external-agent isolation.
 * [OKF Agent Specialization](product/agent-specialization-roadmap.md) - Sequenced work packages for specialized OKF skills, artifacts, routines, and entry points.
 * [OKF Writing Quality](product/okf-writing-quality-roadmap.md) - Sequenced work for evidence-preserving authoring, prose revision, advisory diagnostics, and measurable provider quality.
+* [Agent Harness Evolution](product/agent-harness-roadmap.md) - Sequenced work for deterministic decomposition, budgeted parallel runs, and measured orchestration efficiency.
 * [OKF Retrieval Intelligence](product/retrieval-intelligence/retrieval-intelligence-roadmap.md) - The next research branch for routed retrieval, coherent context, diagnostics, and reviewed corpus repair.
 * [Integrated Git Support](product/git-integration/git-integration-roadmap.md) - Sequenced work for repository status, staging, commits, history, and explicit remote operations.
 * [OKF Ecosystem Response](product/okf-ecosystem-response-roadmap.md) - Value-led work packages for compatibility, profiles, living knowledge, provenance, projections, and interoperability experiments.
@@ -90,6 +91,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 # Architecture
 
 * [Agent System](architecture/agent-system.md) - External ACP agents, Studio Agent, credentials, scoped tools, permissions, and reviewed writes.
+* [Agent Orchestration](architecture/agent-orchestration.md) - Delegated runs over Rust-computed context slices, one writer, declared budgets, and the protocol limit on governing external subagents.
 * [Tech Stack](architecture/tech-stack.md) - Tauri 2.0, the Rust core, the frontend, and why.
 * [Bundle Detection](architecture/bundle-detection.md) - The algorithm that finds OKF bundles in a folder.
 * [OKF Parsing](architecture/okf-parsing.md) - How concepts, links, and indexes are parsed.
@@ -104,6 +106,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 # Reference
 
 * [Zed Agent System Research](reference/zed-agent-system.md) - Primary-source patterns and constraints adopted for OKF Studio.
+* [Agent Harness Research](reference/agent-harness-research.md) - What control surfaces such as T3 Code actually implement, what the multi-agent literature settles, and what ACP cannot expose.
 * [Specialized Agent Systems Research](reference/specialized-agent-systems.md) - Product patterns for turning the agent foundation into an OKF-specialized workspace.
 * [OKF Spec Summary](reference/okf-spec-summary.md) - The v0.1 rules Studio must honor.
 * [OKF Reference HTML Visualizer](reference/okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.

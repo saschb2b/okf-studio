@@ -18,13 +18,13 @@ Tauri is a framework for small, fast, secure desktop and mobile apps. It pairs a
 
 # What we use
 
-- **Core model:** Rust "core" process + webview "frontend." They communicate over **commands** (frontend → Rust, request/response) and **events** (Rust → frontend, streaming). This is our [IPC surface](../architecture/ipc-and-security.md).
+- **Core model:** a Rust "core" process and a webview "frontend". They communicate over commands, which run from the frontend to Rust as request and response, and events, which stream from Rust to the frontend. This is our [IPC surface](../architecture/ipc-and-security.md).
 - **Plugins (official):**
   - `tauri-plugin-dialog`: native file/folder pickers ([First Run](../ux/first-run.md)).
   - `tauri-plugin-store`: small persisted key/value (recent folders, settings).
   - `tauri-plugin-notification`: opt-in local desktop notification permission and delivery for private background-thread state.
   - File watching via the Rust `notify` crate (or an fs-watch plugin), surfaced as events for [Live Reload](../features/live-reload.md).
-- **Capabilities & permissions (v2):** Tauri denies access by default. A `capabilities/` config grants specific permissions scoped to windows. Studio grants the webview store, opener, updater, notification, and window capabilities, but no dialog, filesystem, or general network capability. Typed Rust commands own filesystem, fetch, and agent operations behind the [IPC boundary](../architecture/ipc-and-security.md).
+- **Capabilities and permissions (v2):** Tauri denies access by default. A `capabilities/` config grants specific permissions scoped to windows. Studio grants the webview store, opener, updater, notification, and window capabilities, but no dialog, filesystem, or general network capability. Typed Rust commands own filesystem, fetch, and agent operations behind the [IPC boundary](../architecture/ipc-and-security.md).
 
 # Project shape
 
@@ -43,6 +43,6 @@ okf-studio/
 
 # Per-platform prerequisites
 
-- **All:** a recent stable **Rust** toolchain + Node.js.
-- **Ubuntu/Linux:** `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`, and related GTK packages.
-- **Windows:** **WebView2 runtime** (preinstalled on Win 11) and the **MSVC** C++ build tools.
+- **All:** a recent stable Rust toolchain and Node.js.
+- **Ubuntu and Linux:** `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`, and related GTK packages.
+- **Windows:** the WebView2 runtime (preinstalled on Windows 11) and the MSVC C++ build tools.

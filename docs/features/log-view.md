@@ -18,10 +18,10 @@ Renders a bundle's `log.md` as a readable timeline instead of raw markdown. That
 # Timeline
 
 - The [Rust core](../architecture/okf-parsing.md) parses `log.md` into dated entries, the `log: LogEntry[]` shape in the [data model](../architecture/data-model.md).
-- Entries render **grouped by their ISO `YYYY-MM-DD` date**, newest group first. Each group is a small date heading over a **timeline**. Entries hang off a hairline rail, one dot per entry. **Each entry renders separately** as its own block, because joined consecutive lines would merge into one markdown paragraph blob.
-- The dot takes the entry's **conventional kind color**. The log convention leads each entry with `**Creation**` / `**Update**` / `**Fix**` / `**Deprecation**`, mapped to the ok / accent / warn / error roles. A scan of the rail therefore shows *what kind* of change happened when. An unconventional lead falls back to a neutral dot. This is the one place those roles color the log, and the entry text stays plain.
-- Entry **links behave like the [reader's](concept-reader.md)**. A log line naming the concepts it changed is navigation. A concept or section link therefore drives the shared selection, and the panel stays open while the reader updates behind it. An external link opens in the system browser with the same outbound cues. No click ever takes the webview itself away from the app.
-- A date heading that is not ISO `YYYY-MM-DD` still renders, and [Validation](validation.md) reports it as a **non-blocking warning**. Reported, never fatal.
+- Entries render grouped by their ISO `YYYY-MM-DD` date, newest group first. Each group is a small date heading over a timeline. Entries hang off a hairline rail, one dot per entry. Each entry renders separately as its own block, because joined consecutive lines would merge into one markdown paragraph blob.
+- The dot takes the entry's conventional kind color. The log convention leads each entry with `**Creation**` / `**Update**` / `**Fix**` / `**Deprecation**`, mapped to the ok / accent / warn / error roles. A scan of the rail therefore shows *what kind* of change happened when. An unconventional lead falls back to a neutral dot. This is the one place those roles color the log, and the entry text stays plain.
+- Entry links behave like the [reader's](concept-reader.md). A log line naming the concepts it changed is navigation. A concept or section link therefore drives the shared selection, and the panel stays open while the reader updates behind it. An external link opens in the system browser with the same outbound cues. No click ever takes the webview itself away from the app.
+- A date heading that is not ISO `YYYY-MM-DD` still renders, and [Validation](validation.md) reports it as a non-blocking warning. Reported, never fatal.
 
 # Empty state
 

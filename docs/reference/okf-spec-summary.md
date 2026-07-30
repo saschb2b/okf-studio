@@ -27,20 +27,20 @@ A bundle is conformant when:
 
 ## The consumer contract (our side)
 
-A consumer **MUST NOT reject a bundle** for any of: missing optional fields, unknown `type` values, unknown extra frontmatter keys, broken cross-links, or missing `index.md`. A consumer that doesn't understand the declared version should still attempt best-effort rendering. This is the basis of Studio's [tolerant-consumer principle](../product/principles.md) and its [Validation](../features/validation.md) feature.
+A consumer MUST NOT reject a bundle for any of: missing optional fields, unknown `type` values, unknown extra frontmatter keys, broken cross-links, or missing `index.md`. A consumer that doesn't understand the declared version should still attempt best-effort rendering. This is the basis of Studio's [tolerant-consumer principle](../product/principles.md) and its [Validation](../features/validation.md) feature.
 
 The reference repo ships its own consumer, the [OKF Reference HTML Visualizer](okf-reference-visualizer.md). OKF Studio is the native desktop counterpart to it. The repo also ships a set of [sample bundles](okf-sample-bundles.md) that any conformant consumer should render.
 
 ## Concepts
 
-- **Frontmatter:** `type` is required. Recommended fields are `title`, `description`, `resource`, `tags`, and `timestamp`. Producers may add any other keys, and consumers preserve them (our [`extra`](../architecture/data-model.md) map).
+- Frontmatter: `type` is required. Recommended fields are `title`, `description`, `resource`, `tags`, and `timestamp`. Producers may add any other keys, and consumers preserve them (our [`extra`](../architecture/data-model.md) map).
 - **Concept ID** = file path minus `.md`. `tables/orders.md` becomes `tables/orders`.
-- **Body:** ordinary markdown. Conventional headings are `# Schema`, `# Examples`, and `# Citations`.
+- Body: ordinary markdown. Conventional headings are `# Schema`, `# Examples`, and `# Citations`.
 
 ## Links
 
-- **Bundle-absolute** (`/tables/x.md`, from the bundle root). Recommended, because it survives file moves.
-- **Relative** (`x.md`, `../d/x.md`).
+- Bundle-absolute (`/tables/x.md`, from the bundle root). Recommended, because it survives file moves.
+- Relative (`x.md`, `../d/x.md`).
 - A link asserts a relationship, and the surrounding prose carries its meaning. Studio tolerates broken links. See [OKF Parsing](../architecture/okf-parsing.md) for resolution.
 
 ## Reserved files

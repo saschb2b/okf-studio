@@ -16,16 +16,16 @@ Opening a bundle drops you at the root concept next to a force-directed [graph](
 
 # What it is
 
-An **Overview**: a peer of the graph and reader that summarizes the open bundle and links straight into it. It is the default landing for a freshly opened bundle. The graph and reader stay one click away, and remain the home once you've oriented.
+An Overview: a peer of the graph and reader that summarizes the open bundle and links straight into it. It is the default landing for a freshly opened bundle. The graph and reader stay one click away, and remain the home once you've oriented.
 
 Sections, each a compact card, every item a link that selects the concept (or applies a filter):
 
-- **At a glance**: concept count, distinct [types](../ux/theming.md), tag count, `okf_version`/confidence, last-updated (newest concept `timestamp`).
-- **Composition**: type distribution as a small bar/treemap, each type a filter into the [faceted view](faceted-search.md).
-- **Hubs**: the most-connected concepts (highest `degree`), the natural entry points.
-- **Loose ends**: **orphans** (no links in or out) and near-orphans, the concepts the graph buries.
-- **Health**: [validation](../features/validation.md) issue counts, **broken links**, and **staleness** (oldest `timestamp`s), so a bundle's rough edges are visible before you trust it.
-- **Recently changed** *(optional)*: newest concepts by `timestamp`. Pairs later with a [live-reload](../features/live-reload.md) change feed.
+- At a glance: concept count, distinct [types](../ux/theming.md), tag count, `okf_version`/confidence, last-updated (newest concept `timestamp`).
+- Composition: type distribution as a small bar/treemap, each type a filter into the [faceted view](faceted-search.md).
+- Hubs: the most-connected concepts (highest `degree`), the natural entry points.
+- Loose ends: orphans (no links in or out) and near-orphans, the concepts the graph buries.
+- Health: [validation](../features/validation.md) issue counts, broken links, and staleness (oldest `timestamp`s), so a bundle's rough edges are visible before you trust it.
+- Recently changed *(optional)*: newest concepts by `timestamp`. Pairs later with a [live-reload](../features/live-reload.md) change feed.
 
 # Why it's cheap
 
@@ -40,4 +40,4 @@ Everything here already exists on the [data model](../architecture/data-model.md
 
 # Non-goals
 
-Not analytics-for-analytics' sake: every number is a **door** (a link or filter), not a vanity metric. No time-series, no external data. It summarizes what the bundle already says about itself.
+Not analytics-for-analytics' sake: every number is a door (a link or filter), not a vanity metric. No time-series, no external data. It summarizes what the bundle already says about itself.

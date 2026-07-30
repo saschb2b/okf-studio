@@ -24,11 +24,11 @@ Studio extends the reference implementation's single-file HTML visualizer with n
 - **Agent / AI builders** who curate agent-readable knowledge and need to see the relationship graph their agents will traverse.
 - **Bundle readers** who receive a repository subdirectory or archive and need to understand it quickly.
 
-See [Personas and Use Cases](personas.md) for these audiences as concrete personas with the jobs they hire the app to do, and [How It Compares](comparison.md) for where it sits against PKM tools, static-site generators, and the OKF reference visualizer.
+See [Personas and Use Cases](personas.md) for these audiences as concrete personas, with the jobs they hire the app to do. [How It Compares](comparison.md) covers where it sits against PKM tools, static-site generators, and the OKF reference visualizer.
 
 # Why it exists
 
-OKF is markdown with frontmatter, which makes bundles portable but leaves their relationship graph implicit. Studio makes the graph, backlinks, and progressive-disclosure structure visible, then lets an agent query that knowledge, create a bundle from sources, or propose improvements without moving the work into a separate tool. Proposed files remain staged until validation, review, and an explicit Apply or Create action. The reader still honors OKF's [tolerant-consumer contract](../reference/okf-spec-summary.md) and does not reject a real-world bundle for soft issues.
+OKF is markdown with frontmatter, which makes bundles portable but leaves their relationship graph implicit. Studio makes the graph, backlinks, and progressive-disclosure structure visible. An agent can then query that knowledge, create a bundle from sources, or propose improvements, without moving the work into a separate tool. Proposed files remain staged until validation, review, and an explicit Apply or Create action. The reader still honors OKF's [tolerant-consumer contract](../reference/okf-spec-summary.md) and does not reject a real-world bundle for soft issues.
 
 # How it works at a glance
 

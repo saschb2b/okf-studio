@@ -13,9 +13,9 @@ generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 | Keys | Action |
 |------|--------|
 | `Ctrl/Cmd + O` | Open folder ([First Run](first-run.md)) |
-| `Ctrl/Cmd + Shift + O` | Open from URL — fetch a [remote bundle](../features/bundle-switcher.md) |
-| `Ctrl/Cmd + P` | Open the [Bundle Switcher](../features/bundle-switcher.md) — switch bundle, reopen a recent, or open a folder |
-| `Ctrl/Cmd + K` or `/` | Open the global search [launcher](../features/command-palette.md) — jump to a concept, full-text search, or run a command |
+| `Ctrl/Cmd + Shift + O` | Open from URL: fetch a [remote bundle](../features/bundle-switcher.md) |
+| `Ctrl/Cmd + P` | Open the [Bundle Switcher](../features/bundle-switcher.md): switch bundle, reopen a recent, or open a folder |
+| `Ctrl/Cmd + K` or `/` | Open the global search [launcher](../features/command-palette.md): jump to a concept, full-text search, or run a command |
 | `Ctrl/Cmd + Shift + A` | Toggle the [Agent Panel](../features/agent-panel.md) |
 | `Ctrl/Cmd + Shift + G` | Toggle [Integrated Git](git-workflow.md) and move focus between its active tab and status-bar opener |
 | `Ctrl/Cmd + PageUp` / `Ctrl/Cmd + PageDown` | Previous / next live Agent thread while a thread switcher item is focused |
@@ -44,7 +44,7 @@ generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 | `+` `-` | Faster / slower pace (inside the speed reader) |
 | `Space` or `Enter` | Continue past a code block, table, equation, or diagram the player stopped at |
 | `O` | Toggle [Bundle Home](../features/bundle-home.md) |
-| `T` | Toggle the [lineage](../proposals/lineage-and-traversal.md) panel — trace the active concept |
+| `T` | Toggle the [lineage](../proposals/lineage-and-traversal.md) panel: trace the active concept |
 | `L` | Toggle the `log.md` view |
 | `R` | Re-scan the folder |
 | `Ctrl/Cmd + ,` | [Settings](settings.md) (theme, reader text size, scan) |

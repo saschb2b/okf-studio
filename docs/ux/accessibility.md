@@ -12,8 +12,8 @@ Every primary action is reachable without a mouse, with documented [shortcuts](k
 
 # Focus
 
-- Focus is always **visible** — an unmistakable focus ring, not just a color shift.
-- Focus order follows the reading order of the [three panes](browsing-layout.md): sidebar, then graph, then reader. Tabbing moves between panes predictably; within a pane it follows the visible layout.
+- Focus is always **visible** as an unmistakable focus ring, never as a color shift alone.
+- Focus order follows the reading order of the [three panes](browsing-layout.md): sidebar, then graph, then reader. Tabbing moves between panes predictably. Within a pane it follows the visible layout.
 
 The [Agent Panel](../features/agent-panel.md) reveals horizontally scrolled agent and thread items when they receive focus. Menus and attachment popovers focus their first useful action and return focus to their trigger on Escape. Closing the panel returns focus to its status-bar opener.
 

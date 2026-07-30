@@ -26,9 +26,9 @@ sources:
 
 # Research question
 
-Studio hosts agents it does not own. The question this research answers is what a host can add above a harness it did not write, how far delegated work can be governed from that position, and which of those additions pay for themselves in tokens and latency rather than only in features.
+Studio hosts agents it does not own. This research asks what a host can add above a harness it did not write, and how far that host can govern delegated work. The last question is which of those additions pay for themselves in tokens and latency rather than only in features.
 
-The comparison target was chosen because it is the closest product on the market rather than the loudest: T3 Code is an open-source desktop application whose job is to run other people's coding agents, which is structurally what the [Agent Panel](../features/agent-panel.md) does for knowledge work.
+The comparison target is T3 Code, the closest product on the market rather than the loudest. T3 Code is an open-source desktop application whose job is to run other people's coding agents. The [Agent Panel](../features/agent-panel.md) does structurally the same thing for knowledge work.
 
 # The premise this research corrects
 

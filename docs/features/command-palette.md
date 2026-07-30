@@ -8,7 +8,7 @@ generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 
 # What it does
 
-A **global launcher**, opened with `Ctrl/Cmd + K`, with `/`, or by clicking the search field in the top bar, that jumps to any concept, searches concept **body text**, and runs quick actions such as open folder, open [Bundle Home](bundle-home.md), open [Bundle details](metadata-inspector.md), manage [Bundle Connections](interoperability-lab.md), [create a shareable bundle](recipient-projections.md), toggle [log](log-view.md), and re-scan (see [keyboard shortcuts](../ux/keyboard-shortcuts.md)). It is the one fast way to get anywhere without reaching for the mouse, and the app's primary search entry point.
+A **global launcher** that opens with `Ctrl/Cmd + K`, with `/`, or by a click on the search field in the top bar. It jumps to any concept and searches concept **body text**. It also runs quick actions such as open folder, open [Bundle Home](bundle-home.md), open [Bundle details](metadata-inspector.md), manage [Bundle Connections](interoperability-lab.md), [create a shareable bundle](recipient-projections.md), toggle [log](log-view.md), and re-scan (see [keyboard shortcuts](../ux/keyboard-shortcuts.md)). It is the one fast way to get anywhere without the mouse, and the app's primary search entry point.
 
 # Matching & grouping
 

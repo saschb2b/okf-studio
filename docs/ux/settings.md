@@ -14,7 +14,7 @@ The settings workspace gives each concern a stable place and adds search across 
 
 # Opening Settings
 
-Settings opens from the Settings action at the foot of the [Activity Bar](browsing-layout.md), with `Ctrl/Cmd + ,` from the [keyboard map](keyboard-shortcuts.md), or from the [command palette](../features/command-palette.md). The workspace is a large bounded dialog rather than a separate application window, so closing it returns focus to the previous workspace context.
+Settings opens from the Settings action at the foot of the [Activity Bar](browsing-layout.md). It also opens with `Ctrl/Cmd + ,` from the [keyboard map](keyboard-shortcuts.md), or from the [command palette](../features/command-palette.md). The workspace is a large bounded dialog rather than a separate application window, so closing it returns focus to the previous workspace context.
 
 Preferences take effect immediately and persist on this device. The fixed footer states that Studio saves changes automatically, and keeps Reset to defaults and Done in reach.
 

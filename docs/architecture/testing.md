@@ -102,7 +102,7 @@ Vitest 4.1 reads the generated browser instance's handshake limit from the root 
 
 Coverage spans:
 
-- the agent conversation items: tool rows and cards across every status (including collapsed successful details and open running output), messages, plans, and grouped turns with one response footer,
+- the agent conversation items. Tool rows and cards across every status, including collapsed successful details and open running output, plus messages, plans, and grouped turns with one response footer,
 - the combined thread toolbar, OKF mention suggestions, and a full Thread composition at 440px and the 360px floor,
 - the attachment picker and session-configuration rail,
 - the live-work shelf and permission card,

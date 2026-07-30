@@ -58,7 +58,7 @@ Prompt reuse copies the submitted text and visible attachments into a new draft 
 
 - **Untidy, Safe, fixed:** current and archived sessions both used primary Resume styling. Only the newest current candidate now receives primary emphasis.
 - **Untidy, Safe, fixed before capture:** staged-operation recovery could start below the staged file scroll, and a final-process failure could present two competing connection actions.
-- **Glaring, Safe, fixed:** the shelf used a non-shrinking flex basis, which clipped the composer when all four work sections were present in a short 360px panel. It now yields height to the composer and keeps both shelf bands scrollable.
+- **Glaring, Safe, fixed:** the shelf used a non-shrinking flex basis. That clipped the composer when all four work sections were present in a short 360px panel. It now yields height to the composer and keeps both shelf bands scrollable.
 - **Glaring, Safe, fixed:** the permission checkbox label provided an 18px-high target. Its labelled hit area now meets the 24px floor.
 - **Untidy, Safe, fixed:** the first transcript-navigation strip floated over the scroll viewport and covered part of a response at the latest-prompt landing. It now docks below the viewport without reducing the composer's reachability.
 - **Glaring, Safe, fixed:** one accepted turn could render several response footers because tool calls split agent prose into separate protocol segments. Turn grouping preserves that order and owns one footer.

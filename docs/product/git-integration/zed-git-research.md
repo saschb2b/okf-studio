@@ -59,13 +59,13 @@ Studio should use the installed Git binary through `std::process::Command`, neve
 
 ## State model
 
-Zed preserves Git's two-state model. `FileStatus::Tracked` contains separate index and working-tree codes, while untracked, ignored, and unmerged entries remain distinct variants.[^3] That distinction drives a tri-state staging control instead of flattening every file to a generic “modified” row.
+Zed preserves Git's two-state model. `FileStatus::Tracked` contains separate index and working-tree codes. Untracked, ignored, and unmerged entries remain distinct variants.[^3] That distinction drives a tri-state staging control, instead of flattening every file to a generic "modified" row.
 
 Studio should return both `staged` and `unstaged` facts for every path and retain conflict state explicitly. A file may appear once while still showing that the index holds part of its change and the working tree holds the rest.
 
 ## Panel and update flow
 
-`GitPanel` owns the active repository, commit editor, projected status entries, counts, pending commit and remote tasks, the selected tab, history state, and repository subscriptions.[^4] It observes project and repository changes, schedules a bounded refresh, and rebuilds its visible projection without moving selection arbitrarily.[^5]
+`GitPanel` owns the active repository, the commit editor, projected status entries, and counts. It also owns pending commit and remote tasks, the selected tab, history state, and repository subscriptions.[^4] It observes project and repository changes, schedules a bounded refresh, and rebuilds its visible projection without moving selection arbitrarily.[^5]
 
 The panel has two top-level tabs: Changes and History. History has explicit loading, loaded, empty, and error states. The visible history list fetches commit detail lazily and opens a commit diff elsewhere instead of expanding the row into a second browsing surface.[^6]
 

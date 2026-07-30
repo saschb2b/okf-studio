@@ -58,7 +58,7 @@ Ollama exchanges argument objects and `tool_name` results, while LM Studio, llam
 
 Native connections use the same four guided starters and thread grant as ACP connections. The `studio_stage_propose` tool accepts an atomic batch of up to 16 complete, bundle-relative `.md` files. The limits are 64 KiB per file and 192 KiB per batch. The staging service applies the existing grant, canonical-root, protected-path, 64-file, and 8 MiB session checks to a cloned candidate before it replaces the in-memory stage. One rejected file therefore rejects the complete batch. The tool never writes to disk.
 
-Three more tools let the model inspect that stage. The `studio_stage_inventory` tool reports paths and sizes, `studio_stage_diff` returns a bounded unified diff, and `studio_stage_validate` runs the same isolated OKF validation used by the review UI. Their results stay inside the provider turn. No native tool can choose hunks, approve a revision, Apply, Restore, or create a destination. Those actions remain visible human controls in the existing staged-review surface.
+Three more tools let the model inspect that stage. The `studio_stage_inventory` tool reports paths and sizes, and `studio_stage_diff` returns a bounded unified diff. The `studio_stage_validate` tool runs the same isolated OKF validation the review UI uses. Their results stay inside the provider turn. No native tool can choose hunks, approve a revision, Apply, Restore, or create a destination. Those actions remain visible human controls in the existing staged-review surface.
 
 # OKF task routing and context preview
 
@@ -280,7 +280,7 @@ Reconnecting keeps its compact saved-work decision by showing only the newest cu
 
 After the user resolves any saved-work choice, the ordinary empty thread states that Studio attaches OKF context on the first send. It also states that Studio provides read-only bundle text and structured inspection tools.
 
-That first prompt keeps the user's text as its own final block. Before that block it places a client-context notice, the canonical OKF skill, specification, commands, templates, and a file resource link to the active bundle's root `index.md`. Agents that advertise embedded-context support receive the four trusted skill documents as Markdown resources. Other agents receive the same documents as labelled text blocks.
+That first prompt keeps the user's text as its own final block. Before that block it places a client-context notice. Then come the canonical OKF skill, the specification, commands, templates, and a file resource link to the active bundle's root `index.md`. Agents that advertise embedded-context support receive the four trusted skill documents as Markdown resources. Other agents receive the same documents as labelled text blocks.
 
 The bundle index remains a link because bundle content counts as untrusted knowledge and may change during the session. Later turns do not repeat the context. A failed first prompt retries it.
 

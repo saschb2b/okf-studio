@@ -35,7 +35,7 @@ A safe normalization names both the authored target and its relative replacement
 
 An OKF v0.2 `type: Attested Computation` concept exists for one purpose. A consumer can verify that a reported number came from the blessed computation, not from an agent writing plausible SQL. Studio does the part of that it can do honestly, and reports the rest as unavailable rather than as passed.
 
-It **resolves** the computation from an inline fence under `# Computation`, or from a containment-checked `computation` path. It refuses a contract carrying both, because which one ran would be a guess. It looks for the fence under that heading rather than taking the body's first fence, since a concept may show an example query in its prose.
+It **resolves** the computation from an inline fence under `# Computation`, or from a containment-checked `computation` path. It refuses a contract carrying both, because which one ran would be a guess. It looks for the fence under that heading rather than taking the body's first fence. A concept may show an example query in its prose.
 
 It **checks the receipt's shape** against the fields `executor.receipt` declares, because an attester cannot inspect evidence a run never returned.
 
@@ -59,7 +59,7 @@ Both call `attest_run`, so the answer cannot depend on who knocked.
 
 The **reader's dialog** takes a pasted receipt. It is a tool for someone who already holds one. Studio runs nothing, so today every receipt comes from elsewhere.
 
-The **agent panel** is the gate. `agent_receipt.rs` validates an `okf-receipt` fence in a turn, the third instance of the pattern `agent_artifact` and `agent_critic` already run. The verdict renders inside the turn, next to the number. This is where it belongs. The failure the type exists to prevent is an agent reporting a figure from a query it wrote itself, and the agent makes that claim here. Security research is consistent that readers ignore a passive indicator and heed one that interrupts the task. A badge on a concept page nobody consults mid-answer would be the ineffective shape.
+The **agent panel** is the gate. `agent_receipt.rs` validates an `okf-receipt` fence in a turn, the third instance of the pattern `agent_artifact` and `agent_critic` already run. The verdict renders inside the turn, next to the number. This is where it belongs. The type exists to prevent one failure: an agent reporting a figure from a query it wrote itself. The agent makes that claim here. Security research is consistent that readers ignore a passive indicator and heed one that interrupts the task. A badge on a concept page nobody consults mid-answer would be the ineffective shape.
 
 The agent supplies **only its receipt**. Studio reads the contract it checks that receipt against from the bundle, because an agent that could supply both sides could always make them agree. Studio refuses a receipt naming a concept the bundle does not have, rather than treating it as a contract of the agent's own making.
 

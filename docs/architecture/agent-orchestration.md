@@ -1,7 +1,7 @@
 ---
 type: Architecture Decision
 title: Agent Orchestration
-description: How Studio delegates bounded knowledge work to parallel agent runs, with Rust-computed context slices, one writer, declared budgets, and no claim to govern an external agent's own subagents.
+description: How Studio delegates bounded knowledge work to parallel agent runs. Rust computes the context slices, one writer holds the stage, budgets are declared, and Studio claims no control over an external agent's own subagents.
 tags: [architecture, agents, orchestration, subagents, delegation, token-economics]
 generated: { by: claude/unrecorded, at: 2026-07-29T15:20:00+02:00 }
 ---

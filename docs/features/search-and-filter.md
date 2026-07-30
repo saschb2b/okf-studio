@@ -25,12 +25,12 @@ The sidebar's filter field speaks a small [field grammar](../proposals/faceted-s
 - Computed predicates: `is:orphan` (no links in or out), `has:broken` (broken links).
 - Full-text: `"exact phrase"` and bare words. Unknown fields fall back to full-text rather than erroring (the [tolerant-consumer](../product/principles.md) stance).
 
-The field ANDs the terms. It parses to one predicate that the [graph](graph-view.md), the index tree, and a live **result count** (`N of M concepts`, with a Clear) all share: one filter state, one working set. The type/tag facet rails below AND in alongside it. Saved named queries and facet counts that reflect the current result set are the next steps ([proposal](../proposals/faceted-search.md)).
+The field ANDs the terms. It parses to one predicate. The [graph](graph-view.md), the index tree, and a live result count (`N of M concepts`, with a Clear) all share it: one filter state, one working set. The type/tag facet rails below AND in alongside it. Saved named queries and facet counts that reflect the current result set are the next steps ([proposal](../proposals/faceted-search.md)).
 
 # Type filters
 
 - The **Filter lens** in the [sidebar](../ux/browsing-layout.md) and the [graph legend](../ux/theming.md) both list every `type` present with its color. Clicking a type toggles its concepts in and out of the view. A dot on the lens switcher flags an active filter.
-- Because `type` values are open-ended ([the spec](../reference/okf-spec-summary.md) does not enumerate them), Studio builds the filters dynamically from whatever the bundle declares, never from a hard-coded list.
+- The `type` values are open-ended, because [the spec](../reference/okf-spec-summary.md) does not enumerate them. Studio therefore builds the filters from whatever the bundle declares, never from a hard-coded list.
 
 # Tag browsing
 

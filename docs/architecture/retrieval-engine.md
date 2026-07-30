@@ -8,7 +8,7 @@ generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
 
 # Decision
 
-`okf-core` owns retrieval semantics. It builds a deterministic structural manifest from the parsed bundle, classifies a query, executes one bounded route, compiles an evidence packet, and emits a retrieval receipt and diagnostic. Tauri authorizes the bundle root and persists disposable manifest files in app cache. React renders the result but does not rank content or read the filesystem.
+`okf-core` owns retrieval semantics. It builds a deterministic structural manifest from the parsed bundle and classifies a query. It then executes one bounded route, compiles an evidence packet, and emits a retrieval receipt and diagnostic. Tauri authorizes the bundle root and persists disposable manifest files in app cache. React renders the result but does not rank content or read the filesystem.
 
 The same core result feeds ordinary Agent Panel prompts, the native Studio Agent tool loop, and the read-only `okf_retrieve` MCP tool. Provider-specific embeddings, rerankers, and caches may contribute through typed states, but they do not change the evidence or security schema.
 

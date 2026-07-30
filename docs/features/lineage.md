@@ -35,7 +35,7 @@ A relationship that returns to an ancestor renders as **Cycle**. A diamond branc
 
 # Explained paths
 
-The target picker finds the shortest route under the current direction, relationship, and reliability filters. Each step names whether the traversal followed an outgoing or incoming edge and shows its relationship label, for example `Outgoing · Supports` or `Incoming · Supported by`. If no route matches, the panel says that the result is filter-specific rather than claiming the concepts are globally disconnected.
+The target picker finds the shortest route under the current direction, relationship, and reliability filters. Each step names whether the traversal followed an outgoing or incoming edge, and shows its relationship label. For example, `Outgoing · Supports` or `Incoming · Supported by`. If no route matches, the panel says that the result is filter-specific rather than claiming the concepts are globally disconnected.
 
 The path engine uses breadth-first search, keeps the same typed-edge overlay as the trees, and never visits a missing concept. Selecting any real row or path step opens that concept through the workspace's shared navigation.
 

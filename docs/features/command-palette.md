@@ -31,7 +31,7 @@ Each of these used to be the same undifferentiated wall of rows.
 | Capped | Says so. The Concepts group holds thirty. The footer reads "30 shown · 112 concepts match" rather than silently dropping the rest. |
 | No match | Names the query, says what was searched over, and offers the commands that still work. "No matches" alone left a failed query and nowhere to go. |
 
-A result's snippet quotes prose, not markdown source. The palette strips fences, links, headings, list markers, and inline HTML first, so an "In text" hit reads as a sentence instead of as `Scan[Rust core scans] Scan -- Graph[Graph view]`.
+A result's snippet quotes prose, not markdown source. The palette strips fences, links, headings, list markers, and inline HTML first. An "In text" hit then reads as a sentence instead of as `Scan[Rust core scans] Scan -- Graph[Graph view]`.
 
 The footer carries two hints and no more: `↑↓ navigate` and `↵ open`, as unboxed glyphs beside their verbs. Esc is not a footer hint. It sits at the top right of the search row as a boxed cap that *is* the close control. That is where a reader looks for one. A footer that lists every chord becomes a second toolbar competing with the results. The full keymap belongs in the [shortcuts overlay](../ux/keyboard-shortcuts.md), which is what that surface is for.
 

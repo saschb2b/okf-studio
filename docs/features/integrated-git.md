@@ -10,7 +10,7 @@ generated: { by: claude/unrecorded, at: 2026-07-19T18:30:00Z }
 
 OKF work is usually repository work. Studio applying a reviewed agent revision does not finish it. The user still needs to understand the repository delta, choose what belongs together, and create a durable checkpoint. Sending that loop to another application breaks the connection between the knowledge under review and the files that record it.
 
-Integrated Git keeps the ordinary repository loop beside the bundle. It is not a hosting client or a history editor. It covers the frequent path from “these knowledge files changed” to “this exact set is committed.” It leaves rebase, merge resolution, branching, stash, cherry-pick, and other advanced operations to a terminal or editor.
+Integrated Git keeps the ordinary repository loop beside the bundle. It is not a hosting client or a history editor. It covers the frequent path from "these knowledge files changed" to "this exact set is committed". Rebase, merge resolution, branching, stash, cherry-pick, and other advanced operations stay with a terminal or editor.
 
 # What the user can do
 

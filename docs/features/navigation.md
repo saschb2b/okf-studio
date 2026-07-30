@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Navigation
-description: Move through a bundle by progressive disclosure — the index tree, link following, and back/forward history.
+description: Move through a bundle by progressive disclosure: the index tree, link following, and back/forward history.
 tags: [feature, navigation]
 generated: { by: claude/unrecorded, at: 2026-07-29T14:42:58+02:00 }
 ---

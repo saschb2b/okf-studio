@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Validation
-description: Surface OKF conformance — errors and warnings — in the UI without ever refusing to render the bundle.
+description: Surface OKF conformance (errors and warnings) in the UI without ever refusing to render the bundle.
 tags: [feature, validation, conformance]
 generated: { by: claude/unrecorded, at: 2026-07-23T20:15:52+02:00 }
 ---

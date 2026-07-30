@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Concept Reader
-description: A reading-first pane — a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
+description: A reading-first pane: a centered, comfortable prose column with a quiet right context rail of outline, relationships, and metadata.
 tags: [feature, reader, markdown, core, reading]
 generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---

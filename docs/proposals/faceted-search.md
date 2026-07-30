@@ -1,7 +1,7 @@
 ---
 type: Proposal
 title: Faceted Query Bar
-description: Structured filtering over a bundle — field queries like `type:Table tag:revenue degree>5` and facet rails with counts — that filter the graph and reader live.
+description: Structured filtering over a bundle (field queries like `type:Table tag:revenue degree>5` and facet rails with counts) that filter the graph and reader live.
 tags: [proposal, search, filter, facets]
 generated: { by: claude/unrecorded, at: 2026-07-04T19:00:00Z }
 ---

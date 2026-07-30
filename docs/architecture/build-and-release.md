@@ -29,7 +29,7 @@ The 24.04 image is a floor, not a preference. The compiled policy passes `--disa
 
 Two GitHub Actions workflows (`.github/workflows/`):
 
-- `ci.yml`: on every push to `main` and every pull request, runs the fast checks. Those are the whole frontend (ESLint, `tsc` typecheck, the Vitest [suite](testing.md), and a production `vite build`) and the Rust core (`cargo clippy -D warnings` and `cargo test` on `okf-core`). The `okf-core` crate is pure Rust, with no WebKitGTK and no built frontend, so this stays quick. The release build handles the full `src-tauri` compile and exercises it on each OS.
+- `ci.yml`: on every push to `main` and every pull request, runs the fast checks. Those cover the whole frontend: ESLint, the `tsc` typecheck, the Vitest [suite](testing.md), and a production `vite build`. They also cover the Rust core, with `cargo clippy -D warnings` and `cargo test` on `okf-core`. The `okf-core` crate is pure Rust, with no WebKitGTK and no built frontend, so this stays quick. The release build handles the full `src-tauri` compile and exercises it on each OS.
 - `release.yml`: when a maintainer publishes a GitHub Release, builds the installers on a runner matrix. Each runner packages its artifacts natively, because there is no reliable cross-compilation path. The job calls the official `tauri-apps/tauri-action`, which runs `tauri build` (frontend through the config's `beforeBuildCommand`, then bundling) and uploads the artifacts to the triggering release. The matrix splits by how each artifact links its libraries:
   - **`.deb` on the oldest supported Ubuntu (22.04)**: it links against the *system* WebKitGTK/glib. An older base therefore keeps it installable on 22.04 and every newer release.
   - **AppImage on the current Ubuntu LTS**: it *bundles* glib/Mesa, so it needs a modern base. An AppImage built on 22.04 fails on newer hosts. It hits a glib symbol mismatch with the host's GVfs modules, then `EGL_BAD_PARAMETER` when WebKit's bundled GL stack can't init. Building on the current LTS makes the bundled libraries match modern systems.
@@ -63,9 +63,9 @@ Not covered: the undeclared-literal scan skips `src/` and `crates/`. The app rea
 
 # Updates
 
-The user starts every update install, through Tauri's updater plugin. Checking has two paths, both hitting the same single stable endpoint, GitHub's `releases/latest/download/latest.json`, which always serves the newest release's updater manifest (`tauri-action` generates and uploads it via `includeUpdaterJson`):
+The user starts every update install, through Tauri's updater plugin. Checking has two paths. Both hit the same stable endpoint, GitHub's `releases/latest/download/latest.json`, which always serves the newest release's updater manifest. `tauri-action` generates and uploads that manifest through `includeUpdaterJson`.
 
-- a quiet launch check that runs once per launch, in the main window only, and only while the on-by-default "New release badge" setting is on. Its one output is the badge on the Settings icon. Failures and offline launches show nothing, and pop-out windows and web or dev builds never check.
+- a quiet launch check, once per launch and in the main window only. It runs only while the on-by-default "New release badge" setting is on. Its one output is the badge on the Settings icon. Failures and offline launches show nothing, and pop-out windows and web or dev builds never check.
 - the explicit **"Check for updates"** action in [Settings](../ux/settings.md).
 
 The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)). It reads a version file with no identity attached. It exists because releases went unnoticed while discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.

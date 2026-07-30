@@ -57,7 +57,7 @@ The collapse threshold **tracks the chosen text width** ([settings](../ux/settin
 - A **breadcrumb** of the concept's index path (e.g. `Architecture / Data Model`), orienting the reader in the bundle ([Navigation](navigation.md)).
 - A single quiet **meta line** above the title: `● Type · status · applies-to` as plain dim text with dot separators. The type carries its [palette color](../ux/theming.md) as a small dot, the same encoding the Filter lens and graph use. The meta line colors status **only when exceptional** (experimental / deprecated). Stable is the baseline and reads as plain text. An earlier revision rendered each of these as its own bordered pill. Three competing chip treatments read as noise, so the flat line replaced the pills. Tags render the same way beneath the description, as quiet `#tag` text. They are labels rather than buttons, so no pill chrome suggests a dead click. See [Design-System Rendering](design-system-rendering.md) for status/applies_to.
 - Technical metadata (Concept ID, timestamp, `resource`) lives in the rail's **Details** module rather than as a wall of labels above the prose.
-- A concept that carries design **tokens** renders them as a visualization (swatches, type specimens, scales, or a token table) between the header and the body. See [Design-System Rendering](design-system-rendering.md).
+- A concept that carries design tokens renders them as a visualization between the header and the body: swatches, type specimens, scales, or a token table. See [Design-System Rendering](design-system-rendering.md).
 
 # Body: a polished Markdown renderer
 
@@ -111,7 +111,7 @@ Guards keep prose safe. Currency (`$5 and $10`), spaced dollars, and `$` inside 
 
 Mermaid renders a ` ```mermaid ` fence to an inline SVG. It lazy-loads like Shiki and KaTeX, and stays fully offline. It runs in strict security mode, with labels sanitized and interactions off, so an untrusted bundle stays safe.
 
-Mermaid bakes theme colors into its SVG, so Studio renders each diagram once per theme and the app's `data-theme` picks one. A theme switch then re-themes diagrams without re-rendering the body. Those colors are the app's own [role tokens](../ux/theming.md) rather than Mermaid's stock `default` and `dark` palettes, which belonged to no surface Studio has. Nodes take the recessed surface with the emphasized border, edges the dim text role, and a subgraph the frame color. Rendering twice means resolving the other theme's tokens while the first is live, and `readTokenPairs` does that by flipping `data-theme` and restoring it inside one synchronous block.
+Mermaid bakes theme colors into its SVG, so Studio renders each diagram once per theme and the app's `data-theme` picks one. A theme switch then re-themes diagrams without re-rendering the body. Those colors are the app's own [role tokens](../ux/theming.md) rather than Mermaid's stock `default` and `dark` palettes, which belonged to no surface Studio has. Nodes take the recessed surface with the emphasized border, edges the dim text role, and a subgraph the frame color. Rendering twice means resolving the other theme's tokens while the first is live. `readTokenPairs` does that by flipping `data-theme` and restoring it inside one synchronous block.
 
 A diagram can fail to render, through bad syntax or an unavailable renderer. It then keeps its authored code block styled as plain code, so Studio never loses the content. A wide diagram scrolls in place rather than breaking the measure.
 
@@ -123,7 +123,7 @@ All four render synchronously as strings. They therefore work everywhere markdow
 
 ## Embedded HTML
 
-Markdown's escape hatch works as authors expect. Semantic inline elements render (`<kbd>`, `<mark>`, `<sup>` and `<sub>`, `<abbr>`, `<ins>` and `<del>`), together with collapsible `<details>` and `<summary>` (markdown inside included), raw tables, and styled `<div>` and `<span>` with inline `style` for color and alignment. Raw headings render too, and they join the outline and get anchors like authored ones. Studio themes `<kbd>`, `<mark>`, and `<details>` so they read as native in both modes.
+Markdown's escape hatch works as authors expect. Semantic inline elements render: `<kbd>`, `<mark>`, `<sup>` and `<sub>`, `<abbr>`, `<ins>` and `<del>`. So do collapsible `<details>` and `<summary>`, with markdown inside included, raw tables, and styled `<div>` and `<span>` carrying inline `style` for color and alignment. Raw headings render too, and they join the outline and get anchors like authored ones. Studio themes `<kbd>`, `<mark>`, and `<details>` so they read as native in both modes.
 
 The safety line runs here. DOMPurify strips scripts, event handlers, iframes, and comments ([security](../architecture/ipc-and-security.md)). Embedded media (`<img srcset>`, `<video>`, `<audio>`) loses every fetching attribute, per the [offline principle](../product/principles.md). Out-of-flow positioning (`fixed`, `sticky`, `absolute`) drops from inline styles, so bundle content can never overlay the app's UI.
 
@@ -131,7 +131,7 @@ The safety line runs here. DOMPurify strips scripts, event handlers, iframes, an
 
 Studio prefixes a color value with a small chip, so a design-system role table or sentence shows its colors. A color value is inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), or a hex color written in plain prose (`borderColor-default (#d1d9e0)`). The pass is bundle-agnostic. Studio validates the chip's color strictly before it inlines the chip, and leaves code, link, and pre text untouched.
 
-Token references resolve in prose the same way. Studio annotates inline code that is a `{group.name}` token reference with the value it resolves to, and adds a swatch when that value is a color. A doc that mentions a token then still shows it. See [Design-System Rendering](design-system-rendering.md) for both passes.
+Token references resolve in prose the same way. Studio annotates inline code that is a `{group.name}` token reference with the value it resolves to. It adds a swatch when that value is a color. A doc that mentions a token then still shows it. See [Design-System Rendering](design-system-rendering.md) for both passes.
 
 ## Images
 

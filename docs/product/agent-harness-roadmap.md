@@ -1,7 +1,7 @@
 ---
 type: Product Roadmap
 title: Agent Harness Evolution
-description: Sequenced work for a control plane that decomposes bundle-sized knowledge work deterministically, runs it in parallel under declared budgets, and proves the efficiency it claims.
+description: Sequenced work for a control plane that decomposes bundle-sized knowledge work deterministically. It runs the pieces in parallel under declared budgets and proves the efficiency it claims.
 tags: [product, roadmap, agents, orchestration, subagents, performance, benchmarks]
 generated: { by: claude/unrecorded, at: 2026-07-29T15:20:00+02:00 }
 ---
@@ -51,7 +51,7 @@ Gate: the agent lanes contain no sleep-based synchronization, and two consecutiv
 - [ ] Add the bundle grant ID to slice identity. The plan carries the fingerprint and bundle-relative concept ids today. The grant ID belongs at the IPC boundary, where grants live, rather than in `okf-core`.
 - [x] Cap slice count and slice size, and name what each cap excluded rather than truncating silently. The plan also names a concept that carries nothing to slice by, because a bundle full of those is a finding about the bundle.
 - [x] Scale the width to the job rather than fixing it. A decomposition that yields one group plans one slice, and nothing pads a plan out to a target width.
-- [x] Expose the plan over IPC as a read-only preview that starts nothing: how many runs, which concepts each covers, and what each cap excluded. Projected cost joins it in HP4, where cost gets a source.
+- [x] Expose the plan over IPC as a read-only preview that starts nothing. It reports how many runs, which concepts each covers, and what each cap excluded. Projected cost joins it in HP4, where cost gets a source.
 - [x] Recompute nothing implicitly. A plan carries the fingerprint the planner computed it against.
 
 Gate: the same bundle and the same decomposition request produce byte-identical slices across runs, and a bundle change invalidates them by the existing staleness rule.
@@ -82,7 +82,7 @@ Gate: a fan-out over a fixture bundle with an induced mid-job bundle change prod
 - [x] Fold usage reports into a spend figure. Take the maximum of cumulative totals rather than summing them, add cost across runs, and carry the largest context any single run reached.
 - [x] Decide whether a run hit a ceiling, naming which one. Stopping a live run at that decision waits on run execution in HP2.
 - [ ] Show projected cost before a job starts and actual cost during and after it.
-- [x] Mark spend unavailable where the provider reports none, and treat "we cannot check" as a different answer from "we checked and it is fine". The ledger drops nonsense values rather than recording them.
+- [x] Mark spend unavailable where the provider reports none. Treat "we cannot check" as a different answer from "we checked and it is fine". The ledger drops nonsense values rather than recording them.
 
 Gate: a provider that reports no usage produces a job that runs to completion with cost marked unavailable. A ceiling reached mid-job stops the job without discarding completed runs.
 
@@ -93,7 +93,7 @@ Gate: a provider that reports no usage produces a job that runs to completion wi
 - [ ] Show live consumption per run. The ledger exists. Nothing feeds it usage during a run yet.
 - [x] Let the user start a job from its preview. Without a connected agent, Studio disables the run control and says why.
 - [ ] Cancel a job from the surface. The runner accepts an abort signal. No control sends one yet.
-- [ ] Keep the job surface inside the existing panel layout and its 360, 440, and 560 pixel fixtures, with the shared focus ring and control floor.
+- [ ] Keep the job surface inside the existing panel layout and its 360, 440, and 560 pixel fixtures. It uses the shared focus ring and control floor.
 - [ ] Label an external agent's own tool activity as that agent's, never as Studio-managed runs.
 - [x] Cover the preview states in Storybook with interaction checks: each decomposition, switching between them, and no bundle open. Running, partial, stopped-at-budget, and failed wait on execution.
 

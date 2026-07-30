@@ -1,7 +1,7 @@
 ---
 type: Proposal
 title: Lineage and Traversal
-description: Turn the graph from a picture into a tool: expand neighbors incrementally, trace upstream/downstream lineage, highlight the path between two concepts, and surface unlinked mentions.
+description: Turn the graph from a picture into a tool. Expand neighbors incrementally, trace upstream and downstream lineage, highlight the path between two concepts, and surface unlinked mentions.
 tags: [proposal, graph, traversal, lineage]
 generated: { by: claude/unrecorded, at: 2026-07-05T12:00:00Z }
 ---
@@ -28,7 +28,7 @@ OKF-flavored discovery: concepts whose text names another concept's title withou
 
 - Traversals are **bounded and cycle-safe** (a hop cap, visited-set), so a dense bundle stays [fast](../product/principles.md).
 - Everything is **read-only and derived**: no bundle mutation, no new backend. The parser already reads the edges.
-- Lineage and paths render in **both** places: a structured tree in a panel and a highlight over the [graph](../features/graph-view.md), so list- and graph-thinkers both get it.
+- Lineage and paths render in both places: a structured tree in a panel, and a highlight over the [graph](../features/graph-view.md). List-thinkers and graph-thinkers both get it.
 - A dbt-style selector in the [query bar](faceted-search.md) (`+concept`, `concept+2`) is a natural power-user surface once the traversals exist.
 
 # Why later

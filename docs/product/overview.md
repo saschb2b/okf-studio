@@ -37,6 +37,6 @@ OKF is markdown with frontmatter, which makes bundles portable but leaves their 
 3. Each bundle is [parsed](../architecture/okf-parsing.md) into concepts, links, and backlinks.
 4. The frontend renders the [graph](../features/graph-view.md) and [reader](../features/concept-reader.md), with [search](../features/search-and-filter.md), [navigation](../features/navigation.md), and [live reload](../features/live-reload.md).
 5. When chosen, the [Agent Panel](../features/agent-panel.md) starts a compatible agent and attaches only the active bundle and explicit sources through the [Agent System](../architecture/agent-system.md).
-6. Research stays in the thread; proposed bundle changes enter the staged validation and review flow before any filesystem write.
+6. Research stays in the thread. Proposed bundle changes enter the staged validation and review flow before any filesystem write.
 
 This product is shaped by its [Design Principles](principles.md) and bounded by its [Scope and Non-Goals](scope-and-non-goals.md). Existing OKF Viewer installations upgrade in place under the deliberately stable identifiers documented in [OKF Viewer to OKF Studio](migration-notes.md).

@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: Keyboard Shortcuts
-description: The default keybindings; every primary action is reachable without a mouse.
+description: The default keybindings. Every primary action is reachable without a mouse.
 tags: [ux, keyboard, accessibility]
 generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 ---

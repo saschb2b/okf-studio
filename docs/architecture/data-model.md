@@ -33,8 +33,8 @@ interface Concept {
   timestamp: string | null;  // v0.1's authored-at; read via authoredAt(), not directly
   resource: string | null;
 
-  // OKF v0.2: provenance, trust and lifecycle. Always present in the payload —
-  // an absent family is [] or null — so a consumer never branches on undefined.
+  // OKF v0.2: provenance, trust and lifecycle. Always present in the payload:
+  // an absent family is [] or null, so a consumer never branches on undefined.
   sources: Source[];               // where claims came from, with credibility signals
   usageWindow: UsageWindow | null; // frames every sources[].usageCount
   generated: Attribution | null;   // who wrote it, and when

@@ -10,7 +10,7 @@ generated: { by: claude/unrecorded, at: 2026-07-23T21:24:41+02:00 }
 
 The Metadata Inspector renders preserved producer fields from the bundle root and the active concept. Bundle metadata has its own view in **Bundle details**, opened from the Info action beside Share in the persistent [title bar](../ux/browsing-layout.md). The dialog keeps bundle identity, format, concept count, [OKF conformance](validation.md), root metadata, [ignore rules](ignore-rules.md), and [advisory profiles](advisory-profiles.md) together. Bundle Home stays a working surface rather than an administration page. Its Connections view is a compact summary that opens the dedicated [Bundle Connections](interoperability-lab.md) workspace instead of fitting operational controls into the About dialog. Concept metadata stays in the Concept Reader context rail with its bundle-relative Markdown file as the source.
 
-Keys, scalar values, objects, and arrays render as React text. Metadata never becomes HTML. Each scalar and top-level branch has a copy action; copied objects use the same bounded representation shown by the inspector. The source label and dotted path make a copied or reported value traceable to its authored location.
+Keys, scalar values, objects, and arrays render as React text. Metadata never becomes HTML. Each scalar and top-level branch has a copy action. A copied object uses the same bounded representation the inspector shows. The source label and dotted path make a copied or reported value traceable to its authored location.
 
 # Bounds
 

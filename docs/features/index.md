@@ -4,7 +4,7 @@ One concept per user-facing capability. The sections follow Studio's normal work
 
 # Open and explore
 
-* [Folder Autodetect](folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
+* [Folder Autodetect](folder-autodetect.md) - Point at a folder, and find every OKF bundle inside it.
 * [Create Bundle](create-bundle.md) - Start a new conformant bundle from a form, no agent involved.
 * [Bundle Switcher](bundle-switcher.md) - Switch among the open bundle, sibling bundles, and recent bundles.
 * [Bundle Home](bundle-home.md) - Resume active concepts, review authored activity, handle deterministic attention items, and return to repository work.

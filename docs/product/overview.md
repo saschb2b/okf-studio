@@ -20,7 +20,7 @@ Studio extends the reference implementation's single-file HTML visualizer with n
 
 # Who it's for
 
-- **Engineers and data practitioners** who keep table documentation, runbooks, and metric definitions in repository-local OKF bundles and want to explore them without a web server or cloud account.
+- **Engineers and data practitioners** who keep table documentation, runbooks, and metric definitions in repository-local OKF bundles. They want to explore them without a web server or cloud account.
 - **Agent / AI builders** who curate agent-readable knowledge and need to see the relationship graph their agents will traverse.
 - **Bundle readers** who receive a repository subdirectory or archive and need to understand it quickly.
 

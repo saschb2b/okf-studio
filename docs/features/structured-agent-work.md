@@ -18,7 +18,7 @@ Structured work gives durable shape to the part of a response the user must insp
 
 # Trust boundary
 
-An agent emits one bounded JSON object in an `okf-artifact` fence. Rust parses the newest complete fence and rejects unknown fields, unsupported schema or enum values, invalid identifiers, unsafe concept paths, duplicate IDs, unresolved source references, invalid external URLs, missing citation targets, excessive counts or text, and invalid revision ancestry. The object must carry the exact fingerprint returned by the current [Knowledge Health](knowledge-health.md) summary. A changed bundle makes the object stale instead of silently retargeting it.
+An agent emits one bounded JSON object in an `okf-artifact` fence. Rust parses the newest complete fence. It rejects unknown fields, unsupported schema or enum values, invalid identifiers, and unsafe concept paths. It also rejects duplicate IDs, unresolved source references, invalid external URLs, missing citation targets, excessive counts or text, and invalid revision ancestry. The object must carry the exact fingerprint returned by the current [Knowledge Health](knowledge-health.md) summary. A changed bundle makes the object stale instead of silently retargeting it.
 
 Bundle sources must name current bundle-relative concept paths. Attachment sources use the bounded attachment ID already supplied for the turn. External sources require HTTPS. Research briefs with external evidence require claim-level citations. Complete artifacts require the fields defined by their kind; partial artifacts list what remains missing. Planning artifacts alone may advertise editable fields.
 

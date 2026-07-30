@@ -14,7 +14,7 @@ This is feature-detected, never a mode: ODSF adds nothing OKF mandates, so Studi
 
 # Token visualizations
 
-When a concept carries a `tokens` map (preserved into `extra` by the [indentation-aware parser](../architecture/okf-parsing.md)), the reader renders it as a visualization chosen from the concept's `type`:
+The [indentation-aware parser](../architecture/okf-parsing.md) preserves a concept's `tokens` map into `extra`. The reader then renders it as a visualization chosen from the concept's `type`:
 
 | Concept type | Visualization |
 |---|---|

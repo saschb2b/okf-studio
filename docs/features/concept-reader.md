@@ -57,7 +57,7 @@ The collapse threshold **tracks the chosen text width** ([settings](../ux/settin
 - A **breadcrumb** of the concept's index path (e.g. `Architecture / Data Model`), orienting the reader in the bundle ([Navigation](navigation.md)).
 - A single quiet **meta line** above the title: `● Type · status · applies-to` as plain dim text with dot separators. The type carries its [palette color](../ux/theming.md) as a small dot, the same encoding the Filter lens and graph use. The meta line colors status **only when exceptional** (experimental / deprecated). Stable is the baseline and reads as plain text. An earlier revision rendered each of these as its own bordered pill. Three competing chip treatments read as noise, so the flat line replaced the pills. Tags render the same way beneath the description, as quiet `#tag` text. They are labels rather than buttons, so no pill chrome suggests a dead click. See [Design-System Rendering](design-system-rendering.md) for status/applies_to.
 - Technical metadata (Concept ID, timestamp, `resource`) lives in the rail's **Details** module rather than as a wall of labels above the prose.
-- A concept that carries design tokens renders them as a visualization between the header and the body: swatches, type specimens, scales, or a token table. See [Design-System Rendering](design-system-rendering.md).
+- A concept that carries design tokens renders them between the header and the body. The visualization is swatches, type specimens, scales, or a token table. See [Design-System Rendering](design-system-rendering.md).
 
 # Body: a polished Markdown renderer
 

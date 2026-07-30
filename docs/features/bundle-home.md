@@ -57,6 +57,6 @@ The shape adapts current Atlassian patterns without copying their collaboration 
 
 # States and accessibility
 
-Wide layouts use one activity column and one aligned work stack. Narrow layouts give Home the workspace instead of preserving a sidebar column that would squeeze it, while retaining the sidebar preference for the next concept or wider window. Resumable and urgent work then appears before the activity history. Lists keep visible focus rings, native buttons or links, text labels beside every colored mark, bounded overflow, and explicit no-activity, nothing-to-resume, no-maintenance, clean-tree, loading, and unavailable behavior.
+Wide layouts use one activity column and one aligned work stack. Narrow layouts give Home the workspace rather than preserving a sidebar column that would squeeze it. The sidebar preference survives for the next concept or wider window. Resumable and urgent work then appears before the activity history. Lists keep visible focus rings, native buttons or links, text labels beside every colored mark, and bounded overflow. Each also states its own empty behavior: no activity, nothing to resume, no maintenance, a clean tree, loading, and unavailable.
 
 Related behavior: [Browsing Layout](../ux/browsing-layout.md), [Command Palette](command-palette.md), [Live Reload](live-reload.md), and [Navigation](navigation.md).

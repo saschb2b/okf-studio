@@ -25,7 +25,7 @@ The sidebar's filter field speaks a small [field grammar](../proposals/faceted-s
 - Computed predicates: `is:orphan` (no links in or out), `has:broken` (broken links).
 - Full-text: `"exact phrase"` and bare words. Unknown fields fall back to full-text rather than erroring (the [tolerant-consumer](../product/principles.md) stance).
 
-The field ANDs the terms. It parses to one predicate. The [graph](graph-view.md), the index tree, and a live result count (`N of M concepts`, with a Clear) all share it: one filter state, one working set. The type/tag facet rails below AND in alongside it. Saved named queries and facet counts that reflect the current result set are the next steps ([proposal](../proposals/faceted-search.md)).
+The field ANDs the terms. It parses to one predicate. The [graph](graph-view.md), the index tree, and a live result count all share it. That count reads `N of M concepts` and carries a Clear. One filter state, one working set. The type/tag facet rails below AND in alongside it. Saved named queries and facet counts that reflect the current result set are the next steps ([proposal](../proposals/faceted-search.md)).
 
 # Type filters
 

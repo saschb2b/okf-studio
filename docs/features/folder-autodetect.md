@@ -13,7 +13,7 @@ The user chooses a single folder. The app recursively scans it and discovers **a
 # Behavior
 
 - Scanning runs in the [Rust core](../architecture/tech-stack.md) within bounds: a maximum depth, and an ignore list of `.git`, `node_modules`, `target`, and `dist`. A large repo therefore stays fast.
-- A directory qualifies as a bundle root per the [Bundle Detection](../architecture/bundle-detection.md) algorithm: primarily a root `index.md` declaring `okf_version`, or a tree of `.md` files carrying `type` frontmatter.
+- A directory qualifies as a bundle root under the [Bundle Detection](../architecture/bundle-detection.md) algorithm. That means a root `index.md` declaring `okf_version`, or a tree of `.md` files carrying `type` frontmatter.
 - Detection de-duplicates nested results, and the outermost qualifying root wins. Its sub-`index.md` directories count as parts of that bundle, not as separate bundles.
 - The result is a list handed to the [Bundle Switcher](bundle-switcher.md). If the scan finds exactly one bundle, it opens automatically (see [First Run](../ux/first-run.md)).
 - Re-scan on demand (and automatically via [Live Reload](live-reload.md)).

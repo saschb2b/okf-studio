@@ -42,7 +42,7 @@ The frontend organizes code domain-first. `src/features/<domain>/` is the top-le
 
 Cross-cutting code lives in `src/shared/`. It holds the [IPC surface](ipc-and-security.md) (`ipc`), the client `store`, the shared `types`, and the model derivations every domain uses (`query`, `selectors`, `odsf`). It also holds the `theme`/type-color palette, the content-`render/` pipeline (markdown, math, mermaid, highlighting), the `platform/` host integration (native behaviors, window controls, updater), and the shared `styles/` (`baseui.css`, `chrome.css`). Each component's own stylesheet and test sit beside it. Only the composition root stays at the `src/` top level: `App`, `main`, `keys`, and the cross-cutting integration tests.
 
-Imports use the `@/` path alias (`@/*` → `src/*`, configured in `tsconfig.json` and Vite's `resolve.alias`) rather than relative `../../` chains. A module's import paths then do not depend on where its file lives, so moving a file between folders does not touch its imports.
+Imports use the `@/` path alias (`@/*` resolves to `src/*`, configured in `tsconfig.json` and Vite's `resolve.alias`) rather than relative `../../` chains. A module's import paths then do not depend on where its file lives, so moving a file between folders does not touch its imports.
 
 # In-place patching on bundle-changed
 

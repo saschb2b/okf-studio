@@ -37,4 +37,4 @@ The field ANDs the terms. It parses to one predicate that the [graph](graph-view
 - Tags are first-class in OKF but have no dedicated file. Studio **synthesizes** a tag index at load time by scanning frontmatter (as the spec intends).
 - Selecting a tag filters the graph and list to concepts carrying it.
 
-All of this is pure frontend filtering over the already-parsed [data model](../architecture/data-model.md), with no re-scan, which keeps it [fast](../product/principles.md). The synthesized tag index and the type→color map are client-side derived state (see [Frontend Architecture](../architecture/frontend-architecture.md) and [Performance and Scale](../architecture/performance.md)).
+All of this is pure frontend filtering over the already-parsed [data model](../architecture/data-model.md), with no re-scan, which keeps it [fast](../product/principles.md). The synthesized tag index and the type-to-color map are client-side derived state (see [Frontend Architecture](../architecture/frontend-architecture.md) and [Performance and Scale](../architecture/performance.md)).

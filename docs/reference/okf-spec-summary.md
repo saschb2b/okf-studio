@@ -34,7 +34,7 @@ The reference repo ships its own consumer, the [OKF Reference HTML Visualizer](o
 ## Concepts
 
 - **Frontmatter:** `type` is required. Recommended fields are `title`, `description`, `resource`, `tags`, and `timestamp`. Producers may add any other keys, and consumers preserve them (our [`extra`](../architecture/data-model.md) map).
-- **Concept ID** = file path minus `.md`. `tables/orders.md` → `tables/orders`.
+- **Concept ID** = file path minus `.md`. `tables/orders.md` becomes `tables/orders`.
 - **Body:** ordinary markdown. Conventional headings are `# Schema`, `# Examples`, and `# Citations`.
 
 ## Links

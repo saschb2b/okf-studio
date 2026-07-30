@@ -15,7 +15,7 @@ generated: { by: claude/unrecorded, at: 2026-07-13T19:21:18Z }
 - **Capability**: A Tauri v2 permission grant: a `capabilities/` config that allows specific commands and paths, scoped to a window. See [IPC and Security](../architecture/ipc-and-security.md).
 - **Command palette**: A keyboard-driven launcher for navigating to concepts and running actions without the mouse. See [Command Palette](../features/command-palette.md).
 - **Concept**: One unit of knowledge: a single non-reserved `.md` file with frontmatter and a markdown body. Rendered as one [graph](../features/graph-view.md) node.
-- **Concept ID**: A concept's identity: its file path within the bundle with `.md` removed (`tables/orders.md` → `tables/orders`). The join key for links, backlinks, and selection.
+- **Concept ID**: A concept's identity: its file path within the bundle with `.md` removed (`tables/orders.md` becomes `tables/orders`). The join key for links, backlinks, and selection.
 - **Conformance**: Whether a bundle satisfies the OKF hard rule (a `type` on every concept). Surfaced by [Validation](../features/validation.md).
 - **Cross-link**: A markdown link from one concept to another, asserting a relationship. It becomes a directed [graph](../features/graph-view.md) edge.
 - **Debounce**: Coalescing a burst of filesystem watch events into a single reload so rapid edits don't thrash the view. See [Live Reload](../features/live-reload.md).

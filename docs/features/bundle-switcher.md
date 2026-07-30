@@ -20,7 +20,7 @@ The **folder** stays underneath as the [security scope](../architecture/ipc-and-
 
 - A button at the **top-left of the top bar**, with a chevron pinned to its right edge. Its label is the active bundle's name: the root `index.md` first `# Heading`, or the directory name as a fallback.
 - A smaller secondary line shows the **folder** the bundle lives in, since one folder can hold several bundles.
-- The trigger is **fixed-width**, so switching bundles never reflows the chrome. Long names ellipsize. It leads with the **app's brand tile** (the icon's dark rounded tile with the blue→violet folder mark), the classic app-icon-in-the-titlebar-corner. The tile shows in both the loaded and the "Open a folder…" states. It is the one deliberate spot of brand color in an otherwise quiet chrome.
+- The trigger is **fixed-width**, so switching bundles never reflows the chrome. Long names ellipsize. It leads with the **app's brand tile** (the icon's dark rounded tile with the blueto violet folder mark), the classic app-icon-in-the-titlebar-corner. The tile shows in both the loaded and the "Open a folder…" states. It is the one deliberate spot of brand color in an otherwise quiet chrome.
 - With nothing open, the label reads **"Open a folder…"** and clicking goes straight to the OS picker (the [First Run](../ux/first-run.md) empty state).
 
 # The popover

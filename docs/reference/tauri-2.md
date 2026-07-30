@@ -39,7 +39,7 @@ okf-studio/
 
 - Scaffold: `pnpm create tauri-app` (choose the v2 template + React + TypeScript).
 - Dev: `pnpm tauri dev` (hot-reloads frontend, rebuilds Rust on change).
-- Build installers: `pnpm tauri build` → Windows `.msi`/`.exe`, Linux `.deb`/AppImage.
+- Build installers: `pnpm tauri build` produces Windows `.msi` and `.exe`, and Linux `.deb` and AppImage.
 
 # Per-platform prerequisites
 

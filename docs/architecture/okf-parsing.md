@@ -10,15 +10,15 @@ generated: { by: claude/unrecorded, at: 2026-07-23T20:30:00Z }
 
 For each [detected bundle root](bundle-detection.md), the [Rust core](tech-stack.md) produces the [data model](data-model.md):
 
-1. **Enumerate** non-reserved `.md` files → each is a concept. The parser handles reserved filenames (`index.md`, `log.md`) separately. The root [`.okfignore`](../features/ignore-rules.md) matcher removes excluded files before parsing while retaining children restored by a later negation.
+1. **Enumerate** non-reserved `.md` files, and each one is a concept. The parser handles reserved filenames (`index.md`, `log.md`) separately. The root [`.okfignore`](../features/ignore-rules.md) matcher removes excluded files before parsing while retaining children restored by a later negation.
 2. **Split frontmatter / body.** Parse the leading `---` YAML block (a tolerant subset: scalars, quoted strings, `[a, b]` / block lists, and **indentation-nested maps and lists**). The parser promotes concept keys according to the concept model. The root `index.md` separately promotes only `okf_version` and `odsf_version`. Every other parsed root field enters `Bundle.extra`, even when the concept model recognizes the same name. Scalars, nested objects, and arrays therefore survive IPC and agent inventory without changing conformance. The parser tolerates missing or malformed frontmatter. Only a present-but-typeless concept is an [error](../features/validation.md).
-3. **Concept ID = path − `.md`,** relative to the bundle root. `tables/orders.md` → `tables/orders`.
+3. **Concept ID = path − `.md`,** relative to the bundle root. `tables/orders.md` becomes `tables/orders`.
 4. **Extract links** with a CommonMark parser, classify, and **resolve**. Inline, full-reference, collapsed-reference, shortcut-reference, autolink, title, angle-destination, balanced-parenthesis, escaped-punctuation, and footnote-definition forms follow the same parser rules. Link-shaped text inside code does not create an edge.
    - Percent-decode the path before scheme, absolute-path, traversal, extension, and target checks. Keep the authored href for display and diagnostics.
-   - Bundle-absolute (`/tables/x.md`) → relative to bundle root.
-   - Relative (`x.md`, `../d/x.md`) → resolved from the concept's directory, normalizing `.`/`..`.
+   - Bundle-absolute (`/tables/x.md`) resolves relative to the bundle root.
+   - Relative (`x.md`, `../d/x.md`) resolves from the concept's directory, normalizing `.` and `..`.
    - Strip a trailing `#anchor`, drop the `.md`, yielding a target Concept ID.
-   - External (`http(s)://`, `mailto:`) → kept as outbound web links, not graph edges.
+   - External (`http(s)://`, `mailto:`) stays an outbound web link rather than a graph edge.
    - Malformed percent sequences remain literal and continue through normal target lookup rather than stopping bundle parsing.
 5. **Build the graph.** An intra-bundle link whose target Concept ID exists becomes a directed edge. The parser keeps a link to a **non-existent** target for display but creates **no edge**. The parser tolerates broken links.
 6. **Backlinks.** Invert the edge set so each concept knows who [cites it](../features/concept-reader.md).

@@ -22,9 +22,9 @@
   </a>
 </p>
 
-OKF Studio is a local-first desktop workspace for [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Open a folder of Markdown as a graph and a reader, question it with the agent you already use, and review every proposed change before it touches a file.
+OKF Studio is a local-first desktop workspace for [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) bundles. Open a folder of Markdown as a graph and a reader. Question it with the agent you already use, and review every proposed change before it touches a file.
 
-A bundle stays what it was: plain Markdown with YAML frontmatter, on your disk, readable without this app. Opening a folder is read-only, the network is used only when you act, and no agent can apply its own change. There is no account and no telemetry.
+A bundle stays what it was: plain Markdown with YAML frontmatter, on your disk, readable without this app. Opening a folder is read-only. The app reaches the network only when you act, and no agent can apply its own change. There is no account and no telemetry.
 
 Free and open source under the [MIT license](LICENSE). Built with [Tauri 2](https://tauri.app/): a Rust core plus the system webview.
 
@@ -42,7 +42,7 @@ There is no macOS build in the release matrix. Builds are not code-signed, so yo
 
 ## What it does
 
-**Understand.** A force-directed graph of concepts and links colored by type, beside a Markdown reader with frontmatter, syntax-highlighted code, and a relationship panel showing what a concept links to and what cites it. Treemap, sunburst, and circle-packing views compare a bundle's composition. Full-text search, type and tag filters, a command palette, and live reload when files change on disk. A pacing mode reads a concept word by word, with rereading and non-prose blocks kept in reach.
+**Understand.** A force-directed graph of concepts and links, colored by type, sits beside a Markdown reader. The reader shows frontmatter, syntax-highlighted code, and a relationship panel naming what a concept links to and what cites it. Treemap, sunburst, and circle-packing views compare a bundle's composition. Full-text search, type and tag filters, a command palette, and live reload when files change on disk. A pacing mode reads a concept word by word, with rereading and non-prose blocks kept in reach.
 
 **Ask.** Connect a subscription agent, a custom [ACP](https://agentclientprotocol.com/) command, an API-key-backed endpoint, or a fully local model, and run parallel threads beside the bundle. Retrieval routes a question through local evidence and hands back a receipt for every selection. Tools, permissions, and proposed writes stay visible, and credentials live in the operating system's credential store rather than in the app.
 
@@ -54,12 +54,19 @@ The complete, specified feature set lives in [`docs/features/`](docs/features/).
 
 ## Built on an open format
 
-- **[Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf)** is Google's open, vendor-neutral spec for packaging knowledge that an agent or a person can read: plain Markdown with YAML frontmatter, organized as a portable bundle. No SDK, no database, no lock-in. Studio reads any conformant bundle from any producer, and never refuses one for soft issues; problems surface as [validation](docs/features/validation.md) findings instead.
-- **[Open Design System Format](https://saschb2b.github.io/Open-Design-System-Format/)** is a profile of OKF for design systems, adding machine-readable tokens and runnable HTML/CSS examples so an agent produces UI that matches the system. Open one and Studio renders its tokens and examples inline. This project's own site is built from an ODSF bundle, [`design-system/`](design-system/), which Studio can open and preview.
+[Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) is Google's open, vendor-neutral spec for packaging knowledge that an agent or a person can read. It is plain Markdown with YAML frontmatter, organized as a portable bundle. No SDK, no database, no lock-in.
+
+Studio reads any conformant bundle from any producer, and never refuses one for soft issues. Problems surface as [validation](docs/features/validation.md) findings instead.
+
+[Open Design System Format](https://saschb2b.github.io/Open-Design-System-Format/) is a profile of OKF for design systems. It adds machine-readable tokens and runnable HTML and CSS examples, so an agent produces UI that matches the system. Open one and Studio renders its tokens and examples inline.
+
+This project's own site comes from an ODSF bundle, [`design-system/`](design-system/), which Studio can open and preview.
 
 ## Develop and run
 
-Prerequisites: a stable **Rust** toolchain and **Node.js** 20.19+ or 22.12+ with **pnpm**. On Ubuntu also install the Tauri Linux dependencies (`libwebkit2gtk-4.1-dev`, `build-essential`, `libssl-dev`, `librsvg2-dev`, and the related GTK packages); on Windows, the WebView2 runtime and MSVC build tools.
+Prerequisites: a stable Rust toolchain, and Node.js 20.19+ or 22.12+ with pnpm.
+
+On Ubuntu, also install the Tauri Linux dependencies: `libwebkit2gtk-4.1-dev`, `build-essential`, `libssl-dev`, `librsvg2-dev`, and the related GTK packages. On Windows, install the WebView2 runtime and the MSVC build tools.
 
 ```bash
 pnpm install
@@ -103,19 +110,19 @@ The site under [`site/`](site/) builds separately with `pnpm --dir site build` a
 
 ## The spec lives in `docs/`
 
-[`docs/`](docs/) is a conformant OKF bundle specifying what OKF Studio does and why, and the app renders it as its built-in sample, so the product dogfoods the format it reads. It is the source of truth for humans and agents:
+[`docs/`](docs/) is a conformant OKF bundle specifying what OKF Studio does and why. The app renders it as its built-in sample, so the product dogfoods the format it reads. It is the source of truth for humans and agents:
 
-- **Read the relevant concept before changing behavior.** Start at [`docs/index.md`](docs/index.md).
-- **Update the spec in the same change**, so it never drifts from the code. On a conflict, the bundle wins.
-- **Record decisions in the bundle**, with a dated entry in [`docs/log.md`](docs/log.md), rather than only in a commit message.
-- **Validate before finishing:** `node scripts/okf-validate.mjs docs` must report 0 errors.
+- Read the relevant concept before changing behavior. Start at [`docs/index.md`](docs/index.md).
+- Update the spec in the same change, so it never drifts from the code. On a conflict, the bundle wins.
+- Record decisions in the bundle, with a dated entry in [`docs/log.md`](docs/log.md), rather than only in a commit message.
+- Validate before finishing. `node scripts/okf-validate.mjs docs` must report 0 errors.
 
 ## Contributing
 
 Issues and pull requests are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for what a complete change looks like, and [`AGENTS.md`](AGENTS.md) for the full architecture and conventions. The short version:
 
 - A user-facing change lands on three surfaces in one change: code, the `docs/` spec, and the site's copy.
-- Run the gate above locally before opening a pull request. CI runs the same checks.
+- Run the local gate under Develop and run before opening a pull request. CI runs the same checks.
 - Commit messages and pull request descriptions follow the house style in `AGENTS.md`: conventional-commit titles, and prose written for a reader outside the repository.
 
 ## License

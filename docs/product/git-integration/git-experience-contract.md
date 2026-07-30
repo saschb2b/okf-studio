@@ -32,9 +32,9 @@ The first release covers the common local loop and explicit remote synchronizati
 
 # Layout
 
-The Git panel docks on the right and is mutually exclusive with the Agent panel. Opening either keeps one stable workspace plus one auxiliary dock. The panel uses a fixed header, a flexible list, and a fixed footer. Changes and History share the same tab strip; switching tabs does not move repository or branch context.
+The Git panel docks on the right and is mutually exclusive with the Agent panel. Opening either keeps one stable workspace plus one auxiliary dock. The panel uses a fixed header, a flexible list, and a fixed footer. Changes and History share the same tab strip. Switching tabs does not move repository or branch context.
 
-The Changes header contains **View diff** and one split primary action: **Stage all** when any unstaged change exists, otherwise **Unstage all** when the index is non-empty. The list is the only flexible scroll region. The commit composer stays visible at the foot and grows only to a bounded height.
+The Changes header contains **View diff** and one split primary action. That action is **Stage all** when any unstaged change exists, and **Unstage all** when the index is non-empty. The list is the only flexible scroll region. The commit composer stays visible at the foot and grows only to a bounded height.
 
 At 360 pixels, labels may shorten but the stage control, file name, status, primary action, and focus ring remain visible. Long repository names, branches, paths, messages, authors, and errors truncate with a full-text title or wrap only in dedicated detail views.
 
@@ -43,26 +43,26 @@ At 360 pixels, labels may shorten but the stage control, file name, status, prim
 Each changed path appears once. Its control has three truthful states:
 
 - unchecked: only unstaged changes exist
-- checked: all changes for the path are staged
+- checked: the index holds every change for the path
 - mixed: staged and unstaged changes both exist.
 
 The row shows a compact status code so paths retain space at narrow widths. Its full label, such as Modified, Added, Deleted, Renamed, Untracked, or Conflict, remains available to assistive technology and on hover. Selecting the row opens the relevant diff. The stage control changes only that path and remains disabled while its operation is pending.
 
-Unresolved conflicts remain visible at the top and block commit while any conflict has unstaged content. Studio does not offer merge-resolution editing in the first release; the notice says to resolve the file in an editor or terminal, then stage it here.
+Unresolved conflicts remain visible at the top and block commit while any conflict has unstaged content. Studio does not offer merge-resolution editing in the first release. The notice tells the user to resolve the file in an editor or terminal, then stage it here.
 
 # Commit
 
 The primary label states its scope:
 
 - **Commit staged** when the index contains changes
-- **Commit tracked** when no changes are staged but tracked files changed
-- disabled when there is nothing committable.
+- **Commit tracked** when the index is empty but tracked files changed
+- disabled when no change is committable.
 
-Commit tracked mirrors `git commit -a`: it includes modifications and deletions to tracked files and excludes untracked files. The message is required. `Ctrl/Cmd + Enter` invokes the current primary action while the composer is focused. A successful commit clears the draft and shows one recoverable **Undo commit** action until repository state moves past that commit. Undo is a soft reset and never discards working-tree content.
+Commit tracked mirrors `git commit -a`: it includes modifications and deletions to tracked files and excludes untracked files. The message is required. `Ctrl/Cmd + Enter` invokes the current primary action while the composer has focus. A successful commit clears the draft and shows one recoverable **Undo commit** action until repository state moves past that commit. Undo is a soft reset and never discards working-tree content.
 
 # History
 
-History rows show subject, author, relative time, and short SHA. The list has loading, empty, and retryable error states. Selecting a row opens its commit diff. History loads a bounded first page and requests more near the end; the panel never renders the full repository history at once.
+History rows show subject, author, relative time, and short SHA. The list has loading, empty, and retryable error states. Selecting a row opens its commit diff. History loads a bounded first page and requests more near the end. The panel never renders the full repository history at once.
 
 # Remote actions
 
@@ -70,9 +70,9 @@ Fetch, pull, and push are explicit. The panel never fetches at startup or on a t
 
 # Repository scope and trust
 
-The active bundle first proves a Rust-owned folder grant. Studio then discovers the enclosing repository and accepts it only when its root remains within one persisted grant that also contains the bundle. If the bundle was opened as a repository subfolder, the panel may ask the user to confirm the exact enclosing repository root in a native folder dialog. It cannot grant that parent silently or accept a different selected folder. A bundle opened from a downloaded cache can show local Git state only when that cache itself is a repository; remote-cache opening does not manufacture a clone.
+The active bundle first proves a Rust-owned folder grant. Studio then discovers the enclosing repository and accepts it only when its root remains within one persisted grant that also contains the bundle. If the user opened the bundle as a repository subfolder, the panel may ask for the exact enclosing repository root in a native folder dialog. It cannot grant that parent silently or accept a different selected folder. A bundle opened from a downloaded cache can show local Git state only when that cache is itself a repository. Opening a remote cache does not manufacture a clone.
 
-Every Git command is a fixed Rust operation invoked without a shell. User-controlled paths are validated as repository-relative and passed after `--`. Local operations disable hooks, pagers, and external diff programs. Remote operations are non-interactive and run only from the named button. The frontend receives display names and repository-relative paths, never absolute roots or `.git` content.
+Every Git command is a fixed Rust operation invoked without a shell. Rust validates user-controlled paths as repository-relative and passes them after `--`. Local operations disable hooks, pagers, and external diff programs. Remote operations are non-interactive and run only from the named button. The frontend receives display names and repository-relative paths, never absolute roots or `.git` content.
 
 Git support does not weaken the agent boundary. `.git` remains inaccessible to agents and protected from staged bundle writes. The Git service is a separate user-operated host capability.
 
@@ -93,4 +93,11 @@ Storybook and integration tests must cover:
 
 # Acceptance gate
 
-The feature is complete only when the Rust command boundary has fixture repositories for every mutation, the frontend stories pass interaction and accessibility tests, the rendered panel passes wide and 360-pixel visual review, external CLI changes appear without reopening the bundle, docs and site describe only shipped behavior, and every ordinary CI lane is green.
+The feature is complete only when all of these hold:
+
+- The Rust command boundary has fixture repositories for every mutation.
+- The frontend stories pass interaction and accessibility tests.
+- The rendered panel passes wide and 360-pixel visual review.
+- External CLI changes appear without reopening the bundle.
+- Docs and site describe only shipped behavior.
+- Every ordinary CI lane is green.

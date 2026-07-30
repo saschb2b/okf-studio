@@ -8,13 +8,13 @@ generated: { by: claude/unrecorded, at: 2026-07-19T13:15:00Z }
 
 # Outcome
 
-OKF Studio users can inspect repository state, review changes, stage files, commit, browse history, and explicitly synchronize the repository that contains the active bundle without leaving the knowledge workspace. The implementation follows the [Git Experience Contract](git-experience-contract.md) and the source-level findings in [Zed Git Research](zed-git-research.md).
+OKF Studio users can inspect repository state, review changes, stage files, commit, and browse history. They can also synchronize the repository that contains the active bundle explicitly, without leaving the knowledge workspace. The implementation follows the [Git Experience Contract](git-experience-contract.md) and the source-level findings in [Zed Git Research](zed-git-research.md).
 
 # Product stance
 
-Git support is repository-native and workspace-scoped. It uses the installed Git executable behind typed Rust operations. The panel covers the common loop; unsupported history editing and merge workflows remain available through the user's terminal or editor. Network operations never run automatically.
+Git support is repository-native and workspace-scoped. It uses the installed Git executable behind typed Rust operations. The panel covers the common loop. Unsupported history editing and merge workflows remain available through the user's terminal or editor. Network operations never run automatically.
 
-This changes the former “not a git client” boundary. Studio remains neither a Git hosting product nor a general-purpose history-rewriting client. Git exists because OKF bundles are designed to live in repositories, reviewed agent writes need a natural checkpoint path, and users should not lose context merely to stage and commit accepted knowledge.
+This changes the former “not a git client” boundary. Studio remains neither a Git hosting product nor a general-purpose history-rewriting client. Git exists because OKF bundles live in repositories by design, and because reviewed agent writes need a natural checkpoint path. Users should also not lose context merely to stage and commit accepted knowledge.
 
 # Work packages
 
@@ -33,7 +33,7 @@ Exit: research has claim-level citations and the experience contract prevents ne
 - [x] Parse branch, upstream, ahead/behind, staged, unstaged, untracked, rename, deletion, and conflict state into closed DTOs.
 - [x] Return bounded history pages and unified diffs without absolute paths.
 - [x] Disable shell execution, hooks, pagers, external diffs, optional locks, and interactive prompts.
-- [x] Cover the mutation path, status framing, history, tracking, invalid input, non-repository, outside-grant, rename, and worktree watcher boundaries with focused temporary-repository and parser tests; keep presentation pressure states in Storybook rather than duplicating them through slow repositories.
+- [x] Cover the mutation path, status framing, history, and tracking with focused temporary-repository and parser tests. Cover the invalid-input, non-repository, outside-grant, rename, and worktree watcher boundaries the same way. Keep presentation pressure states in Storybook rather than duplicating them through slow repositories.
 
 Exit: read-only repository inspection is deterministic, bounded, and cannot expand filesystem authority.
 
@@ -74,7 +74,7 @@ Exit: the common stage, write message, commit, and recover loop works without a 
 - [x] Add explicit Fetch, fast-forward-only Pull, and Push actions with one pending operation.
 - [x] Report remote failures through bounded panel feedback without leaking command lines, absolute paths, credentials, or environment detail.
 
-Exit: users can inspect recent repository evolution and perform the ordinary remote loop without automatic network traffic.
+Exit: users can inspect recent repository evolution and run the ordinary remote loop without automatic network traffic.
 
 ## G6: Live repository state
 
@@ -121,4 +121,4 @@ flowchart LR
 
 # Implementation record
 
-The work landed in five bounded commits after the research freeze: repository service and IPC, Git workspace and stories, event-driven repository invalidation, interaction and pressure-state completion, and the shipping documentation. The final implementation keeps Zed's useful structural choices while retaining Studio's own trust model: installed Git is authoritative, the folder grant bounds discovery, the diff owns the main workspace, Git and Agent share one dock slot, and network activity remains explicit.
+The work landed in five bounded commits after the research freeze. Those commits covered the repository service and IPC, the Git workspace and stories, event-driven repository invalidation, interaction and pressure-state completion, and the shipping documentation. The final implementation keeps Zed's useful structural choices and retains Studio's own trust model. Installed Git is authoritative, and the folder grant bounds discovery. The diff owns the main workspace, Git and Agent share one dock slot, and network activity remains explicit.

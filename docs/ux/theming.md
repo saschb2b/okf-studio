@@ -37,7 +37,7 @@ Two of these are newer than the rest. `--bg-overlay` exists so a dialog reads as
 
 Zed splits these the same way (`element.*` and `ghost_element.*`), and for the same reason. The translucent pair composites onto whatever is behind it, so a row hovers correctly on all five surfaces without knowing which one it sits on.
 
-**State fills move toward the foreground in both themes: lighter on dark, darker on light.** Before this layer existed the app used `--bg-sunken` as its hover fill everywhere. That is right in light and backwards in dark. Hover made a control *darker* than the pane it sat on, so it read as a hole punched in the surface rather than as a control lighting up. That was the single most visible defect in the dark theme, across 63 rules.
+**State fills move toward the foreground in both themes: lighter on dark, darker on light.** Before this layer existed the app used `--bg-sunken` as its hover fill everywhere. That is right in light and backwards in dark. Hover made a control *darker* than the pane it sat on. It read as a hole punched in the surface rather than as a control lighting up. That was the single most visible defect in the dark theme, across 63 rules.
 
 ## Borders
 
@@ -83,7 +83,9 @@ The surfaces and text roles deliberately do **not** track. A marketing page is o
 
 ## Focus
 
-One ring, declared once. A zero-specificity `:where()` rule in `styles.css` supplies it to every interactive element, so a component overrides it with any plain class selector but nothing has to restate it. `--focus-ring` is the color's role name (Zed calls it `border.focused`), and there are exactly two offsets. The outset one is `--focus-offset`. The inset one, `--focus-offset-inset`, covers a control flush to its container's edge: a full-bleed list row, a menu item, a tab button, a caption button. On those, the container clips an outset ring, or the ring collides with the neighbouring row. This replaced 86 hand-copied declarations that had drifted into four different offsets.
+One ring, declared once. A zero-specificity `:where()` rule in `styles.css` supplies it to every interactive element. A component then overrides it with any plain class selector, and nothing has to restate it.
+
+The `--focus-ring` token is the color's role name (Zed calls it `border.focused`), and there are exactly two offsets. The outset one is `--focus-offset`. The inset one, `--focus-offset-inset`, covers a control flush to its container's edge: a full-bleed list row, a menu item, a tab button, a caption button. On those, the container clips an outset ring, or the ring collides with the neighbouring row. This replaced 86 hand-copied declarations that had drifted into four different offsets.
 
 ## Disabled
 
@@ -97,7 +99,7 @@ Concept `type` drives node and badge color across the [graph](../features/graph-
 - Determinism means the same type gets a stable color within a bundle and run to run, so the legend is learnable.
 - The legend is the single source of truth and doubles as the [type filter](../features/search-and-filter.md).
 
-**The palette generates its colors in OKLab, not HSL.** HSL's `L` is not a perceptual scale: `hsl(60 62% 64%)` and `hsl(240 62% 64%)` claim the same lightness, and the yellow is roughly three times as luminous as the blue. Ten types generated that way spanned 4.3:1 to 11.8:1 against the dark canvas. A few colors shouted and the rest turned to mud. Holding OKLab's `L` fixed instead collapses that spread to under 1.0 in both themes, so every type carries the same visual weight. The test in `src/shared/theme.test.ts` asserts the spread, and that every type color still clears 3:1 as a mark (WCAG 1.4.11: these are swatches, dots, and graph nodes, never text).
+**The palette generates its colors in OKLab, not HSL.** HSL's `L` is not a perceptual scale: `hsl(60 62% 64%)` and `hsl(240 62% 64%)` claim the same lightness, and the yellow is roughly three times as luminous as the blue. Ten types generated that way spanned 4.3:1 to 11.8:1 against the dark canvas. A few colors shouted and the rest turned to mud. Holding OKLab's `L` fixed instead collapses that spread to under 1.0 in both themes, so every type carries the same visual weight. The test in `src/shared/theme.test.ts` asserts the spread. It also asserts that every type color clears 3:1 as a mark. WCAG 1.4.11 covers these marks: swatches, dots, and graph nodes, never text.
 
 The palette emits colors as `#rrggbb` rather than as an `oklch()` string, and it reduces chroma (never lightness or hue) until each fits sRGB. The same palette feeds a 2D canvas, a WebGL buffer, and inline styles alike. The canvas paths depend on CSS Color 4 parsing that the oldest webview we ship on does not have. Clamping channels instead of mapping chroma would shift the hue and undo the point of an even angular sequence.
 
@@ -119,7 +121,7 @@ Mermaid bakes color into the SVG, so the reader renders each diagram twice up fr
 
 - **Inter** for chrome and bodies, **JetBrains Mono** for inline code and fenced blocks with light syntax tinting. Both ship with the app as variable fonts rather than resolve from the host. A desktop app that inherits `system-ui` renders in Segoe UI on Windows, SF on macOS, and whatever fontconfig picks on Linux. One window then has three different sets of metrics and three different x-heights, and a weight like 650 either exists or silently rounds to bold. Bundling them costs about 113KB of latin subsets and makes the chrome identical on all three platforms. The system stacks stay behind them as the fallback.
 - Inter uses `font-optical-sizing: auto` and the `--ui-features` alternates (single-storey `g` and `l`, curved `r`), which read quieter at the 12px most of the chrome runs at.
-- The reader's opt-in serif and its own measure/line-height controls are unaffected. They layer on top of this (see [Concept Reader](../features/concept-reader.md)).
+- The reader's opt-in serif and its own measure/line-height controls stay as they are. They layer on top of this (see [Concept Reader](../features/concept-reader.md)).
 - Markdown rendering styles (tables, blockquotes, headings) are consistent in both themes.
 
 # Native chrome
@@ -128,4 +130,4 @@ The window runs **borderless**. Native title-bar decorations are off. The [top b
 
 Smaller touches finish the native feel. Scrollbars take the token palette with `scrollbar-gutter: stable`, so layout doesn't shift when they appear. Their thumb is `--border-strong`, because a thumb at structural-border weight is invisible against a dark pane, which is where a scrollbar matters most. Chrome disables text selection, and [reader](../features/concept-reader.md) prose keeps it. The app also suppresses the browser context menu and page-zoom: keyboard, ctrl+wheel, and trackpad/touch pinch (WebKit gesture events).
 
-The **document itself never scrolls**. The app is a fixed shell whose panes scroll internally. `overflow: clip` on the root enforces that, so neither wheel chaining past a pane's end nor programmatic `scrollIntoView` can shift the whole chrome. (WebKitGTK's sub-pixel viewport rounding under fractional display scaling otherwise leaves the document scrollable by a hair.) The text-size zoom this pairs with is content-scoped, see [Settings](settings.md).
+The **document itself never scrolls**. The app is a fixed shell whose panes scroll internally. The `overflow: clip` rule on the root enforces that, so neither wheel chaining past a pane's end nor programmatic `scrollIntoView` can shift the whole chrome. WebKitGTK's sub-pixel viewport rounding under fractional display scaling otherwise leaves the document scrollable by a hair. The text-size zoom this pairs with is content-scoped, see [Settings](settings.md).

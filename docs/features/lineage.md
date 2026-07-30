@@ -8,17 +8,17 @@ generated: { by: claude/unrecorded, at: 2026-07-23T16:45:00Z }
 
 # User job
 
-A reader needs to answer questions that one-hop backlinks cannot: what does this concept depend on, what could it affect, and how does it connect to another concept? The right-docked Lineage panel keeps the active concept in view while presenting a structured traversal for readers who need names and reasons rather than only a graph picture.
+A reader needs answers that one-hop backlinks cannot give. What does this concept depend on, and what could it affect? How does it connect to another concept? The right-docked Lineage panel keeps the active concept in view. Beside it, the panel presents a structured traversal for readers who need names and reasons beyond the graph picture.
 
 # Filters
 
 One control set applies to both lineage trees and path search:
 
-- **Direction** selects upstream dependencies, downstream impact, or both. Upstream follows links from the active concept; downstream follows concepts that cite it.
+- **Direction** selects upstream dependencies, downstream impact, or both. Upstream follows links from the active concept. Downstream follows concepts that cite it.
 - **Relationship** selects all relationships, portable Markdown links, or one namespaced type from the active [Advisory Profiles](advisory-profiles.md). Known and unknown relationship types remain selectable.
-- **Reliability** selects every state, only current concepts, or concepts that need caution. The state is derived from [Reliability and Lifecycle](reliability-and-lifecycle.md) metadata and remains advisory; it is not an OKF validity judgment.
+- **Reliability** selects every state, only current concepts, or concepts that need caution. Studio derives the state from [Reliability and Lifecycle](reliability-and-lifecycle.md) metadata. The state stays advisory, and is not an OKF validity judgment.
 
-Portable links remain complete when no profile is declared or a profile report is unavailable. A typed relationship can add a label and inverse to a portable link. Metadata-only or missing-target annotations remain visible as warnings instead of becoming hidden graph authority.
+Portable links remain complete when the bundle declares no profile, or when a profile report is unavailable. A typed relationship can add a label and inverse to a portable link. Metadata-only or missing-target annotations remain visible as warnings instead of becoming hidden graph authority.
 
 # Traversal states and bounds
 
@@ -41,14 +41,14 @@ The path engine uses breadth-first search, keeps the same typed-edge overlay as 
 
 # Unlinked mentions
 
-The final section retains the existing bounded discovery signal: another concept's complete title appears in the active description or body but is not linked. It uses case-insensitive whole-title matching, excludes short names and existing links, and makes no semantic claim beyond the literal mention.
+The final section retains the existing bounded discovery signal: another concept's complete title appears in the active description or body without a link. It uses case-insensitive whole-title matching, excludes short names and existing links, and makes no semantic claim beyond the literal mention.
 
 # Security and failure states
 
-Lineage is a pure frontend derivation over the already parsed, folder-grant-bound `Bundle` and bounded profile report. It performs no filesystem read, network request, agent action, or write. Profile loading and failure are explicit; portable traversal continues. Missing active concepts render an instruction state. Empty filtered sections name the filter result rather than showing an ambiguous blank panel.
+Lineage is a pure frontend derivation over the already parsed, folder-grant-bound `Bundle` and bounded profile report. It does not read the filesystem, call the network, act through an agent, or write. Profile loading and failure are explicit. Portable traversal continues. Missing active concepts render an instruction state. Empty filtered sections name the filter result rather than showing an ambiguous blank panel.
 
 # Verification
 
-Pure tests cover upstream and downstream chains, shortest paths, cycle references, diamond reuse, depth, hub and node budgets, typed filters, missing targets, reliability filters, directed path explanations, and exhausted path search. Story states cover the complete filter and path flow, caution-only empty results, and the narrow dock. A full-app journey opens the panel from the status bar, selects a typed relationship, explains a path, changes direction, and verifies the resulting empty state.
+Pure tests cover upstream and downstream chains, shortest paths, cycle references, diamond reuse, and depth. They also cover hub and node budgets, typed filters, missing targets, reliability filters, directed path explanations, and exhausted path search. Story states cover the complete filter and path flow, caution-only empty results, and the narrow dock. A full-app journey opens the panel from the status bar, selects a typed relationship, explains a path, changes direction, and verifies the resulting empty state.
 
 Related behavior: [Concept Reader](concept-reader.md), [Typed Relationships](typed-relationships.md), [Graph View](graph-view.md), [Navigation](navigation.md), and the original [Lineage & Traversal proposal](../proposals/lineage-and-traversal.md).

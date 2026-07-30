@@ -12,7 +12,7 @@ Source intake is a producer workflow, not a generic file-reading capability. The
 
 # Why this exists
 
-Raw attachments give an agent bytes, but they do not establish how those bytes were interpreted, whether a refresh is equivalent, or which exact evidence supported the resulting concepts. Different formats also encourage one-off parsing in prompts, where malformed input, hidden instructions, and unstable ordering are difficult for the user to inspect.
+Raw attachments give an agent bytes. They do not establish how Studio read those bytes, whether a refresh is equivalent, or which exact evidence supported the resulting concepts. Different formats also encourage one-off parsing in prompts, where malformed input, hidden instructions, and unstable ordering are difficult for the user to inspect.
 
 Adapters turn each explicit selection into repeatable evidence with visible origin, normalization, warnings, and fingerprints. The receipt lets Studio reject a forged or stale interpretation and lets the user compare later refreshes. Domain adapters preserve useful structure for OpenAPI, dbt, and BigQuery exports without granting a general filesystem reader or live cloud account.
 
@@ -27,7 +27,7 @@ Every adapter receipt uses schema version 1 and records:
 - SHA-256 source fingerprint over the original bytes
 - SHA-256 evidence fingerprint over the exact normalized content sent to the agent
 - refresh fingerprint over the receipt schema, adapter ID, adapter version, and source fingerprint
-- the fixed trust label `untrusted`; and
+- the fixed trust label `untrusted`
 - bounded warning diagnostics with stable codes and recovery text.
 
 Rust revalidates the receipt at prompt submission. Origin and media type must match the attachment. Source and evidence fingerprints must match the attached bytes or normalized text. The refresh fingerprint must match the declared adapter contract. A webview cannot forge a different adapter, evidence body, or trust label.
@@ -38,25 +38,27 @@ When an adapted source enters a named OKF task, Studio also derives the bounded 
 
 # Built-in adapters
 
-Plain text, Markdown, and HTML keep their bounded UTF-8 content. HTML is never inserted into a webview HTML sink. CSV becomes deterministic positional Markdown tables. Generic JSON becomes a deterministic RFC 6901 pointer inventory. PDF extraction stays in the bounded helper process and carries partial-page warnings. Images retain verified binary evidence for an image-capable ACP agent. Folder discovery delegates each supported child to the same file adapter while preserving its folder-relative origin. URL discovery uses the existing HTTPS-only, redirect-safe, private-address-blocking fetch boundary.
+Plain text, Markdown, and HTML keep their bounded UTF-8 content. Studio never inserts HTML into a webview HTML sink. CSV becomes deterministic positional Markdown tables. Generic JSON becomes a deterministic RFC 6901 pointer inventory. PDF extraction stays in the bounded helper process and carries partial-page warnings.
 
-JSON and OpenAPI YAML are inspected before the generic JSON path:
+Images retain verified binary evidence for an image-capable ACP agent. Folder discovery delegates each supported child to the same file adapter while preserving its folder-relative origin. URL discovery uses the existing HTTPS-only, redirect-safe, private-address-blocking fetch boundary.
+
+Studio inspects JSON and OpenAPI YAML before the generic JSON path:
 
 - OpenAPI 2 and 3 documents become a sorted method, path, operation ID, and summary inventory. Missing operation IDs remain visible warnings.
 - dbt manifests become a sorted node and source inventory with project, schema version, relation, and dependency counts.
 - BigQuery metadata exports become a dataset and table inventory with object type and field counts. Table records without a schema remain usable partial evidence with a recovery warning.
 
-Generic YAML is not accepted. YAML intake exists only for OpenAPI so adding a broad serialization format does not silently widen the producer contract.
+Studio does not accept generic YAML. YAML intake exists only for OpenAPI, so a broad serialization format cannot silently widen the producer contract.
 
 # Determinism and refresh
 
-Equivalent OpenAPI material in JSON and YAML produces the same normalized evidence and evidence fingerprint. Their source and refresh fingerprints differ because their original bytes differ. A later refresh must run the same adapter version against newly selected or fetched bytes and compare both identities. Studio never treats a matching title or origin as proof that evidence is unchanged.
+Equivalent OpenAPI material in JSON and YAML produces the same normalized evidence and evidence fingerprint. Their source and refresh fingerprints differ because their original bytes differ. A later refresh must run the same adapter version against newly selected or fetched bytes and compare both identities. Studio never treats a matching title or origin as proof that the evidence did not change.
 
 Malformed JSON, YAML, CSV, OpenAPI, dbt, and BigQuery exports fail with the source title and a bounded parser or contract reason. Partial but structurally valid material stays available with diagnostics. Adapter output is evidence only. It cannot approve a claim, satisfy a citation by itself, or grant filesystem, network, or write access.
 
 # Deferred connectors
 
-OpenAPI, dbt, and BigQuery support accepts local exports or an already bounded public URL response. Studio does not authenticate to BigQuery, dbt Cloud, source-control hosts, document stores, or other cloud providers. A live connector needs its own credential owner, least-privilege scopes, pagination and retry policy, billing and quota behavior, retention, offline behavior, revocation path, and product-specific threat model before it can enter this adapter surface.
+OpenAPI, dbt, and BigQuery support accepts local exports or an already bounded public URL response. Studio does not authenticate to BigQuery, dbt Cloud, source-control hosts, document stores, or other cloud providers. A live connector needs its own credential owner, least-privilege scopes, and pagination and retry policy. It also needs billing and quota behavior, retention, offline behavior, a revocation path, and a product-specific threat model. Studio requires all of that before a connector can enter this adapter surface.
 
 # Related concepts
 

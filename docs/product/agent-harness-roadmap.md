@@ -23,7 +23,7 @@ Success means a fanned-out job costs less and finishes sooner than the same work
 
 # Current baseline
 
-The [specialization roadmap](agent-specialization-roadmap.md) delivered the layer this one builds on. That layer holds narrow capability packs with declared tools and completion checks, validated artifacts bound to a bundle fingerprint, and deterministic verification with an isolated critic. It also holds the granted-bundle federation path, reviewed staging, and a frozen benchmark suite with machine-scored fixtures.
+The [specialization roadmap](agent-specialization-roadmap.md) delivered the layer this one builds on. That layer holds narrow capability packs with declared tools and completion checks. It holds validated artifacts bound to a bundle fingerprint, and deterministic verification with an isolated critic. It also holds the granted-bundle federation path, reviewed staging, and a frozen benchmark suite with machine-scored fixtures.
 
 What is missing sits above it. Threads run in parallel only because a user opened them. Nothing computes a slice, no run carries a budget, and no job adds up cost across its runs. The [harness research](../reference/agent-harness-research.md) and [Agent Orchestration](../architecture/agent-orchestration.md) set the contract these packages implement.
 
@@ -52,7 +52,7 @@ Gate: the agent lanes contain no sleep-based synchronization, and two consecutiv
 - [x] Cap slice count and slice size, and name what each cap excluded rather than truncating silently. The plan also names a concept that carries nothing to slice by, because a bundle full of those is a finding about the bundle.
 - [x] Scale the width to the job rather than fixing it. A decomposition that yields one group plans one slice, and nothing pads a plan out to a target width.
 - [x] Expose the plan over IPC as a read-only preview that starts nothing: how many runs, which concepts each covers, and what each cap excluded. Projected cost joins it in HP4, where cost gets a source.
-- [x] Recompute nothing implicitly. A plan carries the fingerprint it was computed against.
+- [x] Recompute nothing implicitly. A plan carries the fingerprint the planner computed it against.
 
 Gate: the same bundle and the same decomposition request produce byte-identical slices across runs, and a bundle change invalidates them by the existing staleness rule.
 
@@ -69,7 +69,7 @@ Gate: a fake native model and a fake ACP agent execute the identical run contrac
 ## HP3: Fan-out and assembly
 
 - [x] Run every slice and assemble the result, with cancellation that stops pending runs and leaves in-flight ones alone.
-- [ ] Run slices concurrently rather than in sequence. Needs one session per concurrent run, which has not been shown safe under permission prompts and cancellation.
+- [ ] Run slices concurrently rather than in sequence. Needs one session per concurrent run, and no test yet shows that safe under permission prompts and cancellation.
 - [x] Assemble results into one result. Every included run names its slice and fingerprint, and the assembly carries its own completeness rather than leaving each surface to derive it.
 - [x] Exclude stale results and report them as excluded, rather than mixing generations.
 - [x] Complete with partial results when runs fail. Name each failure, separate a failure from a run that stopped at its ceiling, and name a planned slice that never reported at all.
@@ -88,10 +88,10 @@ Gate: a provider that reports no usage produces a job that runs to completion wi
 
 ## HP5: The orchestration surface
 
-- [x] Show the plan before anything runs, reachable from the launcher with no agent connected, because planning reads the parsed bundle and needs neither. Each run is a row with its name, a bar, and its concept count. "Not covered" names the caps and the skipped concepts. The plan states the fingerprint it was computed against.
+- [x] Show the plan before anything runs, reachable from the launcher with no agent connected, because planning reads the parsed bundle and needs neither. Each run is a row with its name, a bar, and its concept count. "Not covered" names the caps and the skipped concepts. The plan states the fingerprint the planner computed it against.
 - [x] Show a running job in the plan rows. Each run reports waiting, running, and its outcome as the job proceeds, and the assembly states coverage against the plan when it finishes.
 - [ ] Show live consumption per run. The ledger exists. Nothing feeds it usage during a run yet.
-- [x] Let the user start a job from its preview. When no agent is connected, the run control is disabled and says why.
+- [x] Let the user start a job from its preview. Without a connected agent, Studio disables the run control and says why.
 - [ ] Cancel a job from the surface. The runner accepts an abort signal. No control sends one yet.
 - [ ] Keep the job surface inside the existing panel layout and its 360, 440, and 560 pixel fixtures, with the shared focus ring and control floor.
 - [ ] Label an external agent's own tool activity as that agent's, never as Studio-managed runs.

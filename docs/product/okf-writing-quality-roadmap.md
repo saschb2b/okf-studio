@@ -8,19 +8,19 @@ generated: { by: claude/unrecorded, at: 2026-07-18T20:30:00Z }
 
 # Outcome
 
-Agents should write OKF concepts that read like careful domain work, not generic assistant output. A useful concept answers a specific reader question, states its point directly, preserves evidence and qualifications, and uses the shape that fits the knowledge. The user should not need a separate editing pass to remove throat-clearing, repeated conclusions, vague claims of importance, decorative headings, or lists that should have been prose.
+Agents should write OKF concepts that read like careful domain work, not generic assistant output. A useful concept answers a specific reader question, states its point directly, preserves evidence and qualifications, and uses the shape that fits the knowledge. The user should not need a separate editing pass for throat-clearing, repeated conclusions, or vague claims of importance. The same goes for decorative headings and lists that should have been prose.
 
-This transformation is successful when common authoring and revision tasks produce prose that people prefer to the current baseline while retaining every required fact, qualifier, citation, link, formula, code sample, and domain term. Shorter is not automatically better. A result that reads smoothly but loses knowledge is a failure.
+This work succeeds when common authoring and revision tasks produce prose that people prefer to the current baseline. That prose must keep every required fact, qualifier, citation, link, formula, code sample, and domain term. Shorter is not automatically better. A result that reads smoothly but loses knowledge is a failure.
 
 # Delivery status
 
-The product implementation is complete. The shared resource, author and revise capabilities, generic-chat router, diagnostics, protected claim ledger, review surface, critic, benchmark, documentation, site copy, and rollback path ship together in `okf-foundation@1.2.0`.
+The product implementation is complete. The shared resource, the author and revise capabilities, the generic-chat router, and the diagnostics ship together in `okf-foundation@1.2.0`. That release also carries the protected claim ledger, review surface, critic, benchmark, documentation, site copy, and rollback path.
 
-Three release-evidence items remain open because this workspace cannot manufacture them: a configured Studio Agent run, shuffled blind human preference, and protected signing plus non-Windows packages. An authenticated external Codex run completed all seven cases twice and passed all 14 deterministic preservation checks. The [dogfood record](okf-writing-quality-dogfood.md) retains the evidence and names the unavailable gates without treating them as passes.
+Three release-evidence items remain open, because this workspace cannot make them. They are a configured Studio Agent run, shuffled blind human preference, and protected signing plus non-Windows packages. An authenticated external Codex run completed all seven cases twice and passed all 14 deterministic preservation checks. The [dogfood record](okf-writing-quality-dogfood.md) retains the evidence and names the unavailable gates without treating them as passes.
 
 # Why this work is separate
 
-The completed [OKF Agent Specialization](agent-specialization-roadmap.md) gives agents named domain tasks, bounded context, provenance, structured artifacts, deterministic checks, and reviewed writes. Those features make OKF work safer and easier to inspect. They do not define how a concept should be written, how an agent should revise prose without changing meaning, or how Studio can measure whether the writing improved.
+The completed [OKF Agent Specialization](agent-specialization-roadmap.md) gives agents named domain tasks, bounded context, provenance, structured artifacts, deterministic checks, and reviewed writes. Those features make OKF work safer and easier to inspect. They do not define how to write a concept. They do not define how an agent revises prose without changing meaning, or how Studio measures whether the writing improved.
 
 The repository's general `no-slop` guidance is a useful editorial reference, but shipping it unchanged as the OKF writing contract would be too broad. OKF concepts often need exact source language, technical terminology, authored voice, dense reference material, and structured facts. The product therefore needs a narrower writing resource built around knowledge preservation, reader purpose, and reviewable change.
 
@@ -29,15 +29,15 @@ The repository's general `no-slop` guidance is a useful editorial reference, but
 - Writing quality is guidance, not an OKF conformance rule. A stylistically weak bundle remains readable and valid.
 - Source facts, uncertainty, qualifications, citations, links, formulas, code, and established domain terms outrank stylistic preferences.
 - The agent matches the bundle's language, audience, and house style instead of imposing one universal English voice.
-- Concision never justifies omitting knowledge. Semantic preservation is checked before prose quality is scored.
-- Deterministic checks identify observable patterns. Heuristics remain advisory, explain their evidence, and can be suppressed.
-- Revisions are staged and reviewed. Studio never rewrites an existing bundle in the background.
+- Concision never justifies omitting knowledge. Studio checks semantic preservation before it scores prose quality.
+- Deterministic checks identify observable patterns. Heuristics remain advisory, explain their evidence, and the user can suppress them.
+- Studio stages every revision for review. It never rewrites an existing bundle in the background.
 - A style-only revision cannot add or remove factual claims. When it does, the work becomes enrichment and needs evidence.
 
 # Shared writing contract
 
 Reader job
-: Name who will use the concept and the question or decision it should support. The opening should answer that job, not announce that an answer is coming.
+: Name who will use the concept and the question or decision it should support. The opening should answer that job rather than announce a coming answer.
 
 Meaning
 : State the actual point and its consequence. Explain why a feature, rule, or decision exists when that context helps the reader understand its value or the gap it closes.
@@ -52,7 +52,7 @@ Prose
 : Prefer concrete nouns, active verbs, causal sentences, and specific subjects. Remove throat-clearing, repeated conclusions, vague authorities, inflated significance, and generic closing claims.
 
 Revision
-: Inventory claims before editing and reconcile them afterward. Show which claims are unchanged, reworded, added, or removed, and preserve frontmatter, links, and citations unless the user explicitly changes their meaning.
+: Inventory claims before editing and reconcile them afterward. Show which claims stayed the same, and which the revision reworded, added, or removed. Preserve frontmatter, links, and citations unless the user explicitly changes their meaning.
 
 # Second-pass review
 
@@ -60,14 +60,14 @@ The first plan focused on editing guidance. A second pass found that prose work 
 
 | Risk | Resolution |
 | --- | --- |
-| English-focused guidance overrides another language or an established bundle voice | Detect the bundle language and local conventions first; label initial English guidance as language-specific and keep style rules replaceable |
+| English-focused guidance overrides another language or an established bundle voice | Detect the bundle language and local conventions first. Label initial English guidance as language-specific and keep style rules replaceable |
 | A writing linter becomes a prescriptive validity gate | Keep writing findings advisory, evidence-based, suppressible, and separate from conformance |
 | Concision removes qualifiers, examples, or operational detail | Freeze factual invariants before revision and fail the artifact when required knowledge is missing afterward |
-| A fluent rewrite introduces unsupported claims | Require a claim ledger and evidence for every factual addition; route semantic changes through enrichment |
+| A fluent rewrite introduces unsupported claims | Require a claim ledger and evidence for every factual addition. Route semantic changes through enrichment |
 | One approved example becomes an exact-text target | Freeze facts, audience, and constraints, then use blind pairwise review rather than string similarity |
 | A model grades prose in its own preferred voice | Keep deterministic measures narrow, run any critic in an isolated no-tool session, and retain human preference as the authority |
 | Provider-specific prompt tuning makes the capability non-portable | Deliver the same versioned writing resources through the capability pack and compare live providers against the same cases |
-| Automatic cleanup surprises existing bundle authors | Offer explicit authoring and revision actions only; do not rewrite existing concepts during upgrade, scan, or validation |
+| Automatic cleanup surprises existing bundle authors | Offer explicit authoring and revision actions only. Do not rewrite existing concepts during upgrade, scan, or validation |
 
 # Work packages
 
@@ -75,15 +75,15 @@ Each package ends in a focused commit or short series of reviewable commits. A p
 
 ## WQ0: Baseline and evaluation contract
 
-- [x] Build a frozen corpus covering factual but generic prose, concise but incomplete prose, fluent unsupported prose, over-structured concepts, copied source language, voice mismatch, and strong domain writing.
+- [x] Build a frozen corpus of factual but generic prose, concise but incomplete prose, and fluent unsupported prose. Cover over-structured concepts, copied source language, voice mismatch, and strong domain writing too.
 - [x] Include representative concept types such as product rationale, architecture, runbook, reference, decision, and source-derived knowledge.
 - [x] Record the reader job, required facts, qualifications, citations, links, terms, language, and structural constraints for every case.
 - [x] Capture current outputs from Studio Agent and each configured replaceable provider. Record unavailable providers as unavailable, not as passing runs.
 - [x] Add model-free checks for required knowledge, citations, links, claim count, repeated passages, empty sections, and unsupported additions.
 - [x] Define a shuffled blind pairwise human review for directness, coherence, concreteness, structure, voice fit, and usefulness.
-- [x] Freeze the improvement threshold after the baseline is measured and before implementation begins.
+- [x] Measure the baseline first, then freeze the improvement threshold before implementation begins.
 
-Gate: the evaluation separates better prose from shorter but incomplete prose, produces stable model-free results in two shuffled runs, and retains the baseline outputs for comparison.
+Gate: the evaluation separates better prose from shorter but incomplete prose. It produces stable model-free results in two shuffled runs, and it retains the baseline outputs for comparison.
 
 ## WQ1: Versioned OKF writing resource
 
@@ -111,13 +111,13 @@ Gate: explicit create and revise actions select the correct bounded capability, 
 ## WQ3: Advisory writing diagnostics
 
 - [x] Add a versioned `writing` category to Knowledge Health without changing OKF conformance or tolerant bundle opening.
-- [x] Detect observable patterns such as duplicated adjacent text, repeated boilerplate, empty headings, conclusion echoes, generic openers and closers, excessive heading depth, decorative bold labels, and list density that obscures continuous reasoning.
+- [x] Detect observable patterns: duplicated adjacent text, repeated boilerplate, empty headings, and conclusion echoes. Also detect generic openers and closers, excessive heading depth, decorative bold labels, and list density that obscures continuous reasoning.
 - [x] Give each rule a stable ID, version, evidence span, explanation, severity, and suppression fingerprint.
 - [x] Keep phrase matches contextual and advisory. Do not use a blanket word blacklist, reading-grade target, or word count as a quality gate.
 - [x] Add false-positive fixtures for quotations, standards text, reference indexes, checklists, incident procedures, generated schemas, and intentionally repeated warnings.
 - [x] Bound scanning cost for large bundles and cancel obsolete work after live reload.
 
-Gate: two shuffled runs produce the same findings, every finding points to visible evidence, suppressions are stable, and no writing rule can block opening or validation.
+Gate: two shuffled runs produce the same findings, and every finding points to visible evidence. Suppressions stay stable, and no writing rule can block opening or validation.
 
 ## WQ4: Fact-preserving revision artifact
 
@@ -140,7 +140,7 @@ Gate: seeded losses and unsupported additions fail deterministically, while a me
 - [x] Add an optional isolated critic for clarity, redundancy, concreteness, structure, voice fit, rationale coverage, and claim preservation. The critic gets no tools, write grant, or approval authority.
 - [x] Isolate every state and interaction in Storybook and screen it through the Storybook MCP surface before whole-panel integration.
 
-Gate: before staging, a user can tell what will read differently, whether any knowledge changed, and which evidence supports each semantic change at wide and narrow widths.
+Gate: before staging, a user can tell what will read differently and whether any knowledge changed. The user also sees which evidence supports each semantic change, at wide and narrow widths.
 
 ## WQ6: Benchmark and provider proof
 
@@ -157,12 +157,12 @@ Gate: live provider outputs beat the frozen baseline in blind preference without
 ## WQ7: Rollout and completion
 
 - [x] Dogfood the workflow on selected Studio product and feature concepts, retaining the accepted before-and-after evidence.
-- [x] Ship the updated capability pack with compatibility checks, rollback, and a clear note that existing concepts are not rewritten automatically.
+- [x] Ship the updated capability pack with compatibility checks, rollback, and a clear note that Studio does not rewrite existing concepts automatically.
 - [x] Update feature, architecture, migration, security, support, and site copy to explain both the writing improvement and its limits.
 - [x] Add recovery guidance for unavailable providers, invalid claim ledgers, stale revisions, false-positive diagnostics, and interrupted review.
 - [ ] Complete app, Rust, Storybook, site, OKF, ODSF, installer, and platform gates.
 
-Gate: a new user can author or revise a real concept from a bounded source set, inspect the reader purpose and claim map, review every semantic change, and apply the result through the existing transaction while retaining a working capability-pack rollback.
+Gate: a new user can author or revise a real concept from a bounded source set. That user can inspect the reader purpose and claim map, then review every semantic change. Applying the result runs through the existing transaction, and the capability-pack rollback still works.
 
 # Dependency order
 

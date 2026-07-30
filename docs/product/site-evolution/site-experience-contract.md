@@ -47,7 +47,7 @@ Project
 
 `Product` groups durable capability families. `Workflows` starts from a user's objective and connects the relevant families. `OKF` explains the portable format after the product value is clear. `Docs` owns instructions and reference material. `Project` owns change over time.
 
-The initial implementation does not need a page for every leaf on day one. The route and content model must support the tree, while thin workflow leaves may begin as sections on one Workflows page. A leaf becomes a dedicated page when it has distinct search intent, enough proof to stand alone, or a stable audience that needs a direct link.
+The initial implementation does not need a page for every leaf on day one. The route and content model must support the tree, while thin workflow leaves may begin as sections on one Workflows page. A leaf becomes a dedicated page when it has distinct search intent or enough proof to stand alone. A stable audience that needs a direct link also earns one.
 
 # Primary navigation
 
@@ -125,7 +125,7 @@ Every claim has one canonical home:
 | Format semantics | OKF pages or specification | Plain-language reason and link |
 | Planned behavior | Roadmap | Never presented as shipped product copy |
 
-A capability earns homepage space only when it is broadly relevant, differentiates Studio, can be demonstrated with current product evidence, and is stable enough to survive several releases. Failing one condition sends it to a detail page, documentation, or the changelog.
+A capability earns homepage space only when it is broadly relevant and differentiates Studio. Current product evidence must also show it, and it must stay stable across several releases. Failing one condition sends it to a detail page, documentation, or the changelog.
 
 # Content model
 
@@ -137,7 +137,7 @@ Astro pages should consume small typed content records instead of defining the p
 * release and download metadata
 * shared trust claims tied to the matching product specification.
 
-Navigation data has one owner. A product claim has one canonical record. Pages compose references to those records and may provide page-specific framing, but they do not fork the factual copy. The implementation may use TypeScript data modules first; Astro content collections become useful only when the number of editorial pages warrants schema validation and authoring outside components.
+Navigation data has one owner. A product claim has one canonical record. Pages compose references to those records and may provide page-specific framing, but they do not fork the factual copy. The implementation may use TypeScript data modules first. Astro content collections become useful only when the number of editorial pages warrants schema validation and authoring outside components.
 
 # Visual and responsive rules
 
@@ -158,7 +158,7 @@ Repeated cards remain appropriate for genuinely parallel workflow outcomes. They
 
 # Search and growth
 
-The first restructuring does not need site search. The proposed hierarchy is small enough to navigate directly. Add search when documentation is published into the same site or when task testing shows that visitors cannot predict the correct destination. A search box should solve observed findability problems, not compensate for an unclear hierarchy.
+The first restructuring does not need site search. The proposed hierarchy is small enough to navigate directly. Add search when the team publishes documentation into the same site, or when task testing shows that visitors cannot predict the correct destination. A search box should solve observed findability problems, not compensate for an unclear hierarchy.
 
 The structure reserves places for integrations, extension methods, or a public capability catalogue without placing them in primary navigation now. If Studio later ships a real ecosystem surface, it belongs under Product or a new Extensions destination backed by browsable inventory and compatibility data.
 
@@ -168,13 +168,13 @@ The structure reserves places for integrations, extension methods, or a public c
 
 Map every existing homepage claim to Home, Product, Workflow, OKF, Docs, Download, or Releases. Mark duplicates and stale claims. Freeze route names, primary navigation labels, redirects, page titles, descriptions, and canonical URLs before changing layout.
 
-Exit: every current claim has an owner, no shipped claim is lost, and future or unsupported copy is removed.
+Exit: every current claim has an owner, the site keeps every shipped claim, and the rework removes future or unsupported copy.
 
 ## SE1: Multi-page foundation
 
 Extract navigation, product families, and release metadata from `index.astro`. Add shared header, mobile menu, footer, page shell, and route-aware metadata. Preserve the existing GitHub Pages base path and direct-route behavior.
 
-Exit: every primary destination works by keyboard at wide and narrow widths; direct URLs and the existing homepage URL build correctly.
+Exit: every primary destination works by keyboard at wide and narrow widths. Direct URLs and the existing homepage URL build correctly.
 
 ## SE2: Homepage replacement
 
@@ -190,7 +190,7 @@ Exit: each primary capability and task has one stable shareable destination, and
 
 ## SE4: OKF, project, and release routes
 
-Move the format explanation to OKF pages. Add lightweight Releases and Roadmap routes backed by existing repository sources, or link directly to those sources until they can be published without duplication.
+Move the format explanation to OKF pages. Add lightweight Releases and Roadmap routes backed by existing repository sources, or link directly to those sources until the site can publish them without duplication.
 
 Exit: returning users can reach format, documentation, release, and project information without traversing the homepage.
 
@@ -198,7 +198,7 @@ Exit: returning users can reach format, documentation, release, and project info
 
 Test the complete site at 320, 390, 768, and a wide desktop width. Cover menu open and closed states, missing or slow images, keyboard traversal, reduced motion, direct routes, 404 behavior, and platform download choices. Run a short task test with people unfamiliar with the current page.
 
-Exit: the Astro build, link check, accessibility scan, page metadata check, and responsive visual review pass. Any remaining issue is recorded with severity and an owner.
+Exit: the Astro build, link check, accessibility scan, page metadata check, and responsive visual review pass. The team records every remaining issue with a severity and an owner.
 
 # Measures
 
@@ -214,6 +214,6 @@ The rework succeeds when:
 # Deferred decisions
 
 * Whether Docs becomes a first-party site route or remains a direct link to repository documentation.
-* Whether Releases and Roadmap are generated from repository data or link to GitHub until a stable publishing pipeline exists.
+* Whether the site generates Releases and Roadmap from repository data, or links to GitHub until a stable publishing pipeline exists.
 * Whether Workflows needs separate child routes after task testing.
 * Whether a future integrations catalogue warrants a new primary destination.

@@ -20,7 +20,7 @@ flowchart LR
   Change --> Curate
 ```
 
-The graph and reader remain first-class. The new [Agent Panel](../features/agent-panel.md) acts on the knowledge beside them: create bundles from source material, enrich existing bundles, propose dataset documentation changes, and conduct cited research.
+The graph and reader remain central. The new [Agent Panel](../features/agent-panel.md) acts on the knowledge beside them. It creates bundles from source material, enriches existing bundles, proposes dataset documentation changes, and runs cited research.
 
 # Product stance
 
@@ -57,15 +57,15 @@ Gate: this roadmap, [Agent Panel](../features/agent-panel.md), [Agent System](..
 - [x] Rename visible app, docs, fixture, site, window-title, and display metadata copy to **OKF Studio**.
 - [x] Replace the viewer one-liner with a proposition covering connected knowledge and user-chosen agents.
 - [x] Keep the repository name, update endpoint, Tauri identifier `app.okfviewer.desktop`, and current app-data location so installed copies upgrade in place.
-- [x] Document compatibility names that intentionally remain `okf-viewer` (the Tauri identifier, credential service, store file, and package/binary name; the repository itself later became `saschb2b/okf-studio`).
+- [x] Document compatibility names that intentionally remain `okf-viewer` (the Tauri identifier, credential service, store file, and package/binary name). The repository itself later became `saschb2b/okf-studio`.
 
-Gate: no visible Viewer branding remains; updater identity is unchanged; app and site builds pass.
+Gate: no visible Viewer branding remains. The updater identity stays the same. App and site builds pass.
 
 ## WP2: Agent Panel shell
 
 - [x] Put the Agent opener last at the bottom-right of the status bar.
 - [x] Toggle a resizable right dock that reduces the workspace instead of covering it.
-- [x] Persist visibility and width; add `Ctrl/Cmd+Shift+A` and a command-palette action.
+- [x] Persist visibility and width. Add `Ctrl/Cmd+Shift+A` and a command-palette action.
 - [x] Ship no-connection, loading, connection-error, no-bundle, and narrow-window states.
 
 Gate: keyboard, focus return, axe, 24px targets, and screenshots at narrow and wide widths.
@@ -84,7 +84,7 @@ Gate: mocked offline, corrupt, unsupported-platform, cancel, retry, and update t
 ## WP4: ACP runtime
 
 - [x] Add a Rust boundary using the official `agent-client-protocol` client.
-- [x] Start agents on demand over stdin/stdout JSON-RPC; keep bounded redacted stderr diagnostics.
+- [x] Start agents on demand over stdin/stdout JSON-RPC. Keep bounded redacted stderr diagnostics.
 - [x] Negotiate a typed capability set during initialization.
 - [x] Scope each new session to one canonical absolute bundle root.
 - [x] Expose typed Tauri commands and terminal lifecycle events for custom connections.
@@ -97,7 +97,7 @@ Gate: a fake agent covers initialize, auth, session/new, streaming, permission, 
 
 ## WP5: Authentication and providers
 
-- [x] Render stable agent-owned ACP auth methods; let external agents own browser, subscription, and token login.
+- [x] Render stable agent-owned ACP auth methods. Let external agents own browser, subscription, and token login.
 - [x] Never copy external-agent credentials into Studio settings or logs.
 - [x] Store Studio Agent keys only in the OS credential store.
 - [x] Configure and probe Ollama, LM Studio, llama.cpp, and custom OpenAI-compatible endpoints without sending prompts or credentials.
@@ -119,9 +119,9 @@ Gate: secrets never enter frontend state, settings JSON, transcripts, diagnostic
 - [x] Export the current in-memory thread as Markdown through an explicit native save dialog.
 - [x] Derive and edit a title for the current in-memory thread and use it in Markdown export.
 - [x] Queue one visible, editable in-memory follow-up and submit it after the active turn.
-- [x] Browse and restore bundle-matching agent-owned ACP sessions when both list and load are advertised.
+- [x] Browse and restore bundle-matching agent-owned ACP sessions when the agent advertises both list and load.
 - [x] Add accepted-turn retry while the same ACP session remains live.
-- [x] Persist the current thread title and agent-owned session pointer per bundle and profile; re-list through ACP before restore.
+- [x] Persist the current thread title and agent-owned session pointer per bundle and profile. Re-list through ACP before restore.
 
 Gate: reducer and fake-agent tests cover concurrent sessions, cancellation, and late updates.
 
@@ -147,10 +147,10 @@ Gate: benchmark tasks produce conformant output on Studio Agent, Claude Agent, C
 
 ## WP8: Reviewed writes
 
-- [x] Keep tools read-only until **Allow edits in this thread** is granted.
-- [x] Stage Studio writes; show bounded per-file diffs and reject controls.
+- [x] Keep tools read-only until the user grants **Allow edits in this thread**.
+- [x] Stage Studio writes. Show bounded per-file diffs and reject controls.
 - [x] Add revision-bound per-hunk keep and reject selection before apply.
-- [x] Reduce ACP diff content into the staged change service; never present it as an applied Studio change.
+- [x] Reduce ACP diff content into the staged change service. Never present it as an applied Studio change.
 - [x] Validate the selected staged tree against the same OKF parser and validator used for the open bundle.
 - [x] Apply the exact validated revision as a rollback transaction.
 - [x] Retain a guarded connection-lifetime checkpoint and restore the latest apply.
@@ -176,7 +176,7 @@ Gate: traversal, crash safety, validator parity, checkpoint restore, and hostile
 - [x] Generate into staging, validate, preview the graph, then choose a destination.
 - [x] Reuse the pipeline to enrich bundles without silently overwriting authored facts.
 
-The generation and enhancement package is complete. The newest reviewed proposal enters staged writes after an explicit thread grant. Create validates and previews an isolated fresh-bundle tree, then writes the exact reviewed revision into a new named folder below a parent the user chooses. Enhance overlays the active bundle but blocks validation and Apply until every hunk touching an existing file has an explicit Keep or Reject choice. Existing destination folders are never merged with or replaced.
+The generation and enhancement package is complete. The newest reviewed proposal enters staged writes after an explicit thread grant. Create validates and previews an isolated fresh-bundle tree, then writes the exact reviewed revision into a new named folder below a parent the user chooses. Enhance overlays the active bundle but blocks validation and Apply until every hunk touching an existing file has an explicit Keep or Reject choice. Studio never merges into or replaces an existing destination folder.
 
 Gate: mixed, duplicate, malformed, offline, provenance, and deterministic-validation fixtures.
 
@@ -202,52 +202,58 @@ The journey contract defines what earns persistent space and what stays deferred
 | Returning to saved work | Saved thread title, agent, age or state, **Resume**, **Dismiss**, and a clear **Start new thread** alternative | A second empty-thread explanation and the full starter grid until the user chooses new work |
 | Research | Thread identity, attached evidence, turn state, source requirements, transcript, and composer | Write grants and staged-change actions until the agent requests a write or the user selects an editing workflow |
 | Create or enhance | Workflow identity, edit-grant state, staged-change state, review and validation progress, transcript, and composer | Research-only export guidance and unrelated toolbar actions |
-| Permission or failure | The blocking request or error beside the action that owns it, recovery action, retained draft, and Stop when applicable | Unrelated actions that cannot complete; disabled controls must explain why |
+| Permission or failure | The blocking request or error beside the action that owns it, recovery action, retained draft, and Stop when applicable | Unrelated actions that cannot complete. Disabled controls must explain why |
 | Parallel agents and threads | Selected agent and thread, compact status, switch affordances, and one add action per level | Repeated product, bundle, agent, and thread labels across stacked bars |
 | Narrow panel | The same task state, a scrollable or condensed switcher, transcript, and composer with 24px minimum targets | Text labels that can move into an accessible overflow menu without hiding state |
 
-The persistent-band audit assigns one owner to each identity: the global switcher owns the bundle, the connection strip owns the agent, and the thread strip owns the thread. The panel header owns entry and exit, the task-aware action row owns direct thread boundaries, the transcript owns work and blocking state, staged review owns edits, and the composer owns intake plus turn submission. The removed duplication was the toolbar's second agent, bundle, and thread label. Empty read-only threads no longer show disabled edit, export, or archive commands. History, Export, Archive, and Change agent now share one predictable secondary menu; the History surface keeps a direct Back action.
+The persistent-band audit assigns one owner to each identity. The global switcher owns the bundle, the connection strip owns the agent, and the thread strip owns the thread. The panel header owns entry and exit, and the task-aware action row owns direct thread boundaries. The transcript owns work and blocking state, staged review owns edits, and the composer owns intake plus turn submission.
+
+The removed duplication was the toolbar's second agent, bundle, and thread label. Empty read-only threads no longer show disabled edit, export, or archive commands. History, Export, Archive, and Change agent now share one predictable secondary menu. The History surface keeps a direct Back action.
 
 The hierarchy prototype uses the state gallery's deliberately long agent and thread names. At 360px and the 440px default, the merged navigator needs 477px of content and therefore hides part of the other identity level behind horizontal scrolling. The stacked strips fit without horizontal overflow at both widths. The merged row fits at 560px, but changing hierarchy by width would move the same controls between rows. Studio therefore keeps the two stable strips: one agent owner and one thread owner, each with its own add action.
 
-The visual-consistency pass checked every deterministic state against the theme spacing and type scales, common edges, dividers, repeated 28- and 32-pixel controls, overflow, and the shared focus ring. It found two safe defects. A staged-operation failure could begin below the stage's internal scroll, so its recovery now precedes the file list. A last-agent process failure competed with a second connection action, so the connection notice now owns recovery while the empty space only confirms that the bundle remains readable. Re-rendering at 360px and 560px kept panel `clientWidth` equal to `scrollWidth`, kept the composer in view, and retained a 28-pixel minimum control. The 9-pixel staged-graph SVG labels remain a judgment exception to the UI type scale because raising them to the 12-pixel text floor would overlap dense preview nodes; they are supplementary to the textual staged-file list.
+The visual-consistency pass checked every deterministic state against the theme spacing and type scales. It also checked common edges, dividers, repeated 28- and 32-pixel controls, overflow, and the shared focus ring. It found two safe defects.
+
+A staged-operation failure could begin below the stage's internal scroll, so its recovery now precedes the file list. A last-agent process failure competed with a second connection action. The connection notice now owns recovery, and the empty space only confirms that the bundle remains readable. Re-rendering at 360px and 560px kept panel `clientWidth` equal to `scrollWidth`, kept the composer in view, and retained a 28-pixel minimum control.
+
+The 9-pixel staged-graph SVG labels remain a judgment exception to the UI type scale. Raising them to the 12-pixel text floor would overlap dense preview nodes. The labels supplement the textual staged-file list.
 
 - [x] Inventory every persistent band and action across disconnected, authentication, empty, resumed, streaming, permission, staged, validation, and error states. Record duplicate labels, actions without a current use, and controls that move between states.
 - [x] Prototype the workspace hierarchy with real long agent, bundle, and thread names. Compare a merged agent/thread navigator with the current stacked strips at 360px, the default panel width, and 560px before choosing the structure.
 - [x] Reduce the live workspace to one clear identity header. The selected agent and thread remain discoverable, while the product name, bundle name, connection state, and repeated new-thread actions appear only where they add information.
 - [x] Make saved-thread continuation a distinct returning-user state. Resume, dismiss, or start new work must resolve that state before the ordinary empty-thread guidance takes over.
-- [x] Separate research and editing emphasis. Keep read-only research calm by default; reveal the edit grant, staged review, validation, Apply, and Restore controls when the selected workflow or live stage makes them relevant.
+- [x] Separate research and editing emphasis. Keep read-only research calm by default. Reveal the edit grant, staged review, validation, Apply, and Restore controls when the selected workflow or live stage makes them relevant.
 - [x] Consolidate secondary thread actions into one predictable menu. Keep Stop, Send or Queue, the active blocking request, and staged-review actions direct because they are time-sensitive.
-- [x] Give the transcript the dominant vertical budget. Empty guidance must be short enough that the composer remains visually connected to it, and long content must scroll without pushing identity or send controls out of reach.
+- [x] Give the transcript the dominant vertical budget. Empty guidance must be short enough that the composer remains visually connected to it. Long content must scroll without pushing identity or send controls out of reach.
 - [x] Treat connection, session, turn, permission, staging, and validation as separate status owners. Each failure appears once beside its recovery action and survives switching away and back to its agent or thread.
   - [x] Retain an unexpected process failure at panel level after its connection disappears. Keep the reason beside **Review connections** and **Dismiss**, and clear it when the same profile reconnects.
   - [x] Give session event-stream failures their own retryable thread notice instead of presenting them as agent prose.
   - [x] Keep turn-control failures beside Stop or Retry without duplicating terminal turn records.
   - [x] Keep permission-response failures inside their request card while that request remains active.
-  - [x] Move staging operation failures into the staged-review or proposal surface that owns the retry; keep validation failures inside validation.
-- [x] Add a deterministic UI state gallery or fixture for the journey matrix, including long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
+  - [x] Move staging operation failures into the staged-review or proposal surface that owns the retry. Keep validation failures inside validation.
+- [x] Add a deterministic UI state gallery or fixture for the journey matrix. It covers long names, long errors, no history, stale history, unsupported capabilities, active turns, queued prompts, permissions, staged changes, and disconnected processes.
 - [x] Verify keyboard order, focus return, popover focus, horizontal switcher scrolling, 24px targets, text reflow, and visible focus at narrow and wide widths. No task-critical action may exist only on hover.
 - [x] Run a visual-consistency pass over spacing, type scale, common edges, dividers, repeated controls, overflow, and focus rings. Use the existing theme tokens and record any hierarchy choice that still needs judgment.
 - [x] Dogfood the first-use, resume, deep-research, create, enhance, permission, failure-recovery, parallel-thread, and narrow-panel journeys. The [journey record](../ux/agent-workspace-dogfood.md) preserves the results from the constrained-width, navigation, and hierarchy checks without retaining stale screenshot artifacts.
 
-Gate: each journey has one obvious next action, no duplicated persistent identity, no hidden blocking state, and recorded visual plus keyboard evidence at 360px, the default panel width, and 560px.
+Gate: each journey has one obvious next action, no duplicated persistent identity, and no hidden blocking state. The record holds visual and keyboard evidence at 360px, the default panel width, and 560px.
 
 ## WP10B: Agent-advertised session controls
 
 Model, mode, reasoning effort, and related choices belong to the active agent session. Studio must render what the agent advertises through ACP instead of maintaining Claude, Codex, or local-model menus of its own. The composer footer is the stable home for this control rail because the choices affect the next turn.
 
-- [x] Advertise ACP client support for bounded select and boolean session config options. Capture the complete ordered option set returned by new, loaded, and resumed sessions; apply the same reducer when ACP adds a fork-session response.
-- [x] Reduce every option, value, group, description, category, and current value through Rust limits before it reaches the webview. Unknown categories remain usable; unknown kinds remain safely absent.
+- [x] Advertise ACP client support for bounded select and boolean session config options. Capture the complete ordered option set that new, loaded, and resumed sessions return. Apply the same reducer when ACP adds a fork-session response.
+- [x] Reduce every option, value, group, description, category, and current value through Rust limits before it reaches the webview. Unknown categories remain usable. Unknown kinds remain safely absent.
 - [x] Render current mode, model, thought level, model configuration, and custom options only when advertised. Use the semantic category for icon, accessible name, preferred order, and keyboard action, never to infer provider behavior.
-- [x] Send `session/set_config_option` through the owning session actor. Serialize overlapping changes, replace the full option snapshot from every response, and accept agent-initiated full replacements from `session/update`.
+- [x] Send `session/set_config_option` through the owning session actor. Serialize overlapping changes, replace the full option snapshot from every response, and accept full replacements that the agent sends through `session/update`.
 - [x] Use legacy ACP session modes only when the session has no config option set. Never render the same mode through both contracts.
-- [x] Keep the last confirmed selection visible while a change is pending or fails. Put Retry or the bounded error beside the selector; a failed model switch must not look successful.
+- [x] Keep the last confirmed selection visible while a change is pending or fails. Put Retry or the bounded error beside the selector. A failed model switch must not look successful.
 - [x] Support grouped, searchable pickers with option descriptions. Add local favorites and keyboard cycling without changing the agent's advertised order or sending favorite metadata to the agent.
 - [x] Define every supported native Studio Agent session choice through the same frontend shape so the composer does not fork by provider path. The first slice exposes the connected model and keeps unsupported mode and reasoning controls absent.
 - [x] At 360px, keep mode and the primary model discoverable and move lower-priority or custom options into one labelled configuration popover. No current value may disappear without an accessible summary.
 - [x] Extend the deterministic gallery with no-options, one-option, long grouped models, dynamic reasoning removal, boolean options, pending change, stale response, and failure recovery states.
 
-Gate: Claude Agent, Codex, a no-option fake agent, a dynamic-option fake agent, and Studio Agent expose only supported choices; switching one option cannot leave another selector stale.
+Gate: Claude Agent, Codex, a no-option fake agent, a dynamic-option fake agent, and Studio Agent expose only supported choices. Switching one option cannot leave another selector stale.
 
 ## WP10C: Docked live-work shelf
 
@@ -258,19 +264,19 @@ The transcript should answer what happened. A compact shelf directly above the c
 - [x] Move the current replacement plan into a one-line summary with current task, completed count, and remaining count. Its expanded list has bounded scrolling and preserves agent order and status.
 - [x] Preserve the terminal plan snapshot in transcript export without rendering a duplicate live plan card. Clearing or collapsing the shelf changes presentation only.
 - [x] Move the active permission decision into the shelf while leaving its chronological request and resolution understandable in the transcript. A delivery failure remains beside the still-active decision.
-- [x] Keep the staged OKF transaction, validation, Apply, and Restore model intact. The shelf summarizes its state and expands the existing review; it does not adopt Zed's direct editor-write assumptions.
+- [x] Keep the staged OKF transaction, validation, Apply, and Restore model intact. The shelf summarizes its state and expands the existing review. It does not adopt Zed's direct editor-write assumptions.
 - [x] Move the follow-up queue into the same shelf contract. Edit, remove, send-next, and Stop remain reachable without scrolling the transcript.
 - [x] Persist disclosure state per live thread, but reset it when the owning content disappears. Switching threads must reveal that thread's blocking section immediately even if it was previously collapsed.
 - [x] Prove maximum-height, nested-scroll, keyboard order, live-region restraint, and focus return at 360px, the default width, and 560px with every section populated.
 
-Gate: a user can always see why the agent is waiting, what step is running, what writes are staged, and what message is queued without hunting through the transcript.
+Gate: a user can always see why the agent waits and which step runs. The same view shows the staged writes and the queued message, without hunting through the transcript.
 
 ## WP10D: Thread navigation and context lifecycle
 
 - [x] Add transcript-level keyboard navigation and visible jump controls for the top, latest user prompt, and bottom. Streaming must not steal scroll position after the user moves away from the tail.
 - [x] Add response actions for copying a selection, copying one complete agent response, and opening the current thread as inert Markdown inside Studio. Keep native file export as a separate explicit action.
 - [x] Make bundle-relative ACP tool locations navigable in the reader. Ignore outside-bundle, absolute-only, missing, or non-concept locations without broadening file access.
-- [x] Turn context usage into a threshold state with an explanation and recovery. Use an advertised compact or summary command when available; otherwise offer a fresh thread with explicit, reviewable carried context.
+- [x] Turn context usage into a threshold state with an explanation and recovery. Use an advertised compact or summary command when available. Otherwise offer a fresh thread with explicit, reviewable carried context.
 - [x] Preserve context-compaction summaries as inspectable transcript entries when the agent reports them. Do not present client-side truncation as agent-owned compaction.
 - [x] Add a safe draft recall for the latest unsent or queued prompt. Defer editing and resubmitting accepted messages until Studio can prove a matching checkpoint or rewind boundary for every affected write.
 - [x] Add focused tests for scroll anchoring, long Markdown, copied plain and formatted content, invalid locations, usage thresholds, and context recovery.
@@ -284,18 +290,18 @@ Gate: long research and editing threads remain navigable and recoverable without
 - [x] Expand history from one current and one archived pointer into a bounded, searchable bundle-scoped list when the agent advertises session list and load. Keep restore validation agent-owned and bundle-filtered.
 - [x] Add recent-thread keyboard switching with visible agent and status. A running, waiting, failed, or staged thread must retain its state while inactive.
 - [x] Offer explicit import of compatible agent sessions only after a fresh bundle-root filter. Unsupported agents keep the action absent rather than disabled without explanation.
-- [x] Show compact running, waiting, failed, and staged indicators in the connection and thread switchers. Notifications supplement this state; they do not replace it.
+- [x] Show compact running, waiting, failed, and staged indicators in the connection and thread switchers. Notifications supplement this state. They do not replace it.
 
-Gate: five concurrent threads can be identified, switched, searched, and recovered without exposing transcript content in operating-system notifications or confusing bundle scope.
+Gate: a user can identify, switch, search, and recover five concurrent threads without exposing transcript content in operating-system notifications or confusing bundle scope.
 
 ## WP11: Isolation and autonomy
 
 - [x] Enforce the active bundle root through a Rust-owned grant registry rather than trusting a path supplied by the webview.
   - [x] Move local folder selection behind a Rust command that registers only the canonical path returned by the native dialog.
-  - [x] Register remote-cache roots when the Rust fetch completes and persist enough Rust-owned grant metadata to reopen a recent bundle without trusting the frontend store as authority.
-  - [x] Require a live grant for scanning, bundle reads, asset reads, watching, and agent session creation; keep source, export, and fresh-destination pickers as separate one-operation grants.
+  - [x] Register remote-cache roots when the Rust fetch completes. Persist enough Rust-owned grant metadata to reopen a recent bundle without trusting the frontend store as authority.
+  - [x] Require a live grant for scanning, bundle reads, asset reads, watching, and agent session creation. Keep source, export, and fresh-destination pickers as separate one-operation grants.
   - [x] Cover forged paths, stale recents, symbolic links, pop-out windows, remote-cache eviction, and grant revocation with native tests.
-- [x] Add OS-level restrictions where enforceable; keep writes scoped, protect Git metadata, and default-deny local-agent network.
+- [x] Add OS-level restrictions where enforceable. Keep writes scoped, protect Git metadata, and default-deny local-agent network.
   - [x] Own each external ACP process tree and terminate descendants on disconnect or host cancellation.
   - [x] Bind each external process launch to one canonical Rust-granted bundle root and reject cross-bundle session operations before ACP dispatch.
   - [x] Show the effective bundle, file, network, write, and process scope in every live thread.
@@ -307,23 +313,23 @@ Gate: five concurrent threads can be identified, switched, searched, and recover
   - [x] Isolate each live conversation surface so one connection can own multiple concurrent sessions without weakening its one-turn-per-session rule.
 - [x] Make unattended mode an explicit profile with visible scope and stop conditions.
 
-Gate: platform docs and tests state exactly what is contained on Windows, Linux, and macOS.
+Gate: platform docs and tests state exactly what the sandbox contains on Windows, Linux, and macOS.
 
 ### WP11 exit contract
 
-Future isolation work remains dependency-gated. A command wrapper, provider self-report, or process-tree owner cannot unlock unattended mode.
+Future isolation work remains dependency-gated. A command wrapper, provider self-report, or process-tree owner cannot enable unattended mode.
 
-The 2026-07-17 dependency recheck found no safe local substitute. ACP v1 identifies a tool call only within its session and supplies no stable tool-definition identity for a cross-session rule. Agent-controlled titles, kinds, arguments, locations, and `allow_always` labels cannot become that identity. The exact evidence and closure criteria are recorded in the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
+The 2026-07-17 dependency recheck found no safe local substitute. ACP v1 identifies a tool call only within its session and supplies no stable tool-definition identity for a cross-session rule. Agent-controlled titles, kinds, arguments, locations, and `allow_always` labels cannot become that identity. The [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit) records the exact evidence and closure criteria.
 
-- [x] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths, denies Git and credential paths below those mounts, and reports a closed network mode.
-  - [x] Select system Bubblewrap for the first Linux backend and preflight its ownership, mode, file capabilities, namespace creation, network isolation, parent-death handling, and deadline without enabling a launch profile.
-  - [x] Compile and test the fail-closed Linux launch branch: empty mount root, read-only system and app runtime paths, one read-only Rust-granted bundle, protected-path masks, private temporary filesystems, bounded policy traversal, nested-user-namespace denial, and an explicit network mode. Derive managed app mounts from the verified Node receipt and canonical package root instead of a broad cache parent.
-  - [x] Exercise that branch with the distribution Bubblewrap package on Ubuntu 22.04 CI and prove protected-path masking, read-only bundle access, private temporary storage, and successful lifecycle completion.
-  - [x] Launch an explicit Restricted offline custom ACP command through the proven backend with the complete mount and protected-path policy, then bind its live evidence to the connection profile only after process spawn and POSIX process-group attachment. Standard stays the default, and managed subscription agents remain off this profile.
-- [x] Provide a Windows enforcement path. Restricted offline runs one self-contained `.exe` inside a fresh AppContainer with no network capabilities and no direct bundle mount; bounded Studio tools mediate bundle reads and staged writes. A kill-on-close Job Object separately owns the helper and child process lifetime. The production fixture proves the AppContainer token, denied host-file reads, and private scratch writes.
+- [x] Choose and test an external-process host that limits filesystem access to the active bundle plus explicit app-owned runtime paths. That host must deny Git and credential paths below those mounts, and report a closed network mode.
+  - [x] Select system Bubblewrap for the first Linux backend. Preflight its ownership, mode, file capabilities, namespace creation, network isolation, parent-death handling, and deadline without enabling a launch profile.
+  - [x] Compile and test the fail-closed Linux launch branch. It covers an empty mount root, read-only system and app runtime paths, and one read-only Rust-granted bundle. It also covers protected-path masks, private temporary filesystems, bounded policy traversal, nested-user-namespace denial, and an explicit network mode. Derive managed app mounts from the verified Node receipt and canonical package root instead of a broad cache parent.
+  - [x] Exercise that branch with the distribution Bubblewrap package on Ubuntu 22.04 CI. Prove protected-path masking, read-only bundle access, private temporary storage, and successful lifecycle completion.
+  - [x] Launch an explicit Restricted offline custom ACP command through the proven backend, with the complete mount and protected-path policy. Bind its live evidence to the connection profile only after process spawn and POSIX process-group attachment. Standard stays the default, and managed subscription agents remain off this profile.
+- [x] Provide a Windows enforcement path. Restricted offline runs one self-contained `.exe` inside a fresh AppContainer, with no network capabilities and no direct bundle mount. Bounded Studio tools mediate bundle reads and staged writes. A kill-on-close Job Object separately owns the helper and child process lifetime. The production fixture proves the AppContainer token, denied host-file reads, and private scratch writes.
 - [x] Bind every isolation claim to launcher-produced evidence. Saved profile text and agent-advertised capabilities are descriptive input, never proof that containment is active.
-- [x] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. The initial native-mediated and external-interactive profiles both lock unattended work; the external baseline explicitly reports host network access instead of hiding it. A future restricted profile must model authentication bootstrap as a separate network exception.
-- [x] Unlock unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny. Verified Linux Bubblewrap and Windows AppContainer Restricted offline profiles qualify; Standard, native, macOS, and unsupported hosts remain interactive-only.
+- [x] Define reusable profiles by effective mounts, writable roots, network policy, credential exposure, lifetime, and stop conditions. The initial native-mediated and external-interactive profiles both lock unattended work. The external baseline explicitly reports host network access instead of hiding it. A future restricted profile must model authentication bootstrap as a separate network exception.
+- [x] Enable unattended writes only for a live connection whose verified host profile satisfies the filesystem, network, and process requirements on that platform. Revocation, timeout, disconnect, app exit, and failed verification must all return to deny. Verified Linux Bubblewrap and Windows AppContainer Restricted offline profiles qualify. Standard, native, macOS, and unsupported hosts remain interactive-only.
 - [x] Treat the active bundle as granted only when the Rust registry produced and still owns the canonical root. Frontend store entries and path strings cannot satisfy this condition.
 
 ## WP12: Completion
@@ -333,7 +339,7 @@ The 2026-07-17 dependency recheck found no safe local substitute. ACP v1 identif
 - [x] Dogfood creation and reviewed editing against `docs/`.
 - [x] Publish migration notes for local data, credentials, billing, and compatibility names.
 
-Gate: Studio creates a conformant bundle from mixed sources, improves it through reviewed changes, and answers a cited question through a subscription agent or fully local path.
+Gate: Studio creates a conformant bundle from mixed sources and improves it through reviewed changes. It answers a cited question through a subscription agent or a fully local path.
 
 # Dependency order
 
@@ -346,10 +352,10 @@ flowchart TD
 
 # Deferred decisions
 
-- Client-owned terminal and environment-variable authentication waits for stable ACP variants. The 2026-07-17 protocol recheck still classifies Authentication Methods as Draft; see the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
+- Client-owned terminal and environment-variable authentication waits for stable ACP variants. The 2026-07-17 protocol recheck still classifies Authentication Methods as Draft. See the [protocol dependency audit](../reference/zed-agent-system.md#protocol-dependency-audit).
 - Cross-session permission rules wait for an ACP tool identity that Studio can display and match independently of agent-controlled titles or raw arguments.
-- The native agent-loop library is chosen in WP7 against executable provider and tool tests.
+- WP7 chooses the native agent-loop library against executable provider and tool tests.
 - Windows uses a native AppContainer for filesystem and network enforcement and a separate Job Object for process lifetime. WSL is not required.
 - Repository and application identifiers remain compatibility names until a separate updater/app-data migration exists.
-- Editing and resubmitting an accepted user prompt remains deferred until the active agent path supplies a trustworthy checkpoint or Studio can prove that its own transaction boundary covers every side effect.
+- Editing and resubmitting an accepted user prompt remains deferred. It waits until the active agent path supplies a trustworthy checkpoint, or until Studio can prove that its own transaction boundary covers every side effect.
 - Terminal threads, Git worktree isolation, Zed-hosted feedback, and Zed-native profile management are not Studio targets. They solve editor or hosted-agent concerns rather than OKF curation.

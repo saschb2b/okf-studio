@@ -29,11 +29,11 @@ sources:
 
 # Question
 
-What has become difficult about production retrieval-augmented generation, which alternatives now matter, and where can OKF Studio solve a real problem instead of adding another vector-search wrapper?
+What has become difficult about production retrieval-augmented generation, and which alternatives now matter? Where can OKF Studio solve a real problem instead of adding another vector-search wrapper?
 
 # Conclusion
 
-RAG is no longer one pipeline. Production systems choose among lexical search, dense retrieval, reranking, graph traversal, long context, cached context, and agent-directed search. Each mode fails differently. The durable problem is context selection under constraints: find the right evidence, keep its structure and authority visible, exclude stale or unauthorized material, fit the model budget, and explain the result when an answer is wrong.
+RAG is no longer one pipeline. Production systems choose among lexical search, dense retrieval, reranking, graph traversal, long context, cached context, and agent-directed search. Each mode fails differently. The durable problem is context selection under constraints. Find the right evidence, keep its structure and authority visible, and exclude stale or unauthorized material. Fit the model budget, and explain the result when an answer is wrong.
 
 OKF has an advantage before retrieval begins. A bundle already separates knowledge into stable concepts, carries human navigation, explicit links, metadata, citations, validation findings, and a revision fingerprint. Studio already adds bounded reads, source provenance, graph queries, federation, structured work, and reviewed repair. These primitives can reduce the destructive ingestion and opaque debugging that conventional RAG systems add later.
 
@@ -64,7 +64,7 @@ Technical claims below come from primary papers or first-party engineering repor
 
 The supplied r/RAG snapshot repeats the same concerns in less controlled form:
 
-- orchestration is moving away from one large framework toward lighter graphs, custom pipelines, and MCP-shaped tools
+- orchestration moves away from one large framework toward lighter graphs, custom pipelines, and MCP-shaped tools
 - teams want duplicate, metadata, score, filter, and prompt diagnostics because successful requests can still return weak evidence
 - temporal coherence, updates, and ordered recall matter more than raw vector similarity for agent memory
 - persistent KV caches and long context are attractive for stable document sets because they remove a retrieval failure point
@@ -75,7 +75,7 @@ The supplied r/RAG snapshot repeats the same concerns in less controlled form:
 - enterprise deployments cannot move or retrieve data without preserving the source permission boundary
 - similarity ranking and relevance ranking are different operations.
 
-These posts do not prove that any named product or benchmark claim is correct. Their value is convergence: users are debugging corpus quality, routing, structure, time, permissions, and observability after the basic demo already works.
+These posts do not prove that any named product or benchmark claim is correct. Their value is convergence: users debug corpus quality, routing, structure, time, permissions, and observability after the basic demo already works.
 
 # What changed in the design space
 
@@ -156,8 +156,8 @@ Repair loop
 
 - Should the first dense index use a bundled local embedding model, a user-configured endpoint, or an adapter interface with no default model?
 - Which query classes can Studio route deterministically, and which require a small model or user choice?
-- Should typed relationships be authored as an optional OKF profile, derived in app data, or left as task-specific artifact data?
-- How should effective dates, supersession, and source authority be expressed without changing OKF conformance?
-- Can provider prefix-cache support be negotiated through ACP, or should cached-context mode remain Studio Agent only?
+- Should typed relationships live in an optional OKF profile, in derived app data, or in task-specific artifact data?
+- How can a bundle express effective dates, supersession, and source authority without changing OKF conformance?
+- Can ACP negotiate provider prefix-cache support, or should cached-context mode remain Studio Agent only?
 - Which retrieval receipt fields belong in the transcript, the work shelf, app data, or an exported artifact?
 - What corpus and queries can establish a meaningful baseline before implementation begins?

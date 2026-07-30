@@ -12,9 +12,9 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 
 # The data / platform engineer
 
-**Context.** Keeps table docs, runbooks, and metric definitions as OKF bundles checked into a repo, alongside the code they describe. Lives in a terminal and an editor; allergic to standing up a web server or a cloud account just to read docs.
+**Context.** Keeps table docs, runbooks, and metric definitions as OKF bundles checked into a repo, alongside the code they describe. Lives in a terminal and an editor. Does not want to start a web server or a cloud account just to read docs.
 
-**Job to be done.** *When I open a repo full of OKF markdown, I want to see how the table docs, runbooks, and metrics relate — without a build step or a browser tab pointed at localhost — so I can find the right doc and trust it is current.*
+**Job to be done.** *When I open a repo full of OKF markdown, I want to see how the table docs, runbooks, and metrics relate. No build step, no browser tab pointed at localhost. Then I can find the right doc and trust it is current.*
 
 **What matters most.**
 
@@ -25,9 +25,9 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 
 # The AI / agent builder
 
-**Context.** Curates agent-readable knowledge so an agent can traverse it at runtime. The bundle *is* the agent's context window source; its link graph is the path the agent will walk.
+**Context.** Curates agent-readable knowledge so an agent can traverse it at runtime. The bundle *is* the agent's context window source. Its link graph is the path the agent will walk.
 
-**Job to be done.** *When I author the knowledge my agent will consume, I want to see the relationship graph it will traverse — which concepts cite which — so I can spot orphans, dead ends, and missing links before the agent does.*
+**Job to be done.** *When I author the knowledge my agent will consume, I want to see the relationship graph it will traverse, meaning which concepts cite which. Then I can spot orphans, dead ends, and missing links before the agent does.*
 
 **What matters most.**
 
@@ -38,9 +38,9 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 
 # The newcomer to an unfamiliar bundle
 
-**Context.** Was handed a bundle they did not write — a repo subdirectory, a teammate's folder, a downloaded tarball — and needs to understand it fast.
+**Context.** Received a bundle they did not write (a repo subdirectory, a teammate's folder, a downloaded tarball) and needs to understand it fast.
 
-**Job to be done.** *When I am dropped into someone else's bundle, I want to grasp its shape — the big concepts, how they connect, where to start reading — in a couple of minutes, without a tour.*
+**Job to be done.** *When someone hands me a bundle I did not write, I want to grasp its shape in a couple of minutes, without a tour. That means the big concepts, how they connect, and where to start reading.*
 
 **What matters most.**
 
@@ -51,9 +51,9 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 
 # The OKF producer / maintainer
 
-**Context.** Authors and maintains their own OKF bundle and wants to dogfood it the way a consumer will — checking conformance and structure as they write, not after.
+**Context.** Authors and maintains their own OKF bundle. Wants to dogfood it the way a consumer will, checking conformance and structure while writing rather than after.
 
-**Job to be done.** *While I author my bundle, I want a live, tolerant view of it as it really is — broken links, untyped concepts, orphaned files surfaced as I go — so I can fix problems in the same session I create them.*
+**Job to be done.** *While I author my bundle, I want a live, tolerant view of it as it really is. Show me broken links, untyped concepts, and orphaned files as I go. Then I can fix problems in the same session I create them.*
 
 **What matters most.**
 
@@ -64,4 +64,4 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 
 # Why these four
 
-Together these personas define the complete Studio loop: open and understand existing knowledge, query it with evidence, create or enhance it from sources, and review every proposed write. The [Scope & Non-Goals](scope-and-non-goals.md) keeps that loop bundle-focused rather than turning Studio into a general editor, sync service, git client, or autonomous computer operator.
+Together these personas define the complete Studio loop. Open and understand existing knowledge, query it with evidence, create or enhance it from sources, and review every proposed write. The [Scope & Non-Goals](scope-and-non-goals.md) keeps that loop bundle-focused rather than turning Studio into a general editor, sync service, git client, or autonomous computer operator.

@@ -8,14 +8,14 @@ generated: { by: claude/unrecorded, at: 2026-06-29T12:00:00Z }
 
 # What it does
 
-The user chooses a single folder. The app recursively scans it and discovers **all OKF bundles** within — whether the folder *is* a bundle, *contains* one, or contains many across subdirectories (e.g. a monorepo with several `docs/` bundles). No manifest, no config file, no naming convention required.
+The user chooses a single folder. The app recursively scans it and discovers **all OKF bundles** within. The folder itself may *be* a bundle, may *contain* one, or may contain many across subdirectories, such as a monorepo with several `docs/` bundles. No manifest, no config file, no naming convention required.
 
 # Behavior
 
-- Scanning runs in the [Rust core](../architecture/tech-stack.md) and is bounded (max depth, ignore `.git`, `node_modules`, `target`, `dist`) so pointing at a large repo stays fast.
-- A directory qualifies as a bundle root per the [Bundle Detection](../architecture/bundle-detection.md) algorithm — primarily a root `index.md` declaring `okf_version`, or a tree of `.md` files carrying `type` frontmatter.
-- Nested results are de-duplicated: the outermost qualifying root wins; its sub-`index.md` directories are treated as parts of that bundle, not separate bundles.
-- The result is a list handed to the [Bundle Switcher](bundle-switcher.md). If exactly one bundle is found, it opens automatically (see [First Run](../ux/first-run.md)).
+- Scanning runs in the [Rust core](../architecture/tech-stack.md) within bounds: a maximum depth, and an ignore list of `.git`, `node_modules`, `target`, and `dist`. A large repo therefore stays fast.
+- A directory qualifies as a bundle root per the [Bundle Detection](../architecture/bundle-detection.md) algorithm: primarily a root `index.md` declaring `okf_version`, or a tree of `.md` files carrying `type` frontmatter.
+- Detection de-duplicates nested results, and the outermost qualifying root wins. Its sub-`index.md` directories count as parts of that bundle, not as separate bundles.
+- The result is a list handed to the [Bundle Switcher](bundle-switcher.md). If the scan finds exactly one bundle, it opens automatically (see [First Run](../ux/first-run.md)).
 - Re-scan on demand (and automatically via [Live Reload](live-reload.md)).
 
 # Empty / edge cases

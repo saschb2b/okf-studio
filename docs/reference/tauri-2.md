@@ -14,17 +14,17 @@ sources:
 
 # Summary
 
-Tauri is a framework for building small, fast, secure desktop (and mobile) apps with a **Rust backend** and a frontend rendered in the **operating system's native webview** (WebView2 on Windows, WebKitGTK on Linux, WKWebView on macOS) — so no Chromium is bundled. This is a dated snapshot for implementers; verify against the live docs (`resource`).
+Tauri is a framework for small, fast, secure desktop and mobile apps. It pairs a **Rust backend** with a frontend that renders in the **operating system's native webview** (WebView2 on Windows, WebKitGTK on Linux, WKWebView on macOS). Tauri bundles no Chromium. This is a dated snapshot for implementers. Verify it against the live docs (`resource`).
 
 # What we use
 
 - **Core model:** Rust "core" process + webview "frontend." They communicate over **commands** (frontend → Rust, request/response) and **events** (Rust → frontend, streaming). This is our [IPC surface](../architecture/ipc-and-security.md).
 - **Plugins (official):**
-  - `tauri-plugin-dialog` — native file/folder pickers ([First Run](../ux/first-run.md)).
-  - `tauri-plugin-store` — small persisted key/value (recent folders, settings).
-  - `tauri-plugin-notification` — opt-in local desktop notification permission and delivery for private background-thread state.
+  - `tauri-plugin-dialog`: native file/folder pickers ([First Run](../ux/first-run.md)).
+  - `tauri-plugin-store`: small persisted key/value (recent folders, settings).
+  - `tauri-plugin-notification`: opt-in local desktop notification permission and delivery for private background-thread state.
   - File watching via the Rust `notify` crate (or an fs-watch plugin), surfaced as events for [Live Reload](../features/live-reload.md).
-- **Capabilities & permissions (v2):** access is denied by default; a `capabilities/` config grants specific permissions scoped to windows. Studio grants the webview store, opener, updater, notification, and window capabilities, but no dialog, filesystem, or general network capability. Typed Rust commands own filesystem, fetch, and agent operations behind the [IPC boundary](../architecture/ipc-and-security.md).
+- **Capabilities & permissions (v2):** Tauri denies access by default. A `capabilities/` config grants specific permissions scoped to windows. Studio grants the webview store, opener, updater, notification, and window capabilities, but no dialog, filesystem, or general network capability. Typed Rust commands own filesystem, fetch, and agent operations behind the [IPC boundary](../architecture/ipc-and-security.md).
 
 # Project shape
 

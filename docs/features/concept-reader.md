@@ -28,9 +28,9 @@ The row had grown to five peer buttons (Retire, Move, Work with agent, Speed rea
 
 The split is therefore by job and frequency, not by taste:
 
-- **Reading controls stay visible and sit together**: Speed read and `Aa`, with a hairline between them and the rest. This is a reading pane, and these are the controls a person reaches for repeatedly. Speed reading in particular was undiscoverable while it lived only behind a keyboard shortcut and a section of a popover.
-- **Work with agent stays visible.** It is the product's headline capability and belongs in view.
-- **Move and Retire moved into the overflow.** Both are infrequent maintenance, and both open a reviewed transaction rather than acting on click. Neither is what a reader needs at a glance. Burying an action that must be obvious is the misuse of this pattern. These two are the opposite case.
+- Reading controls stay visible and sit together: Speed read and `Aa`, with a hairline between them and the rest. This is a reading pane, and these are the controls a person reaches for repeatedly. Speed reading in particular was undiscoverable while it lived only behind a keyboard shortcut and a section of a popover.
+- Work with agent stays visible. It is the product's headline capability and belongs in view.
+- Move and Retire moved into the overflow. Both are infrequent maintenance, and both open a reviewed transaction rather than acting on click. Neither is what a reader needs at a glance. Burying an action that must be obvious is the misuse of this pattern. These two are the opposite case.
 
 The menu owns both dialogs, so the focus contract survives the move. The item that opened a dialog unmounts with the menu, so each dialog names the overflow trigger as its final focus instead.
 
@@ -45,7 +45,7 @@ When a concept participates in optional [Bundle Connections](interoperability-la
 At a wide width the reader is a **centered content shell** holding two columns:
 
 - A **reading column** caps the text to a comfortable measure (~70 characters) via [reading-layer tokens](../ux/theming.md). Balanced gutters center it, so the text never pins to one edge or sprawls edge-to-edge. Prose stays **flush-left** (centered body text harms readability, see [Accessibility](../ux/accessibility.md)).
-- **Media breaks out of the measure** (the layout-breakouts pattern from long-form editorial design). Prose keeps its line length on any display, because wide text hurts reading: the classic 45–75ch band and WCAG 1.4.8's 80-character line. The surfaces that *aren't* prose expand to the full content column, meaning the [design-system](design-system-rendering.md) **live example previews and token visualizations**. On a large display an example renders at near-real page width instead of squeezed into a text column. That is the whole point of a live preview. The shell's outer cap follows, wider than any prose-only cap would be.
+- Media breaks out of the measure (the layout-breakouts pattern from long-form editorial design). Prose keeps its line length on any display, because wide text hurts reading: the classic 45–75ch band and WCAG 1.4.8's 80-character line. The surfaces that *aren't* prose expand to the full content column, meaning the [design-system](design-system-rendering.md) live example previews and token visualizations. On a large display an example renders at near-real page width instead of squeezed into a text column. That is the whole point of a live preview. The shell's outer cap follows, wider than any prose-only cap would be.
 - A **right context rail** (~300px), sticky, scrolling independently: quiet context only, never a second stream of prose.
 
 The layout is **responsive**. When the pane is narrow, the rail collapses and its modules fall back beneath the article. The same happens in the [split layout](../ux/browsing-layout.md), where the graph already supplies relationship context. The rail shows in full in reader-only and wide windows.
@@ -61,23 +61,91 @@ The collapse threshold **tracks the chosen text width** ([settings](../ux/settin
 
 # Body: a polished Markdown renderer
 
-The renderer aims at pleasant reading, and it sanitizes every document before injection ([security](../architecture/ipc-and-security.md)):
+The renderer aims at pleasant reading, and it sanitizes every document before injection ([security](../architecture/ipc-and-security.md)).
 
-- A generous, readable base size and rhythm, and a clear **heading hierarchy** with distinct levels, all of them heavier than body text. An earlier revision dimmed an `h4` to `text-dim`, which made a heading quieter than the paragraph it introduces and inverted the hierarchy. At body size the weight step carries it. **Anchored headings** add a hover permalink and a stable id, so a reader can link and jump to a section. In-page `#anchor` links in the body work too. A body's `# Section` headings (the OKF convention, `# Schema`, `# Examples`) drop **one step to h2**. The concept title owns the page's single h1. Left as h1, those headings would rival it and fall outside the outline and anchor pass. Studio **bakes all of this into the rendered HTML string**: ids, permalinks, and the code-copy affordance below. It appends nothing to the live DOM afterwards, so React re-applying the body can't wipe it.
-- **Callouts / admonitions** via GFM alert syntax (`> [!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]`), themed from the status [color roles](../ux/theming.md). A callout carries **three** signals rather than four: a colored left rule, a faint wash of the same hue, and a colored title. It used to add a full 1px border around all of that. That border made an aside read as a slab dropped into the prose rather than as a remark within it. **The colored left rule belongs to callouts alone**, because there the color carries severity. See the code-block note below.
-- **Fenced code**, **syntax-highlighted** ([Shiki](../architecture/tech-stack.md), the engine behind VS Code) with a dual light/dark theme that follows the app, and a one-click **copy** affordance. Highlighting stays offline and CSP-safe: Shiki's WASM-free JS engine and a curated grammar set, all lazy-loaded only when a concept has code. An unknown language degrades to a plain themed block. **Tables use their content to size columns.** Words stay intact, and prose columns keep a bounded reading measure. A table that genuinely needs more room scrolls inside its own keyboard-focusable region instead of widening the reader or crushing labels into single characters. GFM and embedded HTML tables share that behavior. A code block carries two marks and no others: its monospace face and its sunken surface. It previously also carried a 3px accent rule down its left edge, which spent the accent on something you cannot act on. That rule made a code block a visual twin of the `[!NOTE]` callout sitting beside it in the same document. The sunken surface is now the app's own. Shiki ships a background with its theme and had overridden the token. That left a light code block white-on-white, and a dark one *lighter* than the reader pane it sits in. We take the theme's token colors and not its background. Studio picks the palette by measuring against that surface rather than by name (see [Theming](../ux/theming.md)): One Dark Pro in dark, github-light-default in light. Both lift their comment scope over 4.5:1, since comments in a spec bundle carry real explanation.
+## Headings and anchors
 
-  **Tables rule their rows, they do not cage their cells.** A full grid draws a border on every cell edge. A three-row table then spends seventeen rules to separate six values, and reads as a spreadsheet pasted into the page. Horizontal rules alone carry the row structure. The header is a quiet dim label row over a heavier rule. The first column sits flush with the prose's left edge, so the table belongs to the text rather than floating beside it. Row hover and tabular numerals stay. Blockquotes, lists, and the conventional [`# Schema` / `# Examples` / `# Citations`](../reference/okf-spec-summary.md) sections use the same reading rhythm.
+The body keeps a generous, readable base size and rhythm, and a clear heading hierarchy with distinct levels, all of them heavier than body text. An earlier revision dimmed an `h4` to `text-dim`, which made a heading quieter than the paragraph it introduces and inverted the hierarchy. At body size the weight step carries it.
 
-  **Every scroll container in the body names both axes.** A rule that sets only `overflow-x: auto` promotes the used `overflow-y` to `auto` as well (CSS Overflow). Any block a sub-pixel taller than its content then grows a vertical scrollbar it cannot use. A KaTeX display equation measured 2px over its line box and carried one on every render. Code blocks, tables, display math, and Mermaid diagrams all pair `overflow-x: auto` with an explicit `overflow-y: hidden`. WebKitGTK under fractional display scaling produces those sub-pixels routinely, which is the same reason the app root pins its own overflow (see [Theming](../ux/theming.md)).
-- **Math renders as typeset formulas.** KaTeX typesets TeX between `$…$` (inline) or `$$…$$` (display). It lazy-loads like Shiki, bundles its fonts, and stays fully offline. Studio fences the TeX off from markdown processing, so subscript underscores never italicize. It bakes the typeset markup into the body string like everything else. Guards keep prose safe: currency (`$5 and $10`), spaced dollars, and `$` inside code stay literal, and `\$` escapes one. Invalid TeX renders best-effort. If the typesetter is unavailable, the raw TeX stays visible as quiet code, so Studio never loses a formula.
-- **Diagrams render from ` ```mermaid ` fences.** Mermaid renders the block's text to an inline SVG. It lazy-loads like Shiki and KaTeX, stays fully offline, and runs in **strict** security mode (labels sanitized, interactions off), so an untrusted bundle stays safe. Mermaid bakes theme colors into its SVG, so Studio renders each diagram once per theme and the app's `data-theme` picks one. A theme switch then re-themes diagrams without re-rendering the body. Those colors are the app's own [role tokens](../ux/theming.md) rather than Mermaid's stock `default`/`dark` palettes, which belonged to no surface we have. Nodes take the recessed surface with the emphasized border, edges the dim text role, and a subgraph the frame color. Rendering twice means resolving the other theme's tokens while the first is live. `readTokenPairs` does that by flipping `data-theme` and restoring it inside one synchronous block. A diagram that fails to render (bad syntax, unavailable renderer) keeps its authored code block, styled as plain code, so Studio never loses the content. A wide diagram scrolls in place rather than breaking the measure.
-- **The extended-markdown staples all render.** GFM **task lists** use read-only checkboxes (`- [x]`), since the bundle stays read-only. **Footnotes** render `[^1]` references and a linked end-of-body section, jumping both ways in-page with the aria wiring intact. **Definition lists** turn PHP-Markdown-Extra `Term` / `: definition` syntax into real `<dl>` markup. **Emoji shortcodes** map GitHub's full name set to plain unicode (`:rocket:` → 🚀), with no image sprites to fetch. All four render synchronously as strings. They therefore work everywhere markdown renders (reader, log view) and in peek excerpts, which strip the markers down to prose.
-- **Embedded HTML renders natively, within the safety line.** Markdown's escape hatch works as authors expect. Semantic inline elements render (`<kbd>`, `<mark>`, `<sup>`/`<sub>`, `<abbr>`, `<ins>`/`<del>`), together with collapsible `<details>`/`<summary>` (markdown inside included), raw tables, and styled `<div>`/`<span>` (inline `style` for color/alignment). Raw headings render too, and they join the outline and get anchors like authored ones. Studio themes `<kbd>`, `<mark>`, and `<details>` so they read as native in both modes. The line runs here. DOMPurify strips scripts, event handlers, iframes, and comments ([security](../architecture/ipc-and-security.md)). Embedded media (`<img srcset>`, `<video>`, `<audio>`) loses every fetching attribute, per the [offline principle](../product/principles.md). Out-of-flow positioning (`fixed`/`sticky`/`absolute`) drops from inline styles, so bundle content can never overlay the app's UI.
-- **Color values get a swatch.** Studio prefixes a color value with a small chip, so a design-system role table or sentence *shows* its colors. A color value is inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), *or* a hex color written in plain prose (`borderColor-default (#d1d9e0)`). See [Design-System Rendering](design-system-rendering.md). The pass is bundle-agnostic. Studio validates the chip's color strictly before it inlines the chip, and leaves code, link, and pre text untouched.
-- **Token references resolve in prose.** Studio annotates inline code that is a `{group.name}` token reference with the value it resolves to. It adds a swatch when that value is a color. A doc that mentions a token then still shows it. See [Design-System Rendering](design-system-rendering.md).
-- **Images render with a spotlight.** Studio inlines a **local** bundle image as a `data:` URL, with no network fetch, per the [offline principle](../product/principles.md). The image is **click-to-zoom**: a click opens a full-window spotlight overlay, and the close button, Escape, or a backdrop click dismisses it. Studio never auto-fetches a **remote** image. It becomes an "open in browser" control instead. An unreadable local image degrades to a quiet placeholder. See [IPC and Security](../architecture/ipc-and-security.md) for how the offline guarantee holds.
-- **Links say where they lead.** Every link carries an underline, never color alone, per [WCAG 1.4.1](../ux/accessibility.md). A hover hint names the destination, so a click is predictable before it happens. An **in-bundle link** resolves the [path](../architecture/okf-parsing.md) and opens in the reader, and graph and reader stay in sync. A **section link** points at a directory (`reference/` or `reference/index.md`) and opens that part of the bundle rather than doing nothing. An **external link** carries an outbound arrow and a visually-hidden "opens in browser" cue, and opens in the system browser. An **unresolved link** carries non-color affordances that mark it broken: a dashed underline and a prohibited marker, rather than a dimmed strikethrough alone. It names the missing target on hover. Studio surfaces broken links and never hides them, per the [tolerant-consumer principle](../product/principles.md). Studio bakes the classification into the rendered body, so the cues never disappear on re-render.
+Anchored headings add a hover permalink and a stable id, so a reader can link and jump to a section. In-page `#anchor` links in the body work too. A body's `# Section` headings (the OKF convention, `# Schema`, `# Examples`) drop one step to h2. The concept title owns the page's single h1. Left as h1, those headings would rival it and fall outside the outline and anchor pass.
+
+Studio bakes all of this into the rendered HTML string: ids, permalinks, and the code-copy affordance. It appends nothing to the live DOM afterwards, so React re-applying the body cannot wipe it.
+
+## Callouts
+
+GFM alert syntax (`> [!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]`) renders as an admonition, themed from the status [color roles](../ux/theming.md). A callout carries three signals rather than four: a colored left rule, a faint wash of the same hue, and a colored title. It used to add a full 1px border around all of that. The border made an aside read as a slab dropped into the prose rather than as a remark within it.
+
+The colored left rule belongs to callouts alone, because there the color carries severity.
+
+## Code blocks
+
+Fenced code arrives syntax-highlighted, through [Shiki](../architecture/tech-stack.md), the engine behind VS Code. It carries a dual light and dark theme that follows the app, and a one-click copy affordance. Highlighting stays offline and CSP-safe through Shiki's WASM-free JS engine and a curated grammar set, lazy-loaded only when a concept has code. An unknown language degrades to a plain themed block.
+
+A code block carries two marks and no others: its monospace face and its sunken surface. It previously also carried a 3px accent rule down its left edge, which spent the accent on something you cannot act on. That rule made a code block a visual twin of the `[!NOTE]` callout sitting beside it in the same document.
+
+The sunken surface is the app's own. Shiki ships a background with its theme and had overridden the token. That left a light code block white-on-white, and a dark one lighter than the reader pane it sits in. Studio takes the theme's token colors and not its background. It picks the palette by measuring against that surface rather than by name (see [Theming](../ux/theming.md)): One Dark Pro in dark, github-light-default in light. Both lift their comment scope over 4.5:1, since comments in a spec bundle carry real explanation.
+
+## Tables
+
+Tables use their content to size columns. Words stay intact, and prose columns keep a bounded reading measure. A table that genuinely needs more room scrolls inside its own keyboard-focusable region instead of widening the reader or crushing labels into single characters. GFM and embedded HTML tables share that behavior.
+
+Tables rule their rows, they do not cage their cells. A full grid draws a border on every cell edge. A three-row table then spends seventeen rules to separate six values, and reads as a spreadsheet pasted into the page.
+
+Horizontal rules alone carry the row structure. The header is a quiet dim label row over a heavier rule. The first column sits flush with the prose's left edge, so the table belongs to the text rather than floating beside it. Row hover and tabular numerals stay.
+
+Blockquotes, lists, and the conventional [`# Schema` / `# Examples` / `# Citations`](../reference/okf-spec-summary.md) sections use the same reading rhythm.
+
+## Scroll containers
+
+Every scroll container in the body names both axes. A rule that sets only `overflow-x: auto` promotes the used `overflow-y` to `auto` as well (CSS Overflow). Any block a sub-pixel taller than its content then grows a vertical scrollbar it cannot use. A KaTeX display equation measured 2px over its line box and carried one on every render.
+
+Code blocks, tables, display math, and Mermaid diagrams all pair `overflow-x: auto` with an explicit `overflow-y: hidden`. WebKitGTK under fractional display scaling produces those sub-pixels routinely, which is the same reason the app root pins its own overflow (see [Theming](../ux/theming.md)).
+
+## Math
+
+KaTeX typesets TeX between `$…$` (inline) or `$$…$$` (display). It lazy-loads like Shiki, bundles its fonts, and stays fully offline. Studio fences the TeX off from markdown processing, so subscript underscores never italicize. It bakes the typeset markup into the body string like everything else.
+
+Guards keep prose safe. Currency (`$5 and $10`), spaced dollars, and `$` inside code stay literal, and `\$` escapes one. Invalid TeX renders best-effort. If the typesetter is unavailable, the raw TeX stays visible as quiet code, so Studio never loses a formula.
+
+## Diagrams
+
+Mermaid renders a ` ```mermaid ` fence to an inline SVG. It lazy-loads like Shiki and KaTeX, and stays fully offline. It runs in strict security mode, with labels sanitized and interactions off, so an untrusted bundle stays safe.
+
+Mermaid bakes theme colors into its SVG, so Studio renders each diagram once per theme and the app's `data-theme` picks one. A theme switch then re-themes diagrams without re-rendering the body. Those colors are the app's own [role tokens](../ux/theming.md) rather than Mermaid's stock `default` and `dark` palettes, which belonged to no surface Studio has. Nodes take the recessed surface with the emphasized border, edges the dim text role, and a subgraph the frame color. Rendering twice means resolving the other theme's tokens while the first is live, and `readTokenPairs` does that by flipping `data-theme` and restoring it inside one synchronous block.
+
+A diagram can fail to render, through bad syntax or an unavailable renderer. It then keeps its authored code block styled as plain code, so Studio never loses the content. A wide diagram scrolls in place rather than breaking the measure.
+
+## Extended Markdown
+
+The extended-markdown staples all render. GFM task lists use read-only checkboxes (`- [x]`), since the bundle stays read-only. Footnotes render `[^1]` references and a linked end-of-body section, jumping both ways in-page with the aria wiring intact. Definition lists turn PHP-Markdown-Extra `Term` and `: definition` syntax into real `<dl>` markup. Emoji shortcodes map GitHub's full name set to plain unicode, with no image sprites to fetch.
+
+All four render synchronously as strings. They therefore work everywhere markdown renders, in the reader and the log view, and in peek excerpts, which strip the markers down to prose.
+
+## Embedded HTML
+
+Markdown's escape hatch works as authors expect. Semantic inline elements render (`<kbd>`, `<mark>`, `<sup>` and `<sub>`, `<abbr>`, `<ins>` and `<del>`), together with collapsible `<details>` and `<summary>` (markdown inside included), raw tables, and styled `<div>` and `<span>` with inline `style` for color and alignment. Raw headings render too, and they join the outline and get anchors like authored ones. Studio themes `<kbd>`, `<mark>`, and `<details>` so they read as native in both modes.
+
+The safety line runs here. DOMPurify strips scripts, event handlers, iframes, and comments ([security](../architecture/ipc-and-security.md)). Embedded media (`<img srcset>`, `<video>`, `<audio>`) loses every fetching attribute, per the [offline principle](../product/principles.md). Out-of-flow positioning (`fixed`, `sticky`, `absolute`) drops from inline styles, so bundle content can never overlay the app's UI.
+
+## Colors and token references
+
+Studio prefixes a color value with a small chip, so a design-system role table or sentence shows its colors. A color value is inline code that is exactly a color (`#1f883d`, `rgb(...)`, `hsl(...)`), or a hex color written in plain prose (`borderColor-default (#d1d9e0)`). The pass is bundle-agnostic. Studio validates the chip's color strictly before it inlines the chip, and leaves code, link, and pre text untouched.
+
+Token references resolve in prose the same way. Studio annotates inline code that is a `{group.name}` token reference with the value it resolves to, and adds a swatch when that value is a color. A doc that mentions a token then still shows it. See [Design-System Rendering](design-system-rendering.md) for both passes.
+
+## Images
+
+Studio inlines a local bundle image as a `data:` URL, with no network fetch, per the [offline principle](../product/principles.md). The image is click-to-zoom: a click opens a full-window spotlight overlay, and the close button, Escape, or a backdrop click dismisses it.
+
+Studio never auto-fetches a remote image. It becomes an "open in browser" control instead. An unreadable local image degrades to a quiet placeholder. See [IPC and Security](../architecture/ipc-and-security.md) for how the offline guarantee holds.
+
+## Links
+
+Every link carries an underline, never color alone, per [WCAG 1.4.1](../ux/accessibility.md). A hover hint names the destination, so a click is predictable before it happens.
+
+An in-bundle link resolves the [path](../architecture/okf-parsing.md) and opens in the reader, and graph and reader stay in sync. A section link points at a directory (`reference/` or `reference/index.md`) and opens that part of the bundle rather than doing nothing. An external link carries an outbound arrow and a visually-hidden "opens in browser" cue, and opens in the system browser.
+
+An unresolved link carries non-color affordances that mark it broken: a dashed underline and a prohibited marker, rather than a dimmed strikethrough alone. It names the missing target on hover. Studio surfaces broken links and never hides them, per the [tolerant-consumer principle](../product/principles.md). Studio bakes the classification into the rendered body, so the cues never disappear on re-render.
 
 # The right context rail
 

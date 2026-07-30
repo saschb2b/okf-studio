@@ -23,7 +23,7 @@ The proposed wording makes the safety boundary explicit without changing Apply a
 
 Codex CLI reported model `gpt-5.6-sol`. Two runs covered all seven writing cases in opposite orders, producing 14 retained prompts and outputs in the application-data benchmark directory. All 14 passed the model-free required-knowledge, qualifier, citation, link, and unsupported-claim gates.
 
-The first score exposed an evaluation defect: the source-policy case required the exact phrase `must retain`, while the provider preserved the same normative claim as `requires records to be retained`. The scorer now accepts a closed set of equivalent normative forms. It still fails missing normativity, retention period, policy attribution, citation, or unsupported promotional language.
+The first score exposed an evaluation defect. The source-policy case required the exact phrase `must retain`, while the provider preserved the same normative claim as `requires records to be retained`. The scorer now accepts a closed set of equivalent normative forms. It still fails missing normativity, retention period, policy attribution, citation, or unsupported promotional language.
 
 This result is not the blind preference gate. No Studio Agent endpoint was configured, and no human pairwise review was performed. The local result records both as unavailable instead of assigning a passing score.
 
@@ -35,7 +35,7 @@ This proves discovery and delivery, not provider compliance. Studio still cannot
 
 # Product and packaging evidence
 
-Frontend lint, typecheck, 234 unit and component tests, 14 benchmark tests, production build, Rust formatting, both clippy gates, 73 core tests, 228 desktop-library tests, the docs bundle, the marketing site, and the ODSF bundle passed locally.
+Everything passed locally. Frontend lint, typecheck, 234 unit and component tests, 14 benchmark tests, and the production build. Rust formatting, both clippy gates, 73 core tests, and 228 desktop-library tests. The docs bundle, the marketing site, and the ODSF bundle.
 
 The Windows release build produced the application binary, MSI, and NSIS installer. Updater signing did not run because this environment has the public key but not `TAURI_SIGNING_PRIVATE_KEY`. Linux and macOS packages require their platform runners.
 

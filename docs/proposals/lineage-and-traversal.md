@@ -33,4 +33,4 @@ OKF-flavored discovery: concepts whose text names another concept's title withou
 
 # Why later
 
-Nothing here has to ship first. This is still the largest of the three, and it benefits from the [faceted](faceted-search.md) result-set model (scope a traversal to a filtered subgraph) and the [overview](bundle-overview.md)'s hub/orphan framing (where to start a trace). Build 1 and 2, then this.
+Nothing here has to ship first. This is still the largest of the three. It benefits from the [faceted](faceted-search.md) result-set model, which scopes a traversal to a filtered subgraph, and from the [overview](bundle-overview.md)'s hub and orphan framing, which says where to start a trace. Build 1 and 2, then this.

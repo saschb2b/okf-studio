@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: OKF Sample Bundles
-description: The three browsable OKF sample bundles (GA4 e-commerce, Stack Overflow, and Bitcoin) that serve as real-world fixtures for exercising OKF Studio beyond this self-describing docs bundle.
+description: The three browsable OKF sample bundles, covering GA4 e-commerce, Stack Overflow, and Bitcoin. They are real-world fixtures for exercising OKF Studio beyond this self-describing docs bundle.
 resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf/bundles
 tags: [reference, okf, samples, fixtures, external]
 generated: { by: claude/unrecorded, at: 2026-07-22T23:58:00Z }

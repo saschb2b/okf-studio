@@ -28,7 +28,7 @@ The three space-filling views answer a different question than the graph. They a
 
 All three space-filling views consume one tree, built per render from the same filtered concept set the graph shows:
 
-- **Structure** starts with concept id paths (`design/color` sits inside the `design` group), with directory labels taken from the bundle's [index nodes](../architecture/data-model.md) when present. Authored index headings can add a semantic generation inside that directory, such as `Features › Open and explore › Graph View`, without changing a concept id or moving its file.
+- **Structure** starts with concept id paths (`design/color` sits inside the `design` group), with directory labels taken from the bundle's [index nodes](../architecture/data-model.md) when present. Authored index headings can add a semantic generation inside that directory, such as `Features › Open and explore › Graph View`. No concept id changes and no file moves.
 - **Every generation must add meaning.** The index title labels its directory and never becomes a same-name child (`Features › Features`). Empty headings and headings with only one direct concept do not add a ring. Nested concepts retain their physical directory, and cross-directory entries remain references rather than being re-parented for presentation.
 - **Authored order is stable.** Semantic groups and their direct concepts follow index order. Undocumented path groups and unclaimed concepts follow deterministically. This keeps the shape steady between sessions and across the treemap, sunburst, and circle-packing views.
 - **Size** is the concept body's word count (floored at 1), so tile/arc/circle area means "amount of documented knowledge".
@@ -48,7 +48,7 @@ All three space-filling views consume one tree, built per render from the same f
 
 - **Click a leaf** (a concept) to open it in the [Concept Reader](concept-reader.md), the same shared selection as everywhere else. The selected concept carries an accent ring in the view.
 - **Selection focuses the view.** Picking a concept anywhere (sidebar, palette, a reader link) drills the active view to that concept's parent group. That is the graph's recenter-on-select, translated to hierarchies.
-- **Click a group** to drill in (treemap and sunburst re-root, circle packing zooms). The centered **breadcrumb** (`All › Design › Tokens`, collapsing a deep trail to `All › … › Tokens`) steps back to any ancestor, and **Alt+↑** drills up one level without reaching for it.
+- **Click a group** to drill in (treemap and sunburst re-root, circle packing zooms). The centered breadcrumb steps back to any ancestor. It reads `All › Design › Tokens`, collapsing a deep trail to `All › … › Tokens`, and `Alt+Up` drills up one level without reaching for it.
 - **All remains complete** in the sunburst. It does not collapse leaves into summary sectors or repeat a parent to fill a ring. Small sectors can omit text, but remain present and inspectable through hover or drill.
 - **Hover** for a tooltip card with the name, type, and size as "~N words". The card sits above the chart on its own surface, clamped inside the pane so it never clips at an edge.
 - Transitions animate (drill push-in, zoom glide) and respect **reduce motion** ([settings](../ux/settings.md)).

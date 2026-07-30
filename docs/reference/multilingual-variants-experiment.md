@@ -22,5 +22,5 @@ Studio can inventory and open all three forms. Existing search and retrieval see
 
 # Adoption gate
 
-Do not select a default until a bilingual fixture passes portable links, search, retrieval, Safe Move, and recipient projection in both languages with one stable fallback rule. Until then the report says **Not OKF validation** and preserves unknown producer fields.
+Do not select a default yet. A bilingual fixture must first pass portable links, search, retrieval, Safe Move, and recipient projection in both languages, under one stable fallback rule. Until then the report says **Not OKF validation** and preserves unknown producer fields.
 

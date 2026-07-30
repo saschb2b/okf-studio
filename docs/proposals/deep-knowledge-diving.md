@@ -1,14 +1,14 @@
 ---
 type: Proposal
 title: Deep Knowledge Diving
-description: Where the viewer is thin for going deep into a bundle, and the data-catalog and graph-explorer patterns worth borrowing: framed as the stages of a dive.
+description: Where the viewer is thin for going deep into a bundle. The data-catalog and graph-explorer patterns worth borrowing, framed as the stages of a dive.
 tags: [proposal, roadmap, ux, graph, search]
 generated: { by: claude/unrecorded, at: 2026-07-04T19:00:00Z }
 ---
 
 # Why this exists
 
-The viewer renders and lets you navigate a bundle well: a [graph](../features/graph-view.md), a [reader](../features/concept-reader.md) with backlinks, an index tree, a [command palette](../features/command-palette.md), fuzzy + full-text [search](../features/search-and-filter.md). What it is thin at is *going deep*: orienting in an unfamiliar bundle, tracing relationships more than one hop, and making sense of the whole.
+The viewer renders a bundle and lets you navigate it well. It offers a [graph](../features/graph-view.md), a [reader](../features/concept-reader.md) with backlinks, an index tree, a [command palette](../features/command-palette.md), and fuzzy plus full-text [search](../features/search-and-filter.md). What it is thin at is *going deep*: orienting in an unfamiliar bundle, tracing relationships more than one hop, and making sense of the whole.
 
 The sample bundles are data catalogs (BigQuery datasets, tables, metrics, joins). So the tools that already solved deep-diving are close at hand. They are data catalogs (DataHub, Amundsen, Dataplex), graph explorers (Neo4j Bloom, Gephi), lineage tools (dbt docs), and query UIs (Kibana, Splunk). This proposal maps our gaps to those patterns as the five stages of a dive, and recommends an order.
 

@@ -147,7 +147,7 @@ Gate: before staging, a user can tell what will read differently and whether any
 - [x] Extend the OKF benchmark with factual-invariant retention, unsupported claims, qualification retention, citation and link retention, writing findings, redundancy, and blind human preference.
 - [x] Keep compression, reading level, and sentence length descriptive. Do not optimize them as standalone targets.
 - [x] Add deterministic cases for authoring and revision, including cases designed to tempt the agent into deleting useful detail or inventing rationale.
-- [ ] Run each case twice in shuffled order through Studio Agent and at least one configured external or local provider using the same capability resources.
+- [ ] Run each case twice in shuffled order, through Studio Agent and at least one configured external or local provider. Both use the same capability resources.
 - [ ] Retain prompts, resource receipts, artifacts, deterministic results, and blinded comparison samples locally with the provider-reported model.
 - [x] Use model critique only as a labelled secondary signal. It cannot supply the sole passing score.
 - [ ] Require zero hard safety or fact-preservation regressions and meet the threshold frozen in WQ0 before rollout.

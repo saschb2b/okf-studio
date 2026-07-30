@@ -68,7 +68,7 @@ Forgetting the last inactive recent from a folder removes its remembered grant. 
 
 External ACP agents own their sign-in and token storage. Studio does not copy those credentials.
 
-For an API-key-backed Studio Agent profile, Rust stores the key in Windows Credential Manager, macOS Keychain, or Linux Secret Service under service `app.okfviewer.desktop` and account `studio-agent:<profile-id>`. The profile JSON records only that a credential exists. Rust never writes the key to the app store and never returns it to the webview.
+For an API-key-backed Studio Agent profile, Rust stores the key in Windows Credential Manager, macOS Keychain, or Linux Secret Service. It files the entry under service `app.okfviewer.desktop` and account `studio-agent:<profile-id>`. The profile JSON records only that a credential exists. Rust never writes the key to the app store and never returns it to the webview.
 
 Removing the endpoint profile from Studio also removes its stored API key. **Reset to defaults** resets preferences only. It does not delete agent profiles, managed packages, thread pointers, checkpoints, or credentials. If the operating-system keyring is locked, or if someone cleared it, retest the endpoint and enter the key again.
 

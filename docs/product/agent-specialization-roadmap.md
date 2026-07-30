@@ -1,7 +1,7 @@
 ---
 type: Product Roadmap
 title: OKF Agent Specialization
-description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace whose agents, tools, skills, and entry points are built around OKF work.
+description: The sequenced transformation from an agent panel that supports OKF into a knowledge workspace. Its agents, tools, skills, and entry points are built around OKF work.
 tags: [product, roadmap, agents, skills, specialization, automation]
 generated: { by: claude/unrecorded, at: 2026-07-18T20:30:00Z }
 ---
@@ -119,7 +119,7 @@ Gate: benchmark tasks select no more than the required skill set. Disabling a sk
 - [x] Derive a visible context plan from the task, active concept, graph neighborhood, validation state, selected evidence, and user attachments.
 - [x] Show the planned skills, bundle objects, sources, and tool scope before the first prompt. Let the user remove optional context.
 - [x] Keep task selection deterministic for explicit actions. Model-suggested task changes require confirmation when they alter tools, network, or write scope.
-- [x] Let ordinary chat select a narrow method from the same catalog while reserving deterministic task identity and accepted context scope for the visible launcher.
+- [x] Let ordinary chat select a narrow method from the same catalog. Deterministic task identity and accepted context scope stay with the visible launcher.
 - [x] Persist task identity and the accepted context manifest with the agent-owned session pointer so restore can explain which context the task used.
 - [x] Budget context by bytes and estimated tokens, prefer metadata before bodies, and explain every truncation or omitted object before send.
 - [x] Bind the accepted plan to one bundle fingerprint and require a refreshed preview when live reload changes any planned object.

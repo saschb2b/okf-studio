@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: Agent Harness Research
-description: What T3 Code and comparable control surfaces actually implement, what the multi-agent literature agrees and disagrees on, and the protocol limit that decides how far Studio can govern delegated work.
+description: What T3 Code and comparable control surfaces actually implement, and what the multi-agent literature agrees and disagrees on. Also the protocol limit that decides how far Studio can govern delegated work.
 resource: https://github.com/pingdotgg/t3code
 tags: [reference, agents, orchestration, subagents, acp, token-economics, research]
 generated: { by: claude/unrecorded, at: 2026-07-29T15:20:00+02:00 }

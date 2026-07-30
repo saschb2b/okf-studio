@@ -30,7 +30,7 @@ Selecting a valid row opens the other concept through the same tab and peek beha
 
 # Agent context
 
-Create, Revise, Audit, and migration tasks receive a bounded projection of the authored typed edges alongside the selected profile vocabulary. The reviewed context card states how many edges will enter the task. Each projected edge preserves its endpoints, namespace, type, display label, optional inverse, recognition state, target state, and portable-link state so an agent can distinguish supported semantics from producer-specific annotations without treating either as core conformance.
+Create, Revise, Audit, and migration tasks receive a bounded projection of the authored typed edges alongside the selected profile vocabulary. The reviewed context card states how many edges will enter the task. Each projected edge preserves its endpoints, namespace, type, display label, optional inverse, recognition state, target state, and portable-link state. An agent can then tell supported semantics from producer-specific annotations, without treating either as core conformance.
 
 # Filtering by type
 

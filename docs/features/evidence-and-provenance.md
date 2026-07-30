@@ -39,7 +39,7 @@ provenance:
 
 An accepted context manifest carries this projection with the source body. An agent can therefore include the exact profile record in a staged concept instead of reconstructing identity from a title. Reopening the bundle derives the same human-readable source from frontmatter alone.
 
-A selected file never contributes an absolute local path. A file keeps its filename; folder intake keeps a safe relative locator; an absolute or parent-traversing origin is reduced to its final filename. Public source URIs must be credential-free HTTPS. Cache paths and request credentials are not profile fields.
+A selected file never contributes an absolute local path. A file keeps its filename. Folder intake keeps a safe relative locator. Studio reduces an absolute or parent-traversing origin to its final filename. Public source URIs must be credential-free HTTPS. Cache paths and request credentials are not profile fields.
 
 # Claim evidence
 
@@ -61,24 +61,24 @@ The body can then write:
 The measured result increased by 12 percent.[^report]
 ```
 
-Structured markers deliberately omit a Markdown footnote definition. Studio creates the rendered footnote from the evidence map. A normal authored footnote that already has a `[^report]:` definition stays ordinary Markdown and is not reinterpreted as structured evidence.
+Structured markers deliberately omit a Markdown footnote definition. Studio creates the rendered footnote from the evidence map. A normal authored footnote that already has a `[^report]:` definition stays ordinary Markdown, and Studio does not reinterpret it as structured evidence.
 
-Studio accepts at most 128 evidence sources and 1,024 structured claim markers per concept for dedicated interpretation. IDs are ASCII letters, numbers, dots, underscores, or hyphens and are at most 128 characters. Displayed values are bounded and rendered as text. Unknown or excess producer data remains available in the preserved metadata instead of becoming executable markup. Knowledge Health expands at most 64 per-source evidence findings for one concept and then reports how many additional findings it omitted.
+Studio accepts at most 128 evidence sources and 1,024 structured claim markers per concept for dedicated interpretation. IDs are ASCII letters, numbers, dots, underscores, or hyphens and are at most 128 characters. Studio bounds displayed values and renders them as text. Unknown or excess producer data remains available in the preserved metadata instead of becoming executable markup. Knowledge Health expands at most 64 per-source evidence findings for one concept and then reports how many additional findings it omitted.
 
 # Explicit source checks
 
 A credential-free HTTPS evidence source shows **Check source**. Pressing it runs the existing Rust-owned public-source fetch:
 
-1. require HTTPS and reject credentials;
-2. disable environment proxies;
-3. resolve and reject private, loopback, link-local, and special-use addresses at every hop;
-4. follow at most three checked redirects;
-5. enforce connect, read, response-size, and supported-media bounds; and
-6. compare the returned source fingerprint with the authored fingerprint.
+1. Require HTTPS and reject credentials.
+2. Disable environment proxies.
+3. Resolve and reject private, loopback, link-local, and special-use addresses at every hop.
+4. Follow at most three checked redirects.
+5. Enforce connect, read, response-size, and supported-media bounds.
+6. Compare the returned source fingerprint with the authored fingerprint.
 
-The result is **Available**, **Changed**, or **Unavailable**, with an observation time and returned fingerprint when present. **Changed** means the fetched representation differs. **Unavailable** means this check did not retrieve it. Neither result proves that the concept is true or false.
+The result is **Available**, **Changed**, or **Unavailable**, with an observation time and returned fingerprint when present. A **Changed** result means the fetched representation differs. An **Unavailable** result means this check did not retrieve it. Neither result proves that the concept is true or false.
 
-Opening a bundle, entering the reader, expanding Evidence, or running ordinary health analysis performs no network request. The browser-development fixture uses a local deterministic response. A maintainer who wants to retain a new check observation starts a profile-aware revision and reviews the frontmatter change through staged validation and Apply.
+Opening a bundle, entering the reader, expanding Evidence, or running ordinary health analysis makes no network request. The browser-development fixture uses a local deterministic response. A maintainer who wants to retain a new check observation starts a profile-aware revision and reviews the frontmatter change through staged validation and Apply.
 
 # Evidence health
 
@@ -90,7 +90,7 @@ Opening a bundle, entering the reader, expanding Evidence, or running ordinary h
 - a source authored as `changed` or `unavailable` records its last status, time, and fingerprint
 - lifecycle, contradiction, replacement, and retrieval conflict findings remain visible beside source findings.
 
-The finding explains what was observed and what cannot be inferred. A failed URL is not a factual-invalidity finding. Evidence repairability remains `guided`, so an agent may propose a source, locator, citation, or refreshed observation, but Studio never invents or applies one mechanically.
+The finding explains what the check observed, and what it cannot show. A failed URL is not a factual-invalidity finding. Evidence repairability remains `guided`, so an agent may propose a source, locator, citation, or refreshed observation, but Studio never invents or applies one mechanically.
 
 # Source signals
 

@@ -46,25 +46,25 @@ All three space-filling views consume one tree, built per render from the same f
 
 # Interaction
 
-- **Click a leaf** (a concept) to open it in the [Concept Reader](concept-reader.md), the same shared selection as everywhere else; the selected concept carries an accent ring in the view.
-- **Selection focuses the view**: picking a concept anywhere (sidebar, palette, a reader link) drills the active view to that concept's parent group, the graph's recenter-on-select translated to hierarchies.
-- **Click a group** to drill in (treemap/sunburst re-root; circle packing zooms). The centered **breadcrumb** (`All › Design › Tokens`, collapsing a deep trail to `All › … › Tokens`) steps back to any ancestor, and **Alt+↑** drills up one level without reaching for it.
+- **Click a leaf** (a concept) to open it in the [Concept Reader](concept-reader.md), the same shared selection as everywhere else. The selected concept carries an accent ring in the view.
+- **Selection focuses the view.** Picking a concept anywhere (sidebar, palette, a reader link) drills the active view to that concept's parent group. That is the graph's recenter-on-select, translated to hierarchies.
+- **Click a group** to drill in (treemap and sunburst re-root, circle packing zooms). The centered **breadcrumb** (`All › Design › Tokens`, collapsing a deep trail to `All › … › Tokens`) steps back to any ancestor, and **Alt+↑** drills up one level without reaching for it.
 - **All remains complete** in the sunburst. It does not collapse leaves into summary sectors or repeat a parent to fill a ring. Small sectors can omit text, but remain present and inspectable through hover or drill.
-- **Hover** for a tooltip card (name, type, and size as "~N words") on its own elevated surface, clamped inside the pane so it never clips at an edge.
+- **Hover** for a tooltip card with the name, type, and size as "~N words". The card sits above the chart on its own surface, clamped inside the pane so it never clips at an edge.
 - Transitions animate (drill push-in, zoom glide) and respect **reduce motion** ([settings](../ux/settings.md)).
 
 # Labels
 
-Nivo's built-in labels are a fixed 11px, which reads teeny on a big tile and overflows a small one, so the views render their own label layers over a shared fitting model (`src/viz/labels.ts`):
+Nivo's built-in labels are a fixed 11px. That reads tiny on a big tile and overflows a small one. The views therefore render their own label layers over a shared fitting model (`src/viz/labels.ts`):
 
-- A name renders at the **largest font (10–18px) whose word-wrapped lines fit its shape**; a shape that can't hold its name stays quiet (the tooltip carries it, and drilling in reveals more names, the space-filling twin of the graph's level-of-detail labels).
-- **Ink is picked by fill luminance** (dark ink on light type colors, light ink on dark), so labels never wash out; label text wears ink tokens, never the series color.
-- The **sunburst rotates each label to its arc**, tangential on wide sectors and radial on thin slivers, flipped on the far half so nothing reads upside-down. Horizontal text only suits a ring near 12/6 o'clock.
-- Labels appear only when their sector can contain them. This follows the area-threshold treatment in the [D3 zoomable sunburst](https://observablehq.com/notebook-kit/ex/d3/zoomable-sunburst); unlabeled concepts remain available through the tooltip and click target.
+- A name renders at the **largest font (10–18px) whose word-wrapped lines fit its shape**. A shape that cannot hold its name stays quiet. The tooltip carries the name, and drilling in reveals more of them, the space-filling twin of the graph's level-of-detail labels.
+- **Fill luminance picks the ink**: dark ink on light type colors, light ink on dark. Labels therefore never wash out. Label text wears ink tokens, never the series color.
+- The **sunburst rotates each label to its arc**: tangential on wide sectors, radial on thin slivers. The far half flips so nothing reads upside-down. Horizontal text only suits a ring near 12/6 o'clock.
+- Labels appear only when their sector can contain them. This follows the area-threshold treatment in the [D3 zoomable sunburst](https://observablehq.com/notebook-kit/ex/d3/zoomable-sunburst). Unlabeled concepts remain available through the tooltip and click target.
 
 # Implementation notes
 
-- Rendered with [nivo](https://nivo.rocks) (`@nivo/treemap`, `@nivo/sunburst`, `@nivo/circle-packing`; [d3-hierarchy partition](https://d3js.org/d3-hierarchy/partition) underneath, react-spring transitions) rather than a bespoke renderer. The partition layout assigns one annular generation per actual tree depth; Studio's job is therefore to give it an honest tree. The nivo chunk (~55 KB gzip, shared by all three) is **lazy-loaded** on first use, so the default graph path stays as lean as before, the same pattern as the on-demand GPU renderer.
-- The pane host (`VizPane`) owns the tree build, drill state, selection/dim wiring, and chrome; each view is a pure chart over that contract, which is what lets drill position survive view switches.
-- Theme colors cross into nivo as resolved values (its theme object is plain JS, not CSS-variable-aware), re-read via a `data-theme` observer on the document root so they stay in step with theme flips.
-- Two nivo quirks worth knowing: custom layers receive **un-zoomed** node positions in the circle packing (the zoom transform is re-derived from the root circle's geometry), and the themed tooltip container paints no background behind custom tooltips (hence the app-owned tooltip card).
+- The views render with [nivo](https://nivo.rocks) (`@nivo/treemap`, `@nivo/sunburst`, `@nivo/circle-packing`, with [d3-hierarchy partition](https://d3js.org/d3-hierarchy/partition) underneath and react-spring transitions) rather than a bespoke renderer. The partition layout assigns one annular generation per actual tree depth. Studio's job is therefore to give it an honest tree. The nivo chunk (~55 KB gzip, shared by all three) is **lazy-loaded** on first use. The default graph path therefore stays as lean as before, the same pattern as the on-demand GPU renderer.
+- The pane host (`VizPane`) owns the tree build, drill state, selection/dim wiring, and chrome. Each view is a pure chart over that contract, and that contract is what lets drill position survive view switches.
+- Theme colors cross into nivo as resolved values, because its theme object is plain JS and not CSS-variable-aware. A `data-theme` observer on the document root re-reads them, so they stay in step with theme flips.
+- Two nivo quirks are worth knowing. Custom layers receive **un-zoomed** node positions in the circle packing, so Studio re-derives the zoom transform from the root circle's geometry. The themed tooltip container paints no background behind custom tooltips, hence the app-owned tooltip card.

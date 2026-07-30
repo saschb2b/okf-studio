@@ -1,7 +1,7 @@
 ---
 type: Proposal
-title: Multi-View — Tabs & Windows
-description: Break the one-concept-at-a-time limit — reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own OS window.
+title: Multi-View: Tabs & Windows
+description: Break the one-concept-at-a-time limit: reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own OS window.
 tags: [proposal, ux, navigation, tabs, windows]
 generated: { by: claude/unrecorded, at: 2026-07-06T12:00:00Z }
 ---
@@ -23,7 +23,7 @@ The request frames it well: evolve the way browsers did, from single page to tab
 - **Web browsers** (the shared muscle memory). `Ctrl/Cmd+click` opens a link in a **background** tab, and `Shift` variants foreground it. Middle-click does the same. `Ctrl+T`/`Ctrl+W`/`Ctrl+Tab` create, close, and cycle. Each tab owns its **own history**. Dragging a tab out of the strip **tears it off** into a full window of the same app, not a stripped-down viewer.
 - **VS Code / Zed**. Tabs live *above the document pane*, not the window. The explorer and search stay shared context beside them. A quiet strip, not browser chrome.
 - **Obsidian** (the closest product: local markdown, link graph). It added tabs (v1.0) and *Move to new window*, where the popped-out note is a full workspace window on the same vault. Its lesson: in a knowledge graph, tabs are for *divergent trails*, windows for *screen real estate*.
-- **Arc / Edge split view**: in-window side-by-side. Valuable, but it's a second step. It needs tabs to exist first (a split is "two tabs shown at once"), and our split-mode grid (graph | reader) already fills the width budget on typical windows.
+- **Arc / Edge split view**: in-window side-by-side. Valuable, but it's a second step. It needs tabs to exist first, because a split is "two tabs shown at once". Our split-mode grid (graph | reader) already fills the width budget on typical windows.
 
 # Design
 
@@ -34,13 +34,15 @@ The reader pane grows a quiet **tab strip** (the VS Code placement: above the do
 - **The active tab is the active concept.** Selection stays a single shared state per window: the graph recenters, the sidebar highlights, the reader shows the active tab. Switching tabs *is* a selection change. Plain-clicking anywhere (graph node, tree row, reader link, launcher) navigates the **current tab**, exactly like a browser's current tab. Nothing about the existing loop changes.
 - **`Ctrl/Cmd+click` opens in a new background tab**: on reader body links, the reader rail's relationship rows, index-tree rows, and graph nodes (both renderers). Add `Shift` to also switch to it. Middle-click works where the platform delivers it.
 - **Tab anatomy:** the concept's type dot + title, a close ×, middle-click to close. Overflow scrolls. **Drag a tab sideways to reorder**, with a live swap: a tab trades places once the pointer crosses a neighbor's midpoint. The strip uses pointer events rather than HTML5 drag-and-drop, which webviews deliver unreliably and which drags a ghost image around.
-- **Keyboard:** `Ctrl/Cmd+T` opens a new tab. The tab opens *empty and active*, and deliberately does **not** auto-open the launcher. Owner feedback: a dialog popping up unasked reads as a glitch, and the empty state already points at the graph, sidebar, and launcher. `Ctrl/Cmd+W` close, `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle. `Alt+←/→` stay per-tab.
+- **Keyboard:** `Ctrl/Cmd+T` opens a new tab. The tab opens *empty and active*, and deliberately does **not** auto-open the launcher. Owner feedback: a dialog popping up unasked reads as a glitch, and the empty state already points at the graph, sidebar, and launcher. Close is `Ctrl/Cmd+W`, and `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle. `Alt+←/→` stay per-tab.
 - **Middle-click closes a tab** (the VS Code gesture), handled as press+release on the tab rather than `auxclick`, which scrollable strips and webviews deliver unreliably.
 - **Bundle switch** resets tabs, since a new bundle is a new browsing context. [Live reload](../features/live-reload.md) of the same bundle keeps them, dropping only tabs whose concept vanished.
 
 ## Peek before you open
 
-Tabs answer "keep this open". The **peek card** answers the question *before* that one: "is this worth opening at all?" (owner request). Dwell on a concept link, a reader body link or a rail relationship row, for ~450 ms, or focus it by keyboard. A small card then previews the target: its type (palette dot), title, description, and the first lines of prose, plus a quiet hint teaching the open-in-tab gesture. This is the Wikipedia page-preview / Obsidian hover-card pattern. It is trivial here because the viewer already parses the whole bundle in memory, so the peek is instant and offline.
+Tabs answer "keep this open". The **peek card** answers the question *before* that one: "is this worth opening at all?" (owner request). Dwell on a concept link, a reader body link or a rail relationship row, for ~450 ms, or focus it by keyboard. A small card then previews the target: its type (palette dot), title, description, and the first lines of prose. A quiet hint teaches the open-in-tab gesture.
+
+This is the Wikipedia page-preview / Obsidian hover-card pattern. It is trivial here because the viewer already parses the whole bundle in memory, so the peek is instant and offline.
 
 - The card is **non-interactive** (`pointer-events: none`): it can never trap the pointer, so there are no hover-persistence states. It dismisses on leave, click, scroll, Escape, or navigation.
 - The peek reduces the markdown body to a plain-text excerpt (`plainExcerpt`). It drops code fences and tables and keeps link text, because a glimpse wants prose, not markup.
@@ -56,8 +58,10 @@ Tabs answer "keep this open". The **peek card** answers the question *before* th
 
 ## What stays single
 
-One graph, one sidebar, one launcher per window. Tabs multiply *documents*, not workspaces. There is no in-window split-reader for now (revisit if tab usage shows comparison demand outgrowing pop-out windows), and no tab persistence across restarts (sessions are cheap to rebuild in a read-only viewer). Drag-to-reorder started out deferred here, then landed on owner feedback. It's imported muscle memory like the rest of the gestures, and the tab model made it a one-action change.
+One graph, one sidebar, one launcher per window. Tabs multiply *documents*, not workspaces. There is no in-window split-reader for now. We revisit that if tab usage shows comparison demand outgrowing pop-out windows. There is no tab persistence across restarts either, because sessions are cheap to rebuild in a read-only viewer.
+
+Drag-to-reorder started out deferred here, then landed on owner feedback. It's imported muscle memory like the rest of the gestures, and the tab model made it a one-action change.
 
 # Why this shape
 
-It's the smallest design that serves comparison, reference-keeping, and multi-monitor at once, and it spends no novelty budget. Every gesture is imported muscle memory from the browser, on the exact surface (links in a document) where users already expect it. It holds the [principles](../product/principles.md) (keyboard-first, offline, read-only) and the quiet-chrome stance: zero visual change until the second tab exists.
+It's the smallest design that serves comparison, reference-keeping, and multi-monitor at once, and it spends no novelty budget. Every gesture carries over muscle memory from the browser, on the exact surface (links in a document) where users already expect it. It holds the [principles](../product/principles.md) (keyboard-first, offline, read-only) and the quiet-chrome stance: zero visual change until the second tab exists.

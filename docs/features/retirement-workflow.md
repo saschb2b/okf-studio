@@ -52,4 +52,4 @@ Validation runs against an isolated mirror where a selected deletion is actually
 
 Pure fixtures cover all four outcomes, retrieval consequences, inbound and index impact, log creation, and refusal to delete a cited concept without a replacement. Native integration applies a deletion with rewritten links and a new log, then restores all original files and removes the created log. A separate restart test proves a persisted deletion checkpoint recreates the deleted bytes. Browser integration covers the complete deprecation review, validation, Apply, and Restore journey. Stories cover choice and narrow destructive-review states.
 
-Related behavior: [Reliability and Lifecycle](reliability-and-lifecycle.md), [Concept Reader](concept-reader.md), [Validation](validation.md), [Integrated Git](integrated-git.md), and [IPC & Security](../architecture/ipc-and-security.md).
+Related behavior: [Reliability and Lifecycle](reliability-and-lifecycle.md), [Concept Reader](concept-reader.md), [Validation](validation.md), [Integrated Git](integrated-git.md), and [IPC and Security](../architecture/ipc-and-security.md).

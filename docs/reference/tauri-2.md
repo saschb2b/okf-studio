@@ -35,7 +35,7 @@ okf-studio/
   docs/           # this OKF bundle (also the built-in sample)
 ```
 
-# Tooling & commands
+# Tooling and commands
 
 - Scaffold: `pnpm create tauri-app` (choose the v2 template + React + TypeScript).
 - Dev: `pnpm tauri dev` (hot-reloads frontend, rebuilds Rust on change).

@@ -22,7 +22,7 @@ The core hands over `concepts` and dictates no presentation. The frontend **deri
 - The **edge list**, flattened from `concepts[].links` into `{source, target}` pairs for the graph.
 - The **tag index**, built by inverting `concepts[].tags` into tag → concept lists, which feeds the tag [filters](../features/search-and-filter.md).
 
-These are pure functions of the bundle data, so they recompute only when the bundle changes rather than on every render. The React Compiler handles that memoization (see below).
+These are pure functions of the bundle data, so they recompute only when the bundle changes rather than on every render. The React Compiler handles that memoization, described under Rendering.
 
 # Component decomposition
 

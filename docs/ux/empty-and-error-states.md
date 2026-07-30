@@ -1,6 +1,6 @@
 ---
 type: UX Flow
-title: Empty & Error States
+title: Empty and Error States
 description: Every no-content, loading, and failure state: what it shows and how to recover.
 tags: [ux, flow, errors, empty-states]
 generated: { by: claude/unrecorded, at: 2026-07-17T00:10:00Z }

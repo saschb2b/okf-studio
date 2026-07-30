@@ -19,7 +19,7 @@ While a folder is open, the app watches it for filesystem changes and updates th
 
 # Implementation notes
 
-- Backed by a filesystem watcher in the [Rust core](../architecture/tech-stack.md) (the `notify` crate, exposed through a Tauri event channel, described in [IPC & Security](../architecture/ipc-and-security.md)).
-- Debouncing turns a burst of writes, such as a bulk edit or a git checkout, into one coherent update. [Performance & Scale](../architecture/performance.md) covers the incremental re-parse and backlink strategy.
+- Backed by a filesystem watcher in the [Rust core](../architecture/tech-stack.md) (the `notify` crate, exposed through a Tauri event channel, described in [IPC and Security](../architecture/ipc-and-security.md)).
+- Debouncing turns a burst of writes, such as a bulk edit or a git checkout, into one coherent update. [Performance and Scale](../architecture/performance.md) covers the incremental re-parse and backlink strategy.
 - The root [`.okfignore`](ignore-rules.md) matcher suppresses events for excluded paths. A rule-file change always triggers a refresh so a new exclusion or negation takes effect immediately.
 - The watcher reads only, and only inside the chosen folder, which matches the [security model](../architecture/ipc-and-security.md).

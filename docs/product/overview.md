@@ -24,7 +24,7 @@ Studio extends the reference implementation's single-file HTML visualizer with n
 - **Agent / AI builders** who curate agent-readable knowledge and need to see the relationship graph their agents will traverse.
 - **Bundle readers** who receive a repository subdirectory or archive and need to understand it quickly.
 
-See [Personas & Use Cases](personas.md) for these audiences as concrete personas with the jobs they hire the app to do, and [How It Compares](comparison.md) for where it sits against PKM tools, static-site generators, and the OKF reference visualizer.
+See [Personas and Use Cases](personas.md) for these audiences as concrete personas with the jobs they hire the app to do, and [How It Compares](comparison.md) for where it sits against PKM tools, static-site generators, and the OKF reference visualizer.
 
 # Why it exists
 
@@ -39,4 +39,4 @@ OKF is markdown with frontmatter, which makes bundles portable but leaves their 
 5. When chosen, the [Agent Panel](../features/agent-panel.md) starts a compatible agent and attaches only the active bundle and explicit sources through the [Agent System](../architecture/agent-system.md).
 6. Research stays in the thread; proposed bundle changes enter the staged validation and review flow before any filesystem write.
 
-This product is shaped by its [Design Principles](principles.md) and bounded by its [Scope & Non-Goals](scope-and-non-goals.md). Existing OKF Viewer installations upgrade in place under the deliberately stable identifiers documented in [OKF Viewer to OKF Studio](migration-notes.md).
+This product is shaped by its [Design Principles](principles.md) and bounded by its [Scope and Non-Goals](scope-and-non-goals.md). Existing OKF Viewer installations upgrade in place under the deliberately stable identifiers documented in [OKF Viewer to OKF Studio](migration-notes.md).

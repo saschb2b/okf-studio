@@ -1,6 +1,6 @@
 ---
 type: Architecture Decision
-title: Performance & Scale
+title: Performance and Scale
 description: How the "Fast" principle is achieved end to end, from the bounded directory walk to interactive graph rendering.
 tags: [architecture, decision, performance, scale]
 generated: { by: claude/unrecorded, at: 2026-06-29T18:00:00Z }
@@ -41,4 +41,4 @@ The [graph](../features/graph-view.md) renders on a **canvas**. Node positions a
 
 # Budget
 
-A few-hundred-concept bundle scans, parses once, and renders interactively in well under a second. Later bundle switches and filter operations are effectively instantaneous. Larger bundles degrade gracefully into the canvas and Barnes–Hut path instead of stalling. Fixtures described in [Testing & Dogfooding](testing.md) exercise performance.
+A few-hundred-concept bundle scans, parses once, and renders interactively in well under a second. Later bundle switches and filter operations are effectively instantaneous. Larger bundles degrade gracefully into the canvas and Barnes–Hut path instead of stalling. Fixtures described in [Testing and Dogfooding](testing.md) exercise performance.

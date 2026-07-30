@@ -38,10 +38,10 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Site Experience Research](product/site-evolution/site-experience-research.md) - Evidence behind replacing the one-page feature catalogue with a scalable product site.
 * [Site Experience Contract](product/site-evolution/site-experience-contract.md) - Target site map, navigation, homepage story, content ownership, and implementation sequence.
 * [OKF Viewer to OKF Studio](product/migration-notes.md) - How existing local data, credentials, and compatibility identifiers behave on upgrade.
-* [Personas & Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
+* [Personas and Use Cases](product/personas.md) - Who it's for, as concrete personas and the jobs they hire it to do.
 * [How It Compares](product/comparison.md) - OKF Studio vs. the reference visualizer, PKM tools, static-site generators, editors, and agent chat surfaces.
 * [Design Principles](product/principles.md) - The non-negotiables: local-first, vendor-neutral, tolerant, read-only by default, and visible agency.
-* [Scope & Non-Goals](product/scope-and-non-goals.md) - Current Studio scope, deferred work, and explicit non-goals.
+* [Scope and Non-Goals](product/scope-and-non-goals.md) - Current Studio scope, deferred work, and explicit non-goals.
 
 # Features
 
@@ -61,7 +61,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Concept Reader](features/concept-reader.md) - Rendered markdown with frontmatter, citations, and clickable links.
 * [Reliability and Lifecycle](features/reliability-and-lifecycle.md) - Qualify optional lifecycle, confidence, review, contradiction, and replacement signals without changing OKF conformance.
 * [Design-System Rendering](features/design-system-rendering.md) - Native ODSF token visualizations and sandboxed example previews.
-* [Search & Filter](features/search-and-filter.md) - Full-text search, type filters, and tag browsing.
+* [Search and Filter](features/search-and-filter.md) - Full-text search, type filters, and tag browsing.
 * [Navigation](features/navigation.md) - Progressive disclosure from index.md, link following, and history.
 * [Command Palette](features/command-palette.md) - Jump to any concept and run quick actions from the keyboard.
 * [Validation](features/validation.md) - Surface OKF conformance errors and warnings without refusing the bundle.
@@ -80,7 +80,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 # UX
 
 * [First Run](ux/first-run.md) - From empty state to a rendered bundle in two clicks.
-* [Empty & Error States](ux/empty-and-error-states.md) - Every no-content, loading, and failure state, and how to recover.
+* [Empty and Error States](ux/empty-and-error-states.md) - Every no-content, loading, and failure state, and how to recover.
 * [Agent Workspace Dogfood](ux/agent-workspace-dogfood.md) - Journey evidence and open findings from the Agent Panel workspace refinement.
 * [Browsing Layout](ux/browsing-layout.md) - The three-pane workspace: sidebar, graph, reader.
 * [Keyboard Shortcuts](ux/keyboard-shortcuts.md) - Keys for power users.
@@ -97,11 +97,11 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [OKF Parsing](architecture/okf-parsing.md) - How Studio parses concepts, links, and indexes.
 * [Data Model](architecture/data-model.md) - Bundle, Concept, and Graph shapes shared across the IPC boundary.
 * [Frontend Architecture](architecture/frontend-architecture.md) - The frontend as a thin client over the Rust command/event surface.
-* [IPC & Security](architecture/ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit network and process actions, and reviewed writes.
-* [Performance & Scale](architecture/performance.md) - How the app stays fast, from the bounded scan to graph rendering.
-* [Testing & Dogfooding](architecture/testing.md) - Frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
+* [IPC and Security](architecture/ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit network and process actions, and reviewed writes.
+* [Performance and Scale](architecture/performance.md) - How the app stays fast, from the bounded scan to graph rendering.
+* [Testing and Dogfooding](architecture/testing.md) - Frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 * [OKF Agent Benchmarking](architecture/agent-benchmarking.md) - Frozen task fixtures, machine-checked OKF facts, and provider evaluation boundaries.
-* [Build & Release](architecture/build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.
+* [Build and Release](architecture/build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.
 
 # Reference
 
@@ -121,10 +121,10 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 # Proposals
 
 * [Deep Knowledge Diving](proposals/deep-knowledge-diving.md) - Where the viewer is thin for going deep, and the big-data patterns worth borrowing.
-* [Bundle Overview & Health (superseded)](proposals/bundle-overview.md) - The original inventory-dashboard proposal, superseded by a working Home for activity, resumption, attention, and repository changes.
+* [Bundle Overview and Health (superseded)](proposals/bundle-overview.md) - The original inventory-dashboard proposal, superseded by a working Home for activity, resumption, attention, and repository changes.
 * [Faceted Query Bar](proposals/faceted-search.md) - Structured field queries and facet rails that filter the workspace live.
-* [Lineage & Traversal](proposals/lineage-and-traversal.md) - Expand-on-click, upstream/downstream lineage, path-between, and unlinked mentions.
-* [Multi-View: Tabs & Windows](proposals/multi-view.md) - Reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own window.
+* [Lineage and Traversal](proposals/lineage-and-traversal.md) - Expand-on-click, upstream/downstream lineage, path-between, and unlinked mentions.
+* [Multi-View: Tabs and Windows](proposals/multi-view.md) - Reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own window.
 
 # Subdirectories
 

@@ -1,6 +1,6 @@
 ---
 type: Proposal
-title: Bundle Overview & Health (superseded)
+title: Bundle Overview and Health (superseded)
 description: The original inventory-dashboard proposal, superseded by a working Home for activity, resumption, attention, and repository changes.
 tags: [proposal, ux, orientation, overview]
 generated: { by: claude/unrecorded, at: 2026-07-23T20:25:48+02:00 }

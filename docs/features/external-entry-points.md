@@ -64,4 +64,4 @@ The server exposes the same bounded inventory, read, search, source, traversal, 
 
 Rust tests cover hostile schemes, encoded traversal, repeated and oversize fields, and CLI parity. They also cover unsupported attachments, duplicate launches, exact one-shot grant consumption, replay, hostile grant paths, and tokens. Storybook MCP covers link and CLI previews, untrusted prompt and omitted-field disclosure, native-confirmation waiting, errors, ready and expiring MCP grants, and 360-pixel layouts. The narrow external-request footer stays visible while its details scroll.
 
-[IPC & Security](../architecture/ipc-and-security.md) and [Agent System](../architecture/agent-system.md) specify the related boundaries.
+[IPC and Security](../architecture/ipc-and-security.md) and [Agent System](../architecture/agent-system.md) specify the related boundaries.

@@ -94,4 +94,4 @@ Installing an ACP agent, connecting a remote provider, checking for updates, and
 5. Retest credentialed Studio Agent endpoints if the operating-system keyring requests access or reports a missing key.
 6. Leave compatibility-named storage and repository paths unchanged.
 
-For the underlying boundaries, see [Agent System](../architecture/agent-system.md), [IPC & Security](../architecture/ipc-and-security.md), [Settings & Preferences](../ux/settings.md), and the [OKF Studio Transformation](studio-roadmap.md).
+For the underlying boundaries, see [Agent System](../architecture/agent-system.md), [IPC and Security](../architecture/ipc-and-security.md), [Settings & Preferences](../ux/settings.md), and the [OKF Studio Transformation](studio-roadmap.md).

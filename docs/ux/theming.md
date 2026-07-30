@@ -55,10 +55,10 @@ The text roles are `--text` and `--text-dim`. The accent roles are `--accent` pl
 - **Type scale** (`--fs-xs 12 / --fs-sm 14 / --fs-md 16 / --fs-lg 20 / --fs-xl 28`) with paired line-height tokens. A bounded set, not a dozen ad-hoc sizes.
 - **Radius** (`--radius-sm 6 / --radius 8 / --radius-lg 12`, with `999px`/`50%` reserved for pills and dots).
 - **Elevation**: one scale, three steps, each a tight contact shadow under a wider ambient one. Use `--shadow-sm` for a small raised tile (the segmented-control thumb), `--shadow` for popovers and menus, and `--shadow-lg` only for modals. The modal backdrop is `--scrim`.
-- **Focus** (see below) and **motion**: `--dur-fast` / `--dur` on one shared easing curve, `--ease: cubic-bezier(0.2, 0.6, 0.2, 1)`. A fast start that settles slowly is what makes a panel resize read as physical. CSS's default `ease` is symmetric, so it drifts at the start and stops abruptly. `prefers-reduced-motion` suppresses all of it (see [Accessibility](accessibility.md)).
+- **Focus** and **motion**: `--dur-fast` / `--dur` on one shared easing curve, `--ease: cubic-bezier(0.2, 0.6, 0.2, 1)`. A fast start that settles slowly is what makes a panel resize read as physical. CSS's default `ease` is symmetric, so it drifts at the start and stops abruptly. `prefers-reduced-motion` suppresses all of it (see [Accessibility](accessibility.md)).
 - **Reading layer**: the [Concept Reader](../features/concept-reader.md) adds reader-scoped variables for its prose column. Those are a character-based **measure**, **line-height**, **font** (the UI sans by default, an opt-in serif), and the context-**rail** width. The reader's "Aa" control tunes all of them, and [settings](settings.md) persists them. Callouts and admonitions reuse the status roles via the `-soft` tints, adding no new color literals.
 
-# Light & dark
+# Light and dark
 
 - The app follows the OS color scheme by default, with a manual override in settings.
 - Dark keeps the app's near-black identity, with surfaces around 7–16% lightness rather than Zed's 18–26%. The steps still sit far enough apart that a pane edge is visible without leaning on `--border` for every seam.
@@ -117,7 +117,7 @@ We lift the comment scope in both themes, and only that scope. Every syntax them
 
 Mermaid bakes color into the SVG, so the reader renders each diagram twice up front and CSS shows the copy matching `data-theme`. That needs the *other* theme's values while the first is live, which `getComputedStyle` cannot give. `readTokenPairs` (`shared/theme.ts`) flips `data-theme` on the root and restores it inside one synchronous block. The flip forces a style recalc, and no paint can happen in between. It takes only tokens that resolve to literal colors. CSS does not substitute a custom property at computed-value time, so `--focus-ring` would arrive as the text `var(--accent)` and `--accent-soft` as an unevaluated `color-mix()`.
 
-# Typography & code
+# Typography and code
 
 - **Inter** for chrome and bodies, **JetBrains Mono** for inline code and fenced blocks with light syntax tinting. Both ship with the app as variable fonts rather than resolve from the host. A desktop app that inherits `system-ui` renders in Segoe UI on Windows, SF on macOS, and whatever fontconfig picks on Linux. One window then has three different sets of metrics and three different x-heights, and a weight like 650 either exists or silently rounds to bold. Bundling them costs about 113KB of latin subsets and makes the chrome identical on all three platforms. The system stacks stay behind them as the fallback.
 - Inter uses `font-optical-sizing: auto` and the `--ui-features` alternates (single-storey `g` and `l`, curved `r`), which read quieter at the 12px most of the chrome runs at.

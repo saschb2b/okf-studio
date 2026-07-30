@@ -21,6 +21,8 @@ Slop you can see before you read a word. These apply to anything rendered, a REA
 | Badge wall at the top of a README | keep only badges a reader acts on, like CI status or version |
 | Smart/curly quotes and apostrophes in code, CLI, or config | normalize to straight quotes |
 | An H3 for every two-sentence subtopic | headings only where a reader needs to jump |
+| A period or colon ending a heading or title | drop it, headings take no end punctuation |
+| Missing serial comma ("Android, iOS and Windows") | comma before the conjunction |
 
 ## Title and sentence case
 

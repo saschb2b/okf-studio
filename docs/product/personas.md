@@ -1,6 +1,6 @@
 ---
 type: Product
-title: Personas & Use Cases
+title: Personas and Use Cases
 description: The handful of concrete people OKF Studio is built for, framed by the job each hires it to do.
 tags: [product, personas, use-cases]
 generated: { by: claude/unrecorded, at: 2026-07-13T18:51:16Z }
@@ -20,7 +20,7 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 
 - [Folder Autodetect](../features/folder-autodetect.md): point at the repo, get every bundle.
 - [Live Reload](../features/live-reload.md): the view tracks the files as `git pull` or edits change them.
-- [Search & Filter](../features/search-and-filter.md): jump straight to a metric or runbook by name or type.
+- [Search and Filter](../features/search-and-filter.md): jump straight to a metric or runbook by name or type.
 - [Agent Panel](../features/agent-panel.md): investigate a dataset or request a reviewed documentation change without granting direct writes.
 
 # The AI / agent builder
@@ -45,7 +45,7 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 **What matters most.**
 
 - [Graph View](../features/graph-view.md): the shape of the whole bundle at a glance.
-- [Search & Filter](../features/search-and-filter.md): find a foothold by keyword or type.
+- [Search and Filter](../features/search-and-filter.md): find a foothold by keyword or type.
 - [Navigation](../features/navigation.md): start at the root and descend by progressive disclosure.
 - [Agent Panel](../features/agent-panel.md): ask a cited question against the active bundle without moving it to another workspace.
 
@@ -64,4 +64,4 @@ The [Overview](overview.md) sketches the audience in three lines. This concept m
 
 # Why these four
 
-Together these personas define the complete Studio loop. Open and understand existing knowledge, query it with evidence, create or enhance it from sources, and review every proposed write. The [Scope & Non-Goals](scope-and-non-goals.md) keeps that loop bundle-focused rather than turning Studio into a general editor, sync service, git client, or autonomous computer operator.
+Together these personas define the complete Studio loop. Open and understand existing knowledge, query it with evidence, create or enhance it from sources, and review every proposed write. The [Scope and Non-Goals](scope-and-non-goals.md) keeps that loop bundle-focused rather than turning Studio into a general editor, sync service, git client, or autonomous computer operator.

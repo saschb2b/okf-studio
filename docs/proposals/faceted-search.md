@@ -8,7 +8,7 @@ generated: { by: claude/unrecorded, at: 2026-07-04T19:00:00Z }
 
 # Problem
 
-[Search & Filter](../features/search-and-filter.md) today is fuzzy match on title/id/type plus full-text on body, with per-type hide toggles. That finds *a* concept well. It does not answer "show me every `Table` tagged `revenue` with more than five links", the browse-by-facet motion that data catalogs build on. See [Deep Knowledge Diving](deep-knowledge-diving.md), stage 2.
+[Search and Filter](../features/search-and-filter.md) today is fuzzy match on title/id/type plus full-text on body, with per-type hide toggles. That finds *a* concept well. It does not answer "show me every `Table` tagged `revenue` with more than five links", the browse-by-facet motion that data catalogs build on. See [Deep Knowledge Diving](deep-knowledge-diving.md), stage 2.
 
 # What it is
 

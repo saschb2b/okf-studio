@@ -47,7 +47,7 @@ up:
 
 # Guarantees
 
-The Rust core owns the write ([IPC & Security](../architecture/ipc-and-security.md)).
+The Rust core owns the write ([IPC and Security](../architecture/ipc-and-security.md)).
 It checks the folder name against path tricks and reserved names, and bounds
 and control-filters every input. It quotes titles so they round-trip under both
 real YAML parsers and the tolerant frontmatter reader. It writes the tree

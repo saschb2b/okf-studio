@@ -5,10 +5,10 @@ Vision, audience, principles, scope, and the research-backed roadmaps that direc
 # Foundations
 
 * [Overview](overview.md) - A local-first workspace for exploring, creating, curating, and querying connected OKF bundles with user-chosen agents.
-* [Personas & Use Cases](personas.md) - Who Studio is for and the jobs they hire it to do.
+* [Personas and Use Cases](personas.md) - Who Studio is for and the jobs they hire it to do.
 * [How It Compares](comparison.md) - Studio compared with the reference visualizer, PKM tools, static sites, editors, and agent chat surfaces.
 * [Design Principles](principles.md) - The non-negotiables every feature must respect.
-* [Scope & Non-Goals](scope-and-non-goals.md) - Current scope, deferred work, and explicit non-goals.
+* [Scope and Non-Goals](scope-and-non-goals.md) - Current scope, deferred work, and explicit non-goals.
 * [OKF Viewer to OKF Studio](migration-notes.md) - Upgrade behavior for grants, local data, credentials, billing, and compatibility names.
 
 # Roadmaps and evidence

@@ -40,4 +40,4 @@ The panel starts one watcher only while it is open and a bundle root is active. 
 
 Temporary-repository tests cover status parsing, renames, history framing, tracking counts, scope denial, repository mutation, diffs, commit, and revision-bound undo. Watcher tests cover work-tree and linked-metadata relevance while excluding object and build noise. Frontend integration tests cover panel ownership, diff routing, and keyboard focus. Storybook covers clean, mixed, conflicted, long-content, missing-repository, unavailable-Git, pending failure, history, tracked-only commit, and diff pressure states.
 
-See [IPC & Security](ipc-and-security.md), [Testing & Dogfooding](testing.md), and the user-facing [Integrated Git](../features/integrated-git.md) concept.
+See [IPC and Security](ipc-and-security.md), [Testing and Dogfooding](testing.md), and the user-facing [Integrated Git](../features/integrated-git.md) concept.

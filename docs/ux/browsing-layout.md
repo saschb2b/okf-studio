@@ -26,7 +26,7 @@ generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
 
 # Synced selection
 
-There is one shared "active concept" **per window**. Selecting it anywhere (a graph node, a sidebar entry, a link in the reader) updates all three panes together. The [graph](../features/graph-view.md) recenters, the sidebar highlights, the reader loads. With [tabs](../features/navigation.md) open, the active tab *is* the selection, and switching tabs is a selection change. A `Ctrl/Cmd+click` opens a concept in a background tab instead of moving the selection.
+One shared "active concept" exists **per window**. Selecting it anywhere (a graph node, a sidebar entry, a link in the reader) updates all three panes together. The [graph](../features/graph-view.md) recenters, the sidebar highlights, the reader loads. With [tabs](../features/navigation.md) open, the active tab *is* the selection, and switching tabs is a selection change. A `Ctrl/Cmd+click` opens a concept in a background tab instead of moving the selection.
 
 # Pop-out windows
 

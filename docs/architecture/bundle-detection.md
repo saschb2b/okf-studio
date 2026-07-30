@@ -34,7 +34,7 @@ scan(folder):
   return de-duplicated list of bundle roots
 ```
 
-# Rules & edge cases
+# Rules and edge cases
 
 - **Nesting within a bundle:** inside a confident (or candidate) root, inner `index.md` directories are parts of that bundle (sub-directory indexes), not separate bundles. The boundary rule stops at the *top* of the `index.md` chain, so nested section indexes never split a bundle.
 - **A container of bundles is not a bundle:** point at a folder that itself has no `index.md` but holds several bundle directories that do. One example is `GoogleCloudPlatform/knowledge-catalog`'s `okf/bundles`, whose sub-bundles omit `okf_version`. Detection returns each sub-bundle separately rather than merging their concepts under the container. The [Bundle Switcher](../features/bundle-switcher.md) then lists them, and the [Open-from-URL](../features/bundle-switcher.md) dialog offers a picker.

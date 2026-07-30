@@ -73,4 +73,4 @@ Three artifact cases machine-score schema, bundle identity, citation references,
 
 `node scripts/okf-agent-provider-eval.mjs --provider <provider> --model <model> --output <path>` prepares the explicit live-evaluation ledger. It includes both writing runs in different case orders, every hard preservation requirement, and the frozen blind-review threshold. The ledger starts as `not-run`. Generating it does not invoke a provider or claim a score.
 
-This contract implements the first stage of [OKF Agent Specialization](../product/agent-specialization-roadmap.md) and extends [Testing & Dogfooding](testing.md).
+This contract implements the first stage of [OKF Agent Specialization](../product/agent-specialization-roadmap.md) and extends [Testing and Dogfooding](testing.md).

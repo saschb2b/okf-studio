@@ -178,7 +178,9 @@ function sentences(text) {
       .replace(/^>\s?/, "")
       .replace(/^(?:[-*+]|\d+[.)])\s+/, "");
     if (!s) return;
-    for (const part of s.split(/(?<=[.!?])\s+(?=["'“([]?[A-Z0-9])/)) {
+    // The closing-quote class matters: a sentence ending `word."` puts the
+    // quote, not the period, before the space, so it would never split.
+    for (const part of s.split(/(?<=[.!?]["'”’)\]]?)\s+(?=["'“([]?[A-Z0-9])/)) {
       const t = part.trim();
       if (t) out.push({ text: t, line: i + 1 });
     }

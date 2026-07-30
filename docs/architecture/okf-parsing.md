@@ -69,4 +69,4 @@ Studio still renders the agent's prose on a failure. Withholding it would hide t
 
 Per the [spec](../reference/okf-spec-summary.md), the parser never throws on: missing optional fields, unknown `type`, unknown extra frontmatter keys (preserved as-is), broken links, or missing indexes. It also reads a v0.1 bundle without complaint. `timestamp` still answers "when was this written" when `generated` is absent. The parser reads a legacy `# Citations` section as `sources`, and invents no credibility signals for entries that carry none. It records issues for [Validation](../features/validation.md) and keeps going.
 
-This whole pipeline runs in the core, off the UI thread, and parses lazily per bundle. See [Performance & Scale](performance.md) for the parsing-cost and incremental-reparse strategy.
+This whole pipeline runs in the core, off the UI thread, and parses lazily per bundle. See [Performance and Scale](performance.md) for the parsing-cost and incremental-reparse strategy.

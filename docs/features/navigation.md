@@ -23,13 +23,13 @@ Provides the ways to move through a bundle that complement the [graph](graph-vie
 - **The search field says what it does, not how.** The full field syntax (`type:Table`, `tag:revenue`, `degree>5`, `is:orphan`, `has:broken`) lives in the field's tooltip and in [search and filter](search-and-filter.md). A placeholder that spelled it out did not fit the sidebar's default width, so it always rendered clipped mid-word and taught a fragment.
 - The sidebar search and [filters](search-and-filter.md) **dim** tree entries they exclude rather than hiding them. Sometimes *nothing* listed in the index survives, because a query can match concepts an index never lists. The tree then says so instead of dead-ending. A quiet notice reports either that nothing matches, or that N concepts match elsewhere. An **Open full search** action opens the [launcher](command-palette.md) seeded with the same query.
 
-# Link following & history
+# Link following and history
 
 - Clicking any intra-bundle link (in the [reader](concept-reader.md), the index, or the relationship lists) navigates to that concept and recenters the [graph](graph-view.md).
 - Back / forward history (with [keyboard shortcuts](../ux/keyboard-shortcuts.md)) retraces the path through the graph, like a browser, and **per tab** (below).
 - The [global launcher](command-palette.md) resolves a concept by id, title, or body text and jumps to it.
 
-# Tabs & windows (multi-view)
+# Tabs and windows (multi-view)
 
 Reading is no longer one-concept-at-a-time (see the [multi-view proposal](../proposals/multi-view.md) for the design rationale):
 

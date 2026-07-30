@@ -1,12 +1,12 @@
 ---
 type: Reference
-title: IPC & Security
+title: IPC and Security
 description: The typed Tauri surface for scoped reads, explicit network and process actions, and reviewed bundle writes.
 tags: [architecture, tauri, security, ipc]
 generated: { by: claude/unrecorded, at: 2026-07-24T12:00:00Z }
 ---
 
-# Command & event surface
+# Command and event surface
 
 The frontend never touches the filesystem directly. It calls a small set of [Rust](tech-stack.md) commands and listens for events. It is a thin client over this surface. [Frontend Architecture](frontend-architecture.md) covers how it consumes these commands and events.
 

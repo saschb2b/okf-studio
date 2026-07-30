@@ -1,7 +1,7 @@
 [
   {
     "path": "SKILL.md",
-    "sha256": "27067cec234a3549ddb27c41b0813cc74bcf0ebb85e0418539ba9f20635a6b45"
+    "sha256": "360dc57737f618bef0980e98183c95fdf25f37c2bd315c6024a211eb7b9e0934"
   },
   {
     "path": "permissions.yaml",
@@ -21,15 +21,23 @@
   },
   {
     "path": "references/formatting.md",
-    "sha256": "b4ae838104c27b1e695e5128e07a1a6d40f1b6d6dbff68a6bf5d52344bbb4d58"
+    "sha256": "65d94bb698301e789de2c1fe58286e781fa2111466855c2684e7829440c1d19d"
+  },
+  {
+    "path": "references/inclusive-and-accessible.md",
+    "sha256": "d0f91f0c1b066c385ca8271d80436adc5a98a309ec62dd9fa6c9c2231a820b46"
   },
   {
     "path": "references/index.md",
-    "sha256": "d3ebda7bc939d24e545f8added61a8a17da1a59972328045b8a8ce225eea6bc0"
+    "sha256": "2bee9c03e226ac8dee77c9adee7e899a7982d3db768f746a8a9377af96c51c41"
   },
   {
     "path": "references/log.md",
-    "sha256": "db66932c75db6885982d9a5e00d5028f43810039d76d061f4cf573495484f0d4"
+    "sha256": "d1f8e53934f340de8f8fbc6ca53588e80734a2b09bd5bf63d758f76e279d10ba"
+  },
+  {
+    "path": "references/microsoft-style.md",
+    "sha256": "34cda9194d4c78499096a3b638fb6516c126199089b8a1805a9a0ea488911b26"
   },
   {
     "path": "references/prose.md",
@@ -41,6 +49,6 @@
   },
   {
     "path": "slop-lint.mjs",
-    "sha256": "cbb877d7915998b5e5cabf0bc1821f0014887f510ea181997514967d3b68a13f"
+    "sha256": "455e193587a536246eed228b99481cd7f878003a9046db18868a42ff330a9262"
   }
 ]

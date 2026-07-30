@@ -1,6 +1,6 @@
 ---
 name: no-slop
-description: Write and revise human-facing prose in a plain, precise, professional register, stripping the tells that mark text as AI-generated. Builds sentences with ASD-STE100 Simplified Technical English, the controlled language behind aerospace maintenance manuals, then checks them against a tells table and a bundled linter. Use when writing or editing a README, blog post, doc, PR or commit message, email, release note, changelog, error message, runbook, or any copy a person will read. Also use when the user asks to make text sound less like AI, remove AI slop, cut the marketing voice, write plain or controlled technical English, reduce over-structuring or list-itis, tighten, de-fluff, or professionalize a draft, or when reviewing prose you just generated before handing it over. Extends to writing inside code. Code comments, commit messages, PR descriptions, test names, error and log messages, and markdown formatting like headings, bold, emoji, and badges.
+description: Write and revise human-facing prose in a plain, precise, professional register, stripping the tells that mark text as AI-generated. Builds sentences with ASD-STE100 Simplified Technical English, the controlled language behind aerospace maintenance manuals, then checks them against a tells table and a bundled linter. Use when writing or editing a README, blog post, doc, PR or commit message, email, release note, changelog, error message, runbook, or any copy a person will read. Also use when the user asks to make text sound less like AI, remove AI slop, cut the marketing voice, write plain or controlled technical English, reduce over-structuring or list-itis, make wording inclusive or accessible, tighten, de-fluff, or professionalize a draft, or when reviewing prose you just generated before handing it over. Extends to writing inside code. Code comments, commit messages, PR descriptions, test names, error and log messages, and markdown formatting like headings, bold, emoji, and badges.
 tags: [writing, editing, controlled-language]
 date: 2026-07-29
 ---
@@ -43,7 +43,10 @@ The system is ASD-STE100 Simplified Technical English, standardized by the aeros
 | Condition before command | if the cache is cold, warm it first | warm the cache first if it is cold |
 | One topic per paragraph | six sentences maximum, steps as a numbered list | a step buried in a paragraph |
 
-**Two modes.** Strict covers procedures, runbooks, install and migration steps, error and log messages, and deprecation notices. Every rule applies, the cap is 20 words, contractions expand. STE-flavored is the default everywhere else, for READMEs, docs, posts, PR bodies, and email. Keep the sentence, verb, and paragraph discipline, cap at 25 words, and leave contractions and the register above intact. The full rule set, both modes, the three places STE and no-slop disagree, and the measured evidence are in [ste.md](./references/ste.md).
+**Three modes.** Strict covers procedures, runbooks, install and migration steps, error and log messages, and deprecation notices. Every rule applies, the cap is 20 words, contractions expand. STE-flavored is the default everywhere else, for READMEs, docs, posts, PR bodies, and email. Keep the sentence, verb, and paragraph discipline, cap at 25 words, and leave contractions and the register above intact. 
+**House-style mode** applies when the text ships into a surface with an established style, most often the Microsoft Writing Style Guide. There the house wins, so contractions, em dashes, and a warmer voice are correct. Do not pick it because the text is technical, only because the destination follows that style. Every other tell stays in force.
+
+The full rule set, the mode split, the places STE and no-slop disagree, and the measured evidence are in [ste.md](./references/ste.md). The Microsoft mechanics and the three conflicts are in [microsoft-style.md](./references/microsoft-style.md).
 
 ## The tells (kill on sight)
 
@@ -62,6 +65,9 @@ The system is ASD-STE100 Simplified Technical English, standardized by the aeros
 | Slop vocabulary (delve, leverage, navigate, realm, landscape, tapestry, intricate, robust, seamless, crucial, vital, foster, harness) | the plain word |
 | Category noun where a specific one exists ("the relevant component") | name the thing ("the auth middleware") |
 | Numbers on an unordered set | bullets, since numbers imply sequence or rank |
+| Expletive opener ("There are three options") | put the subject first ("Three options exist") |
+| Link text that says nothing ("click here", "read more") | describe the destination |
+| Directional-only reference ("above", "below", "on the left") | name the thing, since a screen reader has no left |
 | Significance inflation ("stands as a testament", "marks a pivotal moment") | state the plain fact, drop the importance claim |
 | Inflated copula ("boasts", "serves as", "features" where "is" or "has" fits) | restore the plain verb |
 | Vague authority ("studies show", "experts agree", "it is widely regarded") | name the source, or cut the claim |
@@ -70,7 +76,9 @@ The system is ASD-STE100 Simplified Technical English, standardized by the aeros
 | Chatbot scaffolding ("Let's dive in", "As you can see", "Happy coding!") | delete, start and end at the content |
 | Negative-space hype ("Say goodbye to X", "Gone are the days of Y") | state what the thing does |
 
-The tables catch phrases. These habits decide whether the fix lands. Lead with the point, so the first sentence carries it. When you cut a vague phrase, replace it with a fact rather than a quieter adjective. A hedged rewrite is the same slop at lower volume. Do not dodge a listed word into something more contorted, and rephrase the sentence instead of reaching for a thesaurus. Match the medium, since an email is not a slide deck and a prose post is not API docs.
+The tables catch phrases. These habits decide whether the fix lands. Lead with the point, so the first sentence carries it. When you cut a vague phrase, replace it with a fact rather than a quieter adjective. A hedged rewrite is the same slop at lower volume.
+
+Do not dodge a listed word into something more contorted, and rephrase the sentence instead of reaching for a thesaurus. Match the medium, since an email is not a slide deck and a prose post is not API docs.
 
 Default to prose. Reach for a list only when the items are genuinely parallel and independent, meaning steps, options, or criteria. When ideas connect or need context, write the paragraph.
 
@@ -98,6 +106,7 @@ The register and the tells apply wherever you write, not only in essays and docs
 - **Code comments** that narrate the diff or restate the code. See [code-comments.md](./references/code-comments.md). That page is the register pass. `comment-stinky` is the deep version. It covers whether a comment should exist at all, what it should say instead, and the write-time gate. Use it when the task is about the comments themselves rather than the prose sounding generated.
 - **Commit messages and PR descriptions** that restate the diff instead of the reason for it. See [commits-and-prs.md](./references/commits-and-prs.md).
 - **Strings in code** (test names, error and log messages). See [code-strings.md](./references/code-strings.md).
+- **Prose that breaks for assistive technology, or that excludes a reader** by assuming who they are. Neither reads as slop, both are defects, and volume production introduces them fast. See [inclusive-and-accessible.md](./references/inclusive-and-accessible.md).
 
 One rule carries across all of them. Match the surrounding work: a file's comment density, a repo's commit history, a doc's heading style. These rules sharpen the writing, they do not override a house style.
 

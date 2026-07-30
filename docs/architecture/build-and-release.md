@@ -1,6 +1,6 @@
 ---
 type: Architecture Decision
-title: Build & Release
+title: Build and Release
 description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check and user-initiated installs.
 tags: [architecture, decision, build, release, packaging]
 generated: { by: claude/unrecorded, at: 2026-07-29T14:42:58+02:00 }
@@ -70,12 +70,12 @@ The user starts every update install, through Tauri's updater plugin. Checking h
 
 The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)). It reads a version file with no identity attached. It exists because releases went unnoticed while discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.
 
-- **Signing is mandatory.** The updater verifies a **minisign** signature on each artifact, and nobody can turn that off. The public key lives in `tauri.conf.json`. The private key and password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing, which Studio still does not do (see above).
+- **Signing is mandatory.** The updater verifies a **minisign** signature on each artifact, and nobody can turn that off. The public key lives in `tauri.conf.json`. The private key and password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing, which Studio still does not do.
 - **Update vehicles:** the **AppImage** (Linux) and **NSIS** (Windows) self-install in place. A **`.deb` install can't self-replace**, because the OS package manager owns it. A small `can_self_update` command detects that case by checking for the AppImage runtime. Studio then shows the **same in-app "version X available" hint plus a Download link** to the releases page, instead of a failing in-app install. So `.deb` users still find out about updates. They install by downloading the new package.
 
 Silent/automatic **installs** remain out of scope: bytes only ever download and apply on an explicit user action. The automatic part stops at "a newer version exists", rendered as a quiet badge.
 
-# Install & uninstall
+# Install and uninstall
 
 Installers target a **per-user install where the platform allows**. The user then needs no admin rights and no reboot. An existing OKF Viewer installation upgrades in place because Studio retains the application identifier, app-data location, updater repository, and store name. The [migration notes](../product/migration-notes.md) list every compatibility name and retained data surface.
 

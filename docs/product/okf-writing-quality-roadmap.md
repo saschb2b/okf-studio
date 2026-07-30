@@ -113,7 +113,7 @@ Gate: explicit create and revise actions select the correct bounded capability, 
 - [x] Add a versioned `writing` category to Knowledge Health without changing OKF conformance or tolerant bundle opening.
 - [x] Detect observable patterns: duplicated adjacent text, repeated boilerplate, empty headings, and conclusion echoes. Also detect generic openers and closers, excessive heading depth, decorative bold labels, and list density that obscures continuous reasoning.
 - [x] Give each rule a stable ID, version, evidence span, explanation, severity, and suppression fingerprint.
-- [x] Keep phrase matches contextual and advisory. Do not use a blanket word blacklist, reading-grade target, or word count as a quality gate.
+- [x] Keep phrase matches contextual and advisory. Do not use a blanket word blocklist, reading-grade target, or word count as a quality gate.
 - [x] Add false-positive fixtures for quotations, standards text, reference indexes, checklists, incident procedures, generated schemas, and intentionally repeated warnings.
 - [x] Bound scanning cost for large bundles and cancel obsolete work after live reload.
 

@@ -8,7 +8,7 @@ generated: { by: claude/unrecorded, at: 2026-07-13T18:51:16Z }
 
 # The short version
 
-OKF Studio is a native, offline-capable desktop workspace. It autodetects [OKF](../reference/okf-spec-summary.md) bundles, renders their relationship graph, and connects user-chosen agents to bounded context and reviewed writes. Its product boundary is the combination of OKF-aware exploration, creation, research, and transactional review. The reasoning behind that boundary lives in [Design Principles](principles.md) and [Scope & Non-Goals](scope-and-non-goals.md).
+OKF Studio is a native, offline-capable desktop workspace. It autodetects [OKF](../reference/okf-spec-summary.md) bundles, renders their relationship graph, and connects user-chosen agents to bounded context and reviewed writes. Its product boundary is the combination of OKF-aware exploration, creation, research, and transactional review. The reasoning behind that boundary lives in [Design Principles](principles.md) and [Scope and Non-Goals](scope-and-non-goals.md).
 
 # At a glance
 

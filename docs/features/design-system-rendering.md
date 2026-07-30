@@ -36,7 +36,7 @@ Beyond the dedicated token visualizations, the [reader's markdown body](concept-
 
 The body also renders **images**: a local diagram inlined and click-to-zoom, a remote one offered as a browser link. See [Concept Reader](concept-reader.md). This reads the document as authored, with no synthesized overview, and renders its content as richly as possible. It is bundle-agnostic, so any OKF bundle benefits.
 
-# Status & platform labels
+# Status and platform labels
 
 Beside the type badge, the reader surfaces two ODSF frontmatter fields when present. The **`status`** field is `stable`, `experimental`, or `deprecated`. The reader colors it only to flag the exception, so a stable system stays quiet. The **`applies_to`** field names the platforms and surfaces a concept governs.
 

@@ -40,4 +40,4 @@ Rust tests prove that the prepared packet contains the declared concept body. Th
 
 Storybook MCP covers ready, compared, capability-unavailable, loading, invalid, Standard-agent-blocked, and 360-pixel states. The artifact body remains the only scrolling region, while revision actions stay in the stable footer.
 
-Related trust boundaries: [Agent Panel](agent-panel.md), [Knowledge Health](knowledge-health.md), and [IPC & Security](../architecture/ipc-and-security.md).
+Related trust boundaries: [Agent Panel](agent-panel.md), [Knowledge Health](knowledge-health.md), and [IPC and Security](../architecture/ipc-and-security.md).

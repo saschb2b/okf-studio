@@ -40,4 +40,4 @@ The source bundle remains unchanged while planning, diffing, and validating. App
 
 Pure fixtures cover spaces, percent encoding, UTF-8, inbound and outgoing links, reference definitions, root and nested indexes, collisions, traversal, case-only changes, and missing identity. Native tests prove that staging leaves disk unchanged, that review is mandatory, that validation runs in isolation, and that Apply updates all files. They also prove that Restore removes the created destination and restores every original.
 
-Related behavior: [Concept Reader](concept-reader.md), [Navigation](navigation.md), [Validation](validation.md), [Integrated Git](integrated-git.md), and [IPC & Security](../architecture/ipc-and-security.md).
+Related behavior: [Concept Reader](concept-reader.md), [Navigation](navigation.md), [Validation](validation.md), [Integrated Git](integrated-git.md), and [IPC and Security](../architecture/ipc-and-security.md).

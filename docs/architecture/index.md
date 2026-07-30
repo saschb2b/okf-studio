@@ -12,10 +12,10 @@ How OKF Studio is built. These decisions and contracts are enough to implement a
 
 # Safety and operations
 
-* [IPC & Security](ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit external actions, and reviewed writes.
-* [Performance & Scale](performance.md) - How bounded scanning and rendering keep the app responsive.
-* [Testing & Dogfooding](testing.md) - Frontend, Rust core, native host, accessibility, conformance, and authoring gates.
-* [Build & Release](build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.
+* [IPC and Security](ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit external actions, and reviewed writes.
+* [Performance and Scale](performance.md) - How bounded scanning and rendering keep the app responsive.
+* [Testing and Dogfooding](testing.md) - Frontend, Rust core, native host, accessibility, conformance, and authoring gates.
+* [Build and Release](build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.
 
 # Agent and repository systems
 

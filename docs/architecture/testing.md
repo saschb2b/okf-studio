@@ -1,6 +1,6 @@
 ---
 type: Architecture Decision
-title: Testing & Dogfooding
+title: Testing and Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
 generated: { by: claude/unrecorded, at: 2026-07-29T02:10:00+02:00 }
@@ -10,7 +10,7 @@ generated: { by: claude/unrecorded, at: 2026-07-29T02:10:00+02:00 }
 
 Platform confinement fixtures run the enforcement path they claim. Linux CI invokes the ignored Bubblewrap fixture on a prepared Ubuntu host. The Windows host test launches the test binary through the production AppContainer launcher and checks the child token. It proves that an ungranted host file is unreadable and that the container's private scratch stays writable. A separate process-tree fixture proves the Windows Job Object stops descendants. No platform test returns green merely because its backend is absent.
 
-Confidence comes from testing the contracts, not the implementation details. The suite covers the core's two load-bearing commands directly: `scan_bundles` and `read_bundle` ([IPC & Security](ipc-and-security.md)). Golden tests pin the link and backlink logic. A parity check compares conformance against the canonical validator. The native host has its own merge gate for agent processes, provider requests, source intake, permissions, and reviewed transactions.
+Confidence comes from testing the contracts, not the implementation details. The suite covers the core's two load-bearing commands directly: `scan_bundles` and `read_bundle` ([IPC and Security](ipc-and-security.md)). Golden tests pin the link and backlink logic. A parity check compares conformance against the canonical validator. The native host has its own merge gate for agent processes, provider requests, source intake, permissions, and reviewed transactions.
 
 # Dogfooding this bundle
 
@@ -55,7 +55,7 @@ The corpus runs entirely inside `okf-core`. Ordinary test execution does not clo
 
 Frontend tests use **Vitest** with **React Testing Library** for component and interaction checks. They cover the pieces most likely to regress. Selecting a node updates all three panes from one source of truth. Search dims non-matches. A `bundle-changed` event patches in place without resetting the layout. The lane also covers layout modes, the reader context rail, the [bundle switcher](../features/bundle-switcher.md), the Agent workspace, and keyboard actions.
 
-Browser-level review uses the runnable Vite fixture and `agent-browser` during UI work. Storybook stories run in Playwright Chromium as a separate automated lane. **Performance fixtures** (larger synthetic and sample bundles) back the budget asserted in [Performance & Scale](performance.md). The "well under a second" claim therefore has a measured floor.
+Browser-level review uses the runnable Vite fixture and `agent-browser` during UI work. Storybook stories run in Playwright Chromium as a separate automated lane. **Performance fixtures** (larger synthetic and sample bundles) back the budget asserted in [Performance and Scale](performance.md). The "well under a second" claim therefore has a measured floor.
 
 The [OKF agent benchmark](agent-benchmarking.md) adds a separate model-free lane for specialization work. Its checked-in manifest freezes task intent, fixture hashes, tool boundaries, artifact kinds, safety failures, score criteria, and seeded critic defects. Node rejects unresolved critic reference kinds and any declared critic override of deterministic completion. Rust validates the critic envelope against exact artifact fields, concepts, sources, and deterministic rules. A manual provider workflow writes an explicit not-run plan when no live adapter result exists. A missing provider, credential, model, or network therefore cannot make an ordinary merge gate fail or appear as a pass.
 

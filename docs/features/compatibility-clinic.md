@@ -32,4 +32,4 @@ Apply uses the same atomic replacement and checkpoint machinery as [agent writes
 
 The report is deterministic and ordered by category, level, file, and rule. Studio displays at most 4,096 findings and states when the report reaches that bound. The shared staging engine bounds one reviewed file to 1 MB. The complete bundle remains readable if report generation, staging, or validation fails or reaches a limit.
 
-Related architecture: [OKF Parsing](../architecture/okf-parsing.md), [IPC & Security](../architecture/ipc-and-security.md), and [Testing](../architecture/testing.md).
+Related architecture: [OKF Parsing](../architecture/okf-parsing.md), [IPC and Security](../architecture/ipc-and-security.md), and [Testing](../architecture/testing.md).

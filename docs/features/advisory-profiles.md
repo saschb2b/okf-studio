@@ -51,4 +51,4 @@ An active descriptor can name a relationship vocabulary. Concepts opt in with bo
 
 The active descriptor is the input to [Profile-Aware Authoring](profile-aware-authoring.md). Create, Revise, Audit, and migration tasks receive its fields, examples, relationships, and checks as bounded, fingerprinted context. Requirement labels distinguish what OKF requires from what the profile requires or recommends. Staged review displays OKF validation and profile checks independently, and a profile finding can start a reviewed migration without granting Apply.
 
-Related behavior: [Validation](validation.md), [Compatibility Clinic](compatibility-clinic.md), [Native OKF Tasks](native-okf-tasks.md), and [IPC & Security](../architecture/ipc-and-security.md).
+Related behavior: [Validation](validation.md), [Compatibility Clinic](compatibility-clinic.md), [Native OKF Tasks](native-okf-tasks.md), and [IPC and Security](../architecture/ipc-and-security.md).

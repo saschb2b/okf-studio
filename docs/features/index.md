@@ -1,6 +1,6 @@
 # Features
 
-One concept per user-facing capability. The sections follow Studio's normal workflow: open and understand a bundle, improve its knowledge, work with agents, then operate or share it. See [Scope & Non-Goals](../product/scope-and-non-goals.md) for the shipped boundary.
+One concept per user-facing capability. The sections follow Studio's normal workflow: open and understand a bundle, improve its knowledge, work with agents, then operate or share it. See [Scope and Non-Goals](../product/scope-and-non-goals.md) for the shipped boundary.
 
 # Open and explore
 
@@ -13,7 +13,7 @@ One concept per user-facing capability. The sections follow Studio's normal work
 * [Concept Reader](concept-reader.md) - Read rendered Markdown with metadata, citations, and navigable links.
 * [Speed Reading](speed-reading.md) - Pace a concept word by word, keeping rereading and non-prose blocks in reach.
 * [Design-System Rendering](design-system-rendering.md) - Inspect an ODSF bundle's tokens and example assets in their native forms.
-* [Search & Filter](search-and-filter.md) - Find concepts through full-text search, type filters, and tag browsing.
+* [Search and Filter](search-and-filter.md) - Find concepts through full-text search, type filters, and tag browsing.
 * [Navigation](navigation.md) - Move through authored indexes, links, and history.
 * [Command Palette](command-palette.md) - Jump to any concept and run quick actions from the keyboard.
 * [Live Reload](live-reload.md) - Refresh the bundle as its files change.

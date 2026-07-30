@@ -1,6 +1,6 @@
 ---
 type: Reference
-title: Scope & Non-Goals
+title: Scope and Non-Goals
 description: What OKF Studio ships now, what is deferred, and what it deliberately will not be.
 tags: [product, scope, roadmap]
 generated: { by: claude/unrecorded, at: 2026-07-22T23:10:18Z }
@@ -16,7 +16,7 @@ Studio covers the complete local knowledge loop:
 - **Create and enhance:** use guided threads to create a fresh bundle from sources or enrich the active bundle. Proposals enter staging, validation, graph preview, destination selection, and reviewed apply rather than writing directly.
 - **Query and change:** run cited deep research or request a dataset change through ordinary inspectable threads with plans, tool activity, and exported Markdown.
 - **Version:** inspect the repository around the active bundle, review and stage changes, and commit a named scope. Browse bounded history, and explicitly fetch, fast-forward pull, or push. See [Integrated Git](../features/integrated-git.md).
-- **Ship:** packaged installers for Windows (`.msi`/`.exe`) and Ubuntu (`.deb`/AppImage). macOS builds from source. See [Build & Release](../architecture/build-and-release.md).
+- **Ship:** packaged installers for Windows (`.msi`/`.exe`) and Ubuntu (`.deb`/AppImage). macOS builds from source. See [Build and Release](../architecture/build-and-release.md).
 
 # Deferred
 

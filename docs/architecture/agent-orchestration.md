@@ -18,7 +18,7 @@ The [Agent Panel](../features/agent-panel.md) already runs threads in parallel, 
 
 The [harness research](../reference/agent-harness-research.md) sets the terms. Delegation buys real capability and costs 3 to 10 times the tokens. Orchestration design moves cost and latency more than model choice does. The shape that survives contact is orchestrator-worker: fan out the reading, and keep the writing in one place. Studio already satisfies the safety condition, because the staged tree is the only write path. What it lacks is the decomposition layer above it.
 
-There is also an asymmetry worth spending: a general coding agent must discover a repository by searching it, but `okf-core` has already parsed this bundle. Studio knows the concepts, types, tags, indexes, link graph, health findings, and a revision fingerprint before it contacts any model. A delegate that receives a computed slice does not spend a single token rediscovering structure Studio can hand it. Token usage explains most of the performance variance in the published research. So this is the largest efficiency lever available to us, and it is available to us specifically.
+One asymmetry is worth spending: a general coding agent must discover a repository by searching it, but `okf-core` has already parsed this bundle. Studio knows the concepts, types, tags, indexes, link graph, health findings, and a revision fingerprint before it contacts any model. A delegate that receives a computed slice does not spend a single token rediscovering structure Studio can hand it. Token usage explains most of the performance variance in the published research. So this is the largest efficiency lever available to us, and it is available to us specifically.
 
 # The delegation unit
 

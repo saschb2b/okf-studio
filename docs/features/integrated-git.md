@@ -8,9 +8,9 @@ generated: { by: claude/unrecorded, at: 2026-07-19T18:30:00Z }
 
 # Why this exists
 
-OKF work is usually repository work. A reviewed agent revision is not finished merely because Studio applied it: the user still needs to understand the repository delta, choose what belongs together, and create a durable checkpoint. Sending that loop to another application breaks the connection between the knowledge under review and the files that record it.
+OKF work is usually repository work. Studio applying a reviewed agent revision does not finish it. The user still needs to understand the repository delta, choose what belongs together, and create a durable checkpoint. Sending that loop to another application breaks the connection between the knowledge under review and the files that record it.
 
-Integrated Git keeps the ordinary repository loop beside the bundle. It is not a hosting client or a history editor. It covers the frequent path from “these knowledge files changed” to “this exact set is committed,” while leaving rebase, merge resolution, branching, stash, cherry-pick, and other advanced operations to a terminal or editor.
+Integrated Git keeps the ordinary repository loop beside the bundle. It is not a hosting client or a history editor. It covers the frequent path from “these knowledge files changed” to “this exact set is committed.” It leaves rebase, merge resolution, branching, stash, cherry-pick, and other advanced operations to a terminal or editor.
 
 # What the user can do
 
@@ -31,7 +31,7 @@ The panel opens from the status bar, the command palette, or `Ctrl/Cmd + Shift +
 
 # Boundaries
 
-Repository discovery cannot silently widen the folder grant that opened the bundle. When a bundle such as `repo/docs/` was opened directly, the panel offers **Allow repository**. Studio opens a native folder confirmation at the enclosing repository root and accepts only that exact folder. After confirmation, the existing bundle stays active and Git refreshes against the broader, now explicit grant. Commands use fixed arguments without a shell; paths are validated as repository-relative; hooks, pagers, external diffs, optional locks, and interactive prompts are disabled. Absolute paths and Git metadata never cross IPC.
+Repository discovery cannot silently widen the folder grant that opened the bundle. When the user opened a bundle such as `repo/docs/` directly, the panel offers **Allow repository**. Studio opens a native folder confirmation at the enclosing repository root and accepts only that exact folder. After confirmation, the existing bundle stays active and Git refreshes against the broader, now explicit grant. Commands use fixed arguments without a shell. Studio validates every path as repository-relative. It disables hooks, pagers, external diffs, optional locks, and interactive prompts. Absolute paths and Git metadata never cross IPC.
 
 Git stays in the background on Windows. Repository discovery, live refresh, reads, and explicit actions must not open terminal windows or interrupt the active workspace.
 

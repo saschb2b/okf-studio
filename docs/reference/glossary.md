@@ -29,4 +29,4 @@ generated: { by: claude/unrecorded, at: 2026-07-13T19:21:18Z }
 - **Reserved file**: `index.md` (directory listing / progressive disclosure) or `log.md` (dated change history). Never a concept.
 - **Scope**: The canonical active bundle root used by Studio's mediated reads and reviewed writes. Source, export, and destination pickers authorize separate operations. The bundle scope does not confine external ACP processes. See [IPC & Security](../architecture/ipc-and-security.md).
 - **Tolerant consumer**: A reader that never rejects a bundle for soft issues (missing fields, unknown types, broken links). A core [principle](../product/principles.md) and a spec requirement.
-- **Type**: The kind of a concept (`Feature`, `Reference`, `Metric`, …). Open-ended; drives node [color](../ux/theming.md) and [filters](../features/search-and-filter.md). The only field OKF requires.
+- **Type**: The kind of a concept (`Feature`, `Reference`, `Metric`, …). Open-ended. It drives node [color](../ux/theming.md) and [filters](../features/search-and-filter.md). The only field OKF requires.

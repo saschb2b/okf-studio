@@ -11,7 +11,7 @@ review_after: 2026-10-01
 
 # User job
 
-A reader needs to know when a concept is uncertain, disputed, due for review, outside its effective period, deprecated, superseded, or retired before relying on it. A maintainer needs malformed states and replacement cycles to appear in the same deterministic health workflow as other advisory quality findings.
+A concept can be uncertain, disputed, due for review, outside its effective period, deprecated, superseded, or retired. A reader needs to know that state before relying on the concept. A maintainer needs malformed states and replacement cycles to appear in the same deterministic health workflow as other advisory quality findings.
 
 # Advisory profile
 
@@ -40,7 +40,7 @@ The Rust retrieval manifest preserves the reliability fields with each coherent 
 
 Authored confidence remains an assertion by the producer. A URL, timestamp, status, or high confidence value is not proof that a claim is correct.
 
-Maintainers change lifecycle deliberately through the [Retirement Workflow](retirement-workflow.md). That workflow turns deprecation, redirect, tombstone, or deletion into an impact-aware graph change and records its reason in `log.md`; the advisory profile alone never deletes or rewrites a file.
+Maintainers change lifecycle deliberately through the [Retirement Workflow](retirement-workflow.md). That workflow turns deprecation, redirect, tombstone, or deletion into an impact-aware graph change. It records the reason in `log.md`. The advisory profile alone never deletes or rewrites a file.
 
 # Bounds and failure states
 

@@ -12,22 +12,22 @@ How should the OKF Studio site explain the current product and accommodate futur
 
 # Conclusion
 
-The site should become a small multi-page product site. The homepage should explain one complete knowledge-work loop: understand a bundle, ask questions with inspectable evidence, improve knowledge through reviewed changes, and keep the result in history. Product pages should carry capability depth. Workflow pages should start from a user's task. OKF, documentation, releases, and the project itself should have stable destinations outside the homepage.
+The site should become a small multi-page product site. The homepage should explain one complete knowledge-work loop. The user understands a bundle, asks questions with inspectable evidence, improves knowledge through reviewed changes, and keeps the result in history. Product pages should carry capability depth. Workflow pages should start from a user's task. OKF, documentation, releases, and the project itself should have stable destinations outside the homepage.
 
 This is an information-architecture change before it is a visual redesign. The current visual language can survive the transition. The one-page content model cannot.
 
 # What the current site communicates
 
-The rendered homepage was reviewed at 1440 by 900 and 390 by 844 on 2026-07-19. Its source contains 13 general feature records and 16 agent records. Those 29 equal-weight cards appear before the visualization, reader, ODSF, and download sections. At the narrow viewport the document measured 18,051 pixels, about 21 viewport heights. The page remains usable, but scanning cost rises with every shipped capability.
+This review rendered the homepage at 1440 by 900 and 390 by 844 on 2026-07-19. Its source contains 13 general feature records and 16 agent records. Those 29 equal-weight cards appear before the visualization, reader, ODSF, and download sections. At the narrow viewport the document measured 18,051 pixels, about 21 viewport heights. The page remains usable, but scanning cost rises with every shipped capability.
 
 The structure creates several product problems:
 
 * **The product has no dominant story.** Retrieval, reviewed writes, Git, graph views, tabs, hover previews, settings, and Markdown rendering receive comparable visual weight. A visitor must infer which combination defines Studio.
-* **The format precedes the job.** The first substantial section explains OKF and ODSF before the site has shown why a person would use Studio. Existing users may value that detail; a new visitor first needs the product outcome.
+* **The format precedes the job.** The first substantial section explains OKF and ODSF before the site has shown why a person would use Studio. Existing users may value that detail. A new visitor first needs the product outcome.
 * **Mobile navigation removes orientation.** Below 640 pixels the text links disappear, leaving the brand and Download action. The CSS describes every omitted destination as one scroll away, but the page is now too long for that assumption.
 * **The page is the content database.** Feature copy, navigation, release metadata, screenshots, and page composition live together in a 518-line `index.astro`. A new capability requires another homepage decision instead of a clear choice among homepage, product detail, workflow, documentation, or changelog.
 
-The visual review also found a proof gap. The site has strong graph, reader, and ODSF imagery, while the product's newer differentiators, including the Agent workspace, evidence inspection, reviewed writes, and Integrated Git, depend mostly on card copy. The site asks visitors to believe its most important new claims without showing the corresponding work.
+The visual review also found a proof gap. The site has strong graph, reader, and ODSF imagery. The product's newer differentiators depend mostly on card copy: the Agent workspace, evidence inspection, reviewed writes, and Integrated Git. The site asks visitors to believe its most important new claims without showing the corresponding work.
 
 ## Visual audit findings
 
@@ -38,7 +38,7 @@ The visual review also found a proof gap. The site has strong graph, reader, and
 | Untidy | Judgment | Current screenshots prove graph, reader, and ODSF behavior more strongly than the Agent workspace, evidence inspection, reviewed writes, and Git story now central to the product. | Remains; new proof images are required before the matching claims move to the homepage. |
 | Untidy | Judgment | The narrow page becomes about 21 viewport heights because every desktop card becomes a full-width list item. The page reflows, but its information hierarchy does not adapt. | Remains; moving detail to routes removes the structural cause. |
 
-No visual defect was changed during this research pass. The current page did not show horizontal document overflow at the reviewed narrow width. Implementation still needs a 320-pixel reflow check, keyboard traversal, focus review, and slow-image state before release.
+This research pass changed no visual defect. The current page did not show horizontal document overflow at the reviewed narrow width. Implementation still needs a 320-pixel reflow check, keyboard traversal, focus review, and slow-image state before release.
 
 # What the product now needs to explain
 
@@ -48,7 +48,7 @@ Those boundaries point to a clearer public story. Studio is the desktop workspac
 
 # Comparative evidence
 
-The review used current first-party product sites and one primary UX reference. Sites were inspected on 2026-07-19.
+The review used current first-party product sites and one primary UX reference. The review inspected the sites on 2026-07-19.
 
 | Source | Observed structure | Implication for Studio |
 | --- | --- | --- |
@@ -93,10 +93,10 @@ The site should not turn every release into a homepage section. It should not re
 
 # Evidence limits
 
-This is an expert review of the current implementation and public comparison sites. It does not include traffic analytics, search logs, interviews, or task testing with prospective users. The proposed hierarchy therefore needs a small validation round before copy and layout are frozen: ask a newcomer to explain the product, find the agent trust model, determine whether Studio changes files automatically, locate Git behavior, and download the correct build.
+This is an expert review of the current implementation and public comparison sites. It does not include traffic analytics, search logs, interviews, or task testing with prospective users. The proposed hierarchy therefore needs a small validation round before the team freezes copy and layout. Ask a newcomer to explain the product, find the agent trust model, and say whether Studio changes files automatically. Then ask the same person to locate Git behavior and download the correct build.
 
 The comparison sites are larger commercial products. Their use of dedicated pages and stable resource navigation is relevant. Their page count and business taxonomy are not.
 
 # Research fingerprint
 
-The local review used repository commit `c2c047b57c8f776d235c265c8dd50450852b9c3b` with a clean working tree. External sites were inspected on 2026-07-19. The rendered screenshots used for the audit remained outside the repository because they are working evidence, not curated product documentation.
+The local review used repository commit `c2c047b57c8f776d235c265c8dd50450852b9c3b` with a clean working tree. The review inspected external sites on 2026-07-19. The rendered screenshots used for the audit remained outside the repository. They served this review as evidence rather than curated product documentation.

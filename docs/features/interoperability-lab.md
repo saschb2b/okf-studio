@@ -13,17 +13,17 @@ sidecars:
 
 # User job and placement
 
-A bundle producer needs to connect external knowledge and test exchange conventions without turning the bundle home into a technical dashboard. Studio places each capability where its result can be acted on:
+A bundle producer needs to connect external knowledge and test exchange conventions without turning the bundle home into a technical dashboard. Studio places each capability where the user can act on its result:
 
 - **Bundle details** has a compact Connections summary and opens the full workspace.
 - **Bundle connections** separates External sources, Relationship exchange, and Diagnostics into focused tabs. It opens from Bundle details or the command launcher.
 - The **Concept Reader** shows a language selector and companion resources only for the active concept.
 
-The former root-level Interoperability Lab is removed. [Bundle Home](bundle-home.md) stays on activity, resumption, validation, links, and repository work.
+Studio drops the former root-level Interoperability Lab. [Bundle Home](bundle-home.md) stays on activity, resumption, validation, links, and repository work.
 
 # Demand-driven inspection
 
-The full connection report rereads the bundle, analyzes profile relationships, and verifies declared sidecar files. Studio does not run that work while opening Bundle Home, a folder home, or an ordinary concept. It runs when the user opens Bundle connections or reads a concept whose own fields or translated siblings require contextual controls. One in-flight result is shared by the requesting surfaces for the current bundle revision.
+The full connection report rereads the bundle, analyzes profile relationships, and verifies declared sidecar files. Studio does not run that work while opening Bundle Home, a folder home, or an ordinary concept. It runs when the user opens Bundle connections or reads a concept whose own fields or translated siblings require contextual controls. The requesting surfaces share one in-flight result for the current bundle revision.
 
 This keeps normal navigation responsive and preserves the safety boundary: report generation makes no network request, executes no bundle content, and writes nothing.
 
@@ -51,7 +51,7 @@ The Relationship exchange tab reports the portable and unsupported subsets befor
 
 **Preview JSON-LD import** reads at most 2 MiB from an explicit native file choice. It accepts only that declared relationship subset, reports malformed or unsupported items with JSON paths, and writes nothing. A later import that changes Markdown requires a separately designed reviewed authoring transaction.
 
-Exports cannot be saved inside the open bundle. The round-trip fixture proves that the declared subset survives and every rejected construct remains visible.
+The user cannot save an export inside the open bundle. The round-trip fixture proves that the declared subset survives and every rejected construct remains visible.
 
 # Language variants in the reader
 
@@ -80,12 +80,12 @@ sidecars:
 
 The active concept's reader rail lists only its resources, including integrity state, media type, size, and a **Save copy** action when the file is eligible.
 
-Rust accepts only normal bundle-relative paths whose canonical file remains inside the granted root. It reads at most 64 MiB, computes a SHA-256 digest, compares an optional authored digest, records media type and size, and assigns one of two policies:
+Rust accepts only normal bundle-relative paths whose canonical file remains inside the granted root. It reads at most 64 MiB and computes a SHA-256 digest. It then compares an optional authored digest, records media type and size, and assigns one of two policies:
 
 - **safe-preview** means the media type can use an existing inert Studio preview path
 - **download-only** means Studio will never execute it or render it as trusted HTML.
 
-Every ready resource can be copied through an explicit native save dialog outside the open bundle. Missing, oversize, invalid, escaping, or digest-mismatched files cannot be exported.
+The user can copy every ready resource through an explicit native save dialog outside the open bundle. Studio never exports a missing, oversize, invalid, escaping, or digest-mismatched file.
 
 # Diagnostics and bounds
 

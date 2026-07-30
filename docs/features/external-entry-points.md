@@ -40,24 +40,28 @@ okf-viewer task <absolute-path> --task <task-id> [--concept <concept-id>] [--pro
 
 The CLI is a desktop entry point, not a headless validator or agent runner. `validate` opens the bundle and its Validation surface. `task` opens the ordinary [Native OKF Task](native-okf-tasks.md) launcher, where the user reviews capability and context before any prompt can start.
 
-Task IDs are closed to the installed curated task set. Inputs must be Unicode, normalized absolute paths. The parser rejects credentials in the URL authority, ports, fragments, extra path components, duplicate fields, control characters, relative paths, `.` and `..` components, unsupported task IDs, oversize fields, and more than the bounded field count. Unknown deep-link fields are not interpreted; only their bounded names cross to the preview. `--attachment` is likewise shown as omitted because an external request cannot attach a file.
+The parser accepts only task IDs from the installed curated task set. Inputs must be Unicode, normalized absolute paths. The parser rejects credentials in the URL authority, ports, fragments, extra path components, and duplicate fields. It also rejects control characters, relative paths, `.` and `..` components, unsupported task IDs, oversize fields, and more than the bounded field count.
+
+Studio does not interpret unknown deep-link fields. Only their bounded names cross to the preview. Studio likewise shows `--attachment` as omitted, because an external request cannot attach a file.
 
 # Grant and launch boundary
 
 Continue asks Rust to resolve the exact target. A path already covered by a persisted folder grant can proceed. Any other path requires a native operating-system confirmation that shows the decoded path. Approval grants only that folder for the ordinary scan. Cancellation discards the request.
 
-The pending queue holds at most 16 requests. An identical launch is ignored for five seconds, and recent duplicate fingerprints are bounded. The raw link, each decoded field, the prompt draft, and the omitted-field list have independent caps. Prompt text remains inert preview text. For a task request it appears again as an editable untrusted draft in the ordinary task launcher and is added to the curated task prompt only when the user chooses **Start task**. It is never inserted into the Agent composer or sent on receipt or folder approval.
+The pending queue holds at most 16 requests. Studio ignores an identical launch for five seconds, and it bounds recent duplicate fingerprints. The raw link, each decoded field, the prompt draft, and the omitted-field list have independent caps. Prompt text remains inert preview text.
 
-On Windows and Linux, Tauri's single-instance integration forwards installed scheme launches to the existing Studio window. The scheme is registered statically so the installer owns removal. Studio does not add a permanent background service, tray process, global shortcut, file association, or operating-system content index.
+For a task request it appears again as an editable untrusted draft in the ordinary task launcher. It joins the curated task prompt only when the user chooses **Start task**. Studio never inserts it into the Agent composer, and never sends it on receipt or folder approval.
+
+On Windows and Linux, Tauri's single-instance integration forwards installed scheme launches to the existing Studio window. Studio registers the scheme statically, so the installer owns removal. Studio does not add a permanent background service, tray process, global shortcut, file association, or operating-system content index.
 
 # One-shot OKF MCP grants
 
-Settings offers **Use this bundle from another agent** for the active bundle. The explicit action returns a standard MCP descriptor for Studio's existing read-only OKF server. Its descriptor contains an opaque grant record and nonce instead of a bundle path. The grant expires after 60 seconds and is atomically consumed before the MCP helper parses the bundle, so replay and stale records fail.
+Settings offers **Use this bundle from another agent** for the active bundle. The explicit action returns a standard MCP descriptor for Studio's existing read-only OKF server. Its descriptor contains an opaque grant record and nonce instead of a bundle path. The grant expires after 60 seconds. Studio atomically consumes it before the MCP helper parses the bundle, so replay and stale records fail.
 
-The server exposes the same bounded inventory, read, search, source, traversal, validation, and knowledge-health tools used by ACP sessions. It exposes no arbitrary path, shell, network, staging, or Apply operation. The receiving local agent still has its own operating-system access; the grant constrains Studio's MCP server, not that separate process.
+The server exposes the same bounded inventory, read, search, source, traversal, validation, and knowledge-health tools that ACP sessions use. It exposes no arbitrary path, shell, network, staging, or Apply operation. The receiving local agent still has its own operating-system access. The grant constrains Studio's MCP server, not that separate process.
 
 # Verification
 
-Rust tests cover hostile schemes, encoded traversal, repeated and oversize fields, CLI parity, unsupported attachments, duplicate launches, exact one-shot grant consumption, replay, hostile grant paths, and tokens. Storybook MCP covers link and CLI previews, untrusted prompt and omitted-field disclosure, native-confirmation waiting, errors, ready and expiring MCP grants, and 360-pixel layouts. The narrow external-request footer stays visible while its details scroll.
+Rust tests cover hostile schemes, encoded traversal, repeated and oversize fields, and CLI parity. They also cover unsupported attachments, duplicate launches, exact one-shot grant consumption, replay, hostile grant paths, and tokens. Storybook MCP covers link and CLI previews, untrusted prompt and omitted-field disclosure, native-confirmation waiting, errors, ready and expiring MCP grants, and 360-pixel layouts. The narrow external-request footer stays visible while its details scroll.
 
-Related boundaries are specified in [IPC & Security](../architecture/ipc-and-security.md) and [Agent System](../architecture/agent-system.md).
+[IPC & Security](../architecture/ipc-and-security.md) and [Agent System](../architecture/agent-system.md) specify the related boundaries.

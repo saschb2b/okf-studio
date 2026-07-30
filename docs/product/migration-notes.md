@@ -19,17 +19,17 @@ The following compatibility names intentionally remain unchanged:
 | Credential service | `app.okfviewer.desktop` | Keeps Studio Agent API keys reachable through the operating-system credential store. |
 | Package and binary name | `okf-viewer` | Keeps development, packaging, and repository tooling compatible. The built artifact and the `okf-viewer` command keep this name, so a `.deb` upgrade replaces the installed package instead of installing a second one beside it. |
 
-Do not rename these files, directories, keyring entries, or command names to `okf-studio`. They are stable implementation identifiers, not stale product branding. A separate migration would be required before any of them could change safely.
+Do not rename these files, directories, keyring entries, or command names to `okf-studio`. They are stable implementation identifiers, not stale product branding. Any change to them needs a separate migration first.
 
 # The repository moved to `saschb2b/okf-studio`
 
-The GitHub repository was renamed after the table above was first written, so it is no longer a compatibility name. The move is safe for existing installations, and the reasoning is worth keeping:
+The GitHub repository changed name after the table above first appeared, so it is no longer a compatibility name. The move is safe for existing installations, and the reasoning is worth keeping:
 
-- **Already-installed builds keep updating.** GitHub redirects a renamed repository's git, issue, and release traffic, including release asset downloads, so the updater endpoint compiled into a v0.5.0 or earlier binary still resolves. Verified against a renamed repository before the move: `…/releases/latest/download/latest.json` answers `301` to the new location.
-- **That redirect is not permanent.** It stops the moment any repository is created under the old name. **Never create a `saschb2b/okf-viewer` repository**, not even an empty one and not to serve a redirect page: doing so silently breaks automatic updates for everyone running a build released before the rename.
-- **The project site moved with it.** GitHub does not redirect project-page URLs, so `saschb2b.github.io/okf-viewer/` is gone and the site now lives at `saschb2b.github.io/okf-studio/`. Links published before the move do not resolve. A custom domain would make any future rename free; without one, the site's URL is the repository's name.
+- **Already-installed builds keep updating.** GitHub redirects a renamed repository's git, issue, and release traffic, including release asset downloads. So the updater endpoint compiled into a v0.5.0 or earlier binary still resolves. A test against a renamed repository before the move confirmed it: `…/releases/latest/download/latest.json` answers `301` to the new location.
+- **That redirect is not permanent.** It stops the moment anyone creates a repository under the old name. **Never create a `saschb2b/okf-viewer` repository**, not even an empty one and not to serve a redirect page. Doing so silently breaks automatic updates for everyone running a build released before the rename.
+- **The project site moved with it.** GitHub does not redirect project-page URLs, so `saschb2b.github.io/okf-viewer/` is gone and the site now lives at `saschb2b.github.io/okf-studio/`. Links published before the move do not resolve. A custom domain would make any future rename free. Without one, the site's URL is the repository's name.
 
-The application identity was untouched by the move. No user keeps settings, credentials, or app data in a location derived from the repository name.
+The move left the application identity untouched. No user keeps settings, credentials, or app data in a location derived from the repository name.
 
 # Data retained by an upgrade
 

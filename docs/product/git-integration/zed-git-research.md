@@ -45,7 +45,7 @@ Which parts of Zed's Git implementation make its panel fast, understandable, and
 
 Zed treats Git as repository state exposed through a typed model, not as free-form command execution. Its panel owns quick status, staging, commit, branch, and remote actions. Detailed diffs open in a separate editor-native surface. History is a separate panel tab whose rows load commit detail on demand. Repository changes arrive through subscriptions, so CLI and filesystem activity update the same model.
 
-Studio should keep those boundaries. The Rust host should invoke a discovered Git binary with fixed arguments, parse results into closed DTOs, and authorize the repository against the folder grant that contains the active bundle. The frontend should never receive a general Git command or an absolute repository path. Opening a local bundle remains read-only; each staging, commit, undo, fetch, pull, or push action requires a named user action.
+Studio should keep those boundaries. The Rust host should invoke a discovered Git binary with fixed arguments and parse results into closed DTOs. It should authorize the repository against the folder grant that contains the active bundle. The frontend should never receive a general Git command or an absolute repository path. Opening a local bundle remains read-only. Each staging, commit, undo, fetch, pull, or push action requires a named user action.
 
 # Source findings
 
@@ -55,13 +55,13 @@ Zed defines a `GitRepository` trait and implements it with `RealGitRepository`. 
 
 Its command builder supplies fixed safety and predictability flags. It disables filesystem monitors for internal commands, signature decoration for machine-parsed log output, optional locks, and paging. For an untrusted repository it also disables hooks, credential helpers, external diff programs, and the `ext` transport. Diff commands receive `--no-ext-diff`.[^2]
 
-Studio should use the installed Git binary through `std::process::Command`, never a shell. Read operations and local mutations should disable hooks and external diff execution. Remote operations should remain non-interactive and explicit; Studio should report missing credentials instead of opening an invisible prompt.
+Studio should use the installed Git binary through `std::process::Command`, never a shell. Read operations and local mutations should disable hooks and external diff execution. Remote operations should remain non-interactive and explicit. Studio should report missing credentials instead of opening an invisible prompt.
 
 ## State model
 
 Zed preserves Git's two-state model. `FileStatus::Tracked` contains separate index and working-tree codes, while untracked, ignored, and unmerged entries remain distinct variants.[^3] That distinction drives a tri-state staging control instead of flattening every file to a generic “modified” row.
 
-Studio should return both `staged` and `unstaged` facts for every path and retain conflict state explicitly. A file may appear once while still communicating that part of its change is staged and part remains unstaged.
+Studio should return both `staged` and `unstaged` facts for every path and retain conflict state explicitly. A file may appear once while still showing that the index holds part of its change and the working tree holds the rest.
 
 ## Panel and update flow
 
@@ -69,7 +69,7 @@ Studio should return both `staged` and `unstaged` facts for every path and retai
 
 The panel has two top-level tabs: Changes and History. History has explicit loading, loaded, empty, and error states. The visible history list fetches commit detail lazily and opens a commit diff elsewhere instead of expanding the row into a second browsing surface.[^6]
 
-Studio should mirror the separation but fit its existing React shell. One docked Git panel owns the compact workflow. Diff inspection replaces the main workspace with a dedicated review view and provides a clear return path. Polling is acceptable for the first local implementation only when the panel is open and the window is visible; the completion package replaces it with Rust-owned repository notifications.
+Studio should mirror the separation but fit its existing React shell. One docked Git panel owns the compact workflow. Diff inspection replaces the main workspace with a dedicated review view and provides a clear return path. Polling is acceptable for the first local implementation only when the panel is open and the window is visible. The completion package replaces it with Rust-owned repository notifications.
 
 ## Staging and commits
 
@@ -79,7 +79,7 @@ Studio should preserve that rule. “Commit staged” commits only the index. �
 
 ## Diffs and history
 
-Zed's Project Diff is an editor item backed by multibuffers. It supports hunk staging because deleted and inserted text share the editor's coordinate model.[^8] Reproducing that editor substrate is outside Studio's role. Studio already has a bounded unified-diff language from reviewed agent writes and can reuse its visual grammar for read-only Git inspection. File-level staging is the first complete contract; hunk staging remains a later package only if the diff model gains revision-bound patch application.
+Zed's Project Diff is an editor item backed by multibuffers. It supports hunk staging because deleted and inserted text share the editor's coordinate model.[^8] Reproducing that editor substrate is outside Studio's role. Studio already has a bounded unified-diff language from reviewed agent writes and can reuse its visual grammar for read-only Git inspection. File-level staging is the first complete contract. Hunk staging remains a later package only if the diff model gains revision-bound patch application.
 
 # Adopt, adapt, defer
 
@@ -96,6 +96,6 @@ Zed's Project Diff is an editor item backed by multibuffers. It supports hunk st
 
 # Unresolved questions
 
-- Hunk staging requires a revision-bound patch model and should not be implied by file-level checkboxes.
+- Hunk staging requires a revision-bound patch model. File-level checkboxes must not imply it.
 - Credential prompts need an explicit desktop design. The first release uses existing non-interactive Git credentials and explains how to recover when they are unavailable.
 - Multi-repository folders need a repository selector. The first release binds the panel to the repository containing the active bundle.

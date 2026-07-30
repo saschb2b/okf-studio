@@ -16,19 +16,19 @@ The contract starts with a reader job: who needs the concept and which question 
 
 # Why this exists
 
-The first OKF capability suite improved task routing, evidence, safety, and review. It did not improve the prose method itself. An agent could produce a conformant, well-sourced concept that still opened with generic framing, repeated its conclusion, hid its value behind feature description, or flattened reasoning into decorative lists.
+The first OKF capability suite improved task routing, evidence, safety, and review. It did not improve the prose method itself. An agent could produce a conformant, well-sourced concept that still opened with generic framing or repeated its conclusion. The same concept could hide its value behind feature description, or flatten reasoning into decorative lists.
 
 Generic editing instructions are unsafe for knowledge work. A request to make prose shorter can remove a qualifier, citation, example, formula, or operational constraint. OKF Writing makes preservation the first gate. The user sees whether wording changed or knowledge changed before the proposal reaches staging.
 
 # Shared writing contract
 
-The versioned `writing` resource is delivered only to capabilities that produce concept prose. It tells the agent to:
+Studio delivers the versioned `writing` resource only to capabilities that produce concept prose. It tells the agent to:
 
 - lead with the answer to the reader job
 - distinguish sourced facts, user decisions, inferences, and unknowns
 - preserve exact technical, legal, standards, formula, code, and quotation language
 - use prose, tables, definitions, task lists, diagrams, or formulas according to the shape of the knowledge
-- remove generic framing, repeated conclusions, vague authority, inflated significance, and decorative structure; and
+- remove generic framing, repeated conclusions, vague authority, inflated significance, and decorative structure
 - reconcile every claim after editing.
 
 These are writing rules, not OKF conformance rules. The agent matches the bundle language and house style. Phrase matches are review clues and never automatic deletion instructions.
@@ -49,9 +49,9 @@ The work surface labels a revision **Wording only** when its ledger contains no 
 
 # Recovery
 
-An unavailable provider leaves the writing request and selected context intact so the user can retry or select another connected agent. An invalid claim ledger stays ordinary conversation text and names the failed boundary; it never becomes trusted work. A stale revision must be regenerated against the current bundle fingerprint. A conflict returns to the existing per-hunk staged review rather than replacing newer bundle content.
+An unavailable provider leaves the writing request and selected context intact so the user can retry or select another connected agent. An invalid claim ledger stays ordinary conversation text and names the failed boundary. It never becomes trusted work. The agent must regenerate a stale revision against the current bundle fingerprint. A conflict returns to the existing per-hunk staged review rather than replacing newer bundle content.
 
-Writing findings can be suppressed by their stable fingerprint when exact or repeated language is intentional. Suppression hides that instance, not the rule globally. Interrupted review does not apply any text: the staged revision remains behind the existing validation and Apply boundary.
+The user can suppress writing findings by their stable fingerprint when exact or repeated language is intentional. Suppression hides that instance, not the rule globally. Interrupted review does not apply any text: the staged revision remains behind the existing validation and Apply boundary.
 
 # Independent writing critic
 
@@ -61,7 +61,7 @@ Studio Agent can run the optional critic in the existing isolated no-tool sessio
 
 The frozen [OKF agent benchmark](../architecture/agent-benchmarking.md) adds seven writing cases across product rationale, metrics, runbooks, architecture, decisions, API reference, and source-derived policy. Each case records its reader job, required knowledge, qualifiers, citations, links, and unsupported claims. The model-free gate fails polished output that drops required knowledge.
 
-Live provider reports must retain results for the same cases and a blinded pairwise review. A completed writing evaluation passes only when every hard preservation check succeeds and human preference reaches the frozen threshold. An unconfigured provider is recorded as unavailable with no invented measurements.
+Live provider reports must retain results for the same cases and a blinded pairwise review. A completed writing evaluation passes only when every hard preservation check succeeds and human preference reaches the frozen threshold. The report records an unconfigured provider as unavailable, with no invented measurements.
 
 # Isolation and verification
 

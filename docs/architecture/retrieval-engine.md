@@ -33,7 +33,7 @@ A shared Rust pipeline makes exact ranking, grant enforcement, source identity, 
 
 The agent does not choose the search method. `okf-core` classifies the question before Studio sends any prompt, and records the reason in the receipt. Exact identities win first, followed by relationship, time, structured-data, full-bundle, overview, semantic, and direct factual intents. Only a question that fits none of those stable classes uses the local text-and-links fallback. An explicit method selected in Evidence Lab overrides classification for that diagnostic run only.
 
-The frozen corpus includes ordinary phrasing such as “What is this repository about?”, “Give me a summary of this bundle”, “What is the Revenue metric?”, and “What changed in the retention policy?”. Each case asserts both the chosen route and minimum evidence recall. This keeps routing deterministic while preventing most everyday questions from collapsing into one vague fallback. It does not claim that the classifier is perfect: new rules need a labeled case and a retrieval result before they ship.
+The frozen corpus includes ordinary phrasing such as “What is this repository about?” and “Give me a summary of this bundle”. It also covers “What is the Revenue metric?” and “What changed in the retention policy?”. Each case asserts both the chosen route and minimum evidence recall. This keeps routing deterministic while preventing most everyday questions from collapsing into one vague fallback. It does not claim that the classifier is perfect: new rules need a labeled case and a retrieval result before they ship.
 
 # Diagnostic boundary
 
@@ -43,7 +43,9 @@ Those additional classes remain in the versioned schema, so imported evaluations
 
 # Identity and invalidation
 
-A section ID derives from concept ID, heading ancestry, structural ordinal, and content hash. The bundle fingerprint binds the complete ordered manifest. A content change therefore creates a new revision identity without mutating authored files. Cache and snapshot scope include the manifest fingerprint and bundle grant set. A different revision or scope cannot reuse them. A receipt ID also binds the normalized query, resolved route, bounded limit and context budget, filters, provider identifiers, provider window, and disclosure choice. Repeating the same request is stable, while changing any material search or provider input creates another receipt identity.
+A section ID derives from concept ID, heading ancestry, structural ordinal, and content hash. The bundle fingerprint binds the complete ordered manifest. A content change therefore creates a new revision identity without mutating authored files. Cache and snapshot scope include the manifest fingerprint and bundle grant set. A different revision or scope cannot reuse them.
+
+A receipt ID also binds the normalized query, resolved route, bounded limit and context budget, filters, provider identifiers, provider window, and disclosure choice. Repeating the same request is stable, while changing any material search or provider input creates another receipt identity.
 
 The cache is disposable. Failure to publish it does not block retrieval or ordinary reading. Reopening or changing a bundle rebuilds from source, and removing the cache cannot remove knowledge.
 
@@ -83,7 +85,9 @@ Timestamp is optional OKF metadata and does not make an ordinary lookup incomple
 
 # Provider contract
 
-Dense retrieval and reranking have `local`, `configured`, `unavailable`, `degraded`, and `cancelled` states. A receipt records the provider ID, capability, disclosure state, and whether text actually left the device. Permission to share is not evidence that sharing happened. The shipped baseline has no activated dense or reranker adapter. Even a supplied provider ID therefore remains degraded, records `remoteTextShared: false`, and uses the local fallback. A future adapter may report `configured` and remote sharing only after its bounded call runs. A semantic question therefore falls back to local lexical and graph stages today.
+Dense retrieval and reranking have `local`, `configured`, `unavailable`, `degraded`, and `cancelled` states. A receipt records the provider ID, capability, disclosure state, and whether text actually left the device. Permission to share is not evidence that sharing happened.
+
+The shipped baseline has no activated dense or reranker adapter. Even a supplied provider ID therefore remains degraded, records `remoteTextShared: false`, and uses the local fallback. A future adapter may report `configured` and remote sharing only after its bounded call runs. A semantic question therefore falls back to local lexical and graph stages today.
 
 Full-context eligibility considers canonical snapshot size, declared provider window, scope, cache capability, and privacy. Cache creation remains unavailable when a provider does not advertise an exact, fingerprint-bound prefix or KV contract. The receipt names that state and falls back without rewriting the query.
 

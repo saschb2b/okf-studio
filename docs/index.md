@@ -48,7 +48,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Agent Panel](features/agent-panel.md) - Run parallel agent threads, attach OKF context, approve tools, and review proposed knowledge changes.
 * [Source Adapters and Provenance](features/source-adapters.md) - Turn selected files, folders, images, and public URLs into bounded untrusted evidence with visible versioned provenance.
 * [Evidence and Provenance](features/evidence-and-provenance.md) - Keep durable source identity with a concept, connect claims to evidence, and check public sources only after an explicit action.
-* [Folder Autodetect](features/folder-autodetect.md) - Point at a folder; find every OKF bundle inside it.
+* [Folder Autodetect](features/folder-autodetect.md) - Point at a folder and find every OKF bundle inside it.
 * [Ignore Rules](features/ignore-rules.md) - Keep selected paths out of Studio through one visible root rule file without mistaking it for access control.
 * [Access Hints](features/access-hints.md) - Show audience, sensitivity, and handling guidance without treating metadata as authorization.
 * [Recipient Projections](features/recipient-projections.md) - Choose knowledge, review what will travel, and save a separate shareable bundle.
@@ -94,7 +94,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Agent Orchestration](architecture/agent-orchestration.md) - Delegated runs over Rust-computed context slices, one writer, declared budgets, and the protocol limit on governing external subagents.
 * [Tech Stack](architecture/tech-stack.md) - Tauri 2.0, the Rust core, the frontend, and why.
 * [Bundle Detection](architecture/bundle-detection.md) - The algorithm that finds OKF bundles in a folder.
-* [OKF Parsing](architecture/okf-parsing.md) - How concepts, links, and indexes are parsed.
+* [OKF Parsing](architecture/okf-parsing.md) - How Studio parses concepts, links, and indexes.
 * [Data Model](architecture/data-model.md) - Bundle, Concept, and Graph shapes shared across the IPC boundary.
 * [Frontend Architecture](architecture/frontend-architecture.md) - The frontend as a thin client over the Rust command/event surface.
 * [IPC & Security](architecture/ipc-and-security.md) - Typed Tauri commands for scoped reads, explicit network and process actions, and reviewed writes.
@@ -109,7 +109,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Agent Harness Research](reference/agent-harness-research.md) - What control surfaces such as T3 Code actually implement, what the multi-agent literature settles, and what ACP cannot expose.
 * [Specialized Agent Systems Research](reference/specialized-agent-systems.md) - Product patterns for turning the agent foundation into an OKF-specialized workspace.
 * [OKF Spec Summary](reference/okf-spec-summary.md) - The v0.1 rules Studio must honor.
-* [OKF Reference HTML Visualizer](reference/okf-reference-visualizer.md) - Google's single-file HTML consumer — the reference this app is the desktop counterpart to.
+* [OKF Reference HTML Visualizer](reference/okf-reference-visualizer.md) - Google's single-file HTML consumer, the reference this app is the desktop counterpart to.
 * [OKF Sample Bundles](reference/okf-sample-bundles.md) - The GA4, Stack Overflow, and Bitcoin bundles used as additional fixtures.
 * [Multilingual Variants Experiment](reference/multilingual-variants-experiment.md) - Compare language conventions without selecting a core format.
 * [External Bundle References Experiment](reference/external-bundle-references-experiment.md) - Test explicit read-only resolution with namespaced identity.
@@ -124,13 +124,13 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Bundle Overview & Health (superseded)](proposals/bundle-overview.md) - The original inventory-dashboard proposal, superseded by a working Home for activity, resumption, attention, and repository changes.
 * [Faceted Query Bar](proposals/faceted-search.md) - Structured field queries and facet rails that filter the workspace live.
 * [Lineage & Traversal](proposals/lineage-and-traversal.md) - Expand-on-click, upstream/downstream lineage, path-between, and unlinked mentions.
-* [Multi-View — Tabs & Windows](proposals/multi-view.md) - Reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own window.
+* [Multi-View: Tabs & Windows](proposals/multi-view.md) - Reader tabs with per-tab history, browser-standard modifier clicks, and undocking a tab into its own window.
 
 # Subdirectories
 
 * [Product](product/) - Vision, audience, principles, and scope.
 * [Features](features/) - One concept per user-facing capability.
 * [UX](ux/) - Flows, layout, shortcuts, theming, accessibility, settings.
-* [Architecture](architecture/) - How it is built.
+* [Architecture](architecture/) - Implementation decisions.
 * [Reference](reference/) - External specs, the OKF ecosystem, and a glossary.
 * [Proposals](proposals/) - Design directions not yet built.

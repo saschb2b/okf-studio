@@ -8,7 +8,7 @@ generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
 
 # Decision
 
-Retrieval intelligence must fit the existing workspace hierarchy before its backend package is implemented. Each user job has one surface owner, technical detail stays behind deliberate inspection, and dynamic retrieval state cannot reduce the readable conversation or make the composer unreachable.
+Retrieval intelligence must fit the existing workspace hierarchy before Studio implements its backend package. Each user job has one surface owner, and technical detail stays behind deliberate inspection. Dynamic retrieval state cannot reduce the readable conversation or make the composer unreachable.
 
 This contract governs the [retrieval-intelligence roadmap](retrieval-intelligence-roadmap.md). A package that changes the interface must pass its experience gate before production wiring begins. Passing a technical benchmark does not waive that gate.
 
@@ -80,19 +80,19 @@ Every interface-changing package records:
 - scroll, focus, keyboard, and narrow-width behavior
 - the unavailable path when an index, provider, cache, or permission is missing.
 
-A new persistent top-level surface requires a product decision and an update to [Browsing Layout](../../ux/browsing-layout.md). An implementation cannot justify a surface only because its backend emits more data. Duplicate bundle, agent, thread, route, or scope labels must be consolidated under their existing owner.
+A new persistent top-level surface requires a product decision and an update to [Browsing Layout](../../ux/browsing-layout.md). An implementation cannot justify a surface only because its backend emits more data. A package must consolidate duplicate bundle, agent, thread, route, or scope labels under their existing owner.
 
 # Definition of ready
 
 An interface-changing package may enter production implementation when:
 
-- [x] the user job and surface owner are named
+- [x] the package names the user job and surface owner
 - [x] a composition shows what appears, disappears, or moves
-- [x] the disclosure level of every new field and control is fixed
-- [x] loading, ready, empty, partial, stale, conflict, permission, unavailable, cancelled, large, and long-content states are either covered or explicitly inapplicable
-- [x] focus order, keyboard actions, scroll ownership, and close behavior are specified
+- [x] the package fixes the disclosure level of every new field and control
+- [x] the package covers loading, ready, empty, partial, stale, conflict, permission, unavailable, cancelled, large, and long-content states, or marks them explicitly inapplicable
+- [x] the package specifies focus order, keyboard actions, scroll ownership, and close behavior
 - [x] 360-pixel and wide Storybook compositions use existing tokens and components where possible
-- [x] Storybook MCP has been used to inventory overlapping components and screen the proposed states
+- [x] the author used Storybook MCP to inventory overlapping components and screen the proposed states
 - [x] the package gate names the behavior that prevents UI accretion.
 
 # Definition of done
@@ -109,6 +109,6 @@ An interface-changing package is complete when:
 
 # First vertical slice
 
-The first shipped slice contains one exact or lexical question, one local route, one compact evidence summary, one retrieval inspector, and source opening in the Reader. It includes empty, stale, partial, cancelled, and long-content states. It does not include dense retrieval, global synthesis, cached context, automatic repair, or the full Evidence Lab.
+The first shipped slice contains one exact or lexical question, one local route, and one compact evidence summary. It adds one retrieval inspector and source opening in the Reader. It includes empty, stale, partial, cancelled, and long-content states. It does not include dense retrieval, global synthesis, cached context, automatic repair, or the full Evidence Lab.
 
 This slice must prove that retrieval explanation can fit the current workspace without another persistent band. Later routes reuse the same surface owners and disclosure levels.

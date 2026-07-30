@@ -13,10 +13,12 @@ sources:
 
 Turns a small form into a new OKF v0.1 bundle on disk, then opens it like any
 picked folder, ready to work on. **No agent is involved: this is static
-generation only.** The form collects a bundle title (which derives the folder name until the
+generation only.**
+
+The form collects a bundle title (which derives the folder name until the
 user edits it), an optional one-sentence description, the first concept's
 title and `type`, and whether to include a starter guide. On confirm, the OS
-parent-folder picker appears; Studio writes the bundle inside the chosen
+parent-folder picker appears. Studio writes the bundle inside the chosen
 location and opens it.
 
 # Entry points
@@ -34,10 +36,10 @@ A minimal, conformant starter the user grows from, never a scaffold to clean
 up:
 
 - a root `index.md` declaring `okf_version: "0.1"`, the title, the
-  description, and listings for every generated concept;
+  description, and listings for every generated concept
 - a dated `log.md` with the Creation entry
 - the **first concept** (`concepts/<slug>.md`) with full frontmatter (`type`,
-  `title`, `description`, `timestamp`) and a short body inviting real content;
+  `title`, `description`, `timestamp`) and a short body inviting real content
 - optionally a **starter guide** concept (`guide/working-in-this-bundle.md`,
   `type: Guide`) explaining how to add concepts, link them, keep the index
   current, and log changes. It cross-links with the first concept, so the
@@ -45,15 +47,16 @@ up:
 
 # Guarantees
 
-The Rust core owns the write ([IPC & Security](../architecture/ipc-and-security.md)):
-it checks the folder name against path tricks and reserved names, bounds and
-control-filters every input, and quotes titles so they round-trip under both
+The Rust core owns the write ([IPC & Security](../architecture/ipc-and-security.md)).
+It checks the folder name against path tricks and reserved names, and bounds
+and control-filters every input. It quotes titles so they round-trip under both
 real YAML parsers and the tolerant frontmatter reader. It writes the tree
 atomically, by renaming a temp directory into place: the destination appears
 complete or not at all, and an existing folder stays untouched.
+
 Before handing the bundle back, the generator **self-checks it with
 `okf-core`**: zero conformance errors or the creation fails and cleans up.
-The created folder is granted read scope exactly like a picked folder.
+Studio grants the created folder read scope exactly like a picked folder.
 
 # What it is not
 

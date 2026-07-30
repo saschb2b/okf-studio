@@ -16,7 +16,7 @@ This engine does not decide whether a bundle may open. [Validation](validation.m
 
 OKF conformance deliberately has one small hard rule. That tolerance keeps thin and producer-defined bundles readable, but it leaves graph isolation, stale provenance, duplicate concepts, and missing navigation outside the validator. Asking each agent to infer those quality criteria produced inconsistent audits and risked presenting optional guidance as a format error.
 
-Knowledge Health gives every provider the same revision-bound evidence before it reasons about repairs. It separates facts from heuristics and supplies stable finding identities, so repeated audits can be compared, dismissed findings can remain dismissed, and deterministic repairs do not depend on model phrasing. The user gets a quality view without losing OKF's tolerant-consumer contract.
+Knowledge Health gives every provider the same revision-bound evidence before it reasons about repairs. It separates facts from heuristics and supplies stable finding identities. Studio can therefore compare repeated audits, keep dismissed findings dismissed, and run deterministic repairs that do not depend on model phrasing. The user gets a quality view without losing OKF's tolerant-consumer contract.
 
 # Finding contract
 
@@ -27,8 +27,8 @@ Every finding carries:
 - a plain explanation of why the finding exists
 - bounded evidence fields and affected concept IDs
 - `deterministic`, `guided`, or `not-repairable` repairability
-- a suppression fingerprint that survives unrelated bundle edits; and
-- the fingerprint of the complete bundle revision that was analyzed.
+- a suppression fingerprint that survives unrelated bundle edits
+- the fingerprint of the complete bundle revision the engine analyzed
 
 Conformance findings are always facts copied from the existing validator. Missing optional metadata, isolation, title similarity, and other quality signals never become conformance errors.
 
@@ -36,7 +36,9 @@ The writing category finds observable patterns such as generic framing, empty he
 
 The freshness category also evaluates authored [Reliability and Lifecycle](reliability-and-lifecycle.md) signals. Unknown lifecycle values and confidence outside 0 to 1 are facts about malformed profile metadata. A bounded linear graph pass finds supersession cycles and refuses to choose a terminal replacement. Missing reliability metadata creates no finding.
 
-The provenance and freshness categories also interpret the optional [Evidence and Provenance](evidence-and-provenance.md) profile. A dangling structured claim marker names its exact body line. Invalid or unused evidence entries remain advisory. Authored `changed` and `unavailable` check observations preserve their source ID, time, and fingerprint, while the explanation states that a changed representation or failed request does not prove factual invalidity. The existing lifecycle, contradiction, replacement, and retrieval-conflict findings remain separate evidence in the same report instead of being collapsed into a truth score.
+The provenance and freshness categories also interpret the optional [Evidence and Provenance](evidence-and-provenance.md) profile. A dangling structured claim marker names its exact body line. Invalid or unused evidence entries remain advisory. Authored `changed` and `unavailable` check observations preserve their source ID, time, and fingerprint. The explanation states that a changed representation or failed request does not prove factual invalidity.
+
+The existing lifecycle, contradiction, replacement, and retrieval-conflict findings remain separate evidence in the same report. The engine never collapses them into a truth score.
 
 # Agent tools
 
@@ -51,7 +53,7 @@ The detail tools require the summary's exact fingerprint. Native tools reparse t
 
 # Bounds
 
-The initial engine accepts at most 10,000 concepts and 50,000 intra-bundle links, including unresolved targets. Analysis runs in Rust outside the webview and performs no model or network call. A bundle above either analysis limit still opens normally; only the health request asks the user or agent to narrow or partition the work.
+The initial engine accepts at most 10,000 concepts and 50,000 intra-bundle links, including unresolved targets. Analysis runs in Rust outside the webview and makes no model or network call. A bundle above either analysis limit still opens normally. Only the health request asks the user or agent to narrow or partition the work.
 
 # Verification
 

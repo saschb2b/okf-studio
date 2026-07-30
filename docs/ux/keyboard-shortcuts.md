@@ -53,9 +53,9 @@ generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
 
 # Notes
 
-- Full keyboard operability is an [accessibility](accessibility.md) commitment, not just a convenience.
-- Press `?` for an in-app overlay listing every shortcut, grouped by area (also reachable from the [command palette](../features/command-palette.md)). The overlay has a **filter**: forty bindings is more than a reader scans, so typing an action or a key narrows the sheet to what matches, and groups that match nothing drop out rather than leaving empty headings.
-- **The overlay is a mirror of this table, and the mirror has to be maintained.** It had drifted: `Ctrl/Cmd + Shift + G`, the agent-thread bindings, and `Ctrl/Cmd + Enter` were live in the app and missing from the sheet, and the modified-click row showed only half its pair. A shortcut changes in three places — the handler (`keys.ts` or the owning component), this table, and `ShortcutsHelp.tsx`.
+- Full keyboard operability is an [accessibility](accessibility.md) commitment rather than a convenience.
+- Press `?` for an in-app overlay listing every shortcut, grouped by area (also reachable from the [command palette](../features/command-palette.md)). The overlay has a **filter**, because forty bindings is more than a reader scans. Typing an action or a key narrows the sheet to what matches. Groups that match nothing drop out rather than leaving empty headings.
+- **The overlay mirrors this table, and the mirror needs upkeep.** It had drifted. `Ctrl/Cmd + Shift + G`, the agent-thread bindings, and `Ctrl/Cmd + Enter` were live in the app and missing from the sheet. The modified-click row showed only half its pair. A shortcut changes in three places: the handler (`keys.ts` or the owning component), this table, and `ShortcutsHelp.tsx`.
 - **Modifier labels follow the platform.** `⌘ ⇧ ⌥` on macOS, `Ctrl Shift Alt` elsewhere, because that is what the key prints. A cap shows the character on the physical key, so the zoom-out binding reads `-`, not the typographer's `−`.
-- Pointer actions such as `click` are shown as words, not as key caps.
-- A later release may make these user-configurable; v1 ships sensible defaults (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).
+- The overlay shows pointer actions such as `click` as words, not as key caps.
+- A later release may make these user-configurable. v1 ships the defaults above (see [Scope & Non-Goals](../product/scope-and-non-goals.md)).

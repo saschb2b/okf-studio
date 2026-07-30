@@ -10,7 +10,7 @@ generated: { by: claude/unrecorded, at: 2026-07-19T23:15:00Z }
 
 OKF Studio should not ship a generic vector database beside the graph. It should turn an OKF bundle into inspectable, revision-bound model context and let each query use the evidence path that fits it.
 
-The retrieval system should remain quiet during ordinary use. The conversation shows an answer, citations, and one compact evidence summary. The evidence inspector leads with trust and source review; route internals, candidate lists, scores, filters, and diagnostics stay under technical disclosure or in the separate Evidence Lab. The [retrieval experience contract](retrieval-experience-contract.md) fixes that hierarchy before implementation.
+The retrieval system should remain quiet during ordinary use. The conversation shows an answer, citations, and one compact evidence summary. The evidence inspector leads with trust and source review. Route internals, candidate lists, scores, filters, and diagnostics stay under technical disclosure or in the separate Evidence Lab. The [retrieval experience contract](retrieval-experience-contract.md) fixes that hierarchy before implementation.
 
 The product is an OKF context engine:
 
@@ -50,11 +50,11 @@ flowchart LR
 
 The manifest is a disposable app-data projection of one or more granted bundle revisions. It records concept and section identity, headings, descriptions, types, tags, source references, links, index ancestry, table boundaries, token estimates, and health signals. Optional lexical and dense indexes point back to those identities.
 
-The bundle remains the authority. The manifest can be deleted and rebuilt. Embeddings, generated summaries, ranking features, and derived relationship candidates do not enter bundle files unless a user reviews an explicit proposal.
+The bundle remains the authority. Studio can delete and rebuild the manifest. Embeddings, generated summaries, ranking features, and derived relationship candidates do not enter bundle files unless a user reviews an explicit proposal.
 
 ## Query router
 
-The router selects a stable local mode from the query class. Route execution then applies available indexes, bundle scale, provider capabilities, privacy settings, and context budget without silently changing the question's intent. Routine local selection appears in the compact evidence summary and can be inspected afterward. A preflight asks for attention only when scope, network use, expected cost, or available capability changes materially.
+The router selects a stable local mode from the query class. Route execution then applies available indexes, bundle scale, provider capabilities, privacy settings, and context budget without silently changing the question's intent. Routine local selection appears in the compact evidence summary, and the user can inspect it afterward. A preflight asks for attention only when scope, network use, expected cost, or available capability changes materially.
 
 | Query class | Default evidence path | Example |
 | --- | --- | --- |
@@ -102,11 +102,11 @@ The compact summary belongs to the completed conversation turn. Opening its deta
 
 # Product value
 
-For an OKF author, Studio can explain why a concept is hard to retrieve and propose a better title, description, link, index entry, citation, or split. Retrieval quality becomes part of knowledge maintenance without turning it into conformance.
+For an OKF author, Studio can explain why a concept is hard to retrieve. It can propose a better title, description, link, index entry, citation, or split. Retrieval quality becomes part of knowledge maintenance without turning it into conformance.
 
-For an agent user, the context plan shows the evidence route before a prompt and the receipt afterward. Wrong answers can be traced to a miss, filter, stale source, context omission, or generation failure.
+For an agent user, the context plan shows the evidence route before a prompt and the receipt afterward. The user can trace a wrong answer to a miss, filter, stale source, context omission, or generation failure.
 
-For an ordinary question, this traceability does not require reading retrieval machinery. The user can stay with the answer and citations, open the evidence summary when confidence is low, and enter the diagnostic workspace only when the retrieval path itself needs comparison.
+For an ordinary question, this traceability does not require reading retrieval machinery. The user can stay with the answer and citations, and open the evidence summary when confidence is low. They enter the diagnostic workspace only when the retrieval path itself needs comparison.
 
 For teams with an existing RAG stack, Studio can export a revision-bound retrieval manifest instead of forcing them to adopt its index. Stable OKF identities then survive across Qdrant, Weaviate, PostgreSQL, a local BM25 index, or a provider file-search API.
 
@@ -134,7 +134,7 @@ Source adapters can feed the context compiler after explicit fetch. Web pages st
 
 ## Diagnostic exchange
 
-The retrieval receipt can be exported as a bounded debug bundle or imported into an OKF research task. This gives external pipelines a portable failure record and gives Studio a path to compare two retrieval configurations without importing their databases.
+Studio can export the retrieval receipt as a bounded debug bundle, or import it into an OKF research task. This gives external pipelines a portable failure record and gives Studio a path to compare two retrieval configurations without importing their databases.
 
 # Product boundaries
 
@@ -152,7 +152,7 @@ The retrieval receipt can be exported as a bounded debug bundle or imported into
 
 # Decisions to prove before adoption
 
-- A local lexical and graph baseline must beat the current full-text search on the frozen query corpus before dense retrieval is added.
+- A local lexical and graph baseline must beat the current full-text search on the frozen query corpus before Studio adds dense retrieval.
 - Dense retrieval must show incremental recall worth its model size, index time, privacy cost, and invalidation complexity.
 - The router must outperform one fixed hybrid route and expose a deterministic fallback when classification is uncertain.
 - Context compilation must improve answer evidence use without hiding omitted material.

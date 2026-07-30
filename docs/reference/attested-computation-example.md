@@ -18,21 +18,21 @@ generated: { by: claude/unrecorded, at: 2026-07-27T00:00:00Z }
 
 # What this is
 
-A worked `type: Attested Computation`, kept in the reference section for two reasons: it shows a producer what the type looks like when every family is declared, and it is the concept Studio's own attestation gate is tested against.
+A worked `type: Attested Computation`, kept in the reference section for two reasons. It shows a producer what the type looks like with every family declared. It is also the concept Studio's own attestation gate runs against.
 
-The figures are illustrative. The *shape* is not — this is the arrangement [OKF parsing](../architecture/okf-parsing.md) describes, and the one the reader panel and the agent gate both read.
+The figures are illustrative. The *shape* is not. This is the arrangement [OKF parsing](../architecture/okf-parsing.md) describes, and the one the reader panel and the agent gate both read.
 
 # Why the type exists
 
 An agent asked for revenue can write plausible SQL and report a number from it. Nothing in the prose of an answer distinguishes that from a number produced by the query the business actually sanctions.
 
-So the query lives here, in the bundle, and a run must return evidence of what it executed. Studio compares that evidence against this file. An agent may bind `fiscal_year` and `region`; it must not author or edit the computation.
+So the query lives here, in the bundle, and a run must return evidence of what it executed. Studio compares that evidence against this file. An agent may bind `fiscal_year` and `region`. It must not author or edit the computation.
 
 # What Studio can and cannot check
 
 Studio checks **provenance**: that the executed text is this computation with its parameters bound, compared canonicalized so comments, whitespace and case do not matter. That check needs no database and no code execution, which is why a reader can do it.
 
-Studio does not check **fidelity** — re-reading the authoritative result by job id — because only the executor's runtime can. It reports that as unavailable, never as passed. A run that clears provenance is not fully attested, and Studio says so.
+Studio does not check **fidelity** (re-reading the authoritative result by job id), because only the executor's runtime can. It reports that as unavailable, never as passed. A run that clears provenance is not fully attested, and Studio says so.
 
 Studio never executes the computation, the executor, or the attester.
 
@@ -48,4 +48,4 @@ The reader's computation panel has a **Check a run…** button that takes a rece
 }
 ```
 
-An agent reporting a figure from this computation ends its turn with an `okf-receipt` fence naming this concept, and Studio labels the answer before the number is taken at face value. See [OKF parsing](../architecture/okf-parsing.md) for both doors.
+An agent that reports a figure from this computation ends its turn with an `okf-receipt` fence naming this concept. Studio labels the answer before a reader takes the number at face value. See [OKF parsing](../architecture/okf-parsing.md) for both doors.

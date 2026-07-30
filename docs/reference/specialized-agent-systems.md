@@ -38,7 +38,7 @@ sources:
 
 # Research question
 
-OKF Studio already connects agents, scopes bundle context, exposes bounded tools, and reviews writes. The next question is how the workspace and its agents become materially better at OKF work than a general agent panel with an OKF prompt attached.
+OKF Studio already connects agents, scopes bundle context, exposes bounded tools, and reviews writes. A general agent panel can also run with an OKF prompt attached. The next question is how the workspace and its agents become materially better at OKF work than that.
 
 The comparison uses the GitHub Copilot app as the main product reference because it specializes a desktop agent workspace around Git and GitHub. The supporting sources cover GitHub's customization stack and Google's current OKF direction.
 
@@ -60,15 +60,15 @@ GitHub's specialization is a stack of mutually reinforcing layers:
 | Recall | Searchable session history and retained memory | Keep local, inspectable workspace memory separate from authored bundle facts and validate it before reuse |
 | OS entry | App deep links, voice input, and launch points from external tools | Add a guarded Studio URL scheme and CLI so files, scripts, and other agents can open a bundle or prefill a task without starting an agent silently |
 
-The important part is the native object model. GitHub agents can act on issues, branches, checks, and pull requests because the application owns those objects and their lifecycle. OKF Studio should give agents comparable first-class access to concept identity, graph position, evidence, validation, provenance, and reviewed revisions. A larger system prompt cannot supply those guarantees.
+The important part is the native object model. GitHub agents can act on issues, branches, checks, and pull requests because the application owns those objects and their lifecycle. OKF Studio should give agents comparable direct access to concept identity, graph position, evidence, validation, provenance, and reviewed revisions. A larger system prompt cannot supply those guarantees.
 
 Google's Knowledge Catalog direction adds the knowledge-specific counterpart: aggregate context across systems, enrich it continuously, and retrieve it through high-precision search with existing access controls. Studio should adopt the continuous-health and federated-discovery goals while retaining local bundle grants as its access authority. A cross-bundle result must preserve its source bundle and concept identity. It cannot flatten several bundles into one prompt namespace or imply a write grant to every source.
 
 # Skills and capability delivery
 
-GitHub distinguishes persistent instructions from task skills. Instructions are added broadly. A skill is a folder with `SKILL.md` plus optional resources and scripts, selected when its description matches a task. Skills can be project-scoped or personal, and their provenance can be pinned when installed through GitHub CLI.
+GitHub distinguishes persistent instructions from task skills. GitHub adds instructions broadly. A skill is a folder with `SKILL.md` plus optional resources and scripts, selected when its description matches a task. Skills can be project-scoped or personal, and GitHub CLI can pin their provenance at install time.
 
-Studio already follows the progressive-loading part for its native agent: it exposes metadata for one canonical OKF skill and loads a requested resource through a bounded tool. The missing product layer is a suite of smaller skills, a versioned manifest, explicit provenance, task-to-skill selection, and the same observable skill delivery across native and compatible external agents.
+Studio already follows the progressive-loading part for its native agent. It exposes metadata for one canonical OKF skill and loads a requested resource through a bounded tool. The missing product layer is a suite of smaller skills, a versioned manifest, explicit provenance, and task-to-skill selection. Native and compatible external agents also need the same observable skill delivery.
 
 The first suite should cover recurring OKF jobs rather than provider personas:
 
@@ -77,7 +77,7 @@ The first suite should cover recurring OKF jobs rather than provider personas:
 - enrich an existing bundle without erasing authored facts
 - audit structure, graph connectivity, provenance, and navigation
 - repair bounded conformance and connectivity defects
-- conduct cited research and separate evidence from inference
+- research a topic with citations and separate evidence from inference
 - assess the knowledge impact of a source-system or dataset change
 - migrate a bundle when the OKF specification changes
 
@@ -93,7 +93,7 @@ GitHub's canvas model recognizes that chat is weak for work that has shape. OKF 
 - a change-impact map from an external asset to affected concepts and relationships
 - a staged revision with validation results and review decisions
 
-These artifacts should remain ordinary Studio state with deterministic schemas. The transcript explains decisions and chronology. The work surface owns current structure and actions. Agent output must not become trusted simply because it matches a JSON shape; Rust validates identities, bounds, provenance references, and revision links before the UI treats it as an artifact.
+These artifacts should remain ordinary Studio state with deterministic schemas. The transcript explains decisions and chronology. The work surface owns current structure and actions. The UI must not trust agent output simply because it matches a JSON shape. Rust validates identities, bounds, provenance references, and revision links before the UI treats it as an artifact.
 
 GitHub also uses separate reviewer agents and lifecycle hooks. Studio should first implement deterministic checks because they are cheaper, repeatable, and provider-independent. An optional critic pass can then inspect claims, coverage, and ambiguity. A critic receives read-only tools and cannot approve or apply its own findings.
 

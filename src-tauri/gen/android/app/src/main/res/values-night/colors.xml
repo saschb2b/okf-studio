@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dark half of the pair in values/colors.xml. Tracks the app's
+         dark-theme chrome background in src/styles.css. -->
+    <color name="window_background">#21252c</color>
+</resources>

@@ -20,7 +20,7 @@ import { Toolbar } from "@base-ui/react/toolbar";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useApp } from "@/shared/store.tsx";
 import type { LayoutMode } from "@/shared/store.tsx";
-import { isMac, modKey } from "@/shared/platform/platform.ts";
+import { isAndroidShell, isMac, modKey } from "@/shared/platform/platform.ts";
 import { startWindowDrag, toggleMaximizeWindow } from "@/shared/platform/window.ts";
 import { BundleSwitcher } from "@/features/bundle/components/BundleSwitcher.tsx";
 import { getBundleConformance } from "@/features/bundle/bundleConformance.ts";
@@ -317,7 +317,9 @@ export function TopBar() {
             </Toolbar.Group>
           )}
 
-          <WindowControls />
+          {/* Caption buttons belong to the borderless desktop window. Android
+              draws its own system bars and closes the app with a gesture. */}
+          {!isAndroidShell && <WindowControls />}
         </div>
       </Toolbar.Root>
     </Tooltip.Provider>

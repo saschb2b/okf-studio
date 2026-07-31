@@ -36,9 +36,12 @@ Current builds are on the [releases page](https://github.com/saschb2b/okf-studio
 |----------|---------|
 | Windows | `.msi` or NSIS `.exe` (x64) |
 | Linux | `.deb` or AppImage (x86_64) |
+| Android | `.apk`, one universal file, Android 7 and later |
 | macOS | Build from source, see [Develop and run](#develop-and-run) |
 
 There is no macOS build in the release matrix. Builds are not code-signed, so your OS may show an "unverified publisher" prompt on first launch.
+
+The Android build is for reading a bundle on a tablet. Two limits come from the platform, not from the app. Android gives an app no access to your storage folders, so a bundle gets there through **Open from URL** rather than **Open folder**. And every agent connection starts a child process, which Android does not allow, so agent work stays on the desktop. The APK is signed with a public debug key, which is enough to install and to update in place, and proves nothing about who built it.
 
 ## What it does
 
@@ -74,6 +77,13 @@ pnpm dev            # frontend only, in a browser against a mock bundle
 pnpm tauri dev      # the full desktop app with hot reload
 pnpm storybook      # component playground on :6006
 pnpm tauri build    # installers for the host platform
+```
+
+For the Android build, install the Android SDK with an NDK, set `ANDROID_HOME`, `NDK_HOME`, and a JDK 17 to 21 in `JAVA_HOME`, then:
+
+```bash
+pnpm tauri android dev      # on a connected device or emulator
+pnpm tauri android build --apk
 ```
 
 Before finishing a change, run the gate that mirrors CI:

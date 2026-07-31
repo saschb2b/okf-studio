@@ -81,12 +81,9 @@ pub(crate) fn pick_source_folder(
     if requested_limit == 0 {
         return Err("The source tray is full.".to_string());
     }
-    let Some(selected) = app.dialog().file().blocking_pick_folder() else {
+    let Some(root) = crate::pick_folder(app, "Attach a folder of sources", None)? else {
         return Ok(Vec::new());
     };
-    let root = selected
-        .into_path()
-        .map_err(|_| "The selected source folder is not available on this platform.".to_string())?;
     read_folder_sources(&root, requested_limit.min(MAX_SOURCE_ATTACHMENTS))
 }
 

@@ -30,4 +30,5 @@ export interface DownloadTarget {
 export const downloads: DownloadTarget[] = [
   { glyph: "⊞", os: "Windows", meta: ".msi · .exe · x64", href: releasesLatest },
   { glyph: "◈", os: "Linux", meta: ".deb · AppImage", href: releasesLatest },
+  { glyph: "▯", os: "Android", meta: ".apk · tablets", href: releasesLatest },
 ];

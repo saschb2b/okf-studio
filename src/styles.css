@@ -417,6 +417,28 @@ body,
   border-radius: 0;
 }
 
+/* The Android shell (set on <html> in main.tsx). The activity is always
+   full-screen and the system owns the frame, so there is nothing to round off
+   and no caption row to leave space for. Two things change:
+
+   1. `100dvh` follows the *visible* viewport, so the chrome is not pushed under
+      the on-screen keyboard the way a static `100vh` would push it.
+   2. Chrome controls grow to a 44px touch target. The 36px icon buttons are
+      comfortable for a cursor and small for a fingertip on a tablet.
+
+   Clearing the status bar and the gesture pill is deliberately *not* done here.
+   `env(safe-area-inset-*)` reports 0 inside an Android WebView even under
+   `viewport-fit=cover`, so MainActivity.kt pads the content view with the real
+   window insets instead. */
+:root[data-shell="android"] .app {
+  height: 100dvh;
+  border-radius: 0;
+}
+:root[data-shell="android"] :is(.activity-btn, .btn.icon, .topbar .btn) {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 /* The body below the title bar: the persistent Activity Bar beside the content
    (workspace or empty state). The content flexes to fill the rest. */
 .app-main {

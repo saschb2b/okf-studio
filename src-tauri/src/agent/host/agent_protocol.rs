@@ -27,7 +27,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_dialog::DialogExt;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
@@ -1603,17 +1602,14 @@ pub async fn create_staged_bundle(
     folder_name: &str,
 ) -> Result<Option<AgentStagedCreateInfo>, String> {
     let folder_name = validate_bundle_directory_name(folder_name)?;
-    let Some(selected) = app
-        .dialog()
-        .file()
-        .set_title("Choose the parent folder for the new OKF bundle")
-        .blocking_pick_folder()
+    let Some(parent) = crate::pick_folder(
+        app,
+        "Choose the parent folder for the new OKF bundle",
+        None,
+    )?
     else {
         return Ok(None);
     };
-    let parent = selected.into_path().map_err(|_| {
-        "The selected destination folder is not available on this platform.".to_string()
-    })?;
     let stages = connection_stages(state, connection_id)?;
     let session_id = session_id.to_string();
     let revision = revision.to_string();

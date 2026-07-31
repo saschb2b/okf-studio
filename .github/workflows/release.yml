@@ -98,3 +98,73 @@ jobs:
           # Generates/merges latest.json (the updater manifest) on the updater
           # target jobs only; the .deb job skips it.
           includeUpdaterJson: ${{ matrix.updaterJson }}
+
+  # Android is a separate job rather than a matrix row: tauri-action bundles
+  # desktop targets only, so the APK is built and uploaded by hand. One universal
+  # APK carries all four ABIs, so a tablet, a phone, and an emulator take the
+  # same file and nobody has to know their own CPU.
+  android:
+    name: Build Android (apk)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Gradle 8 with the Android plugin runs on JDK 17 through 21. The runner's
+      # default JDK moves with the image, so pin it here rather than inherit it.
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # The runner image ships the SDK and platform-tools but no NDK, which the
+      # Rust cross-compile needs. Pin the NDK version so a runner-image bump
+      # cannot silently change the toolchain under the release.
+      - name: Install the Android NDK
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$sdkmanager" ] || sdkmanager="$(command -v sdkmanager)"
+          "$sdkmanager" --install "ndk;27.1.12297006"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006" >> "$GITHUB_ENV"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      # Builds the frontend (the config's beforeBuildCommand), cross-compiles the
+      # Rust lib for the four Android ABIs, and assembles one signed universal
+      # APK. Signing uses the checked-in debug key (see the app's build.gradle.kts):
+      # public, and the same for every release, so an update installs over the
+      # last one instead of being refused.
+      - name: Build the APK
+        run: pnpm tauri android build --apk
+
+      # Named after the release tag, because the Gradle output name carries no
+      # version and a downloads folder full of app-universal-release.apk helps
+      # nobody.
+      - name: Upload the APK to the release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          built=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+          named="OKF-Studio_${TAG#v}_universal.apk"
+          cp "$built" "$named"
+          gh release upload "$TAG" "$named" --clobber --repo "$GITHUB_REPOSITORY"

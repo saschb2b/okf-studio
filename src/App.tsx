@@ -31,6 +31,7 @@ import { GitDiffWorkspace } from "@/features/git/components/GitDiffWorkspace.tsx
 import { closeGitDiff, useGitDiff } from "@/features/git/gitRepositoryStore.ts";
 import { AgentPanelStateGallery } from "@/mock/AgentPanelStateGallery.tsx";
 import { showWindowWhenPainted } from "@/shared/platform/window.ts";
+import { isAndroidShell } from "@/shared/platform/platform.ts";
 
 const OVERVIEW_WITH_SIDEBAR_MIN_WIDTH = 704;
 
@@ -149,8 +150,9 @@ export function App() {
       <CreateBundleDialog />
       <ExternalEntryDialog />
 
-      {/* Borderless-window resize handles (Tauri only). */}
-      <ResizeHandles />
+      {/* Borderless-window resize handles (Tauri only). The Android activity is
+          sized by the system, so its edges are not drag targets. */}
+      {!isAndroidShell && <ResizeHandles />}
     </div>
   );
 }

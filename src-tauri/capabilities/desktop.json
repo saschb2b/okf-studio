@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "The two grants that exist only on desktop: the opt-in updater and the restart that installs it. Cargo.toml compiles tauri-plugin-updater and tauri-plugin-process out on Android and iOS, so a permission naming them fails the mobile build unless it is scoped like this. Android updates come from the store or a new APK, never from inside the app.",
+  "platforms": ["linux", "macOS", "windows"],
+  "windows": ["main", "pop-*"],
+  "permissions": ["updater:default", "process:allow-restart"]
+}

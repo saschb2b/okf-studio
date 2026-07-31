@@ -16,5 +16,19 @@ target/
 .DS_Store
 *.log
 
-# Tauri generated
-/src-tauri/gen/
+# Tauri generated. The schemas are regenerated on every build and belong to
+# nobody; the Android project is different. It is generated once by
+# `tauri android init` and then edited by hand (signing config, manifest), so it
+# is source and is committed, minus the parts each build rewrites.
+/src-tauri/gen/*
+!/src-tauri/gen/android/
+/src-tauri/gen/android/.gradle/
+/src-tauri/gen/android/app/build/
+/src-tauri/gen/android/app/.cxx/
+/src-tauri/gen/android/app/src/main/assets/
+/src-tauri/gen/android/app/src/main/jniLibs/
+/src-tauri/gen/android/app/tauri.properties
+/src-tauri/gen/android/local.properties
+/src-tauri/gen/android/keystore.properties
+/src-tauri/gen/android/buildSrc/build/
+/src-tauri/gen/android/buildSrc/.gradle/

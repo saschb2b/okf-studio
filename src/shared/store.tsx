@@ -899,7 +899,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [actions] = useState<Actions>(() => {
     const a: Actions = {
     async openFolder() {
-      const folder = await ipc.pickFolder();
+      let folder: string | null;
+      try {
+        folder = await ipc.pickFolder();
+      } catch (e) {
+        // Opening the picker can fail, not just the folder it returns: on
+        // Android there is no folder picker at all, and the backend refuses
+        // with a sentence naming Open from URL as the way in. Unhandled, that
+        // rejection made the button look dead.
+        dispatch({ t: "error", v: String(e) });
+        return;
+      }
       if (!folder) return;
       await a.openFolderPath(folder);
     },

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "@/App.tsx";
 import { AppProvider } from "@/shared/store.tsx";
 import { installNativeBehaviors } from "@/shared/platform/native.ts";
+import { isAndroidShell } from "@/shared/platform/platform.ts";
 import { logToHost } from "@/shared/ipc.ts";
 
 // The two typefaces the token layer names, bundled into the app rather than
@@ -13,6 +14,12 @@ import { logToHost } from "@/shared/ipc.ts";
 // makes the chrome identical on all three. Latin subsets only; see the file.
 import "@/shared/styles/fonts.css";
 import "./styles.css";
+
+// Which shell is drawing the app, as one attribute CSS can branch on. The
+// Android build has no window frame of its own to round off or inset, and its
+// chrome sits under the system status and navigation bars. Set before the first
+// paint so the frame never appears and then correct itself.
+if (isAndroidShell) document.documentElement.dataset.shell = "android";
 
 // Make the webview feel native: block page-zoom + the default browser context
 // menu, and remap the zoom affordance to reader text-size. The root lives for

@@ -95,8 +95,55 @@ mod watch;
 use okf_core::{Bundle, BundleRoot};
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Manager, State};
+// Only the desktop half of `pick_folder` opens a dialog; on Android the import
+// would be dead.
+#[cfg(desktop)]
 use tauri_plugin_dialog::DialogExt;
 use watch::WatchState;
+
+/// Ask the user for a folder on disk, from the one place every folder entry
+/// point goes through.
+///
+/// `Ok(None)` means the user cancelled: nothing is granted and nothing is
+/// written. `start_in` opens the dialog somewhere useful when the caller
+/// already knows the answer it wants (the enclosing Git repository, say).
+///
+/// The reason this is a function rather than six inline dialogs is Android.
+/// There is no folder picker in the dialog plugin on Android, and its file
+/// picker hands back a content URI that `std::fs` cannot open, so a folder
+/// grant is a desktop capability and the mobile build says so once, in a
+/// sentence that names what does work. See
+/// docs/architecture/build-and-release.md.
+#[cfg(desktop)]
+fn pick_folder(
+    app: &AppHandle,
+    title: &str,
+    start_in: Option<&Path>,
+) -> Result<Option<std::path::PathBuf>, String> {
+    let mut dialog = app.dialog().file().set_title(title);
+    if let Some(directory) = start_in {
+        dialog = dialog.set_directory(directory);
+    }
+    let Some(selected) = dialog.blocking_pick_folder() else {
+        return Ok(None);
+    };
+    selected
+        .into_path()
+        .map(Some)
+        .map_err(|_| "The folder you chose is not available on this platform.".to_string())
+}
+
+#[cfg(mobile)]
+fn pick_folder(
+    _app: &AppHandle,
+    _title: &str,
+    _start_in: Option<&Path>,
+) -> Result<Option<std::path::PathBuf>, String> {
+    Err(
+        "Android cannot hand an app a folder from your storage. Use Open from URL to download a bundle instead."
+            .to_string(),
+    )
+}
 
 fn authorized_git_scope(
     grants: &bundle_grant::BundleGrantState,
@@ -345,17 +392,14 @@ async fn export_okf_projection(
     input: bundle_projection::ProjectionExportInput,
 ) -> Result<Option<bundle_projection::ProjectionExportResult>, String> {
     let root = grants.authorize_bundle(Path::new(&bundle_root))?;
-    let Some(selected) = app
-        .dialog()
-        .file()
-        .set_title("Choose where to create the recipient projection")
-        .blocking_pick_folder()
+    let Some(parent) = pick_folder(
+        &app,
+        "Choose where to create the recipient projection",
+        None,
+    )?
     else {
         return Ok(None);
     };
-    let parent = selected.into_path().map_err(|_| {
-        "The selected projection destination is not available on this platform.".to_string()
-    })?;
     let result = tauri::async_runtime::spawn_blocking(move || {
         bundle_projection::export(&root, &parent, &input)
     })
@@ -484,17 +528,9 @@ async fn pick_bundle_folder(
     app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
 ) -> Result<Option<String>, String> {
-    let Some(selected) = app
-        .dialog()
-        .file()
-        .set_title("Open a folder of OKF bundles")
-        .blocking_pick_folder()
-    else {
+    let Some(folder) = pick_folder(&app, "Open a folder of OKF bundles", None)? else {
         return Ok(None);
     };
-    let folder = selected
-        .into_path()
-        .map_err(|_| "The selected bundle folder is not available on this platform.".to_string())?;
     grants
         .grant(&folder, bundle_grant::BundleGrantKind::LocalFolder)
         .map(Some)
@@ -513,18 +549,14 @@ async fn pick_git_repository_folder(
             .map_err(|_| "Git repository discovery stopped unexpectedly.".to_string())??
             .ok_or_else(|| "The active bundle is not inside a Git repository.".to_string())?;
 
-    let Some(selected) = app
-        .dialog()
-        .file()
-        .set_title("Allow Git for this repository")
-        .set_directory(&repository_root)
-        .blocking_pick_folder()
+    let Some(selected) = pick_folder(
+        &app,
+        "Allow Git for this repository",
+        Some(&repository_root),
+    )?
     else {
         return Ok(None);
     };
-    let selected = selected
-        .into_path()
-        .map_err(|_| "The selected repository folder is not available.".to_string())?;
     let selected = dunce::canonicalize(selected)
         .map_err(|_| "The selected repository folder is no longer available.".to_string())?;
     if selected != repository_root {
@@ -545,17 +577,9 @@ async fn create_bundle(
     grants: State<'_, bundle_grant::BundleGrantState>,
     input: bundle_create::CreateBundleInput,
 ) -> Result<Option<String>, String> {
-    let Some(selected) = app
-        .dialog()
-        .file()
-        .set_title("Choose where to create the new bundle")
-        .blocking_pick_folder()
-    else {
+    let Some(parent) = pick_folder(&app, "Choose where to create the new bundle", None)? else {
         return Ok(None);
     };
-    let parent = selected.into_path().map_err(|_| {
-        "The selected destination folder is not available on this platform.".to_string()
-    })?;
     let created = bundle_create::create_bundle(&parent, &input)?;
     grants
         .grant(&created, bundle_grant::BundleGrantKind::LocalFolder)

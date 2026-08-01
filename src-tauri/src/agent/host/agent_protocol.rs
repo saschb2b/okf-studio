@@ -1602,11 +1602,8 @@ pub async fn create_staged_bundle(
     folder_name: &str,
 ) -> Result<Option<AgentStagedCreateInfo>, String> {
     let folder_name = validate_bundle_directory_name(folder_name)?;
-    let Some(parent) = crate::pick_folder(
-        app,
-        "Choose the parent folder for the new OKF bundle",
-        None,
-    )?
+    let Some(parent) =
+        crate::pick_folder(app, "Choose the parent folder for the new OKF bundle", None)?
     else {
         return Ok(None);
     };

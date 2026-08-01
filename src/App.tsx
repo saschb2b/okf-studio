@@ -16,6 +16,7 @@ import { LogView } from "@/features/shell/components/LogView.tsx";
 import { Settings } from "@/features/shell/components/Settings.tsx";
 import { EmptyState } from "@/features/shell/components/EmptyState.tsx";
 import { OpenRemoteDialog } from "@/features/bundle/components/OpenRemoteDialog.tsx";
+import { FolderBrowser } from "@/features/bundle/components/FolderBrowser.tsx";
 import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDialog.tsx";
 import { RecipientProjectionDialog } from "@/features/bundle/components/RecipientProjectionDialog.tsx";
 import { BundleDetailsDialog } from "@/features/bundle/components/BundleDetailsDialog.tsx";
@@ -31,6 +32,7 @@ import { GitDiffWorkspace } from "@/features/git/components/GitDiffWorkspace.tsx
 import { closeGitDiff, useGitDiff } from "@/features/git/gitRepositoryStore.ts";
 import { AgentPanelStateGallery } from "@/mock/AgentPanelStateGallery.tsx";
 import { showWindowWhenPainted } from "@/shared/platform/window.ts";
+import { isAndroidShell } from "@/shared/platform/platform.ts";
 
 const OVERVIEW_WITH_SIDEBAR_MIN_WIDTH = 704;
 
@@ -146,11 +148,13 @@ export function App() {
       <CommandPalette />
       <ShortcutsHelp />
       <OpenRemoteDialog />
+      <FolderBrowser />
       <CreateBundleDialog />
       <ExternalEntryDialog />
 
-      {/* Borderless-window resize handles (Tauri only). */}
-      <ResizeHandles />
+      {/* Borderless-window resize handles (Tauri only). The Android activity is
+          sized by the system, so its edges are not drag targets. */}
+      {!isAndroidShell() && <ResizeHandles />}
     </div>
   );
 }

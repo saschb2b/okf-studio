@@ -1,14 +1,14 @@
 ---
 type: Architecture Decision
 title: Build and Release
-description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check and user-initiated installs.
-tags: [architecture, decision, build, release, packaging]
-generated: { by: claude/unrecorded, at: 2026-07-29T14:42:58+02:00 }
+description: How the app is versioned, packaged per OS and as an Android APK, released, and updated with one disclosed launch check and user-initiated installs.
+tags: [architecture, decision, build, release, packaging, android]
+generated: { by: claude/unrecorded, at: 2026-08-01T09:12:00+02:00 }
 ---
 
 # Decision
 
-The app ships as native installers per platform, built by `tauri build` on a per-OS CI matrix. No OS code signing for v1 (users see an "unverified publisher" prompt). The user always starts an update install, through Tauri's signed updater.
+The app ships as native installers per platform, built by `tauri build` on a per-OS CI matrix, plus one Android APK for tablets. No OS code signing for v1 (users see an "unverified publisher" prompt). The user always starts an update install, through Tauri's signed updater on desktop and by installing a new APK on Android.
 
 The one automatic network call the shipped binary makes is a single quiet release check shortly after launch. It feeds the update badge. [Settings](../ux/settings.md) discloses it. The check carries no identity or telemetry, and an off switch restores strictly on-demand checking.
 
@@ -18,8 +18,24 @@ The one automatic network call the shipped binary makes is a single quiet releas
 
 - **Windows:** `.msi` and/or NSIS `.exe`.
 - **Ubuntu:** `.deb` and AppImage.
+- **Android:** one universal `.apk`.
 
 Each is a [self-contained, portable](../product/principles.md) artifact that uses the system webview. There is no bundled runtime the user must manage.
+
+## Android
+
+The Android build exists so a bundle on a tablet can be opened, read, questioned, and changed, from the same codebase. `tauri android build --apk` cross-compiles the Rust core for the four Android ABIs and packs them into one universal APK, so nobody has to know their own CPU to pick a download. The Gradle project lives in `src-tauri/gen/android`. It is generated once by `tauri android init` and then committed, because the signing config and the manifest are edited by hand from there on; the parts each build rewrites stay git-ignored.
+
+Three boundaries the desktop build does not have:
+
+- **The plugins differ.** `tauri-plugin-updater`, `tauri-plugin-process`, `tauri-plugin-window-state`, and `tauri-plugin-single-instance` are compiled out on Android in `Cargo.toml`, so the permissions naming them cannot sit in the default capability file. They live in `capabilities/desktop.json`, scoped with `"platforms"`. A permission for a plugin that is not in the build fails the build rather than being ignored, which is the behavior worth having.
+- **Choosing a folder works differently.** Android's own picker returns a `content://` URI, which `std::fs` cannot open, and adopting the Storage Access Framework would mean rewriting every read and write in the app against a URI abstraction while leaving the OKF core and the file watcher unable to see the files. So the app asks for `MANAGE_EXTERNAL_STORAGE` instead, which makes shared storage an ordinary path tree, and ships its own folder browser to replace the missing picker (`src-tauri/src/mobile_storage.rs`, `FolderBrowser.tsx`). The user turns the permission on once, on a system screen the app can open but cannot decide for them. The cost is worth stating: it is a broad permission, and Google Play requires a declared justification for it. This build is sideloaded.
+- **ACP agents cannot run.** A catalog or custom agent is a binary that Studio starts as a child process. Android does not execute binaries from app storage, so that path is closed and nothing can reopen it from here. The [agent panel](../features/agent-panel.md) still works over HTTP, since an endpoint profile talks to an OpenAI-compatible URL with no process involved. On a tablet the choice of agent is therefore an API key or a reachable endpoint, not a locally installed CLI.
+- **Git operations are unavailable.** The [Git integration](git-integration.md) runs the `git` binary, and Android has none. The repository panel reports itself unavailable, which is the same state it already shows for a bundle outside a repository. A pure-Rust Git implementation would lift this; nothing else in the design has to change for it.
+
+The shell adapts rather than being ported. Android is one full-screen activity with system-drawn bars, so the frontend drops the caption buttons, the window-drag region, the resize handles, and the rounded frame, and grows the icon controls to a 44px touch target. One flag decides it (`isAndroidShell` in `src/shared/platform/platform.ts`), set from the webview's user-agent so no plugin, permission, or async boot hop is needed.
+
+Clearing the system bars is the one piece the frontend cannot do. Android 15 and later draw every app edge to edge with no opt-out, and a WebView is never told: `env(safe-area-inset-*)` reports 0 inside the page even under `viewport-fit=cover`, which put the top bar under the status bar clock and the status bar under the gesture pill. `MainActivity.kt` pads the content view with the real window insets instead, the on-screen keyboard included, so a focused field is never left behind the keyboard. The strips this leaves take the app's chrome color from `values/colors.xml` and its `values-night` pair, which track `--bg-chrome` in `src/styles.css`.
 
 # CI and release workflows
 
@@ -37,9 +53,13 @@ Two GitHub Actions workflows (`.github/workflows/`):
 
   The matrix restricts each Linux runner to its one bundle target (`--bundles deb` / `--bundles appimage`), so a runner never emits the other's (broken) artifact.
 
+  The same workflow carries a separate **Android** job. It is not a matrix row, because `tauri-action` bundles desktop targets only: the job sets up JDK 21 and a pinned NDK, runs `tauri android build --apk`, renames the APK after the release tag, and uploads it with the `gh` CLI. Android is the one target that does cross-compile reliably, so it builds on the same Ubuntu runner as everything else.
+
 # Code signing
 
 Studio assumes no code signing for v1. Users may see an OS "unverified publisher" prompt on first launch. Signing certificates (Windows Authenticode, and notarization where applicable) are a post-v1 hardening step, not a launch blocker.
+
+Android is the exception, because there an unsigned release APK cannot be installed at all. The released APK is signed with a shared debug key committed at `src-tauri/gen/android/debug.keystore`. Its password is public, so the signature identifies nobody. What it buys is that every release carries the *same* signature, and Android refuses an update whose signature changed. A real key drops in through a git-ignored `keystore.properties` beside `gradlew`, with no Gradle edit. Make that switch before any store listing rather than after: changing the key forces every installed user to uninstall first, losing their app data. Sideloading still asks the user to allow installs from the browser or file manager, which is the "unverified publisher" prompt in its Android form.
 
 # Versioning
 

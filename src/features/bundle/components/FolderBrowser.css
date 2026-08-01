@@ -1,0 +1,117 @@
+/* Studio's own folder browser, the Android stand-in for the native folder
+   dialog. Uses the shared .ui-dialog / .btn chrome; this file adds the path
+   line, the folder rows, and the grant prompt. Tokens only, no literals. */
+
+.folder-browser {
+  width: 30rem;
+  max-width: calc(100vw - var(--space-32));
+  padding: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Where the browser stands. Monospace because it is a path: proportional type
+   makes two sibling paths hard to compare at a glance. */
+.folder-browser__path {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.folder-browser__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* A bounded tray that scrolls, so a folder with 200 children cannot push the
+     Open button off a tablet screen. */
+  max-height: 22rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.folder-browser__row {
+  font: inherit;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  /* 44px tall at the default type scale: this list is built for a fingertip. */
+  padding: var(--space-12);
+  border: 0;
+  border-bottom: 1px solid var(--border-variant);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.folder-browser__row:hover:not(:disabled) {
+  background: var(--ghost-hover);
+}
+.folder-browser__row:active:not(:disabled) {
+  background: var(--ghost-active);
+}
+.folder-browser__row:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}
+.folder-browser__list li:last-child .folder-browser__row {
+  border-bottom: 0;
+}
+
+.folder-browser__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.folder-browser__go {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.folder-browser__refused {
+  flex: none;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
+.folder-browser__empty {
+  padding: var(--space-12);
+  font-size: var(--fs-sm);
+}
+
+.folder-browser__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.folder-browser__hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.folder-browser__error {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--error);
+}
+
+/* The grant screen: prose, then the one action that leaves the app. */
+.folder-browser__grant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  align-items: flex-start;
+}
+.folder-browser__grant p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}

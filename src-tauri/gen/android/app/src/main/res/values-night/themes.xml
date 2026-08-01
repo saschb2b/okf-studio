@@ -1,0 +1,8 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.okf_viewer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- The strips the system bars sit over, and the launch window before
+             the webview paints, both use this. See values/colors.xml. -->
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

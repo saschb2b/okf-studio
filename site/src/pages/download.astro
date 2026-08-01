@@ -6,8 +6,8 @@ import { version, repo, releases, migrationNotes, downloads } from "../data/site
 ---
 
 <Shell
-  title="Download OKF Studio for Windows and Linux"
-  description="Get the current OKF Studio release for Windows (.msi, .exe) or Linux (.deb, AppImage), free and open source. macOS builds from source."
+  title="Download OKF Studio for Windows, Linux, and Android"
+  description="Get the current OKF Studio release for Windows (.msi, .exe), Linux (.deb, AppImage), or Android tablets (.apk), free and open source. macOS builds from source."
   path="download/"
 >
   <main id="main">
@@ -45,9 +45,20 @@ import { version, repo, releases, migrationNotes, downloads } from "../data/site
             <article class="feature-card">
               <h3 class="feature-card__title">Requirements</h3>
               <p class="feature-card__body">
-                A small native Tauri app: Windows x64 (.msi or .exe) and Linux
-                (.deb or AppImage). No account, no telemetry, no background
-                services.
+                A small native Tauri app: Windows x64 (.msi or .exe), Linux
+                (.deb or AppImage), and Android 7 or later (.apk). No account,
+                no telemetry, no background services.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3 class="feature-card__title">Android tablets</h3>
+              <p class="feature-card__body">
+                One .apk for every device. Open folder asks for file access
+                once, then browses your tablet's storage inside Studio. An agent
+                you installed as a command-line tool cannot run on Android, so
+                connect an API key or an endpoint there; Git stays on the
+                desktop. Your tablet asks you to allow the install, because the
+                file comes from a browser and not a store.
               </p>
             </article>
             <article class="feature-card">

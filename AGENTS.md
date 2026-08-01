@@ -59,7 +59,11 @@ pnpm dev            # frontend only, in a browser (mock bundle) — fastest for 
 pnpm storybook      # component playground on :6006 — per-component states on the app's real tokens
 pnpm tauri dev      # the full app with hot reload
 pnpm tauri build    # installers: .msi/.exe (Windows), .deb/AppImage (Ubuntu)
+pnpm tauri android dev        # the app on a connected tablet or emulator
+pnpm tauri android build --apk  # one universal .apk
 ```
+
+The Android build needs an SDK with an NDK (`ANDROID_HOME`, `NDK_HOME`) and a JDK 17 to 21 in `JAVA_HOME`. Its Gradle project is committed at `src-tauri/gen/android`; `tauri android init` regenerates it, so a hand edit there (signing config, manifest) is worth a second look after a Tauri CLI upgrade. What differs from desktop, including why opening a folder is desktop-only, is in [`docs/architecture/build-and-release.md`](docs/architecture/build-and-release.md).
 
 **Storybook is also an agent surface.** The dev server mounts `@storybook/addon-mcp` at `http://localhost:6006/mcp` (registered in the repo-root `.mcp.json`): with it running you can enumerate components/stories and author new ones through the addon's tools. Stories are colocated `src/**/*.stories.tsx`; a new or restyled component state gets a story there, not another ad-hoc fixture (`?agent-gallery` stays for whole-panel compositions). **Stories are tests**: interactive ones carry `play` functions, and `pnpm test:stories` runs every story headless in Chromium — run it when components or stories change. Store-bound components wrap in the `WithStore` harness (`src/mock/withStore.tsx`), which boots the real `AppProvider` over the browser mock. Per-story screenshots come from `http://localhost:6006/iframe.html?id=<story-id>`. Keep ad hoc captures outside the repository; add an image to `docs/ux/` only when a named Markdown concept links it as curated evidence. See [`docs/architecture/testing.md`](docs/architecture/testing.md).
 

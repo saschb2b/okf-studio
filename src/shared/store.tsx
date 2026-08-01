@@ -304,6 +304,9 @@ export interface State {
   /** The bundle Overview/health landing view takes over the content area. */
   overview: boolean;
   remoteOpen: boolean;
+  /** Studio's own folder browser, which stands in for the native folder dialog
+   *  on Android (see mobile_storage.rs). Never opened on desktop. */
+  folderBrowserOpen: boolean;
   /** One-shot URL to prefill (and auto-fetch) the next time the remote dialog
    *  opens — the first-run example cards hand their URL off this way. */
   remoteSeed: string | null;
@@ -375,6 +378,7 @@ function makeInitialState(): State {
   switcherOpen: false,
   overview: false,
   remoteOpen: false,
+  folderBrowserOpen: false,
   remoteSeed: null,
   createOpen: false,
   projectionOpen: false,
@@ -435,6 +439,7 @@ type Msg =
   | { t: "overview"; v: boolean }
   | { t: "showOnlyType"; v: string }
   | { t: "remoteOpen"; v: boolean; seed?: string }
+  | { t: "folderBrowserOpen"; v: boolean }
   | { t: "createOpen"; v: boolean }
   | { t: "projectionOpen"; v: boolean }
   | { t: "bundleDetailsOpen"; v: boolean }
@@ -535,6 +540,8 @@ function reducer(s: State, m: Msg): State {
     }
     case "remoteOpen":
       return { ...s, remoteOpen: m.v, remoteSeed: m.v ? (m.seed ?? null) : null };
+    case "folderBrowserOpen":
+      return { ...s, folderBrowserOpen: m.v };
     case "createOpen":
       return { ...s, createOpen: m.v };
     case "projectionOpen":
@@ -816,6 +823,8 @@ export interface Actions {
   setOverview(open: boolean): void;
   showOnlyType(type: string): void;
   setRemoteOpen(open: boolean, seed?: string): void;
+  setFolderBrowserOpen(open: boolean): void;
+  openBrowsedFolder(path: string): Promise<void>;
   setCreateOpen(open: boolean): void;
   setProjectionOpen(open: boolean): void;
   setBundleDetailsOpen(open: boolean): void;
@@ -901,16 +910,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async openFolder() {
       let folder: string | null;
       try {
+        // Android has no folder picker, so Studio brings its own. Asking the
+        // backend which platform this is keeps the answer in one place instead
+        // of spreading a mobile check through every caller.
+        const access = await ipc.storageAccessState();
+        if (access.needsGrant) {
+          dispatch({ t: "folderBrowserOpen", v: true });
+          return;
+        }
         folder = await ipc.pickFolder();
       } catch (e) {
-        // Opening the picker can fail, not just the folder it returns: on
-        // Android there is no folder picker at all, and the backend refuses
-        // with a sentence naming Open from URL as the way in. Unhandled, that
-        // rejection made the button look dead.
+        // Opening the picker can fail, not only the folder it returns.
+        // Unhandled, that rejection made the button look dead.
         dispatch({ t: "error", v: String(e) });
         return;
       }
       if (!folder) return;
+      await a.openFolderPath(folder);
+    },
+    /** Open the folder the in-app browser chose, on the same path a picked
+     *  folder takes: grant it in Rust, then scan and open it. */
+    async openBrowsedFolder(path) {
+      const folder = await ipc.grantBundleFolder(path);
+      dispatch({ t: "folderBrowserOpen", v: false });
       await a.openFolderPath(folder);
     },
     async openFolderPath(folder, remote) {
@@ -1056,6 +1078,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     setRemoteOpen(open, seed) {
       dispatch({ t: "remoteOpen", v: open, seed });
+    },
+    setFolderBrowserOpen(open) {
+      dispatch({ t: "folderBrowserOpen", v: open });
     },
     setCreateOpen(open) {
       dispatch({ t: "createOpen", v: open });

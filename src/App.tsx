@@ -16,6 +16,7 @@ import { LogView } from "@/features/shell/components/LogView.tsx";
 import { Settings } from "@/features/shell/components/Settings.tsx";
 import { EmptyState } from "@/features/shell/components/EmptyState.tsx";
 import { OpenRemoteDialog } from "@/features/bundle/components/OpenRemoteDialog.tsx";
+import { FolderBrowser } from "@/features/bundle/components/FolderBrowser.tsx";
 import { CreateBundleDialog } from "@/features/bundle/components/CreateBundleDialog.tsx";
 import { RecipientProjectionDialog } from "@/features/bundle/components/RecipientProjectionDialog.tsx";
 import { BundleDetailsDialog } from "@/features/bundle/components/BundleDetailsDialog.tsx";
@@ -147,12 +148,13 @@ export function App() {
       <CommandPalette />
       <ShortcutsHelp />
       <OpenRemoteDialog />
+      <FolderBrowser />
       <CreateBundleDialog />
       <ExternalEntryDialog />
 
       {/* Borderless-window resize handles (Tauri only). The Android activity is
           sized by the system, so its edges are not drag targets. */}
-      {!isAndroidShell && <ResizeHandles />}
+      {!isAndroidShell() && <ResizeHandles />}
     </div>
   );
 }

@@ -41,7 +41,7 @@ Current builds are on the [releases page](https://github.com/saschb2b/okf-studio
 
 There is no macOS build in the release matrix. Builds are not code-signed, so your OS may show an "unverified publisher" prompt on first launch.
 
-The Android build is for reading a bundle on a tablet. Two limits come from the platform, not from the app. Android gives an app no access to your storage folders, so a bundle gets there through **Open from URL** rather than **Open folder**. And every agent connection starts a child process, which Android does not allow, so agent work stays on the desktop. The APK is signed with a public debug key, which is enough to install and to update in place, and proves nothing about who built it.
+On Android, **Open folder** asks for all-files access once and then browses your storage inside Studio, because Android's own picker returns a handle the app cannot read files through. Two limits come from the platform, not from the app: an agent installed as a command-line binary cannot run there, so a tablet connects to an API key or an endpoint instead, and Git needs the `git` binary, which Android has none of. The APK is signed with a public debug key, which is enough to install and to update in place, and proves nothing about who built it.
 
 ## What it does
 

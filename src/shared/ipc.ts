@@ -3874,6 +3874,86 @@ export async function pickFolder(): Promise<string | null> {
   return invoke<string | null>("pick_bundle_folder");
 }
 
+/** One directory row in the in-app folder browser. */
+export interface FolderEntry {
+  name: string;
+  path: string;
+  readable: boolean;
+}
+
+/** One screen of the in-app folder browser. `parent` is null at its top. */
+export interface FolderListing {
+  path: string;
+  parent: string | null;
+  entries: FolderEntry[];
+}
+
+/**
+ * Whether this platform replaces the native folder dialog with Studio's own
+ * browser, and where that browser starts. Android is the only platform that
+ * answers `needsGrant: true`.
+ */
+export interface StorageAccess {
+  needsGrant: boolean;
+  startPath: string;
+}
+
+export async function storageAccessState(): Promise<StorageAccess> {
+  if (!isTauri()) return { needsGrant: false, startPath: MOCK_FOLDER };
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<StorageAccess>("storage_access_state");
+}
+
+/**
+ * The Android activity's storage bridge (MainActivity.kt), injected into the
+ * webview. Both calls need the activity, which Tauri hands neither to Rust nor
+ * to a command, so they arrive here instead. Absent on every other platform.
+ */
+interface AndroidStorageBridge {
+  isGranted(): boolean;
+  requestAccess(): void;
+}
+
+function storageBridge(): AndroidStorageBridge | null {
+  const bridge = (globalThis as { OkfStorageAccess?: AndroidStorageBridge }).OkfStorageAccess;
+  return bridge ?? null;
+}
+
+/**
+ * Whether the app may read file contents in shared storage. True wherever the
+ * question does not arise, so only Android can answer no.
+ */
+export function hasStorageAccess(): boolean {
+  return storageBridge()?.isGranted() ?? true;
+}
+
+/** Take the user to Android's all-files access screen. Only Android has one. */
+export function requestStorageAccess(): void {
+  storageBridge()?.requestAccess();
+}
+
+export async function listFolders(path: string): Promise<FolderListing> {
+  if (!isTauri()) {
+    return {
+      path,
+      parent: path === MOCK_FOLDER ? null : MOCK_FOLDER,
+      entries: [
+        { name: "docs", path: `${path}/docs`, readable: true },
+        { name: "design-system", path: `${path}/design-system`, readable: true },
+      ],
+    };
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<FolderListing>("list_folders", { path });
+}
+
+/** Record a folder chosen in the browser, as the native picker's result is. */
+export async function grantBundleFolder(path: string): Promise<string> {
+  if (!isTauri()) return path;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<string>("grant_bundle_folder", { path });
+}
+
 /** Inputs for the static new-bundle generator (no agent involved). */
 export interface CreateBundleInput {
   folderName: string;

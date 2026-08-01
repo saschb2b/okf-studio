@@ -2,6 +2,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- A bundle is a folder of Markdown that Studio scans, reads, and stages
+         writes against, and the Storage Access Framework hands an app a
+         content URI that none of that code can open. All-files access makes
+         shared storage an ordinary path tree, which is what the OKF core, the
+         file watcher, and the staged-write pipeline already speak. The user
+         grants it by hand on a system screen. See src-tauri/src/mobile_storage.rs
+         and docs/architecture/build-and-release.md. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- Android 12 and earlier have no all-files screen; there, plain read
+         access to shared storage is the whole grant. -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 

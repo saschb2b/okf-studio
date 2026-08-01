@@ -88,6 +88,7 @@ mod external_entry;
 mod git_repository;
 #[path = "git/watch.rs"]
 mod git_watch;
+mod mobile_storage;
 mod remote;
 mod retrieval;
 mod watch;
@@ -133,16 +134,43 @@ fn pick_folder(
         .map_err(|_| "The folder you chose is not available on this platform.".to_string())
 }
 
+/// Android has no folder picker, so the frontend opens the in-app browser
+/// (`list_folders` below) and hands the chosen path to the command that needed
+/// it. Reaching this function means a caller has not been given that path yet.
 #[cfg(mobile)]
 fn pick_folder(
     _app: &AppHandle,
     _title: &str,
     _start_in: Option<&Path>,
 ) -> Result<Option<std::path::PathBuf>, String> {
-    Err(
-        "Android cannot hand an app a folder from your storage. Use Open from URL to download a bundle instead."
-            .to_string(),
-    )
+    Err("Choose the folder in Studio's own browser on this platform.".to_string())
+}
+
+/// Whether this platform needs the in-app folder browser, and where it starts.
+#[tauri::command]
+fn storage_access_state() -> mobile_storage::StorageAccess {
+    mobile_storage::access_state()
+}
+
+/// One screen of the in-app folder browser.
+///
+/// This reads directory *names* only, before any grant exists, which is the
+/// point: the user cannot choose a folder they cannot see. Nothing inside a
+/// listed folder is opened, and a bundle is still read only after
+/// `grant_bundle_folder` records the choice.
+#[tauri::command]
+fn list_folders(path: String) -> Result<mobile_storage::FolderListing, String> {
+    mobile_storage::list_folders(Path::new(&path))
+}
+
+/// Record the folder the user chose in the in-app browser, exactly as the
+/// native picker's result is recorded on desktop.
+#[tauri::command]
+fn grant_bundle_folder(
+    grants: State<'_, bundle_grant::BundleGrantState>,
+    path: String,
+) -> Result<String, String> {
+    grants.grant(Path::new(&path), bundle_grant::BundleGrantKind::LocalFolder)
 }
 
 fn authorized_git_scope(
@@ -2095,6 +2123,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             pick_bundle_folder,
+            storage_access_state,
+            list_folders,
+            grant_bundle_folder,
             pick_git_repository_folder,
             create_bundle,
             revoke_bundle_grant,

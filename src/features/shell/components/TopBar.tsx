@@ -319,7 +319,7 @@ export function TopBar() {
 
           {/* Caption buttons belong to the borderless desktop window. Android
               draws its own system bars and closes the app with a gesture. */}
-          {!isAndroidShell && <WindowControls />}
+          {!isAndroidShell() && <WindowControls />}
         </div>
       </Toolbar.Root>
     </Tooltip.Provider>

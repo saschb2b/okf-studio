@@ -59,74 +59,102 @@ export function EmptyState() {
     );
   }
 
-  // First run — nothing open yet. One scannable action list (the welcome-list
-  // pattern) instead of a row of equal buttons: each action names who it's
-  // for, shortcuts sit inline on their action, and the sample bundle is a
-  // first-class row instead of a footnote. See docs/ux/first-run.md.
+  // First run — nothing open yet. A branded header, then two labeled groups
+  // of action cards: Start (the three ways in) and Explore (curated sample
+  // bundles). Each card carries an icon chip, a label, a one-line description,
+  // and its shortcut in one right-aligned key group. See docs/ux/first-run.md.
   return (
     <div className="empty hero">
-      <img className="hero-mark" src={appIcon} alt="" aria-hidden="true" />
-      <h1 className="hero-title">OKF Studio</h1>
-      <p className="hero-tagline">
-        Explore connected knowledge with the agents you already use.
-      </p>
+      <div className="hero-brand">
+        <img className="hero-mark" src={appIcon} alt="" aria-hidden="true" />
+        <h1 className="hero-title">OKF Studio</h1>
+        <p className="hero-tagline">
+          Explore connected knowledge with the agents you already use.
+        </p>
+      </div>
 
-      <nav className="hero-actions" aria-label="Get started">
-        <button
-          type="button"
-          className="hero-action hero-action--primary"
-          onClick={() => void actions.openFolder()}
-        >
-          <FolderOpen size={18} aria-hidden="true" />
-          <span className="hero-action-text">
-            <span className="hero-action-label">Open folder…</span>
-            <span className="hero-action-desc">
-              Browse OKF bundles already on disk
-            </span>
-          </span>
-          <kbd className="kbd">{modKey}</kbd> <kbd className="kbd">O</kbd>
-        </button>
-        <button
-          type="button"
-          className="hero-action"
-          onClick={() => actions.setCreateOpen(true)}
-        >
-          <FilePlus2 size={18} aria-hidden="true" />
-          <span className="hero-action-text">
-            <span className="hero-action-label">Create new bundle…</span>
-            <span className="hero-action-desc">
-              Start fresh from a short form — no agent needed
-            </span>
-          </span>
-        </button>
-        <button
-          type="button"
-          className="hero-action"
-          onClick={() => actions.setRemoteOpen(true)}
-        >
-          <Globe size={18} aria-hidden="true" />
-          <span className="hero-action-text">
-            <span className="hero-action-label">Open from URL…</span>
-            <span className="hero-action-desc">
-              Fetch a GitHub repo or archive into a local cache
-            </span>
-          </span>
-          <kbd className="kbd">{modKey}</kbd> <kbd className="kbd">{shiftKey}</kbd> <kbd className="kbd">O</kbd>
-        </button>
-        {REMOTE_EXAMPLES.map((ex) => (
-          <button
-            key={ex.url}
-            type="button"
-            className="hero-action"
-            onClick={() => actions.setRemoteOpen(true, ex.url)}
-          >
-            <BookOpen size={18} aria-hidden="true" />
-            <span className="hero-action-text">
-              <span className="hero-action-label">Try {ex.title}</span>
-              <span className="hero-action-desc">{ex.blurb}</span>
-            </span>
-          </button>
-        ))}
+      <nav className="hero-body" aria-label="Get started">
+        <section className="hero-group">
+          <h2 className="hero-group-label">Start</h2>
+          <div className="hero-actions">
+            <button
+              type="button"
+              className="hero-action hero-action--primary"
+              onClick={() => void actions.openFolder()}
+            >
+              <span className="hero-action-chip" aria-hidden="true">
+                <FolderOpen size={18} />
+              </span>
+              <span className="hero-action-text">
+                <span className="hero-action-label">Open folder…</span>
+                <span className="hero-action-desc">
+                  Browse OKF bundles already on disk
+                </span>
+              </span>
+              <span className="hero-action-keys" aria-hidden="true">
+                <kbd className="kbd">{modKey}</kbd>
+                <kbd className="kbd">O</kbd>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="hero-action"
+              onClick={() => actions.setCreateOpen(true)}
+            >
+              <span className="hero-action-chip" aria-hidden="true">
+                <FilePlus2 size={18} />
+              </span>
+              <span className="hero-action-text">
+                <span className="hero-action-label">Create new bundle…</span>
+                <span className="hero-action-desc">
+                  Start fresh from a short form — no agent needed
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="hero-action"
+              onClick={() => actions.setRemoteOpen(true)}
+            >
+              <span className="hero-action-chip" aria-hidden="true">
+                <Globe size={18} />
+              </span>
+              <span className="hero-action-text">
+                <span className="hero-action-label">Open from URL…</span>
+                <span className="hero-action-desc">
+                  Fetch a GitHub repo or archive into a local cache
+                </span>
+              </span>
+              <span className="hero-action-keys" aria-hidden="true">
+                <kbd className="kbd">{modKey}</kbd>
+                <kbd className="kbd">{shiftKey}</kbd>
+                <kbd className="kbd">O</kbd>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section className="hero-group">
+          <h2 className="hero-group-label">Explore</h2>
+          <div className="hero-actions">
+            {REMOTE_EXAMPLES.map((ex) => (
+              <button
+                key={ex.url}
+                type="button"
+                className="hero-action"
+                onClick={() => actions.setRemoteOpen(true, ex.url)}
+              >
+                <span className="hero-action-chip" aria-hidden="true">
+                  <BookOpen size={18} />
+                </span>
+                <span className="hero-action-text">
+                  <span className="hero-action-label">Try {ex.title}</span>
+                  <span className="hero-action-desc">{ex.blurb}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       </nav>
 
       <p className="hero-note">

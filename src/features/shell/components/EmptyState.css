@@ -50,21 +50,53 @@
   word-break: break-all;
 }
 
-/* Hero (first run) — the welcome-list pattern: brand mark, one tagline, then
-   a single scannable action list where each row names its audience and
-   carries its own shortcut. See docs/ux/first-run.md. */
+/* Hero (first run) — a branded header over two labeled groups of action
+   cards. The atmosphere is a faint radial accent tint (see the hero-canvas
+   pattern in the design system: quiet ground, accent stays on the actions).
+   See docs/ux/first-run.md. */
+.hero {
+  position: relative;
+  overflow: hidden;
+  gap: var(--space-32);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      560px 380px at 50% 8%,
+      color-mix(in srgb, var(--accent) 7%, transparent),
+      transparent 70%
+    );
+}
+.hero > * {
+  position: relative;
+}
+
+.hero-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+}
 .hero-mark {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 12px 28px var(--accent-soft));
 }
 .hero-title {
   font-size: var(--fs-xl);
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .hero-tagline {
-  margin: 0 0 var(--space-12);
+  margin: 0;
   font-size: var(--fs-md);
-  max-width: 40ch;
+  max-width: 44ch;
+  line-height: var(--lh-normal);
+  text-wrap: balance;
 }
 
 /* Kept for the "no bundles found" state's action pair. */
@@ -76,41 +108,82 @@
   gap: var(--space-10);
 }
 
+.hero-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  width: min(520px, 100%);
+  text-align: left;
+}
+.hero-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.hero-group-label {
+  margin: 0;
+  padding-inline: var(--space-4);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
 .hero-actions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  width: min(440px, 100%);
-  text-align: left;
+  gap: var(--space-8);
 }
+
+/* Action card: icon chip, label + description, right-aligned key group. */
 .hero-action {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-12);
-  padding: var(--space-8) var(--space-12);
+  padding: var(--space-12) var(--space-16);
   font: inherit;
   color: var(--text-dim);
   text-align: left;
   cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius);
+  background: var(--bg-elev);
+  border: 1px solid var(--border-variant);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
 }
-.hero-action:hover,
+.hero-action:hover {
+  color: var(--text);
+  background: var(--el-hover);
+  border-color: var(--border-strong);
+}
 .hero-action:focus-visible {
   color: var(--text);
-  background: var(--ghost-hover);
-  outline: none;
-}
-.hero-action:focus-visible {
   outline: var(--focus-w) solid var(--accent);
-  outline-offset: var(--focus-offset-inset);
+  outline-offset: var(--focus-offset);
 }
-/* Order carries hierarchy; the primary row gets the one spot of accent. */
-.hero-action--primary > svg,
-.hero-action--primary .hero-action-label {
+.hero-action-chip {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+}
+/* Order carries hierarchy; the primary card gets the one spot of accent. */
+.hero-action--primary {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-variant));
+}
+.hero-action--primary .hero-action-chip {
+  background: var(--accent-soft);
   color: var(--accent);
+}
+.hero-action--primary:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-variant));
 }
 .hero-action-text {
   display: grid;
@@ -127,16 +200,18 @@
   font-size: var(--fs-xs);
   line-height: var(--lh-normal);
 }
-/* The cap itself is .kbd in chrome.css; only the wrapping rule is local. */
-.hero-action .kbd {
+/* The cap itself is .kbd in chrome.css; only the grouping is local. */
+.hero-action-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
   white-space: nowrap;
 }
 
 /* One line of fine print — the trust contract. */
 .hero-note {
-  margin: var(--space-8) 0 0;
+  margin: 0;
   font-size: var(--fs-xs);
-  max-width: 52ch;
 }
 
 /* Spinner */

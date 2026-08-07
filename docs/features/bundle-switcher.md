@@ -21,7 +21,7 @@ The folder stays underneath as the [security scope](../architecture/ipc-and-secu
 - A button at the top-left of the top bar, with a chevron pinned to its right edge. Its label is the active bundle's name: the root `index.md` first `# Heading`, or the directory name as a fallback.
 - A smaller secondary line shows the folder the bundle lives in, since one folder can hold several bundles.
 - The trigger is fixed-width, so switching bundles never reflows the chrome. Long names ellipsize. It leads with the app's brand tile (the icon's dark rounded tile with the blueto violet folder mark), the classic app-icon-in-the-titlebar-corner. The tile shows in both the loaded and the "Open a folder…" states. It is the one deliberate spot of brand color in an otherwise quiet chrome.
-- With nothing open, the label reads "Open a folder…" and clicking goes straight to the OS picker (the [First Run](../ux/first-run.md) empty state).
+- With nothing open, the label reads "Open a bundle…" and clicking opens the same popover — recents plus the footer actions (open folder, open from URL, new bundle) — so every way in is reachable before the first bundle exists (the [First Run](../ux/first-run.md) empty state).
 
 # The popover
 
@@ -55,7 +55,7 @@ Studio fetches a remote bundle once, and never streams it. Studio downloads the 
 
 # Empty states
 
-The [report-never-refuse stance](../ux/empty-and-error-states.md) drives all four. With nothing open, the trigger reads "Open a folder…" and the popover shows only the footer plus any recents. A folder with zero bundles gets the inline "what an OKF bundle is" note with a [spec-summary](../reference/okf-spec-summary.md) link. With no recents yet, the section reads "Bundles you open will show up here." A search with no matches says "No matches" in each group. The onboarding copy appears only when there are genuinely no recents.
+The [report-never-refuse stance](../ux/empty-and-error-states.md) drives all four. With nothing open, the trigger reads "Open a bundle…" and the popover shows only the footer plus any recents. A folder with zero bundles gets the inline "what an OKF bundle is" note with a [spec-summary](../reference/okf-spec-summary.md) link. With no recents yet, the section reads "Bundles you open will show up here." A search with no matches says "No matches" in each group. The onboarding copy appears only when there are genuinely no recents.
 
 # Keyboard
 

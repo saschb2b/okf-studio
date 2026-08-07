@@ -60,11 +60,10 @@ export function useGlobalKeys() {
         e.preventDefault();
         void actions.openFolder();
       } else if (mod && k === "p") {
-        // Open the Bundle Switcher (when a bundle is open); otherwise jump
-        // straight to the folder picker. preventDefault to suppress print.
+        // Open the Bundle Switcher; it works before the first bundle too
+        // (recents, URL, new bundle). preventDefault to suppress print.
         e.preventDefault();
-        if (state.bundle) actions.setSwitcher(!state.switcherOpen);
-        else void actions.openFolder();
+        actions.setSwitcher(!state.switcherOpen);
       } else if (mod && k === "k") {
         e.preventDefault();
         actions.setPalette(!state.palette);

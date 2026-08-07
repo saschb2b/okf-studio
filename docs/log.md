@@ -2,6 +2,7 @@
 
 ## 2026-08-07
 
+* **Fix**: The [Bundle Switcher](features/bundle-switcher.md) trigger now opens its popover before the first bundle too. It used to jump straight to the OS folder picker while showing a chevron, which promised a menu it never opened, and it hid the other ways in (recents, open from URL, new bundle) exactly when a user with no folder needed them. `Ctrl/Cmd+P` now opens the switcher in that state as well. The doc had described both behaviors; it now describes one.
 * **Update**: Reworked the [first-run](ux/first-run.md) welcome screen. The flat action list had a layout defect — its three-column grid let a row's second and third shortcut caps wrap onto their own grid row — and read as an unstructured pile. The screen is now a branded header (mark, name, proposition, over a faint radial accent tint) above two labeled groups of action cards, **Start** and **Explore**. Each card carries an icon in a tinted chip, a label, a one-line description, and its shortcut as one right-aligned key group; the primary card keeps the single spot of accent. The trust contract stays as one line of fine print. Tokens only, both themes verified, contrast gate still clear.
 
 ## 2026-07-29

@@ -49,24 +49,6 @@ export function BundleSwitcher() {
   const popupRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Nothing open yet → the trigger is a direct "open a folder" button rather
-  // than a popover (mirrors First Run; keeps an obvious entry point).
-  if (!state.bundle) {
-    return (
-      <Toolbar.Button
-        className="topbar-switch is-empty"
-        aria-label="Open folder"
-        onClick={() => void actions.openFolder()}
-      >
-        <img className="switch-tile" src={appIcon} alt="" aria-hidden="true" />
-        <span className="switch-name">Open a folder…</span>
-        <span className="switch-chevron" aria-hidden="true">
-          <ChevronDown size={14} />
-        </span>
-      </Toolbar.Button>
-    );
-  }
-
   const q = query.trim().toLowerCase();
 
   const matchRoot = (b: BundleRoot) =>
@@ -135,21 +117,30 @@ export function BundleSwitcher() {
     >
       <Popover.Trigger
         render={
-          <Toolbar.Button className="topbar-switch" aria-label="Switch bundle">
+          <Toolbar.Button
+            className={`topbar-switch${state.bundle ? "" : " is-empty"}`}
+            aria-label={state.bundle ? "Switch bundle" : "Open a bundle"}
+          >
             {/* The app's brand tile anchors the fixed-width trigger — the
                 classic app-icon-in-the-titlebar-corner, and a spot of color
                 in an otherwise quiet chrome. */}
             <img className="switch-tile" src={appIcon} alt="" aria-hidden="true" />
-            <span className="switch-trigger">
-              <span className="switch-name" title={state.bundle.name}>
-                {state.bundle.name}
-              </span>
-              {folderLabel && (
-                <span className="switch-folder" title={state.folder ?? ""}>
-                  {folderLabel}
+            {state.bundle ? (
+              <span className="switch-trigger">
+                <span className="switch-name" title={state.bundle.name}>
+                  {state.bundle.name}
                 </span>
-              )}
-            </span>
+                {folderLabel && (
+                  <span className="switch-folder" title={state.folder ?? ""}>
+                    {folderLabel}
+                  </span>
+                )}
+              </span>
+            ) : (
+              // Nothing open yet: same popover (recents, URL, new bundle),
+              // so every way in is reachable before the first bundle exists.
+              <span className="switch-name">Open a bundle…</span>
+            )}
             <span className="switch-chevron" aria-hidden="true">
               <ChevronDown size={14} />
             </span>
@@ -187,24 +178,28 @@ export function BundleSwitcher() {
               />
 
               <div className="switcher-scroll">
-                <Group label={`Bundles in ${folderLabel || "this folder"}`}>
-                  {folderBundles.length ? (
-                    folderBundles.map((b) => (
-                      <FolderRow
-                        key={b.root}
-                        bundle={b}
-                        active={b.root === state.activeRoot}
-                        folderLabel={folderLabel}
-                        onSelect={() => {
-                          void actions.selectBundle(b.root);
-                          close();
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <p className="switcher-empty muted">No matches.</p>
-                  )}
-                </Group>
+                {/* Only meaningful once a folder is open; on first run the
+                    popover leads with recents instead. */}
+                {state.folder != null && (
+                  <Group label={`Bundles in ${folderLabel || "this folder"}`}>
+                    {folderBundles.length ? (
+                      folderBundles.map((b) => (
+                        <FolderRow
+                          key={b.root}
+                          bundle={b}
+                          active={b.root === state.activeRoot}
+                          folderLabel={folderLabel}
+                          onSelect={() => {
+                            void actions.selectBundle(b.root);
+                            close();
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <p className="switcher-empty muted">No matches.</p>
+                    )}
+                  </Group>
+                )}
 
                 {pinned.length > 0 && (
                   <Group label="Pinned">

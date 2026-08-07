@@ -93,18 +93,5 @@
     "use-sync-external-store": "^1.6.0",
     "vite": "^6",
     "vitest": "^4.1.10"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ],
-    "patchedDependencies": {
-      "@storybook/addon-vitest@10.5.2": "patches/@storybook__addon-vitest@10.5.2.patch"
-    },
-    "peerDependencyRules": {
-      "allowedVersions": {
-        "eslint-plugin-jsx-a11y>eslint": "10"
-      }
-    }
   }
 }

@@ -1,0 +1,9 @@
+allowBuilds:
+  esbuild: true
+
+patchedDependencies:
+  "@storybook/addon-vitest@10.5.2": patches/@storybook__addon-vitest@10.5.2.patch
+
+peerDependencyRules:
+  allowedVersions:
+    "eslint-plugin-jsx-a11y>eslint": "10"

@@ -2278,6 +2278,11 @@
 .agent-composer__input-shell {
   display: grid;
   min-width: 0;
+  /* Hug the three rows and sit at the foot of whatever space the form is
+     given. As a stretched grid item the box grew to fill the panel, so the
+     input kept its 60px while the border ran hundreds of pixels below it.
+     That was invisible until the shell gained a surface to show it. */
+  align-self: end;
   background: var(--bg-elev);
   border: 1px solid var(--border-variant);
   border-radius: var(--radius-lg);

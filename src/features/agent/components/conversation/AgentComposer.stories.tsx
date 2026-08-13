@@ -240,6 +240,35 @@ export const StudioAgent: Story = {
 };
 
 /**
+ * A tall panel with room to spare. The composer hugs its content and sits at
+ * the foot of it.
+ *
+ * The other stories wrap the composer in a container sized by its own
+ * content, so none of them could see this: given surplus height the shell
+ * stretched to fill it, holding a 60px input inside a border that ran
+ * hundreds of pixels below. It was invisible until the shell gained a
+ * surface, and then it was the first thing anyone noticed.
+ */
+export const TallPanel: Story = {
+  args: { sendDisabled: true },
+  decorators: [
+    (Story) => (
+      <div style={{ height: 420, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: "1 1 auto" }} />
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const shell = canvas.getByRole("textbox", { name: "Message the agent" })
+      .closest(".agent-composer__input-shell");
+    await expect(shell).not.toBeNull();
+    // Content height, not the panel's leftover space.
+    await expect((shell as HTMLElement).getBoundingClientRect().height).toBeLessThan(220);
+  },
+};
+
+/**
  * The narrow panel fixture. The action bar is the first thing to run out of
  * room, so this is the width that decides how many labels the bar can carry.
  */

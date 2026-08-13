@@ -249,7 +249,7 @@ export function AttachmentPicker({
             type="button"
             className="btn ghost icon agent-attachment-trigger"
             aria-label="Add context or sources"
-            title="Add context or sources"
+            title="Add context or sources. Type @ in the message to attach a concept."
             disabled={disabled || nativePicker !== null}
             onPointerDown={() => setReaderSelection(onCaptureReaderSelection())}
             onKeyDown={(event) => {

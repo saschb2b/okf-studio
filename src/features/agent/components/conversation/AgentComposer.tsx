@@ -11,7 +11,8 @@
 // transient status, the context reading, and send.
 // See docs/ux/agent-composer.md.
 
-import { Send, Square } from "lucide-react";
+import { ListPlus, Send, Square } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
 import type * as React from "react";
 import "@/shared/styles/chrome.css";
 
@@ -24,7 +25,8 @@ export interface ComposerUsage {
 
 export interface AgentComposerProps {
   inputId: string;
-  inputRef?: React.Ref<HTMLTextAreaElement>;
+  /** Filled with the field once mounted, so the caller can focus it. */
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
   value: string;
   onValueChange: (value: string) => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
@@ -48,6 +50,9 @@ export interface AgentComposerProps {
 }
 
 const MAX_PROMPT_CHARS = 128 * 1024;
+/** Roughly twelve lines. Past this the draft scrolls instead of pushing the
+ *  transcript off the screen. */
+const MAX_INPUT_HEIGHT_PX = 260;
 
 export function AgentComposer({
   inputId,
@@ -68,6 +73,23 @@ export function AgentComposer({
   isCancelling = false,
   onStop,
 }: AgentComposerProps) {
+  // The box grows with the draft up to a ceiling, then scrolls. At a fixed
+  // three rows a longer prompt was written blind: the text ran past the box
+  // and the fourth line was sliced in half against the action bar, so a user
+  // could not read back what they were about to send without dragging a
+  // resize handle. Measured before paint to avoid a visible reflow per key.
+  const localRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const field = localRef.current;
+    // The caller focuses and reads the field, so it gets the same node. The
+    // handoff happens here rather than in a ref callback, which the React
+    // Compiler rejects as a mutation after render.
+    if (inputRef) inputRef.current = field;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${Math.min(field.scrollHeight, MAX_INPUT_HEIGHT_PX)}px`;
+  }, [value, inputRef]);
+
   return (
     <div className="agent-composer__input-shell">
       {sessionControls && (
@@ -75,7 +97,7 @@ export function AgentComposer({
       )}
       <label className="sr-only" htmlFor={inputId}>Message the agent</label>
       <textarea
-        ref={inputRef}
+        ref={localRef}
         id={inputId}
         name="prompt"
         rows={3}
@@ -106,14 +128,19 @@ export function AgentComposer({
         </div>
         {turnActive ? (
           <div className="agent-composer__turn-actions">
+            {/* Queue used the same paper plane as Send, so the one control
+                whose behavior changes mid-turn looked identical before and
+                after. A user pressing it expected the prompt to go now. */}
             <button
               type="submit"
-              className="btn primary icon"
+              className="btn icon"
               aria-label={queued ? "Queued" : "Queue"}
-              title={queued ? "Queued" : "Queue"}
+              title={queued
+                ? "Queued. It sends when this turn ends."
+                : "Queue. It sends when this turn ends."}
               disabled={sendDisabled}
             >
-              <Send size={15} aria-hidden="true" />
+              <ListPlus size={15} aria-hidden="true" />
             </button>
             <button
               type="button"

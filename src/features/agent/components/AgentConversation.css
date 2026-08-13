@@ -2280,16 +2280,20 @@
   min-width: 0;
 }
 
+/* The height is set from the content in AgentComposer, so the manual resize
+   handle is gone: it existed to work around a box that never grew. */
 .agent-composer__input-shell > textarea {
   width: 100%;
   min-width: 0;
+  max-height: 260px;
   padding: var(--space-8) var(--space-12);
   color: var(--text);
   font: inherit;
   line-height: var(--lh-normal);
   background: transparent;
   border: 0;
-  resize: vertical;
+  resize: none;
+  overflow-y: auto;
 }
 
 .agent-composer__input-shell > textarea:focus-visible {

@@ -71,7 +71,7 @@ const meta = {
     inputId: "composer-prompt",
     value: "",
     onValueChange: fn(),
-    placeholder: "Ask about this bundle... Use @ for context",
+    placeholder: "Ask about this bundle",
     attachments: <AttachmentsSlot />,
     sessionControls: <SessionControlsSlot labels={["Sonnet", "Ask"]} />,
     onStop: fn(),
@@ -90,7 +90,7 @@ export const Empty: Story = {
   args: { sendDisabled: true },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByPlaceholderText("Ask about this bundle... Use @ for context"),
+      canvas.getByPlaceholderText("Ask about this bundle"),
     ).toBeEnabled();
     await expect(canvas.getByRole("button", { name: "Send" })).toBeDisabled();
     await expect(canvas.queryByText(/context/)).toBeNull();
@@ -199,10 +199,46 @@ export const Stopping: Story = {
   },
 };
 
+/**
+ * A long draft. The box grows with the content, which it did not do when it
+ * was fixed at three rows: the text ran past the box and the fourth line was
+ * cut in half against the action bar.
+ */
+export const LongDraft: Story = {
+  args: {
+    value: Array.from(
+      { length: 8 },
+      (_, index) =>
+        `Paragraph ${index + 1}. Check whether the retention rule in this bundle contradicts the one in the policy concept, and cite the deciding source.`,
+    ).join("\n\n"),
+  },
+  play: async ({ canvas }) => {
+    const input = canvas.getByRole("textbox", { name: "Message the agent" });
+    // Grown past the old three-row box, and capped so a long draft cannot
+    // push the transcript off the screen.
+    await expect(input.clientHeight).toBeGreaterThan(100);
+    await expect(input.clientHeight).toBeLessThanOrEqual(260);
+  },
+};
+
+/**
+ * One unbroken token longer than the box. Nothing should escape the panel
+ * horizontally.
+ */
+export const UnbreakableWord: Story = {
+  args: {
+    value: "Rechtsschutzversicherungsgesellschaftsangestelltenverzeichnis".repeat(3),
+  },
+  play: async ({ canvas }) => {
+    const input = canvas.getByRole("textbox", { name: "Message the agent" });
+    await expect(input.scrollWidth).toBeLessThanOrEqual(input.clientWidth + 1);
+  },
+};
+
 /** The Studio Agent has its own placeholder and no bundle attachments. */
 export const StudioAgent: Story = {
   args: {
-    placeholder: "Message Studio Agent... Use @ for context",
+    placeholder: "Message Studio Agent",
     sessionControls: <SessionControlsSlot labels={["Studio Agent"]} />,
   },
 };

@@ -49,6 +49,12 @@
       "skillPath": "skills/engineering/react-stinky/SKILL.md",
       "computedHash": "421938779db2f941c299f76bf6de6d83716a878229bf0fc3ea4c9d8bcfa3dec5"
     },
+    "storybook-pentest": {
+      "source": "saschb2b/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/storybook-pentest/SKILL.md",
+      "computedHash": "e7ba88d95189d8745f6b31737cdbb4249c06c80cf821df523a71845e3de7a44b"
+    },
     "tauri-stinky": {
       "source": "saschb2b/skills",
       "sourceType": "github",

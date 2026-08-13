@@ -3255,7 +3255,7 @@ export function AgentConversation({
               inputRef={promptRef}
               value={promptText}
               onValueChange={changePromptText}
-              placeholder={isStudioAgent ? "Message Studio Agent... Use @ for context" : "Ask about this bundle... Use @ for context"}
+              placeholder={isStudioAgent ? "Message Studio Agent" : "Ask about this bundle"}
               disabled={isSubmitting || queuedPrompt !== null}
               status={composerStatus}
               usage={usageLabel}

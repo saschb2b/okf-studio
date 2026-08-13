@@ -13,14 +13,13 @@ import {
   Plus,
   RotateCcw,
   Search as SearchIcon,
-  Send,
   ShieldCheck,
   Sparkles,
-  Square,
 } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { AgentSessionConfigOption } from "@/features/agent/connection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
+import { AgentComposer } from "@/features/agent/components/conversation/AgentComposer.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
 import { ConversationToolbar } from "@/features/agent/components/conversation/ConversationToolbar.tsx";
 import { ThreadSwitcher } from "@/features/agent/components/conversation/ThreadSwitcher.tsx";
@@ -715,49 +714,46 @@ function Composer({
   configOptions?: readonly AgentSessionConfigOption[];
 }) {
   return (
+    // The real component, not a copy of its markup. The gallery used to
+    // rebuild the composer by hand and had already drifted from it: an old
+    // placeholder, a status label the app no longer shows, and the session
+    // controls still inside the action row they were lifted out of.
     <div className="agent-composer">
       {children}
-      <div className="agent-composer__input-shell">
-        <label className="sr-only" htmlFor="gallery-composer">Message the agent</label>
-        <textarea
-          id="gallery-composer"
-          rows={3}
-          placeholder="Ask about this bundle..."
-          readOnly
-          disabled={queued}
-        />
-        <div className="agent-composer__actions">
-          <div className="agent-composer__leading-actions">
-            <button type="button" className="btn ghost" aria-label="Add context or sources"><Plus size={16} aria-hidden="true" /></button>
-            <span className="agent-composer__status">Scoped tools</span>
-          </div>
-          {configState !== "none" && (
-            <AgentSessionControls
-              options={configOptions}
-              pendingOptionId={configState === "pending" ? "model" : null}
-              failure={configState === "failure" ? {
-                optionId: "model",
-                requestedValue: { type: "select", value: "terra" },
-                message: "The agent rejected the model switch.",
-              } : null}
-              favoriteScope="gallery"
-              disabled={false}
-              onChange={() => undefined}
-              onRetry={() => undefined}
-            />
-          )}
-          {active ? (
-            <div className="agent-composer__turn-actions">
-              <button type="button" className="btn primary" disabled={queued}>
-                <Send size={14} aria-hidden="true" />{queued ? "Queued" : "Queue"}
-              </button>
-              <button type="button" className="btn"><Square size={14} aria-hidden="true" />Stop</button>
-            </div>
-          ) : (
-            <button type="button" className="btn primary"><Send size={14} aria-hidden="true" />Send</button>
-          )}
-        </div>
-      </div>
+      <AgentComposer
+        inputId="gallery-composer"
+        value=""
+        onValueChange={() => undefined}
+        placeholder="Ask about this bundle"
+        disabled={queued}
+        turnActive={active}
+        queued={queued}
+        sendDisabled={queued}
+        attachments={
+          <button
+            type="button"
+            className="agent-attachment-trigger btn ghost icon"
+            aria-label="Add context or sources"
+          >
+            <Plus size={16} aria-hidden="true" />
+          </button>
+        }
+        sessionControls={configState !== "none" ? (
+          <AgentSessionControls
+            options={configOptions}
+            pendingOptionId={configState === "pending" ? "model" : null}
+            failure={configState === "failure" ? {
+              optionId: "model",
+              requestedValue: { type: "select", value: "terra" },
+              message: "The agent rejected the model switch.",
+            } : null}
+            favoriteScope="gallery"
+            disabled={false}
+            onChange={() => undefined}
+            onRetry={() => undefined}
+          />
+        ) : undefined}
+      />
     </div>
   );
 }

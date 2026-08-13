@@ -45,11 +45,7 @@ function ComposerHarness(props: React.ComponentProps<typeof AgentComposer>) {
   const [value, setValue] = useState(props.value);
   return (
     <div className="agent-conversation">
-      <form
-        className="agent-composer"
-        onSubmit={(event) => event.preventDefault()}
-        style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" }}
-      >
+      <form className="agent-composer" onSubmit={(event) => event.preventDefault()}>
         <AgentComposer {...props} value={value} onValueChange={setValue} />
       </form>
     </div>

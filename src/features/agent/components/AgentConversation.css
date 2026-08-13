@@ -1450,22 +1450,19 @@
    padding around the editor. Ancillary rows (context chips, error rows)
    stay inset; keyboard focus tints the hairline, since an edge-to-edge
    editor has no box for an outline ring to wrap. */
+/* The composer is an object on the panel, not the strip left over under the
+   transcript. It used to be a full-bleed region marked off by one hairline,
+   which read as the end of the scroll rather than as somewhere to type. The
+   input shell below carries the surface; this element only insets it and
+   spaces the notices that stack above it. */
 .agent-composer {
   display: grid;
   gap: var(--space-8);
-  border-top: 1px solid var(--border);
-}
-
-.agent-composer:has(textarea:focus-visible) {
-  border-top-color: var(--accent);
+  padding: var(--space-8) var(--space-12) var(--space-12);
 }
 
 .agent-composer > :not(.agent-composer__input-shell) {
-  margin-inline: var(--space-12);
-}
-
-.agent-composer > :first-child:not(.agent-composer__input-shell) {
-  margin-top: var(--space-8);
+  margin-inline: var(--space-4);
 }
 
 .agent-composer__turn-actions {
@@ -2275,9 +2272,21 @@
 
 /* The editor surface itself: flush with the panel, no box of its own.
    The panel background is the editor background (Zed). */
+/* One raised surface holding the three rows. The border carries the focus
+   state, so focus lands on the object the user is typing into rather than on
+   a hairline at the far edge of the panel. */
 .agent-composer__input-shell {
   display: grid;
   min-width: 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-variant);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.agent-composer__input-shell:focus-within {
+  border-color: var(--accent);
 }
 
 /* The height is set from the content in AgentComposer, so the manual resize
@@ -2285,8 +2294,9 @@
 .agent-composer__input-shell > textarea {
   width: 100%;
   min-width: 0;
+  min-height: 60px;
   max-height: 260px;
-  padding: var(--space-8) var(--space-12);
+  padding: var(--space-10) var(--space-12);
   color: var(--text);
   font: inherit;
   line-height: var(--lh-normal);
@@ -2306,7 +2316,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-8);
-  padding: 0 var(--space-12) var(--space-8);
+  padding: 0 var(--space-8) var(--space-8);
 }
 
 .agent-composer__leading-actions {
@@ -2324,7 +2334,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  padding: var(--space-6) var(--space-12) 0;
+  padding: var(--space-8) var(--space-10) 0;
 }
 
 

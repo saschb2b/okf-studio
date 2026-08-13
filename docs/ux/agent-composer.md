@@ -10,6 +10,12 @@ generated: { by: claude/unrecorded, at: 2026-08-13T00:00:00Z }
 
 A user writes a prompt and sends it. Everything else in the composer earns its place or leaves.
 
+# It is an object, not a region
+
+The composer sits on its own raised surface, inset from the panel edges, with a border that carries the focus state. Before, it was a full-bleed strip marked off by one hairline under the transcript, which read as where the scroll ended rather than as somewhere to type, and focus showed as a colour change on that hairline at the far edge of the panel.
+
+The box rests at about two lines and grows with the draft to a 260 pixel ceiling, then scrolls. It has no resize handle: that existed only to work around a box that never grew.
+
 # The rule
 
 The composer is three rows, in the order a user meets them: what is answering, what they are writing, and what to do with it. Anything that wants a place has to answer a question the user is asking at the moment they read it. A value that does not change, or that changes but cannot be acted on, belongs somewhere else.

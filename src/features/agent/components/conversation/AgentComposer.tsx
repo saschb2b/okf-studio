@@ -100,7 +100,10 @@ export function AgentComposer({
         ref={localRef}
         id={inputId}
         name="prompt"
-        rows={3}
+        // One row is the floor the measurement resets to. The resting height
+        // is a min-height in CSS, so an empty composer is compact and the box
+        // grows from there rather than starting three rows deep.
+        rows={1}
         maxLength={MAX_PROMPT_CHARS}
         placeholder={placeholder}
         disabled={disabled}

@@ -1,7 +1,7 @@
 [
   {
     "path": "SKILL.md",
-    "sha256": "360dc57737f618bef0980e98183c95fdf25f37c2bd315c6024a211eb7b9e0934"
+    "sha256": "58e41ba30578dc7a2053842f276475f000b2348ae276bd2025cd1736eb064553"
   },
   {
     "path": "permissions.yaml",
@@ -29,23 +29,79 @@
   },
   {
     "path": "references/index.md",
-    "sha256": "2bee9c03e226ac8dee77c9adee7e899a7982d3db768f746a8a9377af96c51c41"
+    "sha256": "209812e8650e63f25fd0c0edacbf57036277728d6f30ee1a63439b89d35352c2"
   },
   {
     "path": "references/log.md",
-    "sha256": "d1f8e53934f340de8f8fbc6ca53588e80734a2b09bd5bf63d758f76e279d10ba"
+    "sha256": "15ba2da246f84eeda149a304acafe6ea6a5f594daa348865f120b0f0dacdd2e1"
   },
   {
     "path": "references/microsoft-style.md",
-    "sha256": "34cda9194d4c78499096a3b638fb6516c126199089b8a1805a9a0ea488911b26"
+    "sha256": "9b60356a2b0445906e223902d95a715467c8d8b23b8a242fc7c8a86e943b0107"
+  },
+  {
+    "path": "references/microsoft/capitalization.md",
+    "sha256": "8687d4c1ec7d1370728af5bae8d2acacc02a8a0022802848a5ba89b24f4bf93f"
+  },
+  {
+    "path": "references/microsoft/grammar.md",
+    "sha256": "f39c5d6ab19b2385425e5c4a333fbedeb5bfcd1b6cec269a8ab4c09a23673ba5"
+  },
+  {
+    "path": "references/microsoft/index.md",
+    "sha256": "207791538287e504d7ad5764591d626650e5041721b700303ccc43d34380d959"
+  },
+  {
+    "path": "references/microsoft/numbers-and-acronyms.md",
+    "sha256": "c5155fb113e43c189d2a9349e3d444e5fc4d07e94929128f57c9e17016f2dfc7"
+  },
+  {
+    "path": "references/microsoft/procedures.md",
+    "sha256": "eb780f1374b21f1e70bb23044fb366b0b6c0cf4a1f0cc00563bed1ffcf3d820a"
+  },
+  {
+    "path": "references/microsoft/punctuation.md",
+    "sha256": "4518b0b2fa9b7e7609255197f2e2ba00bd326dc00967a856660e9cdf908659dc"
+  },
+  {
+    "path": "references/microsoft/scannable-and-global.md",
+    "sha256": "5e15b84cf13057fa5f28bd74d4900a78278edaf5f37bc7ef0a0e1e13eca11d7f"
+  },
+  {
+    "path": "references/microsoft/word-choice.md",
+    "sha256": "df004a6bf33962e78140489122ffd236e6a2444a6a48e3a07575bddf407b91d4"
   },
   {
     "path": "references/prose.md",
-    "sha256": "90508d2ac48cc31f75a355f32e2b31b463b865c8a8fd36beb749af2e8f96f70f"
+    "sha256": "7c5722895e390111c47d2ad422f9a0508fad28b9089f6f0a571d7b5e64ae0568"
   },
   {
     "path": "references/ste.md",
-    "sha256": "8e7b1ee17c71ce08dc3e5f4f32548bc3ba2879aae7551a49cecdddba648d11fb"
+    "sha256": "cf3b001dc989a4430fa06f0fd67f3fef1d14d3f4ea58d89ef07014ec4d25eca2"
+  },
+  {
+    "path": "references/ste/dictionary.md",
+    "sha256": "597b0ca0bbd7d648969ca9269dc744e2cb7a7e9fe6663cbbc7a32b5a17081d4c"
+  },
+  {
+    "path": "references/ste/index.md",
+    "sha256": "53ddf9c7fd1732f259982acd1dd33e80dc3fbd24a60eba1284bf47b5ba105a05"
+  },
+  {
+    "path": "references/ste/multi-word-nouns.md",
+    "sha256": "78a789ca4b8018dae9a4c35304c05d8d6c370793fa0dfb06393ef0fa3052e78e"
+  },
+  {
+    "path": "references/ste/procedural-and-descriptive.md",
+    "sha256": "591fbaf287396e5734e53b17cf592a65cee5960957ae514ffafd4bd48edc7345"
+  },
+  {
+    "path": "references/ste/safety-and-word-counts.md",
+    "sha256": "08959cc557f2fdca445871b39d6902fdd8a88724d0deb6b6da63182f26581fea"
+  },
+  {
+    "path": "references/structure.md",
+    "sha256": "d3326544189eb94e33402c4014092770691580872403a4ee9f600a6b17d02c1b"
   },
   {
     "path": "slop-lint.mjs",

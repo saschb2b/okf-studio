@@ -3,7 +3,7 @@ type: Reference
 title: "no-slop: Microsoft style"
 description: "The mechanics no-slop adopts from the Microsoft Writing Style Guide, the three places its brand voice contradicts no-slop, and the house-style mode that resolves them."
 tags: [writing, ai-slop, style, editing, house-style, documentation]
-generated: { by: claude-code/unversioned, at: 2026-07-30T00:00:00Z }
+generated: { by: claude-code/claude-fable-5, at: 2026-08-08T00:00:00Z }
 sources:
   - id: ms-welcome
     resource: https://learn.microsoft.com/en-us/style-guide/welcome/
@@ -25,9 +25,11 @@ The Microsoft Writing Style Guide is the house style for one of the largest docu
 
 Read this page for the mechanics no-slop adopts and for the boundary. The accessibility and inclusive-language guidance from the same source is large enough to live on its own page, in [inclusive-and-accessible.md](inclusive-and-accessible.md).
 
+The guide itself is a large nested site, and the mined portion now lives in seven sibling concepts, each rule carrying an adopt, house, or reject verdict in this page's frame: [microsoft/punctuation.md](microsoft/punctuation.md), [microsoft/capitalization.md](microsoft/capitalization.md), [microsoft/grammar.md](microsoft/grammar.md) for grammar and person, [microsoft/word-choice.md](microsoft/word-choice.md), [microsoft/procedures.md](microsoft/procedures.md) for step-by-step instructions, [microsoft/numbers-and-acronyms.md](microsoft/numbers-and-acronyms.md), and [microsoft/scannable-and-global.md](microsoft/scannable-and-global.md) for headings, lists, tables, and global English. Deliberately not mined: the A-Z word list as a whole, term collections, chatbots, SEO, and publishing process pages.
+
 ## What no-slop adopts
 
-These are compatible with the register and add something the tells table did not have.
+These are compatible with the register and are part of it in every mode; they are not house-style extras. The two prose-level rules (verb-first statements and the hollow "you can") sit in the SKILL.md tells table so they apply on every invocation, and the mechanical ones live in the [formatting.md](formatting.md) tells.
 
 | Rule | Write this | Not this |
 |---|---|---|

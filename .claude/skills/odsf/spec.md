@@ -1,6 +1,6 @@
-# ODSF v0.1 normative reference
+# ODSF v0.2 normative reference
 
-A faithful, structured distillation of the Open Design System Format v0.1 specification. Normative keywords (MUST, MUST NOT, SHOULD, SHOULD NOT, MAY, REQUIRED) carry their RFC 2119 force. When this snapshot and the [upstream spec](https://github.com/saschb2b/Open-Design-System-Format/blob/main/SPEC.md) disagree, the upstream spec wins.
+A faithful, structured distillation of the Open Design System Format v0.2 specification, the profile of [OKF v0.2](../okf/spec.md). Normative keywords (MUST, MUST NOT, SHOULD, SHOULD NOT, MAY, REQUIRED) carry their RFC 2119 force. When this snapshot and the [upstream spec](https://github.com/saschb2b/Open-Design-System-Format/blob/main/SPEC.md) disagree, the upstream spec wins.
 
 ODSF packages a **design system** as a self-contained *bundle* an AI agent can read, navigate, and apply to a task with no SDK, no platform, and no lock-in. It is a strict **profile of the [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)**: everything OKF says about bundles, concepts, frontmatter, links, `index.md`, `log.md`, and versioning holds in ODSF unchanged. Where this spec is silent, the OKF spec governs; where the two conflict for a design concern, this spec governs within an ODSF bundle. On top of OKF's container, ODSF adds three things: a token model (§4), companion HTML/CSS assets (§6), and a design type vocabulary and body conventions (§5, §7).
 
@@ -11,7 +11,7 @@ The one-sentence framing: **OKF told us how to bundle knowledge for an agent; de
 A bundle is a **conformant ODSF bundle** when both hold:
 
 1. It is a **conformant OKF bundle.** Every non-reserved `.md` file opens with a parseable YAML frontmatter block carrying a non-empty `type` field, and reserved files (`index.md`, `log.md`) follow their OKF structure.
-2. The **bundle-root `index.md` declares `odsf_version`** in its frontmatter (a `<major>.<minor>` string, e.g. `"0.1"`).
+2. The **bundle-root `index.md` declares `odsf_version`** in its frontmatter (a `<major>.<minor>` string, e.g. `"0.2"`).
 
 That is the whole hard requirement: be a valid OKF bundle, and say you are an ODSF one. Note the asymmetry, `odsf_version` is the only added hard rule, while `okf_version` stays OKF's own *optional* declaration, so a missing `okf_version` is a warning, never a conformance failure. Everything else (the token model, the asset conventions, the type vocabulary, the body sections) is **recommended** structure a producer SHOULD follow and a consumer SHOULD exploit but MUST tolerate the absence of. A direct consequence: **any conformant OKF bundle is one `odsf_version` line away from satisfying rule 1**, since rule 1 *is* OKF conformance, so adopting ODSF over an existing OKF bundle is a single edit plus optional enrichment, not a rebuild.
 
@@ -65,17 +65,32 @@ Assets are **not** concepts and are **not** subject to OKF's frontmatter rule. T
 
 ## 3. Concept documents
 
-A concept is OKF's: a YAML frontmatter block followed by a structural-markdown body. Its identity is its path minus `.md` (`components/button.md` ⇒ concept `components/button`). ODSF uses OKF's recommended fields (`title`, `description`, `resource`, `tags`, `timestamp`) unchanged and adds these **recommended** keys, used where they apply:
+A concept is OKF's: a YAML frontmatter block followed by a structural-markdown body. Its identity is its path minus `.md` (`components/button.md` ⇒ concept `components/button`). ODSF uses OKF's recommended fields (`title`, `description`, `resource`, `tags`) unchanged, inherits the whole v0.2 provenance and trust layer (`sources`, `generated`, `verified`, `stale_after`, and the actor convention) unchanged, and adds these **recommended** keys, used where they apply:
 
 | Field | Status | Type | Meaning |
 | --- | --- | --- | --- |
 | `type` | REQUIRED | string | The kind of design concept (§5). Descriptive, not registered. |
 | `tokens` | recommended | map | Machine-readable design tokens defined or used by this concept (§4). |
 | `examples` | recommended | list of paths | Companion asset files (HTML/CSS) that demonstrate this concept (§6). Bundle-absolute or relative paths. |
-| `status` | recommended | string | Lifecycle: `stable`, `experimental`, or `deprecated`. Lets an agent avoid building on what is on the way out. |
+| `status` | recommended | string | Lifecycle. Now an OKF v0.2 key, so see the reconciliation below before using `experimental`. |
 | `applies_to` | optional | list of strings | Platforms or surfaces this concept governs (e.g. `[web, ios]`). Absent means "all". |
 
-As in OKF, producers **MAY** add any other keys, and consumers **SHOULD** preserve unknown keys and **MUST NOT** reject a document for having them. `tokens`, `examples`, and `status` are conventions a design-aware consumer reads; an OKF-only consumer ignores them harmlessly.
+As in OKF, producers **MAY** add any other keys, and consumers **SHOULD** preserve unknown keys and **MUST NOT** reject a document for having them. `tokens` and `examples` are conventions a design-aware consumer reads; an OKF-only consumer ignores them harmlessly.
+
+### `status`, reconciled with OKF v0.2
+
+ODSF v0.1 defined `status` as `stable | experimental | deprecated`. OKF v0.2 then claimed the same key with `draft | stable | deprecated`. The sets overlap on two values and disagree on one each, so a profile has to say which wins.
+
+**OKF's set is normative; `experimental` survives as an ODSF extension.** A producer **SHOULD** prefer `draft`, `stable`, or `deprecated`, because those are what an OKF-only consumer understands and what OKF's own tooling checks. A producer **MAY** use `experimental` where the distinction is real, since design systems genuinely ship components that are neither drafts nor stable. A design-aware consumer **SHOULD** read `experimental` as "usable, but the API may move"; an OKF-only consumer sees an unrecognized value and, per OKF's tolerance contract, **MUST NOT** reject the document for it.
+
+| Value | Meaning here | Portable to an OKF-only consumer |
+| --- | --- | --- |
+| `draft` | Not yet reviewed; may be incomplete | Yes |
+| `stable` | Ready to build on. The default when `status` is absent | Yes |
+| `experimental` | Shipped and usable, but the API may still move | ODSF only |
+| `deprecated` | Kept for links and history; do not build on it | Yes |
+
+Do not use `status` to carry freshness. That is `stale_after`, which ODSF inherits from OKF unchanged, and a token scale with a known review date should say so there rather than sitting at `experimental` forever.
 
 ## 4. The token model
 
@@ -157,9 +172,9 @@ A concept declares its assets in the `examples` frontmatter list and SHOULD link
 
 ## 7. Body conventions
 
-The body is structural markdown (OKF §4). Beyond OKF's `# Examples` and `# Citations`, ODSF defines **conventional headings per type**, used when they apply:
+The body is structural markdown (OKF §4). Beyond OKF's `# Schema`, `# Examples`, and `# Computation`, ODSF defines **conventional headings per type**, used when they apply. Provenance is no longer a body section in either format: sources live in `sources` frontmatter, and a claim is attributed with a footnote keyed to a source `id`.
 
-- **Foundation concepts** (`Color`, `Typography`, `Spacing`, …): `# Tokens` (a name / value / usage table), `# Roles` (semantic meaning of each token), `# Usage`, `# Do & Don't`, `# Citations`.
+- **Foundation concepts** (`Color`, `Typography`, `Spacing`, …): `# Tokens` (a name / value / usage table), `# Roles` (semantic meaning of each token), `# Usage`, `# Do & Don't`.
 - **`Component`:** `# Anatomy`, `# Tokens` (the component's tokens and the foundation tokens they resolve to), `# Variants & States`, `# Examples` (links to the example assets), `# Behavior` (links to `Behavior` concepts), `# Accessibility`, `# Do & Don't`.
 - **`Pattern`:** `# When to use`, `# Composition` (the linked components it assembles), `# Example`, `# Do & Don't`.
 - **`Behavior`:** `# Rule`, `# States`, `# Example`, `# Accessibility`.
@@ -190,12 +205,28 @@ ODSF versions independently of OKF. The bundle-root `index.md` frontmatter decla
 
 ```yaml
 ---
-odsf_version: "0.1"
-okf_version: "0.1"
+odsf_version: "0.2"
+okf_version: "0.2"
 ---
 ```
 
 `odsf_version` is REQUIRED for ODSF conformance (§1); `okf_version` is OKF's own optional declaration and SHOULD be present so OKF consumers know which container version they hold. Both use `<major>.<minor>`; minor versions are backward-compatible additions, a major version signals a breaking change. A consumer that does not understand a declared version SHOULD attempt best-effort consumption rather than refuse the bundle.
+
+**ODSF v0.2 tracks OKF v0.2.** The two numbers are kept aligned so "ODSF 0.2 profiles OKF 0.2" needs no lookup table, but they remain independent keys: a future ODSF revision against an unchanged OKF would move only `odsf_version`.
+
+### Changes from ODSF v0.1
+
+ODSF's own additions (the token model, assets, the design type vocabulary, the body headings) are unchanged. Everything that moved, moved because the OKF container underneath it did:
+
+| v0.1 | v0.2 |
+| --- | --- |
+| `timestamp: <ISO>` on a concept | `generated: { by, at }`, with the actor convention |
+| `# Citations` body section | `sources` frontmatter, with footnote attribution |
+| `status: stable\|experimental\|deprecated` | OKF's `draft\|stable\|deprecated`, with `experimental` retained as an ODSF extension (§4) |
+| no freshness signal | `stale_after`, inherited |
+| no trust signal | `verified` and trust tiers, inherited |
+
+Migrating an ODSF v0.1 bundle is therefore OKF's `migrate` procedure plus one line: bump `odsf_version` to `"0.2"`. The same caution applies most of all to `verified`. Do not backfill confirmations that never happened; an unreviewed component spec that claims human review is worse than one that admits it is unverified.
 
 ## 11. Consuming an ODSF bundle
 
@@ -211,7 +242,7 @@ How an agent SHOULD use a bundle when handed a design task:
 
 **Emitting into a host app.** Copying tokens into real product code is not the same as linking them from a bundle example. Prefer linking or `@import`-ing `tokens.css`, or inline only the `:root` subset you use, or translate to the app's own token system. A bundle stylesheet may carry `@import` and global rules (a `body {}`) you do not want to paste verbatim into a host app; take the custom properties, leave the page chrome.
 
-An agent that also edits the bundle becomes a producer: it follows the ripple checklist (a token or variant change touches the foundation, `tokens.css`, the component's tokens, `components.css`, the example, the `# Variants & States` table, every changed concept's `timestamp`, `log.md`, and the indexes only if a concept was added/renamed/removed), then re-validates. The producer commands spell this out (see the `edit` command).
+An agent that also edits the bundle becomes a producer: it follows the ripple checklist (a token or variant change touches the foundation, `tokens.css`, the component's tokens, `components.css`, the example, the `# Variants & States` table, every changed concept's `generated`, `log.md`, and the indexes only if a concept was added/renamed/removed), then re-validates. The producer commands spell this out (see the `edit` command).
 
 ## 12. Non-goals
 

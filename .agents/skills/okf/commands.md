@@ -79,8 +79,8 @@ Touches: many concept files, a `references/` subtree, `index.md` at each level, 
 
 Connect two concepts and say what the connection means.
 
-1. Prefer a bundle-absolute target beginning with `/`, for example `/tables/customers.md`. It survives moving the source file within its directory. Relative targets like `customers.md` are valid too.
-2. Put the relationship in the prose around the link, not in the link. `Joined with [customers](/tables/customers.md) on \`customer_id\`` says what the edge means; the link alone does not.
+1. Default to a relative target resolved from the linking file's directory: `customers.md` for a sibling, `../tables/customers.md` across directories. The spec recommends the bundle-absolute form (`/tables/customers.md`) for stability when files move, but GitHub resolves it against the repository root and serves a 404, and the reference visualizer drops such edges, so absolute targets fail exactly where humans read bundles. After moving a file, re-run `okf-validate`; it reports the links the move broke.
+2. Put the relationship in the prose around the link, not in the link. `Joined with [customers](customers.md) on \`customer_id\`` says what the edge means; the link alone does not.
 3. A broken link is tolerated, not an error, so linking ahead of a concept you have not written yet is fine. Note it in `log.md` if you want to come back.
 4. Link to *concepts*, not to an `index.md`. The index is generated navigation (`index`), not a graph node, so a consumer that builds the concept graph treats a link into an `index.md` as broken. Point at the concrete concept you mean.
 
@@ -113,6 +113,7 @@ Run the script, then read the warnings with judgment.
 ```sh
 node okf-validate.mjs path/to/bundle            # tolerant: errors only on the hard rule
 node okf-validate.mjs path/to/bundle --strict   # producer gate: also fail on connectivity
+node okf-validate.mjs path/to/bundle --drift    # after editing descriptions: listings left behind
 ```
 
 By default it exits non-zero only on the hard requirement, so it mirrors the permissive consumer. `--strict` turns the connectivity warnings, and on a bundle declaring `okf_version: "0.2"` the provenance warnings, into failures. Use it as the producer gate. The reviewer's checklist behind it:
@@ -121,7 +122,16 @@ By default it exits non-zero only on the hard requirement, so it mirrors the per
 - **Structure (should hold).** `index.md` has no frontmatter except a root `okf_version`. `log.md` date headings are `YYYY-MM-DD`. Reserved names are not used for concepts.
 - **Provenance (the v0.2 producer gate, `--strict` on a v0.2 bundle).** No leftover `timestamp` or `# Citations` from v0.1, every `sources` entry has a `resource`, every `generated` has a `by`, `status` is one of `draft|stable|deprecated`, and an `Attested Computation` declares `runtime` and supplies a computation. These are only gated once the root index says `"0.2"`: a v0.1 bundle stays valid, since the spec keeps it consumable under documented fallbacks.
 - **Connectivity (the producer gate, `--strict`).** No **orphans** (a concept with no concept-to-concept link in or out) and no **broken concept links** (a link whose target is not a concept — a missing file, or a reserved `index.md`/`log.md`). Consumers tolerate both, so they only warn by default; a *producer* resolves them, because an agent that traverses the graph cannot reach an orphan or cross a broken link. This is graph connectivity, not the counts from `export`'s coverage gate — a bundle can cover every source unit and still be a disconnected pile.
-- **Warnings (judgment).** A non-ISO log date, an identity that is not in the actor convention, a footnote label that matches no `sources` id, or a `stale_after` that has passed. Reported, never fatal. Fix the ones that are real mistakes; leave the forward-references you meant.
+- **Warnings (judgment).** A non-ISO log date, an identity that is not in the actor convention or that uses a prefix outside its three forms (`team:` is the common one, and the spec's own example is the trap), a footnote label that matches no `sources` id, or a `stale_after` that has passed. Reported, never fatal. Fix the ones that are real mistakes; leave the forward-references you meant.
+- **Drift (`--drift`, run after editing).** Compares each index listing against the linked concept's `description` and warns where they no longer agree. Opt-in, because listings legitimately paraphrase; its moment is the bookkeeping sweep after you changed a description, when a stale listing keeps advertising the old claim.
+
+### Validate against more than one consumer
+
+Passing this script is not the same as rendering everywhere, because real consumers diverge from the spec and from each other. The three divergences that bite in practice:
+
+1. **Actor prefixes.** Section 7 permits three forms; the spec's own 5.1 example uses `team:`, and strict parsers (OKF Studio) flag every occurrence. The validator now warns on out-of-list prefixes for the same reason.
+2. **Link form.** The spec recommends bundle-absolute targets. GitHub resolves them against the repository root and serves a 404, and the reference visualizer builds no edges from them. Write relative targets (see `link`).
+3. **Where bundles get read.** Agents and editors resolve either link form, so a defect in either direction stays invisible until a human clicks or a strict parser runs. Before publishing, open the bundle in the GitHub web view and one graph consumer, and click a link in each.
 
 ## `health`: inspect knowledge quality without changing conformance
 
@@ -136,6 +146,18 @@ Use Studio's deterministic health tools when the question goes beyond the OKF v0
 Health covers conformance, graph connectivity, navigation, provenance, freshness signals, duplication, and coverage hints. Only the conformance category mirrors the validator. Every other category remains a fact about bundle shape or a named heuristic. A fingerprint mismatch means the bundle changed; start from a new summary instead of using stale findings.
 
 Outside Studio, run `okf-validate.mjs`, inspect indexes and links with filesystem search, and report which findings are deterministic versus heuristic. Omit Studio finding IDs, repairability claims, and fingerprints that the available tools cannot produce.
+
+### The findability audit
+
+Connectivity says an agent *can* reach every concept. It does not say a reader with a question *will*. To audit findability, construct questions from distinct personas (the sceptic with an existing tool, the newcomer, the security reviewer, the lawyer, the operator) and walk each one mechanically: match the persona's own vocabulary against the routing text a stranger sees, hop only where that text points, and check whether the destination answers. Do not walk it from memory of where things are; the author's knowledge of the bundle is exactly what the audit must exclude.
+
+Classify every failure as one of three, because each has a different fix:
+
+1. **An answer with no inbound trail.** The content exists, and no concept on the persona's natural path links toward it. Fix the linking concept, not the answer.
+2. **An answer with no routing vocabulary.** The content exists and the index lines never use the words the persona would scan for. Fix the index descriptions.
+3. **No answer.** The question is in scope and nothing covers it. Write the concept.
+
+Keep the root index lean while doing this: it routes to sections, and the section indexes carry the persona vocabulary. Stuffing every keyword into the root defeats progressive disclosure without helping anyone.
 
 ## `retrieve`: select coherent evidence and explain the route
 

@@ -13,12 +13,6 @@
       "skillPath": "skills/productivity/autopilot/SKILL.md",
       "computedHash": "9900d7f6426fe60c3a007eab206e85830be13fad5d3b30de65f256f65f494683"
     },
-    "fable-mode": {
-      "source": "saschb2b/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/fable-mode/SKILL.md",
-      "computedHash": "f6bb453976a1b906ced22b216ad3f095d9c73468742fe30114132a3cef30a169"
-    },
     "javascript-ecosystem": {
       "source": "saschb2b/skills",
       "sourceType": "github",
@@ -29,19 +23,19 @@
       "source": "saschb2b/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/no-slop/SKILL.md",
-      "computedHash": "4ca572b5f47c3dbbf9f1824c7f7002ead7efc99fa9edfaefb1b8ddac098f20c2"
+      "computedHash": "c5bb6c771cf720da5b074584d06d673af6c4144d37132498ca809f6e1d10dea9"
     },
     "odsf": {
       "source": "saschb2b/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/odsf/SKILL.md",
-      "computedHash": "e73999d54193e74dbff64ca5dfc46e14e1a09800b203b7fb1e787b4dd9b2144a"
+      "computedHash": "70b83b3a68e3418ab9c6f7cd62f3b5169d053c1377144525232557bbebd828a6"
     },
     "okf": {
       "source": "saschb2b/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/okf/SKILL.md",
-      "computedHash": "9ef04852da60f746fa741568ba9f82e6d7910ae6f38c0487644b327794cb0c4f"
+      "computedHash": "a11f8a06722ab075c9536460023064fd4d7822d0dad7f97558a21035d1be17ef"
     },
     "react-compiler": {
       "source": "saschb2b/skills",

@@ -3,11 +3,11 @@ type: Reference
 title: "no-slop: Simplified Technical English"
 description: "The ASD-STE100 construction rules behind the no-slop skill, the two modes, and the measured evidence that a writing system beats a banned-word list."
 tags: [writing, ai-slop, style, editing, controlled-language, ste]
-generated: { by: claude-code/unversioned, at: 2026-07-29T00:00:00Z }
+generated: { by: claude-code/claude-fable-5, at: 2026-08-08T00:00:00Z }
 sources:
   - id: asd-ste100
-    resource: https://asd-ste100.org
-    title: "ASD-STE100 Simplified Technical English, Issue 9"
+    resource: https://www.asd-ste100.org/assets/files/ASD-STE100_ISSUE9.pdf
+    title: "ASD-STE100 Simplified Technical English, Issue 9 (2025-01-15)"
   - id: ste-slop-kit
     resource: https://github.com/woosal1337/blog/tree/main/videos/ep01-the-cure-for-ai-slop
     title: "The cure for AI slop is a 1986 aircraft manual, the kit"
@@ -19,11 +19,13 @@ The tells table in SKILL.md is a diagnostic list. A diagnostic list is the weake
 
 ## What STE is
 
-Simplified Technical English is a controlled language. The European aerospace industry standardized it in 1986 as AECMA Simplified English. It governed maintenance manuals for mechanics who often did not speak English first. It is now ASD-STE100, currently Issue 9, and free from asd-ste100.org.[^asd-ste100]
+Simplified Technical English is a controlled language. The European aerospace industry standardized it in 1986 as AECMA Simplified English. It governed maintenance manuals for mechanics who often did not speak English first. It is now ASD-STE100, reclassified from specification to standard with Issue 9 (2025-01-15), and free from asd-ste100.org.[^asd-ste100]
 
-It is two things bound together. A writing-rule set of roughly 60 rules, and a controlled dictionary of about 900 approved words. Each dictionary entry carries one approved meaning and one approved part of speech.
+It is two things bound together. A writing-rule set of 53 rules in 9 sections, and a controlled dictionary that in Issue 9 counts 875 approved words plus 1,274 unapproved words with approved alternatives. Each approved entry carries one approved meaning and one approved part of speech.
 
 STE strips voice on purpose. That is the correct trade in a procedure and the wrong one in an essay. So this skill splits it into two modes instead of applying it whole.
+
+The full standard, primary-sourced from the Issue 9 PDF, lives in four sibling concepts. The dictionary mechanics, word rules, and technical noun and verb allowances are in [ste/dictionary.md](ste/dictionary.md). The three-word noun-cluster cap and its repairs are in [ste/multi-word-nouns.md](ste/multi-word-nouns.md). The exact verb, sentence, and paragraph rules and the procedural against descriptive split behind this page's modes are in [ste/procedural-and-descriptive.md](ste/procedural-and-descriptive.md). The warning and caution structure and the word-count mechanics are in [ste/safety-and-word-counts.md](ste/safety-and-word-counts.md).
 
 # The construction rules
 
@@ -64,6 +66,8 @@ The one-name rule is the same defect that [prose.md](prose.md) catalogs as elega
 - Do not bury a step inside a paragraph of description.
 
 This is the one place STE pushes toward a list where no-slop pushes away from one, and the two do not actually conflict. A real sequence of actions is exactly the case [formatting.md](formatting.md) reserves the list for. Everything else stays prose.
+
+These paragraph rules are the sentence-level end of a larger discipline. The document-scale moves (reorder, merge, split, delete, replace) live in [structure.md](structure.md) and run before any rule on this page touches a sentence.
 
 # The two modes
 

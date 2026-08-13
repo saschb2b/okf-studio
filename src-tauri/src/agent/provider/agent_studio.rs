@@ -189,8 +189,16 @@ mod tests {
         let result = execute_skill_tool(&call).expect("load commands");
         assert!(result.contains("Capability: okf-core@0.6.0"));
         assert!(result.contains("okf-studio://capability/okf-core/v0.6.0/commands"));
-        assert!(result
-            .contains("SHA-256: d786de1469b270dd7a0da1f93f93459023e85d036393eb4b5451a4a1b8feb794"));
+        // The digest travels with the resource, so the test checks that one is
+        // reported rather than which. Pinning the literal here would break on
+        // every skill update, and the manifest already pins the content.
+        let digest = result
+            .split("SHA-256: ")
+            .nth(1)
+            .and_then(|rest| rest.split_whitespace().next())
+            .expect("the resource header reports a digest");
+        assert_eq!(digest.len(), 64);
+        assert!(digest.chars().all(|c| c.is_ascii_hexdigit()));
         assert!(result.contains("## `init`"));
         assert!(!result.contains("The one rule"));
         assert_eq!(skill_tool_title(&call), "Load OKF commands");

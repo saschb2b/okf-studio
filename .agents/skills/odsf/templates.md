@@ -8,8 +8,8 @@ The one `index.md` that carries frontmatter, solely to declare the versions.
 
 ```markdown
 ---
-odsf_version: "0.1"
-okf_version: "0.1"
+odsf_version: "0.2"
+okf_version: "0.2"
 ---
 
 # <System name>
@@ -69,7 +69,11 @@ title: <System name>
 description: <one sentence on what the system is and its voice>
 tags: [overview, design-system]
 status: stable
-timestamp: <YYYY-MM-DDThh:mm:ssZ>
+generated: { by: <producer/version | human:id>, at: <YYYY-MM-DDThh:mm:ssZ> }
+sources:
+  - id: src
+    resource: <url>
+    title: <source title>
 ---
 
 # Principles
@@ -92,7 +96,11 @@ title: Color
 description: <one sentence>
 tags: [foundations, color, tokens]
 status: stable
-timestamp: <YYYY-MM-DDThh:mm:ssZ>
+generated: { by: <producer/version | human:id>, at: <YYYY-MM-DDThh:mm:ssZ> }
+sources:
+  - id: src
+    resource: <url>
+    title: <source title>
 tokens:
   colors:
     primary: "#3b5bdb"
@@ -119,8 +127,8 @@ tokens:
 - **Do** <the intended use>.
 - **Don't** <the failure to avoid>.
 
-# Citations
-[1] [<source>](<url>)
+
+[^src]: <source title>
 ```
 
 ## Component concept
@@ -135,7 +143,11 @@ description: <one sentence>
 tags: [components, button]
 status: stable
 applies_to: [web]
-timestamp: <YYYY-MM-DDThh:mm:ssZ>
+generated: { by: <producer/version | human:id>, at: <YYYY-MM-DDThh:mm:ssZ> }
+sources:
+  - id: src
+    resource: <url>
+    title: <source title>
 examples:
   - /components/button.example.html
 tokens:
@@ -183,7 +195,11 @@ title: Form
 description: <one sentence>
 tags: [patterns, form]
 status: stable
-timestamp: <YYYY-MM-DDThh:mm:ssZ>
+generated: { by: <producer/version | human:id>, at: <YYYY-MM-DDThh:mm:ssZ> }
+sources:
+  - id: src
+    resource: <url>
+    title: <source title>
 examples:
   - /patterns/form.example.html
 ---
@@ -216,7 +232,11 @@ title: Focus visible
 description: <one sentence>
 tags: [behaviors, focus, accessibility]
 status: stable
-timestamp: <YYYY-MM-DDThh:mm:ssZ>
+generated: { by: <producer/version | human:id>, at: <YYYY-MM-DDThh:mm:ssZ> }
+sources:
+  - id: src
+    resource: <url>
+    title: <source title>
 ---
 
 # Rule
@@ -240,7 +260,11 @@ title: <principle>
 description: <one sentence>
 tags: [guidelines, do-and-dont]
 status: stable
-timestamp: <YYYY-MM-DDThh:mm:ssZ>
+generated: { by: <producer/version | human:id>, at: <YYYY-MM-DDThh:mm:ssZ> }
+sources:
+  - id: src
+    resource: <url>
+    title: <source title>
 examples:
   - /guidelines/<name>.dont.html
 ---
@@ -257,13 +281,13 @@ examples:
 # Don't
 <the mistake, linking the dont asset>
 
-# Citations
-[1] [<source>](<url>)
+
+[^src]: <source title>
 ```
 
 ## External reference concept
 
-`references/<slug>.md`. Mirror an external source (design.md, a brand site) as a concept (OKF carryover). `resource` is the live URL, `timestamp` is when you fetched it; summarize, don't paste.
+`references/<slug>.md`. Mirror an external source (design.md, a brand site) as a concept (OKF carryover). `resource` is the live URL, `generated.at` is when you fetched it and `generated.by` is what fetched it; summarize, don't paste.
 
 ```markdown
 ---
@@ -273,7 +297,11 @@ description: <one sentence>
 resource: <url>
 tags: [reference, external]
 status: stable
-timestamp: <YYYY-MM-DDThh:mm:ssZ>
+generated: { by: <producer/version | human:id>, at: <YYYY-MM-DDThh:mm:ssZ> }
+sources:
+  - id: src
+    resource: <url>
+    title: <source title>
 ---
 
 # Summary
@@ -282,8 +310,8 @@ timestamp: <YYYY-MM-DDThh:mm:ssZ>
 # Key points
 * <point>
 
-# Citations
-[1] [<source>](<url>)
+
+[^src]: <source title>
 ```
 
 ---

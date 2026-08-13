@@ -1,30 +1,6 @@
 # OKF templates
 
-Copy, fill, validate. Every example uses bundle-absolute links (beginning with `/`) because the spec recommends them for stability. Relative links like `customers.md` are equally valid. Rules behind these shapes are in [spec.md](./spec.md); the form-per-fact table they follow (diagrams for topology, TeX for formulas, definition lists for terms, task lists for stateful checklists, footnotes for caveats) is in [SKILL.md](./SKILL.md).
-
-## Run receipt envelope
-
-When you report a number produced by an `Attested Computation`, end the response with one fenced `okf-receipt` JSON object naming the concept you ran and the evidence the run returned. Studio reads the sanctioned computation out of the bundle itself and compares it against your receipt, then labels the answer with the result.
-
-**Supply only the receipt.** Never include the computation in this envelope. What your run is checked against is the bundle's copy, and that is the entire point: an envelope carrying both sides could always be made to agree.
-
-You may supply values for the declared parameters. You must not author or edit the computation. If you could not run the sanctioned computation, say so in prose and emit no receipt — a wrong receipt is worse than none, because it claims a check that did not happen.
-
-Include every field the contract's `executor.receipt` declares. Values must be single values; a nested object or array is refused, because there is nothing in it to compare.
-
-```okf-receipt
-{
-  "schemaVersion": 1,
-  "conceptId": "metrics/recognized-revenue",
-  "receipt": {
-    "job_id": "bq:job_abc123",
-    "executed_sql": "<the exact text the runtime executed>",
-    "result": 12345
-  }
-}
-```
-
-Studio checks provenance — that what ran is the sanctioned computation with its parameters bound. It cannot check fidelity, which means re-reading the authoritative result by job id, so do not describe an answer as fully attested.
+Copy, fill, validate. Every example uses relative link targets (`customers.md` for a sibling, `../tables/events.md` across directories) because they resolve wherever bundles are read: GitHub resolves the spec-recommended bundle-absolute form (`/tables/customers.md`) against the repository root and serves a 404, and Google's own sample bundles switched to relative for that reason. Both forms are valid OKF; after moving a file, re-run the validator to catch the relative links the move broke. Rules behind these shapes are in [spec.md](./spec.md); the form-per-fact table they follow (diagrams for topology, TeX for formulas, definition lists for terms, task lists for stateful checklists, footnotes for caveats) is in [SKILL.md](./SKILL.md).
 
 ## Structured work artifact envelope
 
@@ -302,12 +278,12 @@ sources:
 | Column | Type | Description |
 |--------|------|-------------|
 | `order_id` | STRING | Globally unique order identifier. |
-| `customer_id` | STRING | Foreign key to [customers](/tables/customers.md). |
+| `customer_id` | STRING | Foreign key to [customers](customers.md). |
 | `amount_usd` | NUMERIC | Order total in USD, tax included. |
 | `created_at` | TIMESTAMP | When the order was placed (UTC). |
 
 # Joins
-Joined with [customers](/tables/customers.md) on `customer_id`. One customer has many orders.[^dictionary]
+Joined with [customers](customers.md) on `customer_id`. One customer has many orders.[^dictionary]
 
 \`\`\`mermaid
 erDiagram
@@ -346,7 +322,7 @@ sources:
 ---
 
 # Definition
-A user is "active" on a day if they emit at least one event in [events](/tables/events.md)
+A user is "active" on a day if they emit at least one event in [events](../tables/events.md)
 whose `event_name` is in the qualifying set. WAU on date D counts users active anywhere
 in the trailing window:
 
@@ -365,7 +341,7 @@ WHERE event_date BETWEEN DATE_SUB(@d, INTERVAL 6 DAY) AND @d
 \`\`\`
 
 # Notes
-Bot traffic is excluded upstream in [events](/tables/events.md). Do not re-filter here.[^defs]
+Bot traffic is excluded upstream in [events](../tables/events.md). Do not re-filter here.[^defs]
 
 [^defs]: Engagement metrics definitions
 ```
@@ -388,7 +364,7 @@ status: stable
 ---
 
 # When this fires
-The `orders_daily_load` job reports a non-zero exit, or [orders](/tables/orders.md)
+The `orders_daily_load` job reports a non-zero exit, or [orders](../tables/orders.md)
 is missing yesterday's partition.
 
 # Preflight
@@ -400,7 +376,7 @@ Confirm before touching anything:
 
 # Steps
 1. If the source export is late, wait and re-run; do not backfill by hand[^backfill].
-2. If the schema changed, update [orders](/tables/orders.md) and the load config together.
+2. If the schema changed, update [orders](../tables/orders.md) and the load config together.
 3. Re-run `orders_daily_load` for the missing partition only.
 
 # Escalation
@@ -431,10 +407,10 @@ Order
 
 Lifetime value
 : A customer's summed order totals, $\mathrm{LTV} = \sum_i \mathrm{amount\_usd}_i$,
-  over [orders](/tables/orders.md).
+  over [orders](../tables/orders.md).
 
 Active user
-: Defined by [weekly active users](/metrics/weekly_active_users.md); do not redefine
+: Defined by [weekly active users](metrics/weekly_active_users.md); do not redefine
   per report.
 
 [^carts]: Carts live in the app database and never reach the warehouse export.
@@ -471,10 +447,10 @@ DOM.[^reactdev] Since React 19, the React Compiler handles memoization
 automatically.[^recalled]
 
 # Role in this bundle
-The primary frontend library in [technical expertise](/expertise.md), used
-across most [projects](/projects/synthwave-drive.md) and examined in articles
-such as [React state management in 2026](/articles/react-state-management-2026.md)
-and [React structure, then and now](/articles/react-structure-then-and-now.md).[^cv]
+The primary frontend library in [technical expertise](../expertise.md), used
+across most [projects](../projects/synthwave-drive.md) and examined in articles
+such as [React state management in 2026](../articles/react-state-management-2026.md)
+and [React structure, then and now](../articles/react-structure-then-and-now.md).[^cv]
 
 [^reactdev]: react.dev, official documentation
 [^cv]: Work, saschb2b.com
@@ -513,7 +489,7 @@ Each row is one event, with nested `event_params` and `user_properties` records.
 # Key points
 * The export is append-only; intraday data lands in `events_intraday_YYYYMMDD`.[^ga4-schema]
 * `event_timestamp` is microseconds since the Unix epoch (UTC).
-* Cited by [events](/tables/events.md) and [weekly active users](/metrics/weekly_active_users.md).
+* Cited by [events](../tables/events.md) and [weekly active users](../metrics/weekly_active_users.md).
 
 [^ga4-schema]: BigQuery Export schema
 ```
@@ -548,7 +524,7 @@ sources:
 ---
 
 Recognized revenue follows the shipment date, not the order date.[^rev-policy]
-Used by [monthly revenue](/metrics/monthly_revenue.md).
+Used by [monthly revenue](../metrics/monthly_revenue.md).
 
 # Computation
 \`\`\`sql
@@ -563,3 +539,43 @@ WHERE fiscal_year = @year;
 Long or generated SQL goes in a file instead: set `computation: /computations/lib/revenue.sql` and drop the `# Computation` fence. Use one form or the other, never both.
 
 Two things this example is making explicit. `verified` says a human agreed the *definition* matches Finance's policy; it says nothing about any particular run, which is what the attester is for. And the attester checks both halves: *provenance*, that the executed SQL equals this computation bound with the claimed `year`, compared canonicalized so formatting is not a loophole; and *fidelity*, that the number a consumer displays matches the receipt's result re-read by `job_id` rather than copied out of the agent's prose.
+
+## Worked example: a field report (a dated snapshot)
+
+`ecosystem/adoption.md`. The shape for measured, time-sensitive knowledge: an ecosystem survey, a benchmark, a market reading, a dependency audit. Durable concepts state what is true; a field report states what was *measured*, so three things are load-bearing that other concepts omit. `status: draft` plus a `stale_after` on the date the reading should be retaken, the measurement date and the **instrument** named in the body, and claims phrased as readings rather than facts. State the instrument because it bounds the error: a count taken from self-announcements in a forum thread can undercount an ecosystem tenfold against a count taken from a topic index or registry, and a reader who knows which instrument produced the number knows what it can miss.
+
+```markdown
+---
+type: Field Report
+title: State of adoption
+description: Who builds on the format as of August 2026, measured rather than claimed.
+status: draft
+stale_after: 2026-11-05
+generated: { by: survey_agent/model-x, at: 2026-08-05T16:00:00Z }
+sources:
+  - id: topic
+    resource: "GitHub topic <format-topic> and per-repository metadata, read 2026-08-05"
+    title: Repository metadata, read per project
+    last_modified: 2026-08-05
+---
+
+# Read this as a dated snapshot
+
+Every number below comes from a measurement taken on **2026-08-05**. Re-measure
+before quoting; that is what the `stale_after` is for.
+
+# The measured numbers
+
+| Signal | Value on 2026-08-05 |
+| --- | --- |
+| Repositories on the topic | 108 |
+| Registry entries | 479, from 395 authors |
+
+# What the numbers do not support
+
+Counting from self-announcements missed roughly an order of magnitude of this
+ecosystem.[^topic] State which instrument produced a count, and expect it to
+still be a floor.
+```
+
+A consumer filters field reports out of durable-fact retrieval in one predicate (`status: draft` with a `stale_after`), and the expiry turns "is this still true?" into a date comparison. When the reading is retaken, replace the concept's numbers and move `stale_after` forward; the old reading survives in git, not in the bundle.

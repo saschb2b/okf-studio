@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "id": "okf-foundation",
+  "version": "1.4.0",
+  "name": "OKF Foundation",
+  "description": "The built-in declarative skills, templates, artifact contract, and Studio tool requirements for bounded OKF work.",
+  "publisher": "OKF Studio",
+  "provenance": "built-in",
+  "compatibility": {
+    "minimumStudioVersion": "0.3.0",
+    "capabilitySchemaVersion": 1,
+    "artifactSchemaVersion": 1
+  },
+  "conflicts": [],
+  "capabilityManifest": {
+    "path": "capabilities.json",
+    "mediaType": "application/json",
+    "sha256": "88a9ac48fe5f16b010ccdda13213b6d2a73e1f63c67891fa15d375cd62048208"
+  },
+  "templates": [
+    {
+      "id": "okf-markdown-templates",
+      "path": "templates.md",
+      "mediaType": "text/markdown",
+      "sha256": "5e1eac854535fdebeb4965e5a29bf0a81eaf7b9efc5694b85a9ed4c1b1957058"
+    }
+  ],
+  "artifactSchemas": [
+    {
+      "id": "okf-artifact-v1",
+      "path": "schemas/okf-artifact-v1.schema.json",
+      "mediaType": "application/schema+json",
+      "sha256": "511be89da782845542cfb662c7ac6ea309f3e146b7df52f52ce7d0c3e1b6ccd5"
+    },
+    {
+      "id": "writing-revision-v1",
+      "path": "schemas/writing-revision-v1.schema.json",
+      "mediaType": "application/schema+json",
+      "sha256": "63b39d41f4aff0ee342b1f803044abb6ec358f308594984f261256abe1de9db2"
+    }
+  ],
+  "requiredStudioTools": [
+    "okf_capability_catalog",
+    "okf_capability_resource",
+    "okf_inventory",
+    "okf_read",
+    "okf_search",
+    "okf_retrieve",
+    "okf_sources",
+    "okf_traverse",
+    "okf_validate",
+    "okf_health_summary",
+    "okf_health_finding",
+    "okf_health_affected",
+    "okf_health_repair",
+    "studio_source_inventory",
+    "studio_source_read",
+    "studio_stage_inventory",
+    "studio_stage_read",
+    "studio_stage_propose",
+    "studio_stage_validate"
+  ]
+}

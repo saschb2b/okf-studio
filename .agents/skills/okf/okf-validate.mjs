@@ -34,7 +34,7 @@
 // that is the producer gate the creation checklist in commands.md requires
 // before an export is called done.
 //
-// Usage:  node okf-validate.mjs [bundle-dir] [--strict]
+// Usage:  node okf-validate.mjs [bundle-dir] [--strict] [--drift]
 // Zero dependencies. Frontmatter is scanned structurally rather than with a YAML
 // library, which is enough for the flat-plus-one-level shapes the spec defines.
 
@@ -43,6 +43,10 @@ import { join, dirname, relative, basename, sep } from "node:path";
 
 const args = process.argv.slice(2);
 const strict = args.includes("--strict");
+// --drift compares each index listing against the linked concept's
+// description. Opt-in, because listings legitimately paraphrase; run it after
+// editing descriptions, where a listing left behind is the failure it catches.
+const drift = args.includes("--drift");
 const root = args.find((a) => !a.startsWith("--")) || ".";
 if (!existsSync(root) || !statSync(root).isDirectory()) {
   console.error(`Not a directory: ${root}`);
@@ -70,6 +74,13 @@ const frontmatter = (text) => {
 };
 
 const unquote = (v) => v.trim().replace(/^["']|["']$/g, "").trim();
+
+// Fenced code blocks hold examples: worked concept documents, grep patterns,
+// SQL. A link or footnote inside one is illustration, not an assertion, so
+// body scans (footnotes, the concept graph) run with fences removed. The
+// Attested Computation check still reads the raw text, because there the
+// fence itself is the assertion.
+const stripFences = (t) => t.replace(/```[\s\S]*?```/g, "");
 
 // Top-level frontmatter entries. Each is the scalar or flow value on the key's
 // own line (`inline`) plus any indented or dashed lines beneath it (`block`).
@@ -147,17 +158,28 @@ const asList = (node) => {
   });
 };
 
-// Section 7 names three forms, but the spec's own `sources` example uses a
-// fourth prefix (`author: team:ga4-docs`), so any `<label>:<id>` is accepted.
-// What this actually catches is the bare identifier -- an unprefixed human id
-// that silently fails to raise the trust tier, which is the mistake worth
-// flagging. `human:` remains the only prefix consumers key off.
+// Section 7 names exactly three actor forms. The spec's own section 5.1
+// example uses a fourth prefix (`author: team:ga4-docs`); the contradiction is
+// open upstream (#234), and strict consumers (OKF Studio) implement the rule
+// text and flag everything outside the three forms. An earlier revision of
+// this checker sided with the example and accepted any `<label>:<id>`; a real
+// bundle then ate 44 warnings in someone else's parser. The shape stays
+// accepted, and an out-of-list prefix now earns a warning here, where the
+// producer can still fix it.
 const ACTOR = /^(?:[a-z][\w.-]*:\S+|[^\s/]+\/[^\s/]+)$/i;
+const nonStdPrefix = (v) => {
+  const m = /^([a-z][\w.-]*):/i.exec(v || "");
+  return m && !["human", "process"].includes(m[1].toLowerCase()) ? m[1] : null;
+};
+const prefixNote = (p) =>
+  `uses prefix "${p}:", outside section 7's three forms (producer/version, human:id, process:id); ` +
+  `the spec's own 5.1 example does this too (open erratum #234), and strict consumers flag it`;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const STATUS = new Set(["draft", "stable", "deprecated"]);
 const isReservedName = (name) => name === "index.md" || name === "log.md";
 
 const files = walk(root).filter((f) => f.endsWith(".md"));
+const descriptions = new Map(); // concept rel path -> frontmatter description
 const conceptIds = new Set(); // path minus .md, for every concept (non-reserved) file
 const conceptFiles = []; // the concept files, to walk their bodies for links
 let concepts = 0;
@@ -203,7 +225,11 @@ for (const file of files) {
   conceptFiles.push(file);
   conceptIds.add(rel(file).replace(/\.md$/, ""));
   if (fm === null) {
-    errors.push(`${rel(file)}: missing YAML frontmatter block`);
+    errors.push(
+      name === "README.md"
+        ? `${rel(file)}: README.md inside a bundle is a concept to a consumer, and this one has no frontmatter; move it outside the bundle, or give it frontmatter with a 'type'`
+        : `${rel(file)}: missing YAML frontmatter block`
+    );
     continue;
   }
 
@@ -212,6 +238,8 @@ for (const file of files) {
   const at = rel(file);
 
   const type = scalar("type");
+  const desc = scalar("description");
+  if (desc) descriptions.set(at, desc);
   if (type === null) errors.push(`${at}: frontmatter has no 'type' field`);
   else if (type === "") errors.push(`${at}: 'type' field is empty`);
 
@@ -233,6 +261,8 @@ for (const file of files) {
     if (s.id) sourceIds.add(s.id);
     if (s.author && !ACTOR.test(s.author))
       warnings.push(`${at}: sources[${i}].author "${s.author}" is not an actor (producer/version, human:id, process:id)`);
+    else if (s.author && nonStdPrefix(s.author))
+      warnings.push(`${at}: sources[${i}].author "${s.author}" ${prefixNote(nonStdPrefix(s.author))}`);
     if (s.last_modified && !ISO_DATE.test(s.last_modified))
       warnings.push(`${at}: sources[${i}].last_modified "${s.last_modified}" is not YYYY-MM-DD`);
     if (s.usage_count && !top.has("usage_window"))
@@ -242,7 +272,7 @@ for (const file of files) {
   // Footnote labels are the keyed attribution mechanism. Only meaningful once
   // the concept actually uses source ids, so plain footnotes stay unbothered.
   if (sourceIds.size) {
-    const body = text.slice(text.indexOf("\n---", 3) + 4);
+    const body = stripFences(text.slice(text.indexOf("\n---", 3) + 4));
     for (const m of body.matchAll(/\[\^([^\]]+)\]/g))
       if (!sourceIds.has(m[1]))
         warnings.push(`${at}: footnote [^${m[1]}] matches no 'sources' entry id`);
@@ -254,6 +284,8 @@ for (const file of files) {
     if (!g.by) provenance.push(`${at}: 'generated' has no 'by' (required within generated)`);
     else if (!ACTOR.test(g.by))
       warnings.push(`${at}: generated.by "${g.by}" is not an actor (producer/version, human:id, process:id)`);
+    else if (nonStdPrefix(g.by))
+      warnings.push(`${at}: generated.by "${g.by}" ${prefixNote(nonStdPrefix(g.by))}`);
     if (!g.at) warnings.push(`${at}: 'generated' has no 'at' datetime`);
   }
   asList(top.get("verified")).forEach((v, i) => {
@@ -264,6 +296,8 @@ for (const file of files) {
     if (!v.by) warnings.push(`${at}: verified[${i}] has no 'by'`);
     else if (!ACTOR.test(v.by))
       warnings.push(`${at}: verified[${i}].by "${v.by}" is not an actor (producer/version, human:id, process:id)`);
+    else if (nonStdPrefix(v.by))
+      warnings.push(`${at}: verified[${i}].by "${v.by}" ${prefixNote(nonStdPrefix(v.by))}`);
     if (!v.at) warnings.push(`${at}: verified[${i}] has no 'at' datetime`);
   });
 
@@ -309,12 +343,39 @@ const resolveId = (href, fromRel) => {
   return norm ? norm.replace(/\.md$/, "") : null;
 };
 
+// Section 8: index entries SHOULD carry the linked concept's description. A
+// listing that drifts from the description it advertises is stale navigation,
+// the same rot class as a missing log entry. Compares only when the entry has
+// a description tail (a bare link carries nothing), normalized so quoting and
+// emphasis differences do not count as drift. Capped, because a bulk corpus
+// can hold tens of thousands of listings.
+const normText = (s) =>
+  s.toLowerCase().replace(/\\/g, "").replace(/["'`*_]/g, "").replace(/\s+/g, " ").replace(/\.\s*$/, "").trim();
+let driftShown = 0;
+let driftTotal = 0;
+for (const idx of drift ? files.filter((f) => basename(f) === "index.md") : []) {
+  const body = stripFences(readFileSync(idx, "utf8"));
+  for (const m of body.matchAll(/^[*-]\s+\[[^\]]+\]\(([^)\s]+\.md)\)\s*[-–:]\s+(.+)$/gm)) {
+    const id = resolveId(m[1], rel(idx));
+    if (!id || !descriptions.has(id + ".md")) continue;
+    if (!normText(m[2]).includes(normText(descriptions.get(id + ".md")))) {
+      driftTotal++;
+      if (driftShown < 20) {
+        warnings.push(`${rel(idx)}: listing for ${id}.md differs from that concept's description`);
+        driftShown++;
+      }
+    }
+  }
+}
+if (driftTotal > driftShown)
+  warnings.push(`(${driftTotal - driftShown} more index listings differ from their concepts' descriptions)`);
+
 // Build the concept graph from concept bodies only (index/log links are
 // navigation, not graph edges). Undirected: a link makes both ends reachable.
 const linked = new Set();
 for (const file of conceptFiles) {
   const fromRel = rel(file);
-  const text = readFileSync(file, "utf8");
+  const text = stripFences(readFileSync(file, "utf8"));
   for (const m of text.matchAll(/\]\(([^)\s]+\.md)(?:#[^)]*)?\)/g)) {
     const href = m[1];
     if (/^[a-z]+:/i.test(href)) continue; // external URL

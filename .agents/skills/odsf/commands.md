@@ -7,7 +7,7 @@ Each command is a verb over a bundle. They share one invariant: when a command f
 Create the skeleton an agent can navigate from the first file.
 
 1. Choose the bundle root, ideally a directory in version control next to the product it styles (for example `design-system/`).
-2. Write a bundle-root `index.md` whose frontmatter declares **both** `odsf_version: "0.1"` and `okf_version: "0.1"`. This is the only `index.md` allowed frontmatter.
+2. Write a bundle-root `index.md` whose frontmatter declares **both** `odsf_version: "0.2"` and `okf_version: "0.2"`. This is the only `index.md` allowed frontmatter.
 3. Create the domain folders, not file-type folders: `foundations/`, `components/`, `patterns/`, `behaviors/`, `guidelines/`, `styles/`, and `references/` as needed.
 4. Add an `overview.md` (`type: Design System`) with the system's principles, and a `log.md` with a single `Creation` entry dated today.
 5. Seed `styles/tokens.css` with a `:root` block, even if empty, so examples have a stylesheet to link.
@@ -20,7 +20,7 @@ Add a single concept document. Resist documenting ten components at once; one go
 
 1. Pick the path. The path is the identity, so `components/button.md` is the button. Never name a concept file `index.md` or `log.md`.
 2. Pick a design `type` from the §5 vocabulary (`Color`, `Component`, `Pattern`, `Behavior`, `Guideline`, …). Pick the most specific that fits; invent one when none does.
-3. Fill the recommended frontmatter you can stand behind: `title`, a one-sentence `description`, `tags`, `status`, a `timestamp` of now, and where they apply `tokens`, `examples`, and `applies_to`.
+3. Fill the recommended frontmatter you can stand behind: `title`, a one-sentence `description`, `tags`, `status`, `generated: { by, at }` naming the actor that wrote it and when, `sources` for anything it derives from, and where they apply `tokens`, `examples`, `stale_after`, and `applies_to`.
 4. Body it with the per-type conventional headings (spec §7): a foundation gets `# Tokens` / `# Roles` / `# Usage` / `# Do & Don't`; a component gets `# Anatomy` / `# Tokens` / `# Variants & States` / `# Examples` / `# Behavior` / `# Accessibility` / `# Do & Don't`.
 5. If the concept is a `Component`, `Pattern`, or `Guideline`, author its companion asset (see `asset`) and declare it in `examples`.
 6. Link out to the concepts this one relates to (see `link`), add it to the directory's `index.md` (see `index`), and append a `log.md` `Creation` entry.
@@ -63,12 +63,12 @@ Worked example, adding a `danger` button variant:
 4. **`components.css`**: add the `.btn--danger` rule consuming `var(--colors-danger)` / `var(--colors-on-danger)`. This is the rule that actually makes the button red.
 5. **Example asset** (`components/button.example.html`): add a `<button class="btn btn--danger">` so the variant self-renders.
 6. **`# Variants & States` table** (`components/button.md` body): add the `danger` row (keep it in sync with the example, step 5).
-7. **Timestamps**: refresh `timestamp` on *every* concept you touched, here **both** `color.md` and `button.md` (a token change usually edits two concepts; the singular "the concept's timestamp" elsewhere means each one).
+7. **Provenance**: refresh `generated` (both `by` and `at`) on *every* concept you touched, and drop any `verified` event whose subject you materially changed, here **both** `color.md` and `button.md` (a token change usually edits two concepts; the singular "the concept's `generated`" elsewhere means each one).
 8. **`log.md`**: prepend a dated `**Update**` entry.
 9. **What does *not* change for a variant**: `index.md` (no concept added/renamed/removed, so the listing is unchanged, per `index`), the `examples` frontmatter list (you edited an existing asset, did not add one), and cross-links (still component → color). Touch these only when the set of concepts or relationships actually changes.
 10. **Validate.** `{colors.danger}` now resolves, so the warning you would have seen after step 3-but-not-step-1 is gone.
 
-Touches (typical token/variant edit): a foundation concept, `tokens.css`, the component concept, `components.css`, the example asset, two `timestamp`s, `log.md`. Not the indexes or links unless a concept or relationship changed.
+Touches (typical token/variant edit): a foundation concept, `tokens.css`, the component concept, `components.css`, the example asset, two `generated` blocks, `log.md`. Not the indexes or links unless a concept or relationship changed.
 
 ## `enrich`: turn a source into concepts
 
@@ -76,7 +76,7 @@ Two passes. Use this when pointing the skill at a real design system: a token ex
 
 1. **Walk the source.** Enumerate its units (every token group, every component, every documented pattern). One unit becomes one concept; one component becomes one concept plus its example asset.
 2. **Structure pass.** For each unit, write one concept from the source's own data alone: a design `type`, the frontmatter you can derive (name, `description`, `status`), the `tokens` it defines or uses, and the per-type body headings. Project tokens to `tokens.css` (see `token`) and author the example (see `asset`).
-3. **Web pass (optional).** Treat a list of seed URLs (the live site, a brand guideline, a design.md) as authoritative. Fetch each, and for each page either enrich existing concepts (confirm a hex, a class name, a state), mint a `references/<slug>.md` concept (`type: Reference`) for the page, or skip. Record sources under `# Citations`. Bound the crawl: cap pages and restrict to allowed hosts.
+3. **Web pass (optional).** Treat a list of seed URLs (the live site, a brand guideline, a design.md) as authoritative. Fetch each, and for each page either enrich existing concepts (confirm a hex, a class name, a state), mint a `references/<slug>.md` concept (`type: Reference`) for the page, or skip. Record what you read as `sources` entries, carrying `last_modified` where the page states it. Bound the crawl: cap pages and restrict to allowed hosts.
 4. **Wire the graph.** Add cross-links (a component to its foundations and behaviors, a pattern to its components, any concept to the guidelines that constrain it), labeling each relationship in prose.
 5. **Generate indexes and a log**, then validate. This is the heaviest command; do it in slices and validate between slices.
 
@@ -124,9 +124,10 @@ node odsf-validate.mjs path/to/bundle
 
 - **Errors (must fix).** Every non-reserved `.md` opens with frontmatter carrying a non-empty `type`, and the bundle-root `index.md` declares `odsf_version`.
 - **Structure (should hold).** `index.md` has no frontmatter except the root's version declaration. `log.md` date headings are `YYYY-MM-DD`. Reserved names are not used for concepts.
-- **Warnings (judgment).** A missing `okf_version` (recommended, never required, only `odsf_version` is the added hard rule), a referenced example asset that is absent, an unresolved `{group.name}` token reference, a broken cross-link, a non-ISO log date, or a file that is not `.md`/`.html`/`.css`. None fail the bundle, because consumers tolerate them. Fix the real mistakes; leave the forward-references you meant.
+- **Provenance (the inherited OKF v0.2 gate, `--strict` on a v0.2 container).** No leftover `timestamp` or `# Citations`, every `sources` entry has a `resource`, every `generated` has a `by`, and `status` is one of `draft|stable|deprecated|experimental`. Gated only once the root declares `okf_version: "0.2"`, so an ODSF bundle still on the v0.1 container stays clean.
+- **Warnings (judgment).** A missing `okf_version` (recommended, never required, only `odsf_version` is the added hard rule), a referenced example asset that is absent, an unresolved `{group.name}` token reference, a broken cross-link, a non-ISO log date, an identity outside the actor convention, a `stale_after` that has passed, or a file that is not `.md`/`.html`/`.css`. None fail the bundle, because consumers tolerate them. Fix the real mistakes; leave the forward-references you meant.
 
-`odsf-validate.mjs` runs the full OKF check plus the ODSF additions, so it is a strict superset of `okf-validate.mjs`, use it (not the OKF checker) on an ODSF bundle, or a missing `odsf_version` slips through silently.
+`odsf-validate.mjs` runs the full OKF check plus the ODSF additions, so it is a strict superset of `okf-validate.mjs`, use it (not the OKF checker) on an ODSF bundle, or a missing `odsf_version` slips through silently. The one place it is deliberately laxer than the OKF checker is `status`, where it also accepts ODSF's `experimental` extension.
 
 ## `export`: produce a bundle from a source
 
@@ -140,7 +141,7 @@ The producer role: turn an existing design system into a bundle. (If your source
 4. **From a Storybook specifically**, the unit of truth is the story: each story's `args` seed the example markup, each `argTypes` variant becomes a `# Variants & States` row, and a `play`-function interaction becomes a `Behavior` concept.
 5. Run `enrich` to add what the raw export lacks (behaviors, guidelines, accessibility), emit the tree, indexes, and a `log.md`, then validate. **At scale** (dozens of components), work in foundations-first slices and validate between them; keep the class vocabulary coherent across every example (spec §6) and the indexes fresh as you go, drift across many files is the failure mode here.
 
-**Prose sources** (a design.md, a brand site, a docs page, a Figma spec). Fetch with your web-fetch tool, transform (don't paste) into structural concepts, mirror an external page as `references/<slug>.md` (`type: Reference`) with the URL in `resource` and a fetch `timestamp`, and cite under `# Citations`. A page is a moving target, so the concept is a dated snapshot; bound a multi-URL crawl with a page cap and an allowed-hosts list, and summarize-and-cite rather than copy a third party's text.
+**Prose sources** (a design.md, a brand site, a docs page, a Figma spec). Fetch with your web-fetch tool, transform (don't paste) into structural concepts, mirror an external page as `references/<slug>.md` (`type: Reference`) with the URL in `resource`, a `generated: { by, at }` recording what fetched it and when, and a `sources` entry. A page is a moving target, so the concept is a dated snapshot; bound a multi-URL crawl with a page cap and an allowed-hosts list, and summarize-and-cite rather than copy a third party's text.
 
 Note ODSF ships no turnkey DTCG/Tailwind importer or exporter, the compatibility is in the token shape (spec §12), so a conversion either way is a producer task you script per project.
 
@@ -150,8 +151,10 @@ The output of either path is a plain directory you can commit, tar, or drop into
 
 For the natural adopter, an OKF user whose bundle already describes a design system. Because ODSF rule 1 *is* OKF conformance (spec §1), a conformant OKF bundle is one line short of ODSF. Do not rebuild it with `export`; upgrade it in place.
 
-1. **Conform (required, one edit).** Add `odsf_version: "0.1"` to the bundle-root `index.md` frontmatter, beside the `okf_version` it already has. That alone makes `node odsf-validate.mjs` pass with zero errors, your bundle is now a conformant ODSF bundle. Switch your validator from `okf-validate.mjs` to `odsf-validate.mjs` (the strict superset) so the version rule is actually checked from here on.
+1. **Conform (required, one edit).** Add `odsf_version: "0.2"` to the bundle-root `index.md` frontmatter, beside the `okf_version` it already has. That alone makes `node odsf-validate.mjs` pass with zero errors, your bundle is now a conformant ODSF bundle. Switch your validator from `okf-validate.mjs` to `odsf-validate.mjs` (the strict superset) so the version rule is actually checked from here on.
 2. **Enrich (optional, the upside).** Everything after step 1 is graceful gain, not conformance: lift hard-coded values out of prose into foundation `tokens` and project them with `token`; retype concepts to the §5 vocabulary (`Color`, `Component`, …); author `*.example.html` + `components.css` with `asset`; wire the graph with `link`; refresh indexes and log. Do as much or as little as you want, it is a valid bundle the whole way.
+
+3. **If the OKF bundle is still on the v0.1 container**, run OKF's own `migrate` first (`timestamp` becomes `generated: { by, at }`, `# Citations` becomes `sources`, the root declares `okf_version: "0.2"`), then declare `odsf_version: "0.2"`. Both are cheap, and the rule that matters in both formats is the same one: name the actor truthfully and never backfill a `verified` event that did not happen.
 
 Touches: `index.md` (the one required edit), then whatever enrichment you choose.
 
@@ -169,4 +172,4 @@ The consumer role. Be forgiving by design (the spec requires it). Handed a task 
 
 **Emitting into a host app** is not the same as linking from a bundle example: link or `@import` `tokens.css`, or inline only the `:root` subset you use, or translate to the app's token system, and do not paste a bundle stylesheet's `@import`s or global `body {}` rules into product code, take the custom properties, leave the chrome.
 
-If you also modify the bundle while building (correcting a token, adding a state), you have become a producer too, follow the `edit` ripple checklist (timestamp, `tokens.css`, `components.css`, example, variant table, `log.md`), then validate.
+If you also modify the bundle while building (correcting a token, adding a state), you have become a producer too, follow the `edit` ripple checklist (`generated`, `tokens.css`, `components.css`, example, variant table, `log.md`), then validate.

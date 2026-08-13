@@ -7,6 +7,10 @@ use capability_digest::sha256_resource;
 
 const MAX_RESOURCE_BYTES: u64 = 256 * 1024;
 const MAX_TOTAL_RESOURCE_BYTES: u64 = 768 * 1024;
+/// Studio's own capability metadata and artifact schemas.
+const PACK_ROOT: &str = "capability-pack/okf";
+/// The vendored okf skill. Read-only here, and updated by the skills tooling.
+const SKILL_ROOT: &str = "../.agents/skills/okf";
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -73,12 +77,36 @@ struct PackResource {
     sha256: String,
 }
 
+/// Studio owns the manifest, the pack, and the artifact schemas. The skill
+/// directory is a moving upstream dependency that Studio reads and never
+/// writes, so a resource resolves against the pack first and the skill second.
+fn resolve_resource(path: &str) -> PathBuf {
+    let owned = Path::new(PACK_ROOT).join(path);
+    if owned.exists() {
+        return owned;
+    }
+    Path::new(SKILL_ROOT).join(path)
+}
+
+/// A resource may sit under either root, and neither may be escaped.
+fn assert_inside_roots(canonical: &Path, declared: &str) {
+    let inside = [PACK_ROOT, SKILL_ROOT].iter().any(|root| {
+        Path::new(root)
+            .canonicalize()
+            .is_ok_and(|root| canonical.starts_with(root))
+    });
+    assert!(inside, "resource {declared} escapes its declared root");
+}
+
 fn validate_capabilities() {
-    let root = PathBuf::from("../.agents/skills/okf");
-    let manifest_path = root.join("capabilities.json");
+    let manifest_path = Path::new(PACK_ROOT).join("capabilities.json");
     println!("cargo:rerun-if-changed={}", manifest_path.display());
-    let manifest_bytes = std::fs::read(&manifest_path)
-        .unwrap_or_else(|error| panic!("could not read {}: {error}", manifest_path.display()));
+    let manifest_bytes = std::fs::read(&manifest_path).unwrap_or_else(|error| {
+        panic!(
+            "could not read {}: {error}. Run `pnpm capabilities:pin` after a skill update.",
+            manifest_path.display()
+        )
+    });
     let manifest: Manifest = serde_json::from_slice(&manifest_bytes)
         .unwrap_or_else(|error| panic!("invalid {}: {error}", manifest_path.display()));
     assert_eq!(manifest.schema_version, 1, "unsupported capability schema");
@@ -91,9 +119,6 @@ fn validate_capabilities() {
         "capability manifest must not be empty"
     );
 
-    let canonical_root = root
-        .canonicalize()
-        .unwrap_or_else(|error| panic!("could not resolve {}: {error}", root.display()));
     let mut capability_ids = HashSet::new();
     let mut total_bytes = 0_u64;
     for capability in manifest.capabilities {
@@ -144,15 +169,11 @@ fn validate_capabilities() {
             );
             assert!(!resource.label.is_empty(), "resource label is empty");
             assert_eq!(resource.media_type, "text/markdown");
-            let requested = root.join(Path::new(&resource.path));
+            let requested = resolve_resource(&resource.path);
             let canonical = requested.canonicalize().unwrap_or_else(|error| {
                 panic!("could not resolve {}: {error}", requested.display())
             });
-            assert!(
-                canonical.starts_with(&canonical_root),
-                "resource {} escapes the canonical skill directory",
-                resource.path
-            );
+            assert_inside_roots(&canonical, &resource.path);
             println!("cargo:rerun-if-changed={}", canonical.display());
             let bytes = std::fs::read(&canonical)
                 .unwrap_or_else(|error| panic!("could not read {}: {error}", canonical.display()));
@@ -168,7 +189,7 @@ fn validate_capabilities() {
             assert_eq!(
                 sha256_resource(&bytes, &resource.media_type),
                 resource.sha256,
-                "resource digest changed for {}",
+                "resource digest changed for {}. Run `pnpm capabilities:pin` to re-pin the manifest after a skill update.",
                 resource.path
             );
         }
@@ -182,7 +203,7 @@ fn validate_capabilities() {
         sha256_resource(&manifest_bytes, "application/json")
     );
 
-    let pack_path = root.join("pack.json");
+    let pack_path = Path::new(PACK_ROOT).join("pack.json");
     println!("cargo:rerun-if-changed={}", pack_path.display());
     let pack_bytes = std::fs::read(&pack_path)
         .unwrap_or_else(|error| panic!("could not read {}: {error}", pack_path.display()));
@@ -253,16 +274,12 @@ fn validate_capabilities() {
             pack_resource_ids.insert(id),
             "duplicate pack resource ID {id}"
         );
-        let path = root.join(&resource.path);
+        let path = resolve_resource(&resource.path);
         println!("cargo:rerun-if-changed={}", path.display());
         let canonical = path
             .canonicalize()
             .unwrap_or_else(|error| panic!("could not resolve {}: {error}", path.display()));
-        assert!(
-            canonical.starts_with(&canonical_root),
-            "pack resource escapes its root: {}",
-            resource.path
-        );
+        assert_inside_roots(&canonical, &resource.path);
         assert!(
             matches!(
                 resource.media_type.as_str(),

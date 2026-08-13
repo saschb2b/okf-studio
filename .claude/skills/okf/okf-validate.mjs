@@ -1,18 +1,29 @@
 #!/usr/bin/env node
 // okf-validate.mjs - check an Open Knowledge Format (OKF) bundle for conformance
-// and, as a producer gate, for graph connectivity.
+// and, as a producer gate, for graph connectivity and v0.2 provenance hygiene.
 //
-// Hard requirements (OKF v0.1). Any failure is an error and exits non-zero:
+// Hard requirements (OKF v0.2 section 11). Any failure is an error and exits non-zero:
 //   - every non-reserved .md file opens with a YAML frontmatter block
 //   - every such block carries a non-empty `type` field
 //   - index.md carries no frontmatter, except the bundle-root index.md, which
 //     may carry frontmatter and, if it does, should declare okf_version
+//
+// Everything v0.2 added is optional, so none of it can be an error. It is checked
+// as soft guidance, and gated only when the bundle declares `okf_version: "0.2"`
+// and --strict is passed. A v0.1 bundle stays valid: the spec keeps it consumable
+// under documented fallbacks, so `timestamp` and `# Citations` are only flagged
+// once a bundle has declared that it targets v0.2.
 //
 // Soft guidance (warnings; never fail the bundle by default, mirroring the
 // permissive consumer the spec requires):
 //   - log.md date headings should be ISO 8601 YYYY-MM-DD
 //   - every concept-to-concept link should resolve to a real concept
 //   - every concept should be reachable: no orphans (degree 0)
+//   - `sources` entries carry `resource`; `generated` carries `by`
+//   - identity fields follow the actor convention (section 7)
+//   - `status` is draft|stable|deprecated; `stale_after` is YYYY-MM-DD
+//   - an Attested Computation declares `runtime` and supplies a computation
+//   - a footnote label resolves to a `sources` entry id, once ids are in use
 //
 // A concept graph is how an agent traverses a bundle. A *broken link* points at a
 // target that is not a concept -- a missing file, or a reserved index.md / log.md
@@ -23,15 +34,19 @@
 // that is the producer gate the creation checklist in commands.md requires
 // before an export is called done.
 //
-// Usage:  node okf-validate.mjs [bundle-dir] [--strict]
-// Zero dependencies. Frontmatter is scanned line by line, as gray-matter would
-// see it, so no YAML library is required.
+// Usage:  node okf-validate.mjs [bundle-dir] [--strict] [--drift]
+// Zero dependencies. Frontmatter is scanned structurally rather than with a YAML
+// library, which is enough for the flat-plus-one-level shapes the spec defines.
 
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname, relative, basename, sep } from "node:path";
 
 const args = process.argv.slice(2);
 const strict = args.includes("--strict");
+// --drift compares each index listing against the linked concept's
+// description. Opt-in, because listings legitimately paraphrase; run it after
+// editing descriptions, where a listing left behind is the failure it catches.
+const drift = args.includes("--drift");
 const root = args.find((a) => !a.startsWith("--")) || ".";
 if (!existsSync(root) || !statSync(root).isDirectory()) {
   console.error(`Not a directory: ${root}`);
@@ -41,6 +56,7 @@ if (!existsSync(root) || !statSync(root).isDirectory()) {
 const errors = [];
 const warnings = [];
 const connectivity = []; // broken links + orphans; gated by --strict
+const provenance = []; // v0.2 producer findings; gated by --strict on a v0.2 bundle
 const rel = (p) => relative(root, p).split(sep).join("/") || ".";
 
 const walk = (dir) =>
@@ -57,23 +73,133 @@ const frontmatter = (text) => {
   return m ? m[1] : null;
 };
 
-// Top-level (non-indented) `key:` lookup, matching the spec's flat field use.
-const field = (fm, key) => {
+const unquote = (v) => v.trim().replace(/^["']|["']$/g, "").trim();
+
+// Fenced code blocks hold examples: worked concept documents, grep patterns,
+// SQL. A link or footnote inside one is illustration, not an assertion, so
+// body scans (footnotes, the concept graph) run with fences removed. The
+// Attested Computation check still reads the raw text, because there the
+// fence itself is the assertion.
+const stripFences = (t) => t.replace(/```[\s\S]*?```/g, "");
+
+// Top-level frontmatter entries. Each is the scalar or flow value on the key's
+// own line (`inline`) plus any indented or dashed lines beneath it (`block`).
+const parseTop = (fm) => {
+  const out = new Map();
+  let cur = null;
   for (const line of fm.split(/\r?\n/)) {
-    if (!line.trim() || /^\s/.test(line)) continue;
+    if (!line.trim()) continue;
+    if (/^[\s-]/.test(line)) {
+      if (cur) cur.block.push(line);
+      continue;
+    }
     const idx = line.indexOf(":");
     if (idx === -1) continue;
-    if (line.slice(0, idx).trim() === key) return line.slice(idx + 1).trim();
+    cur = { inline: line.slice(idx + 1).trim(), block: [] };
+    out.set(line.slice(0, idx).trim(), cur);
   }
-  return null;
+  return out;
 };
 
+// `{ by: x, at: y }` -> { by: "x", at: "y" }. Values may contain colons (times).
+const flowPairs = (s) => {
+  const m = s.match(/^\{([\s\S]*)\}$/);
+  if (!m) return null;
+  const out = {};
+  for (const part of m[1].split(",")) {
+    const i = part.indexOf(":");
+    if (i === -1) continue;
+    out[part.slice(0, i).trim()] = unquote(part.slice(i + 1));
+  }
+  return out;
+};
+
+const kvPairs = (lines) => {
+  const out = {};
+  for (const line of lines) {
+    const t = line.replace(/^\s*-\s*/, "").trim();
+    const i = t.indexOf(":");
+    if (i === -1) continue;
+    out[t.slice(0, i).trim()] = unquote(t.slice(i + 1));
+  }
+  return out;
+};
+
+// Normalize a node to a list of objects. A bare mapping becomes a one-element
+// list, which section 11 requires consumers to do for `verified`.
+const asList = (node) => {
+  if (!node) return [];
+  if (node.inline) {
+    if (node.inline.startsWith("{")) return [flowPairs(node.inline)].filter(Boolean);
+    if (node.inline.startsWith("[")) {
+      const inner = node.inline.slice(1, -1);
+      const maps = inner.match(/\{[^}]*\}/g);
+      if (maps) return maps.map(flowPairs).filter(Boolean);
+      return inner
+        .split(",")
+        .map((s) => unquote(s))
+        .filter(Boolean)
+        .map((s) => ({ _scalar: s }));
+    }
+    return [{ _scalar: unquote(node.inline) }];
+  }
+  const lines = node.block.filter((l) => l.trim());
+  if (!lines.length) return [];
+  if (!lines.some((l) => /^\s*-/.test(l))) return [kvPairs(lines)];
+  const items = [];
+  let cur = null;
+  for (const l of lines) {
+    if (/^\s*-/.test(l)) items.push((cur = [l]));
+    else if (cur) cur.push(l);
+  }
+  return items.map((it) => {
+    const first = it[0].replace(/^\s*-\s*/, "");
+    return first.startsWith("{") ? flowPairs(first) || {} : kvPairs(it);
+  });
+};
+
+// Section 7 names exactly three actor forms. The spec's own section 5.1
+// example uses a fourth prefix (`author: team:ga4-docs`); the contradiction is
+// open upstream (#234), and strict consumers (OKF Studio) implement the rule
+// text and flag everything outside the three forms. An earlier revision of
+// this checker sided with the example and accepted any `<label>:<id>`; a real
+// bundle then ate 44 warnings in someone else's parser. The shape stays
+// accepted, and an out-of-list prefix now earns a warning here, where the
+// producer can still fix it.
+const ACTOR = /^(?:[a-z][\w.-]*:\S+|[^\s/]+\/[^\s/]+)$/i;
+const nonStdPrefix = (v) => {
+  const m = /^([a-z][\w.-]*):/i.exec(v || "");
+  return m && !["human", "process"].includes(m[1].toLowerCase()) ? m[1] : null;
+};
+const prefixNote = (p) =>
+  `uses prefix "${p}:", outside section 7's three forms (producer/version, human:id, process:id); ` +
+  `the spec's own 5.1 example does this too (open erratum #234), and strict consumers flag it`;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const STATUS = new Set(["draft", "stable", "deprecated"]);
 const isReservedName = (name) => name === "index.md" || name === "log.md";
 
 const files = walk(root).filter((f) => f.endsWith(".md"));
+const descriptions = new Map(); // concept rel path -> frontmatter description
 const conceptIds = new Set(); // path minus .md, for every concept (non-reserved) file
 const conceptFiles = []; // the concept files, to walk their bodies for links
 let concepts = 0;
+let declared = null; // okf_version from the bundle-root index.md
+let stale = 0;
+const today = new Date().toISOString().slice(0, 10);
+
+// Pass 1: the root index alone, so the declared version is known before the
+// concepts that its value governs are checked.
+const rootIndex = files.find((f) => rel(f) === "index.md");
+if (rootIndex) {
+  const fm = frontmatter(readFileSync(rootIndex, "utf8"));
+  if (fm) {
+    const v = parseTop(fm).get("okf_version");
+    declared = v ? unquote(v.inline) : null;
+    if (declared === null)
+      warnings.push(`index.md: root index.md has frontmatter but does not declare okf_version`);
+  }
+}
+const v2 = declared === "0.2";
 
 for (const file of files) {
   const name = basename(file);
@@ -84,14 +210,12 @@ for (const file of files) {
   if (name === "index.md") {
     if (fm && !isRootIndex)
       warnings.push(`${rel(file)}: index.md should carry no frontmatter (only the bundle-root index.md may)`);
-    if (fm && isRootIndex && field(fm, "okf_version") === null)
-      warnings.push(`${rel(file)}: root index.md has frontmatter but does not declare okf_version`);
     continue;
   }
 
   if (name === "log.md") {
     for (const m of text.matchAll(/^##\s+(.+?)\s*$/gm))
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(m[1]))
+      if (!ISO_DATE.test(m[1]))
         warnings.push(`${rel(file)}: log heading "${m[1]}" is not ISO 8601 YYYY-MM-DD`);
     continue;
   }
@@ -101,12 +225,105 @@ for (const file of files) {
   conceptFiles.push(file);
   conceptIds.add(rel(file).replace(/\.md$/, ""));
   if (fm === null) {
-    errors.push(`${rel(file)}: missing YAML frontmatter block`);
+    errors.push(
+      name === "README.md"
+        ? `${rel(file)}: README.md inside a bundle is a concept to a consumer, and this one has no frontmatter; move it outside the bundle, or give it frontmatter with a 'type'`
+        : `${rel(file)}: missing YAML frontmatter block`
+    );
     continue;
   }
-  const type = field(fm, "type");
-  if (type === null) errors.push(`${rel(file)}: frontmatter has no 'type' field`);
-  else if (type === "") errors.push(`${rel(file)}: 'type' field is empty`);
+
+  const top = parseTop(fm);
+  const scalar = (k) => (top.has(k) ? unquote(top.get(k).inline) : null);
+  const at = rel(file);
+
+  const type = scalar("type");
+  const desc = scalar("description");
+  if (desc) descriptions.set(at, desc);
+  if (type === null) errors.push(`${at}: frontmatter has no 'type' field`);
+  else if (type === "") errors.push(`${at}: 'type' field is empty`);
+
+  // --- v0.1 leftovers, flagged only once a bundle claims v0.2 -----------------
+  if (v2 && top.has("timestamp"))
+    provenance.push(`${at}: legacy 'timestamp' (v0.2 records it as 'generated: { by, at }')`);
+  if (v2 && /^#\s+Citations\s*$/m.test(text))
+    provenance.push(`${at}: legacy '# Citations' body section (v0.2 moves provenance to the 'sources' frontmatter family)`);
+
+  // --- provenance: sources ---------------------------------------------------
+  const sources = asList(top.get("sources"));
+  const sourceIds = new Set();
+  sources.forEach((s, i) => {
+    if (!s || s._scalar !== undefined) {
+      provenance.push(`${at}: sources[${i}] is a bare scalar; each entry needs at least 'resource'`);
+      return;
+    }
+    if (!s.resource) provenance.push(`${at}: sources[${i}] has no 'resource' (required within an entry)`);
+    if (s.id) sourceIds.add(s.id);
+    if (s.author && !ACTOR.test(s.author))
+      warnings.push(`${at}: sources[${i}].author "${s.author}" is not an actor (producer/version, human:id, process:id)`);
+    else if (s.author && nonStdPrefix(s.author))
+      warnings.push(`${at}: sources[${i}].author "${s.author}" ${prefixNote(nonStdPrefix(s.author))}`);
+    if (s.last_modified && !ISO_DATE.test(s.last_modified))
+      warnings.push(`${at}: sources[${i}].last_modified "${s.last_modified}" is not YYYY-MM-DD`);
+    if (s.usage_count && !top.has("usage_window"))
+      warnings.push(`${at}: sources[${i}].usage_count has no sibling 'usage_window' to frame it`);
+  });
+
+  // Footnote labels are the keyed attribution mechanism. Only meaningful once
+  // the concept actually uses source ids, so plain footnotes stay unbothered.
+  if (sourceIds.size) {
+    const body = stripFences(text.slice(text.indexOf("\n---", 3) + 4));
+    for (const m of body.matchAll(/\[\^([^\]]+)\]/g))
+      if (!sourceIds.has(m[1]))
+        warnings.push(`${at}: footnote [^${m[1]}] matches no 'sources' entry id`);
+  }
+
+  // --- trust: generated, verified -------------------------------------------
+  if (top.has("generated")) {
+    const g = asList(top.get("generated"))[0] || {};
+    if (!g.by) provenance.push(`${at}: 'generated' has no 'by' (required within generated)`);
+    else if (!ACTOR.test(g.by))
+      warnings.push(`${at}: generated.by "${g.by}" is not an actor (producer/version, human:id, process:id)`);
+    else if (nonStdPrefix(g.by))
+      warnings.push(`${at}: generated.by "${g.by}" ${prefixNote(nonStdPrefix(g.by))}`);
+    if (!g.at) warnings.push(`${at}: 'generated' has no 'at' datetime`);
+  }
+  asList(top.get("verified")).forEach((v, i) => {
+    if (!v || v._scalar !== undefined) {
+      warnings.push(`${at}: verified[${i}] is a bare scalar; each event needs 'by' and 'at'`);
+      return;
+    }
+    if (!v.by) warnings.push(`${at}: verified[${i}] has no 'by'`);
+    else if (!ACTOR.test(v.by))
+      warnings.push(`${at}: verified[${i}].by "${v.by}" is not an actor (producer/version, human:id, process:id)`);
+    else if (nonStdPrefix(v.by))
+      warnings.push(`${at}: verified[${i}].by "${v.by}" ${prefixNote(nonStdPrefix(v.by))}`);
+    if (!v.at) warnings.push(`${at}: verified[${i}] has no 'at' datetime`);
+  });
+
+  // --- lifecycle: status, stale_after ---------------------------------------
+  const status = scalar("status");
+  if (status !== null && !STATUS.has(status))
+    provenance.push(`${at}: status "${status}" is not draft|stable|deprecated`);
+  const staleAfter = scalar("stale_after");
+  if (staleAfter !== null) {
+    if (!ISO_DATE.test(staleAfter))
+      warnings.push(`${at}: stale_after "${staleAfter}" is not an absolute YYYY-MM-DD date`);
+    else if (today >= staleAfter) stale++;
+  }
+
+  // --- attested computations -------------------------------------------------
+  if (type === "Attested Computation") {
+    if (!scalar("runtime")) provenance.push(`${at}: Attested Computation has no 'runtime' (required)`);
+    if (!top.has("computation") && !/^#\s+Computation\s*$/m.test(text))
+      provenance.push(`${at}: Attested Computation supplies no computation (set 'computation' or add a '# Computation' fence)`);
+    if (!top.has("executor")) warnings.push(`${at}: Attested Computation has no 'executor'`);
+    if (!top.has("attester")) warnings.push(`${at}: Attested Computation has no 'attester'`);
+    asList(top.get("parameters")).forEach((p, i) => {
+      if (p && p._scalar === undefined && !p.name)
+        warnings.push(`${at}: parameters[${i}] has no 'name'`);
+    });
+  }
 }
 
 // Resolve a link href (relative to the concept it is in) to a bundle concept id,
@@ -126,12 +343,39 @@ const resolveId = (href, fromRel) => {
   return norm ? norm.replace(/\.md$/, "") : null;
 };
 
+// Section 8: index entries SHOULD carry the linked concept's description. A
+// listing that drifts from the description it advertises is stale navigation,
+// the same rot class as a missing log entry. Compares only when the entry has
+// a description tail (a bare link carries nothing), normalized so quoting and
+// emphasis differences do not count as drift. Capped, because a bulk corpus
+// can hold tens of thousands of listings.
+const normText = (s) =>
+  s.toLowerCase().replace(/\\/g, "").replace(/["'`*_]/g, "").replace(/\s+/g, " ").replace(/\.\s*$/, "").trim();
+let driftShown = 0;
+let driftTotal = 0;
+for (const idx of drift ? files.filter((f) => basename(f) === "index.md") : []) {
+  const body = stripFences(readFileSync(idx, "utf8"));
+  for (const m of body.matchAll(/^[*-]\s+\[[^\]]+\]\(([^)\s]+\.md)\)\s*[-–:]\s+(.+)$/gm)) {
+    const id = resolveId(m[1], rel(idx));
+    if (!id || !descriptions.has(id + ".md")) continue;
+    if (!normText(m[2]).includes(normText(descriptions.get(id + ".md")))) {
+      driftTotal++;
+      if (driftShown < 20) {
+        warnings.push(`${rel(idx)}: listing for ${id}.md differs from that concept's description`);
+        driftShown++;
+      }
+    }
+  }
+}
+if (driftTotal > driftShown)
+  warnings.push(`(${driftTotal - driftShown} more index listings differ from their concepts' descriptions)`);
+
 // Build the concept graph from concept bodies only (index/log links are
 // navigation, not graph edges). Undirected: a link makes both ends reachable.
 const linked = new Set();
 for (const file of conceptFiles) {
   const fromRel = rel(file);
-  const text = readFileSync(file, "utf8");
+  const text = stripFences(readFileSync(file, "utf8"));
   for (const m of text.matchAll(/\]\(([^)\s]+\.md)(?:#[^)]*)?\)/g)) {
     const href = m[1];
     if (/^[a-z]+:/i.test(href)) continue; // external URL
@@ -156,16 +400,24 @@ if (concepts > 1) {
   for (const id of orphans) connectivity.push(`${id}.md: orphan (no concept links in or out)`);
 }
 
+// A v0.1 bundle is consumable as-is, so its provenance gaps are informational.
+const gateProvenance = strict && v2;
 for (const w of warnings) console.warn(`warn  ${w}`);
+for (const p of provenance) console.warn(`${gateProvenance ? "gate " : "warn "} ${p}`);
 for (const c of connectivity) console.warn(`${strict ? "gate " : "warn "} ${c}`);
 for (const e of errors) console.error(`error ${e}`);
 
 const brokenCount = connectivity.filter((c) => c.includes("broken concept link")).length;
-const gateFailed = strict && connectivity.length > 0;
+const gateFailed = (strict && connectivity.length > 0) || (gateProvenance && provenance.length > 0);
+const targets = declared ? `v${declared}` : "no declared version";
 console.log(
-  `\nOKF v0.1 check of "${root}": ${concepts} concept(s), ${errors.length} error(s), ` +
-    `${warnings.length} warning(s); ${brokenCount} broken link(s), ${orphans.length} orphan(s)` +
-    `${strict ? " [--strict]" : ""}. ` +
-    (errors.length ? "NOT conformant." : gateFailed ? "Conformant, but the connectivity gate failed." : "Conformant.")
+  `\nOKF v0.2 check of "${root}" (${targets}): ${concepts} concept(s), ${errors.length} error(s), ` +
+    `${warnings.length + provenance.length} warning(s); ${brokenCount} broken link(s), ` +
+    `${orphans.length} orphan(s), ${stale} stale${strict ? " [--strict]" : ""}. ` +
+    (errors.length
+      ? "NOT conformant."
+      : gateFailed
+        ? "Conformant, but the producer gate failed."
+        : "Conformant.")
 );
 process.exit(errors.length || gateFailed ? 1 : 0);

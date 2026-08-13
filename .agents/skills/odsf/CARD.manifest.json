@@ -1,0 +1,26 @@
+[
+  {
+    "path": "SKILL.md",
+    "sha256": "9ae83e86eee59d81bb4152fae237b0149c4a0c654afb3e7ff7affaa8c2078066"
+  },
+  {
+    "path": "commands.md",
+    "sha256": "96ea136176d1684d768cc660de10ff9b7155596bed36e759d6ab67f45305bbee"
+  },
+  {
+    "path": "odsf-validate.mjs",
+    "sha256": "ff19503ccc03e873988bce4300eacc2ac6bc0fe103541730e2a532202d04a768"
+  },
+  {
+    "path": "permissions.yaml",
+    "sha256": "6be32f4985b917b53a1adbedb2d7652f7229e77c4b482bd1b910715f5af7ceb8"
+  },
+  {
+    "path": "spec.md",
+    "sha256": "b4953509454b36906c635c1b91420016fa43c875e41fcc857f006d4718009416"
+  },
+  {
+    "path": "templates.md",
+    "sha256": "309220bd00ec187a561e44a9929ed6c639ed44f72a78af01c59cf341cb4b8fe8"
+  }
+]

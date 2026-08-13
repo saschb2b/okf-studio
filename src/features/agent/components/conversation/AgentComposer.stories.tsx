@@ -260,11 +260,15 @@ export const TallPanel: Story = {
     ),
   ],
   play: async ({ canvas }) => {
-    const shell = canvas.getByRole("textbox", { name: "Message the agent" })
-      .closest(".agent-composer__input-shell");
+    const input = canvas.getByRole("textbox", { name: "Message the agent" });
+    const shell = input.closest(".agent-composer__input-shell");
     await expect(shell).not.toBeNull();
     // Content height, not the panel's leftover space.
     await expect((shell as HTMLElement).getBoundingClientRect().height).toBeLessThan(220);
+    // The field measures itself from its content, so surplus space around it
+    // cannot be read back in as a taller field. An empty draft stays at its
+    // resting height however much room the panel has.
+    await expect(input.clientHeight).toBeLessThan(100);
   },
 };
 

@@ -2299,6 +2299,12 @@
 .agent-composer__input-shell > textarea {
   width: 100%;
   min-width: 0;
+  /* Its own content decides its height, never the grid row. As a stretched
+     item it filled any surplus, and since the height is measured from
+     scrollHeight, the stretched size was read back and written in as the new
+     height. Setting height to auto does not undo a stretch, so the box locked
+     at whatever space it had been given, up to the cap below. */
+  align-self: start;
   min-height: 60px;
   max-height: 260px;
   padding: var(--space-10) var(--space-12);

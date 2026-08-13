@@ -2294,30 +2294,51 @@
   border-color: var(--accent);
 }
 
-/* The height is set from the content in AgentComposer, so the manual resize
-   handle is gone: it existed to work around a box that never grew. */
-.agent-composer__input-shell > textarea {
+/* The field sizes itself to its text, in CSS, with nothing measuring layout.
+   A hidden pseudo-element mirrors the draft from the wrapper's data-value and
+   shares a single grid cell with the textarea, so the taller of the two sets
+   the row. The previous version read scrollHeight in an effect, which returns
+   the stretched height of a grid item rather than the height of the text, so
+   surplus space was written back in and the box locked open.
+
+   The cap lives on the mirror: past it the row stops growing and the textarea
+   scrolls. The manual resize handle is gone with all of this. */
+.agent-composer__field {
+  display: grid;
+  min-width: 0;
+  align-self: start;
+}
+
+.agent-composer__field::after,
+.agent-composer__field > textarea {
+  grid-area: 1 / 1;
   width: 100%;
   min-width: 0;
-  /* Its own content decides its height, never the grid row. As a stretched
-     item it filled any surplus, and since the height is measured from
-     scrollHeight, the stretched size was read back and written in as the new
-     height. Setting height to auto does not undo a stretch, so the box locked
-     at whatever space it had been given, up to the cap below. */
-  align-self: start;
   min-height: 60px;
-  max-height: 260px;
   padding: var(--space-10) var(--space-12);
-  color: var(--text);
   font: inherit;
   line-height: var(--lh-normal);
-  background: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   border: 0;
+}
+
+/* Trailing space so a draft ending in a newline still reserves that row. */
+.agent-composer__field::after {
+  content: attr(data-value) " ";
+  max-height: 260px;
+  visibility: hidden;
+}
+
+.agent-composer__field > textarea {
+  max-height: 260px;
+  color: var(--text);
+  background: transparent;
   resize: none;
   overflow-y: auto;
 }
 
-.agent-composer__input-shell > textarea:focus-visible {
+.agent-composer__field > textarea:focus-visible {
   outline: 0;
 }
 

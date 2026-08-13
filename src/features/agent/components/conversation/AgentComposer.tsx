@@ -12,7 +12,6 @@
 // See docs/ux/agent-composer.md.
 
 import { ListPlus, Send, Square } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
 import type * as React from "react";
 import "@/shared/styles/chrome.css";
 
@@ -50,9 +49,6 @@ export interface AgentComposerProps {
 }
 
 const MAX_PROMPT_CHARS = 128 * 1024;
-/** Roughly twelve lines. Past this the draft scrolls instead of pushing the
- *  transcript off the screen. */
-const MAX_INPUT_HEIGHT_PX = 260;
 
 export function AgentComposer({
   inputId,
@@ -73,44 +69,32 @@ export function AgentComposer({
   isCancelling = false,
   onStop,
 }: AgentComposerProps) {
-  // The box grows with the draft up to a ceiling, then scrolls. At a fixed
-  // three rows a longer prompt was written blind: the text ran past the box
-  // and the fourth line was sliced in half against the action bar, so a user
-  // could not read back what they were about to send without dragging a
-  // resize handle. Measured before paint to avoid a visible reflow per key.
-  const localRef = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const field = localRef.current;
-    // The caller focuses and reads the field, so it gets the same node. The
-    // handoff happens here rather than in a ref callback, which the React
-    // Compiler rejects as a mutation after render.
-    if (inputRef) inputRef.current = field;
-    if (!field) return;
-    field.style.height = "auto";
-    field.style.height = `${Math.min(field.scrollHeight, MAX_INPUT_HEIGHT_PX)}px`;
-  }, [value, inputRef]);
-
   return (
     <div className="agent-composer__input-shell">
       {sessionControls && (
         <div className="agent-composer__session">{sessionControls}</div>
       )}
       <label className="sr-only" htmlFor={inputId}>Message the agent</label>
-      <textarea
-        ref={localRef}
-        id={inputId}
-        name="prompt"
-        // One row is the floor the measurement resets to. The resting height
-        // is a min-height in CSS, so an empty composer is compact and the box
-        // grows from there rather than starting three rows deep.
-        rows={1}
-        maxLength={MAX_PROMPT_CHARS}
-        placeholder={placeholder}
-        disabled={disabled}
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-        onKeyDown={onKeyDown}
-      />
+      {/* The wrapper carries the draft as a data attribute so a hidden
+          pseudo-element can mirror it and set the row height. The field then
+          sizes to its own text with no measurement: an earlier version read
+          scrollHeight in an effect, which returns the stretched height of a
+          grid item, so surplus space got written back in as a taller field
+          and the box locked open. Nothing here reads layout. */}
+      <div className="agent-composer__field" data-value={value}>
+        <textarea
+          ref={inputRef}
+          id={inputId}
+          name="prompt"
+          rows={1}
+          maxLength={MAX_PROMPT_CHARS}
+          placeholder={placeholder}
+          disabled={disabled}
+          value={value}
+          onChange={(event) => onValueChange(event.target.value)}
+          onKeyDown={onKeyDown}
+        />
+      </div>
       <div className="agent-composer__actions">
         <div className="agent-composer__leading-actions">
           {attachments}

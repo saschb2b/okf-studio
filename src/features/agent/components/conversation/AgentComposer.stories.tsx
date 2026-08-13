@@ -227,9 +227,10 @@ export const NarrowPanel: Story = {
 
 /**
  * Every optional slot filled at the narrow width. This is the regression
- * guard: the bar used to truncate its own controls to "Default (recommend..."
- * because a permanent capability label and a four-decimal cost sat in front
- * of them.
+ * guard: all three session controls used to share the action bar, where a
+ * permanent capability label and a four-decimal cost sat in front of them and
+ * truncated the permission mode to "Default (recommend...". They now have
+ * their own line and the bar keeps its text down to this width.
  */
 export const Crowded: Story = {
   args: {

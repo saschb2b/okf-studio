@@ -1956,18 +1956,12 @@
   }
 }
 
-/* Both texts used to drop together at 600px, which took the context reading
-   away at the width where a user is most likely to be watching it. The status
-   goes first, because a running turn is also visible in the transcript and in
-   the stop control. The reading follows only when even it cannot fit. */
-@container (max-width: 600px) {
-  .agent-composer__actions:has(.agent-session-controls) .agent-composer__status {
-    display: none;
-  }
-}
-
-@container (max-width: 460px) {
-  .agent-composer__actions:has(.agent-session-controls) .agent-composer__usage {
+/* With the session controls on their own line the bar holds far less, so it
+   keeps its text down to the narrow panel. The status is what goes when even
+   this runs out, because a running turn is also visible in the transcript and
+   in the stop control, while the context reading has no second home. */
+@container (max-width: 420px) {
+  .agent-composer__status {
     display: none;
   }
 }
@@ -2318,12 +2312,15 @@
   gap: var(--space-8);
 }
 
-/* The session controls name the model and the permission mode, which decide
-   what the next turn does. They yield the row to nothing, so the text beside
-   them is what gives way first. */
-.agent-composer__actions > .agent-session-controls {
-  flex: none;
-  flex-wrap: nowrap;
+/* Model, permission mode, and profile, on their own line above the input.
+   They are session state, set once and read often, so they read as a heading
+   for the thread rather than as an action on the message being written. In
+   the action bar they competed with it for width and lost their labels. */
+.agent-composer__session {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  padding: var(--space-6) var(--space-12) 0;
 }
 
 

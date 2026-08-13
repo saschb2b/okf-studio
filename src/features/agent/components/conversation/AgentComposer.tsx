@@ -3,10 +3,13 @@
 // presentational: it owns no session state and reaches for no IPC. The two
 // rich controls arrive as slots, because both carry their own data loading.
 //
-// The bar holds one line of transient status, the context reading, the
-// slotted controls, and the send control. A permanent capability label used
-// to sit in the status slot ("Text and images"), which spent the composer's
-// quietest row on something that never changed. See docs/ux/agent-composer.md.
+// Three rows, in the order a user meets them: what is answering, what they
+// are writing, and what to do with it. The session controls sit above the
+// input because model and permission mode are set once and read often, while
+// the bar under the input is for the message being written. Sharing one row
+// made the mode truncate to "Default (recommend...". The bar itself holds a
+// transient status, the context reading, and send.
+// See docs/ux/agent-composer.md.
 
 import { Send, Square } from "lucide-react";
 import type * as React from "react";
@@ -33,7 +36,7 @@ export interface AgentComposerProps {
   usage?: ComposerUsage | null;
   /** The attachment picker. */
   attachments?: React.ReactNode;
-  /** Model, permission, and profile controls. */
+  /** Model, permission, and profile controls. Rendered above the input. */
   sessionControls?: React.ReactNode;
   /** A turn in flight swaps Send for Queue, and adds Stop. */
   turnActive?: boolean;
@@ -67,6 +70,9 @@ export function AgentComposer({
 }: AgentComposerProps) {
   return (
     <div className="agent-composer__input-shell">
+      {sessionControls && (
+        <div className="agent-composer__session">{sessionControls}</div>
+      )}
       <label className="sr-only" htmlFor={inputId}>Message the agent</label>
       <textarea
         ref={inputRef}
@@ -98,7 +104,6 @@ export function AgentComposer({
             </span>
           )}
         </div>
-        {sessionControls}
         {turnActive ? (
           <div className="agent-composer__turn-actions">
             <button

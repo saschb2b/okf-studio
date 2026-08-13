@@ -131,8 +131,13 @@ describe("OKF Studio agent connections", () => {
       const reviewTurnQuiet = waitForTurnQuiescent();
       await user.click(within(reviewConversation).getByRole("button", { name: "Send" }));
       await reviewTurnQuiet;
+      // The composer accepting input again is what "the turn released it"
+      // looks like. Send is not the signal: it is inert on an empty draft,
+      // and sending clears the draft.
       await waitFor(() =>
-        expect(within(reviewConversation).getByRole("button", { name: "Send" })).toBeEnabled(),
+        expect(
+          within(reviewConversation).getByRole("textbox", { name: "Message the agent" }),
+        ).toBeEnabled(),
       );
       expect(reviewConversation).toHaveTextContent(
         "Browser ACP received: Review the evidence",

@@ -96,7 +96,10 @@ describe("OKF Studio agent turns", () => {
     expect(responseText.closest("article")).toHaveTextContent(
       "Browser ACP received: Summarize the bundle",
     );
-    expect(document.querySelector(".agent-composer__usage")).toHaveTextContent("3% context");
+    // A window at 3% reports nothing in the action bar. The reading appears
+    // from the "approaching" threshold up, where ContextPressureNotice also
+    // offers the recovery command.
+    expect(document.querySelector(".agent-composer__usage")).toBeNull();
     expect(screen.getByRole("heading", { name: "Summarize the bundle" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove Overview from context" }))
       .not.toBeInTheDocument();

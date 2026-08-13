@@ -66,8 +66,11 @@ export function usageLabels(usage: AgentUsage): { visible: string; detail: strin
   const context = usage.contextWindowTokens > 0
     ? `${Math.min(100, Math.round((usage.usedTokens / usage.contextWindowTokens) * 100))}% context`
     : `${new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(usage.usedTokens)} tokens`;
+  // The bar shows the reading a user acts on, which is how close the context
+  // is to full. Cumulative cost to four decimals answered no question at a
+  // glance and crowded the row, so it stays in the tooltip and the label.
   return {
-    visible: cost ? `${context} · ${cost}` : context,
+    visible: context,
     detail: cost
       ? `${used} of ${size} context tokens used. Cumulative session cost: ${cost}.`
       : `${used} of ${size} context tokens used.`,

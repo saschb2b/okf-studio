@@ -1956,8 +1956,17 @@
   }
 }
 
+/* Both texts used to drop together at 600px, which took the context reading
+   away at the width where a user is most likely to be watching it. The status
+   goes first, because a running turn is also visible in the transcript and in
+   the stop control. The reading follows only when even it cannot fit. */
 @container (max-width: 600px) {
-  .agent-composer__actions:has(.agent-session-controls) .agent-composer__status,
+  .agent-composer__actions:has(.agent-session-controls) .agent-composer__status {
+    display: none;
+  }
+}
+
+@container (max-width: 460px) {
   .agent-composer__actions:has(.agent-session-controls) .agent-composer__usage {
     display: none;
   }
@@ -2308,6 +2317,15 @@
   align-items: center;
   gap: var(--space-8);
 }
+
+/* The session controls name the model and the permission mode, which decide
+   what the next turn does. They yield the row to nothing, so the text beside
+   them is what gives way first. */
+.agent-composer__actions > .agent-session-controls {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
 
 .agent-composer__leading-actions > span {
   overflow: hidden;

@@ -14,6 +14,7 @@ How OKF Studio looks and feels: the flows, workspace layout, shortcuts, theming,
 
 # Agent and repository workflows
 
+* [Agent Composer](agent-composer.md) - Write and send a prompt, and the rule that decides what the action bar may show.
 * [Agent Workspace Dogfood](agent-workspace-dogfood.md) - Journey evidence and open findings from refining the Agent Panel workspace.
 * [Git Workflow](git-workflow.md) - Review changes, stage, commit, browse history, and run explicit remotes without leaving the bundle.
 * [Retrieval experience contract](../product/retrieval-intelligence/retrieval-experience-contract.md) - Surface ownership and UX gates for retrieval intelligence.

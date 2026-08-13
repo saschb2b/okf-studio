@@ -10,7 +10,7 @@ import type { Issue } from "@/shared/types.ts";
 import type { ReaderSelectionCapture } from "@/features/agent/readerSelection.ts";
 import { AgentLiveWorkShelf } from "@/features/agent/components/AgentLiveWorkShelf.tsx";
 import { AgentSessionControls } from "@/features/agent/components/AgentSessionControls.tsx";
-import { Check, CircleAlert, Crosshair, FileText, History, ImageIcon, RotateCcw, Send, Sparkles, Square, TextSelect, TriangleAlert, X } from "lucide-react";
+import { Check, CircleAlert, Crosshair, FileText, History, ImageIcon, RotateCcw, Sparkles, TextSelect, TriangleAlert, X } from "lucide-react";
 import { StagedGraphPreview } from "@/features/agent/components/StagedGraphPreview.tsx";
 import { agentStagedFileDiff, applyAgentStagedChanges, consumeRestoredConnection, createAgentStagedBundle, cancelAgentTurn, authenticateAgent, discardAgentStagedChanges, discardAgentStagedFile, listAgentSessions, loadAgentThreadMetadata, loadAgentSession, loadWorkspaceMemory, newAgentSession, onAgentAvailableCommandsUpdate, onAgentConnectionState, onAgentPermissionUpdate, onAgentSessionConfigUpdate, onAgentStageUpdate, onAgentTurnUpdate, onWorkspaceMemoryChange, prepareAgentArtifactCritic, recordAgentThreadPrompt, recordWorkspaceTaskObservation, rememberedAuthMethod, respondAgentPermission, retrieveOkfContext, saveWorkspaceOmissionPreference, setAgentWriteGrant, setAgentStageMode, setAgentStagedHunkSelection, validateAgentArtifact, validateAgentReceipt, validateAgentArtifactCritic, validateAgentStagedChanges, pickAgentSourceFolder, pickAgentImageSources, pickAgentTextSources, promptAgent, promptAgentCritic, removeAgentThreadMetadata, restoreAgentStagedCheckpoint, saveAgentThreadMetadata, setAgentSessionConfigOption } from "@/shared/ipc.ts";
 import { deriveThreadTitle, previousThreadSource, transcriptMarkdown } from "@/features/agent/thread.ts";
@@ -21,6 +21,7 @@ import "./AgentConversation.css";
 import type { StagedValidationState, ConversationMessage, ConversationPlan, ConversationItem, AttachedSource, ComposerState, PromptDraft, PromptSubmission, QueuedPrompt, ThreadTitle, AuthenticationState, HistoryState, SavedThreadState, PendingPermission, AgentUsage, EventStreamState, DraftSessionState, PendingSessionConfig, StageFailure } from "@/features/agent/components/conversation/types.ts";
 import { BUNDLE_GENERATION_PROMPT, THREAD_STARTERS, usageLabels, errorMessage, stagedBytesLabel, sourceTooltip } from "@/features/agent/components/conversation/helpers.ts";
 import { SavedThreadWelcome, EmptyThreadWelcome, ThreadSecurityScope, ThreadTitleEditor, ThreadSurfaceClose, ThreadActionsMenu } from "@/features/agent/components/conversation/ThreadChrome.tsx";
+import { AgentComposer } from "@/features/agent/components/conversation/AgentComposer.tsx";
 import { AttachmentPicker } from "@/features/agent/components/conversation/AttachmentPicker.tsx";
 import { applyPermissionEvent, PermissionCard, applyTurnEvent, ConversationItemView, planProgressLabel, LivePlan } from "@/features/agent/components/conversation/items.tsx";
 import { useTranscriptExport } from "@/features/agent/components/conversation/useTranscriptExport.ts";
@@ -56,6 +57,7 @@ import type { AgentThreadStatus } from "@/features/agent/threadStatus.ts";
 import { threadAttentionTransition } from "@/features/agent/threadStatus.ts";
 import { sendAgentThreadNotification } from "@/shared/platform/notifications.ts";
 import {
+  contextPressureState,
   findContextRecoveryCommand,
   freshThreadContextDraft,
   markContextSummary,
@@ -1735,15 +1737,24 @@ export function AgentConversation({
   const attachedIssueKeys = new Set(
     attachedSources.flatMap((source) => source.issueKey ? [source.issueKey] : []),
   );
-  let composerStatus = connection.capabilities.promptImage
-    ? "Text and images"
-    : isStudioAgent
-      ? "Scoped tools"
-      : "Text only";
+  // Only a live status earns a place in the action bar. This slot used to
+  // carry what the connection accepts ("Text and images"), which never
+  // changed while the user read it and pushed the session controls into
+  // truncation on a narrow panel. The attachment picker already reports what
+  // it can attach, at the point of attaching.
+  let composerStatus: string | null = null;
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
   if (isSubmitting) composerStatus = "Starting turn";
-  const usageLabel = usage ? usageLabels(usage) : null;
+  // The reading appears once it can change a decision. A window at 3% is not
+  // a fact anyone acts on, and holding it in the bar all session spent the
+  // row on a number that only matters near the ceiling. From "approaching"
+  // upward the notice above the composer names the recovery command, and this
+  // gives the running figure beside it. Claude Code hides its own indicator
+  // on the same reasoning: nothing renders until the window is nearly spent.
+  const usageLabel = usage && contextPressureState(usage).level !== "normal"
+    ? usageLabels(usage)
+    : null;
   const contextRecoveryCommand = findContextRecoveryCommand(availableCommands);
   const supportsBundleGeneration = threadTaskId === "okf-create" ||
     threadTaskId === "okf-enrich";
@@ -3239,41 +3250,48 @@ export function AgentConversation({
               />
             )}
             <OkfMentionMenu options={mentionOptions} onSelect={selectMention} />
-            <div className="agent-composer__input-shell">
-              <label className="sr-only" htmlFor={promptInputId}>Message the agent</label>
-              <textarea
-                ref={promptRef}
-                id={promptInputId}
-                name="prompt"
-                rows={3}
-                maxLength={128 * 1024}
-                placeholder={isStudioAgent ? "Message Studio Agent... Use @ for context" : "Ask about this bundle... Use @ for context"}
-                disabled={isSubmitting || queuedPrompt !== null}
-                value={promptText}
-                onChange={(event) => changePromptText(event.target.value)}
-                onKeyDown={(event) => {
-                  // Zed-style submission: Enter sends (or queues during a
-                  // turn), Shift+Enter inserts a newline, and an active IME
-                  // composition keeps Enter for itself.
-                  if (
-                    event.key !== "Enter" ||
-                    event.shiftKey ||
-                    event.nativeEvent.isComposing
-                  ) {
-                    return;
-                  }
-                  event.preventDefault();
-                  if (mentionOptions.length > 0) {
-                    selectMention(mentionOptions[0]);
-                    return;
-                  }
-                  if (promptText.trim().length === 0) return;
-                  event.currentTarget.form?.requestSubmit();
-                }}
-              />
-              <div className="agent-composer__actions">
-                <div className="agent-composer__leading-actions">
-                  <AttachmentPicker
+            <AgentComposer
+              inputId={promptInputId}
+              inputRef={promptRef}
+              value={promptText}
+              onValueChange={changePromptText}
+              placeholder={isStudioAgent ? "Message Studio Agent... Use @ for context" : "Ask about this bundle... Use @ for context"}
+              disabled={isSubmitting || queuedPrompt !== null}
+              status={composerStatus}
+              usage={usageLabel}
+              turnActive={activeTurn !== null}
+              queued={queuedPrompt !== null}
+              isSubmitting={isSubmitting}
+              isCancelling={isCancelling}
+              onStop={() => void stopTurn()}
+              // Send stays inert until there is something to send. Queue
+              // already required text; the idle button did not, so it invited
+              // a press that submitted an empty prompt.
+              sendDisabled={activeTurn
+                ? isSubmitting || queuedPrompt !== null ||
+                  promptText.trim().length === 0 || contextPlanIsStale
+                : isSubmitting || promptText.trim().length === 0 || contextPlanIsStale}
+              onKeyDown={(event) => {
+                // Zed-style submission: Enter sends (or queues during a
+                // turn), Shift+Enter inserts a newline, and an active IME
+                // composition keeps Enter for itself.
+                if (
+                  event.key !== "Enter" ||
+                  event.shiftKey ||
+                  event.nativeEvent.isComposing
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                if (mentionOptions.length > 0) {
+                  selectMention(mentionOptions[0]);
+                  return;
+                }
+                if (promptText.trim().length === 0) return;
+                event.currentTarget.form?.requestSubmit();
+              }}
+              attachments={
+                <AttachmentPicker
                     concepts={concepts}
                     activeConceptId={activeConcept?.id ?? null}
                     attachedConcepts={attachedConcepts}
@@ -3314,19 +3332,8 @@ export function AgentConversation({
                     }
                     onNativePick={(kind) => void attachLocalSources(kind)}
                   />
-                  <span className="agent-composer__status" title={composerStatus}>
-                    {composerStatus}
-                  </span>
-                  {usageLabel && (
-                    <span
-                      className="agent-composer__usage"
-                      aria-label={usageLabel.detail}
-                      title={usageLabel.detail}
-                    >
-                      {usageLabel.visible}
-                    </span>
-                  )}
-                </div>
+              }
+              sessionControls={
                 <AgentSessionControls
                   options={sessionConfigOptions}
                   pendingOptionId={pendingSessionConfig?.optionId ?? null}
@@ -3336,42 +3343,8 @@ export function AgentConversation({
                   onChange={(option, value) => void changeSessionConfig(option, value)}
                   onRetry={retrySessionConfig}
                 />
-                {activeTurn ? (
-                  <div className="agent-composer__turn-actions">
-                    <button
-                      type="submit"
-                      className="btn primary icon"
-                      aria-label={queuedPrompt ? "Queued" : "Queue"}
-                      title={queuedPrompt ? "Queued" : "Queue"}
-                      disabled={isSubmitting || queuedPrompt !== null ||
-                        promptText.trim().length === 0 || contextPlanIsStale}
-                    >
-                      <Send size={15} aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn icon"
-                      aria-label={isCancelling ? "Stopping..." : "Stop"}
-                      title={isCancelling ? "Stopping..." : "Stop"}
-                      disabled={isCancelling}
-                      onClick={() => void stopTurn()}
-                    >
-                      <Square size={15} aria-hidden="true" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="submit"
-                    className="btn primary icon"
-                    aria-label={isSubmitting ? "Sending..." : "Send"}
-                    title={isSubmitting ? "Sending..." : "Send"}
-                    disabled={isSubmitting || contextPlanIsStale}
-                  >
-                    <Send size={16} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-            </div>
+              }
+            />
           </form>
         </>
       )}

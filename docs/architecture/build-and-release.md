@@ -18,6 +18,7 @@ The one automatic network call the shipped binary makes is a single quiet releas
 
 - **Windows:** `.msi` and/or NSIS `.exe`.
 - **Ubuntu:** `.deb` and AppImage.
+- **macOS:** `.app` bundle and `.dmg` installer.
 
 Each is a [self-contained, portable](../product/principles.md) artifact that uses the system webview. There is no bundled runtime the user must manage.
 

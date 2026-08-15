@@ -51,14 +51,14 @@ The layout is documented in [`docs/architecture/frontend-architecture.md`](docs/
 
 ## Dev commands
 
-Prerequisites (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): stable Rust + Node.js with pnpm. On Ubuntu also `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`; on Windows the WebView2 runtime + MSVC build tools.
+Prerequisites (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): stable Rust + Node.js with pnpm. On Ubuntu also `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`; on Windows the WebView2 runtime + MSVC build tools; on macOS the Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
 pnpm install
 pnpm dev            # frontend only, in a browser (mock bundle) — fastest for UI work
 pnpm storybook      # component playground on :6006 — per-component states on the app's real tokens
 pnpm tauri dev      # the full app with hot reload
-pnpm tauri build    # installers: .msi/.exe (Windows), .deb/AppImage (Ubuntu)
+pnpm tauri build    # installers: .msi/.exe (Windows), .deb/AppImage (Ubuntu), .app/.dmg (macOS)
 ```
 
 **Storybook is also an agent surface.** The dev server mounts `@storybook/addon-mcp` at `http://localhost:6006/mcp` (registered in the repo-root `.mcp.json`): with it running you can enumerate components/stories and author new ones through the addon's tools. Stories are colocated `src/**/*.stories.tsx`; a new or restyled component state gets a story there, not another ad-hoc fixture (`?agent-gallery` stays for whole-panel compositions). **Stories are tests**: interactive ones carry `play` functions, and `pnpm test:stories` runs every story headless in Chromium — run it when components or stories change. Store-bound components wrap in the `WithStore` harness (`src/mock/withStore.tsx`), which boots the real `AppProvider` over the browser mock. Per-story screenshots come from `http://localhost:6006/iframe.html?id=<story-id>`. Keep ad hoc captures outside the repository; add an image to `docs/ux/` only when a named Markdown concept links it as curated evidence. See [`docs/architecture/testing.md`](docs/architecture/testing.md).

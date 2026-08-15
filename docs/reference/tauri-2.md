@@ -39,10 +39,11 @@ okf-studio/
 
 - Scaffold: `pnpm create tauri-app` (choose the v2 template + React + TypeScript).
 - Dev: `pnpm tauri dev` (hot-reloads frontend, rebuilds Rust on change).
-- Build installers: `pnpm tauri build` produces Windows `.msi` and `.exe`, and Linux `.deb` and AppImage.
+- Build installers: `pnpm tauri build` produces Windows `.msi` and `.exe`, Linux `.deb` and AppImage, and macOS `.app` and `.dmg`.
 
 # Per-platform prerequisites
 
 - **All:** a recent stable Rust toolchain and Node.js.
 - **Ubuntu and Linux:** `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`, and related GTK packages.
 - **Windows:** the WebView2 runtime (preinstalled on Windows 11) and the MSVC C++ build tools.
+- **macOS:** the Xcode Command Line Tools (`xcode-select --install`).

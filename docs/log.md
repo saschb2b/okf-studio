@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-08-15
+
+* **Update**: Added macOS `.app` and `.dmg` bundle targets to the Tauri configuration and documented macOS host build prerequisites and outputs in [Build and Release](architecture/build-and-release.md) and [Tauri 2.0](reference/tauri-2.md). Building with `pnpm tauri build` packages the desktop application as an `.app` bundle and disk image (`.dmg`), with Xcode Command Line Tools as the platform prerequisite.
+
 ## 2026-08-13
 
 * **Update**: The [agent composer](ux/agent-composer.md) became an object on the panel. It was a full-bleed strip marked off by one hairline under the transcript, so it read as where the scroll ended rather than as somewhere to type, and focus showed as a colour change on that hairline at the far edge of the panel. The three rows now sit on one raised surface, inset from the panel edges, with a border that carries focus, and the box rests at about two lines instead of three. The state gallery stopped rebuilding the composer's markup by hand and renders the component: its copy had already drifted to an old placeholder, a status label the app no longer shows, and the session controls inside the action row they were lifted out of.

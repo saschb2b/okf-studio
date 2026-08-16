@@ -17,7 +17,7 @@ The top of the marketing/download page. One per page.
 |------|-----------|-------|
 | Canvas | rounded container, `radius.xl`, `colors.surface` | Bundles everything below into one object (see The canvas). |
 | Nav | [Nav](/components/nav.md) pill, sticky | Floats just above the canvas at rest and stays while scrolling, keeping the Download action reachable. |
-| Eyebrow | `.eyebrow` (mono, uppercase, `colors.text-dim`) | One short line, e.g. "OKF Studio · v0.9.1". |
+| Eyebrow | `.eyebrow` (mono, uppercase, `colors.text-dim`) | One short line, e.g. "OKF Studio · v0.10.0". |
 | Headline | [Typography](/foundations/typography.md) `text.display`, `colors.text` | Tight tracking and leading; the one claim. Capped at `size.headline` so the authored break holds; solid text, never a gradient fill. |
 | Sub | body `text.lg`, `colors.text-muted`, capped at `size.measure` | One sentence of value. |
 | Actions | [Button](/components/button.md) `--primary --lg` + `--secondary` | The download, then one way to learn more. |

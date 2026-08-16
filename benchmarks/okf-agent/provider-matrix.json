@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "appVersion": "0.9.1",
+  "appVersion": "0.10.0",
   "providers": [
     {
       "id": "studio-agent",

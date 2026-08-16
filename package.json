@@ -1,7 +1,7 @@
 {
   "name": "okf-viewer",
   "private": true,
-  "version": "0.9.1",
+  "version": "0.10.0",
   "type": "module",
   "description": "Explore connected knowledge with the agents you already use.",
   "packageManager": "pnpm@11.20.0",

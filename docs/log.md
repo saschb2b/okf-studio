@@ -2,6 +2,17 @@
 
 ## 2026-08-16
 
+* **Release**: 0.10.0. Delegated work becomes visible, and the agent composer is rebuilt. A minor rather than a patch: it adds a capability that was not there, and it changes the surface a user types into on every turn.
+
+  **Plan delegated work.** Studio can now show how a bundle-sized job would divide before anything runs: how many parallel runs, which concepts each covers, and what the caps left out. It reads the parsed bundle, so it needs no agent connected and spends nothing. On this app's own docs the contrast is the point, since dividing by type produces 12 runs covering 33 of 47 concepts while dividing by folder covers all 47 in nine. Asking one agent to audit a bundle that size samples it silently; this makes the sampling visible. A plan can also be run, one isolated read-only run per slice, sequentially. That half reports coverage against the plan rather than a merged answer, so treat it as preliminary.
+
+  **The composer.** Model, permission mode, and profile moved onto their own line above the input, where they keep their labels instead of truncating to "Default (recommend..." on a narrow panel. The box grows with the draft to about twelve lines and then scrolls, so a long prompt is no longer written blind against a three-row window. The bar underneath lost what it could not justify: a label naming what the connection accepts, which never changed, and a running cost to four decimals. The context reading now appears from 75 percent of the window up, where the recovery notice beside it offers the fix. Queue no longer wears Send's icon, and Send stays inert until there is something to send.
+
+  **Elsewhere.** The first-run screen groups its actions under Start and Explore instead of listing them flat. The bundle switcher opens its popover before the first bundle, so recents, Open from URL, and New bundle are reachable at first run instead of only the folder picker. Screen readers get landmarks on the first-run screen, the top bar, and the reader, which previously sat outside any region. `tauri build` on a Mac now produces an `.app` and a `.dmg`; macOS remains a build-from-source platform, since no release carries them.
+
+  **Upgrading.** Nothing to do. No settings, bundles, or saved threads change, and no exported format moves.
+
+
 * **Update**: `.storybook/` joined the gates it was exempt from, and the assertion it runs after every story is now tested. The root `tsconfig` listed `.storybook` as a bare directory name, which its include pattern never matched, so `tsc` compiled none of it while appearing to; ESLint ignored it outright with a comment claiming the typecheck covered it. Turning both on found four defects in four files. [`visualConsistency.ts`](architecture/testing.md) asserts on all 362 stories and had no tests, so a detector that stopped detecting would have disabled a library-wide gate silently: it now has nine, each planting the violation it looks for, verified by breaking the scale check and watching them fail. Not done: extending the test-lint rules to story files was proposed and rejected. `vitest/expect-expect` does not understand a `play` function, so the change reported 254 style errors from testing-library rules that fight story idioms and caught none of the assertion-free interactions it was meant to find.
 
 ## 2026-08-16

@@ -127,6 +127,15 @@ const SCAN_ROOTS = [
 ];
 const SCAN_ROOT_FILES = ["Cargo.toml", "package.json", "src-tauri/tauri.conf.json"];
 
+/** Generated, and full of third-party versions at every number. */
+const LOCK_FILES = new Set([
+  "pnpm-lock.yaml",
+  "package-lock.json",
+  "yarn.lock",
+  "bun.lock",
+  "Cargo.lock",
+]);
+
 const SCAN_EXTENSIONS = new Set([
   ".astro",
   ".css",
@@ -202,7 +211,11 @@ function scanFiles() {
   const inScope = (file) =>
     SCAN_ROOT_FILES.includes(file) || SCAN_ROOTS.some((root) => file.startsWith(root));
   return tracked.filter(
-    (file) => inScope(file) && SCAN_EXTENSIONS.has(path.extname(file)) && !declared.has(file),
+    (file) =>
+      inScope(file) &&
+      SCAN_EXTENSIONS.has(path.extname(file)) &&
+      !declared.has(file) &&
+      !LOCK_FILES.has(path.basename(file)),
   );
 }
 

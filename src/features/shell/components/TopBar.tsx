@@ -125,6 +125,7 @@ export function TopBar() {
 
   return (
     <Tooltip.Provider delay={400}>
+     <header className="topbar-banner">
       <Toolbar.Root
         render={
           // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Toolbar.Root injects role="toolbar"; handlers implement window dragging (no keyboard equivalent exists)
@@ -320,6 +321,7 @@ export function TopBar() {
           <WindowControls />
         </div>
       </Toolbar.Root>
+     </header>
     </Tooltip.Provider>
   );
 }

@@ -10,11 +10,43 @@ import { openBundle, renderApp } from "@/test/appHarness.tsx";
 // contrast needs real layout (unavailable in jsdom), so it is verified via the
 // design tokens (see docs/ux/theming.md) and disabled here; this test covers the
 // structural rules — names, roles, ARIA, landmarks, labels.
+//
+// Scan `baseElement`, never the render container. Every dialog, menu, and
+// popover here goes through a Base UI portal onto document.body, which is a
+// sibling of the container rather than a child of it: measured, a scan of the
+// container saw 346 elements and none of the open dialog, while baseElement
+// saw 494 including it. Scanning the container reported green on surfaces it
+// had never looked at.
 
-async function expectNoViolations(node: Element) {
-  const results = await axe.run(node, {
-    rules: { "color-contrast": { enabled: false } },
-  });
+// The three pane splitters are `role="separator"` widgets that sit between
+// landmarks by construction: each is a flex sibling of the panes it resizes,
+// so it cannot live inside either one without breaking the layout. They carry
+// no content, so the region rule's concern (content a landmark navigator can
+// never reach) does not apply to them. Excluded by selector rather than by
+// switching the rule off, so region still runs over every other element.
+const SPLITTERS = [
+  ".agent-panel-divider",
+  '[aria-label="Resize sidebar"]',
+  '[aria-label="Resize reader"]',
+];
+
+/**
+ * @param overlayOpen a portalled dialog, menu, or popover is on screen. Those
+ *   render onto document.body outside every landmark, and a reader reaches
+ *   them through focus rather than by walking landmarks, so the page-level
+ *   `region` rule is dropped for them. Every other rule still runs over the
+ *   overlay, which is the coverage this test exists for.
+ */
+async function expectNoViolations(node: Element, overlayOpen = false) {
+  const results = await axe.run(
+    { include: [node], exclude: SPLITTERS.map((selector) => [selector]) },
+    {
+      rules: {
+        "color-contrast": { enabled: false },
+        ...(overlayOpen ? { region: { enabled: false } } : {}),
+      },
+    },
+  );
   const summary = results.violations.map(
     (v) =>
       `${v.id} (${v.impact}) — ${v.help} @ ${v.nodes
@@ -26,36 +58,36 @@ async function expectNoViolations(node: Element) {
 
 describe("accessibility (axe-core)", () => {
   it("the first-run empty state has no violations", async () => {
-    const { container } = renderApp();
+    const { baseElement } = renderApp();
     await screen.findByText(/Explore connected knowledge with the agents you already use/i);
-    await expectNoViolations(container);
+    await expectNoViolations(baseElement);
   });
 
   it("the open bundle (workspace) has no violations", async () => {
     const user = userEvent.setup();
-    const { container } = renderApp();
+    const { baseElement } = renderApp();
     await openBundle(user);
-    await expectNoViolations(container);
+    await expectNoViolations(baseElement);
   });
 
   it("the disconnected agent panel has no violations", async () => {
     const user = userEvent.setup();
-    const { container } = renderApp();
+    const { baseElement } = renderApp();
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await screen.findByRole("complementary", { name: /agent panel/i });
-    await expectNoViolations(container);
+    await expectNoViolations(baseElement);
   });
 
   it("the agent connection catalog has no violations", async () => {
     const user = userEvent.setup();
-    const { container } = renderApp();
+    const { baseElement } = renderApp();
     await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
     await user.click(screen.getByRole("button", { name: "Connect an agent" }));
     await screen.findByRole("heading", { name: /choose how agents run/i });
     await user.click(screen.getByRole("button", { name: "Configure" }));
     await user.selectOptions(screen.getByLabelText("Provider"), "open-ai-compatible");
     await screen.findByLabelText(/API key/);
-    await expectNoViolations(container);
+    await expectNoViolations(baseElement, true);
   });
 
   it("agent security scope and parallel-thread close confirmation have no violations", async () => {
@@ -69,23 +101,23 @@ describe("accessibility (axe-core)", () => {
 
     try {
       const user = userEvent.setup();
-      const { container } = renderApp();
+      const { baseElement } = renderApp();
       await openBundle(user);
       await user.click(screen.getByRole("button", { name: /toggle agent panel/i }));
       await user.click(screen.getByRole("button", { name: "Thread security scope" }));
       await screen.findByRole("dialog", { name: "Thread security scope" });
-      await expectNoViolations(container);
+      await expectNoViolations(baseElement, true);
       await user.keyboard("{Escape}");
       await user.click(screen.getByRole("button", { name: "More thread actions" }));
       await screen.findByRole("menu", { name: "More thread actions" });
-      await expectNoViolations(container);
+      await expectNoViolations(baseElement, true);
       await user.keyboard("{Escape}");
       await user.click(screen.getByRole("button", {
         name: "Start another thread with A11y Harness",
       }));
       await user.click(screen.getByRole("button", { name: "Close thread surface" }));
       await screen.findByRole("button", { name: "Close thread" });
-      await expectNoViolations(container);
+      await expectNoViolations(baseElement, true);
     } finally {
       cleanup();
       await ipc.disconnectAgent(connection.connectionId);
@@ -120,7 +152,7 @@ describe("accessibility (axe-core)", () => {
 
   it("the bundle details dialog has no violations", async () => {
     const user = userEvent.setup();
-    const { container } = renderApp();
+    const { baseElement } = renderApp();
     await openBundle(user);
     await user.click(screen.getByRole("button", { name: /open bundle details/i }));
     const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
@@ -138,15 +170,15 @@ describe("accessibility (axe-core)", () => {
     await within(reopenedDialog).findByRole("heading", { name: "Ignore rules" });
     await user.click(within(reopenedDialog).getByRole("tab", { name: "Profiles" }));
     await within(reopenedDialog).findByRole("heading", { name: "Advisory profiles" });
-    await expectNoViolations(container);
+    await expectNoViolations(baseElement);
   });
 
   it("Bundle Home has no violations", async () => {
     const user = userEvent.setup();
-    const { container } = renderApp();
+    const { baseElement } = renderApp();
     await openBundle(user);
     await user.click(screen.getByRole("button", { name: "Bundle home" }));
     await screen.findByRole("region", { name: "Bundle home" });
-    await expectNoViolations(container);
+    await expectNoViolations(baseElement);
   });
 });

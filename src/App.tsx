@@ -278,8 +278,11 @@ function Workspace({ windowWidth }: { windowWidth: number }) {
 
       {readerDivider && <Divider pane="reader" gridRef={ref} />}
 
+      {/* The reader section is named because a section only becomes a landmark
+          once it has an accessible name. Unnamed, everything inside it counted
+          as content outside any landmark. */}
       {showReader && (
-        <section className="pane reader">
+        <section className="pane reader" aria-label="Concept reader">
           {/* Sticky strip above the document; renders nothing below 2 tabs. */}
           <TabStrip />
           <Reader />

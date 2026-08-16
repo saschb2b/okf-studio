@@ -16,30 +16,30 @@ export function EmptyState() {
   // Scanning — a cancelable walk; the app stays responsive.
   if (state.loading) {
     return (
-      <div className="empty" role="status" aria-live="polite">
+      <main className="empty" role="status" aria-live="polite">
         <span className="spinner" aria-hidden="true" />
         <p className="empty-line">Scanning…</p>
-      </div>
+      </main>
     );
   }
 
   // Failure — permission denied, path gone, or an unreadable folder.
   if (state.error) {
     return (
-      <div className="empty" role="alert">
+      <main className="empty" role="alert">
         <h2>Couldn’t open that folder</h2>
         <p className="empty-err">{state.error}</p>
         <button className="btn primary" onClick={() => void actions.openFolder()}>
           Try another folder
         </button>
-      </div>
+      </main>
     );
   }
 
   // A folder was chosen, but no OKF bundle was detected inside it.
   if (state.folder && state.bundles.length === 0) {
     return (
-      <div className="empty">
+      <main className="empty">
         <h2>No OKF bundles found</h2>
         <p className="empty-line">
           An OKF bundle is a directory of <code>.md</code> concept files, each
@@ -55,7 +55,7 @@ export function EmptyState() {
             Create a new bundle…
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -64,7 +64,7 @@ export function EmptyState() {
   // bundles). Each card carries an icon chip, a label, a one-line description,
   // and its shortcut in one right-aligned key group. See docs/ux/first-run.md.
   return (
-    <div className="empty hero">
+    <main className="empty hero">
       <div className="hero-brand">
         <img className="hero-mark" src={appIcon} alt="" aria-hidden="true" />
         <h1 className="hero-title">OKF Studio</h1>
@@ -161,6 +161,6 @@ export function EmptyState() {
         Opening never changes a bundle's files. Agents connect only when you
         choose.
       </p>
-    </div>
+    </main>
   );
 }

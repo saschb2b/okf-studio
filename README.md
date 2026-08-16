@@ -64,16 +64,18 @@ This project's own site comes from an ODSF bundle, [`design-system/`](design-sys
 
 ## Develop and run
 
-Prerequisites: a stable Rust toolchain, and Node.js 20.19+ or 22.12+ with pnpm.
+Prerequisites: a stable Rust toolchain, Node.js 20.19+ or 22.12+ with pnpm, and platform build tools:
 
-On Ubuntu, also install the Tauri Linux dependencies: `libwebkit2gtk-4.1-dev`, `build-essential`, `libssl-dev`, `librsvg2-dev`, and the related GTK packages. On Windows, install the WebView2 runtime and the MSVC build tools.
+- **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
+- **Ubuntu/Linux:** `libwebkit2gtk-4.1-dev`, `build-essential`, `libssl-dev`, `librsvg2-dev`, and the related GTK packages.
+- **Windows:** the WebView2 runtime and MSVC C++ build tools.
 
 ```bash
 pnpm install
 pnpm dev            # frontend only, in a browser against a mock bundle
 pnpm tauri dev      # the full desktop app with hot reload
 pnpm storybook      # component playground on :6006
-pnpm tauri build    # installers for the host platform
+pnpm tauri build    # installers for host platform (.app/.dmg on macOS, .deb/AppImage on Linux, .msi/.exe on Windows)
 ```
 
 Before finishing a change, run the gate that mirrors CI:

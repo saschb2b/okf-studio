@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as ipc from "@/shared/ipc.ts";
+import { DEFAULT_SETTINGS } from "@/shared/types.ts";
 import { openBundle, renderApp } from "@/test/appHarness.tsx";
 
 /** Open the fixture concept written to exercise pacing. */
@@ -17,6 +19,16 @@ async function startFocusReading(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("speed reading", () => {
+  // The player starts paused under reduced motion, so every step below is one
+  // the test took. Left to run, it advances on a real timer and the cursor is
+  // wherever the machine reached.
+  beforeEach(() => {
+    vi.spyOn(ipc, "loadSettings").mockResolvedValue({
+      ...DEFAULT_SETTINGS,
+      reduceMotion: true,
+    });
+  });
+
   it("starts from the reader's visible action on the first word of the concept", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -41,12 +53,6 @@ describe("speed reading", () => {
     const word = () => player.querySelector(".speedread-word")?.textContent ?? "";
 
     const controls = within(player);
-    await user.click(controls.getByRole("button", { name: "Pause" }));
-    // The player is running when it opens, so the pause lands wherever the
-    // machine got to. Rewind to the first word rather than assuming it.
-    for (let i = 0; i < 10 && !word().includes("What"); i++) {
-      await user.click(controls.getByRole("button", { name: "Previous sentence" }));
-    }
     await waitFor(() => expect(word()).toContain("What"));
 
     await user.click(controls.getByRole("button", { name: "Next word" }));
@@ -67,7 +73,6 @@ describe("speed reading", () => {
     await openSpeedReadingConcept(user);
     const player = await startFocusReading(user);
     const controls = within(player);
-    await user.click(controls.getByRole("button", { name: "Pause" }));
 
     // Walk sentence by sentence until the player refuses to tokenize a block.
     for (let i = 0; i < 40; i++) {
@@ -97,7 +102,6 @@ describe("speed reading", () => {
     await openSpeedReadingConcept(user);
     const player = await startFocusReading(user);
     const controls = within(player);
-    await user.click(controls.getByRole("button", { name: "Pause" }));
 
     for (let i = 0; i < 40; i++) {
       if (controls.queryByRole("button", { name: /Continue reading/ })) break;

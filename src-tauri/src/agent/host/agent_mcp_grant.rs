@@ -33,6 +33,14 @@ pub struct McpLaunchGrant {
 }
 
 pub fn create(bundle_root: &Path) -> Result<McpLaunchGrant, String> {
+    create_in(&grant_directory(), bundle_root)
+}
+
+/// The directory is a parameter so a caller can hold its own. The sweep in
+/// `remove_expired_records` deletes every `.consuming` record it finds, which
+/// is correct for one Studio process cleaning up after itself and destructive
+/// across two that share a directory.
+fn create_in(directory: &Path, bundle_root: &Path) -> Result<McpLaunchGrant, String> {
     let canonical = dunce::canonicalize(bundle_root)
         .map_err(|_| "OKF Studio MCP requires an available bundle root.".to_string())?;
     if !canonical.is_dir() {
@@ -41,9 +49,8 @@ pub fn create(bundle_root: &Path) -> Result<McpLaunchGrant, String> {
     let root = canonical
         .to_str()
         .ok_or_else(|| "OKF Studio MCP requires a Unicode bundle path.".to_string())?;
-    let directory = grant_directory();
-    create_private_directory(&directory)?;
-    remove_expired_records(&directory);
+    create_private_directory(directory)?;
+    remove_expired_records(directory);
 
     let token = uuid::Uuid::new_v4().simple().to_string();
     let expires_at = current_time_ms().saturating_add(GRANT_LIFETIME_MS);
@@ -85,12 +92,15 @@ pub fn create(bundle_root: &Path) -> Result<McpLaunchGrant, String> {
 }
 
 pub fn consume(file: &Path, token: &str) -> Result<PathBuf, String> {
+    consume_in(&grant_directory(), file, token)
+}
+
+fn consume_in(directory: &Path, file: &Path, token: &str) -> Result<PathBuf, String> {
     if token.len() != 32 || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return Err("The OKF MCP grant is invalid.".to_string());
     }
-    let expected_directory = grant_directory();
-    create_private_directory(&expected_directory)?;
-    let expected_directory = dunce::canonicalize(&expected_directory)
+    create_private_directory(directory)?;
+    let expected_directory = dunce::canonicalize(directory)
         .map_err(|_| "The OKF MCP grant directory is unavailable.".to_string())?;
     let parent = file
         .parent()
@@ -182,22 +192,37 @@ fn current_time_ms() -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{consume, create, GrantRecord};
+    use super::{consume, consume_in, create_in, GrantRecord};
+    use std::path::PathBuf;
+
+    /// A grant directory of this test's own. The shared one is swept on every
+    /// create, so two tests using it can delete each other's in-flight record.
+    fn private_grants() -> PathBuf {
+        let directory = std::env::temp_dir()
+            .join(format!("okf-mcp-grants-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&directory).expect("create grant directory");
+        directory
+    }
 
     #[test]
     fn grant_is_exact_and_one_shot() {
         let root =
             std::env::temp_dir().join(format!("okf-mcp-grant-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("create fixture");
-        let grant = create(&root).expect("create grant");
-        let file = std::path::PathBuf::from(&grant.args[1]);
+        let grants = private_grants();
+        let grant = create_in(&grants, &root).expect("create grant");
+        let file = PathBuf::from(&grant.args[1]);
         let token = &grant.args[2];
         assert_eq!(
-            consume(&file, token).expect("consume"),
+            consume_in(&grants, &file, token).expect("consume"),
             dunce::canonicalize(&root).expect("canonical")
         );
-        assert!(consume(&file, token).is_err(), "a grant must not replay");
+        assert!(
+            consume_in(&grants, &file, token).is_err(),
+            "a grant must not replay"
+        );
         std::fs::remove_dir_all(root).expect("remove fixture");
+        std::fs::remove_dir_all(grants).expect("remove grants");
     }
 
     #[test]
@@ -212,8 +237,9 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("okf-mcp-expired-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&root).expect("create fixture");
-        let grant = create(&root).expect("create grant");
-        let file = std::path::PathBuf::from(&grant.args[1]);
+        let grants = private_grants();
+        let grant = create_in(&grants, &root).expect("create grant");
+        let file = PathBuf::from(&grant.args[1]);
         let token = &grant.args[2];
         let mut record: GrantRecord =
             serde_json::from_slice(&std::fs::read(&file).expect("read grant"))
@@ -221,11 +247,12 @@ mod tests {
         record.expires_at = 0;
         std::fs::write(&file, serde_json::to_vec(&record).expect("encode grant"))
             .expect("expire grant");
-        assert!(consume(&file, token).is_err());
+        assert!(consume_in(&grants, &file, token).is_err());
         assert!(
             !file.exists(),
             "an expired record must not remain replayable"
         );
         std::fs::remove_dir_all(root).expect("remove fixture");
+        std::fs::remove_dir_all(grants).expect("remove grants");
     }
 }

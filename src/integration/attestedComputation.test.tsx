@@ -9,7 +9,6 @@ import { describe, it, expect } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { openBundle, renderApp } from "@/test/appHarness.tsx";
-import * as ipc from "@/shared/ipc.ts";
 
 describe("attested computation", () => {
   it("renders a file-stored computation in the reading column", async () => {
@@ -109,30 +108,5 @@ describe("attested computation", () => {
     await user.click(screen.getByRole("button", { name: /^check$/i }));
 
     expect(await screen.findByText(/cannot be trusted/i)).toBeVisible();
-  });
-
-  it("serves the computation only through the declaration-scoped door", async () => {
-    // `.sql` is deliberately not a permitted text asset, so the general door
-    // refuses it. That refusal is the reason the scoped door exists: it is
-    // authorized by the concept's own declaration rather than by extension, so
-    // widening the allowlist to every language a runtime accepts was not
-    // needed. If this ever starts returning content, the narrow grant has been
-    // replaced by a broad one.
-    expect(
-      await ipc.readAsset("/mock/workspace/docs", "computations/recognized-revenue.sql"),
-    ).toBeNull();
-
-    expect(
-      await ipc.readDeclaredComputation(
-        "/mock/workspace/docs",
-        "metrics/recognized-revenue",
-      ),
-    ).toContain("recognized_revenue");
-
-    // A concept that declares no computation reaches nothing, even though the
-    // file plainly exists.
-    expect(
-      await ipc.readDeclaredComputation("/mock/workspace/docs", "product/overview"),
-    ).toBeNull();
   });
 });

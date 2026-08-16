@@ -42,7 +42,7 @@ export const FilteredAndExplained: Story = {
     await userEvent.selectOptions(page.getByLabelText("Path target concept"), "features/graph-view");
     await expect(page.getByText(/Outgoing · Links to/)).toBeVisible();
     await userEvent.selectOptions(page.getByLabelText("Relationship"), supports);
-    await expect(page.getByText("Supports")).toBeVisible();
+    await expect(page.queryByText(/Outgoing · Links to/)).toBeNull();
   },
 };
 

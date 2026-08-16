@@ -11,8 +11,12 @@ export const defaultProviderMatrixPath = resolve(benchmarkRoot, "provider-matrix
 export const defaultJourneyPath = resolve(benchmarkRoot, "journeys.json");
 export const defaultArtifactScoringPath = resolve(benchmarkRoot, "artifact-scoring.json");
 export const defaultWritingCorpusPath = resolve(benchmarkRoot, "writing-corpus.json");
+// Studio owns the manifest; the vendored skill owns the instruction files it
+// points at. The two were one directory until the skills tooling started
+// rewriting that directory and deleting Studio's files with it.
 export const capabilityRoot = resolve(scriptDirectory, "../.agents/skills/okf");
-export const defaultCapabilityManifestPath = resolve(capabilityRoot, "capabilities.json");
+export const capabilityPackRoot = resolve(scriptDirectory, "../src-tauri/capability-pack/okf");
+export const defaultCapabilityManifestPath = resolve(capabilityPackRoot, "capabilities.json");
 
 const TEXT_FIXTURE_EXTENSIONS = new Set([
   ".csv",

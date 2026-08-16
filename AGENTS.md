@@ -142,6 +142,8 @@ pnpm typecheck   # tsc --noEmit
 pnpm test        # fast Node unit + jsdom component lanes
 pnpm test:integration # full-app and axe journeys (bounded two-worker lane)
 pnpm test:stories # story tests headless in Chromium — run when components or stories changed
+pnpm test:agent-benchmarks # frozen task, capability, and provider contracts
+pnpm check:capabilities # capability pins still match the vendored okf skill
 pnpm build       # tsc --noEmit && vite build
 cargo clippy -p okf-core --all-targets -- -D warnings
 cargo test -p okf-core

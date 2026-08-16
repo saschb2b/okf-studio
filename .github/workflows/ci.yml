@@ -143,7 +143,7 @@ jobs:
       - run: cargo test -p okf-viewer --no-fail-fast
 
   linux-agent-sandbox:
-    name: Linux agent sandbox
+    name: Linux native host — cfg(unix) tests · sandbox policy
     # The compiled policy denies nested user namespaces via --disable-userns,
     # which needs bubblewrap >= 0.8. Ubuntu 22.04 ships 0.6.1, so this job
     # requires the 24.04 image (bubblewrap 0.9).
@@ -178,6 +178,13 @@ jobs:
 
       - name: Cache Cargo build
         uses: Swatinem/rust-cache@v2
+
+      # The native host's other run is on Windows, where every cfg(unix) and
+      # cfg(target_os = "linux") test is compiled out rather than skipped. Six
+      # of those are security boundaries, including symlink escape from a
+      # granted folder and the sandbox binary's setuid and ownership trust.
+      - name: Test the native host on Linux
+        run: cargo test -p okf-viewer --no-fail-fast
 
       - name: Prove the restricted Bubblewrap mount policy
         run: >-

@@ -101,7 +101,7 @@ This bundle is the product source of truth and the app's built-in sample. Start 
 * [Performance and Scale](architecture/performance.md) - How the app stays fast, from the bounded scan to graph rendering.
 * [Testing and Dogfooding](architecture/testing.md) - Frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 * [OKF Agent Benchmarking](architecture/agent-benchmarking.md) - Frozen task fixtures, machine-checked OKF facts, and provider evaluation boundaries.
-* [Build and Release](architecture/build-and-release.md) - Versioning, per-OS packaging, releases, and opt-in updates.
+* [Build and Release](architecture/build-and-release.md) - Versioning, per-OS packaging, releases on two of three platforms, and opt-in updates.
 
 # Reference
 

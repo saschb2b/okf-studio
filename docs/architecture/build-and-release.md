@@ -1,14 +1,14 @@
 ---
 type: Architecture Decision
 title: Build and Release
-description: How the app is versioned, packaged per OS, released, and updated with one disclosed launch check and user-initiated installs.
+description: How the app is versioned, packaged per OS, released on two of its three platforms, and updated with one disclosed launch check and user-initiated installs.
 tags: [architecture, decision, build, release, packaging]
-generated: { by: claude/unrecorded, at: 2026-07-29T14:42:58+02:00 }
+generated: { by: claude/unrecorded, at: 2026-08-16T00:00:00Z }
 ---
 
 # Decision
 
-The app ships as native installers per platform, built by `tauri build` on a per-OS CI matrix. No OS code signing for v1 (users see an "unverified publisher" prompt). The user always starts an update install, through Tauri's signed updater.
+The app ships as native installers for Windows and Linux, built by `tauri build` on a per-OS CI matrix. macOS builds from source; it has bundle targets but no release runner. No OS code signing for v1, which costs a dismissable prompt on Windows and Linux and a Gatekeeper refusal on macOS. The user always starts an update install, through Tauri's signed updater.
 
 The one automatic network call the shipped binary makes is a single quiet release check shortly after launch. It feeds the update badge. [Settings](../ux/settings.md) discloses it. The check carries no identity or telemetry, and an off switch restores strictly on-demand checking.
 
@@ -18,7 +18,7 @@ The one automatic network call the shipped binary makes is a single quiet releas
 
 - **Windows:** `.msi` and/or NSIS `.exe`.
 - **Ubuntu:** `.deb` and AppImage.
-- **macOS:** `.app` bundle and `.dmg` installer.
+- **macOS:** `.app` bundle and `.dmg` installer, on a macOS host only. No release carries them yet, so macOS is a build-from-source platform rather than a download. See the release matrix below.
 
 Each is a [self-contained, portable](../product/principles.md) artifact that uses the system webview. There is no bundled runtime the user must manage.
 
@@ -38,9 +38,15 @@ Two GitHub Actions workflows (`.github/workflows/`):
 
   The matrix restricts each Linux runner to its one bundle target (`--bundles deb` / `--bundles appimage`), so a runner never emits the other's (broken) artifact.
 
+  There is no macOS runner. The bundle targets exist, so `tauri build` on a Mac produces an `.app` and a `.dmg`, but nothing builds or uploads them for a release. Adding one means a macOS runner in this matrix and a decision on signing, because the unsigned result is harder to open on macOS than on the other two platforms. Until then the download page points macOS users at the source, and says so rather than listing a build it does not have.
+
 # Code signing
 
-Studio assumes no code signing for v1. Users may see an OS "unverified publisher" prompt on first launch. Signing certificates (Windows Authenticode, and notarization where applicable) are a post-v1 hardening step, not a launch blocker.
+Studio assumes no code signing for v1. On Windows and Linux this costs a prompt: users may see an "unverified publisher" warning on first launch and can continue past it.
+
+macOS is not the same cost, which is the reason it stays a build-from-source platform. Gatekeeper refuses an unsigned, unnotarized app on first open, and getting past it takes a deliberate override rather than a click through a warning. Shipping a macOS download therefore waits on an Apple Developer ID and notarization, not just on a runner.
+
+Signing certificates (Windows Authenticode, Apple Developer ID with notarization) are a post-v1 hardening step, not a launch blocker.
 
 # Versioning
 
@@ -72,7 +78,7 @@ The user starts every update install, through Tauri's updater plugin. Checking h
 The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)). It reads a version file with no identity attached. It exists because releases went unnoticed while discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.
 
 - Signing is mandatory. The updater verifies a minisign signature on each artifact, and nobody can turn that off. The public key lives in `tauri.conf.json`. The private key and password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing, which Studio still does not do.
-- Update vehicles: the AppImage (Linux) and NSIS (Windows) self-install in place. A `.deb` install cannot self-replace, because the OS package manager owns it. A small `can_self_update` command detects that case by checking for the AppImage runtime. Studio then shows the same in-app "version X available" hint plus a Download link to the releases page, instead of a failing in-app install. So `.deb` users still find out about updates. They install by downloading the new package.
+- Update vehicles: the AppImage (Linux) and NSIS (Windows) self-install in place. A `.deb` install cannot self-replace, because the OS package manager owns it. A small `can_self_update` command detects that case by checking for the AppImage runtime. Studio then shows the same in-app "version X available" hint plus a Download link to the releases page, instead of a failing in-app install. So `.deb` users still find out about updates. They install by downloading the new package. macOS has no vehicle because it has no release: a build from source updates by rebuilding.
 
 Silent and automatic installs remain out of scope: bytes only ever download and apply on an explicit user action. The automatic part stops at "a newer version exists", rendered as a quiet badge.
 

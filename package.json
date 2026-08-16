@@ -4,6 +4,7 @@
   "version": "0.9.1",
   "type": "module",
   "description": "Explore connected knowledge with the agents you already use.",
+  "packageManager": "pnpm@11.20.0",
   "scripts": {
     "dev": "vite",
     "build": "node node_modules/typescript-7/bin/tsc --noEmit && vite build",

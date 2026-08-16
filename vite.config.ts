@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => ({
         test: {
           name: "unit",
           include: ["src/**/*.test.ts"],
-          exclude: ["src/**/*.dom.test.ts", "src/**/*.integration.test.ts"],
+          exclude: ["src/**/*.dom.test.ts", "src/integration/**"],
           environment: "node",
           globals: true,
           restoreMocks: true,
@@ -92,7 +92,7 @@ export default defineConfig(({ mode }) => ({
         test: {
           name: "component",
           include: ["src/**/*.test.tsx", "src/**/*.dom.test.ts"],
-          exclude: ["src/**/*.integration.test.tsx"],
+          exclude: ["src/integration/**"],
           environment: "jsdom",
           globals: true,
           setupFiles: ["./src/test/setup.ts"],
@@ -109,7 +109,7 @@ export default defineConfig(({ mode }) => ({
         cacheDir: "node_modules/.vite-integration-tests",
         test: {
           name: "integration",
-          include: ["src/**/*.integration.test.{ts,tsx}"],
+          include: ["src/integration/**/*.test.{ts,tsx}"],
           environment: "jsdom",
           globals: true,
           setupFiles: ["./src/test/setup.ts"],

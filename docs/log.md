@@ -2,6 +2,10 @@
 
 ## 2026-08-16
 
+* **Update**: The nineteen full-app journeys moved from the `src/` root into [`src/integration/`](architecture/frontend-architecture.md), and the lane now selects them by directory rather than by a `.integration.test.tsx` infix. They outnumbered the composition root three to one in the file tree, so the four files that actually define the app were hard to find among them. Names lost the prefix they no longer need: `App.connections.integration.test.tsx` is `integration/connections.test.tsx`. Nothing else changed, because every one of them already imported through the `@/` alias, which is the payoff the alias rule was written for. The lane still collects the same nineteen files and 145 tests.
+
+## 2026-08-16
+
 * **Update**: [Build and Release](architecture/build-and-release.md) now states what the macOS bundle targets do and do not mean. The targets landed with the packaging list, so the concept named three platforms while the release matrix built two, and nothing told a reader that macOS ships no artifact. The concept now says macOS is build-from-source, that no runner produces it, that it has no updater vehicle because it has no release, and why signing is the gate rather than the runner: an unsigned build costs a dismissable prompt on Windows and Linux and a Gatekeeper refusal on macOS. The download page already carried this and needed no change.
 
 ## 2026-08-15

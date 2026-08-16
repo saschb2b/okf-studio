@@ -3,7 +3,7 @@ type: Reference
 title: Accessibility
 description: The app's accessibility commitments: keyboard operability, focus, screen-reader semantics, contrast, and motion.
 tags: [ux, accessibility, a11y]
-generated: { by: claude/unrecorded, at: 2026-07-28T02:10:00+02:00 }
+generated: { by: claude/unrecorded, at: 2026-08-16T00:00:00Z }
 ---
 
 # Keyboard operability
@@ -29,6 +29,8 @@ Selecting a concept anywhere keeps all three panes in sync, so a screen-reader u
 # Contrast
 
 Both themes meet **WCAG AA** contrast for text, graph nodes, and edges. See [Theming](theming.md) for the deterministic type-color palette. Studio tunes that palette per theme, so adjacent type colors stay distinguishable.
+
+**Forced colors is undecided.** No stylesheet carries a `forced-colors` rule, so Windows high contrast gets whatever the browser's own mapping produces. That is not a demonstrated defect: browsers supply sensible defaults, and Studio conveys disabled state through the `disabled` attribute rather than colour alone, which survives the override. It is an open question rather than a gap, because nobody has run the app under forced colors to find out. Answering it means either claiming support, which needs a driver that can emulate it and a pass over the whole app, or recording it as a non-goal in [Scope and Non-Goals](../product/scope-and-non-goals.md).
 
 # Motion
 

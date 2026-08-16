@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Testing and Dogfooding
 description: The frontend, Rust core, native host, accessibility, conformance, and Studio authoring gates.
 tags: [architecture, decision, testing, dogfooding]
-generated: { by: claude/unrecorded, at: 2026-07-29T02:10:00+02:00 }
+generated: { by: claude/unrecorded, at: 2026-08-16T00:00:00Z }
 ---
 
 # Decision
@@ -67,6 +67,8 @@ The frontend suite is split by cost and environment instead of calling every che
 
 - `pnpm test` runs pure `.test.ts` logic in Node and React or DOM-focused `.test.tsx` and `.dom.test.ts` files in jsdom. It is the fast feedback lane.
 - `pnpm test:integration` runs the files in `src/integration/` that boot `AppProvider` and the complete application. The directory selects the lane, so a file needs no naming ceremony to join it, and nineteen full-app journeys stop crowding the composition root they sit beside. The lane has two workers, shuffled order, explicit slow-test reporting, and a bounded timeout for full user journeys. The suite splits the former 2,174-line app test and 844-line feature test by product behavior. A failure then identifies one surface, and the runner can schedule files independently. Turn lifecycle, source retry, permission memory, queued recovery, and failed-turn retry are separate tests instead of one sequential scenario. Studio Agent security disclosure, reviewed creation, and native tool calls also use separate saved-endpoint fixtures whose cleanup runs on setup and assertion failures.
+A width probe reads the story's own container, not the app's. Several stories pin a fixed width to exercise the narrow panel, so shrinking the viewport under one of those clips the fixture rather than reflowing the component, and the clipped controls look like an overflow defect. Probe reflow against a story whose container is allowed to shrink, or the finding is about the fixture.
+
 - `pnpm test:stories` renders every story and executes every `play` function in Playwright Chromium. One browser orchestrator avoids competing Chromium startups on Windows. Story execution takes only a few seconds. Browser initialization dominates the lane. Storybook MCP remains the required discovery, preview, and focused isolation surface during component work, while the package command is the full automated lane.
 - `pnpm test:frontend` runs those three lanes in sequence. It does not mix jsdom integration work with browser startup in one worker pool.
 

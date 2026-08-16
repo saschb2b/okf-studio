@@ -1,0 +1,2 @@
+# Its own workspace root, so pnpm stops walking up to the app.
+packages: []

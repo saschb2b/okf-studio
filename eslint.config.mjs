@@ -30,8 +30,6 @@ export default tseslint.config(
       ".agents/**",
       "eslint.config.mjs",
       "vite.config.ts",
-      // Storybook tooling config (typechecked via the root tsconfig).
-      ".storybook/**",
     ],
   },
   eslint.configs.recommended,
@@ -91,7 +89,11 @@ export default tseslint.config(
   {
     // Test files: vitest globals, and relax type-aware rules that fight common
     // testing patterns (non-null assertions, mocks typed as any).
-    files: ["**/*.test.{ts,tsx}", "src/test/**/*.{ts,tsx}"],
+    files: [
+      "**/*.test.{ts,tsx}",
+      "src/test/**/*.{ts,tsx}",
+      ".storybook/**/*.{ts,tsx}",
+    ],
     plugins: {
       vitest,
       "testing-library": testingLibrary,

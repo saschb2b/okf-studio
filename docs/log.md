@@ -2,6 +2,10 @@
 
 ## 2026-08-16
 
+* **Update**: `.storybook/` joined the gates it was exempt from, and the assertion it runs after every story is now tested. The root `tsconfig` listed `.storybook` as a bare directory name, which its include pattern never matched, so `tsc` compiled none of it while appearing to; ESLint ignored it outright with a comment claiming the typecheck covered it. Turning both on found four defects in four files. [`visualConsistency.ts`](architecture/testing.md) asserts on all 362 stories and had no tests, so a detector that stopped detecting would have disabled a library-wide gate silently: it now has nine, each planting the violation it looks for, verified by breaking the scale check and watching them fail. Not done: extending the test-lint rules to story files was proposed and rejected. `vitest/expect-expect` does not understand a `play` function, so the change reported 254 style errors from testing-library rules that fight story idioms and caught none of the assertion-free interactions it was meant to find.
+
+## 2026-08-16
+
 * **Update**: Removed the `ui-pentest/` findings bundle and kept the two things in it that outlive the run. The open question about forced colors moved to [Accessibility](ux/accessibility.md), where it now states what is and is not known: no stylesheet carries a `forced-colors` rule, browsers supply defaults, and disabled state survives the override because it is an attribute rather than a colour, so the decision is whether to claim support or record a non-goal. The reflow false positive moved to [Testing and Dogfooding](architecture/testing.md): several stories pin a fixed width, so a narrow-viewport probe against one of those clips the fixture rather than reflowing the component. The three fixed findings were already recorded here and in the code, and their screenshots showed a state that no longer exists.
 
 ## 2026-08-16

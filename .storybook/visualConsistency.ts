@@ -70,7 +70,7 @@ function unboundedProse(root: Element): Finding[] {
   const out: Finding[] = [];
   for (const el of root.querySelectorAll<HTMLElement>("p, li, dd")) {
     if (isScreenReaderOnly(el)) continue;
-    if (el.querySelector("*") && el.textContent!.trim().length < 80) continue;
+    if (el.querySelector("*") && (el.textContent ?? "").trim().length < 80) continue;
     const text = el.textContent?.trim() ?? "";
     if (text.length < 90) continue; // too short to need a measure
     const cs = getComputedStyle(el);

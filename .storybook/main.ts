@@ -8,6 +8,11 @@ import type { StorybookConfig } from "@storybook/react-vite";
 
 const addons: NonNullable<StorybookConfig["addons"]> = ["@storybook/addon-vitest"];
 
+// This config runs in Node, which the app's tsconfig does not type: the
+// webview has no `process`, and pulling @types/node in for one lookup would
+// put Node globals in scope across src/ too.
+declare const process: { env: Record<string, string | undefined> };
+
 // The MCP server is a development surface. Loading it inside Vitest adds its
 // manifest and module-graph work to the browser handshake without testing it.
 if (!process.env.VITEST) {

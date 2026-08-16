@@ -50,8 +50,8 @@ const preview: Preview = {
   // renders. These defects are measurable, so they are a gate rather than a
   // reading exercise.
   afterEach: ({ canvasElement, title }) => {
-    if (!isEnforced(String(title))) return;
-    const findings = auditVisualConsistency(canvasElement as Element);
+    if (!isEnforced(title)) return;
+    const findings = auditVisualConsistency(canvasElement);
     if (findings.length === 0) return;
     throw new Error(
       `${findings.length} visual-consistency finding(s):

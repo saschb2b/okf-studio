@@ -91,7 +91,7 @@ export default defineConfig(({ mode }) => ({
         cacheDir: "node_modules/.vite-component-tests",
         test: {
           name: "component",
-          include: ["src/**/*.test.tsx", "src/**/*.dom.test.ts"],
+          include: ["src/**/*.test.tsx", "src/**/*.dom.test.ts", ".storybook/**/*.dom.test.ts"],
           exclude: ["src/integration/**"],
           environment: "jsdom",
           globals: true,

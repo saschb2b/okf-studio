@@ -4,12 +4,12 @@
     {
       "id": "first-use",
       "story": { "path": "src/features/agent/components/OkfTaskLauncher.stories.tsx", "exportName": "FirstUse" },
-      "test": { "path": "src/App.okfTasks.integration.test.tsx", "contains": "preserves the task while the user chooses an authentication method" }
+      "test": { "path": "src/integration/okfTasks.test.tsx", "contains": "preserves the task while the user chooses an authentication method" }
     },
     {
       "id": "object-action",
       "story": { "path": "src/features/agent/components/OkfTaskLauncher.stories.tsx", "exportName": "Ready" },
-      "test": { "path": "src/App.okfTasks.integration.test.tsx", "contains": "starts a bounded task from the reader without replacing the current thread" }
+      "test": { "path": "src/integration/okfTasks.test.tsx", "contains": "starts a bounded task from the reader without replacing the current thread" }
     },
     {
       "id": "federated-search",

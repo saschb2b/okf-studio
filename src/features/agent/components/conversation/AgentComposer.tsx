@@ -7,7 +7,7 @@
 // are writing, and what to do with it. The session controls sit above the
 // input because model and permission mode are set once and read often, while
 // the bar under the input is for the message being written. Sharing one row
-// made the mode truncate to "Default (recommend...". The bar itself holds a
+// truncates the mode to "Default (recommend...". The bar itself holds a
 // transient status, the context reading, and send.
 // See docs/ux/agent-composer.md.
 
@@ -76,11 +76,10 @@ export function AgentComposer({
       )}
       <label className="sr-only" htmlFor={inputId}>Message the agent</label>
       {/* The wrapper carries the draft as a data attribute so a hidden
-          pseudo-element can mirror it and set the row height. The field then
-          sizes to its own text with no measurement: an earlier version read
-          scrollHeight in an effect, which returns the stretched height of a
-          grid item, so surplus space got written back in as a taller field
-          and the box locked open. Nothing here reads layout. */}
+          pseudo-element can mirror it and set the row height. The field sizes
+          to its own text with no measurement: nothing here reads layout, and
+          scrollHeight on a grid item returns the stretched height rather than
+          the height of the text. */}
       <div className="agent-composer__field" data-value={value}>
         <textarea
           ref={inputRef}
@@ -115,9 +114,9 @@ export function AgentComposer({
         </div>
         {turnActive ? (
           <div className="agent-composer__turn-actions">
-            {/* Queue used the same paper plane as Send, so the one control
-                whose behavior changes mid-turn looked identical before and
-                after. A user pressing it expected the prompt to go now. */}
+            {/* Its own icon, not Send's paper plane: the one control whose
+                behavior changes mid-turn must not look identical either side
+                of the change. */}
             <button
               type="submit"
               className="btn icon"

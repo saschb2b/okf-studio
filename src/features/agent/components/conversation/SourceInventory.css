@@ -113,9 +113,8 @@
   .source-inventory__identity { align-items: flex-start; flex-direction: column; gap: var(--space-2); }
 }
 
-/* Prose in this surface takes a reading measure. Every paragraph and list
-   item here ran the full width of a widened agent panel; max-width only
-   bites once a line is long, so short labels are unaffected. */
+/* Prose in this surface takes a reading measure. max-width only bites once a
+   line is long, so short labels are unaffected. */
 .source-inventory :is(p, li, dd) {
   max-width: var(--measure-prose);
 }

@@ -71,9 +71,9 @@ export function useGlobalKeys() {
         e.preventDefault();
         actions.setSettingsOpen(true);
       } else if (e.key === "/" && !typing) {
-        // Open the global search launcher (a synonym for Ctrl/Cmd+K). Used to
-        // focus the in-sidebar search, but that was a dead key when the sidebar
-        // was collapsed. See docs/proposals/global-search.md.
+        // Open the global search launcher (a synonym for Ctrl/Cmd+K), which is
+        // reachable with the sidebar collapsed. See
+        // docs/proposals/global-search.md.
         e.preventDefault();
         actions.setPalette(true);
       } else if (e.key === "?" && !typing) {

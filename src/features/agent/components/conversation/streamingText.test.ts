@@ -79,9 +79,6 @@ describe("splitSettled", () => {
   it("recombines to exactly the input, losing nothing at the seam", () => {
     // The invariant that matters: the split is a view, not an edit. A character
     // dropped at the boundary would silently vanish from the answer.
-    //
-    // The first draft of this asserted `joined === text || joined === `${text}``,
-    // which compares the same value twice and therefore could never fail.
     for (const text of [
       "one\n\ntwo",
       "# h\n\nbody\n\n```js\nx\n```\n\nend",
@@ -92,8 +89,7 @@ describe("splitSettled", () => {
       const { settled, tail } = splitSettled(text);
       // The seam is one newline, because the split is on lines — but only when
       // there are lines on both sides. Text ending on a blank line settles
-      // entirely and has no tail, so there is no seam to rejoin. Getting that
-      // edge wrong is what the vacuous version could not tell me.
+      // entirely and has no tail, so there is no seam to rejoin.
       const joined = settled === "" || tail === ""
         ? `${settled}${tail}`
         : `${settled}\n${tail}`;

@@ -2,12 +2,12 @@
 // rare, consequential, and open a reviewed transaction rather than doing
 // anything on click — Move and Retire.
 //
-// They used to sit in the header as two more labelled buttons. Five actions in
-// one row is past the point where a toolbar is scanned rather than read, and the
-// guidance is consistent: keep the frequent, non-destructive actions in view and
-// put the infrequent ones one click away, on the right, behind a labelled
-// trigger. Reading actions stay visible because reading is what this pane is
-// for; these two are maintenance a reader does occasionally and deliberately.
+// Five actions in one header row is past the point where a toolbar is scanned
+// rather than read, and the guidance is consistent: keep the frequent,
+// non-destructive actions in view and put the infrequent ones one click away,
+// on the right, behind a labelled trigger. Reading actions stay visible because
+// reading is what this pane is for; these two are maintenance a reader does
+// occasionally and deliberately.
 //
 // The menu owns both dialogs so the focus contract survives the move: the item
 // that opened a dialog unmounts with the menu, so `finalFocus` names this

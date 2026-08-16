@@ -110,9 +110,9 @@ function installedConnectionLabel(
 }
 
 /**
- * A distribution version as a reader should see it. The `v` prefix was
- * unconditional, and npm dist-tags are legitimate version values, so a catalog
- * entry pinned to `latest` — which is the common case — rendered as "vlatest".
+ * A distribution version as a reader should see it. npm dist-tags are
+ * legitimate version values, so the `v` prefix is conditional: a catalog entry
+ * pinned to `latest` must not read as "vlatest".
  */
 function versionLabel(version: string): string {
   return /^\d/.test(version) ? `v${version}` : version;

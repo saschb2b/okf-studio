@@ -20,12 +20,10 @@
   border: 0;
 }
 
-/* Tabs give way instead of scrolling out of sight. Every tab used to be
-   flex: 0 0 auto at up to 112px inside a 136px scroller, so with three threads
-   the second was clipped mid-word and the third was gone — and, because the
-   strip carries no scroll affordance, nothing said they were there. Shrinking
-   to the ordinal and its status dot keeps every thread on screen and reachable
-   by pointer; the title stays in the tooltip and the accessible name. */
+/* Tabs give way instead of scrolling out of sight. The strip carries no scroll
+   affordance, so a tab past its edge is one nothing announces; shrinking to the
+   ordinal and its status dot keeps every thread on screen and reachable by
+   pointer, with the title in the tooltip and the accessible name. */
 .agent-panel__thread {
   flex: 0 1 auto;
   min-width: 34px;

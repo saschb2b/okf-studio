@@ -47,9 +47,8 @@ const preview: Preview = {
     backgrounds: { disable: true },
   },
   // Every story is measured against the visual-consistency criteria after it
-  // renders. 297 stories is past what a screenshot review covers, and these
-  // defects are measurable — so they are a gate rather than a reading exercise.
-  // Scoped by title in visualConsistency.ts so areas adopt it one at a time.
+  // renders. These defects are measurable, so they are a gate rather than a
+  // reading exercise.
   afterEach: ({ canvasElement, title }) => {
     if (!isEnforced(String(title))) return;
     const findings = auditVisualConsistency(canvasElement as Element);

@@ -171,9 +171,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-8);
-  /* 34ch broke a two-line sentence over four. The panel docks around 380px, so
-     44ch still centres with margin there, and a widened panel stops reading as
-     a narrow column of fragments. */
+  /* The panel docks around 380px, so 44ch still centres with margin there,
+     while a widened panel stops reading as a narrow column of fragments. */
   max-width: 44ch;
   margin: auto;
   padding: var(--space-16);

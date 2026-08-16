@@ -1,21 +1,9 @@
 // Making streamed agent text arrive smoothly instead of in bursts.
 //
-// The plop was never a missing transition. Two things caused it, and both are
-// structural:
-//
-//   1. Display cadence equalled network cadence. Every arriving delta was
-//      appended and painted immediately, so the text moved at whatever rate the
-//      provider's chunks happened to land — which is bursty, because chunks are
-//      buffered by the network rather than metered by the model.
-//
-//   2. The whole message was re-parsed as markdown per chunk and pushed through
-//      `dangerouslySetInnerHTML`, which replaces the entire subtree. React does
-//      not reconcile inside that, so there was never a *newly arrived* element
-//      to animate — every node was new every time. No CSS transition could have
-//      fixed that.
-//
-// So: reveal at a steady rate independent of arrival, and keep the settled part
-// of the message structurally stable so only the growing edge changes.
+// Chunks are buffered by the network rather than metered by the model, so
+// painting each delta as it arrives moves the text at a bursty rate. The reveal
+// runs at a steady rate independent of arrival, and the settled part of the
+// message stays structurally stable so only the growing edge changes.
 //
 // Pure, no timers and no DOM, so the reveal schedule can be tested without
 // waiting for it.
@@ -25,8 +13,7 @@ const MIN_STEP = 1;
 /** How aggressively a backlog is drained. A burst of 600 characters clears in
  *  roughly this many frames rather than appearing at once. */
 const CATCHUP_DIVISOR = 10;
-/** Ceiling per frame. Without it a huge burst still lands in one paint, which
- *  is the plop this exists to prevent. */
+/** Ceiling per frame. Without it a huge burst still lands in one paint. */
 const MAX_STEP = 24;
 
 /**

@@ -197,8 +197,8 @@ describe("recorded thread prompts", () => {
   // Verbatim from a restored thread on claude-agent-acp 0.59.0. The adapter
   // pushes every Resource URI into the message as a link and flattens the
   // resource bodies into <context> envelopes, so the "user message" the replay
-  // hands back is Studio's scaffolding run together with the question — with no
-  // separator to split on, which is why guessing was abandoned.
+  // hands back is Studio's scaffolding run together with the question, with no
+  // separator to split on.
   const REPLAYED_USER_MESSAGE =
     "okf-studio://capability/okf-core/v0.5.1/instructions" +
     "okf-studio://capability/okf-core/v0.5.1/specification" +

@@ -714,10 +714,7 @@ function Composer({
   configOptions?: readonly AgentSessionConfigOption[];
 }) {
   return (
-    // The real component, not a copy of its markup. The gallery used to
-    // rebuild the composer by hand and had already drifted from it: an old
-    // placeholder, a status label the app no longer shows, and the session
-    // controls still inside the action row they were lifted out of.
+    // The real component, not a copy of its markup.
     <div className="agent-composer">
       {children}
       <AgentComposer

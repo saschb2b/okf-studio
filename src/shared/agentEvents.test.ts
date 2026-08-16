@@ -129,14 +129,14 @@ describe("waiting on a milestone", () => {
   });
 
   it("stops listening once it has resolved", async () => {
-    const waiting = waitForAgentMilestone((milestone) => milestone.kind === "hostQuiescent", {
-      timeoutMs: 1_000,
-    });
+    // Counting the predicate is what detects a leak: a subscriber left behind
+    // only repeats idempotent calls, so it raises nothing to catch.
+    const predicate = vi.fn((milestone: { kind: string }) => milestone.kind === "hostQuiescent");
+    const waiting = waitForAgentMilestone(predicate, { timeoutMs: 1_000 });
     emitAgentMilestone({ kind: "hostQuiescent" });
     await waiting;
-    // A leaked subscription would keep the promise's timer alive and fire its
-    // callback for every later milestone.
-    expect(() => emitAgentMilestone({ kind: "hostQuiescent" })).not.toThrow();
+    emitAgentMilestone({ kind: "hostQuiescent" });
+    expect(predicate).toHaveBeenCalledOnce();
   });
 
   it("reports what it was waiting for when it times out", async () => {

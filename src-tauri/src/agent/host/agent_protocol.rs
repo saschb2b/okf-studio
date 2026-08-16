@@ -4400,9 +4400,9 @@ mod tests {
 
     /// The frontend reads these payloads with camelCase field names
     /// (src/agent/connection.ts). `rename_all` on a tagged enum only renames
-    /// the variants, so the fields need `rename_all_fields` — losing it once
-    /// shipped `stop_reason` over the wire and crashed the agent panel on
-    /// every completed turn.
+    /// the variants, so the fields need `rename_all_fields`. Without it the
+    /// wire carries `stop_reason` and the agent panel breaks on every
+    /// completed turn.
     #[test]
     fn serializes_turn_and_permission_updates_with_camel_case_fields() {
         let completed = serde_json::to_value(AgentTurnUpdate::Completed {

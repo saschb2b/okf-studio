@@ -189,9 +189,8 @@ describe("OKF Studio workspace features", () => {
     await user.click(detailsButton);
 
     const dialog = await screen.findByRole("dialog", { name: "Bundle details" });
-    // Derived from the fixture rather than frozen. The literal that used to sit
-    // here broke whenever a concept was added to the mock bundle for an
-    // unrelated feature, which tests the fixture's size rather than the dialog.
+    // Derived from the fixture rather than frozen: a literal here would test the
+    // fixture's size rather than the dialog.
     expect(
       within(dialog).getByText(`${MOCK_BUNDLE.concepts.length} concepts`),
     ).toBeInTheDocument();
@@ -339,8 +338,8 @@ describe("OKF Studio workspace features", () => {
     expect(within(popover).getByText(/pinned/i)).toBeInTheDocument();
     expect(within(popover).getByText("Team Handbook")).toBeInTheDocument();
 
-    // ArrowDown from the search enters the list at the FIRST row (a double
-    // handler used to skip it); ArrowUp from there returns to the search.
+    // ArrowDown from the search enters the list at the FIRST row; ArrowUp from
+    // there returns to the search.
     const search = within(popover).getByRole("searchbox");
     expect(search).toHaveFocus();
     await user.keyboard("{ArrowDown}");

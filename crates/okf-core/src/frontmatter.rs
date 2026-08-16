@@ -287,9 +287,6 @@ fn parse_nested(lines: &[&str], i: &mut usize, parent_indent: usize) -> Value {
 ///   - id: ga4-schema
 ///     resource: https://example.com/ga4
 /// ```
-///
-/// Before this handled item maps, that list parsed to `["id: ga4-schema"]` — the
-/// first pair kept as a raw string and the rest of the entry silently dropped.
 fn parse_list(lines: &[&str], i: &mut usize, indent: usize) -> Vec<Value> {
     let mut items = Vec::new();
     while *i < lines.len() {

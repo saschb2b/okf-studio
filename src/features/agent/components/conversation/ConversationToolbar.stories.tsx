@@ -57,12 +57,10 @@ type Story = StoryObj<typeof meta>;
 
 /**
  * Starting a thread has to stay clickable. The thread strip is a horizontal
- * scroller and the add button was its last child, so with three threads it sat
- * past the right edge — reachable only by discovering that the strip scrolls, at
- * exactly the moment there were enough threads to want another one.
- *
- * The existing assertions could not see it: the strip is a scroller, so "nothing
- * overflows" was true of every box while its contents were out of reach.
+ * scroller, so an add button that scrolls with the tabs sits past the right
+ * edge at exactly the moment there are enough threads to want another one.
+ * Checked as geometry against the strip, because in a scroller "nothing
+ * overflows" holds true of every box whose contents are out of reach.
  */
 async function expectAddThreadReachable(navigation: HTMLElement) {
   const add = navigation.querySelector<HTMLElement>(".agent-panel__thread--add");

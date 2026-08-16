@@ -95,11 +95,7 @@
 }
 
 /* --- Key caps and key hints --- */
-/* One cap, everywhere a key is named. There were four near-identical
-   definitions (.sc-kbd, .switcher-kbd, .topbar-search-kbd, and a bare <kbd>
-   with no styling at all in the empty state) that had drifted apart on ink and
-   background, plus the launcher footer, which rendered its keys as plain text
-   and so read as a fifth thing again. */
+/* One cap, everywhere a key is named. */
 .kbd {
   display: inline-block;
   min-width: 1.5em;
@@ -111,8 +107,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-sunken);
-  /* A cap carries the answer someone is looking for; --text-dim left the key
-     quieter than the words describing it. */
+  /* A cap carries the answer someone is looking for, so it is never quieter
+     than the words describing it. */
   color: var(--text);
 }
 

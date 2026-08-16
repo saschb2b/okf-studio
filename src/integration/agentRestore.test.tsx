@@ -65,9 +65,7 @@ describe("agent panel restore at launch", () => {
     const user = userEvent.setup();
     render(
       // StrictMode because src/main.tsx mounts the app inside it, so every effect
-      // here runs twice exactly as it does when the app is run. Rendering without
-      // it let a self-racing saved-thread load pass the suite while putting the
-      // Resume card back over an already-restored thread in the real app.
+      // here runs twice exactly as it does when the app is run.
       <StrictMode>
         <AppProvider>
           <App />
@@ -76,11 +74,9 @@ describe("agent panel restore at launch", () => {
     );
     await user.click(screen.getAllByRole("button", { name: /open folder/i })[0]);
     await screen.findByRole("button", { name: /switch bundle/i });
-    // The whole point of the fix. Reconnecting reports authenticated: false and
-    // re-advertises the methods, so the panel used to stop here and ask which
-    // one to use — on every launch, in front of a thread the user had already
-    // chosen. The method is remembered now and re-applied silently, so the
-    // transcript comes back with no interaction at all.
+    // Reconnecting reports authenticated: false and re-advertises the methods.
+    // The remembered method is re-applied silently, so the transcript comes back
+    // with no interaction at all.
     expect(
       await screen.findByRole("heading", { name: "Trading risk controls" }),
     ).toBeInTheDocument();
@@ -98,9 +94,6 @@ describe("agent panel restore at launch", () => {
       .not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Sign in again" }))
       .not.toBeInTheDocument();
-    // Re-authenticating made restore long enough that the surface could reach
-    // "ready" before the connection was marked as restored, which put this card
-    // back for exactly the launches the fix is meant to smooth over.
     expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
 
     // An explicit disconnect forgets the remembered entry.
@@ -135,9 +128,7 @@ describe("agent panel restore at launch", () => {
     const user = userEvent.setup();
     render(
       // StrictMode because src/main.tsx mounts the app inside it, so every effect
-      // here runs twice exactly as it does when the app is run. Rendering without
-      // it let a self-racing saved-thread load pass the suite while putting the
-      // Resume card back over an already-restored thread in the real app.
+      // here runs twice exactly as it does when the app is run.
       <StrictMode>
         <AppProvider>
           <App />
@@ -187,9 +178,7 @@ describe("agent panel restore at launch", () => {
     const user = userEvent.setup();
     render(
       // StrictMode because src/main.tsx mounts the app inside it, so every effect
-      // here runs twice exactly as it does when the app is run. Rendering without
-      // it let a self-racing saved-thread load pass the suite while putting the
-      // Resume card back over an already-restored thread in the real app.
+      // here runs twice exactly as it does when the app is run.
       <StrictMode>
         <AppProvider>
           <App />
@@ -203,8 +192,6 @@ describe("agent panel restore at launch", () => {
       await screen.findByRole("heading", { name: "Couldn't reconnect Ghost Agent" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/your threads are kept/i)).toBeInTheDocument();
-    // The failure used to be a note under "Connect an agent", whose only way
-    // forward was finding the agent in the catalog again by hand.
     expect(screen.queryByRole("heading", { name: "Connect an agent" }))
       .not.toBeInTheDocument();
     const retry = screen.getByRole("button", { name: "Try again" });
@@ -232,9 +219,7 @@ describe("agent panel restore at launch", () => {
     const user = userEvent.setup();
     render(
       // StrictMode because src/main.tsx mounts the app inside it, so every effect
-      // here runs twice exactly as it does when the app is run. Rendering without
-      // it let a self-racing saved-thread load pass the suite while putting the
-      // Resume card back over an already-restored thread in the real app.
+      // here runs twice exactly as it does when the app is run.
       <StrictMode>
         <AppProvider>
           <App />
@@ -264,12 +249,10 @@ describe("agent panel restore at launch", () => {
   });
 
   it("marks a restored connection before any subscriber can see it", async () => {
-    // The invariant, asserted directly rather than through the UI, because the
-    // bug was pure ordering and the mock's timings hid it: the marker used to be
-    // added after connectRememberedAgent resolved, which is after the connection
-    // had already been published from inside it. A surface that mounted on that
-    // publish and finished loading its saved-thread metadata first asked "was
-    // this a launch restore?" before the answer existed, and got the Resume card.
+    // The ordering invariant, asserted directly rather than through the UI: the
+    // marker has to be set before the connection is published. A surface that
+    // mounts on that publish asks "was this a launch restore?" and has to get an
+    // answer, or it shows the Resume card over an already-restored thread.
     const profile = await ipc.saveCustomAgent({
       name: "Restore Order Harness",
       executable: "C:\\tools\\order.exe",

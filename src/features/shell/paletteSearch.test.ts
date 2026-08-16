@@ -33,8 +33,6 @@ describe("scoreTerm", () => {
   });
 
   it("ranks an initialism on word boundaries above a scattered match", () => {
-    // The bug this replaced: every subsequence hit scored `100 - length`, so
-    // these two were separated only by the alphabetical tie-break.
     expect(rank(["Graph View", "Git Configuration Value"], "gv")[0]).toBe("Graph View");
   });
 

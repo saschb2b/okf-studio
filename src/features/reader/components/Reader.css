@@ -349,9 +349,9 @@
 .markdown h1 { font-size: 1.6em; letter-spacing: -0.01em; }
 .markdown h2 { font-size: 1.3em; letter-spacing: -0.01em; }
 .markdown h3 { font-size: 1.12em; }
-/* Same size as body, but heavier and in full text color. It used to be dimmed,
-   which made a heading quieter than the paragraph it introduces and inverted
-   the hierarchy; the weight step from 400 to 600 is the distinction. */
+/* Same size as body, but heavier and in full text color: the weight step from
+   400 to 600 is the only distinction, and dimming it would make the heading
+   quieter than the paragraph it introduces. */
 .markdown h4 { font-size: 1em; letter-spacing: 0.01em; }
 .markdown p { margin: 0.9em 0; }
 .markdown ul,

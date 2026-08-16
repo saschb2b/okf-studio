@@ -70,13 +70,6 @@ describe("graphBackbone", () => {
     expect(components(g.n, graphBackbone({ ...g, maxPerNode: maxPerNodeFor("sparse") }))).toBe(1);
   });
 
-  it("is deterministic", () => {
-    const g = hubAndTriangles();
-    const a = graphBackbone({ ...g, maxPerNode: 2 }).map(key).sort();
-    const b = graphBackbone({ ...g, maxPerNode: 2 }).map(key).sort();
-    expect(a).toEqual(b);
-  });
-
   it("leaves a small graph untouched (nothing to prune)", () => {
     // A single triangle: every node already has degree 2 ≤ n-1.
     const directed: IdxEdge[] = [

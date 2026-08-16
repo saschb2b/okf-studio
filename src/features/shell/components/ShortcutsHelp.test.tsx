@@ -27,11 +27,9 @@ const CAP = new RegExp(`^[\\x20-\\x7E${INTENDED_GLYPHS}]+$`);
 
 describe("ShortcutsHelp", () => {
   it("renders no mojibake on any key cap", () => {
-    // The sheet shipped with "â‡§" in the Agent panel chord: a ⇧ that had been
-    // through a bad encoding round-trip and then been typed back into the
-    // source as three literal characters. It renders as garbage and reads as
-    // garbage, and nothing failed. Every cap is now either plain ASCII or one
-    // of the glyphs the keymap deliberately uses.
+    // A glyph that has been through a bad encoding round-trip renders as
+    // garbage without failing anything else, so every cap is checked against
+    // the allowed set.
     openSheet();
     const caps = document.querySelectorAll("kbd.kbd");
     expect(caps.length).toBeGreaterThan(30);
@@ -40,9 +38,9 @@ describe("ShortcutsHelp", () => {
     }
   });
 
-  it("lists the bindings that had gone missing from it", () => {
-    // The sheet is a mirror of docs/ux/keyboard-shortcuts.md, and it had
-    // drifted: these three were live in the app and absent here.
+  it("lists the panel and thread bindings the app implements", () => {
+    // The sheet is a mirror of docs/ux/keyboard-shortcuts.md; a binding live in
+    // the app and absent here is a silent drift.
     openSheet();
     expect(screen.getByText("Git panel")).toBeInTheDocument();
     expect(screen.getByText("Previous thread")).toBeInTheDocument();

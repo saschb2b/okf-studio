@@ -68,14 +68,17 @@ describe("slice planning", () => {
     const byTag = await plan("tag");
     const appearances = byTag.slices.flatMap((slice) => slice.conceptIds);
     const distinct = new Set(appearances);
-    // A tag is a cross-cutting view, not a partition. Overlap here is correct,
-    // and a plan that eliminated it would be hiding work rather than saving it.
-    expect(appearances.length).toBeGreaterThanOrEqual(distinct.size);
+    // A tag is a cross-cutting view, not a partition, so the same concept is
+    // expected in more than one slice while the plan counts it once.
+    expect(appearances.length).toBeGreaterThan(distinct.size);
   });
 
   it("carries the fingerprint the plan was computed against", async () => {
-    const result = await plan("folder");
-    expect(result.fingerprint).toBeTruthy();
+    const [byFolder, byType] = await Promise.all([plan("folder"), plan("type")]);
+    // The fingerprint identifies the bundle, not the decomposition, which is
+    // what lets a stale slice be detected against a later plan.
+    expect(byFolder.fingerprint).toBe(byType.fingerprint);
+    expect(byFolder.fingerprint).not.toBe("");
   });
 
   it("keeps a link neighbourhood centred on its own concept", async () => {

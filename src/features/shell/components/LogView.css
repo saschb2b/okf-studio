@@ -14,8 +14,6 @@
   flex: 1 1 auto;
   min-height: 0;
 }
-/* The base .panel had padding; with that removed on the popup, pad the
-   scrolling content instead. */
 .log-scroll .ui-scrollarea-viewport > * {
   padding: var(--space-12) var(--space-12);
 }

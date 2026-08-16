@@ -322,9 +322,8 @@
   }
 }
 
-/* Prose in this surface takes a reading measure. Every paragraph and list
-   item here ran the full width of a widened agent panel; max-width only
-   bites once a line is long, so short labels are unaffected. */
+/* Prose in this surface takes a reading measure. max-width only bites once a
+   line is long, so short labels are unaffected. */
 .okf-context-plan :is(p, li, dd) {
   max-width: var(--measure-prose);
 }

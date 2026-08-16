@@ -72,8 +72,8 @@ export function BundleSwitcher() {
 
   // Lightweight roving: ArrowUp/Down move focus through the rows; the search
   // input owns typing (ArrowUp from the first row returns to it). Base UI
-  // handles Escape and focus restore. This single handler owns the arrows —
-  // handling them on the input too used to double-fire and skip the first row.
+  // handles Escape and focus restore. This single handler owns the arrows; a
+  // second handler on the input double-fires them and skips the first row.
   function onPopupKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const rows = Array.from(

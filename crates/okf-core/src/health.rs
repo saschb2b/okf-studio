@@ -667,8 +667,7 @@ fn add_freshness_findings(bundle: &Bundle, findings: &mut Vec<HealthFinding>) {
         .concepts
         .iter()
         // Through `authored_at`, so a v0.2 concept dated by `generated.at` is not
-        // reported as undated. Reading `timestamp` alone made every migrated
-        // concept look like it had lost its date.
+        // reported as undated.
         .filter(|concept| concept.authored_at().is_none_or(str::is_empty))
     {
         findings.push(finding(FindingInput {

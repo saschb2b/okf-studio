@@ -1,10 +1,11 @@
 // Folder Home — the landing page for a directory's index.md. A bundle's index
-// files are never concepts (OKF reserves them), so their authored prose used to
-// vanish; this surfaces it. Renders the directory's title, its intro prose (the
-// narrative the core keeps after stripping the H1 and the nav link-bullets), and
-// its child entries as navigation cards. Reached by selecting a directory in the
-// index tree, and the default landing for a freshly opened bundle. The synthetic
-// selection id is "index" (root) or "<dir>/index"; see selectors.ts.
+// files are never concepts (OKF reserves them), so this is the only surface
+// their authored prose reaches. Renders the directory's title, its intro prose
+// (the narrative the core keeps after stripping the H1 and the nav
+// link-bullets), and its child entries as navigation cards. Reached by
+// selecting a directory in the index tree, and the default landing for a
+// freshly opened bundle. The synthetic selection id is "index" (root) or
+// "<dir>/index"; see selectors.ts.
 
 import { ChevronRight } from "lucide-react";
 import type { MouseEvent } from "react";

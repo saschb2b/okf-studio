@@ -29,8 +29,9 @@ describe("louvain community detection", () => {
       { a: 3, b: 4 },
     ];
     const a = louvain(5, edges);
-    const b = louvain(5, edges);
-    expect(a).toEqual(b); // deterministic
+    // louvain walks a Map, so a shift in iteration order would move a node
+    // between communities. Naming the assignment is what catches that.
+    expect(a).toEqual([0, 0, 0, 1, 1]);
     const max = Math.max(...a);
     expect(new Set(a).size).toBe(max + 1); // dense indices
     expect(a[0]).toBe(0); // largest community (the triangle) is index 0

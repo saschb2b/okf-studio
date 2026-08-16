@@ -11,12 +11,9 @@ import { openBundle, renderApp } from "@/test/appHarness.tsx";
 // design tokens (see docs/ux/theming.md) and disabled here; this test covers the
 // structural rules — names, roles, ARIA, landmarks, labels.
 //
-// Scan `baseElement`, never the render container. Every dialog, menu, and
-// popover here goes through a Base UI portal onto document.body, which is a
-// sibling of the container rather than a child of it: measured, a scan of the
-// container saw 346 elements and none of the open dialog, while baseElement
-// saw 494 including it. Scanning the container reported green on surfaces it
-// had never looked at.
+// Scan `baseElement`, never the render container: every dialog, menu, and
+// popover here goes through a Base UI portal onto document.body, a sibling of
+// the container rather than a child of it.
 
 // The three pane splitters are `role="separator"` widgets that sit between
 // landmarks by construction: each is a flex sibling of the panes it resizes,

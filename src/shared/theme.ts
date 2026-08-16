@@ -11,13 +11,11 @@ const GOLDEN_ANGLE = 137.5;
 const BASE_HUE = 250;
 
 /**
- * Perceptual lightness and chroma per theme. The palette used to be HSL at a
- * fixed L, which is not a perceptual scale: `hsl(60 62% 64%)` (yellow) and
- * `hsl(240 62% 64%)` (blue) share a nominal lightness but differ by roughly 3×
- * in the luminance a reader actually sees, so a legend of twelve types read as
- * a few shouting colors and a lot of mud. OKLab's L IS perceptual, so holding
- * it fixed gives every type the same visual weight and the same contrast
- * against the pane behind it.
+ * Perceptual lightness and chroma per theme. OKLab's L is a perceptual scale,
+ * so holding it fixed gives every type the same visual weight and the same
+ * contrast against the pane behind it. HSL's L is not: `hsl(60 62% 64%)`
+ * (yellow) and `hsl(240 62% 64%)` (blue) share a nominal lightness but differ
+ * by roughly 3× in the luminance a reader actually sees.
  */
 const TONE = {
   dark: { l: 0.76, c: 0.115 },

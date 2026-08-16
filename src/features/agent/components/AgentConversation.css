@@ -1451,10 +1451,8 @@
    stay inset; keyboard focus tints the hairline, since an edge-to-edge
    editor has no box for an outline ring to wrap. */
 /* The composer is an object on the panel, not the strip left over under the
-   transcript. It used to be a full-bleed region marked off by one hairline,
-   which read as the end of the scroll rather than as somewhere to type. The
-   input shell below carries the surface; this element only insets it and
-   spaces the notices that stack above it. */
+   transcript. The input shell below carries the surface; this element only
+   insets it and spaces the notices that stack above it. */
 .agent-composer {
   display: grid;
   gap: var(--space-8);
@@ -2279,9 +2277,8 @@
   display: grid;
   min-width: 0;
   /* Hug the three rows and sit at the foot of whatever space the form is
-     given. As a stretched grid item the box grew to fill the panel, so the
-     input kept its 60px while the border ran hundreds of pixels below it.
-     That was invisible until the shell gained a surface to show it. */
+     given. As a stretched grid item the box fills the panel, leaving the
+     border hundreds of pixels below a 60px input. */
   align-self: end;
   background: var(--bg-elev);
   border: 1px solid var(--border-variant);
@@ -2297,12 +2294,8 @@
 /* The field sizes itself to its text, in CSS, with nothing measuring layout.
    A hidden pseudo-element mirrors the draft from the wrapper's data-value and
    shares a single grid cell with the textarea, so the taller of the two sets
-   the row. The previous version read scrollHeight in an effect, which returns
-   the stretched height of a grid item rather than the height of the text, so
-   surplus space was written back in and the box locked open.
-
-   The cap lives on the mirror: past it the row stops growing and the textarea
-   scrolls. The manual resize handle is gone with all of this. */
+   the row. The cap lives on the mirror: past it the row stops growing and the
+   textarea scrolls. */
 .agent-composer__field {
   display: grid;
   min-width: 0;
@@ -2503,23 +2496,18 @@
   }
 }
 
-/* Prose in this surface takes a reading measure. Every paragraph and list
-   item here ran the full width of a widened agent panel; max-width only
-   bites once a line is long, so short labels are unaffected. */
+/* Prose in this surface takes a reading measure. max-width only bites once a
+   line is long, so short labels are unaffected. */
 .bundle-proposal :is(p, li, dd) {
   max-width: var(--measure-prose);
 }
 
 /* --- Selectable transcript --------------------------------------------------
  * The app disables selection globally so dragging across chrome selects nothing
- * (src/styles.css), and opts real content back in. The agent transcript was
- * never on that list, so none of an answer could be selected or copied — you
- * could only take the whole response via the copy button.
- *
- * That also left an affordance stranded: ResponseActions has a "Copy selection"
- * button gated on a selection existing inside the response, which with
- * `user-select: none` could never happen. Opting in here is what makes it
- * reachable.
+ * (src/styles.css), and opts real content back in. This is the transcript's
+ * opt-in, and it is also what makes ResponseActions' "Copy selection" button
+ * reachable: that button is gated on a selection existing inside the response,
+ * which `user-select: none` never allows.
  *
  * Scoped to the message prose rather than the whole transcript, so drag-select
  * picks up the answer and the prompt without hoovering up button labels and

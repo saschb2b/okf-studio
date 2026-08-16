@@ -1,7 +1,3 @@
-// The dialog rendered, because the previous version's problems — no footer, an
-// action button floating mid-content, its own invented spacing — were all
-// things only visible when looking at it. It had no story.
-
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { mockConcept } from "@/mock/conceptFixtures.ts";

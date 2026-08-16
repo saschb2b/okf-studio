@@ -49,9 +49,9 @@ describe("buildTypePalette", () => {
   });
 
   it("gives every type the same visual weight", () => {
-    // The point of generating in OKLab rather than HSL. The old HSL palette
-    // spread these ratios across 4.3–11.8 in dark, so a yellow type shouted and
-    // a blue one disappeared; holding perceptual lightness fixed collapses it.
+    // The point of generating in OKLab rather than HSL: a fixed perceptual
+    // lightness keeps every type's contrast against the worst-case surface
+    // within a ratio of each other, so none shouts and none disappears.
     for (const dark of [true, false]) {
       const palette = buildTypePalette(TYPES, dark);
       const ratios = TYPES.map((t) =>

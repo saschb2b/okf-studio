@@ -11,13 +11,9 @@ describe("OKF Studio navigation features", () => {
     await user.click(screen.getByRole("button", { name: /search and commands/i }));
 
     const combo = await screen.findByRole("combobox");
-    // Driven by a query rather than the zero state. This guards the bug where
-    // the combobox's `items` and `filteredItems` props disagreed on whether the
-    // list was grouped, so keyboard navigation only ever toggled between the
-    // first two results instead of walking the full list — which is a bug about
-    // traversing GROUPS, and a query is what produces several of them. The zero
-    // state used to stand in for "a long list" by listing every command; it now
-    // deliberately shows a short suggested set, so it no longer can.
+    // Driven by a query rather than the zero state: this covers keyboard
+    // traversal across GROUPS, and a query is what produces several of them.
+    // The zero state shows a short suggested set, not a long grouped list.
     await fillText(user, combo, "e");
     await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(8));
     const groups = screen.getAllByRole("group");
@@ -65,8 +61,8 @@ describe("OKF Studio navigation features", () => {
     renderApp();
     await openBundleAtOverview(user);
 
-    // The copy button is part of the processed body HTML (not a post-render
-    // DOM append, which React's innerHTML re-application used to wipe).
+    // The copy button is part of the processed body HTML, not a post-render
+    // DOM append.
     const copy = await screen.findByRole("button", { name: /copy code/i });
     await user.click(copy);
     // Re-query in the waiter: the body's innerHTML can be re-applied while the
@@ -116,8 +112,7 @@ describe("OKF Studio navigation features", () => {
     // The tree expanded the chain and the row is now present and current.
     const row = await screen.findByRole("treeitem", { name: /^button$/i });
     expect(row).toHaveAttribute("aria-current", "true");
-    // …and was scrolled into view AFTER it rendered (a one-shot rAF used to
-    // race the expansion commit and miss the row entirely).
+    // …and was scrolled into view AFTER it rendered.
     await waitFor(() => {
       expect(scrollSpy.mock.instances).toContain(row);
     });

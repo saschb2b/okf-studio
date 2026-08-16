@@ -24,9 +24,8 @@ interface StreamingMarkdownProps {
 export function StreamingMarkdown({ text, animate }: StreamingMarkdownProps) {
   const { settled, tail } = splitSettled(text);
   // No manual memoization, per the repo convention: the React Compiler keys this
-  // on `settled`, which only changes when a block closes. That is the win — the
-  // old code re-parsed the whole message on every arriving chunk, which is
-  // quadratic over a long answer.
+  // on `settled`, which only changes when a block closes, so a long answer is
+  // not re-parsed on every arriving chunk.
   const settledHtml = settled ? { __html: renderMarkdown(settled) } : null;
   const words = tailWords(tail);
 

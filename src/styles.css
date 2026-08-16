@@ -58,9 +58,7 @@
   --text-dim: #596170;
   /* One dim for every inert control. Opacity rather than a disabled ink,
      because a disabled button has to take its icon and its border down with
-     its label, and it has to do that on all four surfaces. The six rules this
-     replaced had drifted to 0.45, 0.48, 0.56, 0.58, 0.6, and 0.7, one of them
-     stacked on top of a --text-dim it had already applied. WCAG 1.4.3 exempts
+     its label, and it has to do that on all four surfaces. WCAG 1.4.3 exempts
      inactive controls, which is why this may sit below 4.5:1. */
   --disabled-opacity: 0.5;
 
@@ -431,14 +429,12 @@ body,
   min-width: 0;
 }
 
-/* Top bar layout lives in TopBar.css; .btn and .badge live in chrome.css — this
-   file used to carry a second, drifting copy of the button rules. */
+/* Top bar layout lives in TopBar.css; .btn and .badge live in chrome.css. */
 
 /* One focus ring, declared once. `:where()` contributes zero specificity, so a
    component that needs the inset offset, a different treatment, or none at all
    still overrides it with a plain class selector — but nothing has to restate
-   the ring just to have one. This replaced 86 hand-copied declarations across
-   46 files that had drifted into four different offsets. */
+   the ring just to have one. */
 :where(a, button, input, select, textarea, summary, li, [tabindex], [role="button"],
   [role="tab"], [role="option"], [role="treeitem"], [role="menuitem"]):focus-visible {
   outline: var(--focus-w) solid var(--focus-ring);

@@ -2,11 +2,10 @@
 // docs/ux/keyboard-shortcuts.md. Toggled with `?` (and from the command
 // palette), built on Base UI's Dialog.
 //
-// This mirrors the documented keymap, and the mirror is the point: the previous
-// version had drifted, missing the Git panel, agent-thread switching, and the
-// Git commit binding entirely, and showing only half of the modified-click pair.
-// When a shortcut changes, it changes in three places — keys.ts (or the owning
-// component), the spec, and here.
+// This mirrors the documented keymap, and the mirror is the point: nothing
+// fails when the sheet drifts from the bindings. When a shortcut changes, it
+// changes in three places — keys.ts (or the owning component), the spec, and
+// here.
 
 import { useRef, useState } from "react";
 import { X } from "lucide-react";

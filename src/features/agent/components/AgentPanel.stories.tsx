@@ -1,7 +1,7 @@
-// The panel is the agent feature's top-level composition and had no story at
-// all: every one of its parts was inspectable in isolation while the thing that
-// arranges them was not. It is fully store-bound, so it boots over the browser
-// mock rather than taking props.
+// The panel is the agent feature's top-level composition: its parts are
+// inspectable in isolation elsewhere, this covers the thing that arranges them.
+// It is fully store-bound, so it boots over the browser mock rather than taking
+// props.
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";

@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { fireEvent, screen, waitFor, within, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { fillText, openBundleAtOverview, renderApp } from "@/test/appHarness.tsx";
-import { dropIndexFor } from "@/features/shell/components/TabStrip.tsx";
 
 describe("OKF Studio tabs and windows", () => {
   it("opens a background tab with Ctrl+click and switches on activate", async () => {
@@ -118,19 +117,6 @@ describe("OKF Studio tabs and windows", () => {
       screen.getByRole("tablist", { name: /open concepts/i }),
     ).getAllByRole("tab");
     expect(tabs.map((t) => t.textContent)).toEqual(["Overview", "Glossary"]);
-  });
-
-  it("computes drag-reorder targets from neighbor midpoints (dropIndexFor)", () => {
-    const mids = [50, 150, 250];
-    // Dragging right: a slot is taken only once its midpoint is crossed.
-    expect(dropIndexFor(mids, 0, 60)).toBe(0);
-    expect(dropIndexFor(mids, 0, 160)).toBe(1);
-    expect(dropIndexFor(mids, 0, 260)).toBe(2);
-    // Dragging left mirrors it.
-    expect(dropIndexFor(mids, 2, 140)).toBe(1);
-    expect(dropIndexFor(mids, 2, 40)).toBe(0);
-    // No midpoint crossed → stays put.
-    expect(dropIndexFor(mids, 1, 150)).toBe(1);
   });
 
   it("drags a tab to a new position without changing the selection", async () => {

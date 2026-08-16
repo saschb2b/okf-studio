@@ -236,8 +236,8 @@ fn v02_issues(concept: &Concept, fm: &frontmatter::ParsedFrontmatter) -> Vec<Iss
     // Only checked once the concept declares sources. A footnote is also just
     // markdown, and a document with no sources is using it that way — Studio's
     // own v0.1 docs cite `[^1]` and `[^report]` as ordinary footnotes, and
-    // warning about those turned the validation panel into advice about a
-    // mechanism the bundle had not adopted.
+    // warning about those turns the validation panel into advice about a
+    // mechanism the bundle has not adopted.
     if !concept.sources.is_empty() {
         for label in footnote_labels(&concept.body) {
             if concept.source_by_id(&label).is_none() {

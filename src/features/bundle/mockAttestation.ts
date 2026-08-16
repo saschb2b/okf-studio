@@ -53,9 +53,6 @@ function executedField(receipt: Record<string, string>): [string, string] | null
  * might use, then require the literal segments between them to appear in order.
  * Binding syntax belongs to the runtime, so this never tries to bind anything
  * itself.
- *
- * Omitting this was a real bug in the first draft of this mock: without it the
- * browser build and every test rejected honest runs the engine accepts.
  */
 function matchesWithParameterHoles(
   stored: string,

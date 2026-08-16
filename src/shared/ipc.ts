@@ -1165,15 +1165,16 @@ function forgetLastAgentConnection(profileId: string): void {
  * Reconnect the most recent explicitly connected agent, if one is remembered,
  * and re-apply the auth method it was signed in with.
  *
- * Reconnecting alone was not enough. A fresh ACP connection reports
+ * Reconnecting alone is not enough. A fresh ACP connection reports
  * `authenticated: false` and re-advertises its methods, and the conversation
  * surface gates its draft session, its saved-thread resume, and its session load
- * on that flag — so the panel asked which method to use on every launch, and the
- * previous thread sat behind a choice the user had already made. The agent
- * itself holds the credentials, so `authenticate` with the remembered method is
- * normally a non-interactive no-op; it is the same call the user was making by
- * hand. If it fails the connection stays up and the picker appears, which is
- * where an expired or revoked credential should surface.
+ * on that flag — so without re-applying the method, the panel asks which one to
+ * use on every launch and the previous thread sits behind a choice the user has
+ * already made. The agent itself holds the credentials, so `authenticate` with
+ * the remembered method is normally a non-interactive no-op; it is the same call
+ * the user would otherwise make by hand. If it fails the connection stays up and
+ * the picker appears, which is where an expired or revoked credential should
+ * surface.
  */
 async function restoreLastAgentConnection(
   bundleRoot: string,
@@ -1190,9 +1191,8 @@ async function restoreLastAgentConnection(
     markNextConnectionRestored = false;
   }
   // A remembered entry that cannot even be turned into a connection attempt is
-  // a failed restore, not a quiet no-op. Resolving with null here published
-  // "idle", which dropped the user on the first-run empty state with no hint
-  // that the agent they had been using was supposed to come back.
+  // a failed restore, not a quiet no-op: resolving with null would drop the user
+  // on the first-run empty state with no hint that an agent was meant to return.
   if (!info) throw new Error("The remembered agent could not be reconnected.");
   // Authenticating happens after the connection is already marked and published,
   // so however long it takes, the first conversation surface can still tell this
@@ -1233,14 +1233,12 @@ async function reauthenticateRestored(
  * Publish a new connection, marking it as a launch restore before any subscriber
  * can see it.
  *
- * The marker used to be added after `connectRememberedAgent` resolved, which is
- * after the connection had already been published from inside it. A subscriber
- * learns about the connection synchronously, mounts a conversation surface, and
- * that surface asks whether this was a launch restore as soon as it finishes
- * loading its saved-thread metadata. Whether the answer existed yet came down to
- * which store read finished first, so the thread auto-resumed or offered a
- * Resume card depending on disk timing. Setting it here removes the window
- * instead of making it smaller.
+ * The marker has to be set here rather than around the connect call: a
+ * subscriber learns about the connection synchronously, mounts a conversation
+ * surface, and that surface asks whether this was a launch restore as soon as it
+ * finishes loading its saved-thread metadata. Marking any later leaves a window
+ * where the answer depends on which store read finished first, so the thread
+ * auto-resumes or offers a Resume card depending on disk timing.
  */
 function registerAgentConnection(info: AgentConnectionInfo): void {
   activeAgentConnectionsById.set(info.connectionId, info);
@@ -1329,8 +1327,8 @@ export function maybeRestoreLastAgentConnection(bundleRoot: string): void {
 /**
  * Try the remembered connection again after a failure. A restore fails for
  * reasons that are often transient or fixable without leaving Studio — an agent
- * still installing, a local endpoint not up yet, a network blip — and the only
- * way out used to be finding the agent in the catalog again by hand.
+ * still installing, a local endpoint not up yet, a network blip — so the retry
+ * does not cost the user a second trip through the catalog.
  */
 export function retryRestoreLastAgentConnection(bundleRoot: string): void {
   if (agentRestoreState === "restoring") return;
@@ -5404,10 +5402,8 @@ export async function readAsset(
   if (!isTauri()) {
     const key = rel.replace(/^\/+/, "");
     // The backend serves only `html`, `css` and `svg` here (see
-    // crates/okf-core/src/asset.rs). The mock used to return any key present in
-    // MOCK_ASSETS, which made it quietly more permissive than the app it stands
-    // in for — so a test could not have caught the allowlist widening, and the
-    // browser build would have rendered files the desktop app refuses.
+    // crates/okf-core/src/asset.rs); the mock enforces the same allowlist so it
+    // is never more permissive than the app it stands in for.
     const ext = key.split(".").pop()?.toLowerCase() ?? "";
     if (!["html", "css", "svg"].includes(ext)) return null;
     return MOCK_ASSETS[key] ?? null;

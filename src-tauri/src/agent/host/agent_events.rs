@@ -1,16 +1,12 @@
 //! One ordered way out of the agent host.
 //!
-//! Every agent event used to leave through its own `app.emit(...)` call with
-//! the result discarded. Six channels, sixteen call sites, no ordering across
-//! them and no record when a send failed. The webview could not tell a quiet
-//! host from a broken one, and a test could not tell "nothing happened yet"
-//! from "the event was dropped".
-//!
-//! The bus fixes both by construction. Every event is stamped with a monotonic
-//! sequence from a single counter, so the client can order events that arrive
-//! on different channels and can name a gap instead of guessing. A failed send
-//! is reported once, with the channel and the sequence it lost, rather than
-//! swallowed.
+//! Every agent event leaves through this bus, across six channels. Each one is
+//! stamped with a monotonic sequence from a single counter, so the client can
+//! order events that arrive on different channels and can name a gap instead
+//! of guessing. A failed send is reported once, with the channel and the
+//! sequence it lost, rather than swallowed: without that record the webview
+//! cannot tell a quiet host from a broken one, and a test cannot tell "nothing
+//! happened yet" from "the event was dropped".
 //!
 //! # Milestones
 //!
@@ -264,9 +260,8 @@ pub(crate) trait TurnLifecycle {
 mod tests {
     use super::*;
 
-    /// A bus that keeps what it published. The earlier version of these tests
-    /// re-implemented the counters and asserted against the copy, which proves
-    /// nothing about the bus; this drives the real one.
+    /// A bus that keeps what it published, so the assertions run against the
+    /// real bus rather than against a re-implementation of its counters.
     fn recording_bus() -> (Arc<AgentEventBus>, Arc<Mutex<Vec<serde_json::Value>>>) {
         let published = Arc::new(Mutex::new(Vec::new()));
         let sink_published = Arc::clone(&published);

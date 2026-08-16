@@ -446,10 +446,9 @@ export function AgentConversation({
       setSavedThread({ status: "none" });
       return;
     }
-    // A request token, as the rest of this file's async work already uses —
-    // draftSessionRequestRef, sessionConfigRequestRef, artifactValidationRequestRef.
-    // This load was the one path without one, and StrictMode runs the effect
-    // twice, so two reads were in flight and either could publish last.
+    // A request token, as the rest of this file's async work uses. StrictMode
+    // runs the effect twice, so two reads can be in flight and either could
+    // publish last.
     const request = savedThreadRequestRef.current + 1;
     savedThreadRequestRef.current = request;
     setSavedThread({ status: "loading" });
@@ -1737,11 +1736,9 @@ export function AgentConversation({
   const attachedIssueKeys = new Set(
     attachedSources.flatMap((source) => source.issueKey ? [source.issueKey] : []),
   );
-  // Only a live status earns a place in the action bar. This slot used to
-  // carry what the connection accepts ("Text and images"), which never
-  // changed while the user read it and pushed the session controls into
-  // truncation on a narrow panel. The attachment picker already reports what
-  // it can attach, at the point of attaching.
+  // Only a live status earns a place in the action bar. A label that cannot
+  // change while it is read pushes the session controls into truncation on a
+  // narrow panel for nothing.
   let composerStatus: string | null = null;
   if (activeTurn) composerStatus = "Agent is working";
   if (queuedPrompt) composerStatus = "Follow-up queued";
@@ -3264,9 +3261,8 @@ export function AgentConversation({
               isSubmitting={isSubmitting}
               isCancelling={isCancelling}
               onStop={() => void stopTurn()}
-              // Send stays inert until there is something to send. Queue
-              // already required text; the idle button did not, so it invited
-              // a press that submitted an empty prompt.
+              // Send stays inert until there is something to send: a live
+              // button on an empty draft invites a press that submits nothing.
               sendDisabled={activeTurn
                 ? isSubmitting || queuedPrompt !== null ||
                   promptText.trim().length === 0 || contextPlanIsStale

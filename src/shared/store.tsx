@@ -582,9 +582,8 @@ function reducer(s: State, m: Msg): State {
         );
       }
       // Live reload of the same root: keep the tabs. The active tab falls back
-      // to the bundle's entry concept if its concept vanished (the previous
-      // single-selection behavior); a background tab whose concept vanished
-      // empties out and says so when revisited.
+      // to the bundle's entry concept if its concept vanished; a background tab
+      // whose concept vanished empties out and says so when revisited.
       const tabs = s.tabs.map((t) => {
         if (exists(t.conceptId)) return t;
         return {

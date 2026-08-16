@@ -1,11 +1,5 @@
 // A file-stored computation has to reach the reading column.
 //
-// This is the regression the OKF v0.2 migration introduced: promoting
-// `runtime`, `parameters`, `computation`, `executor` and `attester` out of
-// `Concept.extra` made them invisible, because the Metadata Inspector renders
-// `extra`. A computation stored in a *file* was worse than invisible — it is a
-// path, not body content, so nothing put it on the page at all.
-//
 // The unit tests cover the materializer and the path-safety gate. This covers
 // the thing neither can: that the whole route actually runs in the app — the
 // concept opens, the backend serves a `.sql` file the general text door refuses

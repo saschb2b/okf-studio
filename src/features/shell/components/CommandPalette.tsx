@@ -12,11 +12,11 @@
 // (paletteSearch.ts) and hand the grouped result to Autocomplete via
 // `filteredItems`, so the scoring and order survive.
 //
-// The states this has to hold, each of which used to be the same wall of rows:
-//   no bundle   only what works without one. It used to offer Re-scan folder,
-//               Bundle home, and four visualization switches with nothing open.
-//   zero query  recent concepts and a short suggested set — not all nineteen
-//               actions, each tagged "Action" under a heading reading ACTIONS.
+// The states this has to hold, each with its own shape rather than one wall of
+// rows:
+//   no bundle   only what works without one.
+//   zero query  recent concepts and a short suggested set, not all nineteen
+//               actions.
 //   results     ranked across groups, with the matched characters marked so a
 //               fuzzy hit reads as a hit rather than as an arbitrary row.
 //   capped      says so, instead of silently dropping the 31st concept.
@@ -86,9 +86,8 @@ const SNIPPET_PAD = 32;
 /**
  * Score a concept for the Concepts group. Title leads; id and type follow it
  * closely because both are things people search by here; description and tags
- * carry least, but including them at all is new — a concept whose description
- * says what you are looking for used to be reachable only through the slower
- * "In text" pass, and only if the words appeared verbatim.
+ * carry least, but including them means a concept whose description says what
+ * you are looking for ranks here rather than only in the slower "In text" pass.
  *
  * Only the title's positions are kept, since the title is the only field the
  * row renders in full.
@@ -108,16 +107,13 @@ function scoreConcept(c: Concept, needle: string): RecordMatch {
 
 /**
  * Reduce markdown to the prose a reader would see, so a snippet quotes the
- * sentence rather than its source. An "In text" hit used to render raw syntax —
- * a link as `[in-bundle link](graph-view.md)`, or a whole Mermaid diagram as
- * `Scan[Rust core scans] Scan -- Graph[Graph view]` — which buried the matched
- * word in punctuation and made the same phrase look different depending on
- * whether it sat inside a link or a diagram.
+ * sentence rather than its source and the matched word is not buried in
+ * punctuation.
  *
  * Fences are tracked line by line rather than matched with a non-greedy regex.
  * A `/```[\s\S]*?```/` pairs the wrong delimiters the moment a document
  * *documents* a fence — the concept reader's own body shows one inside a
- * four-backtick span, which offset every pair after it and left the real
+ * four-backtick span, which offsets every pair after it and leaves the real
  * Mermaid block in the prose.
  */
 function plainText(text: string): string {
@@ -371,9 +367,7 @@ export function CommandPalette() {
     resolveDark(state.settings.theme),
   );
 
-  // Only offer what the current state can actually carry out. With no folder
-  // open the launcher used to list Re-scan folder, Bundle home, and four
-  // visualization switches, every one of them a no-op.
+  // Only offer what the current state can actually carry out.
   const available = actionItems.filter((a) =>
     a.needs === "bundle"
       ? state.bundle != null
@@ -495,8 +489,7 @@ export function CommandPalette() {
 
   // Group order. With a query the two competing groups are ordered by their own
   // best match, so typing "agent" leads with the Agent Panel concept rather
-  // than with whichever action happened to be declared first — the old fixed
-  // Actions-then-Concepts order buried the thing most queries are looking for.
+  // than with whichever action happened to be declared first.
   //
   // Two orderings are NOT left to the score. Recent leads the zero state
   // because that is what a launcher opened without a query is for. And OKF
@@ -572,11 +565,10 @@ export function CommandPalette() {
           <Autocomplete.Root
             // Inline: render the list directly in the dialog, no nested popup.
             // `open` is bound to the dialog so transient state resets on close.
-            // `items` and `filteredItems` must share the same grouped shape —
-            // passing a flattened `items` here previously left the combobox
-            // thinking the list was ungrouped, so its keyboard-navigation index
-            // walked the 2-3 *groups* instead of the items inside them (arrow
-            // key navigation got stuck after one or two presses).
+            // `items` and `filteredItems` must share the same grouped shape: a
+            // flattened `items` makes the combobox treat the list as ungrouped,
+            // so its keyboard-navigation index walks the groups instead of the
+            // items inside them and arrows stall after one or two presses.
             inline
             open={state.palette}
             items={groups}
@@ -592,9 +584,7 @@ export function CommandPalette() {
                 className="palette-input"
                 placeholder="Search concepts and text, or run a command…"
               />
-              {/* A cap that is also the control it names. Esc used to be a
-                  fourth hint crowding the footer; here it reads as the close
-                  button it already was. */}
+              {/* A cap that is also the control it names. */}
               <Dialog.Close className="kbd palette-esc" aria-label="Close search">
                 esc
               </Dialog.Close>
@@ -650,8 +640,6 @@ export function CommandPalette() {
               )}
             </Autocomplete.List>
 
-            {/* "No matches" on its own was a dead end: it neither said what
-                had been searched nor left anywhere to go. */}
             <Autocomplete.Empty className="palette-empty">
               <p className="palette-empty-title">
                 No match for <strong>{needle}</strong>

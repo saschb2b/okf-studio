@@ -409,9 +409,9 @@ export function withThreadPrompt(
  * But every user message it hands back has been through the adapter's storage
  * format, so where Studio has its own record of that prompt, that wins.
  *
- * A user message with no recorded prompt is left exactly as replayed: threads
- * from before this was recorded, or started outside Studio, are still readable,
- * and the alternative of guessing which fragment was typed is what this replaces.
+ * A user message with no recorded prompt is left exactly as replayed, so a
+ * thread carrying no prompts — one started outside Studio, say — stays readable
+ * rather than being guessed at fragment by fragment.
  */
 export function restoreThreadPrompts<T extends { role: string; text: string }>(
   messages: readonly T[],

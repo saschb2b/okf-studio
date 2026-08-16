@@ -102,8 +102,8 @@ describe("TranscriptSurface", () => {
     expect(surface.scrollTop).toBe(520);
     expect(screen.getByRole("button", { name: "Jump to next prompt" })).toBeDisabled();
 
-    // The keyboard reaches the same motion, and Shift+Home still jumps straight
-    // to the latest prompt now that it has no button of its own.
+    // The keyboard reaches the same motion, and Shift+Home jumps straight to
+    // the latest prompt, which has no button of its own.
     fireEvent.keyDown(surface, { key: "PageUp", shiftKey: true });
     expect(surface.scrollTop).toBe(120);
     fireEvent.keyDown(surface, { key: "PageDown", shiftKey: true });

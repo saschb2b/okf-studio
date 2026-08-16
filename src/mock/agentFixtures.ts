@@ -1,9 +1,8 @@
 // Shared story fixtures for the agent surfaces.
 //
-// AgentConnectionInfo is five nested shapes deep, and every agent story that
-// needs one was going to hand-build it. One builder here keeps them consistent
-// and means a change to the connection contract breaks in one place instead of
-// in five stories that each drifted their own way.
+// AgentConnectionInfo is five nested shapes deep. One builder here keeps the
+// stories consistent and means a change to the connection contract breaks in
+// one place.
 
 import type {
   AgentCatalogEntry,

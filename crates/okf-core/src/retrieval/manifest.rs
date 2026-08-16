@@ -146,8 +146,7 @@ fn section_concept(concept: &Concept) -> Vec<RetrievalUnit> {
                 text: section.text,
                 tags: concept.tags.clone(),
                 // Through `authored_at`, so a v0.2 concept dated only by
-                // `generated.at` is not treated as undated. health.rs had the
-                // same bug and was fixed; this copy was missed.
+                // `generated.at` is not treated as undated.
                 timestamp: concept.authored_at().map(str::to_string),
                 effective_time: extra_string(concept, "effective_from")
                     .or_else(|| extra_string(concept, "effective_time")),

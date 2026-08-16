@@ -1,12 +1,7 @@
-// Ranking for the global search launcher.
-//
-// The launcher has always been fuzzy — prefix, then substring, then a
-// subsequence fallback — but you could not tell, for two reasons. It scored
-// every subsequence hit as `100 - length`, so "gv" ranked "Graph View" and
-// "Git Workflow" identically and the order came down to the title compare; and
-// it never showed which characters it had matched, so a fuzzy hit looked like
-// an arbitrary one. This module fixes the scoring and returns the positions it
-// matched, which is what makes the behavior legible in the list.
+// Ranking for the global search launcher: prefix, then substring, then a
+// subsequence fallback. Scores and the matched positions are both returned, so
+// the list can mark the characters a fuzzy hit matched instead of leaving it
+// looking arbitrary.
 //
 // No search dependency. Fuse.js would replace roughly the eighty lines below
 // with roughly twelve kilobytes, and its headline feature over this is
@@ -43,7 +38,7 @@ function isBoundary(prev: string | undefined): boolean {
  * Within the subsequence tier, runs of adjacent characters and matches on word
  * boundaries both raise the score, and distance from the start lowers it. That
  * is what separates "gv" → "**G**raph **V**iew" from "gv" → "Git **V**alidation
- * ...", which the previous flat score could not.
+ * ...".
  */
 export function scoreTerm(haystack: string, term: string): FieldMatch {
   if (!term) return { score: 0, positions: [] };

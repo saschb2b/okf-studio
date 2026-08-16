@@ -24,11 +24,8 @@
   cursor: grabbing;
 }
 
-/* Zoom controls: ONE object, not three. They were three separately bordered
-   buttons with gaps between them, each carrying the full dialog --shadow, so a
-   single control read as three stacked enclosures and cast three shadows over
-   the canvas. One border, one shadow, hairline dividers: the same segmented
-   shape the toolbar uses, turned vertical. */
+/* Zoom controls: ONE object, not three. One border, one shadow, hairline
+   dividers — the same segmented shape the toolbar uses, turned vertical. */
 .graph-controls {
   position: absolute;
   right: 12px;
@@ -326,10 +323,9 @@
   max-width: 100%;
 }
 
-/* Mode and depth are one control, so they are one pill. They used to be two
-   separately bordered and shadowed pills that appeared side by side only in
-   focus mode, which gave the toolbar a different silhouette per mode and, in a
-   narrow pane, wrapped into a staircase of mismatched widths. */
+/* Mode and depth are one control, so they are one pill: the toolbar keeps the
+   same silhouette in every mode and cannot wrap into a staircase of mismatched
+   widths in a narrow pane. */
 .graph-mode-bar {
   display: flex;
   align-items: stretch;

@@ -107,10 +107,9 @@ export const StatusRetryFailed: Story = {
  * An answer must be selectable so parts of it can be copied elsewhere.
  *
  * The app disables selection globally so dragging across chrome selects
- * nothing; the transcript was never opted back in, so no part of an answer could
- * be highlighted at all. Asserted against computed style in a real browser,
- * because that is the only place a stylesheet actually applies — a jsdom test
- * would pass whatever the CSS said.
+ * nothing, and the transcript opts back in. Asserted against computed style in
+ * a real browser, because that is the only place a stylesheet actually applies
+ * — a jsdom test would pass whatever the CSS said.
  */
 export const SelectableProse: Story = {
   args: {

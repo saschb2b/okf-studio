@@ -126,8 +126,7 @@ describe("OKF Studio agent connections", () => {
         "Review the evidence",
       );
       // Subscribed before the send, so the milestone cannot be missed between
-      // the click and the wait. This replaced a 5s timeout that was really
-      // asking "has the turn finished yet" without a way to know.
+      // the click and the wait.
       const reviewTurnQuiet = waitForTurnQuiescent();
       await user.click(within(reviewConversation).getByRole("button", { name: "Send" }));
       await reviewTurnQuiet;

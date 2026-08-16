@@ -6,11 +6,6 @@
 // gap or a malformed payload as a named diagnostic instead of letting it pass
 // as ordinary quiet.
 //
-// A dropped event used to be indistinguishable from a host with nothing to say.
-// Now the client can name the sequence it never saw, which is the difference
-// between "the agent is thinking" and "we lost the message that said it
-// finished".
-//
 // # Milestones
 //
 // A milestone says an asynchronous thing finished: a turn went quiet, an

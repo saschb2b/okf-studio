@@ -17,10 +17,8 @@ export interface VizColors {
 /**
  * The light theme's literal values, for the one case that cannot read them: no
  * document (SSR, a Node unit test). Kept in one place and named after the token
- * it stands in for, because the previous fallbacks were a separate invented
- * palette — #2f6df6 for the accent, #111 for the text — that drifted the moment
- * the theme moved and would have rendered a chart in colors the app has never
- * used. If you change a role in styles.css, change its twin here.
+ * it stands in for, so a chart never renders in a color the app does not use.
+ * If you change a role in styles.css, change its twin here.
  */
 export const VIZ_FALLBACK = {
   text: "#191c22",

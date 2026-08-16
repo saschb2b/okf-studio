@@ -1,10 +1,10 @@
 //! Knowledge-health findings over the OKF v0.2 fields.
 //!
-//! Two of these pin bug fixes rather than new behaviour. The existing provenance
-//! and freshness rules read `resource`, body citations and `timestamp` — none of
-//! which a fully-declared v0.2 concept has to use — so a migrated bundle was
-//! reported as undated and unsourced precisely because it had adopted the newer,
-//! better fields.
+//! Two of these pin the v0.2 readers in the provenance and freshness rules. A
+//! fully-declared v0.2 concept has to use none of `resource`, body citations or
+//! `timestamp`, so those rules must read `sources` and `generated.at` too, or a
+//! migrated bundle reads as undated and unsourced precisely because it adopted
+//! the newer fields.
 
 use okf_core::health::{analyze, HealthSeverity};
 use okf_core::parse::read_bundle;

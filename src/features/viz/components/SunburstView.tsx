@@ -50,8 +50,7 @@ export function SunburstView(props: HierarchyVizProps) {
   // arc (tangential; suits the wide group sectors) or along the radius
   // (radial; suits thin slivers, where ring thickness is the line budget).
   // Both flip on their far half so nothing reads upside-down. Horizontal
-  // text only suits a ring near 12/6 o'clock and overflows everywhere else,
-  // which is what made the holistic view unreadable.
+  // text only suits a ring near 12/6 o'clock and overflows everywhere else.
   const arcLabels = ({
     nodes,
     centerX,

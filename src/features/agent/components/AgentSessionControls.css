@@ -21,8 +21,8 @@
 .agent-session-control {
   display: inline-flex;
   flex: none;
-  /* Both dimensions clear the 24px floor; min-width: 0 let a single-glyph
-     control collapse to 22px. */
+  /* Both dimensions clear the 24px hit-target floor, which a single-glyph
+     control misses on its own content alone. */
   min-width: 24px;
   min-height: 28px;
   align-items: center;

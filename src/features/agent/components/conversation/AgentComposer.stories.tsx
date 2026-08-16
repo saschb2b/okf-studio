@@ -107,8 +107,8 @@ export const WithDraft: Story = {
 
 /**
  * The reading appears from 75% up, so this is the first state that carries
- * one. Cost stays in the tooltip: a running total to four decimals answered
- * no question at a glance and pushed the session controls into truncation.
+ * one. Cost stays in the tooltip: a running total to four decimals answers no
+ * question at a glance and pushes the session controls into truncation.
  */
 export const ContextApproachingFull: Story = {
   args: {
@@ -196,9 +196,8 @@ export const Stopping: Story = {
 };
 
 /**
- * A long draft. The box grows with the content, which it did not do when it
- * was fixed at three rows: the text ran past the box and the fourth line was
- * cut in half against the action bar.
+ * A long draft. The box grows with the content rather than holding a fixed
+ * height and cutting a line in half against the action bar.
  */
 export const LongDraft: Story = {
   args: {
@@ -210,8 +209,7 @@ export const LongDraft: Story = {
   },
   play: async ({ canvas }) => {
     const input = canvas.getByRole("textbox", { name: "Message the agent" });
-    // Grown past the old three-row box, and capped so a long draft cannot
-    // push the transcript off the screen.
+    // Capped, so a long draft cannot push the transcript off the screen.
     await expect(input.clientHeight).toBeGreaterThan(100);
     await expect(input.clientHeight).toBeLessThanOrEqual(260);
   },
@@ -244,10 +242,8 @@ export const StudioAgent: Story = {
  * the foot of it.
  *
  * The other stories wrap the composer in a container sized by its own
- * content, so none of them could see this: given surplus height the shell
- * stretched to fill it, holding a 60px input inside a border that ran
- * hundreds of pixels below. It was invisible until the shell gained a
- * surface, and then it was the first thing anyone noticed.
+ * content, so this is the only one that can catch the shell stretching to
+ * fill surplus height and leaving a 60px input inside a much taller border.
  */
 export const TallPanel: Story = {
   args: { sendDisabled: true },
@@ -291,11 +287,9 @@ export const NarrowPanel: Story = {
 };
 
 /**
- * Every optional slot filled at the narrow width. This is the regression
- * guard: all three session controls used to share the action bar, where a
- * permanent capability label and a four-decimal cost sat in front of them and
- * truncated the permission mode to "Default (recommend...". They now have
- * their own line and the bar keeps its text down to this width.
+ * Every optional slot filled at the narrow width. The session controls have a
+ * line of their own, so the action bar keeps its text unclipped down to this
+ * width rather than truncating the permission mode to "Default (recommend...".
  */
 export const Crowded: Story = {
   args: {

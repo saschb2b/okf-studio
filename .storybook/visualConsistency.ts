@@ -1,20 +1,16 @@
 // A visual-consistency audit that runs after every story.
 //
-// There are 297 stories. Reviewing them by screenshot does not scale, and the
-// defects worth catching here are measurable rather than matters of taste:
-// spacing that is not on the scale, prose with no reading measure, repeated rows
-// that do not agree on their height, a hit target too small to hit, and content
-// wider than the box holding it. Each check reports an element and a number, so
-// a finding is a fact rather than an opinion.
-//
-// Enforced for every story. It was scoped to Agent/* while the checks were
-// being tuned, so one area could be brought clean before the rest inherited it.
+// Reviewing every story by screenshot does not scale, and the defects worth
+// catching here are measurable rather than matters of taste: spacing that is
+// not on the scale, prose with no reading measure, repeated rows that do not
+// agree on their height, a hit target too small to hit, and content wider than
+// the box holding it. Each check reports an element and a number, so a finding
+// is a fact rather than an opinion.
 
 /** px values the spacing scale defines, plus the hairlines used deliberately. */
 const SCALE = new Set([0, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40]);
 
-/** Story titles this audit is enforced for. Every area, now that the agent
- *  surfaces are clean and the checks have stopped reporting noise. */
+/** Story titles this audit is enforced for. */
 const ENFORCED = [/./];
 
 // Gaps only. Padding is routinely composed with calc() to align to a control

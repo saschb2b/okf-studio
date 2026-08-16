@@ -37,10 +37,8 @@ type RawConcept = Omit<
 
 const raw: RawConcept[] = [
   // An OKF v0.2 Attested Computation that stores its computation in a file
-  // rather than inline. Present so the browser build and the story and
-  // integration suites exercise the path that used to render nothing at all:
-  // promoting the contract fields out of `extra` made them invisible, and a
-  // file-based computation had no route to the page.
+  // rather than inline, so the browser build and the story and integration
+  // suites exercise that path.
   {
     id: "metrics/recognized-revenue",
     type: "Attested Computation",

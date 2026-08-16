@@ -18,3 +18,7 @@ target/
 
 # Tauri generated
 /src-tauri/gen/
+
+# Ad hoc captures. Screenshots belong outside the repository; an image
+# joins docs/ux/ only when a named concept links it as evidence.
+/*.png

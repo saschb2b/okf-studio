@@ -1,2 +1,6 @@
-# Its own workspace root, so pnpm stops walking up to the app.
+# The site is its own project: its own lockfile, its own dependencies. This
+# marks it as a workspace root so pnpm stops walking up to the app's.
 packages: []
+
+allowBuilds:
+  esbuild: true

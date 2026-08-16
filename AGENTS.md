@@ -147,6 +147,7 @@ pnpm test:stories # story tests headless in Chromium — run when components or 
 pnpm test:agent-benchmarks # frozen task, capability, and provider contracts
 pnpm check:capabilities # capability pins still match the vendored okf skill
 pnpm build       # tsc --noEmit && vite build
+cargo fmt --all -- --check   # CI gates this before clippy; nothing else catches it
 cargo clippy -p okf-core --all-targets -- -D warnings
 cargo test -p okf-core
 cargo clippy -p okf-viewer --all-targets -- -D warnings

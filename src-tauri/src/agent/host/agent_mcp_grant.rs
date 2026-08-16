@@ -198,8 +198,8 @@ mod tests {
     /// A grant directory of this test's own. The shared one is swept on every
     /// create, so two tests using it can delete each other's in-flight record.
     fn private_grants() -> PathBuf {
-        let directory = std::env::temp_dir()
-            .join(format!("okf-mcp-grants-test-{}", uuid::Uuid::new_v4()));
+        let directory =
+            std::env::temp_dir().join(format!("okf-mcp-grants-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&directory).expect("create grant directory");
         directory
     }

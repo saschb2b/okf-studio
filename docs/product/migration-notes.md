@@ -3,7 +3,7 @@ type: Migration Guide
 title: OKF Viewer to OKF Studio
 description: What changes, including bundle-folder grants, and what stays compatible when OKF Viewer upgrades to OKF Studio.
 tags: [product, migration, upgrade, compatibility, credentials]
-generated: { by: claude/unrecorded, at: 2026-07-19T11:22:06Z }
+generated: { by: claude/unrecorded, at: 2026-08-16T00:00:00Z }
 ---
 
 # Upgrade in place
@@ -17,6 +17,7 @@ The following compatibility names intentionally remain unchanged:
 | Tauri application identifier | `app.okfviewer.desktop` | Keeps the operating system's existing app-data and cache locations. |
 | Store file | `okf-viewer.json` | Keeps settings, recent bundles, and saved agent-thread pointers. |
 | Credential service | `app.okfviewer.desktop` | Keeps Studio Agent API keys reachable through the operating-system credential store. |
+| Browser-storage keys | `okf-viewer:layout`, `okf-viewer:update-seen` | Keeps the saved pane layout and the dismissed-update marker. Keys added after the rename use the `okf-studio:` prefix, so both appear; renaming these two would reset the layout and re-show the update badge for every existing install. |
 | Package and binary name | `okf-viewer` | Keeps development, packaging, and repository tooling compatible. The built artifact and the `okf-viewer` command keep this name, so a `.deb` upgrade replaces the installed package instead of installing a second one beside it. |
 
 Do not rename these files, directories, keyring entries, or command names to `okf-studio`. They are stable implementation identifiers, not stale product branding. Any change to them needs a separate migration first.

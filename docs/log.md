@@ -2,6 +2,10 @@
 
 ## 2026-08-16
 
+* **Update**: The [migration notes](product/migration-notes.md) now list the two browser-storage keys that kept the `okf-viewer:` prefix, `okf-viewer:layout` and `okf-viewer:update-seen`. Keys added after the rename use `okf-studio:`, so both prefixes are live in the code, and nothing said which of the two was deliberate. [Build and Release](architecture/build-and-release.md) claims the notes list every compatibility name, so the omission made that claim false. Renaming them is not an option: it resets the saved pane layout and re-shows the update badge on every existing install. Three genuine leftovers were renamed instead, none of them on the upgrade path: the private site package, and the repository name in the Git panel's mock snapshot and its story fixture.
+
+## 2026-08-16
+
 * **Update**: The nineteen full-app journeys moved from the `src/` root into [`src/integration/`](architecture/frontend-architecture.md), and the lane now selects them by directory rather than by a `.integration.test.tsx` infix. They outnumbered the composition root three to one in the file tree, so the four files that actually define the app were hard to find among them. Names lost the prefix they no longer need: `App.connections.integration.test.tsx` is `integration/connections.test.tsx`. Nothing else changed, because every one of them already imported through the `@/` alias, which is the payoff the alias rule was written for. The lane still collects the same nineteen files and 145 tests.
 
 ## 2026-08-16

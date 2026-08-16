@@ -6,7 +6,7 @@ import { GitPanelView } from "./GitPanel.tsx";
 const readyRepository: GitRepositorySnapshot = {
   availability: "ready",
   message: null,
-  repositoryName: "okf-viewer",
+  repositoryName: "okf-studio",
   branch: "feat/integrated-git-support",
   upstream: "origin/feat/integrated-git-support",
   ahead: 2,

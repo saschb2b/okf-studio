@@ -146,7 +146,7 @@ export function isTauri(): boolean {
 let MOCK_GIT_SNAPSHOT: GitRepositorySnapshot = {
   availability: "ready",
   message: null,
-  repositoryName: "okf-viewer",
+  repositoryName: "okf-studio",
   branch: "feat/integrated-git-support",
   upstream: "origin/feat/integrated-git-support",
   ahead: 2,

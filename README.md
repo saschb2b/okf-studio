@@ -64,7 +64,7 @@ This project's own site comes from an ODSF bundle, [`design-system/`](design-sys
 
 ## Develop and run
 
-Prerequisites: a stable Rust toolchain, Node.js 20.19+ or 22.12+ with pnpm, and platform build tools:
+Prerequisites: rustup, which installs the Rust toolchain pinned in `rust-toolchain.toml`, Node.js 20.19+ or 22.12+ with pnpm, and platform build tools:
 
 - **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
 - **Ubuntu/Linux:** `libwebkit2gtk-4.1-dev`, `build-essential`, `libssl-dev`, `librsvg2-dev`, and the related GTK packages.

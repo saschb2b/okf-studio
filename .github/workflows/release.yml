@@ -70,7 +70,8 @@ jobs:
           cache: pnpm
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Installs the toolchain pinned in rust-toolchain.toml.
+        run: rustup toolchain install
 
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
@@ -92,7 +93,11 @@ jobs:
         with:
           tauriScript: pnpm tauri
           releaseId: ${{ github.event.release.id }}
-          args: ${{ matrix.args }}
+          # The release overlay turns on `createUpdaterArtifacts`, the flag the
+          # bundler's signing step keys off. It sits outside the base config so
+          # a build from source never reaches a step that needs the signing
+          # secrets.
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
           # Generates/merges latest.json (the updater manifest) on the updater
           # target jobs only; the .deb job skips it.
           includeUpdaterJson: ${{ matrix.updaterJson }}

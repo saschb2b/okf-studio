@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build and Release
 description: How the app is versioned, packaged per OS, released on two of its three platforms, and updated with one disclosed launch check and user-initiated installs.
 tags: [architecture, decision, build, release, packaging]
-generated: { by: claude/unrecorded, at: 2026-08-16T00:00:00Z }
+generated: { by: claude/unrecorded, at: 2026-08-21T00:00:00Z }
 ---
 
 # Decision
@@ -27,6 +27,8 @@ Each is a [self-contained, portable](../product/principles.md) artifact that use
 Pull-request CI includes a dedicated Ubuntu 24.04 agent-sandbox job. It installs the distribution Bubblewrap package and the native Tauri build dependencies. It allows unprivileged user namespaces where the image's AppArmor gate would deny them. It then requires the restricted-host fixture to execute through the trusted backend.
 
 The 24.04 image is a floor, not a preference. The compiled policy passes `--disable-userns`, which Bubblewrap gained in 0.8, while 22.04 ships 0.6.1. The fixture checks the empty-root mount policy against real kernel namespaces. It does not treat the cross-platform argument-builder tests as Linux enforcement proof.
+
+The Rust toolchain is pinned in `rust-toolchain.toml`, and every job installs from that file rather than resolving `stable`. Both gates run clippy with `-D warnings`, so each new stable's lints can turn a green branch red with no commit behind it, and a contributor on an older compiler passes checks that CI then fails. One file covers both, since rustup reads it locally too. Raising the pin is a deliberate change that runs the gates.
 
 Two GitHub Actions workflows (`.github/workflows/`):
 
@@ -78,6 +80,7 @@ The user starts every update install, through Tauri's updater plugin. Checking h
 The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)). It reads a version file with no identity attached. It exists because releases went unnoticed while discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.
 
 - Signing is mandatory. The updater verifies a minisign signature on each artifact, and nobody can turn that off. The public key lives in `tauri.conf.json`. The private key and password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing, which Studio still does not do.
+- Signed artifacts are a release-only output. `bundle.createUpdaterArtifacts` is the flag the bundler's signing step keys off; it is `false` in `tauri.conf.json`, and a release turns it on through `src-tauri/tauri.release.conf.json`, an overlay `release.yml` merges with `--config`. A build from source therefore writes its platform installers and exits 0 rather than stopping on a key only CI holds. The public key stays in the base config regardless, because the updater plugin fails to initialize without it and a from-source build should still be able to see that a newer release exists.
 - Update vehicles: the AppImage (Linux) and NSIS (Windows) self-install in place. A `.deb` install cannot self-replace, because the OS package manager owns it. A small `can_self_update` command detects that case by checking for the AppImage runtime. Studio then shows the same in-app "version X available" hint plus a Download link to the releases page, instead of a failing in-app install. So `.deb` users still find out about updates. They install by downloading the new package. macOS has no vehicle because it has no release: a build from source updates by rebuilding.
 
 Silent and automatic installs remain out of scope: bytes only ever download and apply on an explicit user action. The automatic part stops at "a newer version exists", rendered as a quiet badge.

@@ -51,7 +51,7 @@ The layout is documented in [`docs/architecture/frontend-architecture.md`](docs/
 
 ## Dev commands
 
-Prerequisites (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): stable Rust + Node.js with pnpm. On Ubuntu also `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`; on Windows the WebView2 runtime + MSVC build tools; on macOS the Xcode Command Line Tools (`xcode-select --install`).
+Prerequisites (see [`docs/reference/tauri-2.md`](docs/reference/tauri-2.md)): rustup, which installs the toolchain pinned in `rust-toolchain.toml`, + Node.js with pnpm. On Ubuntu also `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`; on Windows the WebView2 runtime + MSVC build tools; on macOS the Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
 pnpm install

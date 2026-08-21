@@ -4,7 +4,7 @@ title: Tauri 2.0
 description: Key facts about Tauri 2.0 (architecture, plugins, the permissions model, and per-platform prerequisites) for building OKF Studio.
 resource: https://tauri.app/
 tags: [reference, tauri, rust, external]
-generated: { by: claude/unrecorded, at: 2026-07-17T10:39:43Z }
+generated: { by: claude/unrecorded, at: 2026-08-21T00:00:00Z }
 sources:
   - resource: "https://tauri.app/"
     title: Tauri
@@ -43,7 +43,7 @@ okf-studio/
 
 # Per-platform prerequisites
 
-- **All:** a recent stable Rust toolchain and Node.js.
+- **All:** rustup, which installs the Rust toolchain pinned in `rust-toolchain.toml`, and Node.js.
 - **Ubuntu and Linux:** `webkit2gtk` (4.1) dev libs, `build-essential`, `libssl-dev`, `librsvg2-dev`, and related GTK packages.
 - **Windows:** the WebView2 runtime (preinstalled on Windows 11) and the MSVC C++ build tools.
 - **macOS:** the Xcode Command Line Tools (`xcode-select --install`).

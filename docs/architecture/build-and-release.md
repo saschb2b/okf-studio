@@ -28,6 +28,8 @@ Pull-request CI includes a dedicated Ubuntu 24.04 agent-sandbox job. It installs
 
 The 24.04 image is a floor, not a preference. The compiled policy passes `--disable-userns`, which Bubblewrap gained in 0.8, while 22.04 ships 0.6.1. The fixture checks the empty-root mount policy against real kernel namespaces. It does not treat the cross-platform argument-builder tests as Linux enforcement proof.
 
+The Rust toolchain is pinned in `rust-toolchain.toml`, and every job installs from that file rather than resolving `stable`. Both gates run clippy with `-D warnings`, so each new stable's lints can turn a green branch red with no commit behind it, and a contributor on an older compiler passes checks that CI then fails. One file covers both, since rustup reads it locally too. Raising the pin is a deliberate change that runs the gates.
+
 Two GitHub Actions workflows (`.github/workflows/`):
 
 - `ci.yml`: on every push to `main` and every pull request, runs the fast checks. Those cover the whole frontend: ESLint, the `tsc` typecheck, the Vitest [suite](testing.md), and a production `vite build`. They also cover the Rust core, with `cargo clippy -D warnings` and `cargo test` on `okf-core`. The `okf-core` crate is pure Rust, with no WebKitGTK and no built frontend, so this stays quick. The release build handles the full `src-tauri` compile and exercises it on each OS.

@@ -1,0 +1,9 @@
+# The compiler CI and contributors both use. Pinned rather than tracking
+# `stable`, because clippy gains lints in every release and `-D warnings` turns
+# each new one into a red branch that no commit caused. A pin also keeps a local
+# `cargo clippy` honest: an older toolchain passes checks that CI then fails.
+# Raising it is a deliberate change that runs the gates.
+[toolchain]
+channel = "1.98.0"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

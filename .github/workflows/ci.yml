@@ -108,9 +108,8 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
+        # Installs the toolchain pinned in rust-toolchain.toml.
+        run: rustup toolchain install
 
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
@@ -129,9 +128,8 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+        # Installs the toolchain pinned in rust-toolchain.toml.
+        run: rustup toolchain install
 
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
@@ -174,7 +172,8 @@ jobs:
           uname -r
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Installs the toolchain pinned in rust-toolchain.toml.
+        run: rustup toolchain install
 
       - name: Cache Cargo build
         uses: Swatinem/rust-cache@v2

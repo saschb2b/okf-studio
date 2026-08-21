@@ -70,7 +70,8 @@ jobs:
           cache: pnpm
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Installs the toolchain pinned in rust-toolchain.toml.
+        run: rustup toolchain install
 
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2

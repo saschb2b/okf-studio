@@ -627,7 +627,7 @@ fn resolved_target<'a>(href: &'a str, context_id: &str) -> Option<(String, &'a s
     if links::is_external(href) {
         return None;
     }
-    let (path, fragment) = href.split_once('#').map_or((href, ""), |parts| parts);
+    let (path, fragment) = href.split_once('#').unwrap_or((href, ""));
     if !path.to_ascii_lowercase().ends_with(".md") {
         return None;
     }

@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Build and Release
 description: How the app is versioned, packaged per OS, released on two of its three platforms, and updated with one disclosed launch check and user-initiated installs.
 tags: [architecture, decision, build, release, packaging]
-generated: { by: claude/unrecorded, at: 2026-08-16T00:00:00Z }
+generated: { by: claude/unrecorded, at: 2026-08-21T00:00:00Z }
 ---
 
 # Decision
@@ -78,6 +78,7 @@ The user starts every update install, through Tauri's updater plugin. Checking h
 The quiet check is the deliberate, narrow exception to the offline-by-default stance (see [Design Principles](../product/principles.md)). It reads a version file with no identity attached. It exists because releases went unnoticed while discovery required remembering to ask. Turning the badge setting off removes the automatic call entirely.
 
 - Signing is mandatory. The updater verifies a minisign signature on each artifact, and nobody can turn that off. The public key lives in `tauri.conf.json`. The private key and password are CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). This is separate from OS code-signing, which Studio still does not do.
+- Signed artifacts are a release-only output. `bundle.createUpdaterArtifacts` is the flag the bundler's signing step keys off; it is `false` in `tauri.conf.json`, and a release turns it on through `src-tauri/tauri.release.conf.json`, an overlay `release.yml` merges with `--config`. A build from source therefore writes its platform installers and exits 0 rather than stopping on a key only CI holds. The public key stays in the base config regardless, because the updater plugin fails to initialize without it and a from-source build should still be able to see that a newer release exists.
 - Update vehicles: the AppImage (Linux) and NSIS (Windows) self-install in place. A `.deb` install cannot self-replace, because the OS package manager owns it. A small `can_self_update` command detects that case by checking for the AppImage runtime. Studio then shows the same in-app "version X available" hint plus a Download link to the releases page, instead of a failing in-app install. So `.deb` users still find out about updates. They install by downloading the new package. macOS has no vehicle because it has no release: a build from source updates by rebuilding.
 
 Silent and automatic installs remain out of scope: bytes only ever download and apply on an explicit user action. The automatic part stops at "a newer version exists", rendered as a quiet badge.

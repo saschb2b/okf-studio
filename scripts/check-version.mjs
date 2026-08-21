@@ -125,7 +125,12 @@ const SCAN_ROOTS = [
   "site/",
   "src-tauri/capabilities/",
 ];
-const SCAN_ROOT_FILES = ["Cargo.toml", "package.json", "src-tauri/tauri.conf.json"];
+const SCAN_ROOT_FILES = [
+  "Cargo.toml",
+  "package.json",
+  "src-tauri/tauri.conf.json",
+  "src-tauri/tauri.release.conf.json",
+];
 
 /** Generated, and full of third-party versions at every number. */
 const LOCK_FILES = new Set([

@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-08-21
+
+* **Update**: A build from source no longer fails on updater signing. `tauri build` wrote the platform installers and then exited 1 with `A public key has been found, but no private key`, which reads like the build broke when it had already succeeded. The cause is `bundle.createUpdaterArtifacts`: the Tauri CLI runs its signing step whenever that flag is on, and the private key is a release secret that no contributor's machine can hold. The flag moved out of `src-tauri/tauri.conf.json` into a new `src-tauri/tauri.release.conf.json`, which `release.yml` merges with `--config`, so signing runs only where the key exists. The public key and endpoint stay in the base config, because the updater plugin fails to initialize without them and a from-source build should still be able to see that a newer release exists. Reported as [#52](https://github.com/saschb2b/okf-studio/issues/52) against macOS, though the flag is platform-independent and Linux and Windows failed the same way. See [Build and Release](architecture/build-and-release.md). Verified on Ubuntu with `--bundles appimage`: exit 1 with the AppImage present before the change, exit 0 with the AppImage present after it, and exit 1 again when the release overlay is passed, which is the path CI takes. Not covered: no signed release ran end to end, so `latest.json` generation is unchanged but unproven here.
+
 ## 2026-08-16
 
 * **Release**: 0.10.0. Delegated work becomes visible, and the agent composer is rebuilt. A minor rather than a patch: it adds a capability that was not there, and it changes the surface a user types into on every turn.

@@ -8,7 +8,7 @@ import { useEffect } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { WithStore } from "@/mock/withStore.tsx";
 import { useApp } from "@/shared/store.tsx";
-import { retryRestoreLastAgentConnection } from "@/shared/ipc.ts";
+import { resetBrowserMockForTests, retryRestoreLastAgentConnection } from "@/shared/ipc.ts";
 import { AgentPanel } from "./AgentPanel.tsx";
 
 function OpenPanel() {
@@ -16,6 +16,8 @@ function OpenPanel() {
   useEffect(() => actions.togglePanel("agent", true), [actions]);
   return <AgentPanel />;
 }
+
+const LAST_CONNECTION_KEY = "okf-studio:agent-last-connection";
 
 function FailedRestore() {
   const { state, actions } = useApp();
@@ -26,7 +28,7 @@ function FailedRestore() {
     // A remembered agent whose profile does not exist, which is what a removed
     // install or a moved endpoint looks like from here.
     localStorage.setItem(
-      "okf-studio:agent-last-connection",
+      LAST_CONNECTION_KEY,
       JSON.stringify({ kind: "custom", id: "custom-goneforever", name: "Ghost Agent" }),
     );
     retryRestoreLastAgentConnection(root);
@@ -101,6 +103,12 @@ export const Narrow: Story = {
  * becoming order-dependent.
  */
 export const RestoreFailed: Story = {
+  // Stories share one browser and one mock, so the remembered agent and the
+  // failed restore status would otherwise carry into every later story.
+  beforeEach: () => () => {
+    localStorage.removeItem(LAST_CONNECTION_KEY);
+    resetBrowserMockForTests();
+  },
   render: () => (
     <WithStore withBundle>
       <FailedRestore />

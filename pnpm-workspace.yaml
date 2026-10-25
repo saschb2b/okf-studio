@@ -2,7 +2,7 @@ allowBuilds:
   esbuild: true
 
 patchedDependencies:
-  "@storybook/addon-vitest@10.5.2": patches/@storybook__addon-vitest@10.5.2.patch
+  '@storybook/addon-vitest@10.6.3': patches/@storybook__addon-vitest@10.6.3.patch
 
 peerDependencyRules:
   allowedVersions:

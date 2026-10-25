@@ -24,9 +24,9 @@ export const BundleOpen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() =>
-      expect(canvas.getByRole("button", { name: "Toggle Git panel" })).toBeVisible(),
+      expect(canvas.getByRole("button", { name: /^Toggle Git panel/ })).toBeVisible(),
     );
-    const git = canvas.getByRole("button", { name: "Toggle Git panel" });
+    const git = canvas.getByRole("button", { name: /^Toggle Git panel/ });
     await expect(git).toBeVisible();
     await userEvent.click(git);
     await expect(git).toHaveAttribute("aria-pressed", "true");
@@ -46,6 +46,6 @@ export const NoBundle: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: "Toggle agent panel" })).toBeVisible();
-    await expect(canvas.queryByRole("button", { name: "Toggle Git panel" })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: /^Toggle Git panel/ })).not.toBeInTheDocument();
   },
 };

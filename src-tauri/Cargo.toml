@@ -33,9 +33,9 @@ serde_yaml_ng = "0.10"
 sha2 = "0.10"
 pdf-extract = "0.12"
 csv = "1.4"
-base64 = "0.22"
+base64 = "0.23"
 okf-core = { path = "../crates/okf-core" }
-notify = "6"
+notify = "8"
 agent-client-protocol = "=2.0.0"
 rmcp = { version = "=2.1.0", features = ["client", "transport-io"] }
 schemars = "=1.2.1"
@@ -47,7 +47,7 @@ url = "2"
 # (see src/bundle_create.rs).
 time = { version = "0.3", features = ["formatting"] }
 # Bounded unified diffs for staged-write review (see src/agent_stage.rs).
-similar = "2"
+similar = "3"
 keyring = "4.1"
 zeroize = "1.8"
 dunce = "1"
@@ -58,7 +58,7 @@ dunce = "1"
 ureq = "2"
 flate2 = "1"
 tar = "0.4"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 # Opt-in update check against the latest GitHub release (see
 # docs/architecture/build-and-release.md). process is needed to relaunch after
@@ -77,6 +77,10 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = "=2.0.2"
 gtk = "=0.18.2"
+# tauri-plugin-deep-link 2.6 builds rust-ini's `ParseOption` field by field,
+# and rust-ini 0.21.2 added two fields to it, so any later rust-ini fails to
+# compile the plugin on Linux. Unused directly; it only holds the version.
+rust-ini = "=0.21.1"
 
 # External ACP processes are owned as a tree. Unix uses a dedicated process
 # group; Windows uses a kill-on-close Job Object.

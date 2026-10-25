@@ -4,6 +4,6 @@
 # `cargo clippy` honest: an older toolchain passes checks that CI then fails.
 # Raising it is a deliberate change that runs the gates.
 [toolchain]
-channel = "1.98.0"
+channel = "1.99.1"
 components = ["clippy", "rustfmt"]
 profile = "minimal"

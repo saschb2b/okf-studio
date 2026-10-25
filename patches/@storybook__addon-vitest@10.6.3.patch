@@ -1,8 +1,8 @@
 diff --git a/dist/preset.js b/dist/preset.js
-index 96d35c6984a6f5dae9980a44e128acfb074a2479..76fbfa6d8ef1e4055cc84c57c0062336fce9f7ff 100644
+index 3f691666cf81d76831927b4a099cd202e92e3014..201cb86a11866f27ff087d6595e2a7a5cf99de23 100644
 --- a/dist/preset.js
 +++ b/dist/preset.js
-@@ -351,7 +351,7 @@ var importMetaResolve = (...args) => typeof import.meta.resolve != "function" &&
+@@ -187,7 +187,7 @@ var importMetaResolve = (...args) => typeof import.meta.resolve != "function" &&
  ), pathToFileURL(args[0]).href) : import.meta.resolve(...args);
  
  // src/node/boot-test-runner.ts

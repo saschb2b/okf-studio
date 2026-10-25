@@ -66,8 +66,13 @@ interface ConceptItem {
 
 type Item = ActionItem | ConceptItem;
 
-/** One group of results. `value` is the visible label (and groups Base UI). */
+/**
+ * One group of results. `value` is the visible label (and groups Base UI).
+ * The index signature is Base UI's grouped-items contract, which an interface
+ * only satisfies when it declares one.
+ */
 interface Group {
+  [key: string]: unknown;
   value: string;
   items: Item[];
 }

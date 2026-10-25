@@ -46,7 +46,7 @@ jobs:
           --output .artifacts/okf-agent-provider-eval-plan.json
 
       - name: Upload evaluation plan
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: okf-agent-provider-eval-plan
           path: .artifacts/okf-agent-provider-eval-plan.json

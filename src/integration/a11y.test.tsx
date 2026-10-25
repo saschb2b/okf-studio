@@ -106,7 +106,7 @@ describe("accessibility (axe-core)", () => {
       await expectNoViolations(baseElement, true);
       await user.keyboard("{Escape}");
       await user.click(screen.getByRole("button", { name: "More thread actions" }));
-      await screen.findByRole("menu", { name: "More thread actions" });
+      await screen.findByRole("menu", { name: "Thread actions" });
       await expectNoViolations(baseElement, true);
       await user.keyboard("{Escape}");
       await user.click(screen.getByRole("button", {

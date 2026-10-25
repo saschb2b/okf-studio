@@ -75,8 +75,10 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     onchange: null,
     addEventListener: () => {},
     removeEventListener: () => {},
+    /* eslint-disable @typescript-eslint/no-deprecated -- MediaQueryList still declares the legacy pair */
     addListener: () => {},
     removeListener: () => {},
+    /* eslint-enable @typescript-eslint/no-deprecated */
     dispatchEvent: () => false,
   });
 }

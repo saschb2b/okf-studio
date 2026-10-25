@@ -94,13 +94,13 @@ Stories sit next to their components as `src/**/*.stories.tsx`. `.storybook/prev
 
 The dev server also mounts **`@storybook/addon-mcp`** at `http://localhost:6006/mcp`, registered for coding agents in the repo-root `.mcp.json`. With Storybook running, an agent can enumerate components and stories, fetch documentation and preview URLs, and run focused or complete story checks through MCP. The repository connection requests the `dev`, `docs`, and `test` toolsets. `@storybook/addon-vitest` supplies the manager-side test listener.
 
-The suite uses Vitest 4's separate Playwright provider. A narrow pnpm patch raises the addon's fixed child-start guard from 30 to 120 seconds. Chromium initialization on the Windows host exceeds the upstream default. The patch does not change test behavior or per-test deadlines.
+The suite uses Vitest's separate Playwright provider, `@vitest/browser-playwright`. A narrow pnpm patch raises the addon's fixed child-start guard from 30 to 120 seconds. Chromium initialization on the Windows host exceeds the upstream default. The patch does not change test behavior or per-test deadlines.
 
 A clean per-story screenshot for review comes from the iframe URL, `http://localhost:6006/iframe.html?id=<story-id>`. Ad hoc screenshots are temporary test output and stay outside the repository. A screenshot belongs in `docs/ux/` only when a named Markdown concept links it as curated evidence. Otherwise the Storybook preview URL is the durable review surface.
 
 The app's broad Vite warmup remains enabled for development, because it shortens Tauri's first paint. Test mode disables it and releases optimized dependencies before the static-import crawl finishes. Storybook already supplies the exact story entries. Warming the entire app first duplicated collection work and could prevent the browser session from connecting. The MCP addon also loads only in the development server, where agents use it. It does not add its manifest and module-graph work to the headless test process.
 
-Vitest 4.1 reads the generated browser instance's handshake limit from the root test config, so the existing 90-second Windows startup bound lives there. Story assertions retain their separate 30-second deadline, and the lane does not retry failures.
+Vitest reads the generated browser instance's handshake limit from the root test config, so the existing 90-second Windows startup bound lives there. Story assertions retain their separate 30-second deadline, and the lane does not retry failures.
 
 **Stories are tests.** The `storybook` Vitest project runs headless in Playwright Chromium via `@storybook/addon-vitest`. Every story renders, and every `play` function executes its interactions and assertions (typed searches, spied callbacks, disabled-state checks). Interactive stories carry `play` functions per the MCP addon's authoring instructions, so a story is simultaneously the visual state and its regression test.
 

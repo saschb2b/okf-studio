@@ -31,7 +31,7 @@ jobs:
       # `build` script (which syncs the design-system CSS first), and uploads
       # site/dist as the Pages artifact.
       - name: Build Astro site
-        uses: withastro/action@v3
+        uses: withastro/action@v6
         with:
           path: ./site
           node-version: 22
@@ -45,4 +45,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

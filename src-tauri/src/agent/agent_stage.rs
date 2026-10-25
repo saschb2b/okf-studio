@@ -1436,6 +1436,8 @@ fn selected_staged_content(
             }
         }
     }
+    let old_slices: Vec<&str> = diff.iter_old_slices().collect();
+    let new_slices: Vec<&str> = diff.iter_new_slices().collect();
     let mut output = String::new();
     for op in diff.ops() {
         let selected = hunk_for_op
@@ -1447,9 +1449,9 @@ fn selected_staged_content(
             op.new_range()
         };
         let slices = if op.tag() == DiffTag::Equal || !selected {
-            diff.old_slices()
+            &old_slices
         } else {
-            diff.new_slices()
+            &new_slices
         };
         for line in &slices[range] {
             output.push_str(line);
@@ -4544,6 +4546,31 @@ mod tests {
         let error = materialize_fresh_bundle(&parent, "knowledge-bundle", &prepared)
             .expect_err("existing destination must not be merged");
         assert!(error.contains("already exists"));
+    }
+
+    #[test]
+    fn a_rejected_hunk_keeps_its_original_lines_beside_an_accepted_one() {
+        let original =
+            "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\neleven\ntwelve\n";
+        let staged = "ONE\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\neleven\nTWELVE\n";
+        let revision = build_staged_diff("existing.md", "modify", original, staged, None).revision;
+        let file = StagedFile {
+            content: staged.to_string(),
+            kind: "modify",
+            selection: Some(HunkSelection {
+                revision,
+                rejected: BTreeSet::from([0]),
+                reviewed: BTreeSet::new(),
+            }),
+        };
+
+        let (content, _) =
+            selected_staged_content("existing.md", &file, original).expect("apply selection");
+
+        assert_eq!(
+            content.as_deref(),
+            Some("one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\neleven\nTWELVE\n"),
+        );
     }
 
     #[test]

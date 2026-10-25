@@ -129,7 +129,7 @@
 .sc-hint {
   font-size: var(--fs-xs);
 }
-.sc-hint 
+
 /* One column once two would each be too narrow to hold a label beside a chord. */
 @media (max-width: 700px) {
   .sc-groups {

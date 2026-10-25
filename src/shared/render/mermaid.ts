@@ -102,6 +102,10 @@ async function getMermaid(): Promise<Mermaid> {
       securityLevel: "strict",
       // On error we keep the authored code block; never inject error art.
       suppressErrorRendering: true,
+      // Mermaid 12 defaults to a different layout engine and look; pin the
+      // classic pair so an authored diagram keeps the shape its author saw.
+      layout: "dagre",
+      look: "classic",
     });
     return mermaid;
   });

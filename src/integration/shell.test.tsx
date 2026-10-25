@@ -94,7 +94,7 @@ describe("OKF Studio shell", () => {
     renderApp();
     await openFolder(user);
 
-    await user.click(screen.getByRole("button", { name: "Toggle Git panel" }));
+    await user.click(screen.getByRole("button", { name: /^Toggle Git panel/ }));
     expect(await screen.findByRole("complementary", { name: "Git" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Changes 3" })).toBeInTheDocument();
 
@@ -131,7 +131,7 @@ describe("OKF Studio shell", () => {
     const user = userEvent.setup();
     renderApp();
     await openFolder(user);
-    await user.click(screen.getByRole("button", { name: "Toggle Git panel" }));
+    await user.click(screen.getByRole("button", { name: /^Toggle Git panel/ }));
 
     await user.click(await screen.findByRole("button", { name: /GitPanel\.tsx/ }));
 
@@ -153,7 +153,7 @@ describe("OKF Studio shell", () => {
 
     await user.keyboard("{Control>}{Shift>}g{/Shift}{/Control}");
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Toggle Git panel" })).toHaveFocus(),
+      expect(screen.getByRole("button", { name: /^Toggle Git panel/ })).toHaveFocus(),
     );
   });
 

@@ -14,6 +14,15 @@ export function StatusBar() {
   const { state, actions } = useApp();
   const bundle = state.bundle;
   const git = useGitRepository(state.activeRoot);
+  const gitReady = git.snapshot?.availability === "ready" ? git.snapshot : null;
+  const gitShowsCounts = gitReady !== null && (gitReady.ahead > 0 || gitReady.behind > 0);
+  // The visible branch name and counts have to be part of the accessible name
+  // (WCAG 2.5.3, Label in Name), so speech input can target what is on screen.
+  const gitLabel = [
+    "Toggle Git panel",
+    gitReady?.branch ? `branch ${gitReady.branch}` : null,
+    gitShowsCounts ? `${gitReady.ahead} ahead, ${gitReady.behind} behind` : null,
+  ].filter(Boolean).join(", ");
 
   return (
     <footer className="status-bar">
@@ -23,7 +32,7 @@ export function StatusBar() {
             id={GIT_PANEL_OPENER_ID}
             type="button"
             className={`status-item status-toggle${state.panels.git ? " is-active" : ""}`}
-            aria-label="Toggle Git panel"
+            aria-label={gitLabel}
             aria-pressed={state.panels.git}
             title={git.snapshot?.message ?? "Git repository (Ctrl+Shift+G)"}
             onClick={() => actions.togglePanel("git")}
@@ -31,11 +40,11 @@ export function StatusBar() {
             <span className="status-icon" aria-hidden="true">
               <GitBranch size={14} />
             </span>
-            <span>{git.snapshot?.availability === "ready" ? (git.snapshot.branch ?? "Git") : "Git"}</span>
-            {git.snapshot?.availability === "ready" && (git.snapshot.ahead > 0 || git.snapshot.behind > 0) ? (
-              <span className="status-git-counts" aria-label={`${git.snapshot.ahead} ahead, ${git.snapshot.behind} behind`}>
-                {git.snapshot.ahead > 0 ? `↑${git.snapshot.ahead}` : ""}
-                {git.snapshot.behind > 0 ? `↓${git.snapshot.behind}` : ""}
+            <span>{gitReady?.branch ?? "Git"}</span>
+            {gitShowsCounts ? (
+              <span className="status-git-counts">
+                {gitReady.ahead > 0 ? `↑${gitReady.ahead}` : ""}
+                {gitReady.behind > 0 ? `↓${gitReady.behind}` : ""}
               </span>
             ) : null}
           </button>

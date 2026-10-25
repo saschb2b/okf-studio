@@ -3,7 +3,7 @@ type: Feature
 title: Visualization Views
 description: The graph pane renders one of four visualizations (force-directed graph, treemap, sunburst, or circle packing) with a persisted switcher and shared drill-down.
 tags: [feature, visualization, hierarchy, graph]
-generated: { by: claude/unrecorded, at: 2026-07-23T22:08:44+02:00 }
+generated: { by: claude/unrecorded, at: 2026-10-21T21:55:21-04:00 }
 ---
 
 # What it does
@@ -57,7 +57,7 @@ All three space-filling views consume one tree, built per render from the same f
 
 Nivo's built-in labels are a fixed 11px. That reads tiny on a big tile and overflows a small one. The views therefore render their own label layers over a shared fitting model (`src/viz/labels.ts`):
 
-- A name renders at the **largest font (10–18px) whose word-wrapped lines fit its shape**. A shape that cannot hold its name stays quiet. The tooltip carries the name, and drilling in reveals more of them, the space-filling twin of the graph's level-of-detail labels.
+- A name renders at the **largest font (5–14px) whose word-wrapped lines fit its shape**, over at most four lines. Lines break at spaces and after `-`, `_`, `/`, and `.`, so a slug such as `use-restaurant-platform-api` wraps at its separators. A single token wider than the shape is split across lines rather than dropping the label. The range scales with the **Chart label size** [setting](../ux/settings.md) (Smaller, Default, Larger). A shape that cannot hold its name at the smallest size stays quiet. The tooltip carries the name, and drilling in reveals more of them, the space-filling twin of the graph's level-of-detail labels.
 - **Fill luminance picks the ink**: dark ink on light type colors, light ink on dark. Labels therefore never wash out. Label text wears ink tokens, never the series color.
 - The **sunburst rotates each label to its arc**: tangential on wide sectors, radial on thin slivers. The far half flips so nothing reads upside-down. Horizontal text only suits a ring near 12/6 o'clock.
 - Labels appear only when their sector can contain them. This follows the area-threshold treatment in the [D3 zoomable sunburst](https://observablehq.com/notebook-kit/ex/d3/zoomable-sunburst). Unlabeled concepts remain available through the tooltip and click target.

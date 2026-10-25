@@ -421,9 +421,14 @@ export type ReaderFont = "sans" | "serif";
 /** Words per frame in the speed reader — one word, or a two-word phrase. */
 export type ReaderChunk = 1 | 2;
 
+/** Label size in the treemap, sunburst, and circle-packing views. */
+export type VizLabelSize = "smaller" | "default" | "larger";
+
 export interface Settings {
   theme: ThemeMode;
   reduceMotion: boolean;
+  /** Scales the font range of chart labels; smaller text fits more names. */
+  vizLabelSize: VizLabelSize;
   agentNotifications: boolean;
   agentNotificationSound: boolean;
   scanMaxDepth: number;
@@ -458,6 +463,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   reduceMotion: false,
+  vizLabelSize: "default",
   agentNotifications: false,
   agentNotificationSound: false,
   scanMaxDepth: 8,

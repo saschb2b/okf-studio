@@ -23,7 +23,7 @@ Preferences take effect immediately and persist on this device. The fixed footer
 | Category | User job | Settings and surfaces |
 | --- | --- | --- |
 | General | Control bundle discovery | Scan depth |
-| Appearance | Control the interface | Theme, reduce motion |
+| Appearance | Control the interface | Theme, reduce motion, chart label size |
 | Reading | Control concept prose and its pace | Reader text size, speed-reading pace |
 | Agents | Control agent attention and inspect supplied methods | Background notifications, notification sound, OKF capability pack |
 | Knowledge | Manage state and access for the open bundle | Workspace memory, local routines, one-shot OKF MCP grant |
@@ -50,6 +50,8 @@ The [Bundle Switcher](../features/bundle-switcher.md) manages recent bundles, wh
 ## Appearance
 
 Theme supports System, Light, and Dark, and follows the operating system by default. See [Theming](theming.md). Reduce motion overrides the operating-system motion preference for Studio and applies the contract in [Accessibility](accessibility.md).
+
+Chart label size (Smaller, Default, Larger) scales the font range of the labels in the treemap, sunburst, and circle packing by 0.8, 1, or 1.3. Smaller fits more names into small shapes, and larger reads more easily but leaves more shapes unlabeled. See [Visualization Views](../features/viz-views.md#labels). The setting does not affect the force-directed graph.
 
 ## Reading
 

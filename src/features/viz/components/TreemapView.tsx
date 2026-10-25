@@ -39,7 +39,7 @@ export function TreemapView(props: HierarchyVizProps) {
       : base;
   };
 
-  // Custom label layer: each leaf name at the largest font (10–18px) whose
+  // Custom label layer: each leaf name at the largest font (5–14px) whose
   // wrapped lines fit the tile, in luminance-picked ink — a big tile gets a
   // big readable name, a tile that can't hold its name stays quiet (the
   // tooltip carries it). Dimmed (query-filtered-out) tiles stay unlabeled.
@@ -47,7 +47,9 @@ export function TreemapView(props: HierarchyVizProps) {
     <g>
       {nodes.map((n) => {
         if (!n.isLeaf || props.dimmedIds.has(n.data.id)) return null;
-        const fit = fitLabel(n.data.name, n.width - 12, n.height - 10);
+        const fit = fitLabel(n.data.name, n.width - 4, n.height - 4, {
+          scale: props.labelScale,
+        });
         if (!fit) return null;
         return (
           <VizSvgLabel
@@ -88,7 +90,7 @@ export function TreemapView(props: HierarchyVizProps) {
         enableParentLabel
         // A group band that can't hold its name stays quiet (breadcrumb +
         // tooltip name it) rather than clipping.
-        parentLabel={(n) => (labelFits(n.data.name, n.width) ? n.data.name : "")}
+        parentLabel={(n) => (labelFits(n.data.name, n.width, 4) ? n.data.name : "")}
         parentLabelPosition="top"
         parentLabelPadding={8}
         parentLabelTextColor={props.colors.text}

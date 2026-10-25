@@ -7,6 +7,14 @@
 // and more names appear.
 
 import type { VizColors } from "@/features/viz/nivoTheme.ts";
+import type { VizLabelSize } from "@/shared/types.ts";
+
+/** Font multiplier per label-size setting. */
+export const LABEL_SCALE: Record<VizLabelSize, number> = {
+  smaller: 0.8,
+  default: 1,
+  larger: 1.3,
+};
 
 /** Chart label font size (matches nivoTheme's labels.text). */
 export const LABEL_FONT_PX = 11;
@@ -14,7 +22,7 @@ export const LABEL_FONT_PX = 11;
 // Average glyph width as an em fraction for the UI sans at weight 600.
 // Deliberately generous: over-estimating hides a borderline label rather than
 // letting it spill out of its shape.
-const AVG_CHAR_EM = 0.66;
+const AVG_CHAR_EM = 0.6;
 
 /** Estimated rendered width of a chart label, px. */
 export function labelWidth(text: string, fontSize = LABEL_FONT_PX): number {
@@ -46,11 +54,18 @@ export function fitLabel(
   text: string,
   w: number,
   h: number,
-  opts?: { maxFont?: number; minFont?: number; maxLines?: number },
+  opts?: {
+    maxFont?: number;
+    minFont?: number;
+    maxLines?: number;
+    /** Multiplies the font range, from LABEL_SCALE. */
+    scale?: number;
+  },
 ): FittedLabel | null {
-  const maxFont = opts?.maxFont ?? 18;
-  const minFont = opts?.minFont ?? 10;
-  const maxLines = opts?.maxLines ?? 3;
+  const scale = opts?.scale ?? 1;
+  const maxFont = Math.round((opts?.maxFont ?? 14) * scale);
+  const minFont = Math.round((opts?.minFont ?? 5) * scale);
+  const maxLines = opts?.maxLines ?? 4;
   for (let fontSize = maxFont; fontSize >= minFont; fontSize--) {
     const maxChars = Math.floor(w / (fontSize * AVG_CHAR_EM));
     if (maxChars < 4) continue;
@@ -61,7 +76,21 @@ export function fitLabel(
   return null;
 }
 
-/** Greedy word wrap; null when a word alone overflows or lines run out. */
+/**
+ * Split into wrap units: words, further cut after `-`, `_`, `/` and `.` so a
+ * slug like `use-restaurant-platform-api` can break at its separators. A unit
+ * that ends in a separator glues to the next one with no space.
+ */
+function tokens(text: string): { t: string; glue: boolean }[] {
+  const out: { t: string; glue: boolean }[] = [];
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const parts = word.match(/[^-_/.]+[-_/.]*|[-_/.]+/g) ?? [word];
+    parts.forEach((t, i) => out.push({ t, glue: i > 0 }));
+  }
+  return out;
+}
+
+/** Greedy wrap at spaces and separators, hard-splitting an oversized unit; null when lines run out. */
 function wrapWords(
   text: string,
   maxChars: number,
@@ -69,15 +98,26 @@ function wrapWords(
 ): string[] | null {
   const lines: string[] = [];
   let cur = "";
-  for (const word of text.split(/\s+/)) {
-    if (word.length > maxChars) return null;
-    if (!cur) cur = word;
-    else if (cur.length + 1 + word.length <= maxChars) cur += ` ${word}`;
-    else {
-      lines.push(cur);
-      cur = word;
-      if (lines.length >= maxLines) return null;
+  const push = (): boolean => {
+    lines.push(cur);
+    cur = "";
+    return lines.length < maxLines;
+  };
+  for (const { t, glue } of tokens(text)) {
+    let rest = t;
+    let sep = cur && !glue ? 1 : 0;
+    while (cur.length + sep + rest.length > maxChars) {
+      if (cur) {
+        if (!push()) return null;
+        sep = 0;
+        continue;
+      }
+      // Oversized unit alone on a line: hard-split it.
+      cur = rest.slice(0, maxChars);
+      rest = rest.slice(maxChars);
+      if (!push()) return null;
     }
+    cur = cur ? cur + (sep ? " " : "") + rest : rest;
   }
   if (cur) lines.push(cur);
   return lines.length <= maxLines ? lines : null;

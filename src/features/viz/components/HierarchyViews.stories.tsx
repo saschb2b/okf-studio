@@ -92,6 +92,7 @@ function HierarchyView({ view, rootId, dimmed }: HierarchyStoryProps) {
     colorForType: (type: string) => palette.color(type),
     colors: readVizColors(),
     dark,
+    labelScale: 1,
     reduceMotion: true,
   };
   const View = view === "treemap" ? TreemapView : view === "sunburst" ? SunburstView : PackView;

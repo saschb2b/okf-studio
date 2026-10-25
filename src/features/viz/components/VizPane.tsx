@@ -24,6 +24,7 @@ import { readVizColors, type VizColors } from "@/features/viz/nivoTheme.ts";
 import type { HierarchyVizProps } from "@/features/viz/props.ts";
 import { ErrorBoundary } from "@/features/shell/components/ErrorBoundary.tsx";
 import { GraphView } from "@/features/viz/components/GraphView.tsx";
+import { LABEL_SCALE } from "@/features/viz/labels.ts";
 import { VizSwitcher } from "@/features/viz/components/VizSwitcher.tsx";
 import "./VizPane.css";
 
@@ -202,6 +203,7 @@ function HierarchyPane({ view }: { view: Exclude<VizView, "graph"> }) {
     colorForType: (t) => palette.color(t),
     colors,
     dark,
+    labelScale: LABEL_SCALE[state.settings.vizLabelSize],
     reduceMotion: state.settings.reduceMotion,
   };
 

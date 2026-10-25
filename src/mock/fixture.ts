@@ -5,6 +5,12 @@ import type { Bundle, BundleRoot, Concept, RecentBundle } from "@/shared/types.t
 
 export const MOCK_FOLDER = "/mock/workspace";
 
+// The overview models a current concept, so its review date stays a year
+// ahead of the day the fixture loads instead of expiring on a fixed date.
+const CURRENT_REVIEW_AFTER = new Date(Date.now() + 365 * 86_400_000)
+  .toISOString()
+  .slice(0, 10);
+
 // The v0.2 provenance families are optional here and defaulted in `finalize`,
 // so a fixture entry stays about the knowledge it models. A fixture that is
 // exercising trust or staleness sets them explicitly.
@@ -89,7 +95,7 @@ const raw: RawConcept[] = [
         },
       },
       confidence: 1,
-      review_after: "2026-10-01",
+      review_after: CURRENT_REVIEW_AFTER,
       audience: ["engineering", "release partners"],
       sensitivity: "internal",
       handling_notes: "Share cited measurements only after review.",

@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-21
+
+* **Update**: The treemap, sunburst, and circle-packing views label more shapes. The [label model](features/viz-views.md#labels) previously needed a 10px font and three lines, so bundles with long slug-style names (`use-restaurant-platform-api Flag`) left many tiles blank. The size range is now 5 to 14px with up to four lines, names also wrap after `-`, `_`, `/`, and `.`, an oversized single token is split instead of discarding the label, and the label box inside each tile, arc, and circle is looser. A **Chart label size** setting under Appearance (Smaller, Default, Larger) scales that font range for readers who prefer fewer, larger labels or more, smaller ones. The tradeoff is smaller text and labels closer to their shape's edge. A shape that still cannot hold its name stays unlabeled, and the tooltip carries it.
+
 ## 2026-08-21
 
 * **Update**: The Rust toolchain is pinned in a new root `rust-toolchain.toml`, and the four CI jobs install from that file instead of resolving `dtolnay/rust-toolchain@stable`. Rust 1.98.0 landed on 2026-08-18 with `clippy::map_or_identity`, which both Rust gates run under `-D warnings`, so `main` and every open branch went red without a commit touching them. The same drift also splits local from CI: the offending line passed `cargo clippy` on 1.92.0 and failed on the runners. One file fixes both, because rustup reads it for a local `cargo` invocation as well. Raising the pin is now a deliberate change that runs the gates, and the cost is that a new stable's fixes and lints arrive when someone asks for them. See [Build and Release](architecture/build-and-release.md).

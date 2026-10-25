@@ -25,6 +25,8 @@ export interface HierarchyVizProps {
   colors: VizColors;
   /** True when the app theme resolves dark. */
   dark: boolean;
+  /** Multiplier on the label font range (see LABEL_SCALE). */
+  labelScale: number;
   /** Skip/shorten animated transitions. */
   reduceMotion: boolean;
 }

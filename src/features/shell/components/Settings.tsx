@@ -5,7 +5,7 @@ import { Select } from "@base-ui/react/select";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { NumberField } from "@base-ui/react/number-field";
 import { hasUnseenUpdate, useApp } from "@/shared/store.tsx";
-import { DEFAULT_SETTINGS } from "@/shared/types.ts";
+import { DEFAULT_SETTINGS, type VizLabelSize } from "@/shared/types.ts";
 import type { Bundle, Settings as SettingsModel, ThemeMode } from "@/shared/types.ts";
 import { ZOOM_EVENT } from "@/shared/platform/native.ts";
 import type { ZoomIntent } from "@/shared/platform/native.ts";
@@ -121,6 +121,13 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     title: "Reduce motion",
     description: "Limit interface transitions and animated movement.",
     keywords: "accessibility animation transition motion",
+  },
+  {
+    id: "viz-label-size",
+    section: "appearance",
+    title: "Chart label size",
+    description: "Make treemap, sunburst, and circle-packing labels smaller to show more names, or larger to read them more easily.",
+    keywords: "treemap sunburst circle packing visualization font text labels names",
   },
   {
     id: "reader-size",
@@ -283,6 +290,51 @@ function ThemeSelect({
   );
 }
 
+const LABEL_SIZE_OPTIONS: readonly { value: VizLabelSize; label: string }[] = [
+  { value: "smaller", label: "Smaller" },
+  { value: "default", label: "Default" },
+  { value: "larger", label: "Larger" },
+];
+
+function LabelSizeSelect({
+  value,
+  onChange,
+}: {
+  value: VizLabelSize;
+  onChange: (value: VizLabelSize) => void;
+}) {
+  return (
+    <Select.Root value={value} onValueChange={(next) => {
+        if (next) onChange(next);
+      }}>
+      <Select.Trigger className="ui-select-trigger" aria-label="Chart label size">
+        <Select.Value>
+          {(selected) =>
+            LABEL_SIZE_OPTIONS.find((o) => o.value === selected)?.label ?? "Default"
+          }
+        </Select.Value>
+        <Select.Icon className="ui-select-icon" aria-hidden="true">
+          <ChevronDown size={14} />
+        </Select.Icon>
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Positioner className="ui-select-positioner" sideOffset={4}>
+          <Select.Popup className="ui-select-popup">
+            {LABEL_SIZE_OPTIONS.map((option) => (
+              <Select.Item key={option.value} value={option.value} className="ui-select-item">
+                <Select.ItemText>{option.label}</Select.ItemText>
+                <Select.ItemIndicator className="ui-select-check">
+                  <Check size={13} aria-hidden="true" />
+                </Select.ItemIndicator>
+              </Select.Item>
+            ))}
+          </Select.Popup>
+        </Select.Positioner>
+      </Select.Portal>
+    </Select.Root>
+  );
+}
+
 function ReaderScaleSelect({
   value,
   onChange,
@@ -386,6 +438,17 @@ function AppearanceSettings({
             label="Reduce motion"
             checked={settings.reduceMotion}
             onCheckedChange={(reduceMotion) => onUpdate({ reduceMotion })}
+          />
+        )}
+      />
+      <SettingRow
+        id="setting-viz-label-size"
+        title="Chart label size"
+        description="Smaller labels fit more names in the treemap, sunburst, and circle packing. Larger labels are easier to read and leave more shapes unlabeled."
+        control={(
+          <LabelSizeSelect
+            value={settings.vizLabelSize}
+            onChange={(vizLabelSize) => onUpdate({ vizLabelSize })}
           />
         )}
       />

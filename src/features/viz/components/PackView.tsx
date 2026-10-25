@@ -56,7 +56,9 @@ export function PackView(props: HierarchyVizProps) {
           if (n.height !== 0 || props.dimmedIds.has(n.data.id)) return null;
           const r = n.radius * ratio;
           if (r < 12) return null;
-          const fit = fitLabel(n.data.name, r * 1.5, r * 1.2);
+          const fit = fitLabel(n.data.name, r * 1.65, r * 1.3, {
+            scale: props.labelScale,
+          });
           if (!fit) return null;
           return (
             <VizSvgLabel

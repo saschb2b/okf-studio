@@ -2,6 +2,18 @@
 
 ## 2026-10-25
 
+* **Release**: 0.11.0. Charts label more of their shapes, and their label size becomes a setting. A minor rather than a patch: it adds a setting, and the treemap, sunburst, and circle-packing views look different on first open.
+
+  **Chart labels.** The three space-filling views name far more of their shapes. Labels run from 5 to 14px over up to four lines, names wrap after `-`, `_`, `/`, and `.` as well as at spaces, and a single long token is split rather than dropped, so bundles with long slug-style names no longer show a chart of blank tiles. A new **Chart label size** setting under Appearance (Smaller, Default, Larger) scales the range: Smaller fits more names, Larger reads more easily and leaves more shapes unlabeled. The [label model](features/viz-views.md#labels) has the details. Contributed in [#55](https://github.com/saschb2b/okf-studio/pull/55).
+
+  **Building from source.** `pnpm tauri build` no longer exits with an updater-signing error after it has written the installers ([#52](https://github.com/saschb2b/okf-studio/issues/52)). Signing now runs only in the release workflow, which holds the key.
+
+  **Fixes.** The status bar Git toggle's accessible name includes the branch it shows and its ahead and behind counts, so speech input can target what is on screen. The keyboard shortcuts sheet switches to one column below 700px, as it was meant to.
+
+  **Under the hood.** Dependencies are current: Vite 8, React 19.3, Base UI 1.9, marked 18, Mermaid 12, and Rust 1.99.1, among others. Mermaid's classic layout is pinned, so diagrams keep the shape they had.
+
+  **Upgrading.** Nothing to do. No bundles, saved threads, or exported formats change, and existing settings carry over; the new label size starts at Default, which shows smaller labels than before, and Larger is closest to the old look. On Linux, Mermaid 12 needs WebKitGTK 2.44 or newer. Ubuntu 22.04 with current updates ships 2.50; on an older engine a diagram shows as its source text.
+
 * **Update**: Dependencies moved to current releases. The frontend toolchain is on Vite 8, `@vitejs/plugin-react` 6, Vitest 5, and Storybook 10.6; the React Compiler now runs through `@rolldown/plugin-babel`, and a production build memoizes the same sites it did before ([Testing](architecture/testing.md), [Tech Stack](architecture/tech-stack.md)). The lint stack moved from TypeScript 5 to 6.0, the newest release `typescript-eslint` accepts. Base UI is on 1.9, React on 19.3, marked on 18, and Mermaid on 12, with Mermaid's classic layout and look pinned so authored diagrams keep their shape. The Rust toolchain is pinned to 1.99.1, `Cargo.lock` is refreshed, and `notify`, `zip`, `base64`, and `similar` take their new majors. The site is on Astro 7.4.
 * **Note**: Held back on purpose. jsdom stays on 26: from 27, unstyled elements compute as `display: inline`, and the component lanes run without CSS, so accessible names lose word breaks that Chromium keeps. `sha2` stays on 0.10, because 0.11 drops hex formatting on digests and the change would touch every content hash, including install checksum verification. `rust-ini` is pinned to 0.21.1, because `tauri-plugin-deep-link` 2.6 does not compile against later releases on Linux. `ureq` 3, the ACP Rust SDK 3, `rmcp` 3, and cosmos.gl 3 each rework an API Studio builds on (every network path, the agent protocol host, the MCP bridge, and the GPU graph renderer), so each needs its own change.
 * **Fix**: The status bar Git toggle's accessible name now includes the branch it shows and the ahead and behind counts. It showed `main` while being named "Toggle Git panel", which fails WCAG 2.5.3 (Label in Name) and breaks speech input that targets the visible text. axe-core 4.14 reports it.

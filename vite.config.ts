@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 
@@ -11,10 +12,9 @@ const srcRoot = fileURLToPath(new URL("./src", import.meta.url));
 // https://vite.dev/config/ — tuned for Tauri (fixed port, ignore src-tauri).
 export default defineConfig(({ mode }) => ({
   plugins: [
-    react({
-      // React Compiler — auto-memoization, so components carry no manual useMemo/useCallback/memo.
-      babel: { plugins: [["babel-plugin-react-compiler", {}]] },
-    }),
+    react(),
+    // React Compiler — auto-memoization, so components carry no manual useMemo/useCallback/memo.
+    babel({ presets: [reactCompilerPreset()] }),
   ],
   clearScreen: false,
   resolve: {
@@ -62,10 +62,10 @@ export default defineConfig(({ mode }) => ({
   test: {
     // Pure logic runs in Node. Components use jsdom, full-app flows use the
     // bounded integration lane, and stories render in headless Chromium.
-    // Vitest 4.1 reads the browser handshake limit from the root config after
+    // Vitest reads the browser handshake limit from the root config after
     // expanding project instances. Individual story deadlines stay at 30 s.
     //
-    // Every project declares `sequence.groupOrder`. Vitest 4 refuses to run two
+    // Every project declares `sequence.groupOrder`. Vitest refuses to run two
     // projects concurrently when they disagree on `maxWorkers`, so without this
     // a bare `vitest run` — the obvious way to run everything — fails before
     // executing a single test. The order is also the useful one: the cheap

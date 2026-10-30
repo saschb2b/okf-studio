@@ -1,4 +1,4 @@
-// GPU graph renderer (cosmos.gl / @cosmograph/cosmos) — an alternative to the
+// GPU graph renderer (cosmos.gl / @cosmos.gl/graph) — an alternative to the
 // canvas Graph View, selectable in Controls → Renderer. It runs the force
 // simulation on the GPU (scales to very large graphs), colors nodes by Louvain
 // community, and keeps the essentials: click-to-open, hover highlight (cosmos's
@@ -7,10 +7,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { Graph } from "@cosmograph/cosmos";
+import { Graph } from "@cosmos.gl/graph";
 import { useApp } from "@/shared/store.tsx";
 import type { Actions } from "@/shared/store.tsx";
-import { buildEdges, egoIds, isVisible } from "@/shared/selectors.ts";
+import { buildEdges, conceptById, egoIds, isVisible } from "@/shared/selectors.ts";
 import { louvain } from "@/features/viz/graph/community.ts";
 import { graphBackbone, maxPerNodeFor } from "@/features/viz/graph/backbone.ts";
 import { buildTypePalette, resolveDark } from "@/shared/theme.ts";
@@ -23,10 +23,11 @@ function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-// Resolve any CSS color (hsl/hex/named) to [r,g,b] 0-255 via a 1×1 canvas.
+// Resolve any CSS color (hsl/hex/named) to normalized [r,g,b] 0-1 via a 1×1
+// canvas — cosmos.gl reads color arrays as 0-1 channels.
 const colorCache = new Map<string, [number, number, number]>();
 let colorCtx: CanvasRenderingContext2D | null = null;
-function rgb255(css: string): [number, number, number] {
+function rgb01(css: string): [number, number, number] {
   const hit = colorCache.get(css);
   if (hit) return hit;
   if (!colorCtx) {
@@ -34,22 +35,28 @@ function rgb255(css: string): [number, number, number] {
     c.width = c.height = 1;
     colorCtx = c.getContext("2d");
   }
-  let out: [number, number, number] = [136, 136, 136];
+  let out: [number, number, number] = [0.53, 0.53, 0.53];
   if (colorCtx) {
     colorCtx.clearRect(0, 0, 1, 1);
     colorCtx.fillStyle = css;
     colorCtx.fillRect(0, 0, 1, 1);
     const d = colorCtx.getImageData(0, 0, 1, 1).data;
-    out = [d[0], d[1], d[2]];
+    out = [d[0] / 255, d[1] / 255, d[2] / 255];
   }
   colorCache.set(css, out);
   return out;
 }
 
+/** How often a settling layout is refit, and how long each refit glides. */
+const FOLLOW_INTERVAL_MS = 500;
+
 interface GData {
   ids: string[];
   titles: string[];
   index: Map<string, number>;
+  /** Per point: the drawn links touching it and the points at their far ends. */
+  linksOf: number[][];
+  neighborsOf: number[][];
 }
 
 interface Label {
@@ -63,8 +70,19 @@ export function CosmosGraph() {
   const { state, actions } = useApp();
   const wrapRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph | null>(null);
-  const dataRef = useRef<GData>({ ids: [], titles: [], index: new Map() });
+  const dataRef = useRef<GData>({
+    ids: [],
+    titles: [],
+    index: new Map(),
+    linksOf: [],
+    neighborsOf: [],
+  });
   const hoverRef = useRef<number | null>(null);
+  const trackedRef = useRef("");
+  // Auto-framing state for a settling layout: whether the user has taken the
+  // view (pan, zoom, drag) and when the view last refit.
+  const userViewRef = useRef(false);
+  const lastFitRef = useRef(0);
   const actionsRef = useRef<Actions>(actions);
   const selectedRef = useRef<string | null>(state.activeConceptId);
   // Keep the latest actions/selection in refs for the cosmos event handlers,
@@ -74,39 +92,66 @@ export function CosmosGraph() {
     selectedRef.current = state.activeConceptId;
   });
   const [labels, setLabels] = useState<Label[]>([]);
+  // cosmos.gl creates its WebGL device asynchronously, so a missing WebGL
+  // rejects `graph.ready` instead of throwing from the effect. Rethrowing it
+  // during render hands it to the ErrorBoundary around this renderer.
+  const [initError, setInitError] = useState<Error | null>(null);
+  if (initError) throw initError;
 
   // Reposition the active label set (selected + hovered + hovered's neighbors)
-  // from current world positions. Cheap: only a handful of labels are shown.
+  // from current world positions. Cheap: only a handful of points are tracked,
+  // so the GPU read-back stays small however large the graph is.
   function positionLabels() {
     const g = graphRef.current;
     const data = dataRef.current;
-    if (!g) return;
+    if (!g?.isReady) return;
     const ids = new Set<string>();
     if (selectedRef.current) ids.add(selectedRef.current);
     if (hoverRef.current != null) {
       const hid = data.ids[hoverRef.current];
       if (hid) ids.add(hid);
-      for (const a of g.getAdjacentIndices(hoverRef.current) ?? []) {
+      for (const a of data.neighborsOf[hoverRef.current] ?? []) {
         const id = data.ids[a];
         if (id) ids.add(id);
       }
     }
-    if (ids.size === 0) {
+    const tracked: number[] = [];
+    for (const id of ids) {
+      const i = data.index.get(id);
+      if (i != null) tracked.push(i);
+    }
+    const key = tracked.join(",");
+    if (key !== trackedRef.current) {
+      g.trackPointPositionsByIndices(tracked);
+      trackedRef.current = key;
+    }
+    if (tracked.length === 0) {
       setLabels([]);
       return;
     }
-    const pos = g.getPointPositions();
+    const pos = g.getTrackedPointPositionsMap();
     const next: Label[] = [];
-    for (const id of ids) {
-      const i = data.index.get(id);
-      if (i == null) continue;
-      const wx = pos[i * 2];
-      const wy = pos[i * 2 + 1];
-      if (!Number.isFinite(wx)) continue;
-      const [sx, sy] = g.spaceToScreenPosition([wx, wy]);
-      next.push({ id, title: data.titles[i], x: sx, y: sy });
+    for (const i of tracked) {
+      const p = pos.get(i);
+      if (!p || !Number.isFinite(p[0])) continue;
+      const [sx, sy] = g.spaceToScreenPosition(p);
+      next.push({ id: data.ids[i], title: data.titles[i], x: sx, y: sy });
     }
     setLabels(next);
+  }
+
+  // Keep a settling layout framed: the seed ring is far wider than the settled
+  // graph, so a single fit at the start leaves it a speck. Refit a few times a
+  // second while the simulation runs and once when it ends, until the user
+  // pans, zooms, or drags. Each fit reads every position back from the GPU, so
+  // it is throttled rather than run per tick.
+  function followLayout(final: boolean) {
+    const g = graphRef.current;
+    if (!g || userViewRef.current) return;
+    const now = performance.now();
+    if (!final && now - lastFitRef.current < FOLLOW_INTERVAL_MS) return;
+    lastFitRef.current = now;
+    g.fitView(final ? 400 : FOLLOW_INTERVAL_MS);
   }
 
   // Create the cosmos graph once; handlers read refs to stay current.
@@ -117,9 +162,15 @@ export function CosmosGraph() {
       backgroundColor: "rgba(0,0,0,0)",
       spaceSize: 4096,
       renderLinks: true,
-      scalePointsOnZoom: true,
+      // Points keep their screen size: the view zooms in to frame a settled
+      // layout, and points that grew with it would swallow their neighbors.
+      scalePointsOnZoom: false,
       enableDrag: true,
-      fitViewOnInit: true,
+      fitViewOnInit: false,
+      // Data changes (focus, filters, density) swap in a different point set,
+      // so tweening index i from its old position would be meaningless. Snap,
+      // and let the simulation lay out the new set.
+      transitionDuration: 0,
       simulationGravity: 0.25,
       simulationCenter: 0,
       simulationRepulsion: 1.0,
@@ -128,11 +179,7 @@ export function CosmosGraph() {
       simulationLinkDistance: 10,
       simulationFriction: 0.85,
       simulationDecay: 1000,
-      onClick: (
-        index: number | undefined,
-        _pos: [number, number] | undefined,
-        event: MouseEvent,
-      ) => {
+      onClick: (index, _pos, event) => {
         const id = index != null ? (dataRef.current.ids[index] ?? null) : null;
         // Ctrl/Cmd+click opens the node in a background reader tab (Shift to
         // also switch); plain click keeps the shared-selection behavior.
@@ -142,20 +189,46 @@ export function CosmosGraph() {
           actionsRef.current.selectConcept(id);
         }
       },
-      onPointMouseOver: (index: number) => {
+      onPointMouseOver: (index) => {
         hoverRef.current = index;
-        graphRef.current?.selectPointByIndex(index, true); // highlight + greyout
+        const data = dataRef.current;
+        // Highlight the node, its neighbors, and its own links; cosmos greys
+        // out the rest.
+        graphRef.current?.setConfigPartial({
+          highlightedPointIndices: [index, ...(data.neighborsOf[index] ?? [])],
+          highlightedLinkIndices: data.linksOf[index] ?? [],
+        });
         positionLabels();
       },
       onPointMouseOut: () => {
         hoverRef.current = null;
-        graphRef.current?.unselectPoints();
+        graphRef.current?.setConfigPartial({
+          highlightedPointIndices: undefined,
+          highlightedLinkIndices: undefined,
+        });
         positionLabels();
       },
+      onZoomStart: (_event, userDriven) => {
+        if (userDriven) userViewRef.current = true;
+      },
+      onDragStart: () => {
+        userViewRef.current = true;
+      },
       onZoom: () => positionLabels(),
-      onSimulationTick: () => positionLabels(),
+      onSimulationTick: () => {
+        positionLabels();
+        followLayout(false);
+      },
+      onSimulationEnd: () => followLayout(true),
     });
     graphRef.current = graph;
+    graph.ready.then(
+      () => positionLabels(),
+      (err: unknown) => {
+        if (graphRef.current !== graph) return;
+        setInitError(err instanceof Error ? err : new Error(String(err)));
+      },
+    );
     // Keep the HTML label overlay aligned with the canvas when the window (and
     // so the graph container) resizes — otherwise, once the simulation settles,
     // labels drift from their points until the next hover/zoom re-runs layout.
@@ -165,6 +238,7 @@ export function CosmosGraph() {
       ro.disconnect();
       graph.destroy();
       graphRef.current = null;
+      trackedRef.current = "";
     };
 
   }, []);
@@ -175,9 +249,12 @@ export function CosmosGraph() {
     const bundle = state.bundle;
     if (!graph || !bundle) return;
 
+    // Focus needs a concept to center on. A folder home (index) or no selection
+    // falls back to the whole graph, as in the canvas renderer.
+    const focusId = conceptById(bundle, state.activeConceptId)?.id ?? null;
     const restrict =
-      state.graphMode === "focus" && state.activeConceptId
-        ? egoIds(bundle, state.activeConceptId, state.focusDepth)
+      state.graphMode === "focus" && focusId
+        ? egoIds(bundle, focusId, state.focusDepth)
         : null;
     const filter = { query: "", hiddenTypes: state.hiddenTypes, activeTag: state.activeTag };
     const visible = bundle.concepts.filter(
@@ -187,7 +264,6 @@ export function CosmosGraph() {
     const ids = visible.map((c) => c.id);
     const titles = visible.map((c) => c.title);
     const index = new Map(ids.map((id, i) => [id, i] as const));
-    dataRef.current = { ids, titles, index };
 
     // Cross-links among visible nodes, as directed index pairs.
     const directed: { a: number; b: number }[] = [];
@@ -206,14 +282,22 @@ export function CosmosGraph() {
     // Draw a readable backbone rather than every edge — a dense cross-link graph
     // is otherwise an unreadable hairball (see graph/backbone.ts).
     const linkPairs: number[] = [];
+    const linksOf: number[][] = ids.map(() => []);
+    const neighborsOf: number[][] = ids.map(() => []);
     for (const e of graphBackbone({
       n: ids.length,
       directed,
       tags: visible.map((c) => c.tags),
       maxPerNode: maxPerNodeFor(state.linkDensity),
     })) {
+      const link = linkPairs.length / 2;
       linkPairs.push(e.a, e.b);
+      linksOf[e.a].push(link);
+      linksOf[e.b].push(link);
+      neighborsOf[e.a].push(e.b);
+      neighborsOf[e.b].push(e.a);
     }
+    dataRef.current = { ids, titles, index, linksOf, neighborsOf };
     const palette = buildTypePalette([...new Set(comm.map(String))], dark);
     const maxDeg = visible.reduce((m, c) => Math.max(m, c.degree), 0) || 1;
 
@@ -227,16 +311,16 @@ export function CosmosGraph() {
       const radius = 300 + (i % 7) * 40; // deterministic spread seed
       positions[i * 2] = cx + Math.cos(angle) * radius;
       positions[i * 2 + 1] = cy + Math.sin(angle) * radius;
-      const [r, g, b] = rgb255(palette.color(String(comm[i] ?? 0)));
+      const [r, g, b] = rgb01(palette.color(String(comm[i] ?? 0)));
       colors[i * 4] = r;
       colors[i * 4 + 1] = g;
       colors[i * 4 + 2] = b;
       colors[i * 4 + 3] = 1;
-      sizes[i] = 3 + Math.sqrt(c.degree / maxDeg) * 9;
+      sizes[i] = 5 + Math.sqrt(c.degree / maxDeg) * 13;
     });
 
     const links = new Float32Array(linkPairs);
-    const [lr, lg, lb] = rgb255(cssVar("--text-dim") || VIZ_FALLBACK.textDim);
+    const [lr, lg, lb] = rgb01(cssVar("--text-dim") || VIZ_FALLBACK.textDim);
     const linkColors = new Float32Array((linkPairs.length / 2) * 4);
     for (let i = 0; i < linkColors.length; i += 4) {
       linkColors[i] = lr;
@@ -245,13 +329,24 @@ export function CosmosGraph() {
       linkColors[i + 3] = 0.35;
     }
 
+    // The hovered index may not survive the new point set.
+    hoverRef.current = null;
+    graph.setConfigPartial({
+      highlightedPointIndices: undefined,
+      highlightedLinkIndices: undefined,
+    });
     graph.setPointPositions(positions);
     graph.setPointColors(colors);
     graph.setPointSizes(sizes);
     graph.setLinks(links);
     graph.setLinkColors(linkColors);
-    graph.render(1);
-    graph.fitView(400);
+    graph.render();
+    // render() only uploads and draws; start() reheats the layout, including
+    // after an earlier simulation has already settled.
+    graph.start(1);
+    // A fresh layout is framed again until the user takes the view.
+    userViewRef.current = false;
+    lastFitRef.current = 0;
     positionLabels();
   }, [
     // Depend on the bundle object, not activeRoot: a same-root live-reload/re-scan

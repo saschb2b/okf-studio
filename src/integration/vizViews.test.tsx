@@ -161,3 +161,38 @@ describe("visualization switcher", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 });
+
+describe("GPU graph renderer", () => {
+  // A webview without hardware acceleration hands out 2D contexts but no WebGL
+  // one. cosmos.gl creates its device asynchronously, so that failure arrives
+  // after mount and still has to reach the error boundary.
+  it("falls back with a way back to the canvas when WebGL cannot start", async () => {
+    const proto = HTMLCanvasElement.prototype as unknown as {
+      getContext: (this: HTMLCanvasElement, type: string) => object | null;
+    };
+    const stub2d = proto.getContext;
+    proto.getContext = function (type) {
+      if (type !== "2d") return null;
+      const ctx = stub2d.call(this, type);
+      return { ...ctx, getImageData: () => ({ data: new Uint8ClampedArray(4) }) };
+    };
+    try {
+      const user = userEvent.setup();
+      const { container } = renderApp();
+      await openBundle(user);
+
+      await user.click(screen.getByRole("button", { name: "Controls" }));
+      await user.click(screen.getByRole("button", { name: "GPU" }));
+      await screen.findByRole("button", { name: "Fit graph to view" });
+      // luma.gl defers device creation to the window load event, which jsdom
+      // has already fired by the time a test runs.
+      window.dispatchEvent(new Event("load"));
+
+      expect(await screen.findByText("GPU renderer unavailable")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Use Canvas renderer" }));
+      expect(container.querySelector(".graph-canvas")).not.toBeNull();
+    } finally {
+      proto.getContext = stub2d;
+    }
+  });
+});

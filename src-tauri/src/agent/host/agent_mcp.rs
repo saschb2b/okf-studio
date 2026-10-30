@@ -7,11 +7,12 @@ use okf_core::retrieval::{self, RetrievalRequest, RetrievalRoute};
 use okf_core::Bundle;
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::{
-    model::{Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
+    model::{Implementation, ProtocolVersion, ServerCapabilities, ServerConfig},
     schemars::JsonSchema,
     tool, tool_handler, tool_router, Json, ServerHandler, ServiceExt,
 };
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -1649,13 +1650,20 @@ fn native_input<T: for<'de> Deserialize<'de>>(call: &LocalToolCall) -> Result<T,
 
 #[tool_handler]
 impl ServerHandler for OkfMcpServer {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("okf-studio", env!("CARGO_PKG_VERSION")))
             .with_protocol_version(ProtocolVersion::V_2024_11_05)
             .with_instructions(
                 "Read-only tools to select and load versioned OKF methods, retrieve receipt-backed evidence, inspect, read, search, trace sources, traverse, validate, and analyze deterministic knowledge health for the active Open Knowledge Format bundle. Generic chat should inspect the capability catalog and load the narrowest relevant method before OKF work.",
             )
+    }
+
+    // MCP 2026-07-28 drops the `initialize` handshake for stateless
+    // per-request metadata. The bridge serves only the handshake revisions,
+    // so discovery advertises those and a stateless request is refused.
+    fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
+        Cow::Borrowed(ProtocolVersion::known_up_to(&ProtocolVersion::V_2025_11_25))
     }
 }
 
@@ -2248,6 +2256,65 @@ mod tests {
             .as_array()
             .is_some_and(|matches| !matches.is_empty()));
         drop(client);
+        server_task.await.expect("join MCP server");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn negotiates_only_mcp_revisions_with_an_initialize_handshake() {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../docs");
+        let (server_transport, client_transport) = tokio::io::duplex(16 * 1024);
+        let server = OkfMcpServer::new(okf_core::read_bundle(&root));
+        let server_task = tokio::spawn(async move {
+            let service = server.serve(server_transport).await.expect("serve MCP");
+            service.waiting().await.expect("MCP closes cleanly");
+        });
+        let (client_read, mut client_write) = tokio::io::split(client_transport);
+        let mut responses = tokio::io::BufReader::new(client_read).lines();
+        let stateless_request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/list",
+            "params": { "_meta": {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientInfo": { "name": "test", "version": "1" },
+                "io.modelcontextprotocol/clientCapabilities": {}
+            } }
+        });
+        let initialize = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {},
+                "clientInfo": { "name": "test", "version": "1" }
+            }
+        });
+        let mut replies = Vec::new();
+        for request in [stateless_request, initialize] {
+            let mut frame = request.to_string();
+            frame.push('\n');
+            client_write
+                .write_all(frame.as_bytes())
+                .await
+                .expect("write MCP frame");
+            let reply = responses
+                .next_line()
+                .await
+                .expect("read MCP frame")
+                .expect("MCP reply");
+            replies.push(serde_json::from_str::<serde_json::Value>(&reply).expect("JSON reply"));
+        }
+
+        assert_eq!(replies[0]["error"]["code"], -32022);
+        assert_eq!(
+            replies[0]["error"]["data"]["supported"],
+            serde_json::json!(["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"])
+        );
+        assert_eq!(replies[1]["result"]["protocolVersion"], "2025-11-25");
+        drop(client_write);
+        drop(responses);
         server_task.await.expect("join MCP server");
     }
 }

@@ -24,6 +24,8 @@ use tauri::{AppHandle, Manager};
 const MAX_BYTES: u64 = 128 * 1024 * 1024; // 128 MB
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const READ_TIMEOUT: Duration = Duration::from_secs(120);
+/// Redirect hops to follow. GitHub's tarball endpoint uses one, to codeload.
+const MAX_REDIRECTS: u32 = 5;
 /// GitHub's API requires a User-Agent; use the app's identity.
 const USER_AGENT: &str = concat!("okf-viewer/", env!("CARGO_PKG_VERSION"));
 
@@ -179,28 +181,33 @@ fn download(url: &str) -> Result<Vec<u8>, String> {
     if !url.to_lowercase().starts_with("https://") {
         return Err("Only https:// URLs are fetched.".to_string());
     }
-    let agent = ureq::AgentBuilder::new()
-        .timeout_connect(CONNECT_TIMEOUT)
-        .timeout_read(READ_TIMEOUT)
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        // Connect directly; ureq otherwise honours proxy variables from the environment.
+        .proxy(None)
+        .max_redirects(MAX_REDIRECTS)
+        .timeout_connect(Some(CONNECT_TIMEOUT))
+        .timeout_per_read(Some(READ_TIMEOUT))
         .user_agent(USER_AGENT)
-        .build();
+        .build()
+        .into();
 
     let resp = match agent.get(url).call() {
         Ok(resp) => resp,
-        Err(ureq::Error::Status(404, _)) => {
+        Err(ureq::Error::StatusCode(404)) => {
             return Err("Not found (404) — check the URL, or the repo may be private.".to_string());
         }
-        Err(ureq::Error::Status(code, _)) => {
+        Err(ureq::Error::StatusCode(code)) => {
             return Err(format!("The server returned HTTP {code}."));
         }
-        Err(ureq::Error::Transport(t)) => {
+        Err(t) => {
             return Err(format!("Couldn't reach the server: {t}."));
         }
     };
 
     // Read at most MAX_BYTES + 1 so we can detect an over-cap body.
     let mut buf = Vec::new();
-    resp.into_reader()
+    resp.into_body()
+        .into_reader()
         .take(MAX_BYTES + 1)
         .read_to_end(&mut buf)
         .map_err(|e| format!("Download failed: {e}."))?;

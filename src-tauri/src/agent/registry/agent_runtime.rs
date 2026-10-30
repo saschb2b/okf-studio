@@ -12,6 +12,7 @@ use crate::agent_catalog::{AgentNodeDistribution, AgentNodeRuntime};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const READ_TIMEOUT: Duration = Duration::from_secs(180);
+const MAX_REDIRECTS: u32 = 5;
 const MAX_RUNTIME_ARCHIVE_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_RUNTIME_UNPACKED_BYTES: u64 = 512 * 1024 * 1024;
 const USER_AGENT: &str = concat!("okf-studio/", env!("CARGO_PKG_VERSION"));
@@ -185,11 +186,15 @@ fn download(
     cancelled: &AtomicBool,
     on_progress: impl FnMut(u64),
 ) -> Result<(), String> {
-    let agent = ureq::AgentBuilder::new()
-        .timeout_connect(CONNECT_TIMEOUT)
-        .timeout_read(READ_TIMEOUT)
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        // Connect directly; ureq otherwise honours proxy variables from the environment.
+        .proxy(None)
+        .max_redirects(MAX_REDIRECTS)
+        .timeout_connect(Some(CONNECT_TIMEOUT))
+        .timeout_per_read(Some(READ_TIMEOUT))
         .user_agent(USER_AGENT)
-        .build();
+        .build()
+        .into();
     let response = agent
         .get(&distribution.url)
         .call()
@@ -197,7 +202,7 @@ fn download(
     let mut file = File::create(destination)
         .map_err(|error| format!("Studio could not create the Node archive: {error}"))?;
     copy_verified(
-        response.into_reader(),
+        response.into_body().into_reader(),
         &mut file,
         distribution.download_size,
         &distribution.sha256,

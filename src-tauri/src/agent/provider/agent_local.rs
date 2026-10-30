@@ -137,32 +137,28 @@ fn probe_endpoint(
     api_key: Option<&str>,
 ) -> Result<LocalModelProbe, String> {
     let endpoint = model_endpoint(provider, &base_url);
-    let agent = ureq::AgentBuilder::new()
-        .redirects(0)
-        .try_proxy_from_env(false)
-        .timeout_connect(Duration::from_secs(5))
-        .timeout_read(Duration::from_secs(10))
-        .timeout_write(Duration::from_secs(5))
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .max_redirects(0)
+        .proxy(None)
+        .timeout_connect(Some(Duration::from_secs(5)))
+        .timeout_per_read(Some(Duration::from_secs(10)))
+        .timeout_per_write(Some(Duration::from_secs(5)))
         .user_agent(concat!("okf-studio/", env!("CARGO_PKG_VERSION")))
-        .build();
+        .build()
+        .into();
     let response = authenticated_request(agent.get(endpoint.as_str()), api_key)
         .call()
         .map_err(probe_error)?;
-    if response.status() >= 300 {
-        return Err(format!(
-            "The endpoint returned HTTP status {}.",
-            response.status()
-        ));
+    let status = response.status().as_u16();
+    if status >= 300 {
+        return Err(format!("The endpoint returned HTTP status {status}."));
     }
-    if response
-        .header("content-length")
-        .and_then(|value| value.parse::<u64>().ok())
-        .is_some_and(|length| length > MAX_RESPONSE_BYTES)
-    {
+    if content_length(&response).is_some_and(|length| length > MAX_RESPONSE_BYTES) {
         return Err("The endpoint model list exceeds the 256 KiB limit.".to_string());
     }
     let mut bytes = Vec::new();
     response
+        .into_body()
         .into_reader()
         .take(MAX_RESPONSE_BYTES + 1)
         .read_to_end(&mut bytes)
@@ -310,27 +306,33 @@ fn chat_step(
     }
     let body = serde_json::to_vec(&body)
         .map_err(|_| "Studio could not encode the local-model request.".to_string())?;
-    let agent = ureq::AgentBuilder::new()
-        .redirects(0)
-        .try_proxy_from_env(false)
-        .timeout_connect(Duration::from_secs(5))
-        .timeout_read(Duration::from_secs(120))
-        .timeout_write(Duration::from_secs(10))
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        // Error statuses arrive as responses so `chat_error` can read their body.
+        .http_status_as_error(false)
+        .max_redirects(0)
+        .proxy(None)
+        .timeout_connect(Some(Duration::from_secs(5)))
+        .timeout_per_read(Some(Duration::from_secs(120)))
+        .timeout_per_write(Some(Duration::from_secs(10)))
         .user_agent(concat!("okf-studio/", env!("CARGO_PKG_VERSION")))
-        .build();
+        .build()
+        .into();
     let response = authenticated_request(
         agent
             .post(endpoint.as_str())
-            .set("content-type", "application/json"),
+            .header("content-type", "application/json"),
         secret_ref(&runtime.api_key),
     )
-    .send_bytes(&body)
-    .map_err(|error| chat_error(error, runtime.api_key.is_some()))?;
-    if response.status() >= 300 {
-        return Err(format!(
-            "The model endpoint returned HTTP status {}.",
-            response.status()
-        ));
+    .send(&body)
+    .map_err(|_| {
+        "Studio could not reach the model endpoint. Check that its server is running.".to_string()
+    })?;
+    let status = response.status().as_u16();
+    if status >= 400 {
+        return Err(chat_error(response, runtime.api_key.is_some()));
+    }
+    if status >= 300 {
+        return Err(format!("The model endpoint returned HTTP status {status}."));
     }
     let bytes = read_bounded_response(response, MAX_CHAT_RESPONSE_BYTES, "model response")?;
     parse_chat_step(runtime.provider, &bytes)
@@ -552,11 +554,14 @@ fn is_loopback_url(url: &Url) -> bool {
     }
 }
 
-fn authenticated_request(request: ureq::Request, api_key: Option<&str>) -> ureq::Request {
+fn authenticated_request<B>(
+    request: ureq::RequestBuilder<B>,
+    api_key: Option<&str>,
+) -> ureq::RequestBuilder<B> {
     match api_key {
         Some(api_key) => {
             let authorization = Zeroizing::new(format!("Bearer {api_key}"));
-            request.set("authorization", authorization.as_str())
+            request.header("authorization", authorization.as_str())
         }
         None => request,
     }
@@ -598,20 +603,27 @@ fn chat_endpoint(provider: LocalModelProvider, base_url: &Url) -> Url {
     endpoint
 }
 
+fn content_length(response: &ureq::http::Response<ureq::Body>) -> Option<u64> {
+    response
+        .headers()
+        .get("content-length")?
+        .to_str()
+        .ok()?
+        .parse()
+        .ok()
+}
+
 fn read_bounded_response(
-    response: ureq::Response,
+    response: ureq::http::Response<ureq::Body>,
     limit: u64,
     label: &str,
 ) -> Result<Vec<u8>, String> {
-    if response
-        .header("content-length")
-        .and_then(|value| value.parse::<u64>().ok())
-        .is_some_and(|length| length > limit)
-    {
+    if content_length(&response).is_some_and(|length| length > limit) {
         return Err(format!("The endpoint {label} exceeds the size limit."));
     }
     let mut bytes = Vec::new();
     response
+        .into_body()
         .into_reader()
         .take(limit + 1)
         .read_to_end(&mut bytes)
@@ -842,46 +854,37 @@ fn bounded_model_id(value: &str) -> Option<String> {
 
 fn probe_error(error: ureq::Error) -> String {
     match error {
-        ureq::Error::Status(status, _) => {
+        ureq::Error::StatusCode(status) => {
             format!("The endpoint returned HTTP status {status}.")
         }
-        ureq::Error::Transport(_) => {
-            "Studio could not reach the endpoint. Check that its server is running.".to_string()
-        }
+        _ => "Studio could not reach the endpoint. Check that its server is running.".to_string(),
     }
 }
 
-fn chat_error(error: ureq::Error, credentialed: bool) -> String {
-    match error {
-        ureq::Error::Status(status, response) => {
-            if credentialed {
-                return format!("The model endpoint returned HTTP status {status}.");
-            }
-            let detail = read_bounded_response(response, 8 * 1024, "error response")
-                .ok()
-                .and_then(|body| serde_json::from_slice::<serde_json::Value>(&body).ok())
-                .and_then(|value| {
-                    value
-                        .get("error")
-                        .and_then(|error| {
-                            error
-                                .get("message")
-                                .and_then(serde_json::Value::as_str)
-                                .or_else(|| error.as_str())
-                        })
-                        .map(bounded_error_detail)
-                })
-                .flatten();
-            detail.map_or_else(
-                || format!("The model endpoint returned HTTP status {status}."),
-                |detail| format!("The model endpoint returned HTTP status {status}: {detail}"),
-            )
-        }
-        ureq::Error::Transport(_) => {
-            "Studio could not reach the model endpoint. Check that its server is running."
-                .to_string()
-        }
+fn chat_error(response: ureq::http::Response<ureq::Body>, credentialed: bool) -> String {
+    let status = response.status().as_u16();
+    if credentialed {
+        return format!("The model endpoint returned HTTP status {status}.");
     }
+    let detail = read_bounded_response(response, 8 * 1024, "error response")
+        .ok()
+        .and_then(|body| serde_json::from_slice::<serde_json::Value>(&body).ok())
+        .and_then(|value| {
+            value
+                .get("error")
+                .and_then(|error| {
+                    error
+                        .get("message")
+                        .and_then(serde_json::Value::as_str)
+                        .or_else(|| error.as_str())
+                })
+                .map(bounded_error_detail)
+        })
+        .flatten();
+    detail.map_or_else(
+        || format!("The model endpoint returned HTTP status {status}."),
+        |detail| format!("The model endpoint returned HTTP status {status}: {detail}"),
+    )
 }
 
 fn bounded_error_detail(value: &str) -> Option<String> {
@@ -1028,6 +1031,15 @@ mod tests {
         write!(
             stream,
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+        .expect("write response");
+    }
+
+    fn write_status_response(stream: &mut std::net::TcpStream, status: &str, body: &str) {
+        write!(
+            stream,
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         )
         .expect("write response");
@@ -1569,5 +1581,77 @@ mod tests {
         .expect("chat response");
         assert_eq!(answer, "Private response");
         server.join().expect("join test server");
+    }
+
+    #[test]
+    fn reports_model_error_detail_only_to_uncredentialed_endpoints() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut stream, _) = listener.accept().expect("accept request");
+                let _ = read_http_request(&mut stream);
+                write_status_response(
+                    &mut stream,
+                    "400 Bad Request",
+                    r#"{"error":{"message":"model is not loaded"}}"#,
+                );
+            }
+        });
+        let mut runtime = LocalModelRuntime {
+            profile_id: "local-0123456789abcdef".to_string(),
+            profile_name: "Test endpoint".to_string(),
+            provider: LocalModelProvider::Ollama,
+            base_url: Url::parse(&format!("http://{address}")).expect("base URL"),
+            model: "qwen-test".to_string(),
+            api_key: None,
+        };
+        let messages = [LocalChatMessage {
+            role: "user",
+            content: "Hello locally".to_string(),
+        }];
+
+        let error = chat(&runtime, &messages).expect_err("uncredentialed error status");
+        assert_eq!(
+            error,
+            "The model endpoint returned HTTP status 400: model is not loaded"
+        );
+
+        runtime.api_key = Some(Zeroizing::new("secret-test-key".to_string()));
+        let error = chat(&runtime, &messages).expect_err("credentialed error status");
+        assert_eq!(error, "The model endpoint returned HTTP status 400.");
+        server.join().expect("join test server");
+    }
+
+    #[test]
+    fn reports_probe_status_and_unreachable_endpoints() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+        let address = listener.local_addr().expect("server address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            let _ = read_http_headers(&mut stream);
+            write_status_response(&mut stream, "404 Not Found", "{}");
+        });
+        let error = probe(input(
+            LocalModelProvider::Ollama,
+            &format!("http://{address}"),
+        ))
+        .expect_err("missing model list");
+        assert_eq!(error, "The endpoint returned HTTP status 404.");
+        server.join().expect("join test server");
+
+        let closed = TcpListener::bind("127.0.0.1:0")
+            .expect("bind closed port")
+            .local_addr()
+            .expect("closed port address");
+        let error = probe(input(
+            LocalModelProvider::Ollama,
+            &format!("http://{closed}"),
+        ))
+        .expect_err("closed endpoint");
+        assert_eq!(
+            error,
+            "Studio could not reach the endpoint. Check that its server is running."
+        );
     }
 }

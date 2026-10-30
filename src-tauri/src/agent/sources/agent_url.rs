@@ -1,6 +1,11 @@
 use std::io::Read;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::time::Duration;
+use ureq::config::Config;
+use ureq::http::Uri;
+use ureq::unversioned::resolver::{DefaultResolver, ResolvedSocketAddrs, Resolver};
+use ureq::unversioned::transport::{DefaultConnector, NextTimeout};
+use ureq::ResponseExt;
 use url::{Host, Url};
 
 use crate::agent_source_adapter::SourceDiscovery;
@@ -12,31 +17,29 @@ const MAX_REDIRECTS: u32 = 3;
 
 pub(crate) fn fetch(input: String) -> Result<AgentSourceInput, String> {
     let requested_url = validate_url(&input)?;
-    let agent = ureq::AgentBuilder::new()
+    let config = Config::builder()
         .https_only(true)
-        .redirects(MAX_REDIRECTS)
-        .try_proxy_from_env(false)
-        .resolver(secure_resolve)
-        .timeout_connect(Duration::from_secs(10))
-        .timeout_read(Duration::from_secs(20))
-        .timeout_write(Duration::from_secs(10))
+        .max_redirects(MAX_REDIRECTS)
+        .proxy(None)
+        .timeout_connect(Some(Duration::from_secs(10)))
+        .timeout_per_read(Some(Duration::from_secs(20)))
+        .timeout_per_write(Some(Duration::from_secs(10)))
         .user_agent(concat!("okf-studio/", env!("CARGO_PKG_VERSION")))
         .build();
+    let agent = ureq::Agent::with_parts(config, DefaultConnector::default(), PublicResolver);
 
     let response = agent
         .get(requested_url.as_str())
         .call()
         .map_err(fetch_error)?;
-    let final_url = validate_url(response.get_url())?;
-    let media_type = response
-        .header("content-type")
+    let final_url = validate_url(&response.get_uri().to_string())?;
+    let media_type = header(&response, "content-type")
         .and_then(supported_media_type)
         .ok_or_else(|| {
             "The URL must return an explicit supported Content-Type: plain text, Markdown, HTML, CSV, or JSON."
                 .to_string()
         })?;
-    if response
-        .header("content-length")
+    if header(&response, "content-length")
         .and_then(|value| value.parse::<u64>().ok())
         .is_some_and(|length| length > MAX_BODY_BYTES)
     {
@@ -46,6 +49,7 @@ pub(crate) fn fetch(input: String) -> Result<AgentSourceInput, String> {
     let title = title_for_url(&final_url);
     let mut bytes = Vec::new();
     response
+        .into_body()
         .into_reader()
         .take(MAX_BODY_BYTES + 1)
         .read_to_end(&mut bytes)
@@ -87,6 +91,37 @@ fn validate_url(input: &str) -> Result<Url, String> {
     }
     url.set_fragment(None);
     Ok(url)
+}
+
+fn header<'a>(response: &'a ureq::http::Response<ureq::Body>, name: &str) -> Option<&'a str> {
+    response.headers().get(name)?.to_str().ok()
+}
+
+/// Resolves every connection, including each redirect hop, through
+/// [`secure_resolve`], so a private address in any DNS answer blocks the fetch.
+#[derive(Debug)]
+struct PublicResolver;
+
+impl Resolver for PublicResolver {
+    fn resolve(
+        &self,
+        uri: &Uri,
+        _config: &Config,
+        _timeout: NextTimeout,
+    ) -> Result<ResolvedSocketAddrs, ureq::Error> {
+        let netloc = uri
+            .scheme()
+            .zip(uri.authority())
+            .and_then(|(scheme, authority)| DefaultResolver::host_and_port(scheme, authority))
+            .ok_or_else(|| ureq::Error::BadUri(uri.to_string()))?;
+        let mut resolved = self.empty();
+        for address in secure_resolve(&netloc)? {
+            if resolved.try_push(address).is_err() {
+                break;
+            }
+        }
+        Ok(resolved)
+    }
 }
 
 fn secure_resolve(netloc: &str) -> std::io::Result<Vec<SocketAddr>> {
@@ -178,10 +213,8 @@ fn title_for_url(url: &Url) -> String {
 
 fn fetch_error(error: ureq::Error) -> String {
     match error {
-        ureq::Error::Status(status, _) => format!("The URL returned HTTP status {status}."),
-        ureq::Error::Transport(_) => {
-            "The URL could not be fetched securely. Check the address and try again.".to_string()
-        }
+        ureq::Error::StatusCode(status) => format!("The URL returned HTTP status {status}."),
+        _ => "The URL could not be fetched securely. Check the address and try again.".to_string(),
     }
 }
 
@@ -207,6 +240,27 @@ mod tests {
             secure_resolve("93.184.216.34:443").expect("public address")[0].ip(),
             "93.184.216.34".parse::<IpAddr>().expect("IP")
         );
+    }
+
+    #[test]
+    fn blocks_hostnames_that_resolve_to_private_addresses_before_connecting() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind local server");
+        listener
+            .set_nonblocking(true)
+            .expect("set local server nonblocking");
+        let port = listener.local_addr().expect("local address").port();
+
+        let error = fetch(format!("https://localhost:{port}/notes.md"))
+            .expect_err("localhost must be blocked");
+
+        assert_eq!(
+            error,
+            "The URL could not be fetched securely. Check the address and try again."
+        );
+        assert!(matches!(
+            listener.accept(),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock
+        ));
     }
 
     #[test]

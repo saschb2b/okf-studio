@@ -55,7 +55,9 @@ dunce = "1"
 # Remote-bundle fetch (Open from URL). Lightweight and blocking — ureq brings
 # rustls TLS with no async runtime; flate2 + tar handle GitHub tarballs, zip
 # handles .zip archives. No git dependency by design (see src/remote.rs).
-ureq = "2"
+# Pinned to the 3.5 minor: the URL-source resolver uses ureq's `unversioned`
+# API, which can change in a minor release (see src/agent/sources/agent_url.rs).
+ureq = "~3.5"
 flate2 = "1"
 tar = "0.4"
 zip = { version = "9", default-features = false, features = ["deflate"] }

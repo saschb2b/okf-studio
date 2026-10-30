@@ -21,6 +21,7 @@ use crate::agent_runtime;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 const READ_TIMEOUT: Duration = Duration::from_secs(120);
+const MAX_REDIRECTS: u32 = 5;
 const MAX_PACKAGE_BYTES: u64 = 64 * 1024 * 1024;
 /// Binary agents bundle their own runtime, so their pinned archives run
 /// larger than npm adapter tarballs.
@@ -812,6 +813,18 @@ fn catalog_environment(names: &[String]) -> Vec<(String, String)> {
         .collect()
 }
 
+fn download_agent() -> ureq::Agent {
+    ureq::Agent::config_builder()
+        // Connect directly; ureq otherwise honours proxy variables from the environment.
+        .proxy(None)
+        .max_redirects(MAX_REDIRECTS)
+        .timeout_connect(Some(CONNECT_TIMEOUT))
+        .timeout_per_read(Some(READ_TIMEOUT))
+        .user_agent(USER_AGENT)
+        .build()
+        .into()
+}
+
 fn download(
     app: &AppHandle,
     install_id: &str,
@@ -820,11 +833,7 @@ fn download(
     destination: &Path,
     cancelled: &AtomicBool,
 ) -> Result<(), String> {
-    let agent = ureq::AgentBuilder::new()
-        .timeout_connect(CONNECT_TIMEOUT)
-        .timeout_read(READ_TIMEOUT)
-        .user_agent(USER_AGENT)
-        .build();
+    let agent = download_agent();
     let response = agent
         .get(&distribution.tarball)
         .call()
@@ -832,7 +841,7 @@ fn download(
     let mut file = File::create(destination)
         .map_err(|error| format!("Studio could not create the package archive: {error}"))?;
     copy_verified(
-        response.into_reader(),
+        response.into_body().into_reader(),
         &mut file,
         distribution.download_size,
         &distribution.integrity,
@@ -858,11 +867,7 @@ fn download_binary_archive(
     destination: &Path,
     cancelled: &AtomicBool,
 ) -> Result<(), String> {
-    let agent = ureq::AgentBuilder::new()
-        .timeout_connect(CONNECT_TIMEOUT)
-        .timeout_read(READ_TIMEOUT)
-        .user_agent(USER_AGENT)
-        .build();
+    let agent = download_agent();
     let response = agent
         .get(&target.url)
         .call()
@@ -870,7 +875,7 @@ fn download_binary_archive(
     let mut file = File::create(destination)
         .map_err(|error| format!("Studio could not create the agent archive: {error}"))?;
     copy_verified_sha256(
-        response.into_reader(),
+        response.into_body().into_reader(),
         &mut file,
         target.download_size,
         &target.sha256,

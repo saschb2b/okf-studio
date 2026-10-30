@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-30
+
+* **Update**: The Rust host's HTTP client moved from `ureq` 2 to 3.5, which changes every Rust-owned network path: Open from URL, URL sources and evidence checks, the local-model probe and chat, and managed Node and agent downloads. ureq 3 reads proxy settings from environment variables and follows up to ten redirects by default. Each request now turns the proxy off and sets its redirect limit explicitly: five for downloads and Open from URL, three for URL sources, and none for model endpoints. Timeouts keep their meaning through ureq 3's per-read and per-write limits, and user-facing error messages are unchanged. Model endpoints receive error statuses as responses, so Studio still reads the error body and still withholds that detail for a credentialed endpoint. ureq 2 stopped one hop short of its configured redirect limit, so URL sources followed two redirects, although [Agent System](architecture/agent-system.md) and [IPC and Security](architecture/ipc-and-security.md) state three. They now follow three, and downloads follow five rather than four. The private-address check runs as a ureq resolver on every hop. That hook is part of ureq's `unversioned` API, which can change in a minor release, so the dependency is pinned to `~3.5`.
+
 ## 2026-10-25
 
 * **Release**: 0.11.0. Charts label more of their shapes, and their label size becomes a setting. A minor rather than a patch: it adds a setting, and the treemap, sunburst, and circle-packing views look different on first open.

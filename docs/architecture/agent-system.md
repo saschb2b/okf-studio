@@ -251,7 +251,15 @@ At most once per app session, the open panel beside an active bundle replays tha
 
 # ACP process host
 
-Studio pins the official Rust SDK at `agent-client-protocol` 2.0.0 with schema artifact 1.5.0. Artifact versions describe the Rust API and generated schema. Studio and the agent negotiate wire compatibility separately. Studio requests ACP protocol v1 and rejects any response that selects another version. The SDK's 2.0 major bump changed its Rust API, not the wire schema, so it does not change the version an agent negotiates.
+Studio pins the official Rust SDK at `agent-client-protocol` 3.6.0 with schema artifact 1.13.0. Artifact versions describe the Rust API and generated schema. Studio and the agent negotiate wire compatibility separately. Studio requests ACP protocol v1 and rejects any response that selects another version.
+
+Neither the SDK's 2.0 nor its 3.0 major bump changed that negotiation. The 3.x SDK's stable v1 client also refuses such a response before Studio reads it, so the error carries the SDK's text. Studio keeps its own check.
+
+Schema 1.13 stabilizes four v1 features that a client must opt into: terminal authentication, elicitation, session notices, and session compaction. An agent may use them only after the client advertises them, and Studio advertises none. The schema always serializes `clientCapabilities.auth.terminal`, so the initialize request carries `false` there. That value is the default and claims no capability. The SDK rejects `null` request IDs only under protocol v2.
+
+The bundled read-only MCP server runs on `rmcp` 3.8.0 and negotiates over the MCP `initialize` handshake. It serves revisions 2024-11-05 through 2025-11-25. It echoes a requested revision in that range and answers any other request with 2024-11-05.
+
+MCP 2026-07-28 replaces the handshake with per-request metadata. The SDK serves that revision by default, but Studio caps its server at 2025-11-25. Discovery therefore lists only the four handshake revisions. A stateless request receives error -32022 with that list, and the connection stays open for `initialize`. Serving 2026-07-28 would change what an agent negotiates, so it needs its own decision.
 
 The host starts custom and installed catalog agents only through typed connect commands. Each command requires one bundle root that the live Rust grant registry recognizes, and completes that canonical check before process creation. The worker and returned connection record retain the exact root. Session create, list, and load reject a different canonical root before sending an ACP request.
 

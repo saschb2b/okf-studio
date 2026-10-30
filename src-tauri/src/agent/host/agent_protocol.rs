@@ -4398,6 +4398,89 @@ mod tests {
         assert!(handshake_rx.await.is_err());
     }
 
+    /// Answers `initialize` with raw JSON-RPC lines. A typed SDK agent
+    /// rewrites its response to the version it negotiated, so it cannot
+    /// select a version the client did not request.
+    struct RawInitializeAgent {
+        selected_version: u16,
+        received: Arc<Mutex<Vec<serde_json::Value>>>,
+    }
+
+    impl ConnectTo<Client> for RawInitializeAgent {
+        async fn connect_to(
+            self,
+            client: impl ConnectTo<Agent>,
+        ) -> agent_client_protocol::Result<()> {
+            use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+            let (studio, agent) = tokio::io::duplex(64 * 1024);
+            let (studio_read, studio_write) = tokio::io::split(studio);
+            let (agent_read, mut agent_write) = tokio::io::split(agent);
+            tokio::spawn(async move {
+                let mut lines = tokio::io::BufReader::new(agent_read).lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let request: serde_json::Value =
+                        serde_json::from_str(&line).expect("Studio writes JSON-RPC lines");
+                    let mut response = serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "id": request["id"],
+                        "result": {
+                            "protocolVersion": self.selected_version,
+                            "agentCapabilities": {}
+                        }
+                    })
+                    .to_string();
+                    response.push('\n');
+                    self.received.lock().expect("received frames").push(request);
+                    if agent_write.write_all(response.as_bytes()).await.is_err() {
+                        break;
+                    }
+                }
+            });
+            ConnectTo::<Client>::connect_to(
+                ByteStreams::new(studio_write.compat_write(), studio_read.compat()),
+                client,
+            )
+            .await
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn requests_acp_v1_and_refuses_an_agent_that_selects_another_version() {
+        let received = Arc::new(Mutex::new(Vec::new()));
+        let (handshake_tx, handshake_rx) = tokio::sync::oneshot::channel();
+        let (_commands_tx, commands_rx) = tokio::sync::mpsc::channel(1);
+        let error = run_connection(
+            RawInitializeAgent {
+                selected_version: 2,
+                received: Arc::clone(&received),
+            },
+            "connection-protocol-v2".to_string(),
+            "profile-protocol-v2".to_string(),
+            std::env::temp_dir(),
+            Arc::new(Mutex::new(Some(handshake_tx))),
+            commands_rx,
+            ConnectionRuntime {
+                turn_events: Arc::new(|_| {}),
+                permissions: Arc::new(Mutex::new(HashMap::new())),
+                permission_rules: Arc::new(Mutex::new(HashMap::new())),
+                permission_events: Arc::new(|_| {}),
+                stages: Arc::new(SessionStages::default()),
+                stage_events: Arc::new(|_| {}),
+                session_config_events: Arc::new(|_| {}),
+                available_commands_events: Arc::new(|_| {}),
+                security_scope: test_security_scope(),
+            },
+        )
+        .await
+        .expect_err("an agent selecting ACP v2 must not connect");
+        assert!(error.contains("protocol version"), "{error}");
+        assert!(handshake_rx.await.is_err());
+        let received = received.lock().expect("received frames");
+        assert_eq!(received.len(), 1);
+        assert_eq!(received[0]["method"], "initialize");
+        assert_eq!(received[0]["params"]["protocolVersion"], 1);
+    }
+
     /// The frontend reads these payloads with camelCase field names
     /// (src/agent/connection.ts). `rename_all` on a tagged enum only renames
     /// the variants, so the fields need `rename_all_fields`. Without it the

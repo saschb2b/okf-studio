@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-generated: { by: claude/unrecorded, at: 2026-07-16T23:30:00Z }
+generated: { by: claude/unrecorded, at: 2026-11-05T00:00:00Z }
 ---
 
 # What it does
@@ -44,6 +44,8 @@ Studio fetches a remote bundle once, and never streams it. Studio downloads the 
   - One bundle. Opens directly and the dialog closes.
   - Several bundles, from a URL pointing at a folder-of-bundles like `okf/bundles`. The dialog shows a picker instead of guessing which to open, one row per bundle with its name and `N concepts · M types`. Picking a row opens that bundle. Every row shares the one fetched copy, so switching between them later is instant. This is why a folder-of-bundles URL never merges into one giant view.
 - Fetch guards live in the [Rust core](../architecture/ipc-and-security.md). They are https-only, request timeouts, a download size cap, and archive extraction that refuses any entry escaping the destination (no zip-slip or `../` traversal). This is one of Studio's explicit Rust-owned network paths. It runs only after **Open** or **Refresh from source**. Provider setup, agent installation, model use, source fetches, and updates have their own separate user actions and limits.
+- **Private GitHub repositories.** The Open-from-URL dialog supports private repositories seamlessly using local developer credentials. When fetching, Studio resolves authentication in order: explicit dialog token, `GITHUB_TOKEN` and `GH_TOKEN` environment variables, GitHub CLI (`gh auth token`), and the local Git credential helper (`git credential fill`). If the tarball archive download is unavailable, Studio falls back to a shallow `git clone --depth 1` using the system's Git binary (respecting SSH keys and local Git configuration), stripping `.git` on completion. The dialog also provides an optional "Private repository? Add a token" disclosure if an explicit override is preferred. SSH URLs (`git@github.com:owner/repo`) are normalized automatically.
+- **Bundle detection inside `.okf/` directories.** The scanner now descends into `.okf/` directories (the conventional location for a repository's OKF knowledge bundle). Previously the hidden-directory rule skipped them, so a repo that placed its bundle at `.okf/` registered no bundle after fetching. The scan exempts `.okf` from both the filesystem walk filter and the default-ignore list; `.okfignore` was already exempt.
 - Remote recents work like any other recent. A remote entry carries its origin URL, shown as a badge and the `owner/repo` origin on its sub-line. A **Refresh from source** action re-fetches the latest. That refresh is always an explicit click, never silent. Reopening a remote recent reuses the local cache instantly, and re-fetches only if the cache is gone.
 
 # Behavior

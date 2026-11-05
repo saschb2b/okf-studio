@@ -298,7 +298,10 @@ fn portable_relative(root: &Path, path: &Path) -> Option<String> {
 fn default_ignored(relative: &str) -> bool {
     relative.split('/').any(|segment| {
         DEFAULT_IGNORED_DIRS.contains(&segment)
-            || (segment.starts_with('.') && segment.len() > 1 && segment != IGNORE_FILE)
+            || (segment.starts_with('.')
+                && segment.len() > 1
+                && segment != IGNORE_FILE
+                && segment != ".okf")
     })
 }
 

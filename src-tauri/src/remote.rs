@@ -11,6 +11,18 @@
 //! explicit provider, installation, update, or source actions.
 //! Guards: https-only, a size cap, request timeouts, and archive extraction that
 //! refuses any entry escaping the destination (no zip-slip / `../` traversal).
+//!
+//! ## Private repositories
+//!
+//! GitHub private repos require a personal access token. The token is resolved
+//! from the first available source, in order:
+//! 1. The `token` field supplied by the frontend (from the Open-from-URL dialog).
+//! 2. The `GITHUB_TOKEN` environment variable (CI / scripts).
+//! 3. The `GH_TOKEN` environment variable (GitHub CLI convention).
+//!
+//! The token is sent as an `Authorization: Bearer` header on the initial
+//! GitHub API request only. GitHub's archive redirect carries a signed
+//! short-lived token in the query string, so the header is not forwarded.
 
 use std::fs;
 use std::io::Read;
@@ -45,6 +57,9 @@ pub struct RemoteSource {
     pub subpath: Option<String>,
     #[allow(dead_code)]
     pub label: String,
+    /// Personal access token for private GitHub repositories. When absent,
+    /// the backend falls back to the GITHUB_TOKEN and GH_TOKEN env vars.
+    pub token: Option<String>,
 }
 
 enum Archive {
@@ -59,6 +74,9 @@ enum Archive {
 /// copy is decided on the frontend, which scans the stored path before calling.
 pub fn fetch(app: &AppHandle, source: RemoteSource) -> Result<String, String> {
     let (url, archive) = resolve(&source)?;
+    // Resolve the token for GitHub private repos:
+    // explicit > GITHUB_TOKEN > GH_TOKEN > gh CLI > git credential helper.
+    let token = resolve_github_token(source.token.as_deref());
 
     let dest = cache_dir(app, &source)?;
     // Fresh fetch: clear any prior contents so a stale copy can't linger.
@@ -67,13 +85,31 @@ pub fn fetch(app: &AppHandle, source: RemoteSource) -> Result<String, String> {
     }
     fs::create_dir_all(&dest).map_err(|e| format!("Couldn't create the cache: {e}"))?;
 
-    let bytes = download(&url)?;
-    match archive {
-        Archive::TarGz => extract_tar(&mut flate2::read::GzDecoder::new(&bytes[..]), &dest)?,
-        Archive::Tar => extract_tar(&mut &bytes[..], &dest)?,
-        Archive::Zip => extract_zip(&bytes, &dest)?,
+    let download_result = download(&url, token.as_deref());
+    match download_result {
+        Ok(bytes) => match archive {
+            Archive::TarGz => extract_tar(&mut flate2::read::GzDecoder::new(&bytes[..]), &dest)?,
+            Archive::Tar => extract_tar(&mut &bytes[..], &dest)?,
+            Archive::Zip => extract_zip(&bytes, &dest)?,
+        },
+        Err(err) => {
+            // If tarball download failed for a GitHub repo, try git clone fallback
+            // using local git configuration (e.g. SSH keys, local credentials).
+            if source.kind == "github" {
+                if let (Some(owner), Some(repo)) =
+                    (source.owner.as_deref(), source.repo.as_deref())
+                {
+                    if clone_via_git(owner, repo, source.git_ref.as_deref(), &dest).is_err() {
+                        return Err(err);
+                    }
+                } else {
+                    return Err(err);
+                }
+            } else {
+                return Err(err);
+            }
+        }
     }
-
     // A GitHub tarball (and many archives) wraps everything in a single
     // top-level dir; descend into it when there's exactly one, else scan the
     // extraction root as-is.
@@ -176,8 +212,113 @@ fn fnv1a(s: &str) -> u32 {
     hash
 }
 
+/// Resolve a GitHub token from the first available source:
+/// explicit input → `GITHUB_TOKEN` env var → `GH_TOKEN` env var →
+/// GitHub CLI (`gh auth token`) → Git credential helper (`git credential fill`).
+fn resolve_github_token(explicit: Option<&str>) -> Option<String> {
+    if let Some(t) = explicit.filter(|t| !t.trim().is_empty()) {
+        return Some(t.to_owned());
+    }
+    for var in &["GITHUB_TOKEN", "GH_TOKEN"] {
+        if let Ok(t) = std::env::var(var) {
+            let trimmed = t.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+    if let Some(t) = resolve_gh_cli_token() {
+        return Some(t);
+    }
+    if let Some(t) = resolve_git_credential_token() {
+        return Some(t);
+    }
+    None
+}
+
+/// Query the GitHub CLI for an active auth token.
+fn resolve_gh_cli_token() -> Option<String> {
+    let output = std::process::Command::new("gh")
+        .args(["auth", "token"])
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let tok = String::from_utf8(output.stdout).ok()?.trim().to_string();
+        if !tok.is_empty() {
+            return Some(tok);
+        }
+    }
+    None
+}
+
+/// Query git's credential helper (e.g. macOS Keychain, libsecret, GCM) for github.com credentials.
+fn resolve_git_credential_token() -> Option<String> {
+    use std::io::Write;
+    let mut child = std::process::Command::new("git")
+        .args(["credential", "fill"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()?;
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(b"protocol=https\nhost=github.com\n\n");
+    }
+    let output = child.wait_with_output().ok()?;
+    if output.status.success() {
+        let text = String::from_utf8_lossy(&output.stdout);
+        for line in text.lines() {
+            if let Some(password) = line.strip_prefix("password=") {
+                let trimmed = password.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Clone a repository via the local `git` binary, falling back to SSH if HTTPS fails.
+fn clone_via_git(owner: &str, repo: &str, git_ref: Option<&str>, dest: &Path) -> Result<(), String> {
+    let https_url = format!("https://github.com/{owner}/{repo}.git");
+    if run_git_clone(&https_url, git_ref, dest).is_ok() {
+        return Ok(());
+    }
+    let ssh_url = format!("git@github.com:{owner}/{repo}.git");
+    run_git_clone(&ssh_url, git_ref, dest)
+}
+
+fn run_git_clone(url: &str, git_ref: Option<&str>, dest: &Path) -> Result<(), String> {
+    if dest.exists() {
+        let _ = fs::remove_dir_all(dest);
+    }
+    fs::create_dir_all(dest).map_err(|e| format!("Couldn't create directory: {e}"))?;
+
+    let mut cmd = std::process::Command::new("git");
+    cmd.args(["clone", "--depth", "1"]);
+    if let Some(r) = git_ref.filter(|s| !s.is_empty()) {
+        cmd.args(["--branch", r]);
+    }
+    cmd.args([url, dest.to_str().ok_or("Invalid destination path")?]);
+    cmd.env("GIT_TERMINAL_PROMPT", "0");
+    let output = cmd.output().map_err(|e| format!("git clone failed: {e}"))?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("git clone failed: {}", err.trim()));
+    }
+    let git_dir = dest.join(".git");
+    if git_dir.exists() {
+        let _ = fs::remove_dir_all(&git_dir);
+    }
+    Ok(())
+}
+
 /// Download `url` into memory, enforcing https, timeouts, and the size cap.
-fn download(url: &str) -> Result<Vec<u8>, String> {
+/// When `token` is provided it is sent as `Authorization: Bearer` on the
+/// initial request. GitHub's archive redirect uses a signed query-string
+/// token, so the header does not need to follow across origins.
+fn download(url: &str, token: Option<&str>) -> Result<Vec<u8>, String> {
     if !url.to_lowercase().starts_with("https://") {
         return Err("Only https:// URLs are fetched.".to_string());
     }
@@ -191,10 +332,35 @@ fn download(url: &str) -> Result<Vec<u8>, String> {
         .build()
         .into();
 
-    let resp = match agent.get(url).call() {
+    let request = agent.get(url);
+    let request = if let Some(tok) = token {
+        request.header("Authorization", &format!("Bearer {tok}"))
+    } else {
+        request
+    };
+
+    let resp = match request.call() {
         Ok(resp) => resp,
+        Err(ureq::Error::StatusCode(401)) => {
+            return Err(
+                "Authentication failed (401) — the token is missing or invalid. \
+                 Supply a personal access token with repo scope in the token field."
+                    .to_string(),
+            );
+        }
+        Err(ureq::Error::StatusCode(403)) => {
+            return Err(
+                "Access denied (403) — the token lacks permission for this repository. \
+                 Check that it has repo scope and that the repo exists."
+                    .to_string(),
+            );
+        }
         Err(ureq::Error::StatusCode(404)) => {
-            return Err("Not found (404) — check the URL, or the repo may be private.".to_string());
+            return Err(
+                "Not found (404) — check the URL. \
+                 If the repository is private, provide a personal access token."
+                    .to_string(),
+            );
         }
         Err(ureq::Error::StatusCode(code)) => {
             return Err(format!("The server returned HTTP {code}."));
@@ -305,6 +471,7 @@ mod tests {
             git_ref: git_ref.map(str::to_owned),
             subpath: subpath.map(str::to_owned),
             label: String::new(),
+            token: None,
         }
     }
 
@@ -382,6 +549,22 @@ mod tests {
         ));
         assert!(resolve(&src("archive", None, None, None, None, "http://x.io/b.zip")).is_err());
         assert!(resolve(&src("git", None, None, None, None, "")).is_err());
+    }
+
+    #[test]
+    fn resolve_github_token_prefers_explicit_over_env() {
+        // Explicit non-empty token wins regardless of env.
+        let result = resolve_github_token(Some("explicit_token"));
+        assert_eq!(result.as_deref(), Some("explicit_token"));
+
+        // Empty/whitespace explicit falls through.
+        std::env::set_var("GITHUB_TOKEN", "env_token");
+        let result = resolve_github_token(Some("  "));
+        assert_eq!(result.as_deref(), Some("env_token"));
+        std::env::remove_var("GITHUB_TOKEN");
+
+        std::env::remove_var("GITHUB_TOKEN");
+        std::env::remove_var("GH_TOKEN");
     }
 
     #[test]
@@ -474,7 +657,7 @@ mod tests {
             "https://github.com/saschb2b/okf-studio/tree/main/docs",
         );
         let (url, _) = resolve(&source).unwrap();
-        let bytes = download(&url).expect("download the repo tarball");
+        let bytes = download(&url, None).expect("download the repo tarball");
         let dir = tmp();
         extract_tar(&mut flate2::read::GzDecoder::new(&bytes[..]), &dir).unwrap();
         let root = single_child_dir(&dir).expect("one top-level dir in the tarball");
@@ -485,6 +668,39 @@ mod tests {
         );
         let _ = fs::remove_dir_all(&dir);
     }
+
+    /// End-to-end against a private GitHub repo — requires GITHUB_TOKEN or GH_TOKEN
+    /// in the environment and network access. Ignored by default.
+    #[test]
+    #[ignore = "hits the network; needs GITHUB_TOKEN or GH_TOKEN"]
+    fn fetches_and_extracts_a_private_github_repo() {
+        let source = src(
+            "github",
+            Some("lutfi-zain"),
+            Some("multica-marketing-agency"),
+            None,
+            None,
+            "https://github.com/lutfi-zain/multica-marketing-agency",
+        );
+        let (url, _) = resolve(&source).unwrap();
+        let token = resolve_github_token(None);
+        assert!(
+            token.is_some(),
+            "GITHUB_TOKEN or GH_TOKEN must be set for this test"
+        );
+        let bytes = download(&url, token.as_deref()).expect("download the private repo tarball");
+        let dir = tmp();
+        extract_tar(&mut flate2::read::GzDecoder::new(&bytes[..]), &dir).unwrap();
+        let root = single_child_dir(&dir).expect("one top-level dir in the tarball");
+        // The repo stores its OKF bundle in .okf/ at the repo root.
+        let okf_dir = root.join(".okf");
+        assert!(
+            okf_dir.join("index.md").is_file(),
+            ".okf/index.md should exist in the fetched private repo"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
 
     #[test]
     fn extract_zip_writes_safe_entries_and_skips_traversal() {

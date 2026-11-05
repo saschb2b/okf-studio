@@ -16,6 +16,7 @@ import "./OpenRemoteDialog.css";
 export function OpenRemoteDialog() {
   const { state, actions } = useApp();
   const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The fetch worked but the URL held no OKF bundle — a calm, distinct outcome
@@ -24,7 +25,6 @@ export function OpenRemoteDialog() {
   // The fetched folder holds several bundles → let the user pick one.
   const [choices, setChoices] = useState<{ folder: string; bundles: BundleRoot[] } | null>(null);
   const [appliedSeed, setAppliedSeed] = useState<string | null>(null);
-
   // A seed (from a first-run example card) prefills the field once per open,
   // via the adjust-state-during-render pattern — the user still confirms with
   // Open, so no network happens without a click. Mirrors CommandPalette's seed.
@@ -38,6 +38,7 @@ export function OpenRemoteDialog() {
 
   function reset() {
     setUrl("");
+    setToken("");
     setBusy(false);
     setError(null);
     setNotBundle(false);
@@ -51,8 +52,12 @@ export function OpenRemoteDialog() {
     setError(null);
     setNotBundle(false);
     setChoices(null);
+    // Attach token to source when provided — the backend also checks env vars.
+    const srcWithAuth: RemoteSource = token.trim()
+      ? { ...src, token: token.trim() }
+      : src;
     try {
-      const outcome = await actions.openRemote(src);
+      const outcome = await actions.openRemote(srcWithAuth);
       // "opened" → the store closes the dialog and the workspace loads it.
       // "empty" → fetched fine, but no OKF bundle there; explain it in place.
       // "multiple" → several bundles at that URL; show a picker.
@@ -143,6 +148,38 @@ export function OpenRemoteDialog() {
                 </span>
               )}
             </div>
+
+            {/* Private-repo token — a disclosure so it doesn't clutter public-repo flow. */}
+            {source?.kind === "github" && (
+              <details className="remote-token">
+                <summary className="remote-token-summary muted">
+                  Private repository? Add a token (optional if Git / GitHub CLI is configured)
+                </summary>
+                <div className="remote-token-row">
+                  <label className="remote-label" htmlFor="remote-token">
+                    Personal access token
+                  </label>
+                  <input
+                    id="remote-token"
+                    type="password"
+                    className="remote-input"
+                    placeholder="ghp_…"
+                    value={token}
+                    disabled={busy}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(e) => {
+                      setToken(e.target.value);
+                      if (error) setError(null);
+                    }}
+                  />
+                  <p className="remote-token-hint muted">
+                    Optional: Studio automatically uses local Git and GitHub CLI credentials. Or supply a token with <code>repo</code> scope.
+                  </p>
+                </div>
+              </details>
+            )}
+
 
             {error && (
               <p className="remote-error" role="alert">

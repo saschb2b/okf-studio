@@ -98,7 +98,7 @@ export const families: Family[] = [
         items: [
           {
             title: "Local folder or GitHub URL",
-            body: "Open a folder on disk, or explicitly download and cache a GitHub URL on your machine. Studio records that choice and confines readers, assets, watchers, and agents to the bundle roots its scan found.",
+            body: "Open a folder on disk, or explicitly download and cache a GitHub URL on your machine. Private repositories are supported: expand the token field in the Open-from-URL dialog and supply a personal access token with repo scope, or set GITHUB_TOKEN in your environment. Studio records that choice and confines readers, assets, watchers, and agents to the bundle roots its scan found.",
           },
           {
             title: "One visible ignore boundary",

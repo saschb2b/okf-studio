@@ -32,6 +32,9 @@ pub fn is_ignored_dir(path: &Path, root: &Path) -> bool {
     let Some(name) = path.file_name().map(|n| n.to_string_lossy()) else {
         return false;
     };
+    if name == ".okf" {
+        return false;
+    }
     IGNORED_DIRS.contains(&name.as_ref()) || (name.starts_with('.') && name.len() > 1)
 }
 

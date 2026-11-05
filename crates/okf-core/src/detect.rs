@@ -270,6 +270,7 @@ mod tests {
         ));
         assert!(parse::is_ignored_dir(Path::new("/root/.git"), folder));
         assert!(!parse::is_ignored_dir(Path::new("/root/features"), folder));
+        assert!(!parse::is_ignored_dir(Path::new("/root/.okf"), folder));
         assert!(!parse::is_ignored_dir(folder, folder)); // never ignore the root itself
     }
 }

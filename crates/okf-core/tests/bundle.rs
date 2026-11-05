@@ -473,6 +473,22 @@ fn candidate_root_without_okf_version() {
 }
 
 #[test]
+fn detects_bundles_inside_dot_okf_directory() {
+    let dir = temp_bundle("dot-okf");
+    write(
+        &dir,
+        ".okf/index.md",
+        "---\nokf_version: \"0.2\"\n---\n# OKF Bundle\n* [c](c.md)\n",
+    );
+    write(&dir, ".okf/c.md", "---\ntype: Note\n---\n# Concept\n");
+    let roots = scan_bundles(&dir);
+    assert_eq!(roots.len(), 1);
+    assert_eq!(roots[0].confidence, Confidence::Confident);
+    assert_eq!(roots[0].rel_path, ".okf");
+    fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
 fn container_of_index_bundles_splits_into_one_root_each() {
     // A plain container folder (no index.md of its own) holding several bundle
     // directories that each carry their own index.md but no okf_version — like

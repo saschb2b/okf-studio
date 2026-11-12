@@ -1696,8 +1696,9 @@ async fn fetch_remote_bundle(
     app: AppHandle,
     grants: State<'_, bundle_grant::BundleGrantState>,
     source: remote::RemoteSource,
+    token: Option<String>,
 ) -> Result<String, String> {
-    let folder = tauri::async_runtime::spawn_blocking(move || remote::fetch(&app, source))
+    let folder = tauri::async_runtime::spawn_blocking(move || remote::fetch(&app, source, token))
         .await
         .map_err(|e| format!("Fetch task failed: {e}"))??;
     grants.grant(

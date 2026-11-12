@@ -3909,16 +3909,24 @@ export async function revokeBundleGrant(folder: string): Promise<boolean> {
  * archive-extraction containment guards. Other Studio network operations have
  * their own explicit actions and boundaries. Off-Tauri this resolves to the mock
  * folder after a short delay, so the dialog's fetch progress is exercised in dev.
+ *
+ * `token` is an optional GitHub personal access token for a private repository.
+ * It is a separate argument because `source` is persisted in recents and a
+ * credential must not be.
  */
 export async function fetchRemoteBundle(
   source: RemoteSource,
+  token?: string,
 ): Promise<{ folder: string }> {
   if (!isTauri()) {
     await browserMockDelay(600);
     return { folder: MOCK_FOLDER };
   }
   const { invoke } = await import("@tauri-apps/api/core");
-  const folder = await invoke<string>("fetch_remote_bundle", { source });
+  const folder = await invoke<string>("fetch_remote_bundle", {
+    source,
+    token: token ?? null,
+  });
   return { folder };
 }
 

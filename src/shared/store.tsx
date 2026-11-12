@@ -798,7 +798,7 @@ export interface Actions {
   /** Fetch a remote bundle and report the outcome (see RemoteOpenOutcome);
    *  throws on fetch failure. A single bundle opens directly; several defer to
    *  the caller's picker via `openRemoteChoice`. */
-  openRemote(source: RemoteSource): Promise<RemoteOpenOutcome>;
+  openRemote(source: RemoteSource, token?: string): Promise<RemoteOpenOutcome>;
   /** Open one specific bundle from a already-fetched remote folder (the picker). */
   openRemoteChoice(
     root: string,
@@ -918,7 +918,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return null;
     },
-    async openRemote(source) {
+    async openRemote(source, token) {
       // The detector runs in two phases, both surfaced by the dialog, and
       // NOTHING is switched until we know there's a bundle to open:
       //   1. Fetch — a network/HTTP failure throws (the dialog shows an error).
@@ -927,7 +927,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       //      files, or the wrong subpath). The dialog shows a distinct, calm
       //      "not a bundle" explanation rather than silently leaving the
       //      previous bundle in place.
-      const { folder } = await ipc.fetchRemoteBundle(source);
+      const { folder } = await ipc.fetchRemoteBundle(source, token);
       const bundles = await ipc.scanBundles(
         folder,
         stateRef.current.settings.scanMaxDepth,

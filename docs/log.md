@@ -1,10 +1,9 @@
 # Update Log
 
+## 2026-11-12
 
-## 2026-11-05
-
-* **Feature**: Private GitHub repositories can now be opened from the Open-from-URL dialog using either local developer credentials or a personal access token. Rust resolves credentials in order: explicit dialog token, `GITHUB_TOKEN` and `GH_TOKEN` environment variables, GitHub CLI (`gh auth token`), and the local Git credential helper (`git credential fill`). If the tarball archive download is unavailable or fails, Studio falls back to a shallow `git clone --depth 1` using the system Git binary (respecting SSH keys and local Git configuration). SSH URLs (`git@github.com:owner/repo`) are accepted directly. Documented in [Bundle Switcher](features/bundle-switcher.md#opening-from-a-url).
-* **Fix**: The bundle scanner now descends into `.okf/` directories. The conventional location for a repository's knowledge bundle is `.okf/` at the repo root, but the hidden-directory rule in both the filesystem walk filter and the default-ignore list blocked it. Both now exempt `.okf` (`.okfignore` was already exempt). A new test in `crates/okf-core` asserts that a bundle at `.okf/` is detected as a confident root with the correct relative path.
+* **Update**: [Open from URL](features/bundle-switcher.md#opening-from-a-url) opens private GitHub repositories. The first request stays anonymous, so a public repository reads no local credential. After GitHub refuses it, Studio tries `GITHUB_TOKEN`, `GH_TOKEN`, the GitHub CLI, and the Git credential helper, then a shallow `git clone` through the system Git for SSH-only access. The dialog also takes an optional personal access token. Decision: the token is an argument of `fetch_remote_bundle`, not a field of the remote source, because the source is persisted in recents and a credential must not be. Decision: credentials are sent to `api.github.com` only. A direct archive URL can name any host, so it is always fetched anonymously. Decision: helper processes run with prompts disabled and a time limit, so a missing credential fails instead of opening a sign-in window. SSH-style GitHub addresses (`git@github.com:owner/repo`) are accepted. The security boundary is recorded in [IPC and security](architecture/ipc-and-security.md).
+* **Fix**: The bundle scanner descends into `.okf/` directories. The hidden-directory rule in the filesystem walk and in the default ignore list skipped them, so a repository that keeps its bundle at `.okf/` registered no bundle. Both now exempt `.okf`, as recorded in [bundle detection](architecture/bundle-detection.md).
 
 ## 2026-10-30
 

@@ -25,6 +25,7 @@ export function OpenRemoteDialog() {
   // The fetched folder holds several bundles → let the user pick one.
   const [choices, setChoices] = useState<{ folder: string; bundles: BundleRoot[] } | null>(null);
   const [appliedSeed, setAppliedSeed] = useState<string | null>(null);
+
   // A seed (from a first-run example card) prefills the field once per open,
   // via the adjust-state-during-render pattern — the user still confirms with
   // Open, so no network happens without a click. Mirrors CommandPalette's seed.
@@ -52,12 +53,13 @@ export function OpenRemoteDialog() {
     setError(null);
     setNotBundle(false);
     setChoices(null);
-    // Attach token to source when provided — the backend also checks env vars.
-    const srcWithAuth: RemoteSource = token.trim()
-      ? { ...src, token: token.trim() }
-      : src;
     try {
-      const outcome = await actions.openRemote(srcWithAuth);
+      // The token rides beside the source, never inside it: the source is
+      // recorded in recents and a credential must not be.
+      const outcome = await actions.openRemote(
+        src,
+        src.kind === "github" ? token.trim() || undefined : undefined,
+      );
       // "opened" → the store closes the dialog and the workspace loads it.
       // "empty" → fetched fine, but no OKF bundle there; explain it in place.
       // "multiple" → several bundles at that URL; show a picker.
@@ -149,15 +151,20 @@ export function OpenRemoteDialog() {
               )}
             </div>
 
-            {/* Private-repo token — a disclosure so it doesn't clutter public-repo flow. */}
+            {/* Collapsed by default so the public-repository flow stays one field. */}
             {source?.kind === "github" && (
               <details className="remote-token">
                 <summary className="remote-token-summary muted">
-                  Private repository? Add a token (optional if Git / GitHub CLI is configured)
+                  Private repository?
                 </summary>
                 <div className="remote-token-row">
+                  <p className="remote-token-hint muted">
+                    Studio tries your GitHub CLI sign-in and Git credentials
+                    when GitHub refuses an anonymous request. To use a specific
+                    token instead, paste one with read access to the repository.
+                  </p>
                   <label className="remote-label" htmlFor="remote-token">
-                    Personal access token
+                    Personal access token (optional)
                   </label>
                   <input
                     id="remote-token"
@@ -174,12 +181,11 @@ export function OpenRemoteDialog() {
                     }}
                   />
                   <p className="remote-token-hint muted">
-                    Optional: Studio automatically uses local Git and GitHub CLI credentials. Or supply a token with <code>repo</code> scope.
+                    Used for this fetch only. Studio does not store it.
                   </p>
                 </div>
               </details>
             )}
-
 
             {error && (
               <p className="remote-error" role="alert">

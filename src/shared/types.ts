@@ -395,12 +395,6 @@ export interface RemoteSource {
   subpath?: string;
   /** Compact human label, e.g. "owner/repo · main · /docs". */
   label: string;
-  /**
-   * Personal access token for private GitHub repositories. Sent to the Rust
-   * backend only — never stored in recents or logged. When absent the backend
-   * falls back to the GITHUB_TOKEN and GH_TOKEN environment variables.
-   */
-  token?: string;
 }
 
 /**

@@ -103,6 +103,39 @@
   line-height: var(--lh-snug);
 }
 
+/* Private-repository token: a disclosure beneath the URL preview. */
+.remote-token {
+  margin: 0;
+}
+.remote-token-summary {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: var(--space-24);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  cursor: pointer;
+  user-select: none;
+}
+.remote-token-summary::before {
+  content: "▸";
+  width: var(--space-16);
+}
+.remote-token[open] > .remote-token-summary::before {
+  content: "▾";
+}
+.remote-token-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-4);
+}
+.remote-token-hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
 /* "Fetched, but no bundle here" — a calm, informational result, not an error
    (the download succeeded). A quiet surface, no alarming red. */
 .remote-notbundle {

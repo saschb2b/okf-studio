@@ -3,7 +3,7 @@ type: Feature
 title: Bundle Switcher
 description: A top-left popover that names the open bundle and switches among sibling bundles in the folder and recently-opened bundles, or opens a new folder.
 tags: [feature, navigation, bundles, switcher]
-generated: { by: claude/unrecorded, at: 2026-07-16T23:30:00Z }
+generated: { by: claude/unrecorded, at: 2026-11-12T00:00:00Z }
 ---
 
 # What it does
@@ -44,6 +44,11 @@ Studio fetches a remote bundle once, and never streams it. Studio downloads the 
   - One bundle. Opens directly and the dialog closes.
   - Several bundles, from a URL pointing at a folder-of-bundles like `okf/bundles`. The dialog shows a picker instead of guessing which to open, one row per bundle with its name and `N concepts · M types`. Picking a row opens that bundle. Every row shares the one fetched copy, so switching between them later is instant. This is why a folder-of-bundles URL never merges into one giant view.
 - Fetch guards live in the [Rust core](../architecture/ipc-and-security.md). They are https-only, request timeouts, a download size cap, and archive extraction that refuses any entry escaping the destination (no zip-slip or `../` traversal). This is one of Studio's explicit Rust-owned network paths. It runs only after **Open** or **Refresh from source**. Provider setup, agent installation, model use, source fetches, and updates have their own separate user actions and limits.
+- **Private GitHub repositories.** The first request for a GitHub URL is anonymous, so opening a public repository reads no local credential and starts no other process. Only when GitHub answers 401, 403, or 404 does Studio look for a credential on the machine, in this order: the `GITHUB_TOKEN` and `GH_TOKEN` environment variables, the GitHub CLI (`gh auth token`), and the Git credential helper (`git credential fill` for `github.com`). If the tarball is still refused, Studio makes a shallow `git clone --depth 1` through the system Git, over HTTPS and then SSH. That covers SSH keys and `url.insteadOf` rewrites. The clone checks symlinks out as plain files, drops `.git`, and must fit the same 128 MB cap as a download. Every helper process runs with prompts disabled and under a time limit, so a missing credential fails instead of opening a sign-in window.
+- **An explicit token.** For a GitHub URL the dialog offers a collapsed **Private repository?** disclosure with an optional personal access token field. A typed token is sent on the first request, and a refusal is reported as is, without falling back to other credentials. The token is passed to the fetch command beside the source and is never part of it, so it is not written to recents. **Refresh from source** on a private recent therefore relies on the machine's own credentials.
+- **Credentials go to GitHub only.** A token, typed or found locally, is sent to `api.github.com` and dropped on the redirect to GitHub's archive host. A direct archive URL can name any host, so it is always fetched anonymously and the dialog shows no token field for it.
+- SSH-style GitHub addresses (`git@github.com:owner/repo`, with or without `.git`) are read as the same repository as the `https://` form.
+- A bundle kept in a repository's `.okf/` directory is found after the fetch, because [bundle detection](../architecture/bundle-detection.md) exempts `.okf` from its hidden-directory rule.
 - Remote recents work like any other recent. A remote entry carries its origin URL, shown as a badge and the `owner/repo` origin on its sub-line. A **Refresh from source** action re-fetches the latest. That refresh is always an explicit click, never silent. Reopening a remote recent reuses the local cache instantly, and re-fetches only if the cache is gone.
 
 # Behavior

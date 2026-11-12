@@ -20,6 +20,15 @@ const ARCHIVE_RE = /\.(tar\.gz|tgz|tar|zip)$/i;
 function normalize(input: string): URL | null {
   const raw = input.trim();
   if (!raw) return null;
+  // Normalize SSH git URLs: git@github.com:owner/repo(.git) or ssh://git@github.com/owner/repo
+  const sshMatch = /^(?:ssh:\/\/)?git@github\.com[:/]([^/]+)\/(.+?)(?:\.git)?$/i.exec(raw);
+  if (sshMatch) {
+    try {
+      return new URL(`https://github.com/${sshMatch[1]}/${sshMatch[2]}`);
+    } catch {
+      return null;
+    }
+  }
   try {
     const url = new URL(raw);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;

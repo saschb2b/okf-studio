@@ -60,6 +60,50 @@ describe("OKF Studio shell", () => {
     expect(screen.getByRole("button", { name: /^Open$/ })).toBeEnabled();
   });
 
+  it("sends a private-repository token beside the source and keeps it out of recents", async () => {
+    const fetchRemote = vi.spyOn(ipc, "fetchRemoteBundle");
+    const pushRecent = vi.spyOn(ipc, "pushRecentBundle");
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /^Open from URL…/ }));
+    await fillText(
+      user,
+      screen.getByLabelText("Paste a GitHub URL or a link to an archive"),
+      "https://github.com/owner/private-repo",
+    );
+    await user.click(screen.getByText("Private repository?"));
+    await fillText(
+      user,
+      screen.getByLabelText("Personal access token (optional)"),
+      "  ghp_example  ",
+    );
+    await user.click(screen.getByRole("button", { name: /^Open$/ }));
+
+    await waitFor(() => expect(pushRecent).toHaveBeenCalled());
+    expect(fetchRemote).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "github", repo: "private-repo" }),
+      "ghp_example",
+    );
+    expect(JSON.stringify(fetchRemote.mock.calls[0][0])).not.toContain("ghp_example");
+    expect(JSON.stringify(pushRecent.mock.calls)).not.toContain("ghp_example");
+  });
+
+  it("offers no token field for an archive on another host", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(screen.getByRole("button", { name: /^Open from URL…/ }));
+    await fillText(
+      user,
+      screen.getByLabelText("Paste a GitHub URL or a link to an archive"),
+      "https://example.com/bundle.tar.gz",
+    );
+
+    expect(screen.getByText("Archive")).toBeInTheDocument();
+    expect(screen.queryByText("Private repository?")).not.toBeInTheDocument();
+  });
+
   it("opens the disconnected agent panel from the status bar", async () => {
     const user = userEvent.setup();
     renderApp();

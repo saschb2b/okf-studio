@@ -16,6 +16,7 @@ import "./OpenRemoteDialog.css";
 export function OpenRemoteDialog() {
   const { state, actions } = useApp();
   const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The fetch worked but the URL held no OKF bundle — a calm, distinct outcome
@@ -38,6 +39,7 @@ export function OpenRemoteDialog() {
 
   function reset() {
     setUrl("");
+    setToken("");
     setBusy(false);
     setError(null);
     setNotBundle(false);
@@ -52,7 +54,12 @@ export function OpenRemoteDialog() {
     setNotBundle(false);
     setChoices(null);
     try {
-      const outcome = await actions.openRemote(src);
+      // The token rides beside the source, never inside it: the source is
+      // recorded in recents and a credential must not be.
+      const outcome = await actions.openRemote(
+        src,
+        src.kind === "github" ? token.trim() || undefined : undefined,
+      );
       // "opened" → the store closes the dialog and the workspace loads it.
       // "empty" → fetched fine, but no OKF bundle there; explain it in place.
       // "multiple" → several bundles at that URL; show a picker.
@@ -143,6 +150,42 @@ export function OpenRemoteDialog() {
                 </span>
               )}
             </div>
+
+            {/* Collapsed by default so the public-repository flow stays one field. */}
+            {source?.kind === "github" && (
+              <details className="remote-token">
+                <summary className="remote-token-summary muted">
+                  Private repository?
+                </summary>
+                <div className="remote-token-row">
+                  <p className="remote-token-hint muted">
+                    Studio tries your GitHub CLI sign-in and Git credentials
+                    when GitHub refuses an anonymous request. To use a specific
+                    token instead, paste one with read access to the repository.
+                  </p>
+                  <label className="remote-label" htmlFor="remote-token">
+                    Personal access token (optional)
+                  </label>
+                  <input
+                    id="remote-token"
+                    type="password"
+                    className="remote-input"
+                    placeholder="ghp_…"
+                    value={token}
+                    disabled={busy}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(e) => {
+                      setToken(e.target.value);
+                      if (error) setError(null);
+                    }}
+                  />
+                  <p className="remote-token-hint muted">
+                    Used for this fetch only. Studio does not store it.
+                  </p>
+                </div>
+              </details>
+            )}
 
             {error && (
               <p className="remote-error" role="alert">

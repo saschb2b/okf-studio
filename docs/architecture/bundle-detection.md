@@ -3,7 +3,7 @@ type: Architecture Decision
 title: Bundle Detection
 description: The algorithm that walks a chosen folder and decides which directories are OKF bundle roots.
 tags: [architecture, decision, discovery, algorithm]
-generated: { by: claude/unrecorded, at: 2026-07-04T18:30:00Z }
+generated: { by: claude/unrecorded, at: 2026-11-12T00:00:00Z }
 ---
 
 # Problem
@@ -20,7 +20,8 @@ Given one folder, find every OKF bundle inside it (the [Folder Autodetect](../fe
 ```
 scan(folder):
   walk folder depth-first, bounded by MAX_DEPTH
-  skip ignored dirs: .git, node_modules, target, dist, build, .venv
+  skip ignored dirs: .git, node_modules, target, dist, build, .venv,
+    and any other dot-directory except .okf
   for each directory D (cycle-safe on symlinks):
     if D/index.md has okf_version  -> mark D as bundle root (confident)
   for each typed concept .md file:

@@ -2,6 +2,18 @@
 
 ## 2026-11-12
 
+* **Release**: 0.12.0. Open from URL opens private GitHub repositories, and a bundle kept in a repository's `.okf/` directory is detected. A minor rather than a patch: it adds a capability, and Studio can now read GitHub credentials already on the machine when GitHub refuses an anonymous request.
+
+  **Private GitHub repositories.** A private repository opens from [Open from URL](features/bundle-switcher.md#opening-from-a-url) with the GitHub CLI sign-in or Git credentials already on the machine, through a shallow clone when only an SSH key grants access, or with a personal access token pasted for that one fetch. A public repository is still fetched anonymously, credentials are sent to `api.github.com` only, and the token is never stored. SSH-style addresses such as `git@github.com:owner/repo` are accepted. Contributed in [#60](https://github.com/saschb2b/okf-studio/pull/60).
+
+  **Bundles in `.okf/`.** A repository that keeps its bundle in `.okf/` shows that bundle when opened as a folder or from a URL. Other dot-directories are still skipped.
+
+  **Graph view.** Three fixes to the GPU renderer. Focus mode with a folder home open shows the whole graph instead of an empty pane. **Fit** no longer zooms in until the nodes overlap. A webview without WebGL shows the fallback instead of a blank pane.
+
+  **Under the hood.** The GPU renderer moves to cosmos.gl 3, the agent host to the ACP SDK 3.6 and rmcp 3.8, and the HTTP client to ureq 3.5. The MCP bridge serves revisions 2024-11-05 through 2025-11-25, and an agent that asks for 2026-07-28 is answered with 2024-11-05.
+
+  **Upgrading.** Nothing to do. No bundles, saved threads, settings, or exported formats change. After Open on a GitHub URL that GitHub refuses, Studio may run `gh auth token` and `git credential fill`. That includes a mistyped URL, which GitHub answers the same way as a private repository. URL sources follow up to three redirects, as documented, where they followed two.
+
 * **Update**: [Open from URL](features/bundle-switcher.md#opening-from-a-url) opens private GitHub repositories. The first request stays anonymous, so a public repository reads no local credential. After GitHub refuses it, Studio tries `GITHUB_TOKEN`, `GH_TOKEN`, the GitHub CLI, and the Git credential helper, then a shallow `git clone` through the system Git for SSH-only access. The dialog also takes an optional personal access token. Decision: the token is an argument of `fetch_remote_bundle`, not a field of the remote source, because the source is persisted in recents and a credential must not be. Decision: credentials are sent to `api.github.com` only. A direct archive URL can name any host, so it is always fetched anonymously. Decision: helper processes run with prompts disabled and a time limit, so a missing credential fails instead of opening a sign-in window. SSH-style GitHub addresses (`git@github.com:owner/repo`) are accepted. The security boundary is recorded in [IPC and security](architecture/ipc-and-security.md).
 * **Fix**: The bundle scanner descends into `.okf/` directories. The hidden-directory rule in the filesystem walk and in the default ignore list skipped them, so a repository that keeps its bundle at `.okf/` registered no bundle. Both now exempt `.okf`, as recorded in [bundle detection](architecture/bundle-detection.md).
 
